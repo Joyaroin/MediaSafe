@@ -81,7 +81,15 @@ the same thing inside the proxy as it does on your laptop. That is what lets one
 | `npm run db:psql` | A `psql` shell in the database container. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run lint` | ESLint. |
+| `npm run lint:sql` | squawk over `drizzle/*.sql`. Fails on a dropped column or table. |
+| `npm run build` | The deploy build command. Locally that is `next build` alone — see below. |
 | `npm test` | Vitest. **Needs the database up.** |
+
+`npm run build` is not `next build` any more: it is `scripts/build.ts`, which is the
+command Vercel runs, and **on a production deployment it migrates first**. Off Vercel it
+skips straight to `next build`, so building on your laptop never touches your database.
+The ordering, and why it is that way round, is in
+[`docs/deployment.md`](deployment.md).
 
 ## Changing the schema
 
@@ -90,6 +98,10 @@ the same thing inside the proxy as it does on your laptop. That is what lets one
 npm run db:generate      # writes drizzle/NNNN_name.sql
 # 2. READ the generated SQL, and edit it if it is wrong
 npm run db:migrate       # apply it
+```
+
+```bash
+npm run lint:sql         # 3. what CI will say about it
 ```
 
 Generated SQL is committed as plain, hand-editable `.sql` on purpose. `squawk` lints SQL

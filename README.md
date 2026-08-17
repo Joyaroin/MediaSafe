@@ -23,6 +23,7 @@ Read them in this order; where two disagree, the higher one wins.
 | [`CONTEXT.md`](CONTEXT.md) | The domain language. Binding on every identifier, table name and string on screen. |
 | [`docs/adr/0001-…`](docs/adr/0001-watch-identity-and-derived-state.md) | The schema and what is derived rather than stored. |
 | [`DESIGN.md`](DESIGN.md) | The visual world. Tokens, rules, components. |
+| [`docs/deployment.md`](docs/deployment.md) | Merge to production, previews, CI, and how to roll back. |
 | [`docs/design/v1-surfaces.md`](docs/design/v1-surfaces.md) | The screens. Partly superseded — see `SPEC.md` §10.2. |
 | [`PRODUCT.md`](PRODUCT.md) | Historical. Stale in eight places. Do not build from it. |
 
@@ -33,14 +34,21 @@ Read them in this order; where two disagree, the higher one wins.
 | `app/` | The Next.js app. `globals.css` is `DESIGN.md`'s token layer and the only styling that exists. |
 | `db/` | `driver.ts` owns the one driver, `client.ts` the app's pool, `migrate.ts` the migration runner. |
 | `drizzle/` | Generated migrations, committed as plain SQL. Read `drizzle/README.md` before adding one. |
+| `scripts/` | `build.ts` is the deploy build command — the migration is its first half. `provision.sh` is the setup wizard. |
 | `tests/` | Vitest, against a real local Postgres. |
-| `vercel.json` | Declares the framework as `nextjs`. See below — it is load-bearing, not boilerplate. |
+| `vercel.json` | Declares the framework as `nextjs` and the build command. See below — it is load-bearing, not boilerplate. |
+| `.squawk.toml` | squawk, narrowed to the destructive rules. Every exclusion carries its reason. |
 
 The Vercel project was created before this repository had a `package.json`, so Vercel's
 framework detection found nothing and the project settings kept `Other`. Under that preset a
 Next.js build compiles perfectly and then fails looking for a static `public/` directory.
 `vercel.json` states the framework in the repository, where it is reviewable and survives the
 project being recreated, rather than leaving it to a dashboard toggle nobody can see from here.
+
+It states the build command for the same reason, and there the stakes are higher: the build
+command's first half is the production migration, and `vercel.json` overrides the dashboard, so
+the migration cannot be dropped out of a deploy by a setting nobody is looking at.
+[`docs/deployment.md`](docs/deployment.md) has the whole path.
 
 ## What is true from the first merge
 
