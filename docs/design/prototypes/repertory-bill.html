@@ -29,6 +29,19 @@
     --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
     --font-text:    "Archivo", ui-sans-serif, system-ui, sans-serif;
 
+    /* ── The bill's type ramp ───────────────────────────────────────
+       Five display steps and three text steps. Nine sizes total, and
+       nothing off-ramp: a bill is set from a case of known sizes, and
+       an arbitrary rem value is the tell that no case exists.        */
+    --text-bill-xl: 3.6rem;    /* the programme note's title          */
+    --text-bill-lg: 2.6rem;    /* phone hero, full-surface headlines  */
+    --text-bill-md: 2.15rem;   /* a bill entry, inline headlines      */
+    --text-bill-sm: 1.6rem;    /* section heads, row titles, toast    */
+    --text-bill-xs: 1.15rem;   /* wordmark, compact row titles        */
+    --text-note:    0.92rem;   /* synopsis and running prose          */
+    --text-item:    0.85rem;   /* episode names, metadata, fields     */
+    --text-fine:    0.7rem;    /* attribution and legal notices       */
+
     /* A bill has no rounded corners and no drop shadows. Depth is ink
        density and rules. These are zeroed deliberately, not skipped.  */
     --radius-none: 0px;
@@ -150,7 +163,7 @@
           <rect x="1" y="1" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"/>
           <rect x="5" y="10.5" width="14" height="3" fill="#E85A38"/>
         </svg>
-        <span class="bill-title text-[1.05rem] leading-none">MediaSafe</span>
+        <span class="bill-title text-bill-xs leading-none">MediaSafe</span>
       </div>
       <!-- Desktop nav: two items (#11 §5) -->
       <nav class="hidden items-stretch lg:flex" aria-label="Primary">
@@ -179,7 +192,7 @@
               Desktop: a strip above the bill, secondary to it. (#11 §5) ── -->
       <section aria-labelledby="tonight-h" class="border-b border-rule-bold">
         <div class="flex items-baseline justify-between px-4 pt-5 pb-3 lg:px-6">
-          <h1 id="tonight-h" class="bill-title text-[2.6rem] lg:text-[1.6rem]">Tonight</h1>
+          <h1 id="tonight-h" class="bill-title text-bill-lg lg:text-bill-sm">Tonight</h1>
           <p class="code-line text-stock-dim">Part-way through</p>
         </div>
 
@@ -201,9 +214,9 @@
             </div>
             <div class="flex shrink-0 gap-4 px-4 py-4">
               <div class="relative min-w-0 flex-1">
-                <h2 class="bill-title text-[2.6rem]">The Bear</h2>
+                <h2 class="bill-title text-bill-lg">The Bear</h2>
                 <div class="relative mt-2 inline-block pr-1">
-                  <p class="text-[1.05rem] font-medium leading-tight">Hands</p>
+                  <p class="text-bill-xs font-medium leading-tight">Hands</p>
                   <span class="strike" aria-hidden="true"></span>
                 </div>
                 <p class="code-line mt-1.5 text-stock-dim" data-numeric>Season 1 · Episode 2</p>
@@ -227,10 +240,10 @@
           </article>
           <!-- the rest of the stack, bounded at ten -->
           <ol class="divide-y divide-rule border-t border-rule">
-            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#26418f"/><rect x="60" y="90" width="180" height="220" fill="#e9e4d8"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-[1.15rem]">Severance</p><p class="code-line mt-1 text-stock-dim">Half Loop · S1 E2</p></div></li>
-            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 400 400" aria-hidden="true"><rect width="400" height="400" fill="#7a1f1f"/><polygon points="200,60 340,340 60,340" fill="#f0d9a8"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-[1.15rem]">Andor</p><p class="code-line mt-1 text-stock-dim">That Would Be Me · S1 E2</p></div></li>
-            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#0f4c5c"/><rect x="40" y="40" width="240" height="280" fill="#e36414"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-[1.15rem]">Shōgun</p><p class="code-line mt-1 text-stock-dim">Servants of Two Masters · E2</p></div></li>
-            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#3b3b3b"/><circle cx="150" cy="200" r="70" fill="#9bc53d"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-[1.15rem]">Slow Horses</p><p class="code-line mt-1 text-stock-dim">Work Drinks · S1 E2</p></div></li>
+            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#26418f"/><rect x="60" y="90" width="180" height="220" fill="#e9e4d8"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-bill-xs">Severance</p><p class="code-line mt-1 text-stock-dim">Half Loop · S1 E2</p></div></li>
+            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 400 400" aria-hidden="true"><rect width="400" height="400" fill="#7a1f1f"/><polygon points="200,60 340,340 60,340" fill="#f0d9a8"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-bill-xs">Andor</p><p class="code-line mt-1 text-stock-dim">That Would Be Me · S1 E2</p></div></li>
+            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#0f4c5c"/><rect x="40" y="40" width="240" height="280" fill="#e36414"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-bill-xs">Shōgun</p><p class="code-line mt-1 text-stock-dim">Servants of Two Masters · E2</p></div></li>
+            <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#3b3b3b"/><circle cx="150" cy="200" r="70" fill="#9bc53d"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-bill-xs">Slow Horses</p><p class="code-line mt-1 text-stock-dim">Work Drinks · S1 E2</p></div></li>
           </ol>
           <p class="border-t border-rule px-4 py-3 code-line text-stock-dim">A deck you work down — more load as you go</p>
         </div>
@@ -242,9 +255,9 @@
           <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-bear">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#1b6f4a"/><circle cx="150" cy="150" r="88" fill="#f2c53d"/><rect y="270" width="300" height="130" fill="#c2341f"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
-              <p class="bill-title text-[1.5rem]">The Bear</p>
+              <p class="bill-title text-bill-sm">The Bear</p>
               <div class="relative mt-1 inline-block self-start pr-1">
-                <p class="truncate text-[0.9rem] font-medium">Hands</p>
+                <p class="truncate text-item font-medium">Hands</p>
                 <span class="strike" aria-hidden="true"></span>
               </div>
               <p class="code-line mt-0.5 text-stock-dim" data-numeric>S1 E2</p>
@@ -255,8 +268,8 @@
           <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-sev">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#26418f"/><rect x="60" y="90" width="180" height="220" fill="#e9e4d8"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
-              <p class="bill-title text-[1.5rem]">Severance</p>
-              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-[0.9rem] font-medium">Half Loop</p><span class="strike" aria-hidden="true"></span></div>
+              <p class="bill-title text-bill-sm">Severance</p>
+              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-item font-medium">Half Loop</p><span class="strike" aria-hidden="true"></span></div>
               <p class="code-line mt-0.5 text-stock-dim" data-numeric>S1 E2</p>
               <span class="stamp right-0 top-0 border-2 border-signal px-1.5 py-0.5 text-signal code-line" aria-hidden="true">Watched</span>
               <button type="button" data-mark="strip-sev" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
@@ -265,8 +278,8 @@
           <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-andor">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 400 400" aria-hidden="true"><rect width="400" height="400" fill="#7a1f1f"/><polygon points="200,60 340,340 60,340" fill="#f0d9a8"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
-              <p class="bill-title text-[1.5rem]">Andor</p>
-              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-[0.9rem] font-medium">That Would Be Me</p><span class="strike" aria-hidden="true"></span></div>
+              <p class="bill-title text-bill-sm">Andor</p>
+              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-item font-medium">That Would Be Me</p><span class="strike" aria-hidden="true"></span></div>
               <p class="code-line mt-0.5 text-stock-dim" data-numeric>S1 E2</p>
               <span class="stamp right-0 top-0 border-2 border-signal px-1.5 py-0.5 text-signal code-line" aria-hidden="true">Watched</span>
               <button type="button" data-mark="strip-andor" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
@@ -275,8 +288,8 @@
           <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-shogun">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#0f4c5c"/><rect x="40" y="40" width="240" height="280" fill="#e36414"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
-              <p class="bill-title text-[1.5rem]">Shōgun</p>
-              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-[0.9rem] font-medium">Servants of Two Masters</p><span class="strike" aria-hidden="true"></span></div>
+              <p class="bill-title text-bill-sm">Shōgun</p>
+              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-item font-medium">Servants of Two Masters</p><span class="strike" aria-hidden="true"></span></div>
               <p class="code-line mt-0.5 text-stock-dim" data-numeric>E2</p>
               <span class="stamp right-0 top-0 border-2 border-signal px-1.5 py-0.5 text-signal code-line" aria-hidden="true">Watched</span>
               <button type="button" data-mark="strip-shogun" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
@@ -285,8 +298,8 @@
           <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-slow">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#3b3b3b"/><circle cx="150" cy="200" r="70" fill="#9bc53d"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
-              <p class="bill-title text-[1.5rem]">Slow Horses</p>
-              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-[0.9rem] font-medium">Work Drinks</p><span class="strike" aria-hidden="true"></span></div>
+              <p class="bill-title text-bill-sm">Slow Horses</p>
+              <div class="relative mt-1 inline-block self-start pr-1"><p class="truncate text-item font-medium">Work Drinks</p><span class="strike" aria-hidden="true"></span></div>
               <p class="code-line mt-0.5 text-stock-dim" data-numeric>S1 E2</p>
               <span class="stamp right-0 top-0 border-2 border-signal px-1.5 py-0.5 text-signal code-line" aria-hidden="true">Watched</span>
               <button type="button" data-mark="strip-slow" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
@@ -298,7 +311,7 @@
       <!-- ── The bill: filter chips, sort, filter-by-typing ── -->
       <section id="bill" aria-labelledby="bill-h" class="hidden lg:block">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-rule px-6 py-4">
-          <h2 id="bill-h" class="bill-title text-[1.6rem]">The library</h2>
+          <h2 id="bill-h" class="bill-title text-bill-sm">The library</h2>
 
           <div class="flex flex-wrap items-center gap-px bg-rule" role="group" aria-label="Filter by where a title stands">
             <button type="button" aria-pressed="true"  class="bg-stock px-3 py-1.5 text-ink code-line">All</button>
@@ -311,12 +324,12 @@
 
           <label class="ml-auto flex items-center gap-2 border border-rule-bold px-3 py-1.5 focus-within:border-signal">
             <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-stock-dim" aria-hidden="true"><rect x="2" y="5" width="20" height="2.5" fill="currentColor"/><rect x="5" y="10.75" width="14" height="2.5" fill="currentColor"/><rect x="9" y="16.5" width="6" height="2.5" fill="currentColor"/></svg>
-            <input type="text" placeholder="Filter your library" class="w-52 bg-transparent text-[0.8rem] text-stock placeholder:text-stock-dim focus:outline-none">
+            <input type="text" placeholder="Filter your library" class="w-52 bg-transparent text-item text-stock placeholder:text-stock-dim focus:outline-none">
           </label>
           <label class="flex items-center gap-2">
             <span class="code-line text-stock-dim">Sort</span>
             <span class="relative inline-flex items-center">
-              <select class="appearance-none border border-rule-bold bg-ink py-1.5 pl-3 pr-9 text-[0.8rem] text-stock focus:border-signal focus:outline-none">
+              <select class="appearance-none border border-rule-bold bg-ink py-1.5 pl-3 pr-9 text-item text-stock focus:border-signal focus:outline-none">
                 <option>Recently watched</option><option>Title A–Z</option><option>Year</option>
               </select>
               <svg viewBox="0 0 12 8" class="pointer-events-none absolute right-3 h-2 w-3 text-signal" aria-hidden="true"><polygon points="0,0 12,0 6,8" fill="currentColor"/></svg>
@@ -329,83 +342,83 @@
           <!-- entry template repeated with real state variety -->
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised" aria-current="true">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#1b6f4a"/><circle cx="150" cy="150" r="88" fill="#f2c53d"/><rect y="270" width="300" height="130" fill="#c2341f"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">The Bear</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · FX</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Next — Hands</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">The Bear</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · FX</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-item text-stock-dim">Next — Hands</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#26418f"/><rect x="60" y="90" width="180" height="220" fill="#e9e4d8"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Severance</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · Apple TV+</p><p class="code-line mt-3 text-stock">Caught up</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Nothing to watch now</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Severance</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · Apple TV+</p><p class="code-line mt-3 text-stock">Caught up</p><p class="mt-1 truncate text-item text-stock-dim">Nothing to watch now</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#3d0f4c"/><rect x="0" y="180" width="640" height="180" fill="#f3a712"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">The Wire</p><p class="code-line mt-2 text-stock-dim" data-numeric>2002 · HBO</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">All five seasons</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">The Wire</p><p class="code-line mt-2 text-stock-dim" data-numeric>2002 · HBO</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-item text-stock-dim">All five seasons</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 400 400" aria-hidden="true"><rect width="400" height="400" fill="#7a1f1f"/><polygon points="200,60 340,340 60,340" fill="#f0d9a8"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Andor</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · Disney+</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Next — That Would Be Me</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Andor</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · Disney+</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-item text-stock-dim">Next — That Would Be Me</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 450" aria-hidden="true"><rect width="300" height="450" fill="#0b0b0b"/><rect x="30" y="60" width="240" height="6" fill="#d7263d"/><rect x="30" y="380" width="240" height="6" fill="#d7263d"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Chernobyl</p><p class="code-line mt-2 text-stock-dim" data-numeric>2019 · HBO</p><p class="code-line mt-3 text-stock-dim">Watchlist</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Not started</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Chernobyl</p><p class="code-line mt-2 text-stock-dim" data-numeric>2019 · HBO</p><p class="code-line mt-3 text-stock-dim">Watchlist</p><p class="mt-1 truncate text-item text-stock-dim">Not started</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0 opacity-45"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#4a4a2f"/><circle cx="150" cy="200" r="110" fill="#c9c9a8"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem] text-stock-dim">Fargo</p><p class="code-line mt-2 text-stock-dim" data-numeric>2014 · FX</p><p class="code-line mt-3 text-stock-dim">Abandoned</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Watching it again clears this</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md text-stock-dim">Fargo</p><p class="code-line mt-2 text-stock-dim" data-numeric>2014 · FX</p><p class="code-line mt-3 text-stock-dim">Abandoned</p><p class="mt-1 truncate text-item text-stock-dim">Watching it again clears this</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#3b3b3b"/><circle cx="150" cy="200" r="70" fill="#9bc53d"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Slow Horses</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · Apple TV+</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Next — Work Drinks</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Slow Horses</p><p class="code-line mt-2 text-stock-dim" data-numeric>2022 · Apple TV+</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-item text-stock-dim">Next — Work Drinks</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 500 300" aria-hidden="true"><rect width="500" height="300" fill="#123c69"/><rect x="180" y="0" width="140" height="300" fill="#eee2dc"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Succession</p><p class="code-line mt-2 text-stock-dim" data-numeric>2018 · HBO</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Four seasons</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Succession</p><p class="code-line mt-2 text-stock-dim" data-numeric>2018 · HBO</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-item text-stock-dim">Four seasons</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#0d3b2e"/><rect x="40" y="40" width="220" height="320" fill="none" stroke="#e0c9a6" stroke-width="14"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Shōgun</p><p class="code-line mt-2 text-stock-dim" data-numeric>2024 · FX</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Next — Servants of Two Masters</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Shōgun</p><p class="code-line mt-2 text-stock-dim" data-numeric>2024 · FX</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-item text-stock-dim">Next — Servants of Two Masters</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#5b1e3d"/><circle cx="90" cy="120" r="60" fill="#ffd9a0"/><rect x="0" y="300" width="300" height="100" fill="#2b2b2b"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Dark</p><p class="code-line mt-2 text-stock-dim" data-numeric>2017 · Netflix</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Three seasons</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Dark</p><p class="code-line mt-2 text-stock-dim" data-numeric>2017 · Netflix</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-item text-stock-dim">Three seasons</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 500 280" aria-hidden="true"><rect width="500" height="280" fill="#8c6b1f"/><polygon points="0,280 250,60 500,280" fill="#f5efe0"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Better Call Saul</p><p class="code-line mt-2 text-stock-dim" data-numeric>2015 · AMC</p><p class="code-line mt-3 text-stock">Caught up</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Nothing to watch now</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">Better Call Saul</p><p class="code-line mt-2 text-stock-dim" data-numeric>2015 · AMC</p><p class="code-line mt-3 text-stock">Caught up</p><p class="mt-1 truncate text-item text-stock-dim">Nothing to watch now</p></div>
           </button></li>
 
           <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#1d2a3a"/><rect x="0" y="150" width="300" height="14" fill="#ff5c39"/><rect x="0" y="230" width="300" height="14" fill="#ff5c39"/></svg></div>
-            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">The Leftovers</p><p class="code-line mt-2 text-stock-dim" data-numeric>2014 · HBO</p><p class="code-line mt-3 text-stock-dim">Watchlist</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Not started</p></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-bill-md">The Leftovers</p><p class="code-line mt-2 text-stock-dim" data-numeric>2014 · HBO</p><p class="code-line mt-3 text-stock-dim">Watchlist</p><p class="mt-1 truncate text-item text-stock-dim">Not started</p></div>
           </button></li>
         </ol>
 
         <!-- zero matches for a filter — distinct from an empty library -->
         <div id="zero-match" hidden class="border-t border-rule px-6 py-16 text-center">
-          <p class="bill-title text-[2rem]">Nothing under that filter</p>
-          <p class="mx-auto mt-3 max-w-[60ch] text-[0.95rem] text-stock-dim">Your library still holds everything it did. Clear the filter to see it again.</p>
+          <p class="bill-title text-bill-md">Nothing under that filter</p>
+          <p class="mx-auto mt-3 max-w-[60ch] text-note text-stock-dim">Your library still holds everything it did. Clear the filter to see it again.</p>
           <button type="button" class="mt-5 border border-signal px-4 py-2 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Clear the filter</button>
         </div>
 
         <!-- genuinely empty library — only reachable by declining the import -->
         <div id="empty-library" hidden class="border-t border-rule px-6 py-16 text-center">
-          <p class="bill-title text-[2.4rem]">The bill is blank</p>
-          <p class="mx-auto mt-3 max-w-[62ch] text-[0.95rem] text-stock-dim">You declined the import, so there is nothing in your library yet. You can bring your library in whenever you like — it only ever adds, and running it twice changes nothing.</p>
+          <p class="bill-title text-bill-lg">The bill is blank</p>
+          <p class="mx-auto mt-3 max-w-[62ch] text-note text-stock-dim">You declined the import, so there is nothing in your library yet. You can bring your library in whenever you like — it only ever adds, and running it twice changes nothing.</p>
           <button type="button" class="mt-5 bg-signal px-4 py-2 text-ink code-line">Bring your library in</button>
         </div>
 
         <!-- read failure — inline, per blast radius (#15). Never mistaken for empty. -->
         <div id="read-error" hidden class="border-t-2 border-signal px-6 py-12">
-          <p class="bill-title text-[1.8rem] text-signal">The library could not be read</p>
-          <p class="mt-3 max-w-[62ch] text-[0.95rem]">Nothing has been lost — MediaSafe could not reach it just now. Try again in a moment.</p>
+          <p class="bill-title text-bill-md text-signal">The library could not be read</p>
+          <p class="mt-3 max-w-[62ch] text-note">Nothing has been lost — MediaSafe could not reach it just now. Try again in a moment.</p>
           <div class="mt-5 flex items-center gap-4">
             <button type="button" class="border border-signal px-4 py-2 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Try again</button>
             <p class="code-line text-stock-dim" data-numeric>Reference 7f3c1a9e</p>
@@ -423,11 +436,11 @@
         </div>
 
         <div class="px-6 py-5">
-          <h2 class="bill-title text-[3.6rem]">The Bear</h2>
+          <h2 class="bill-title text-bill-xl">The Bear</h2>
           <p class="code-line mt-3 text-stock-dim" data-numeric>2022 · FX · 30 min</p>
           <p class="code-line mt-4 text-signal">Watching</p>
 
-          <p class="mt-5 max-w-[68ch] text-[0.92rem] leading-relaxed text-stock-dim">
+          <p class="mt-5 max-w-[68ch] text-note leading-relaxed text-stock-dim">
             A young chef from the fine-dining world returns to Chicago to run his late brother's
             sandwich shop.
           </p>
@@ -456,17 +469,17 @@
             <ol class="mt-3 divide-y divide-rule">
               <li class="flex items-baseline gap-3 py-2.5">
                 <span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E1</span>
-                <span class="flex-1 text-[0.9rem] text-stock-dim line-through decoration-signal decoration-2">System</span>
+                <span class="flex-1 text-item text-stock-dim line-through decoration-signal decoration-2">System</span>
                 <span class="code-line text-stock-dim">Watched</span>
               </li>
               <li class="flex items-baseline gap-3 py-2.5">
                 <span class="code-line w-9 shrink-0 bg-signal px-1 py-0.5 text-center text-ink" data-numeric>E2</span>
-                <span class="flex-1 text-[0.9rem] font-medium">Hands</span>
+                <span class="flex-1 text-item font-medium">Hands</span>
                 <span class="code-line text-signal">Up next</span>
               </li>
-              <li class="flex items-baseline gap-3 py-2.5"><span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E3</span><span class="flex-1 text-[0.9rem]">Brigade</span></li>
-              <li class="flex items-baseline gap-3 py-2.5"><span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E4</span><span class="flex-1 text-[0.9rem]">Dogs</span></li>
-              <li class="flex items-baseline gap-3 py-2.5"><span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E5</span><span class="flex-1 text-[0.9rem]">Sheridan</span></li>
+              <li class="flex items-baseline gap-3 py-2.5"><span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E3</span><span class="flex-1 text-item">Brigade</span></li>
+              <li class="flex items-baseline gap-3 py-2.5"><span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E4</span><span class="flex-1 text-item">Dogs</span></li>
+              <li class="flex items-baseline gap-3 py-2.5"><span class="code-line w-9 shrink-0 text-stock-dim" data-numeric>E5</span><span class="flex-1 text-item">Sheridan</span></li>
             </ol>
           </div>
 
@@ -477,7 +490,7 @@
              scroll position the reader may never reach. -->
         <div class="flex shrink-0 items-center gap-3 border-t border-rule bg-ink px-6 py-3">
           <svg viewBox="0 0 34 12" class="h-3 w-auto shrink-0" role="img" aria-label="TMDB"><rect width="34" height="12" fill="#0d253f"/><rect x="3" y="4.5" width="28" height="3" fill="#01b4e4"/></svg>
-          <p class="text-[0.7rem] leading-snug text-stock-dim">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+          <p class="text-fine leading-snug text-stock-dim">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
         </div>
       </div>
     </aside>
@@ -503,8 +516,8 @@
 <!-- ══ Write-failure toast — persistent, load-bearing (#15) ══ -->
 <div id="write-toast" hidden class="fixed bottom-20 left-4 right-4 z-40 border-2 border-signal bg-ink lg:bottom-6 lg:left-auto lg:w-[420px]">
   <div class="p-4">
-    <p class="bill-title text-[1.35rem] text-signal">That watch was not recorded</p>
-    <p class="mt-2 text-[0.88rem] leading-snug">The Bear — Hands. Nothing has been lost from your library; the strike has been undone.</p>
+    <p class="bill-title text-bill-sm text-signal">That watch was not recorded</p>
+    <p class="mt-2 text-item leading-snug">The Bear — Hands. Nothing has been lost from your library; the strike has been undone.</p>
     <div class="mt-4 flex items-center gap-3">
       <button type="button" class="bg-signal px-3 py-1.5 text-ink code-line">Try again</button>
       <button type="button" class="border border-rule-bold px-3 py-1.5 text-stock-dim code-line transition-colors hover:text-stock">Dismiss</button>
@@ -517,11 +530,11 @@
 <div class="fixed bottom-1 right-1 z-50 max-w-[46vw] border border-rule-bold bg-ink-raised/80 p-1.5 opacity-70 transition-opacity hover:opacity-100 lg:bottom-3 lg:left-3 lg:right-auto lg:max-w-none">
   <p class="code-line mb-2 text-stock-dim">Prototype only — states</p>
   <div class="flex flex-wrap gap-1">
-    <button type="button" data-state="offline"       class="border border-rule-bold px-2 py-1 text-[0.6rem] uppercase tracking-widest text-stock-dim hover:text-stock">Offline</button>
-    <button type="button" data-state="write-toast"   class="border border-rule-bold px-2 py-1 text-[0.6rem] uppercase tracking-widest text-stock-dim hover:text-stock">Write fails</button>
-    <button type="button" data-state="zero-match"    class="border border-rule-bold px-2 py-1 text-[0.6rem] uppercase tracking-widest text-stock-dim hover:text-stock">No matches</button>
-    <button type="button" data-state="empty-library" class="border border-rule-bold px-2 py-1 text-[0.6rem] uppercase tracking-widest text-stock-dim hover:text-stock">Empty</button>
-    <button type="button" data-state="read-error"    class="border border-rule-bold px-2 py-1 text-[0.6rem] uppercase tracking-widest text-stock-dim hover:text-stock">Read fails</button>
+    <button type="button" data-state="offline"       class="border border-rule-bold px-2 py-1 code-line text-stock-dim hover:text-stock">Offline</button>
+    <button type="button" data-state="write-toast"   class="border border-rule-bold px-2 py-1 code-line text-stock-dim hover:text-stock">Write fails</button>
+    <button type="button" data-state="zero-match"    class="border border-rule-bold px-2 py-1 code-line text-stock-dim hover:text-stock">No matches</button>
+    <button type="button" data-state="empty-library" class="border border-rule-bold px-2 py-1 code-line text-stock-dim hover:text-stock">Empty</button>
+    <button type="button" data-state="read-error"    class="border border-rule-bold px-2 py-1 code-line text-stock-dim hover:text-stock">Read fails</button>
   </div>
 </div>
 
