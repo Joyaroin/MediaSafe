@@ -65,6 +65,11 @@ _Avoid_: replay, second watch, watch count
 How far into a show you have got — the furthest episode you have a watch for. Derived, never set.
 _Avoid_: watched through, position, bookmark, watermark
 
+**Remaining**:
+How much of a show you have left — the episodes you have no watch for. A count, where progress is a
+position, so the two are never interchangeable. Derived, never set.
+_Avoid_: progress, left to watch, percent complete, completion
+
 **Up next**:
 The episode after your progress. Skipping an episode moves you past it permanently; MediaSafe
 never sends you backwards.
@@ -119,6 +124,12 @@ _Avoid_: lookup, find
 Narrowing your library down, including by typing a name into it. Always about titles you already
 have.
 _Avoid_: search, library search, in-library search
+
+**Sort**:
+Reordering your library without removing anything from it. Always about titles you already have,
+and the opposite of filter in what it does to the set: filter changes which titles you see, sort
+changes only where they are.
+_Avoid_: order, arrange, rank, order by
 
 **Discovery**:
 Browsing the catalogue by genre. Untargeted, and about titles you do not have.
