@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
+import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
 
 import { createPool, requireDatabaseUrl } from "./driver";
 import * as schema from "./schema";
@@ -16,9 +16,30 @@ import * as schema from "./schema";
  * `error.tsx` boundary is what catches it.
  *
  * This module is deliberately thin. Build step 1's data-access choke point, the module
- * that takes a session's user id and is the only thing that reads rows, is issue #40 and
- * is built on top of this rather than instead of it.
+ * that takes a session's user id and is the only thing that reads rows, is `db/access.ts`
+ * and is built on top of this rather than instead of it.
+ *
+ * Nothing outside `db/` imports this. ESLint enforces it (`eslint.config.mjs`), because
+ * "reads go through the choke point" is worth more as a check than as a convention.
  */
+
+/** The application's Drizzle handle, bound to the process pool. */
+export type Database = NeonDatabase<typeof schema>;
+
+/**
+ * A Drizzle handle inside an open transaction — what `db.transaction()` hands its
+ * callback, and what the test harness hands a test body.
+ */
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/**
+ * Whatever a query may be run against: the pool, or a transaction on it.
+ *
+ * `db/access.ts` takes one of these as its last argument so that a caller inside a
+ * transaction — build step 4's watch write, and every test — runs on that transaction
+ * rather than checking out a second connection that cannot see it.
+ */
+export type Executor = Database | Transaction;
 
 function createClient() {
   const pool = createPool(requireDatabaseUrl());
@@ -41,5 +62,23 @@ function getClient(): Client {
 }
 
 export function getDb(): Client["db"] {
+  /**
+   * Under vitest this pool would be built from `DATABASE_URL`, which is the database you
+   * develop against — not the migrated scratch database the harness created, and not
+   * inside the transaction it is about to roll back. A test reaching here has found the
+   * one silent failure the harness is designed to prevent: assertions that pass while
+   * the rows go somewhere else and stay there.
+   *
+   * It means a function in `db/access.ts` did not take the executor its caller passed.
+   * Nothing legitimate needs this pool in a test — `db/migrate.ts` and
+   * `tests/support/scratch-database.ts` open their own through `db/driver.ts`.
+   */
+  if (process.env.VITEST) {
+    throw new Error(
+      "The application pool is not available under test. Pass the executor from " +
+        "inTransaction() — see tests/support/database.ts.",
+    );
+  }
+
   return getClient().db;
 }

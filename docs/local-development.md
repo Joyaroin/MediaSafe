@@ -111,6 +111,45 @@ testing here live in Postgres, and a mock of a unique constraint tests the mock.
 Tests create and drop their own scratch databases, so running them does not disturb the
 database you develop against.
 
+### Writing one
+
+`tests/support/database.ts` is the harness for anything that touches rows. Two calls:
+
+```ts
+import { inTransaction, setUpTestDatabase } from "./support/database";
+
+setUpTestDatabase("mediasafe_watch_test");   // a name no other test file uses
+
+it("does not record the same click twice", async () => {
+  await inTransaction(async (tx) => {
+    // …insert, read back, assert. Rolled back whatever happens.
+  });
+});
+```
+
+`setUpTestDatabase` creates a database, migrates it with `db/migrate.ts` — the runner
+production runs — and drops it when the file finishes. `inTransaction` wraps one test in
+a transaction and always rolls it back, so no test can see another's rows and none of
+them leave residue. Postgres rolls DDL back too, which is what lets a test create a
+fixture table that vanishes with it.
+
+Two things it deliberately does not do. It does not share the database you develop
+against: a rollback protects rows, but the migration run would still touch whatever it
+was pointed at. And it is not what `tests/migrator-transaction.test.ts` uses — those
+tests cannot roll back, because the transaction is the thing they are testing.
+
+### The data-access choke point
+
+Owned rows are read and written through `db/access.ts`, and every function there takes
+the user id as its first argument. That module is the whole isolation mechanism: there is
+no row-level security, because Neon's connection owns the tables and would bypass any
+policy (`SPEC.md` §6). A session becomes a user id in exactly one place, `lib/session.ts`,
+and nowhere else.
+
+ESLint enforces the boundary — `app/`, `lib/` and `components/` may not import
+`@/db/client`, `@/db/driver` or `drizzle-orm` directly. If you hit that error, the query
+belongs in `db/access.ts`.
+
 ## When it does not work
 
 **`DATABASE_URL is not set`** — there is no `.env`. See the two lines above, or run

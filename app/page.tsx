@@ -1,3 +1,10 @@
+/* eslint-disable no-restricted-imports --
+ * The one exemption from the data-access choke point (issue #40), and it is narrow: this
+ * page reads *server facts and migration bookkeeping*, not owned rows. There is no user
+ * id to take and nothing to scope, so `@/db/access` has nothing to offer it — see the
+ * note below. It is deleted rather than migrated when `/` becomes the signed-in shell,
+ * and the exemption goes with it. Nothing else in the app may copy this.
+ */
 import { sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
