@@ -50,6 +50,11 @@ Two things bind everything that lands here:
   and fails on a dropped column or table, which is what makes that mechanical rather
   than remembered. Neon Free keeps six hours of history and a restore overwrites the
   branch, so this is the actual protection for the data, not a rollback policy.
+
+  Run it before you commit: `npm run lint:sql`. The narrowing lives in `.squawk.toml`,
+  where every rule that is *off* carries the reason it is off — including
+  `require-concurrent-index-creation`, which is off because it contradicts the paragraph
+  below.
 - **The whole pending run is one transaction.** Drizzle's migrator opens it — see the
   note at the top of `db/migrate.ts` and the test that holds it true. The consequence
   that bites: **statements Postgres forbids inside a transaction block cannot be used
