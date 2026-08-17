@@ -1,0 +1,104 @@
+# CI — typecheck, lint, build, squawk, on every pull request.
+#
+# **This gates nothing, because nothing can gate a merge here.** Rulesets and branch
+# protection are Pro-or-above on a private repository and both ways of paying were
+# declined (`SPEC.md` §6, issue #17). A red check is a red X next to a button that still
+# works. That is the accepted shape: running the checks is free, and the alternative —
+# not knowing — is worse than knowing and choosing.
+#
+# So this is written for *signal*, not for gating, and two choices follow from it:
+#
+#  - **Every check runs even after one fails.** A gate would stop at the first failure
+#    because nothing past it can change the answer. Here the answer is a list of things
+#    to look at before pressing merge, and a run that reports one of four problems is
+#    three-quarters useless.
+#  - **In-progress runs are cancelled when a branch is pushed again.** The minutes are
+#    free within GitHub's monthly allowance for private repositories, and constraint 8 is
+#    a £0 bill; superseded runs are the easiest place to not spend them.
+#
+# What this deliberately does not run: the test suite. `npm test` needs a real Postgres
+# and the WebSocket proxy in front of it (`vitest.config.mts`), which is two service
+# containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set. Worth
+# revisiting once there is a schema and the four tests that earn their keep exist —
+# today the suite is one migrator test that only fires on a Drizzle upgrade.
+
+name: CI
+
+on:
+  pull_request:
+
+# Read the code, and nothing else. This workflow writes no comment, publishes no
+# artifact and touches no deployment.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck, lint, build, squawk
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Node major Vercel runs, so a build that passes here is a build
+          # that passes there. Local development is 22-or-newer
+          # (docs/local-development.md); this pins the one that has to agree with
+          # production, and only that.
+          node-version: "22"
+          cache: npm
+
+      # Node 22 ships npm 10, and **npm 10 cannot read this repository's lock file**:
+      # `npm ci` fails with `Missing: esbuild@0.28.2 from lock file`, because npm 11
+      # writes tsx's nested optional-dependency subtree in a shape npm 10 rejects. The
+      # lock is npm 11's — that is what `npm install` on Node 24 produces, and it is what
+      # is committed — so the installer is matched to the lock rather than the lock
+      # downgraded to the installer, which npm 11 would only rewrite again.
+      #
+      # Node stays at 22 because Node is what the *build* runs on and Vercel runs 22.
+      # npm is only the installer, so pinning the two separately is the honest split.
+      - name: Use the npm that writes this lock file
+        run: npm install --global npm@11
+
+      # `ci`, not `install`: the point of a lock file is that CI resolves nothing.
+      - name: Install
+        id: install
+        run: npm ci
+
+      # Every check below carries the same condition, and it says two things.
+      #
+      # `!cancelled()` rather than `always()`: a failed typecheck must not hide the other
+      # three answers, because this reports rather than gates and one-of-four is
+      # three-quarters useless. But a run superseded by a new push should stop, and
+      # `always()` would keep spending minutes on a result nobody reads.
+      #
+      # `steps.install.outcome == 'success'` because `!cancelled()` on its own is too
+      # generous: it also overrides the default skip when *Install* failed, and then all
+      # four checks run without dependencies and report four failures from one cause.
+      # That is not a hypothetical — it is what this workflow's first run did.
+      - name: Typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck
+
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run lint
+
+      # No DATABASE_URL, deliberately. `/` is `force-dynamic`, so nothing is prerendered
+      # and the build needs no database — and `VERCEL` is unset here, so `scripts/build.ts`
+      # runs `next build` alone. CI must never be able to migrate anything.
+      - name: Build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run build
+
+      # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
+      # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather
+      # than remembered, on a database whose only safety net is six hours of Neon history.
+      - name: squawk
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run lint:sql
