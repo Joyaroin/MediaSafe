@@ -50,6 +50,13 @@ export function WriteFailureToasts() {
       // `pointer-events-none` on the region, restored on each toast: the container spans a
       // corner of the viewport even when it holds one short toast, and it must not swallow
       // clicks on whatever is underneath it.
+      //
+      // ⚠ `bottom-0` on phone is provisional. DESIGN.md says the toast is full-bleed
+      // *above the tab bar*, and there is no tab bar yet — step 2 adds the three fixed
+      // tabs. The toast is not visible to anyone until step 4 raises one, so by the time
+      // it is first seen the tab bar will already be sitting on top of it. Whoever builds
+      // the tab bar must lift this by its height; whoever builds the toast's caller must
+      // check that they did.
       className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex flex-col gap-px lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[420px]"
     >
       {failures.map((failure) => (
