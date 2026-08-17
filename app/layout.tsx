@@ -16,9 +16,11 @@ const archivo = Archivo({
   display: "swap",
 });
 
+// The one piece of user-facing copy in this change. Taken verbatim from SPEC.md §2
+// rather than paraphrased — CONTEXT.md is binding on every string on screen.
 export const metadata: Metadata = {
   title: "MediaSafe",
-  description: "A personal record of the films and shows you watch.",
+  description: "A personal tracker for the films and shows you watch.",
 };
 
 export default function RootLayout({
