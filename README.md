@@ -34,10 +34,16 @@ Read them in this order; where two disagree, the higher one wins.
 | `app/` | The Next.js app. `globals.css` is `DESIGN.md`'s token layer and the only styling that exists. |
 | `db/` | `driver.ts` owns the one driver, `client.ts` the app's pool, `migrate.ts` the migration runner. |
 | `drizzle/` | Generated migrations, committed as plain SQL. Read `drizzle/README.md` before adding one. |
+| `errors/` | The three failure surfaces and the reference id. Read `AGENTS.md` before adding a fourth. |
+| `eslint-rules/` | Local rules. One so far: `no-empty-catch`, which is constraint 2 made mechanical. |
 | `scripts/` | `build.ts` is the deploy build command — the migration is its first half. `provision.sh` is the setup wizard. |
 | `tests/` | Vitest, against a real local Postgres. |
 | `vercel.json` | Declares the framework as `nextjs` and the build command. See below — it is load-bearing, not boilerplate. |
 | `.squawk.toml` | squawk, narrowed to the destructive rules. Every exclusion carries its reason. |
+
+Sentry is wired through `instrumentation.ts` (server and edge), `instrumentation-client.ts`
+(browser) and `withSentryConfig` in `next.config.ts`. The reference id a reader is shown **is**
+the Sentry event id; nothing here mints a second identifier.
 
 The Vercel project was created before this repository had a `package.json`, so Vercel's
 framework detection found nothing and the project settings kept `Other`. Under that preset a
@@ -56,7 +62,11 @@ the migration cannot be dropped out of a deploy by a setting nobody is looking a
   for the app and the migration runner, locally and in production. No second
   implementation, no read cache, no local store, no offline queue.
 - **Empty and failed are structurally separate.** **No `catch` returns `[]`.** A read
-  failure throws; an empty state is reachable only by a successful zero-row query.
+  failure throws; an empty state is reachable only by a successful zero-row query. Enforced
+  by `mediasafe/no-empty-catch`, so `npm run lint` fails on it rather than a reviewer
+  catching it.
+- **A lost write is never silent, and a read failure never looks empty.** The three
+  treatments and where each one goes are in `AGENTS.md`.
 - **Expand-contract, forward-only.** A column is never dropped in the change that stops
   using it.
 - **A migration that fails partway applies nothing at all.** The whole pending run is one
