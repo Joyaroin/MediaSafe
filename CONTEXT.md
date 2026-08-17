@@ -1,8 +1,9 @@
 # MediaSafe
 
-A single-user personal tracker for the films and shows Adham watches. This file is the project's
-glossary — the words the code, the spec and the conversations all have to agree on. It holds no
-implementation detail and no product scope; it is a glossary and nothing else.
+A personal tracker for the films and shows you watch. Anyone can sign up, and every account's
+library is completely isolated from every other. This file is the project's glossary — the words the
+code, the spec and the conversations all have to agree on. It holds no implementation detail and no
+product scope; it is a glossary and nothing else.
 
 ## What you keep
 
@@ -19,8 +20,9 @@ recoverable from anywhere else.
 _Avoid_: tracked title, saved show, record
 
 **Library**:
-All of your library entries. It does not include your lists.
-_Avoid_: collection, "shows and films", watchlist
+All of your library entries — everything one account owns, and never anything another account owns.
+It does not include your lists.
+_Avoid_: collection, "shows and films", watchlist, safe
 
 **Episode**:
 One instalment of a show. Its number and its real name are both borrowed from the title, and an
