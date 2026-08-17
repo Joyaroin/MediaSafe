@@ -389,8 +389,17 @@ transaction itself — #17's "halt on partial failure" is a requirement, not a h
 ## Consequences
 
 - **#16 (import)** gets its target. It must mint deterministic `source_key`s, write undated watches,
-  expand rewatch counts into per-episode rows, resolve `tvtracker` ids to TMDB ids, and never touch
-  `abandoned_at` or an existing rating. #17 already requires its mapping to be a pure function.
+  expand rewatch counts into per-episode rows, and never touch `abandoned_at` or an existing rating.
+  #18 subsequently rewrote #16 so that import accepts a **MediaSafe-native format only**, with the
+  `tvtracker` conversion demoted to a dev script — which does not change anything here, because
+  `source` / `source_key` identifies *where a fact came from*, not what file format carried it. The
+  `'tvtracker'` source above is an illustration; the native format supplies its own.
+- **Import idempotency is now load-bearing for an environment, not just a user.** #18 seeds the
+  shared preview branch and local Docker by **running MediaSafe's own import** against a committed
+  fixture of 472 titles, and migrates that branch on every merge to `main`. So the same file is
+  imported repeatedly, by machines, on a schedule — which is exactly the case
+  `UNIQUE (user_id, source, source_key)` makes inert. Had watch identity been content-derived, every
+  re-seed would have multiplied the fixture's watches.
 - **#13 (the spec)** inherits this schema and these derivation rules verbatim.
 - **#11 / #12 (design)** get two inputs: a rating is a whole number **1–10**, and lists are
   **ordered**. Removing a title cascades its watches, so the confirmation must name the count.
