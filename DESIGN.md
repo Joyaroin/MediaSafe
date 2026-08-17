@@ -464,7 +464,12 @@ the rating scale, reference ids — gets `font-variant-numeric: tabular-nums` (a
 
 **Phone** (`<1024px`) is a different layout, not a squeezed one:
 
-- TONIGHT is the whole first screen: one dominant entry with a `5:4` plate at full width, the title
+- **The masthead is present at every width**, not desktop-only. Same sticky `ink/95` cell on its
+  `1px` rule, carrying press mark and wordmark; the *Library* / *Search* nav cells and the *Settings*
+  label are hidden below `lg`, because the phone reaches those through its tab bar and its own
+  header control. It also carries the **display name** as an inert `code-line` on both devices
+  ([#28](https://github.com/Joyaroin/MediaSafe/issues/28)) — never an avatar, and never an entrance.
+- TONIGHT is the first screen under it: one dominant entry with a `5:4` plate at full width, the title
   block beneath it, then a quiet abandon row, and the recording control pinned to the foot of that
   block in the thumb arc.
 - Beneath it, the remaining up-next entries as a compact deck. **The deck has no numeric cap** — its

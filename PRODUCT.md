@@ -1,5 +1,17 @@
 # Product
 
+> ## ⚠️ Historical — do not build from this file
+>
+> Written by `/impeccable init` on 2026-08-17, **before eight of the map's tickets closed**. It is
+> kept as a record of what was believed at the time, not as a description of the product.
+> **[`SPEC.md`](SPEC.md) supersedes it**, and `SPEC.md` §10.4 lists the eight claims below that are
+> now false — including *"one user"*, the feature count, the v1 slice, what previews carry, what
+> import accepts, and the 217 rewatch totals that turned out never to have existed. The file also
+> says *"watch event"* throughout, a phrase [#7](https://github.com/Joyaroin/MediaSafe/issues/7)
+> killed as a term; `CONTEXT.md`'s word is **Watch**.
+>
+> Its **Product Principles** section is the part that has aged well and is still quoted downstream.
+
 <!-- impeccable:product-schema 1 -->
 
 ## Platform
