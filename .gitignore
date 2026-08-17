@@ -1,5 +1,38 @@
-.playwright-mcp/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
 
-# Secrets. scripts/provision.sh writes .env at the repo root.
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# testing
+/coverage
+
+# misc
+.DS_Store
+*.pem
+.playwright-mcp/
+.claude/
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Secrets. scripts/provision.sh writes .env at the repo root, and writes
+# .env.example beside it — that one is meant to be committed.
 .env
 .env.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo

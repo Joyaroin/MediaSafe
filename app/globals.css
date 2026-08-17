@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   The visual world, as DESIGN.md specifies it.
+
+   Twenty-one `@theme` declarations, no more: eight colours, an eight-step type ramp,
+   and five form-and-motion tokens. Plus the three `@utility` rules, which carry the
+   bundles of declarations a token cannot.
+
+   This is the theme layer only — there are no components here, and there is no
+   component library in this repository yet. That is deliberate: every later ticket
+   consumes these tokens rather than inventing values, and the alternative is a set of
+   components designed under delivery pressure in whichever ticket needed one first.
+
+   There is deliberately NO spacing token (Tailwind's default 0.25rem step is used
+   throughout), NO shadow or elevation token, NO second palette, and NO line-height
+   token. None of those is an oversight; DESIGN.md has none of them, and adding one
+   here is how the world stops being one world.
+
+   One committed world: no theme picker, no light mode, no alternate palette
+   (SPEC.md §9). `color-scheme: dark` is declared and the browser's own surfaces —
+   selection, scrollbars, caret, focus ring — are painted from the same eight colours.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Ink and stock ──────────────────────────────────────────────
+     A bill printed in two spot inks, reversed out of night stock.
+     ink = the paper (warm black, never blue-black)
+     stock = the ink it is printed in (bone, never pure white)      */
+  --color-ink: #0e0d0b;
+  --color-ink-raised: #16140f;
+  --color-stock: #e8e2d4;
+  --color-stock-dim: #a29b8b;
+  --color-rule: #2a2621;
+  --color-rule-bold: #453e33;
+
+  /* Second spot: a field ink. Never sets fine type — it is a solid.
+     Reachable only through the `plate` utility; no `*-spot` class is
+     written anywhere, and that is structural, not incidental.      */
+  --color-spot: #2740c8;
+  /* Signal spot: the one live state, and the recording mark.        */
+  --color-signal: #e85a38;
+
+  /* The prototype loaded Archivo from a CDN. Here it is self-hosted by
+     `next/font`, which mints the family name into `--font-archivo`; the
+     two roles still differ by width axis, not by family.            */
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-text: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+
+  /* ── The bill's type ramp ───────────────────────────────────────
+     Five display steps and three text steps. Nine sizes total, and
+     nothing off-ramp: a bill is set from a case of known sizes, and
+     an arbitrary rem value is the tell that no case exists. The ninth
+     is the code line's 0.625rem, baked into its utility because the
+     code line is one size everywhere.
+
+     Each token declares a font size and NOTHING else — there is no
+     paired `--text-*--line-height`. That separation is what lets one
+     size serve both a condensed caps title and a plain running line. */
+  --text-bill-xl: 3.6rem; /* the programme note's title          */
+  --text-bill-lg: 2.6rem; /* phone hero, full-surface headlines  */
+  --text-bill-md: 2.15rem; /* a bill entry, inline headlines      */
+  --text-bill-sm: 1.6rem; /* section heads, row titles, toast    */
+  --text-bill-xs: 1.15rem; /* wordmark, compact row titles        */
+  --text-note: 0.92rem; /* synopsis and running prose          */
+  --text-item: 0.85rem; /* episode names, metadata, fields     */
+  --text-fine: 0.7rem; /* attribution and legal notices       */
+
+  /* A bill has no rounded corners and no drop shadows. Depth is ink
+     density and rules. These are zeroed deliberately, not skipped.  */
+  --radius-none: 0px;
+
+  --tracking-code: 0.16em;
+
+  --ease-press: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-ink);
+    color: var(--color-stock);
+    font-family: var(--font-text);
+    font-variation-settings: "wdth" 100;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Browser surfaces carry the design too. */
+  ::selection {
+    background: var(--color-signal);
+    color: var(--color-ink);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ink);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-rule-bold);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-stock-dim);
+  }
+  * {
+    scrollbar-color: var(--color-rule-bold) var(--color-ink);
+    scrollbar-width: thin;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+
+  input {
+    caret-color: var(--color-signal);
+  }
+
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── The three `@utility` rules ────────────────────────────────────────────────────
+   What a token cannot carry: a bundle of declarations that must always travel
+   together. A title that arrives without its width axis is not a smaller title, it is
+   a different typeface.                                                              */
+
+@utility bill-title {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 62, "wght" 900;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+  line-height: 0.86;
+}
+
+@utility code-line {
+  font-variation-settings: "wdth" 100, "wght" 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-code);
+  /* Baked in, not read from the ramp: the code line is one size everywhere, which is
+     why 0.625rem is the one step of the nine that is not a token. */
+  font-size: 0.625rem;
+  line-height: 1.1;
+}
+
+/* The plate: how a borrowed poster is forced into the bill's ink.
+   grayscale → one spot ink → half-tone screen. Every artwork, at one measure, in one
+   ink, whatever it arrived looking like. Its artwork filter and half-tone screen are
+   plain CSS in the component that uses it, because a `@utility` cannot reach a child
+   or a pseudo-element — and nothing uses it yet. */
+@utility plate {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--color-spot);
+}

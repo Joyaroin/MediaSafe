@@ -1,0 +1,128 @@
+# Local development
+
+Local Docker Postgres is one of the two long-lived environments in `SPEC.md` §6. The
+other is production on Neon. There is no staging.
+
+## Prerequisites
+
+- **Node 22 or newer** — this was built and verified on 24.13.
+- **Docker**, with the daemon running. `docker compose` v2 or newer.
+
+## From a fresh clone to a running app
+
+```bash
+npm install
+npm run db:up            # starts Postgres + the WebSocket proxy, applies migrations
+npm run dev              # http://localhost:3000
+```
+
+You need a `.env` first. `scripts/provision.sh` writes one — it is the full
+provisioning wizard for issue #37, and it also writes a committed `.env.example`. If you
+only want the database up and are not provisioning Google, Sentry or Neon, these two
+lines are the whole of what this ticket needs:
+
+```bash
+DATABASE_URL=postgres://mediasafe:mediasafe@localhost:5432/mediasafe
+DATABASE_WS_PROXY=localhost:5433
+```
+
+Neither is a secret: that database is local, empty, and holds nobody's watch history.
+**`DATABASE_WS_PROXY` must be left unset in production and preview** — Neon speaks the
+WebSocket protocol itself, and setting it there would route production through a proxy
+that does not exist.
+
+`npm run db:up` is the one command that brings the database up and migrates it: it waits
+for Postgres to report healthy, then runs the same migration runner that production runs.
+
+The page at `/` is a press check — Postgres's version, the database name, the server
+clock and the applied migration history, all read live when you request the page. If it
+renders, the whole path is open: browser → app → WebSocket pool → Postgres → back.
+Nothing on it is hardcoded, and when there is a library to show it is replaced by one.
+
+## Why there are two containers
+
+The app and the migration runner use **one driver**: `drizzle-orm/neon-serverless` over a
+WebSocket `Pool` (`SPEC.md` §6). Not Neon's HTTP interface, which has no interactive
+transactions — and two things here need one: the watch write at build step 4, and
+halt-on-partial-failure in the migration runner now.
+
+That driver speaks the Postgres wire protocol wrapped in a WebSocket. Neon's servers
+understand that; a stock Postgres does not. So `wsproxy` sits in front of the database,
+unwraps the WebSocket and forwards raw TCP.
+
+Reaching for `node-postgres` locally would be the easier fix, and it is exactly the thing
+constraint 1 forbids: local would become a different data path from production, and the
+first bug that only reproduces in one of them would cost more than this container ever
+will.
+
+`wsproxy` shares the database container's network namespace, so `localhost:5432` means
+the same thing inside the proxy as it does on your laptop. That is what lets one
+`DATABASE_URL` serve the driver, `psql` and `drizzle-kit` alike, rather than three.
+
+```
+  next dev ─┐
+            ├─ @neondatabase/serverless Pool ─ ws://localhost:5433 ─ wsproxy ─┐
+  migrate ──┘                                                                │
+                                                       tcp://localhost:5432 ─┘
+                                                                             │
+  drizzle-kit generate ──────────── tcp://localhost:5432 ────────── postgres ─┘
+```
+
+## The scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | The app, on `http://localhost:3000`. |
+| `npm run db:up` | Postgres + proxy up, wait for healthy, apply migrations. |
+| `npm run db:down` | Stop both containers. The volume survives. |
+| `npm run db:reset` | Destroy the volume and start over. Everything local is lost. |
+| `npm run db:generate` | Diff `db/schema.ts` and write a new `.sql` into `drizzle/`. |
+| `npm run db:migrate` | Apply pending migrations. What production runs. |
+| `npm run db:psql` | A `psql` shell in the database container. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run lint` | ESLint. |
+| `npm test` | Vitest. **Needs the database up.** |
+
+## Changing the schema
+
+```bash
+# 1. edit db/schema.ts
+npm run db:generate      # writes drizzle/NNNN_name.sql
+# 2. READ the generated SQL, and edit it if it is wrong
+npm run db:migrate       # apply it
+```
+
+Generated SQL is committed as plain, hand-editable `.sql` on purpose. `squawk` lints SQL
+*text* (`SPEC.md` §6, test 4), so a TypeScript migration would be unlintable and
+expand-contract would stop being mechanically checkable. drizzle-kit hashes each file
+when it is *applied*, not when it is written, so editing a generated file before you
+commit it is expected rather than detected.
+
+Two rules bind every migration — **expand-contract, forward-only**, and **no statement
+that Postgres forbids inside a transaction block**. Both are explained in
+`drizzle/README.md`, and the second one is not obvious. Read it before build step 2.
+
+## Tests
+
+`npm test` runs against the real local Postgres, with migrations applied by the real
+runner. There is no in-memory substitute and no mocked constraint: the properties worth
+testing here live in Postgres, and a mock of a unique constraint tests the mock.
+
+Tests create and drop their own scratch databases, so running them does not disturb the
+database you develop against.
+
+## When it does not work
+
+**`DATABASE_URL is not set`** — there is no `.env`. See the two lines above, or run
+`scripts/provision.sh`.
+
+**The page 500s with a connection error** — the containers are not up. `docker compose ps`
+should show `mediasafe-postgres` healthy and `mediasafe-wsproxy` up.
+
+**`proxying to specified address not allowed`** in `docker compose logs wsproxy` — the
+host in `DATABASE_URL` is not what the proxy's `ALLOW_ADDR_REGEX` permits. It is narrowed
+to exactly `localhost:5432` on purpose; widen it in `docker-compose.yml` deliberately or
+not at all.
+
+**Tests fail to create a scratch database** — something is still connected to a previous
+one. `npm run db:reset` clears it.
