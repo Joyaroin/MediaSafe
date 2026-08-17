@@ -1,1 +1,5 @@
 .playwright-mcp/
+
+# Secrets. scripts/provision.sh writes .env at the repo root.
+.env
+.env.local
