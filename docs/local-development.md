@@ -128,6 +128,41 @@ testing here live in Postgres, and a mock of a unique constraint tests the mock.
 Tests create and drop their own scratch databases, so running them does not disturb the
 database you develop against.
 
+### Writing one
+
+`tests/support/database.ts` is the harness for anything that touches rows. Two calls:
+
+```ts
+import { inTransaction, setUpTestDatabase } from "./support/database";
+
+setUpTestDatabase("mediasafe_watch_test");   // a name no other test file uses
+
+it("does not record the same click twice", async () => {
+  await inTransaction(async (tx) => {
+    // …insert, read back, assert. Rolled back whatever happens.
+  });
+});
+```
+
+`setUpTestDatabase` creates a database, migrates it with `db/migrate.ts` — the runner
+production runs — and drops it when the file finishes. `inTransaction` wraps one test in
+a transaction and always rolls it back. The header of `tests/support/database.ts` explains
+what that buys and what it deliberately does not do.
+
+Note that `tests/migrator-transaction.test.ts` does **not** use this harness: those tests
+cannot roll back, because the transaction is the thing they are testing.
+
+### The data-access choke point
+
+Owned rows are read and written through `db/access.ts`, and every function there takes
+the user id as its first argument. A session becomes a user id in exactly one place,
+`lib/session.ts`. **Read `db/access.ts`'s own header before adding a query** — it holds
+the reasoning, and this section deliberately does not repeat it.
+
+ESLint enforces the boundary: nothing outside `db/` and `tests/` may import
+`@/db/client`, `@/db/driver` or `drizzle-orm`, by any specifier. If you hit that error,
+the query belongs in `db/access.ts`.
+
 ## When it does not work
 
 **`DATABASE_URL is not set`** — there is no `.env`. See the two lines above, or run
