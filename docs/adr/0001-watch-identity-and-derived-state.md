@@ -11,6 +11,25 @@
   [#15](https://github.com/Joyaroin/MediaSafe/issues/15) (idempotent writes),
   [#17](https://github.com/Joyaroin/MediaSafe/issues/17) (`.sql`, halt on partial failure)
 
+## Amendments
+
+Recorded rather than rewritten, because an ADR is a record. **The decision below is unchanged**; two
+things around it are not.
+
+1. **The rewatch premise in *Context* was never real** — [#16](https://github.com/Joyaroin/MediaSafe/issues/16),
+   2026-08-17. `watched_count` is not a rewatch total but `watchedThrough + extra − gaps` clamped to
+   `total_episodes` (`packages/shared/src/episodes.ts:88-101`), fed a *dense* override map by
+   `tvtracker`'s own v2→v3 import — so it double-counts, and that formula reproduces the column
+   **472/472**. **There is no rewatch data in the library and there never was**, so pressure 3 below
+   and the "217 shows" figure in *Context* and *Alternatives rejected* describe data that does not
+   exist. `UNIQUE (user_id, source, source_key)` is still the right identity for the two surviving
+   pressures — a rewatch is a second row, a retry is a no-op — and **nothing here reopens**. Import
+   expands nothing: the native file is already episode-grain, and the expansion happens in the
+   conversion script.
+2. **"Never touch `abandoned_at`" is overturned** — [#25](https://github.com/Joyaroin/MediaSafe/issues/25),
+   2026-08-17. Import **sets** `abandoned_at`, on entry creation only. See *Abandonment* and
+   *Consequences*, both corrected in place below.
+
 ## Context
 
 `CONTEXT.md` settled the *language*: a Watch is episode-grain and is the only thing MediaSafe
@@ -24,12 +43,14 @@ follows exists to reconcile them:
    `(user, episode)` cannot be unique.
 2. Watch writes are **optimistic with retry**, so they must be idempotent (#15). A retry must not
    become a phantom rewatch.
-3. **Import expands** `watched_count = 3` into three watches per episode — *all undated and
-   otherwise identical* — and re-running the same file must change nothing (#7, #6).
+3. ~~**Import expands** `watched_count = 3` into three watches per episode — *all undated and
+   otherwise identical* — and re-running the same file must change nothing (#7, #6).~~
+   **Amendment 1: this pressure never existed.** `watched_count` is a derived progress figure, not a
+   rewatch total. Import re-running inertly is still required; the expansion is not.
 
 Three identical undated rows that must be creatable but not re-creatable. No uniqueness rule built
-from `(user, episode, date)` can satisfy all three: it either collapses the real rewatches #6 found
-on 217 shows, or it lets a retry duplicate one.
+from `(user, episode, date)` can satisfy all three: it either collapses the real rewatches ~~#6
+found on 217 shows~~ *(amendment 1 — there were none)*, or it lets a retry duplicate one.
 
 A fourth pressure came from #8, which opened public signup after this ticket was written. Other
 people's data is now in the database, authorization is enforced in **one application-layer choke
@@ -271,12 +292,29 @@ ORDER BY le.id, e.season_no DESC, e.episode_no DESC;
 
 ### Abandonment
 
-`abandoned_at` is set by hand and cleared **only** by the application write path, in the same
-transaction as the watch insert. **Import never clears it, whatever it writes.**
+`abandoned_at` is cleared **only** by the application write path, in the same transaction as the
+watch insert. **Import never clears it, whatever it writes.**
 
 This keeps both glossary rules true — *set by hand*, and *watching clears it*, where watching means
 you, now — while keeping import's idempotency honest. A file re-run a year after cutover cannot
 silently resurrect every show you gave up on.
+
+**Amendment 2 (#25): import may also *set* it, and the set path needs the mirror-image guard.**
+`tvtracker`'s *Paused* is `abandoned` spelled its way — `CONTEXT.md`'s **Abandoned** entry lists
+`paused` on its `_Avoid_` line — so the conversion script carries that judgement rather than
+discarding it, as an `abandoned` **boolean** on the native file's `titles`. Two rules follow:
+
+- **Import sets `abandoned_at` only when it creates the library entry, never on update.** Without
+  this, #18's re-seed — the same file re-imported on every merge to `main`, forever — resurrects
+  every title since un-abandoned. The clear path is already guarded above; this is the same failure
+  from the other side.
+- **The value is the import run's timestamp**, which equals `added_at` for every entry the run
+  creates. That identity makes a backfilled abandonment self-labelling at **no new column** —
+  necessary because the state derives as `abandoned_at IS NOT NULL`, so an *undated abandonment* is
+  not expressible and #7's undated-watch precedent cannot be reused.
+
+Still true, and load-bearing for why this is safe at all: the mapping is one-way and self-clearing.
+A wrong guess costs one tap.
 
 ### Time-based derivations
 
@@ -389,7 +427,10 @@ transaction itself — #17's "halt on partial failure" is a requirement, not a h
 ## Consequences
 
 - **#16 (import)** gets its target. It must mint deterministic `source_key`s, write undated watches,
-  expand rewatch counts into per-episode rows, and never touch `abandoned_at` or an existing rating.
+  and never overwrite an existing rating. ~~expand rewatch counts into per-episode rows, and never
+  touch `abandoned_at`~~ — **both corrected**: there are no rewatch counts to expand (amendment 1,
+  and the file is episode-grain already), and import *does* touch `abandoned_at`, setting it on
+  entry creation only (amendment 2).
   #18 subsequently rewrote #16 so that import accepts a **MediaSafe-native format only**, with the
   `tvtracker` conversion demoted to a dev script — which does not change anything here, because
   `source` / `source_key` identifies *where a fact came from*, not what file format carried it. The
@@ -414,7 +455,7 @@ transaction itself — #17's "halt on partial failure" is a requirement, not a h
 
 | Rejected | Why |
 |---|---|
-| `UNIQUE (user, episode, date(watched_at))` | Collapses three undated imported rewatches into one, destroying exactly the data #6 found on 217 shows. |
+| `UNIQUE (user, episode, date(watched_at))` | Collapses three undated imported rewatches into one. *(Amendment 1: the 217-show rewatch data this cited never existed. The rule is still rejected — it also collapses genuine future rewatches, which are the reason a rewatch is a second row at all.)* |
 | An occurrence counter on the watch | A retried click does not know its own occurrence number, takes the next one, and becomes a phantom rewatch — the failure #15 says must never be silent. |
 | App-layer dedupe with no constraint | Puts correctness solely in code, making #17's idempotency test the only line of defence. |
 | `(show, season_no, episode_no)` on the watch | TMDB renumbering silently repoints history, and no derived state is computable without a TMDB call per title per render. |
