@@ -46,16 +46,23 @@ manufacturing a successful-looking empty result out of a failure.
 
 ## Errors are placed by blast radius
 
-Three treatments, three placements, and they are not interchangeable (`DESIGN.md`, States).
-The mechanisms exist already — build the caller, not a fourth surface.
+Four treatments, four placements, and they are not interchangeable (`DESIGN.md`, States, and
+`SPEC.md` §6 — *read inline, write toast, auth full-page*). The mechanisms exist already — build
+the caller, not a fifth surface.
 
 | Blast radius | Treatment | Where it lives |
 | --- | --- | --- |
 | One region failed to load | Inline, replacing that region | `app/error.tsx` → `errors/read-failure.tsx` |
 | One write was lost | A toast that does not auto-dismiss | `writeFailures.raise()` in `errors/write-failure.ts` |
+| A sign-in did not happen | Full-page, on the sign-in surface | `errors/sign-in-failure.tsx` |
 | The whole app is unreachable | A sticky banner at the top of the page | `errors/offline-banner.tsx` |
 
-Two rules over all three:
+The auth row was the one `SPEC.md` §6 named and nothing implemented until issue #42, and it is
+full-page for a specific reason: a signed-out reader has one control and no other surface to be
+told anything on, so a failure that is not full-page is a failure that is nowhere. `tvtracker`
+rendered no auth error at all.
+
+Two rules over all four:
 
 - **Every user-facing string is a plain sentence.** No stack trace, no error code, no
   exception message, no HTTP status. The toast's API takes a title and an episode and
@@ -63,6 +70,21 @@ Two rules over all three:
 - **The one technical string allowed anywhere is the reference id, and it *is* the Sentry
   event id.** Get it from `referenceFor()` in `errors/reference.ts`. Never mint a second
   identifier that then has to be correlated with Sentry — that is the thing this avoids.
+
+## `auth-schema.ts` is generated. Never edit it.
+
+Better Auth's five tables live in `auth-schema.ts`, which `npm run auth:generate` **overwrites
+whole**, and which `db/schema.ts` re-exports so drizzle-kit sees one schema and emits one
+migration history.
+
+A column added to that file by hand survives exactly until the next regeneration. It then
+disappears from the schema drizzle-kit diffs against, and the *next* migration drops it — taking
+the data with it. So a column on `user`, `session`, `account`, `verification` or `rate_limit` is
+declared in `lib/auth.ts` as a Better Auth `additionalFields` entry, where regeneration reproduces
+it. `user.timezone` is the worked example.
+
+MediaSafe's own six tables (build step 2) are declared in `db/schema.ts` directly. Only Better
+Auth's come through the generator.
 
 ## The write-failure toast has no caller yet
 

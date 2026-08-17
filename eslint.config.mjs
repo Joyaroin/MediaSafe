@@ -56,17 +56,51 @@ const USER_ID_MINT_PATTERN = {
 /**
  * The session boundary, held to the same standard as the data boundary.
  *
- * `lib/session.ts` claims to be the only place that will ever call Better Auth's
+ * `lib/session.ts` claims to be the only place that calls Better Auth's
  * `auth.api.getSession()`. That claim was a comment while the one next to it was a lint
- * rule — so here it is as a rule too. Better Auth is not installed yet (issue #42);
- * `no-restricted-imports` matches specifier strings, so this fires the day it is.
+ * rule — so here it is as a rule too.
  *
- * Scoped to `lib/` rather than to `lib/session.ts` alone, because #42 also needs a
- * `lib/auth.ts` holding the Better Auth instance. #42 should narrow it further once
- * those two files exist and it can see which of them needs what.
+ * Issue #40 left this scoped to all of `lib/` and asked #42 to narrow it once the files
+ * existed and it could see which of them needed what. They exist now, and they are:
+ *
+ *  - **`lib/auth.ts`** holds the Better Auth instance. It needs `better-auth` itself, and
+ *    it needs the pool — Better Auth queries its own four tables. It is the one module
+ *    outside `db/` allowed the connection, and it carries an inline disable and its own
+ *    paragraph explaining why.
+ *  - **`lib/session.ts`** needs `@/lib/auth`, and must not have the connection: resolving
+ *    who is asking is not a licence to query.
+ *  - **`lib/auth-client.ts`** needs `better-auth/react`, and nothing else.
+ *
+ * So the exemption below is the *specifier* one — `better-auth` may be imported inside
+ * `lib/` — and the connection rule still applies to all three. `lib/auth.ts` is the only
+ * file that steps outside it, on one line, in writing.
+ *
+ * The `lib/auth` specifier stays restricted everywhere, inside `lib/` too — `lib/session.ts`
+ * disables it on the import, so the one legitimate reach for the instance is a line
+ * somebody chose to write rather than a door standing open.
  */
 const SESSION_BOUNDARY_MESSAGE =
   "A session becomes a user id in lib/session.ts and nowhere else. Take the user id as an argument (issue #40).";
+
+/**
+ * Better Auth itself. Restricted outside `lib/`, where the instance and the browser
+ * client both live, so that no page constructs a second one or resolves its own session.
+ */
+const BETTER_AUTH_PATTERN = {
+  group: ["better-auth", "better-auth/*"],
+  message: SESSION_BOUNDARY_MESSAGE,
+};
+
+/**
+ * The instance itself, restricted **everywhere** — inside `lib/` too. Three files reach
+ * for it and each says why on the line: `lib/session.ts` to resolve a session,
+ * `app/api/auth/[...all]/route.ts` to mount the endpoints, and `auth.config.ts` to hand
+ * the options to the schema generator. A fourth needs a reason good enough to write down.
+ */
+const AUTH_INSTANCE_PATTERN = {
+  group: ["**/lib/auth"],
+  message: SESSION_BOUNDARY_MESSAGE,
+};
 
 const dataAccessChokePoint = {
   name: "mediasafe/data-access-choke-point",
@@ -77,10 +111,8 @@ const dataAccessChokePoint = {
         patterns: [
           CONNECTION_PATTERN,
           USER_ID_MINT_PATTERN,
-          {
-            group: ["better-auth", "better-auth/*", "**/lib/auth"],
-            message: SESSION_BOUNDARY_MESSAGE,
-          },
+          BETTER_AUTH_PATTERN,
+          AUTH_INSTANCE_PATTERN,
         ],
       },
     ],
@@ -89,14 +121,18 @@ const dataAccessChokePoint = {
 
 /**
  * The session boundary itself may reach for Better Auth, and is the one place that mints
- * a user id. It is still held to the connection rule: resolving who is asking is not a
- * licence to query.
+ * a user id. It is still held to the connection rule — resolving who is asking is not a
+ * licence to query — and to the instance rule, so that reaching for `lib/auth` stays a
+ * line somebody wrote a reason beside.
  */
 const sessionBoundaryExemption = {
   name: "mediasafe/session-boundary",
   files: ["lib/**"],
   rules: {
-    "no-restricted-imports": ["error", { patterns: [CONNECTION_PATTERN] }],
+    "no-restricted-imports": [
+      "error",
+      { patterns: [CONNECTION_PATTERN, AUTH_INSTANCE_PATTERN] },
+    ],
   },
 };
 
@@ -104,10 +140,16 @@ const sessionBoundaryExemption = {
  * `db/` is the inside of the choke point. `tests/` is exempt because the harness has to
  * open its own pool against its own scratch database — the one thing the application
  * must never do — and `drizzle.config.ts` is drizzle-kit's own input.
+ *
+ * `auth-schema.ts` is exempt on the same grounds as `db/`: it *is* schema, and it is
+ * re-exported by `db/schema.ts` as though it sat there. It is not written by hand at all
+ * — the Better Auth CLI overwrites it whole — so a rule against its `drizzle-orm/pg-core`
+ * import could not be obeyed by anybody and would only be a lint failure that returns
+ * every time the schema is regenerated.
  */
 const chokePointExemptions = {
   name: "mediasafe/data-access-choke-point-exemptions",
-  files: ["db/**", "tests/**", "drizzle.config.ts"],
+  files: ["db/**", "tests/**", "drizzle.config.ts", "auth-schema.ts"],
   rules: {
     "no-restricted-imports": "off",
   },

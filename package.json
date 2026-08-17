@@ -16,11 +16,13 @@
     "db:reset": "docker compose down -v && npm run db:up",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env db/migrate.ts",
-    "db:psql": "docker compose exec postgres psql -U mediasafe -d mediasafe"
+    "db:psql": "docker compose exec postgres psql -U mediasafe -d mediasafe",
+    "auth:generate": "auth generate --config auth.config.ts --output auth-schema.ts --adapter drizzle --dialect postgresql --yes"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@sentry/nextjs": "^10.70.0",
+    "better-auth": "^1.6.30",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.1",
     "react": "19.2.8",
@@ -33,6 +35,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
+    "auth": "^1.6.30",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",

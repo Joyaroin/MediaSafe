@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  FAILURE_HEADING,
+  FAILURE_PROSE,
+  FAILURE_SECTION,
+} from "./failure-treatment";
 import { GHOST_RECOVERY } from "./recovery-buttons";
 import { ReferenceLine } from "./reference-line";
 
@@ -32,10 +37,10 @@ export function ReadFailure({
   retry: () => void;
 }) {
   return (
-    <section className="border-t-2 border-signal py-6">
-      <h2 className="bill-title text-bill-md text-signal">This did not load</h2>
+    <section className={FAILURE_SECTION}>
+      <h2 className={FAILURE_HEADING}>This did not load</h2>
 
-      <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-stock">
+      <p className={FAILURE_PROSE}>
         Something went wrong while MediaSafe was reading this. Nothing in your library has
         changed, and nothing has been lost. Try again — and if it keeps happening, the
         reference below identifies this exact failure.

@@ -29,3 +29,21 @@ export const GHOST_RECOVERY =
  */
 export const SOLID_RECOVERY =
   "code-line bg-signal px-4 py-2 text-ink transition-[filter] duration-200 hover:brightness-90";
+
+/**
+ * A control that is already working, added to either treatment above.
+ *
+ * `DESIGN.md`'s Buttons section names no disabled variant, so this is an extension of the
+ * system rather than a quotation from it — which is exactly why it is one string in one
+ * place rather than a decision taken twice. It was taken twice: sign-in dimmed with
+ * `brightness-75` and sign-out with `opacity-60`, which is off-system entirely.
+ *
+ * `brightness` is the borrowed mechanism, because it is the one the world already uses for
+ * a pressed control (`hover:brightness-90` above, and Motion's `brightness(0.9)` on the
+ * recording control). It also works on both treatments, where an opacity change would not:
+ * the ghost button has no ground to fade, only type and a border.
+ *
+ * `cursor-wait` and not `cursor-not-allowed`: the control is not refusing, it is busy, and
+ * the round trip behind both of these is a redirect to Google or a session being revoked.
+ */
+export const IN_FLIGHT = "disabled:cursor-wait disabled:brightness-75";
