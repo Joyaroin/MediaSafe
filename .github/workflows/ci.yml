@@ -16,11 +16,15 @@
 #    free within GitHub's monthly allowance for private repositories, and constraint 8 is
 #    a £0 bill; superseded runs are the easiest place to not spend them.
 #
-# What this deliberately does not run: the test suite. `npm test` needs a real Postgres
-# and the WebSocket proxy in front of it (`vitest.config.mts`), which is two service
-# containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set. Worth
-# revisiting once there is a schema and the four tests that earn their keep exist —
-# today the suite is one migrator test that only fires on a Drizzle upgrade.
+# What this deliberately does not run: **most** of the test suite. `npm test` needs a real
+# Postgres and the WebSocket proxy in front of it (`vitest.config.mts`), which is two
+# service containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set.
+#
+# The route-manifest check is the exception, and it is the exception because it needs
+# none of that: it reads two files `next build` just wrote and compares them
+# (`tests/route-manifest.test.ts`). Constraint 5 — *no unauthenticated route may ever be
+# added* — is a property of a pull request, so a check that cannot run on one is a check
+# that is not enforcing it. That is why it runs here and the rest of the suite does not.
 
 name: CI
 
@@ -93,8 +97,18 @@ jobs:
       # and the build needs no database — and `VERCEL` is unset here, so `scripts/build.ts`
       # runs `next build` alone. CI must never be able to migrate anything.
       - name: Build
+        id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
+
+      # Test 2 of the four in `SPEC.md` §6 — constraint 5, machine-checked. It reads the
+      # route manifest and the compiled proxy matcher out of the build above and asserts
+      # the second covers the first, so it depends on *Build* having produced a `.next`
+      # rather than only on *Install*: with no build it fails loudly rather than passing
+      # on a manifest it never read. That is why the condition below names both steps.
+      - name: Route manifest
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.build.outcome == 'success' }}
+        run: npm run test:routes
 
       # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather
