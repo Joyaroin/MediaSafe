@@ -1,0 +1,123 @@
+# squawk, over the generated `.sql` in `drizzle/`. Test 4 of the four in `SPEC.md` §6,
+# and the thing that makes **expand-contract mechanically checkable** rather than
+# remembered: `main` is production, no staging, nothing gates a merge, and Neon Free
+# keeps six hours of history. A dropped column is not a rollback problem here — it is a
+# data-loss problem, and this is where it is caught.
+#
+# Run by `npm run lint:sql`, and on every pull request by `.github/workflows/ci.yml`.
+#
+# ── Why this is an exclusion list and not an inclusion one ────────────────────────────
+#
+# squawk has no "only these rules" switch: `excluded_rules` turns default-on rules off,
+# and `included_rules` turns opt-in rules on. So narrowing to the destructive rules means
+# naming every rule that is *not* one, and a squawk release that adds a rule would
+# silently turn it on here. `squawk-cli` is therefore pinned to an exact version in
+# `package.json` — no caret. Upgrading it is a deliberate act with a diff, and the diff
+# is where a new rule gets a decision rather than an outage.
+#
+# Every name below was validated against the pinned binary, not copied from the docs
+# site — `squawk --exclude=<name>` rejects an unknown rule, and the docs list one name
+# (`prefer-timestamptz`) that is an alias for the one squawk actually reports
+# (`prefer-timestamp-tz`).
+
+# Matches `postgres:17-alpine` in docker-compose.yml and Neon's default. Some rules
+# change their advice by version — the safety of `ADD COLUMN ... DEFAULT` is the usual
+# one — so this is stated rather than guessed. Production's actual version is on the
+# press-check page at `/`; if Neon ever moves, move this with it.
+pg_version = "17.0"
+
+# Drizzle's migrator wraps the **entire pending run** in one transaction — proven in
+# `tests/migrator-transaction.test.ts`, explained at the top of `db/migrate.ts`. Telling
+# squawk that is what turns `ban-concurrent-index-creation-in-transaction` below from a
+# dormant rule into the one that catches the mistake `drizzle/README.md` warns about.
+assume_in_transaction = true
+
+# ── What stays on ─────────────────────────────────────────────────────────────────────
+#
+# Destructive, in the sense that matters here — the statement destroys data, or breaks
+# the code already serving traffic while the new deployment is still building:
+#
+#   ban-drop-column, ban-drop-table, ban-drop-database, ban-truncate-cascade
+#   ban-drop-not-null      a column old code trusts to be present becomes nullable
+#   renaming-column, renaming-table, changing-column-type
+#                          a rename is a drop and an add wearing one statement, and
+#                          expand-contract exists precisely to split those two apart
+#
+# And the three that hold the transaction model up, because a migration that violates it
+# does not fail in review, it fails halfway through a production deploy:
+#
+#   ban-concurrent-index-creation-in-transaction
+#   transaction-nesting, ban-uncommitted-transaction
+#                          the runner owns the transaction; a migration file that opens
+#                          one of its own breaks the all-or-nothing property everything
+#                          else here depends on
+#
+#   syntax-error           not excludable, and rightly so
+#
+# Everything else is off, below, with its reason.
+
+excluded_rules = [
+  # Safe on Postgres 11+, which this is. The rule is for older servers that rewrote the
+  # whole table to add a defaulted column.
+  "adding-field-with-default",
+
+  # Real advice for a table under load. This is a library of ~472 titles read by three
+  # people; a validating constraint scan here is imperceptible, and the cost of the
+  # two-step dance is a second migration that has to be remembered.
+  "adding-foreign-key-constraint",
+  "constraint-missing-not-valid",
+  "disallowed-unique-constraint",
+
+  # These want a new column added nullable and backfilled. That is the right shape and it
+  # is already required by constraint 7's expand-contract; leaving the rules on adds a
+  # second, noisier voice saying the same thing about every column in the initial schema.
+  "adding-not-nullable-field",
+  "adding-required-field",
+
+  # Type preferences, settled elsewhere. `db/schema.ts` and ADR-0001 choose the column
+  # types, CONTEXT.md binds their names, and squawk is not the place to relitigate either.
+  "adding-serial-primary-key-field",
+  "ban-char-field",
+  "prefer-bigint-over-int",
+  "prefer-bigint-over-smallint",
+  "prefer-identity",
+  "prefer-text-field",
+  "prefer-timestamp-tz",
+
+  # Domains are not used. Off rather than enforced-and-never-triggered.
+  "ban-create-domain-with-constraint",
+  "ban-alter-domain-with-add-constraint",
+
+  # Would fail every migration this repository generates. `CREATE INDEX CONCURRENTLY`
+  # cannot run inside a transaction block, and the whole pending run is one transaction,
+  # so the plain locking form is the *required* form here — see `drizzle/README.md`.
+  # `ban-concurrent-index-creation-in-transaction`, which stays on, is this rule's
+  # opposite and is the one that matches how migrations actually run.
+  "require-concurrent-index-creation",
+  "require-concurrent-index-deletion",
+  "require-concurrent-partition-detach",
+  "require-concurrent-reindex",
+  "prefer-repack",
+
+  # Wants `IF EXISTS` / `IF NOT EXISTS` everywhere so a half-applied migration can be
+  # rerun. There is no half-applied migration here: the run is one transaction, a failure
+  # rolls all of it back, and a retry starts from the schema it started from. The rule
+  # fires on nearly every generated statement, which is how a signal becomes noise.
+  "prefer-robust-stmts",
+
+  # Lock and statement timeouts belong on a busy database, and would have to be written
+  # into generated files by hand on every migration. Three users, and one transaction
+  # around the run that a timeout would abort mid-deploy.
+  "require-lock-timeout",
+  "require-statement-timeout",
+  "require-timeout-settings",
+
+  # Style, not safety, and both would fire on drizzle-kit's output rather than on
+  # anything a human chose.
+  "identifier-too-long",
+  "ban-duplicate-column-assignments",
+  "require-enum-value-ordering",
+
+  # Opt-in and left off: everything lives in `public`, and drizzle-kit does not qualify.
+  "require-table-schema",
+]
