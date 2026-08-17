@@ -197,10 +197,17 @@ say "connection strings are for Vercel, and you collect them in stages 3 and 4."
 say ""
 
 command -v gh >/dev/null 2>&1 || warn "the gh CLI isn't installed — not required here, but handy later"
-[[ -d .git ]] || warn "this doesn't look like a repo root — run the wizard from there"
+# In a git worktree .git is a file, not a directory, so test the toplevel instead.
+[[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "$PWD" ]] \
+  || warn "this doesn't look like a repo root — run the wizard from there"
 
-AUTH_SECRET=""
-if command -v openssl >/dev/null 2>&1; then
+# Keep any secret already in .env. Regenerating it would invalidate every live
+# session, and the banner promises a re-run keeps what is already saved.
+AUTH_SECRET=$(_existing BETTER_AUTH_SECRET || true)
+if [[ -n "$AUTH_SECRET" ]]; then
+  say "Keeping the Better Auth secret already in $ENV_FILE."
+  note "Rotating it would sign out every existing session."
+elif command -v openssl >/dev/null 2>&1; then
   AUTH_SECRET=$(openssl rand -base64 32)
   say "Generated a Better Auth secret with openssl."
 else
@@ -296,11 +303,13 @@ if [[ -n "$EXPIRY" ]]; then
   say "30 days from now, in the RFC 3339 format Neon wants:"
   printf '\n      %s%s%s\n\n' "$BOLD" "$EXPIRY" "$RESET"
 fi
-warn "The dashboard presets stop at 7 days. 30 days needs a custom date via"
-warn "'Update expiration' on an existing branch, or --expires-at on the CLI."
+warn "The dashboard presets stop at 7 days (1 hour, 1 day, 7 days). 30 days needs"
+warn "a custom date — available when UPDATING an existing branch, not when"
+warn "creating one — or --expires-at on the CLI."
+note "30 days is also Neon's ceiling: it rejects a timestamp more than 30 days out."
 say ""
 say "The CLI form, for whenever a throwaway branch appears:"
-printf '\n      %sneon branch create --expires-at %s%s\n' "$DIM" "${EXPIRY:-<RFC3339>}" "$RESET"
+printf '\n      %sneon branches create --expires-at %s%s\n' "$DIM" "${EXPIRY:-<RFC3339>}" "$RESET"
 printf '      %sneon branches set-expiration <branch> --expires-at %s%s\n\n' "$DIM" "${EXPIRY:-<RFC3339>}" "$RESET"
 note "Right now there is probably nothing to apply this to — previews all share"
 note "the stage 4 branch, and that one is exempt. This stage exists so the rule"
@@ -392,9 +401,15 @@ SENTRY_ORG=
 SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
 
-# Neon. Not used locally — these go into Vercel's environment scopes.
+# Neon. Not used by the app locally — the app reads DATABASE_URL. These two are
+# recorded here so provisioning has one home, and are copied into Vercel:
 #   NEON_PRODUCTION_URL -> Vercel Production scope, as DATABASE_URL
 #   NEON_PREVIEW_URL    -> Vercel Preview scope, as DATABASE_URL (schema-only)
+# Both must be the POOLED connection string — the host with '-pooler' in it.
+NEON_PRODUCTION_URL=
+NEON_PREVIEW_URL=
+
+# The domain Vercel assigns. Google's redirect URIs are built from it.
 VERCEL_PRODUCTION_URL=
 EXAMPLE_EOF
 printf '  %s✓ wrote%s .env.example\n' "$GREEN" "$RESET"
@@ -428,11 +443,33 @@ printf '  %-24s %-28s %s\n' "GOOGLE_CLIENT_ID" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "GOOGLE_CLIENT_SECRET" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "NEXT_PUBLIC_SENTRY_DSN" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "SENTRY_AUTH_TOKEN" "same as .env" "All"
+printf '  %-24s %-28s %s\n' "SENTRY_ORG" "same as .env" "All"
+printf '  %-24s %-28s %s\n' "SENTRY_PROJECT" "same as .env" "All"
 printf '\n'
 note "Both DATABASE_URL rows are deliberate: one variable, two scopes, two"
 note "different databases. Production carries the real library; Preview carries"
 note "the schema-only branch with zero rows."
-SKIPPED+=("Set the 8 Vercel environment variables above, at the scopes shown")
+note "SENTRY_ORG and SENTRY_PROJECT are belt-and-braces: withSentryConfig usually"
+note "takes org and project as literals in next.config.ts and reads only the auth"
+note "token from the environment. Setting them costs nothing and means a build"
+note "that expects them in the environment still uploads its source maps."
+warn "BETTER_AUTH_URL is Production-scoped here because a preview's URL is not"
+warn "known ahead of time. Preview sign-in is already blocked for that reason"
+warn "until #39 lands a stable alias — set it to that alias when it does."
+SKIPPED+=("Set the 10 Vercel environment variables above, at the scopes shown")
+say ""
+
+# The £5/month ceiling is meant to stay unspent — worth one look, not an assumption.
+say "One last look, since '£0 spent' is an acceptance criterion and not a hope:"
+step "Vercel → Settings → Billing shows the Hobby plan."
+step "Neon → Billing shows the Free plan."
+step "Sentry → Settings → Subscription shows the Developer plan."
+if confirm "Are all three on their free tier, with £0 recurring?"; then
+  say "Good — the £5/month ceiling stays an escape hatch rather than a bill."
+else
+  SKIPPED+=("VERIFY every service is on its free tier — something is billing you")
+  warn "recorded — find the paid one before it renews"
+fi
 pause "Press Enter for the summary"
 
 finish
