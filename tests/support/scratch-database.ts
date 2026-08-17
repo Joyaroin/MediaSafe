@@ -1,4 +1,4 @@
-import { createPool, requireDatabaseUrl } from "@/db/driver";
+import { requireDatabaseUrl, withPool } from "@/db/driver";
 
 /**
  * A throwaway database, created and dropped per test file.
@@ -27,26 +27,19 @@ export async function createScratchDatabase(
   name: string,
 ): Promise<ScratchDatabase> {
   const adminUrl = requireDatabaseUrl();
-  const admin = createPool(adminUrl);
 
-  // `CREATE DATABASE` cannot run inside a transaction block, which is why this is a
-  // bare query rather than anything wrapped.
-  try {
+  // `CREATE DATABASE` cannot run inside a transaction block, which is why these are
+  // bare queries rather than anything wrapped.
+  await withPool(adminUrl, async (admin) => {
     await admin.query(`drop database if exists "${name}" with (force)`);
     await admin.query(`create database "${name}"`);
-  } finally {
-    await admin.end();
-  }
+  });
 
   return {
     connectionString: replaceDatabaseName(adminUrl, name),
-    drop: async () => {
-      const cleanup = createPool(adminUrl);
-      try {
-        await cleanup.query(`drop database if exists "${name}" with (force)`);
-      } finally {
-        await cleanup.end();
-      }
-    },
+    drop: () =>
+      withPool(adminUrl, async (admin) => {
+        await admin.query(`drop database if exists "${name}" with (force)`);
+      }),
   };
 }

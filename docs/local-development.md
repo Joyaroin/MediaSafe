@@ -12,10 +12,24 @@ other is production on Neon. There is no staging.
 
 ```bash
 npm install
-cp env.example .env      # the local Docker defaults; no secrets, edit nothing
 npm run db:up            # starts Postgres + the WebSocket proxy, applies migrations
 npm run dev              # http://localhost:3000
 ```
+
+You need a `.env` first. `scripts/provision.sh` writes one — it is the full
+provisioning wizard for issue #37, and it also writes a committed `.env.example`. If you
+only want the database up and are not provisioning Google, Sentry or Neon, these two
+lines are the whole of what this ticket needs:
+
+```bash
+DATABASE_URL=postgres://mediasafe:mediasafe@localhost:5432/mediasafe
+DATABASE_WS_PROXY=localhost:5433
+```
+
+Neither is a secret: that database is local, empty, and holds nobody's watch history.
+**`DATABASE_WS_PROXY` must be left unset in production and preview** — Neon speaks the
+WebSocket protocol itself, and setting it there would route production through a proxy
+that does not exist.
 
 `npm run db:up` is the one command that brings the database up and migrates it: it waits
 for Postgres to report healthy, then runs the same migration runner that production runs.
@@ -99,7 +113,8 @@ database you develop against.
 
 ## When it does not work
 
-**`DATABASE_URL is not set`** — you skipped `cp env.example .env`.
+**`DATABASE_URL is not set`** — there is no `.env`. See the two lines above, or run
+`scripts/provision.sh`.
 
 **The page 500s with a connection error** — the containers are not up. `docker compose ps`
 should show `mediasafe-postgres` healthy and `mediasafe-wsproxy` up.

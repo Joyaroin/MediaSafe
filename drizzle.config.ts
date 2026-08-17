@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import { defineConfig } from "drizzle-kit";
 
+import { MIGRATIONS_SCHEMA, MIGRATIONS_TABLE } from "./db/migrations-table";
+
 /**
  * drizzle-kit's half of the pipeline: `generate` diffs `db/schema.ts` against the
  * snapshots in `drizzle/meta/` and writes plain `.sql` into `drizzle/`.
@@ -24,10 +26,10 @@ export default defineConfig({
     url: process.env.DATABASE_URL ?? "",
   },
   migrations: {
-    // Matches the defaults `db/migrate.ts` runs with. Named rather than assumed, so
-    // the two halves cannot drift apart silently.
-    table: "__drizzle_migrations",
-    schema: "drizzle",
+    // The same two constants `db/migrate.ts` passes to the runner, so the generator
+    // and the applier cannot drift onto two different tables.
+    table: MIGRATIONS_TABLE,
+    schema: MIGRATIONS_SCHEMA,
   },
   // `--> statement-breakpoint` markers, so one file's statements are executed
   // separately rather than as one multi-statement string.

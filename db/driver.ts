@@ -18,9 +18,10 @@ let configured = false;
 
 /**
  * `neonConfig` is global to the driver, so this is applied once per process and is
- * safe to call repeatedly.
+ * fine to call repeatedly. Not exported: `createPool` is the only caller, and the only
+ * way anything here should reach the database.
  */
-export function configureDriver(): void {
+function configureDriver(): void {
   if (configured) return;
   configured = true;
 
@@ -55,7 +56,7 @@ export function requireDatabaseUrl(): string {
     // Loud, and early. The alternative is a connection failure several frames later
     // wearing a stranger message.
     throw new Error(
-      "DATABASE_URL is not set. Copy env.example to .env — see docs/local-development.md.",
+      "DATABASE_URL is not set. Run scripts/provision.sh, or see docs/local-development.md.",
     );
   }
   return databaseUrl;
@@ -71,4 +72,22 @@ export function createPool(connectionString: string): Pool {
     console.error("[db] pool error", error);
   });
   return pool;
+}
+
+/**
+ * Opens a pool, hands it to `fn`, and closes it again whatever happens.
+ *
+ * For one-shot work that owns its own connection — the migration runner, and tests.
+ * The long-lived application pool is `db/client.ts`, and it is deliberately not this.
+ */
+export async function withPool<T>(
+  connectionString: string,
+  fn: (pool: Pool) => Promise<T>,
+): Promise<T> {
+  const pool = createPool(connectionString);
+  try {
+    return await fn(pool);
+  } finally {
+    await pool.end();
+  }
 }

@@ -43,7 +43,3 @@ function getClient(): Client {
 export function getDb(): Client["db"] {
   return getClient().db;
 }
-
-export function getPool(): Client["pool"] {
-  return getClient().pool;
-}

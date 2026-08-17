@@ -23,7 +23,7 @@ services:
       POSTGRES_DB: mediasafe
       # Local keeps scram-sha-256, exactly as Neon does. The driver's connection
       # pipelining assumes cleartext password auth, so it is turned off in
-      # db/client.ts rather than auth being weakened here to suit it.
+      # db/driver.ts rather than auth being weakened here to suit it.
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     ports:
       - "5432:5432"

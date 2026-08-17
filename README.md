@@ -5,7 +5,7 @@ single deploy target.
 
 ```bash
 npm install
-cp env.example .env
+./scripts/provision.sh   # writes .env — or hand-write the two lines in the doc below
 npm run db:up
 npm run dev
 ```

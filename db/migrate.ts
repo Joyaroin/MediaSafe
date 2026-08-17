@@ -5,7 +5,8 @@ import { pathToFileURL } from "node:url";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { migrate } from "drizzle-orm/neon-serverless/migrator";
 
-import { createPool, requireDatabaseUrl } from "./driver";
+import { requireDatabaseUrl, withPool } from "./driver";
+import { MIGRATIONS_SCHEMA, MIGRATIONS_TABLE } from "./migrations-table";
 
 /**
  * The migration runner.
@@ -57,7 +58,7 @@ export interface RunMigrationsOptions {
 // Resolved against this file, not the working directory: the runner is invoked from
 // npm scripts, from tests, and from the build command's first half, and only one of
 // those reliably runs at the repository root.
-export const MIGRATIONS_FOLDER = path.join(import.meta.dirname, "..", "drizzle");
+const MIGRATIONS_FOLDER = path.join(import.meta.dirname, "..", "drizzle");
 
 /**
  * Applies every pending migration, then closes the pool it opened.
@@ -73,12 +74,15 @@ export async function runMigrations(
   const connectionString = options.connectionString ?? requireDatabaseUrl();
   const migrationsFolder = options.migrationsFolder ?? MIGRATIONS_FOLDER;
 
-  const pool = createPool(connectionString);
-  try {
-    await migrate(drizzle(pool), { migrationsFolder });
-  } finally {
-    await pool.end();
-  }
+  await withPool(connectionString, (pool) =>
+    migrate(drizzle(pool), {
+      migrationsFolder,
+      // Passed rather than left to the library's defaults, so drizzle-kit and the
+      // runner are reading the same two constants.
+      migrationsSchema: MIGRATIONS_SCHEMA,
+      migrationsTable: MIGRATIONS_TABLE,
+    }),
+  );
 }
 
 /** True when this module was executed directly rather than imported. */

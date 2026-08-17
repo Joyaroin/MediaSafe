@@ -1,6 +1,11 @@
 import { sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
+import {
+  MIGRATIONS_SCHEMA,
+  MIGRATIONS_TABLE,
+  MIGRATIONS_TABLE_QUALIFIED,
+} from "@/db/migrations-table";
 
 /**
  * The tracer bullet: the thinnest complete path from a browser, through the app, over a
@@ -57,13 +62,15 @@ async function readPressCheck(): Promise<{
   // never been migrated it does not exist. `to_regclass` returns NULL rather than
   // raising, which keeps "never migrated" distinguishable from "migration read failed".
   const tableExists = await db.execute<{ present: string | null }>(
-    sql`select to_regclass('drizzle.__drizzle_migrations') as present`,
+    sql`select to_regclass(${MIGRATIONS_TABLE_QUALIFIED}) as present`,
   );
 
   const migrations = tableExists.rows[0]?.present
     ? (
         await db.execute<AppliedMigration>(
-          sql`select id, hash, created_at from drizzle.__drizzle_migrations order by created_at asc`,
+          sql`select id, hash, created_at
+                from ${sql.identifier(MIGRATIONS_SCHEMA)}.${sql.identifier(MIGRATIONS_TABLE)}
+               order by created_at asc`,
         )
       ).rows
     : [];
@@ -121,9 +128,11 @@ export default async function PressCheckPage() {
             >
               <span className="text-item text-stock break-all">{migration.hash}</span>
               <span className="code-line shrink-0 text-stock-dim" data-numeric>
+                {/* Not "undated" — CONTEXT.md gives that word to a watch with no
+                    timestamp, and this is a migration row. */}
                 {migration.created_at
                   ? new Date(Number(migration.created_at)).toISOString()
-                  : "undated"}
+                  : "no timestamp"}
               </span>
             </li>
           ))}

@@ -217,7 +217,11 @@ fi
 write_env BETTER_AUTH_SECRET "$AUTH_SECRET"
 write_env BETTER_AUTH_URL "http://localhost:3000"
 write_env DATABASE_URL "postgres://mediasafe:mediasafe@localhost:5432/mediasafe"
-note "DATABASE_URL points at Docker Postgres. Ticket #38 brings that container up."
+note "DATABASE_URL points at Docker Postgres. 'npm run db:up' brings that container up."
+write_env DATABASE_WS_PROXY "localhost:5433"
+note "DATABASE_WS_PROXY is the local WebSocket proxy that fronts Docker Postgres."
+note "Leave it OUT of Vercel — Neon speaks WebSocket itself, and setting it there"
+note "would route production through a proxy that does not exist."
 pause
 
 # ── 2 ─────────────────────────────────────────────────────────────────────
@@ -385,8 +389,15 @@ cat > .env.example <<'EXAMPLE_EOF'
 # Copy to .env and fill in, or run scripts/provision.sh, which writes it for you.
 # Never commit .env.
 
-# Local development runs against Docker Postgres, not Neon.
+# Local development runs against Docker Postgres, not Neon. `npm run db:up` brings
+# up both containers; docs/local-development.md explains why there are two.
 DATABASE_URL=postgres://mediasafe:mediasafe@localhost:5432/mediasafe
+
+# The local WebSocket proxy that fronts Docker Postgres, so the one driver
+# (neon-serverless over a WebSocket Pool) works locally too. LEAVE THIS UNSET in
+# Vercel: Neon speaks WebSocket itself, and setting it there would route production
+# through a proxy that does not exist.
+DATABASE_WS_PROXY=localhost:5433
 
 # Better Auth. Google is the only sign-in method.
 BETTER_AUTH_SECRET=

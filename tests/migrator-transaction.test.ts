@@ -2,8 +2,9 @@ import path from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createPool } from "@/db/driver";
+import { withPool } from "@/db/driver";
 import { runMigrations } from "@/db/migrate";
+import { MIGRATIONS_TABLE_QUALIFIED } from "@/db/migrations-table";
 import {
   createScratchDatabase,
   type ScratchDatabase,
@@ -40,33 +41,31 @@ async function tableExists(
   connectionString: string,
   table: string,
 ): Promise<boolean> {
-  const pool = createPool(connectionString);
-  try {
+  return withPool(connectionString, async (pool) => {
     const result = await pool.query<{ present: string | null }>(
       "select to_regclass($1) as present",
       [`public.${table}`],
     );
     return result.rows[0].present !== null;
-  } finally {
-    await pool.end();
-  }
+  });
 }
 
 async function appliedMigrationCount(connectionString: string): Promise<number> {
-  const pool = createPool(connectionString);
-  try {
+  return withPool(connectionString, async (pool) => {
+    // The runner creates this table itself, so on a database it has never touched it
+    // does not exist. `to_regclass` returns NULL rather than raising, which keeps
+    // "never migrated" apart from "the count query failed".
     const present = await pool.query<{ present: string | null }>(
-      "select to_regclass('drizzle.__drizzle_migrations') as present",
+      "select to_regclass($1) as present",
+      [MIGRATIONS_TABLE_QUALIFIED],
     );
     if (present.rows[0].present === null) return 0;
 
     const result = await pool.query<{ count: string }>(
-      "select count(*)::text as count from drizzle.__drizzle_migrations",
+      `select count(*)::text as count from ${MIGRATIONS_TABLE_QUALIFIED}`,
     );
     return Number(result.rows[0].count);
-  } finally {
-    await pool.end();
-  }
+  });
 }
 
 describe("the migration runner", () => {

@@ -10,6 +10,39 @@ in. This ticket built the pipeline; it did not choose the first thing to send th
 it. Better Auth's four tables arrive with issue #42 and MediaSafe's six with build
 step 2, in one history, from one tool, in one order.
 
+## Proving the pipeline without a migration in it
+
+Because nothing has gone through yet, the wiring is worth re-checking rather than
+trusting. This is the whole verification, and it takes a minute:
+
+```bash
+cat > db/schema.probe.ts <<'EOF'
+import { integer, pgTable, text } from "drizzle-orm/pg-core";
+export const generateProbe = pgTable("generate_probe", {
+  id: integer("id").primaryKey(),
+  note: text("note"),
+});
+EOF
+npx drizzle-kit generate --schema=./db/schema.probe.ts --dialect=postgresql --out=./drizzle
+```
+
+It emits plain SQL — readable, editable, exactly what `squawk` will later lint:
+
+```sql
+CREATE TABLE "generate_probe" (
+	"id" integer PRIMARY KEY NOT NULL,
+	"note" text
+);
+```
+
+…and appends an entry to the journal below, which is why the committed
+`{"entries": []}` is the right seed rather than a placeholder. `npm run db:migrate`
+then applies it and records one row in `drizzle.__drizzle_migrations`.
+
+**Undo it** — delete `db/schema.probe.ts`, the generated `.sql` and its
+`meta/0000_snapshot.json`, reset the journal to `{"entries": []}`, and
+`drop table generate_probe; drop schema drizzle cascade;`.
+
 Two things bind everything that lands here:
 
 - **Expand-contract, forward-only** (`SPEC.md` §3, constraint 7). A column is never
