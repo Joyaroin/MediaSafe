@@ -19,6 +19,39 @@ const CHOKE_POINT_MESSAGE =
   "Owned rows are read and written through @/db/access, which takes the user id explicitly. Nothing else opens a connection or writes a query (issue #40).";
 
 /**
+ * `db/migrate` is in here with the client and the driver because `runMigrations` opens a
+ * pool of its own. It is a smaller door than the other two, but it is the same door.
+ *
+ * Declared once and shared by the two configs below, so the repo-wide rule and the `lib/`
+ * one cannot drift apart — which is the failure that let the first version of this rule
+ * be worth less than it looked.
+ */
+const CONNECTION_PATTERN = {
+  group: [
+    "**/db/client",
+    "**/db/driver",
+    "**/db/migrate",
+    "drizzle-orm",
+    "drizzle-orm/*",
+    "@neondatabase/serverless",
+  ],
+  message: CHOKE_POINT_MESSAGE,
+};
+
+/**
+ * `asUserId` mints the branded id that every scoped query then trusts. Outside the
+ * session boundary it is a way to conjure an identity from a query string —
+ * `asUserId(searchParams.get("u"))` — which is the whole isolation model handed to the
+ * caller. `UserId` the type stays importable everywhere; only the mint is restricted.
+ */
+const USER_ID_MINT_PATTERN = {
+  group: ["**/db/access"],
+  importNames: ["asUserId"],
+  message:
+    "Only lib/session.ts mints a user id, from a session Better Auth resolved. Take the UserId as an argument (issue #40).",
+};
+
+/**
  * The session boundary, held to the same standard as the data boundary.
  *
  * `lib/session.ts` claims to be the only place that will ever call Better Auth's
@@ -40,16 +73,8 @@ const dataAccessChokePoint = {
       "error",
       {
         patterns: [
-          {
-            group: [
-              "**/db/client",
-              "**/db/driver",
-              "drizzle-orm",
-              "drizzle-orm/*",
-              "@neondatabase/serverless",
-            ],
-            message: CHOKE_POINT_MESSAGE,
-          },
+          CONNECTION_PATTERN,
+          USER_ID_MINT_PATTERN,
           {
             group: ["better-auth", "better-auth/*", "**/lib/auth"],
             message: SESSION_BOUNDARY_MESSAGE,
@@ -61,29 +86,15 @@ const dataAccessChokePoint = {
 };
 
 /**
- * The session boundary itself, and only it, may reach for Better Auth.
+ * The session boundary itself may reach for Better Auth, and is the one place that mints
+ * a user id. It is still held to the connection rule: resolving who is asking is not a
+ * licence to query.
  */
 const sessionBoundaryExemption = {
   name: "mediasafe/session-boundary",
   files: ["lib/**"],
   rules: {
-    "no-restricted-imports": [
-      "error",
-      {
-        patterns: [
-          {
-            group: [
-              "**/db/client",
-              "**/db/driver",
-              "drizzle-orm",
-              "drizzle-orm/*",
-              "@neondatabase/serverless",
-            ],
-            message: CHOKE_POINT_MESSAGE,
-          },
-        ],
-      },
-    ],
+    "no-restricted-imports": ["error", { patterns: [CONNECTION_PATTERN] }],
   },
 };
 

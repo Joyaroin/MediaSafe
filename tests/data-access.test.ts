@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { pgTable, text } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
@@ -57,6 +57,19 @@ async function createFixtureTable(tx: Transaction) {
     sql`create table fixture_owned (id text primary key, user_id text not null)`,
   );
 }
+
+/**
+ * A compile-time assertion, deliberately not an `it()`.
+ *
+ * `title` and `episode` are global and shared across accounts (ADR-0001): no `user_id`
+ * to filter, and no user to filter it by. `ownedBy` must refuse them. There is no
+ * runtime behaviour to assert here — the check is that `tsc` reports an error on the
+ * line below, and it is carried by `npm run typecheck`, not by vitest. If `ownedBy` ever
+ * accepted an unowned table, the directive would become unused and typecheck would fail.
+ */
+const unownedFixture = pgTable("fixture_unowned", { id: text("id").primaryKey() });
+// @ts-expect-error — a table with no `user_id` column is not an OwnedTable.
+void ((): SQL => ownedBy(asUserId("alice"), unownedFixture));
 
 describe("the Postgres test harness", () => {
   it("runs against its own migrated database, not the one you develop against", async () => {
@@ -150,20 +163,6 @@ describe("the data-access choke point", () => {
 
       expect(alices.map((row) => row.id).sort()).toEqual(["alice-1", "alice-2"]);
     });
-  });
-
-  it("will not scope a table that nobody owns", () => {
-    const unowned = pgTable("fixture_unowned", { id: text("id").primaryKey() });
-
-    // `title` and `episode` are global and shared across accounts (ADR-0001): there is
-    // no `user_id` to filter and no user to filter it by. The compiler is the guard —
-    // if this ever became legal, `tsc` would report the directive below as unused and
-    // `npm run typecheck` would fail. Never called, only compiled.
-    const scope = () =>
-      // @ts-expect-error — a table with no `user_id` column is not an OwnedTable.
-      ownedBy(asUserId("alice"), unowned);
-
-    expect(scope).toBeTypeOf("function");
   });
 
   it("fails loudly when scoped by a table the query does not select from", async () => {
