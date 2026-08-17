@@ -54,7 +54,10 @@ export interface RunMigrationsOptions {
   migrationsFolder?: string;
 }
 
-export const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle");
+// Resolved against this file, not the working directory: the runner is invoked from
+// npm scripts, from tests, and from the build command's first half, and only one of
+// those reliably runs at the repository root.
+export const MIGRATIONS_FOLDER = path.join(import.meta.dirname, "..", "drizzle");
 
 /**
  * Applies every pending migration, then closes the pool it opened.
@@ -91,7 +94,11 @@ if (isCliEntry()) {
       console.log("[migrate] up to date");
     })
     .catch((error: unknown) => {
-      console.error("[migrate] failed — schema unchanged, nothing was applied");
+      // States the mechanism rather than asserting an outcome it cannot observe: the
+      // whole run is one transaction, so a failure rolls it back.
+      console.error(
+        "[migrate] failed. The whole run is one transaction, so it was rolled back.",
+      );
       console.error(error);
       // Non-zero so the build command's first half halts the build, and no deployment
       // is created against a schema that did not move.
