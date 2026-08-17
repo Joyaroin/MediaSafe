@@ -64,7 +64,7 @@
 
   @utility bill-title {
     font-family: var(--font-display);
-    font-variation-settings: "wdth" 68, "wght" 800;
+    font-variation-settings: "wdth" 62, "wght" 900;
     text-transform: uppercase;
     letter-spacing: -0.005em;
     line-height: 0.86;
@@ -123,10 +123,11 @@
   line, and puts the phone down. At a desk he reads the bill and inspects candidates in
   the programme note beside it, never navigating away from the season.
   FIRST VIEWPORT: Desktop — press mark and two nav items on a hairline; TONIGHT as a
-  horizontal strip of up-next entries; the bill as a four-column grid of programme
-  entries beneath filter chips; a fixed 420px programme note on the right, replaced not
-  navigated. Phone — TONIGHT is the whole screen, one dominant entry with the recording
-  control in the thumb arc, three tabs at the foot.
+  horizontal strip of up-next entries; the bill as a three-column grid of programme
+  entries beneath filter chips, going to four above 1536px; a fixed 420px programme note
+  on the right, replaced not navigated, with TMDB attribution pinned to its foot. Phone —
+  TONIGHT is the whole screen, one dominant entry filling it with the recording control
+  pinned to the foot of that screen in the thumb arc, three tabs beneath.
   FORM: The Repertory Bill; candidate 6 of 7 on the grounded list; seed key 46524716.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 -->
@@ -184,15 +185,21 @@
 
         <!-- PHONE: dominant deck -->
         <div class="lg:hidden">
-          <article id="dom-entry" class="relative border-t border-rule">
-            <div class="flex gap-4 px-4 py-4">
-              <div class="plate h-[132px] w-[99px] shrink-0">
-                <svg class="art" viewBox="0 0 300 400" role="img" aria-label="Synthetic placeholder artwork">
-                  <rect width="300" height="400" fill="#1b6f4a"/>
-                  <circle cx="150" cy="150" r="88" fill="#f2c53d"/>
-                  <rect y="270" width="300" height="130" fill="#c2341f"/>
-                </svg>
-              </div>
+          <!-- The phone's whole first screen. The recording control is pinned to
+               the foot of it, in the thumb arc — this is the scene the app exists
+               for, and the control may not sit up in the reading zone. -->
+          <article id="dom-entry" class="relative flex flex-col border-t border-rule">
+            <!-- the plate carries the entry at a fixed measure, as it would on a
+                 printed bill; title block and the recording control follow, which
+                 puts the control in the thumb arc without a forced full height. -->
+            <div class="plate aspect-[5/4] w-full shrink-0">
+              <svg class="art" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Synthetic placeholder artwork">
+                <rect width="300" height="400" fill="#1b6f4a"/>
+                <circle cx="150" cy="150" r="88" fill="#f2c53d"/>
+                <rect y="270" width="300" height="130" fill="#c2341f"/>
+              </svg>
+            </div>
+            <div class="flex shrink-0 gap-4 px-4 py-4">
               <div class="relative min-w-0 flex-1">
                 <h2 class="bill-title text-[2.6rem]">The Bear</h2>
                 <div class="relative mt-2 inline-block pr-1">
@@ -204,9 +211,9 @@
                 <span class="stamp -right-1 top-0 border-2 border-signal px-2 py-1 text-signal code-line" aria-hidden="true">Watched</span>
               </div>
             </div>
-            <!-- recording control in the thumb arc -->
+            <!-- recording control, pinned to the foot of the first screen -->
             <button type="button" data-mark="dom-entry"
-              class="flex w-full items-center justify-center gap-3 border-t-2 border-signal bg-signal py-4 text-ink transition-[filter] duration-200 active:brightness-90">
+              class="flex w-full shrink-0 items-center justify-center gap-3 border-t-2 border-signal bg-signal py-5 text-ink transition-[filter] duration-200 active:brightness-90">
               <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true"><rect x="2" y="10.5" width="20" height="3" fill="currentColor"/></svg>
               <span class="code-line">Strike it — mark watched</span>
             </button>
@@ -350,6 +357,26 @@
             <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 500 300" aria-hidden="true"><rect width="500" height="300" fill="#123c69"/><rect x="180" y="0" width="140" height="300" fill="#eee2dc"/></svg></div>
             <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Succession</p><p class="code-line mt-2 text-stock-dim" data-numeric>2018 · HBO</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Four seasons</p></div>
           </button></li>
+
+          <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
+            <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#0d3b2e"/><rect x="40" y="40" width="220" height="320" fill="none" stroke="#e0c9a6" stroke-width="14"/></svg></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Shōgun</p><p class="code-line mt-2 text-stock-dim" data-numeric>2024 · FX</p><p class="code-line mt-3 text-signal">Watching</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Next — Servants of Two Masters</p></div>
+          </button></li>
+
+          <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
+            <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#5b1e3d"/><circle cx="90" cy="120" r="60" fill="#ffd9a0"/><rect x="0" y="300" width="300" height="100" fill="#2b2b2b"/></svg></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Dark</p><p class="code-line mt-2 text-stock-dim" data-numeric>2017 · Netflix</p><p class="code-line mt-3 text-stock-dim">Finished</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Three seasons</p></div>
+          </button></li>
+
+          <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
+            <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 500 280" aria-hidden="true"><rect width="500" height="280" fill="#8c6b1f"/><polygon points="0,280 250,60 500,280" fill="#f5efe0"/></svg></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">Better Call Saul</p><p class="code-line mt-2 text-stock-dim" data-numeric>2015 · AMC</p><p class="code-line mt-3 text-stock">Caught up</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Nothing to watch now</p></div>
+          </button></li>
+
+          <li class="border-b border-r border-rule bg-ink"><button type="button" class="group flex w-full gap-4 p-4 text-left transition-colors hover:bg-ink-raised">
+            <div class="plate h-[104px] w-[78px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#1d2a3a"/><rect x="0" y="150" width="300" height="14" fill="#ff5c39"/><rect x="0" y="230" width="300" height="14" fill="#ff5c39"/></svg></div>
+            <div class="min-w-0 flex-1"><p class="bill-title text-[2.15rem]">The Leftovers</p><p class="code-line mt-2 text-stock-dim" data-numeric>2014 · HBO</p><p class="code-line mt-3 text-stock-dim">Watchlist</p><p class="mt-1 truncate text-[0.85rem] text-stock-dim">Not started</p></div>
+          </button></li>
         </ol>
 
         <!-- zero matches for a filter — distinct from an empty library -->
@@ -380,7 +407,8 @@
 
     <!-- ══════════ RIGHT: the programme note (desktop only) ══════════ -->
     <aside class="hidden w-[420px] shrink-0 border-l border-rule-bold lg:block" aria-label="Programme note">
-      <div class="sticky top-[57px] max-h-[calc(100vh-57px)] overflow-y-auto">
+      <div class="sticky top-[57px] flex max-h-[calc(100vh-57px)] flex-col">
+        <div class="min-h-0 flex-1 overflow-y-auto">
         <div class="plate aspect-[16/10] w-full">
           <svg class="art" viewBox="0 0 640 400" aria-hidden="true"><rect width="640" height="400" fill="#1b6f4a"/><circle cx="320" cy="170" r="120" fill="#f2c53d"/><rect y="300" width="640" height="100" fill="#c2341f"/></svg>
         </div>
@@ -416,8 +444,8 @@
                 <span class="flex-1 text-[0.9rem] text-stock-dim line-through decoration-signal decoration-2">System</span>
                 <span class="code-line text-stock-dim">Watched</span>
               </li>
-              <li class="flex items-baseline gap-3 border-l-2 border-signal py-2.5 pl-3">
-                <span class="code-line w-9 shrink-0 text-signal" data-numeric>E2</span>
+              <li class="flex items-baseline gap-3 py-2.5">
+                <span class="code-line w-9 shrink-0 bg-signal px-1 py-0.5 text-center text-ink" data-numeric>E2</span>
                 <span class="flex-1 text-[0.9rem] font-medium">Hands</span>
                 <span class="code-line text-signal">Up next</span>
               </li>
@@ -427,11 +455,14 @@
             </ol>
           </div>
 
-          <!-- TMDB attribution: binding (#3) -->
-          <div class="mt-8 flex items-center gap-3 border-t border-rule pt-5">
-            <svg viewBox="0 0 34 12" class="h-3 w-auto shrink-0" role="img" aria-label="TMDB"><rect width="34" height="12" fill="#0d253f"/><rect x="3" y="4.5" width="28" height="3" fill="#01b4e4"/></svg>
-            <p class="text-[0.7rem] leading-snug text-stock-dim">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
-          </div>
+        </div>
+        </div>
+        <!-- TMDB attribution (#3): a binding obligation, so it is pinned to the
+             foot of the pane where borrowed data is on screen, never left to a
+             scroll position the reader may never reach. -->
+        <div class="flex shrink-0 items-center gap-3 border-t border-rule bg-ink px-6 py-3">
+          <svg viewBox="0 0 34 12" class="h-3 w-auto shrink-0" role="img" aria-label="TMDB"><rect width="34" height="12" fill="#0d253f"/><rect x="3" y="4.5" width="28" height="3" fill="#01b4e4"/></svg>
+          <p class="text-[0.7rem] leading-snug text-stock-dim">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
         </div>
       </div>
     </aside>
@@ -468,7 +499,7 @@
 </div>
 
 <!-- ══ Prototype scaffolding — NOT part of the design. Lets states be seen. ══ -->
-<div class="fixed bottom-20 right-3 z-50 border border-rule-bold bg-ink-raised/95 p-2 lg:bottom-3">
+<div class="fixed bottom-1 right-1 z-50 max-w-[46vw] border border-rule-bold bg-ink-raised/80 p-1.5 opacity-70 transition-opacity hover:opacity-100 lg:bottom-3 lg:left-3 lg:right-auto lg:max-w-none">
   <p class="code-line mb-2 text-stock-dim">Prototype only — states</p>
   <div class="flex flex-wrap gap-1">
     <button type="button" data-state="offline"       class="border border-rule-bold px-2 py-1 text-[0.6rem] uppercase tracking-widest text-stock-dim hover:text-stock">Offline</button>
