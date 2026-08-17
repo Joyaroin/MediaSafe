@@ -211,6 +211,13 @@
                 <span class="stamp -right-1 top-0 border-2 border-signal px-2 py-1 text-signal code-line" aria-hidden="true">Watched</span>
               </div>
             </div>
+            <!-- Abandon: the one hand-set state in the whole model (#7), and after
+                 #25 the mechanism that keeps the deck at 62 rather than drifting
+                 back to 217. Quiet, because giving up is not the daily gesture. -->
+            <div class="flex shrink-0 items-center justify-between border-t border-rule px-4 py-2.5">
+              <button type="button" class="code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors hover:text-stock">Give up on this</button>
+              <span class="code-line text-stock-dim">Watching it again clears it</span>
+            </div>
             <!-- recording control, pinned to the foot of the first screen -->
             <button type="button" data-mark="dom-entry"
               class="flex w-full shrink-0 items-center justify-center gap-3 border-t-2 border-signal bg-signal py-5 text-ink transition-[filter] duration-200 active:brightness-90">
@@ -225,12 +232,14 @@
             <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#0f4c5c"/><rect x="40" y="40" width="240" height="280" fill="#e36414"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-[1.15rem]">Shōgun</p><p class="code-line mt-1 text-stock-dim">Servants of Two Masters · E2</p></div></li>
             <li class="flex items-center gap-3 px-4 py-3"><div class="plate h-14 w-[42px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#3b3b3b"/><circle cx="150" cy="200" r="70" fill="#9bc53d"/></svg></div><div class="min-w-0 flex-1"><p class="bill-title text-[1.15rem]">Slow Horses</p><p class="code-line mt-1 text-stock-dim">Work Drinks · S1 E2</p></div></li>
           </ol>
-          <p class="border-t border-rule px-4 py-3 code-line text-stock-dim">Ten at a time — the rest are in the library</p>
+          <p class="border-t border-rule px-4 py-3 code-line text-stock-dim">A deck you work down — more load as you go</p>
         </div>
 
-        <!-- DESKTOP: horizontal strip, secondary to the grid beneath -->
-        <ol class="hidden gap-px overflow-x-auto border-t border-rule bg-rule lg:flex">
-          <li class="flex min-w-[300px] shrink-0 items-stretch gap-3 bg-ink p-3" id="strip-bear">
+        <!-- DESKTOP: a row bounded by the viewport, not a scroller (#25). It shows
+             as many as fit one row and no more; Library's *watching* chip holds the
+             remainder one click below. Overflow is clipped, never scrolled. -->
+        <ol class="hidden gap-px overflow-hidden border-t border-rule bg-rule lg:grid lg:max-h-[122px] lg:grid-cols-[repeat(auto-fill,minmax(292px,1fr))]">
+          <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-bear">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#1b6f4a"/><circle cx="150" cy="150" r="88" fill="#f2c53d"/><rect y="270" width="300" height="130" fill="#c2341f"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
               <p class="bill-title text-[1.5rem]">The Bear</p>
@@ -243,7 +252,7 @@
               <button type="button" data-mark="strip-bear" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
             </div>
           </li>
-          <li class="flex min-w-[300px] shrink-0 items-stretch gap-3 bg-ink p-3" id="strip-sev">
+          <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-sev">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#26418f"/><rect x="60" y="90" width="180" height="220" fill="#e9e4d8"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
               <p class="bill-title text-[1.5rem]">Severance</p>
@@ -253,7 +262,7 @@
               <button type="button" data-mark="strip-sev" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
             </div>
           </li>
-          <li class="flex min-w-[300px] shrink-0 items-stretch gap-3 bg-ink p-3" id="strip-andor">
+          <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-andor">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 400 400" aria-hidden="true"><rect width="400" height="400" fill="#7a1f1f"/><polygon points="200,60 340,340 60,340" fill="#f0d9a8"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
               <p class="bill-title text-[1.5rem]">Andor</p>
@@ -263,7 +272,7 @@
               <button type="button" data-mark="strip-andor" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
             </div>
           </li>
-          <li class="flex min-w-[300px] shrink-0 items-stretch gap-3 bg-ink p-3" id="strip-shogun">
+          <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-shogun">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 640 360" aria-hidden="true"><rect width="640" height="360" fill="#0f4c5c"/><rect x="40" y="40" width="240" height="280" fill="#e36414"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
               <p class="bill-title text-[1.5rem]">Shōgun</p>
@@ -273,7 +282,7 @@
               <button type="button" data-mark="strip-shogun" class="mt-auto self-start border border-signal px-2.5 py-1 text-signal code-line transition-colors hover:bg-signal hover:text-ink">Strike it</button>
             </div>
           </li>
-          <li class="flex min-w-[300px] shrink-0 items-stretch gap-3 bg-ink p-3" id="strip-slow">
+          <li class="flex min-w-0 items-stretch gap-3 bg-ink p-3" id="strip-slow">
             <div class="plate h-[92px] w-[69px] shrink-0"><svg class="art" viewBox="0 0 300 400" aria-hidden="true"><rect width="300" height="400" fill="#3b3b3b"/><circle cx="150" cy="200" r="70" fill="#9bc53d"/></svg></div>
             <div class="relative flex min-w-0 flex-1 flex-col">
               <p class="bill-title text-[1.5rem]">Slow Horses</p>
@@ -433,6 +442,12 @@
               <button type="button" class="bg-signal px-3.5 py-2 text-ink code-line" aria-pressed="true" data-numeric>4</button>
               <button type="button" class="bg-ink px-3.5 py-2 text-stock-dim code-line transition-colors hover:bg-signal hover:text-ink" data-numeric>5</button>
             </div>
+          </div>
+
+          <!-- abandon, reachable for titles not in the deck (#25) -->
+          <div class="mt-7 flex items-center justify-between border-t border-rule pt-5">
+            <button type="button" class="code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors hover:text-stock">Give up on this</button>
+            <span class="code-line text-stock-dim">Watching it again clears it</span>
           </div>
 
           <!-- episodes: named, never numbered alone -->

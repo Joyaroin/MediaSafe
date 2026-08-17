@@ -331,8 +331,12 @@ the rating scale, reference ids — gets `font-variant-numeric: tabular-nums` (a
   (*Library*, *Search*) as full-height inverted cells, with *Settings* pinned right. Ground is
   `ink` at 95% opacity with a `2px` backdrop blur, so type scrolling underneath greys rather than
   disappears.
-- **TONIGHT** as a horizontal strip of up-next entries — `min-width: 300px` cards separated by `1px`
-  gaps over a `rule`-coloured ground, scrolling horizontally. Secondary to the grid beneath it.
+- **TONIGHT** as a row of up-next entries — an auto-fill grid of `minmax(292px, 1fr)` columns
+  separated by `1px` gaps over a `rule`-coloured ground, clipped to one row
+  (`max-height: 122px`, `overflow: hidden`). **Bounded by the viewport, never scrolled**: it shows as
+  many whole entries as fit and no partial card, so there is nothing to re-tune between a laptop and
+  an ultrawide, and Library's *watching* chip holds the remainder one click below
+  ([#25](https://github.com/Joyaroin/MediaSafe/issues/25)). Secondary to the grid beneath it.
 - **The bill**: a filter bar (state chips, a filter-by-typing field, a sort select), then a grid of
   programme entries — 2 columns by default, **3 at `≥1280px`**, **4 at `≥1536px`**. Cells are divided
   by `border-b`/`border-r` hairlines, not gaps.
@@ -345,9 +349,12 @@ the rating scale, reference ids — gets `font-variant-numeric: tabular-nums` (a
 **Phone** (`<1024px`) is a different layout, not a squeezed one:
 
 - TONIGHT is the whole first screen: one dominant entry with a `5:4` plate at full width, the title
-  block beneath it, and the recording control pinned to the foot of that block in the thumb arc.
-- Beneath it, the remaining up-next entries as a compact list bounded at ten, closing with a
-  dim code line: *"Ten at a time — the rest are in the library"*.
+  block beneath it, then a quiet abandon row, and the recording control pinned to the foot of that
+  block in the thumb arc.
+- Beneath it, the remaining up-next entries as a compact list. **The deck is not capped by a number**
+  — its own form is the bound, since a deck you work down never renders N at once, and more load as
+  you go ([#25](https://github.com/Joyaroin/MediaSafe/issues/25)). It closes with a dim code line:
+  *"A deck you work down — more load as you go"*.
 - Three fixed tabs at the bottom (`Up next`, `Search`, `Library`), landing on *Up next*.
 - The bill's grid is not rendered at all on phone — the phone is for marking, not browsing.
 
@@ -504,6 +511,17 @@ tabular code line; the episode **name** in body-small as the actual content; a t
 line. Watched episodes are `line-through decoration-signal decoration-2` in dim bone. The up-next
 episode inverts its number into a solid vermilion chip and carries a vermilion *Up next* label.
 Rows are divided by hairlines.
+
+### Abandon Row
+
+The one hand-set state in the entire model ([#7](https://github.com/Joyaroin/MediaSafe/issues/7)),
+and after [#25](https://github.com/Joyaroin/MediaSafe/issues/25) the mechanism that keeps the deck
+from drifting back toward 217. A hairline-topped row carrying a dim underlined text button — *"Give
+up on this"* — with the reassurance *"Watching it again clears it"* set as a dim code line opposite.
+
+**It is deliberately the quietest control on either surface.** Vermilion is reserved for recording a
+watch; giving up on something is not the daily gesture and must never compete with the one that is.
+It appears on the phone's dominant Up next entry and in the programme note, and nowhere else.
 
 ### Rating Scale
 
