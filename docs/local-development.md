@@ -6,6 +6,11 @@ other is production on Neon. There is no staging.
 ## Prerequisites
 
 - **Node 22 or newer** — this was built and verified on 24.13.
+- **npm 11 or newer.** Not the same statement: Node 22 ships npm 10, and npm 10 cannot
+  read this repository's lock file — `npm ci` fails with
+  `Missing: esbuild@0.28.2 from lock file`, because npm 11 writes tsx's nested
+  optional-dependency subtree in a shape npm 10 rejects. `npm install -g npm@11` if
+  `npm --version` says 10. Node 24 already ships npm 11.
 - **Docker**, with the daemon running. `docker compose` v2 or newer.
 
 ## From a fresh clone to a running app
