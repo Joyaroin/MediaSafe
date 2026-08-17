@@ -1,20 +1,10 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
 
+import { OfflineBanner } from "@/errors/offline-banner";
+import { WriteFailureToasts } from "@/errors/write-failure-toast";
+
+import { archivo } from "./fonts";
 import "./globals.css";
-
-/**
- * One typeface at two widths — condensed 900 caps for names, normal-width 600 caps for
- * code lines. The `wdth` axis is load-bearing, not decorative: `bill-title` sets
- * `"wdth" 62`, and without the axis loaded every title in the app silently renders at
- * normal width, which is a different typeface rather than a smaller one.
- */
-const archivo = Archivo({
-  subsets: ["latin"],
-  axes: ["wdth"],
-  variable: "--font-archivo",
-  display: "swap",
-});
 
 // The one piece of user-facing copy in this change. Taken verbatim from SPEC.md §2
 // rather than paraphrased — CONTEXT.md is binding on every string on screen.
@@ -23,12 +13,30 @@ export const metadata: Metadata = {
   description: "A personal tracker for the films and shows you watch.",
 };
 
+/**
+ * Two of the three error surfaces are mounted here, and the third is not, which is the
+ * whole of SPEC.md §6's *errors are placed by blast radius*:
+ *
+ * - **Offline** is app-wide, so it is in the layout and above everything else on the page.
+ * - **The write-failure toast** is app-wide too — a write can be lost from any surface,
+ *   and the toast has to outlive the component that started the write. It renders nothing
+ *   until something raises a failure, and nothing does yet.
+ * - **Read failures** are *not* here. They belong to the route that failed, so they live
+ *   in `app/error.tsx`, which wraps the page and leaves this layout standing.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en-GB" className={archivo.variable}>
-      <body>{children}</body>
+      <body>
+        {/* At the very top of the page, before anything else, because DESIGN.md says the
+            banner is at the very top of the page. When the masthead arrives it goes
+            below this, not above it. */}
+        <OfflineBanner />
+        {children}
+        <WriteFailureToasts />
+      </body>
     </html>
   );
 }
