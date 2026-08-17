@@ -25,8 +25,12 @@ import type { UserId } from "@/db/access";
  * ```ts
  * const session = await auth.api.getSession({ headers: await headers() });
  * if (!session) redirect("/sign-in");
- * return session.user.id;
+ * return asUserId(session.user.id);
  * ```
+ *
+ * That `asUserId` is the only honest cast in the codebase: `UserId` is branded so it
+ * cannot be confused with the other strings around it, and this is the one place a real
+ * one is minted.
  *
  * Route protection is issue #43's middleware matcher over the route manifest, so by the
  * time a page calls this, an unauthenticated request should already have been turned

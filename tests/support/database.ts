@@ -41,10 +41,8 @@ import { createScratchDatabase, type ScratchDatabase } from "./scratch-database"
  */
 
 export interface TestDatabase {
-  /** The scratch database's URL. Present mostly so a test can prove which one it is. */
+  /** The scratch database's URL, so a test can prove which database it is on. */
   connectionString: () => string;
-  /** The Drizzle handle bound to this file's pool. Prefer `inTransaction`. */
-  db: () => Database;
 }
 
 interface Harness {
@@ -55,8 +53,8 @@ interface Harness {
 }
 
 /**
- * Set by `setUpTestDatabase`'s `beforeAll` and cleared by its `afterAll`, so a test that runs
- * without one gets a named error rather than a connection to nowhere.
+ * Set by `setUpTestDatabase`'s `beforeAll` and cleared by its `afterAll`, so a test that
+ * runs without one gets a named error rather than a connection to nowhere.
  */
 let harness: Harness | null = null;
 
@@ -104,10 +102,7 @@ export function setUpTestDatabase(name: string): TestDatabase {
     await open.dropDatabase();
   }, 60_000);
 
-  return {
-    connectionString: () => current().connectionString,
-    db: () => current().db,
-  };
+  return { connectionString: () => current().connectionString };
 }
 
 /**

@@ -1,8 +1,6 @@
 import { eq, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
-import type { Executor } from "./client";
-
 /**
  * The data-access choke point: the only module that reads or writes owned rows.
  *
@@ -15,8 +13,25 @@ import type { Executor } from "./client";
  * So **one filtered column, in one place, is the entire isolation mechanism.** Every
  * owned table carries `user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE`
  * (ADR-0001), and the only thing standing between one account's library and another's is
- * that the predicate is actually there. That has to live somewhere a forgotten join
- * cannot get past — which means one module, not one convention.
+ * that the predicate is actually there.
+ *
+ * ── What that is, exactly, and what it is not ────────────────────────────────────────
+ *
+ * Be precise about the guarantee, because overstating it is how it stops being checked.
+ * Inside this module a bare `eq(watch.userId, …)`, or a `where` left off entirely, still
+ * compiles. Nothing makes the filter unforgettable.
+ *
+ * What is enforced is narrower and still worth having: **ESLint confines every query in
+ * the codebase to this file** (`eslint.config.mjs` — no other module may import
+ * `db/client`, `db/driver` or `drizzle-orm`, by any specifier). So the surface on which a
+ * `user_id` filter can be forgotten is one short module that exists to be read for that,
+ * rather than every server component in the app. `ownedBy` then makes the filter one
+ * greppable expression, and makes pointing it at an unowned table a type error.
+ *
+ * A gate that genuinely could not be got past would have to own every query shape build
+ * step 2 needs — joins, `and()`, partial column lists, the derived-state views. Written
+ * now it would be bypassed by the third real query and would then be worse than this,
+ * because it would still read like a gate.
  *
  * ── The shape, which is the deliverable ──────────────────────────────────────────────
  *
@@ -33,29 +48,47 @@ import type { Executor } from "./client";
  *    importing this module still never opens a connection, and there is no ambient
  *    context to forget to enter.
  *
- * ── What is here now ─────────────────────────────────────────────────────────────────
+ *    That default is the production path and is deliberately never exercised by a test:
+ *    `getDb()` throws under vitest, and the harness always passes its transaction. A
+ *    test that trips the default has found a function that ignored the executor it was
+ *    given, which is the bug the throw exists to name.
  *
- * `ownedBy`, and nothing else. This module is a prefactor (issue #40): at build step 1
- * there are no library entries and no watches, so there is nothing yet to read. It is
- * built anyway, because a later step that finds no module here reaches for the database
- * directly, and the choke point stops being one the first time that happens.
- *
- * Build step 2 adds the library and title reads, step 3 the import writes, step 4 the
- * watch write. All of them are functions of `(userId, …, executor?)` and all of them
- * scope through `ownedBy`.
+ * `ownedBy` is currently the whole module, because at build step 1 there are no library
+ * entries and no watches to read. It is built anyway (issue #40): a later step that
+ * finds no module here reaches for the database directly, and the choke point stops
+ * being one the first time that happens.
  *
  * `title` and `episode` are global and unowned — one row per TMDB id, shared across
  * accounts (ADR-0001). Reads of those take no user id and cannot be scoped, which is why
  * `ownedBy` will not typecheck against them.
  */
 
+declare const userIdBrand: unique symbol;
+
 /**
- * Better Auth's `user.id`, which is `text` rather than a uuid — so this is a `string`
- * and deliberately not a branded type. The brand would be checked by the compiler at
- * exactly the boundaries that already hold it correctly, and would need casting at the
- * one place that matters least.
+ * Better Auth's `user.id` — `text`, not a uuid — and branded, so that it is not
+ * interchangeable with the other strings this app is about to be full of.
+ *
+ * ADR-0001 gives `library_entry`, `watch`, `list` and `list_membership` a uuid `id` of
+ * their own alongside `user_id`, and `watch` carries a `source_key`. Read into variables,
+ * those are all `string`, and so is a user id — so `readWatches(entryId)` against a
+ * signature expecting a user id compiles clean and scopes to nobody's rows, which is the
+ * benign half of that mistake.
+ *
+ * The cost is one cast, in `lib/session.ts`, at the boundary that mints the value. That
+ * is the trade: one cast where a human is looking, in exchange for the compiler checking
+ * every call site build steps 2-4 add.
  */
-export type UserId = string;
+export type UserId = string & { readonly [userIdBrand]: true };
+
+/**
+ * Marks a string as a user id. The one honest use is `lib/session.ts`, on the id Better
+ * Auth just resolved from a session; tests use it on their own fixtures. Anywhere else
+ * it is a cast wearing a function's clothes.
+ */
+export function asUserId(id: string): UserId {
+  return id as UserId;
+}
 
 /**
  * Any table with a `user_id` column: `library_entry`, `watch`, `list`,
@@ -77,13 +110,13 @@ export interface OwnedTable {
  *
  * It is not a `where` clause on its own — a query that needs more conditions combines it
  * with `and()`. What it is is the condition that may never be the one left out.
+ *
+ * One thing it does not check: `table` is not tied to the table the query selects from,
+ * so `ownedBy(userId, watch)` on a select from `library_entry` builds a predicate against
+ * a table that is not in the FROM clause. Postgres rejects that outright — it is a loud
+ * error at the first run, not a silent leak — which is why the fix is not a signature
+ * that could only bind them by owning the whole query builder.
  */
 export function ownedBy(userId: UserId, table: OwnedTable): SQL {
   return eq(table.userId, userId);
 }
-
-/**
- * Re-exported so that call sites and tests can name the executor type without reaching
- * past this module into `db/client.ts`, which nothing outside `db/` may import.
- */
-export type { Executor };

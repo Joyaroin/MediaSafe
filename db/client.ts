@@ -72,6 +72,12 @@ export function getDb(): Client["db"] {
    * It means a function in `db/access.ts` did not take the executor its caller passed.
    * Nothing legitimate needs this pool in a test — `db/migrate.ts` and
    * `tests/support/scratch-database.ts` open their own through `db/driver.ts`.
+   *
+   * Application code that knows it is under test is a smell, and this is the knowing
+   * exception. The alternatives were worse: a vitest `resolve.alias` onto a stub cannot
+   * be asserted against and hides which module actually failed, and having the harness
+   * poison `globalThis.mediasafeDbClient` moves the same coupling somewhere less
+   * visible while depending on a private name. Three lines, here, where the pool is.
    */
   if (process.env.VITEST) {
     throw new Error(

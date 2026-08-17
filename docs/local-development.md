@@ -129,26 +129,22 @@ it("does not record the same click twice", async () => {
 
 `setUpTestDatabase` creates a database, migrates it with `db/migrate.ts` — the runner
 production runs — and drops it when the file finishes. `inTransaction` wraps one test in
-a transaction and always rolls it back, so no test can see another's rows and none of
-them leave residue. Postgres rolls DDL back too, which is what lets a test create a
-fixture table that vanishes with it.
+a transaction and always rolls it back. The header of `tests/support/database.ts` explains
+what that buys and what it deliberately does not do.
 
-Two things it deliberately does not do. It does not share the database you develop
-against: a rollback protects rows, but the migration run would still touch whatever it
-was pointed at. And it is not what `tests/migrator-transaction.test.ts` uses — those
-tests cannot roll back, because the transaction is the thing they are testing.
+Note that `tests/migrator-transaction.test.ts` does **not** use this harness: those tests
+cannot roll back, because the transaction is the thing they are testing.
 
 ### The data-access choke point
 
 Owned rows are read and written through `db/access.ts`, and every function there takes
-the user id as its first argument. That module is the whole isolation mechanism: there is
-no row-level security, because Neon's connection owns the tables and would bypass any
-policy (`SPEC.md` §6). A session becomes a user id in exactly one place, `lib/session.ts`,
-and nowhere else.
+the user id as its first argument. A session becomes a user id in exactly one place,
+`lib/session.ts`. **Read `db/access.ts`'s own header before adding a query** — it holds
+the reasoning, and this section deliberately does not repeat it.
 
-ESLint enforces the boundary — `app/`, `lib/` and `components/` may not import
-`@/db/client`, `@/db/driver` or `drizzle-orm` directly. If you hit that error, the query
-belongs in `db/access.ts`.
+ESLint enforces the boundary: nothing outside `db/` and `tests/` may import
+`@/db/client`, `@/db/driver` or `drizzle-orm`, by any specifier. If you hit that error,
+the query belongs in `db/access.ts`.
 
 ## When it does not work
 

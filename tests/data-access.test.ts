@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { pgTable, text } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
-import { ownedBy } from "@/db/access";
+import { asUserId, ownedBy } from "@/db/access";
 import { getDb, type Transaction } from "@/db/client";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
@@ -17,8 +17,17 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * test 3) are added to a file shaped exactly like this one, and add no infrastructure.
  *
  * A harness that silently no-ops is the failure worth designing against: it would pass
- * every assertion written against it forever. Three of the tests below exist only to
- * make that impossible.
+ * every assertion written against it forever. Most of the first block below exists only
+ * to make that impossible.
+ *
+ * ── Why this is here, when SPEC.md §6 names four tests that earn their keep ──────────
+ *
+ * These are added knowingly, on the same grounds as `tests/migrator-transaction.test.ts`
+ * argued for itself. The rule's reasoning is that everything else "fails loudly and
+ * cheaply to an app used daily by its owner". A harness that has stopped isolating fails
+ * neither loudly nor cheaply: it fails as test 3 — watch idempotency, the one test the
+ * spec does ask for — passing against rows that were never written, or written into the
+ * database you develop against and left there. These tests are what test 3 stands on.
  */
 
 const database = setUpTestDatabase("mediasafe_access_test");
@@ -33,6 +42,12 @@ const database = setUpTestDatabase("mediasafe_access_test");
  * asserted against its own string output.
  */
 const fixtureOwned = pgTable("fixture_owned", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+});
+
+/** A second owned table, for the one test about scoping by the wrong one. */
+const fixtureOther = pgTable("fixture_other", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
 });
@@ -105,7 +120,7 @@ describe("the Postgres test harness", () => {
     ).rejects.toThrow(/a_table_that_does_not_exist/);
   });
 
-  it("hands out a usable pool for the whole file", () => {
+  it("names the database it created, so a test can prove which one it is on", () => {
     expect(database.connectionString()).toContain("mediasafe_access_test");
   });
 
@@ -131,7 +146,7 @@ describe("the data-access choke point", () => {
       const alices = await tx
         .select({ id: fixtureOwned.id })
         .from(fixtureOwned)
-        .where(ownedBy("alice", fixtureOwned));
+        .where(ownedBy(asUserId("alice"), fixtureOwned));
 
       expect(alices.map((row) => row.id).sort()).toEqual(["alice-1", "alice-2"]);
     });
@@ -146,9 +161,30 @@ describe("the data-access choke point", () => {
     // `npm run typecheck` would fail. Never called, only compiled.
     const scope = () =>
       // @ts-expect-error — a table with no `user_id` column is not an OwnedTable.
-      ownedBy("alice", unowned);
+      ownedBy(asUserId("alice"), unowned);
 
     expect(scope).toBeTypeOf("function");
+  });
+
+  it("fails loudly when scoped by a table the query does not select from", async () => {
+    await inTransaction(async (tx) => {
+      await createFixtureTable(tx);
+      await tx.execute(
+        sql`create table fixture_other (id text primary key, user_id text not null)`,
+      );
+
+      // `ownedBy` takes a table, and nothing ties that table to the FROM clause — so
+      // this builds `where fixture_other.user_id = 'alice'` over a select from
+      // `fixture_owned`. The reason that is a documented limitation rather than a hole
+      // is right here: Postgres rejects it on the first run instead of quietly
+      // returning somebody else's rows.
+      await expect(
+        tx
+          .select({ id: fixtureOwned.id })
+          .from(fixtureOwned)
+          .where(ownedBy(asUserId("alice"), fixtureOther)),
+      ).rejects.toThrow(/fixture_other/);
+    });
   });
 
   it("matches nothing for a user with no rows, rather than everything", async () => {
@@ -161,7 +197,7 @@ describe("the data-access choke point", () => {
       const carols = await tx
         .select({ id: fixtureOwned.id })
         .from(fixtureOwned)
-        .where(ownedBy("carol", fixtureOwned));
+        .where(ownedBy(asUserId("carol"), fixtureOwned));
 
       expect(carols).toEqual([]);
     });
