@@ -34,6 +34,13 @@ Read them in this order; where two disagree, the higher one wins.
 | `db/` | `driver.ts` owns the one driver, `client.ts` the app's pool, `migrate.ts` the migration runner. |
 | `drizzle/` | Generated migrations, committed as plain SQL. Read `drizzle/README.md` before adding one. |
 | `tests/` | Vitest, against a real local Postgres. |
+| `vercel.json` | Declares the framework as `nextjs`. See below — it is load-bearing, not boilerplate. |
+
+The Vercel project was created before this repository had a `package.json`, so Vercel's
+framework detection found nothing and the project settings kept `Other`. Under that preset a
+Next.js build compiles perfectly and then fails looking for a static `public/` directory.
+`vercel.json` states the framework in the repository, where it is reviewable and survives the
+project being recreated, rather than leaving it to a dashboard toggle nobody can see from here.
 
 ## What is true from the first merge
 
