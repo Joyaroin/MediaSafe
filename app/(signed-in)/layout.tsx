@@ -12,8 +12,8 @@ import { Masthead } from "../masthead";
  * It renders no session check on purpose. A layout is not re-rendered on every navigation
  * within its group, so a check here would be a check that runs sometimes — which is worse
  * than no check, because it reads like one. Each page under it calls `requireUserId()`
- * itself, and issue #43's middleware matcher over the route manifest is what turns
- * "every page remembered to" into something machine-checked.
+ * itself, and `proxy.ts` — the matcher `tests/route-manifest.test.ts` checks against the
+ * route manifest — is what turns "every page remembered to" into something machine-checked.
  *
  * The route group `(signed-in)` adds no path segment. `/settings` is `/settings`; the
  * parentheses only say which routes wear this shell — which is why the sign-in route,

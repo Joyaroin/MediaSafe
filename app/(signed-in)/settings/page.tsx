@@ -56,7 +56,7 @@ export default async function SettingsPage() {
    *
    * The id is deliberately not used yet. Nothing on this page reads a row: the display
    * name is step 7 and the timezone control is step 7. Calling this anyway is what makes
-   * the route protected today, and issue #43's static check is what will prove it stays
+   * the route protected today, and `tests/route-manifest.test.ts` is what proves it stays
    * that way.
    */
   await requireUserId();

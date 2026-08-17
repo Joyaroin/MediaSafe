@@ -10,9 +10,10 @@ import noEmptyCatch from "./eslint-rules/no-empty-catch.mjs";
  *
  * **Deny by default.** An earlier version listed `app/`, `lib/` and `components/` as the
  * files it applied to, which left three ways around it: a relative `../db/client`, the
- * root `middleware.ts` — issue #43's route matcher, the very boundary this protects —
- * and `scripts/`, where build step 3 puts the import's chunked writes. A boundary sold
- * as a check has to be one, so the rule now covers everything and names its exemptions.
+ * root `proxy.ts` — issue #43's route matcher, the very boundary this protects, and
+ * called `middleware.ts` until Next 16 renamed the convention — and `scripts/`, where
+ * build step 3 puts the import's chunked writes. A boundary sold as a check has to be
+ * one, so the rule now covers everything and names its exemptions.
  *
  * The specifier patterns are suffix-matched for the same reason: `@/db/client` and
  * `../db/client` are the same import.
@@ -70,6 +71,10 @@ const USER_ID_MINT_PATTERN = {
  *  - **`lib/session.ts`** needs `@/lib/auth`, and must not have the connection: resolving
  *    who is asking is not a licence to query.
  *  - **`lib/auth-client.ts`** needs `better-auth/react`, and nothing else.
+ *  - **`lib/session-cookie.ts`** needs `better-auth/cookies`, added by #43. It reads one
+ *    header for `proxy.ts` and resolves nothing, which is why it is here rather than at
+ *    the repository root with a disable comment on it: the root gate is the last file
+ *    that should be holding an exemption to the session boundary.
  *
  * So the exemption below is the *specifier* one — `better-auth` may be imported inside
  * `lib/` — and the connection rule still applies to all three. `lib/auth.ts` is the only
