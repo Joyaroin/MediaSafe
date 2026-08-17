@@ -1,0 +1,57 @@
+# Local environment. One of the two long-lived environments in SPEC.md §6; the other
+# is production on Neon. There is no staging.
+#
+# Two containers, because the app and the migration runner use ONE driver —
+# `drizzle-orm/neon-serverless` over a WebSocket `Pool` (SPEC.md §6). That driver speaks
+# the Postgres wire protocol wrapped in a WebSocket, which vanilla Postgres does not
+# understand, so `wsproxy` unwraps it and forwards raw TCP. Swapping to `node-postgres`
+# locally would be the easier fix and is exactly the thing forbidden: it would make local
+# a different data path from production.
+#
+# `wsproxy` shares the postgres container's network namespace, so `localhost:5432` means
+# the same thing inside the proxy as it does on your laptop. That is what lets one
+# DATABASE_URL serve the driver, `psql` and `drizzle-kit` alike, instead of three.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: mediasafe-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mediasafe
+      POSTGRES_PASSWORD: mediasafe
+      POSTGRES_DB: mediasafe
+      # Local keeps scram-sha-256, exactly as Neon does. The driver's connection
+      # pipelining assumes cleartext password auth, so it is turned off in
+      # db/client.ts rather than auth being weakened here to suit it.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "5432:5432"
+      # wsproxy's listener, published through this namespace — see below.
+      - "5433:80"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediasafe -d mediasafe"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  wsproxy:
+    image: ghcr.io/neondatabase/wsproxy:latest
+    container_name: mediasafe-wsproxy
+    restart: unless-stopped
+    # Share the database's network namespace. No `ports` of its own: 5433 is
+    # published by the postgres service above.
+    network_mode: "service:postgres"
+    environment:
+      LISTEN_PORT: ":80"
+      # The image allows *.neon.tech:5432 by default. Narrowed to the one address
+      # this proxy will ever forward to.
+      ALLOW_ADDR_REGEX: "^localhost:5432$$"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
