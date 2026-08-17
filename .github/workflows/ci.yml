@@ -67,30 +67,38 @@ jobs:
 
       # `ci`, not `install`: the point of a lock file is that CI resolves nothing.
       - name: Install
+        id: install
         run: npm ci
 
-      # `!cancelled()` rather than `always()` on each step below: a run superseded by a
-      # new push should stop, but a failed typecheck should not hide the other three
-      # answers. `always()` would keep running after a cancellation and spend minutes on
-      # a result nobody reads.
+      # Every check below carries the same condition, and it says two things.
+      #
+      # `!cancelled()` rather than `always()`: a failed typecheck must not hide the other
+      # three answers, because this reports rather than gates and one-of-four is
+      # three-quarters useless. But a run superseded by a new push should stop, and
+      # `always()` would keep spending minutes on a result nobody reads.
+      #
+      # `steps.install.outcome == 'success'` because `!cancelled()` on its own is too
+      # generous: it also overrides the default skip when *Install* failed, and then all
+      # four checks run without dependencies and report four failures from one cause.
+      # That is not a hypothetical — it is what this workflow's first run did.
       - name: Typecheck
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run typecheck
 
       - name: Lint
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint
 
       # No DATABASE_URL, deliberately. `/` is `force-dynamic`, so nothing is prerendered
       # and the build needs no database — and `VERCEL` is unset here, so `scripts/build.ts`
       # runs `next build` alone. CI must never be able to migrate anything.
       - name: Build
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
 
       # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather
       # than remembered, on a database whose only safety net is six hours of Neon history.
       - name: squawk
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint:sql
