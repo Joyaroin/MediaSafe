@@ -101,10 +101,15 @@ there is no schema rollback worth the name — the discipline is the protection.
 
 ## The bill
 
-£0 recurring, and constraint 8 caps it at £5/month. Vercel Hobby, Neon Free, and GitHub
-Actions inside the monthly allowance for private repositories. Two habits keep the last
-one honest: superseded CI runs are cancelled (`concurrency` in the workflow), and CI runs
-on pull requests only, not on every push to every branch.
+Nothing added here is a paid service: Vercel Hobby, Neon Free, and GitHub Actions inside
+the monthly allowance for private repositories. Two habits keep the last one honest:
+superseded CI runs are cancelled (`concurrency` in the workflow), and CI runs on pull
+requests only, not on every push to every branch.
+
+**That is an argument, not a reading.** Constraint 8 caps recurring spend at £5/month and
+issue #39 asks that it still be £0 — which is a fact about three billing pages, and
+billing pages are dashboards. It is a checklist item below like every other one, rather
+than a sentence here asserting an amount nobody checked.
 
 ## What only Adham can do
 
@@ -139,7 +144,13 @@ issue #39 that no agent can reach.
       assumed.
 - [ ] **Rolling back is a redeploy, exercised once.** Deliberately roll back to the
       previous deployment and back again, on a day when nothing is wrong. A recovery
-      procedure first attempted during a failure is not a procedure.
+      procedure first attempted during a failure is not a procedure. Note the tense the
+      criterion uses — *exercised*. Writing the procedure down, which this file does, is
+      not doing it.
+- [ ] **Recurring spend is still £0.** Vercel → Settings → Billing shows Hobby, Neon
+      shows Free, and GitHub → Settings → Billing shows Actions minutes inside the
+      allowance. Three pages, read once. Nothing in this ticket adds a paid service, but
+      that is a claim about what was added, not a reading of what is charged.
 
 ## What was demonstrated, and how
 
