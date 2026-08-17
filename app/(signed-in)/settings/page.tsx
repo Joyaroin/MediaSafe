@@ -35,12 +35,16 @@ import { SignOutButton } from "./sign-out-button";
  * time to render a page for nobody.
  *
  * It is also what keeps the response out of any cache that could serve it again without
- * asking: Next answers a dynamic route with `Cache-Control: no-cache, must-revalidate`
- * (checked against this server, not assumed), so a back navigation has to revalidate
- * rather than replay. That is one of the two things standing between a sign-out and the
- * back button returning this page; the other is `router.refresh()` in
- * `sign-out-button.tsx`, which empties the client-side Router Cache that no HTTP header
- * reaches.
+ * asking. Measured rather than assumed, against both servers: `next start` answers a
+ * dynamic route with `Cache-Control: private, no-cache, no-store, max-age=0,
+ * must-revalidate`, and `next dev` with the weaker `no-cache, must-revalidate`. Either
+ * way a back navigation has to revalidate rather than replay, and production does not
+ * store it at all.
+ *
+ * That is one of the two things standing between a sign-out and the back button returning
+ * this page. The other is `router.refresh()` in `sign-out-button.tsx`, which empties the
+ * client-side Router Cache — a cache that lives in the running page and that no HTTP
+ * header reaches.
  */
 export const dynamic = "force-dynamic";
 
