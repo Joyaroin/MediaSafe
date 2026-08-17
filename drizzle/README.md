@@ -5,43 +5,30 @@ SQL. Read the generated file before committing it — that is the point of gener
 rather than pushing a schema diff. Editing it by hand is expected; drizzle-kit hashes
 each file when it is *applied*, not when it is written.
 
-The folder is empty apart from its journal, and that is the state issue #38 leaves it
-in. This ticket built the pipeline; it did not choose the first thing to send through
-it. Better Auth's four tables arrive with issue #42 and MediaSafe's six with build
-step 2, in one history, from one tool, in one order.
+Two files, in one history, from one tool, in one order:
 
-## Proving the pipeline without a migration in it
+| File | What it brings |
+| --- | --- |
+| `0000_better_auth_tables.sql` | Better Auth's five — `user`, `session`, `account`, `verification`, `rate_limit` (#42) |
+| `0001_mediasafe_tables_and_views.sql` | MediaSafe's six, and the three derived-state views (build step 2, #54) |
 
-Because nothing has gone through yet, the wiring is worth re-checking rather than
-trusting. This is the whole verification, and it takes a minute:
+## The hand-edit in 0001, and why hand-edits are normal here
 
-```bash
-cat > db/schema.probe.ts <<'EOF'
-import { integer, pgTable, text } from "drizzle-orm/pg-core";
-export const generateProbe = pgTable("generate_probe", {
-  id: integer("id").primaryKey(),
-  note: text("note"),
-});
-EOF
-npx drizzle-kit generate --schema=./db/schema.probe.ts --dialect=postgresql --out=./drizzle
-```
+`UNIQUE (list_id, position)` on `list_membership` is **`DEFERRABLE INITIALLY DEFERRED`**,
+and drizzle-kit did not write that — Drizzle's `unique()` builder cannot express
+deferrability at all. It was verified by reading the generated file, added by hand, and
+is held there by a test that reads `pg_constraint`.
 
-It emits plain SQL — readable, editable, exactly what `squawk` will later lint:
+That is the pipeline working, not a workaround for it. Generating **plain SQL** rather
+than pushing a schema diff is what makes an edit like this possible, and drizzle-kit
+hashes each file when it is *applied* rather than when it is written, so the edit is
+honoured rather than detected. The one thing to know: the edit is invisible to
+`meta/0001_snapshot.json`, so a later migration that alters those two columns would drop
+the constraint and re-add it without the clause. Put it back by hand if that day comes.
 
-```sql
-CREATE TABLE "generate_probe" (
-	"id" integer PRIMARY KEY NOT NULL,
-	"note" text
-);
-```
-
-…and appends an entry to the journal below, which is why the committed
-`{"entries": []}` is the right seed rather than a placeholder. `npm run db:migrate`
-then applies it and records one row in `drizzle.__drizzle_migrations`.
-
-**Undo it** — delete `db/schema.probe.ts`, the generated `.sql` and its
-`meta/0000_snapshot.json`, reset the journal to `{"entries": []}`, and
-`drop table generate_probe; drop schema drizzle cascade;`.
+The same reading applies to the views. drizzle-kit emits `CREATE VIEW` **in alphabetical
+order**, so `library_entry_up_next` can select from `library_entry_progress` only because
+*p* sorts before *u*. A fourth view is a reason to read the generated SQL, not to assume.
 
 Two things bind everything that lands here:
 

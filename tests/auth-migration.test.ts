@@ -39,7 +39,17 @@ describe("Better Auth's tables, after the one migration runner has run", () => {
              order by table_name`,
       );
 
-      expect(tables.rows.map((row) => row.table_name)).toEqual(EXPECTED_TABLES);
+      /**
+       * All five are present, rather than these five and nothing else. The property is
+       * that Better Auth's tables exist in a database only `db/migrate.ts` touched; it
+       * was never that they are alone there, and since build step 2 they are not —
+       * MediaSafe's six share the schema and the same history, which is the point of
+       * there being one.
+       */
+      const present = tables.rows.map((row) => row.table_name);
+      for (const table of EXPECTED_TABLES) {
+        expect(present).toContain(table);
+      }
     });
   });
 
