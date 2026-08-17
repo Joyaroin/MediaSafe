@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+
 /**
  * Reading `next build`'s output, and comparing two of its files to each other.
  *
@@ -26,6 +28,9 @@ const BUILD_DIRECTORY = ".next";
 interface RoutesManifest {
   staticRoutes: { page: string }[];
   dynamicRoutes: { page: string }[];
+  /** Empty in this application, and asserted to be — see `RoutingAssumptions`. */
+  basePath: string;
+  rewrites: { beforeFiles: unknown[]; afterFiles: unknown[]; fallback: unknown[] };
 }
 
 /**
@@ -43,11 +48,30 @@ interface FunctionsConfigManifest {
   functions?: Record<string, { matchers?: { originalSource: string }[] }>;
 }
 
-export interface BuildArtifacts {
+/**
+ * The two lists the audit compares. Kept as its own type so the failure cases in
+ * `tests/route-manifest.test.ts` can build one by hand, with no build behind it.
+ */
+export interface RouteCoverageInput {
   /** Every route pattern the build produced, in manifest form. */
   routes: string[];
   /** The matcher sources the build actually compiled. */
   matcher: string[];
+}
+
+/**
+ * What the check takes for granted about routing, read back out of the build so it can be
+ * asserted rather than assumed. `matcherRunsOn` asks Next's matcher with an empty
+ * `nextConfig`; a `basePath` or a rewrite would make that answer a different question from
+ * the one the running server asks, and this is how that stops being invisible.
+ */
+export interface RoutingAssumptions {
+  basePath: string;
+  rewriteCount: number;
+}
+
+export interface BuildArtifacts extends RouteCoverageInput {
+  assumptions: RoutingAssumptions;
 }
 
 function readManifest<T>(repositoryRoot: string, relativePath: string): T {
@@ -96,6 +120,13 @@ export function readBuildArtifacts(repositoryRoot: string): BuildArtifacts {
       ...routes.dynamicRoutes.map((route) => route.page),
     ],
     matcher: matchers.map((matcher) => matcher.originalSource),
+    assumptions: {
+      basePath: routes.basePath,
+      rewriteCount:
+        routes.rewrites.beforeFiles.length +
+        routes.rewrites.afterFiles.length +
+        routes.rewrites.fallback.length,
+    },
   };
 }
 
@@ -135,8 +166,15 @@ export function probeUrlFor(route: string): string {
  * `unstable_doesMiddlewareMatch` is the same matching code the server uses, exported for
  * tests. Anything else here would be a private copy of path-to-regexp that agrees with
  * the real one right up until it does not.
+ *
+ * `nextConfig` is empty, which is an assumption rather than a fact: a `basePath` or a
+ * rewrite in `next.config.ts` would make this answer a different question from the one
+ * production asks. `tests/route-manifest.test.ts` asserts the build has neither, so the
+ * assumption is checked where it is made rather than held here in a comment.
  */
-export type MatcherCheck = (matcher: string[], url: string) => boolean;
+export function matcherRunsOn(matcher: string[], url: string): boolean {
+  return unstable_doesMiddlewareMatch({ config: { matcher }, nextConfig: {}, url });
+}
 
 export interface Audit {
   /** Routes the matcher does not run on, and that nothing named as exempt. */
@@ -148,7 +186,7 @@ export interface Audit {
 }
 
 /**
- * The whole check, as a function of three inputs and nothing else.
+ * The whole check, as a function of its two inputs and nothing else.
  *
  * Every route in the build must be covered by the matcher unless it is one of the named
  * exemptions, and every named exemption must be a real route that really is uncovered.
@@ -157,16 +195,14 @@ export interface Audit {
  * route it described was deleted.
  */
 export function auditRouteProtection(
-  routes: string[],
-  matcher: string[],
+  { routes, matcher }: RouteCoverageInput,
   exempt: readonly string[],
-  matches: MatcherCheck,
 ): Audit {
   const unprotected: string[] = [];
   const notActuallyExempt: string[] = [];
 
   for (const route of routes) {
-    const covered = matches(matcher, probeUrlFor(route));
+    const covered = matcherRunsOn(matcher, probeUrlFor(route));
     const named = exempt.includes(route);
 
     if (!covered && !named) unprotected.push(route);

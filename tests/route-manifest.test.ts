@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
-
 import { config } from "@/proxy";
 import {
   auditRouteProtection,
+  matcherRunsOn,
   probeUrlFor,
   readBuildArtifacts,
-  type MatcherCheck,
 } from "./support/route-manifest";
 
 /**
@@ -22,6 +20,11 @@ import {
  * `SPEC.md` §10.4 records that the original reason for the rule is gone: previews no
  * longer carry a copy of the real library. The rule stayed. This file is what will be
  * enforcing it in six months, when the reason is the only thing anybody remembers.
+ *
+ * **What it does not check**, said plainly so nobody reads more into a green run than is
+ * there: it cannot see whether a page body calls `requireUserId()`, and the gate it checks
+ * tests for a cookie's presence rather than its validity (`proxy.ts`). The property proved
+ * here is that no route in the build can be reached with no session cookie at all.
  */
 
 /**
@@ -44,10 +47,6 @@ const EXEMPT = [
   "/api/auth/[...all]",
 ] as const;
 
-/** Next's own matcher, asked the way the server asks it. */
-const matches: MatcherCheck = (matcher, url) =>
-  unstable_doesMiddlewareMatch({ config: { matcher }, nextConfig: {}, url });
-
 describe("every route is behind the proxy matcher", () => {
   const built = readBuildArtifacts(process.cwd());
 
@@ -63,18 +62,8 @@ describe("every route is behind the proxy matcher", () => {
     expect(built.matcher).toEqual(config.matcher);
   });
 
-  /**
-   * The tripwire on the exemption list itself. The audit below already fails when an
-   * uncovered route is not named here, so the only way to widen the gate is to add a name
-   * — and this line is what makes that addition impossible to do without also editing a
-   * number that says how many there are meant to be.
-   */
-  it("exempts two routes and no others", () => {
-    expect(EXEMPT).toHaveLength(2);
-  });
-
-  it("covers every route in the build except those two", () => {
-    const audit = auditRouteProtection(built.routes, built.matcher, EXEMPT, matches);
+  it("covers every route in the build except the two named above", () => {
+    const audit = auditRouteProtection(built, EXEMPT);
 
     // Three separate assertions rather than one on the whole object, so a failure names
     // which of the three mistakes was made rather than printing a diff of all of them.
@@ -84,17 +73,18 @@ describe("every route is behind the proxy matcher", () => {
   });
 
   /**
-   * The sign-in page has to be able to load itself.
+   * The `_next/` clause in the matcher is an exclusion, not a third exemption, and this is
+   * the assertion that keeps it one.
    *
-   * `_next/` is excluded from the matcher, and this is the reason: without it the gate
-   * redirects the compiled JavaScript and CSS of the sign-in page to the sign-in page,
-   * and the one surface a signed-out reader is meant to reach is the one surface that
-   * cannot render. Nothing in the route manifest maps to these paths, so the audit above
-   * never sees them — which is exactly why they are asserted here instead.
+   * It is there so the gate does not redirect the sign-in page's own JavaScript to the
+   * sign-in page. It is defensible only while nothing routable lives under that prefix —
+   * so rather than leaving that in a comment in `proxy.ts`, it is checked here against the
+   * manifest, and the day a route appears under `/_next` this fails instead of hiding it.
    */
-  it("lets the build output through", () => {
-    expect(matches(built.matcher, "/_next/static/chunks/main.js")).toBe(false);
-    expect(matches(built.matcher, "/_next/image")).toBe(false);
+  it("excludes only the build output, which is no route at all", () => {
+    expect(built.routes.filter((route) => route.startsWith("/_next"))).toEqual([]);
+    expect(matcherRunsOn(built.matcher, "/_next/static/chunks/main.js")).toBe(false);
+    expect(matcherRunsOn(built.matcher, "/_next/image")).toBe(false);
   });
 
   /**
@@ -103,9 +93,21 @@ describe("every route is behind the proxy matcher", () => {
    * what happens on the day one of them does.
    */
   it("does not extend either exemption to its neighbours", () => {
-    expect(matches(built.matcher, "/sign-in/help")).toBe(true);
-    expect(matches(built.matcher, "/sign-instead")).toBe(true);
-    expect(matches(built.matcher, "/api/authorize")).toBe(true);
+    expect(matcherRunsOn(built.matcher, "/sign-in/help")).toBe(true);
+    expect(matcherRunsOn(built.matcher, "/sign-instead")).toBe(true);
+    expect(matcherRunsOn(built.matcher, "/api/authorize")).toBe(true);
+  });
+
+  /**
+   * The assumption `matcherRunsOn` makes, checked where it is made.
+   *
+   * It asks Next's matcher with an empty `nextConfig`, which is the same question the
+   * server asks only while there is no `basePath` and no rewrite. Add either and every
+   * answer above quietly starts being about a different application than the one running.
+   */
+  it("routes on the terms the matcher was asked about", () => {
+    expect(built.assumptions.basePath).toBe("");
+    expect(built.assumptions.rewriteCount).toBe(0);
   });
 });
 
@@ -115,27 +117,40 @@ describe("every route is behind the proxy matcher", () => {
  * forgotten it is here.
  *
  * These run the same audit against manifests that were never built, so the failure is
- * permanent evidence rather than something proved once by hand and then removed.
+ * permanent evidence rather than something proved once by hand and then removed. It was
+ * also proved the other way, against a real build: a route added under a widened matcher
+ * fails the audit above with the route named.
  */
 describe("the check fails when the gate is widened", () => {
   it("reports a route the matcher was widened to skip", () => {
     const audit = auditRouteProtection(
-      ["/", "/sign-in", "/reports"],
-      ["/((?!_next/|sign-in$|reports$).*)"],
+      {
+        routes: ["/", "/sign-in", "/reports"],
+        matcher: ["/((?!_next/|sign-in$|reports$).*)"],
+      },
       EXEMPT,
-      matches,
     );
 
     expect(audit.unprotected).toEqual(["/reports"]);
   });
 
+  it("reports a route added under an exempt prefix", () => {
+    const audit = auditRouteProtection(
+      {
+        routes: ["/", "/sign-in", "/api/auth/[...all]", "/api/auth/debug"],
+        matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)).*)"],
+      },
+      EXEMPT,
+    );
+
+    expect(audit.unprotected).toEqual(["/api/auth/debug"]);
+  });
+
   it("reports an exemption that is not one", () => {
     const audit = auditRouteProtection(
-      ["/", "/sign-in"],
       // No exemptions at all: the matcher runs on `/sign-in` too.
-      ["/(.*)"],
+      { routes: ["/", "/sign-in"], matcher: ["/(.*)"] },
       EXEMPT,
-      matches,
     );
 
     expect(audit.notActuallyExempt).toEqual(["/sign-in"]);
@@ -143,10 +158,11 @@ describe("the check fails when the gate is widened", () => {
 
   it("reports an exemption left behind by a deleted route", () => {
     const audit = auditRouteProtection(
-      ["/", "/sign-in"],
-      ["/((?!_next/|sign-in$|api/auth(?:$|/)).*)"],
+      {
+        routes: ["/", "/sign-in"],
+        matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)).*)"],
+      },
       EXEMPT,
-      matches,
     );
 
     expect(audit.stale).toEqual(["/api/auth/[...all]"]);

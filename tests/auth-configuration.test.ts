@@ -95,6 +95,24 @@ describe("what the auth configuration commits to", () => {
       // of the cache after the row is gone.
       expect(authOptions.session.cookieCache.enabled).toBe(false);
     });
+
+    /**
+     * The session cookie keeps Better Auth's default name, and `proxy.ts` depends on it.
+     *
+     * `carriesSessionCookie()` asks `getSessionCookie()` for the cookie without passing a
+     * prefix, so it looks for `better-auth.session_token` — the default. Setting
+     * `advanced.cookiePrefix` here would rename the cookie the browser is given and leave
+     * the gate looking for the old name, at which point every signed-in request reads as
+     * signed-out and bounces to sign-in, which sends it back to `/`, which bounces it
+     * again. A redirect loop, from one property nobody would connect to it.
+     *
+     * So the two are pinned together here rather than left to agree by luck. If a prefix
+     * is ever wanted, `lib/session-cookie.ts` is what has to be told about it.
+     */
+    it("leaves the session cookie its default name, which proxy.ts looks for", () => {
+      expect(authOptions).not.toHaveProperty("advanced.cookiePrefix");
+      expect(authOptions).not.toHaveProperty("advanced.cookies.session_token");
+    });
   });
 
   it("rate limits, in Postgres, everywhere rather than only in production", () => {

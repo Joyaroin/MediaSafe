@@ -37,10 +37,11 @@ import { getAuth } from "@/lib/auth";
  *
  * ── Why it redirects rather than throwing ────────────────────────────────────────────
  *
- * Issue #43 adds a middleware matcher over the route manifest, so that constraint 5 —
- * *no unauthenticated route may ever be added* — is machine-checked rather than
- * remembered. When that lands, an unauthenticated request should already have been turned
- * away before any page calls this, and this becomes the assertion that the gate held.
+ * `proxy.ts` gates every route on a session cookie, so a request with no cookie at all was
+ * turned away before it reached this line and the redirect below is the assertion that the
+ * gate held. It is not redundant: the gate reads a cookie and this queries the session
+ * table, so an expired session, a revoked one and a forged string all get past the gate
+ * and are stopped here. This is the check with teeth; that one is the one that runs first.
  *
  * It still sends the reader somewhere rather than throwing, and the difference matters on
  * the glass: a throw here is a read failure, and issue #41's boundary would tell someone

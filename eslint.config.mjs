@@ -71,6 +71,10 @@ const USER_ID_MINT_PATTERN = {
  *  - **`lib/session.ts`** needs `@/lib/auth`, and must not have the connection: resolving
  *    who is asking is not a licence to query.
  *  - **`lib/auth-client.ts`** needs `better-auth/react`, and nothing else.
+ *  - **`lib/session-cookie.ts`** needs `better-auth/cookies`, added by #43. It reads one
+ *    header for `proxy.ts` and resolves nothing, which is why it is here rather than at
+ *    the repository root with a disable comment on it: the root gate is the last file
+ *    that should be holding an exemption to the session boundary.
  *
  * So the exemption below is the *specifier* one — `better-auth` may be imported inside
  * `lib/` — and the connection rule still applies to all three. `lib/auth.ts` is the only

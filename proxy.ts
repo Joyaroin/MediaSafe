@@ -31,9 +31,15 @@ import { carriesSessionCookie } from "@/lib/session-cookie";
  * that calls `requireUserId()`, which queries, and which redirects if the answer is
  * nobody. That is the check with teeth.
  *
- * What this buys is that a route which *forgot* to call `requireUserId()` still cannot be
- * read by a signed-out stranger — and, with the static test, that a route which forgets
- * cannot be added at all without the matcher being widened in a diff someone can see.
+ * **Be exact about what that leaves.** A route that forgets to call `requireUserId()` is
+ * not saved by this. `carriesSessionCookie()` tests for presence, not validity, so anyone
+ * who sends `better-auth.session_token=anything` is past this line — and no static check
+ * can see a missing `requireUserId()` in a page's body. What the gate buys is narrower and
+ * still worth having: a reader with **no** cookie — a search engine, a shared link, an
+ * expired browser — never reaches the route at all, and every route is in that position
+ * unless the matcher is widened in a diff someone can see.
+ *
+ * The page-level check is not redundant with this and never becomes so.
  */
 export function proxy(request: NextRequest): NextResponse {
   if (carriesSessionCookie(request)) return NextResponse.next();
@@ -54,9 +60,14 @@ export function proxy(request: NextRequest): NextResponse {
  * It has to be a literal, and Next enforces that itself: a matcher assembled from
  * variables fails the build with *Entry `matcher[0]` need to be static strings or static
  * objects*. Verified by writing one and watching the build refuse, rather than taken from
- * the documentation, which only says computed values are ignored.
+ * the documentation, which only says computed values are ignored. That message comes out
+ * of Turbopack, so it lives in the native `next-swc` binary under `node_modules/@next` and
+ * in no `.js` file at all — grepping the JavaScript for it finds nothing and proves
+ * nothing.
  *
- * Read it as: everything, except three things.
+ * **Two exemptions and one exclusion**, which are different things. An exemption is a
+ * route a reader may reach without a session, and there are two. The exclusion is not a
+ * route at all.
  *
  *  - **`sign-in$`** — the sign-in route. Anchored, so `/sign-in/anything` is covered
  *    rather than exempt: a future route under that prefix is protected by default.
@@ -64,17 +75,18 @@ export function proxy(request: NextRequest): NextResponse {
  *    redirects to is here, and a session cannot exist until it has run, so gating it
  *    would make signing in impossible. Anchored the same way, so `/api/authorize` is
  *    covered.
- *  - **`_next/`** — the compiled bundles, the image optimiser, the build output. These
- *    are not routes; nothing in the route manifest maps to them, so the static test never
- *    sees them and this clause widens nothing it checks. It is here because a matcher
- *    without it redirects the JavaScript and CSS of the sign-in page to the sign-in page,
- *    and the sign-in page is the one surface a signed-out reader is meant to reach.
+ *  - **`_next/`** — the exclusion. The compiled bundles, the image optimiser, the build
+ *    output. Nothing in the route manifest maps under this prefix, and
+ *    `tests/route-manifest.test.ts` asserts that rather than trusting this sentence, so
+ *    the clause cannot start hiding a route later. It is here because a matcher without
+ *    it redirects the JavaScript and CSS of the sign-in page to the sign-in page, and the
+ *    sign-in page is the one surface a signed-out reader is meant to reach.
  *
- * Two exemptions, not three: `/icon.svg` is a real route in the manifest and it is
- * **covered**, so a signed-out reader gets no tab icon on the sign-in page. That is a
- * known and accepted cost. The alternative is a third exemption in the ticket that exists
- * to make a third exemption hard, and a missing favicon is a smaller price than the rule
- * being negotiable on the day it is written.
+ * **`/icon.svg` is a route, and it is covered**, so a signed-out reader gets no tab icon
+ * on the sign-in page. A known cost, taken deliberately: the alternative is a third
+ * exemption in the ticket that exists to make a third exemption hard, and a missing
+ * favicon is a smaller price than the rule being negotiable on the day it is written. If
+ * that trade is wrong, it is a product decision, and the place to make it is `SPEC.md`.
  */
 export const config = {
   matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)).*)"],

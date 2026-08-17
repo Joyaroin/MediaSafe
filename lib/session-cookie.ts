@@ -31,10 +31,16 @@ import { getSessionCookie } from "better-auth/cookies";
  */
 export function carriesSessionCookie(request: Request): boolean {
   /**
-   * Better Auth's own reader, rather than a cookie name written out here. The name it
-   * looks for changes with the deployment — it is `better-auth.session_token` on
-   * `localhost` and `__Secure-better-auth.session_token` over HTTPS — and a copy of that
-   * rule here would be a second place to get the prefix wrong.
+   * Better Auth's own reader, rather than a cookie name written out here. It tries
+   * `__Secure-better-auth.session_token` and then the bare `better-auth.session_token`,
+   * so the same call is right on `localhost` and over HTTPS, and there is no second copy
+   * of the secure-prefix rule to get wrong.
+   *
+   * **No config passed, which pins this to the default prefix.** Better Auth renames the
+   * cookie if `advanced.cookiePrefix` is set in `lib/auth.ts`, and this would go on
+   * looking for the old name — every signed-in request would read as signed-out and bounce
+   * to sign-in, which redirects to `/`, which bounces again. `tests/auth-configuration.test.ts`
+   * asserts that no such prefix is set, so the two cannot drift apart quietly.
    */
   return getSessionCookie(request) !== null;
 }
