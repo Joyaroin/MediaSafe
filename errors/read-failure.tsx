@@ -1,5 +1,6 @@
 "use client";
 
+import { GHOST_RECOVERY } from "./recovery-buttons";
 import { ReferenceLine } from "./reference-line";
 
 /**
@@ -41,13 +42,7 @@ export function ReadFailure({
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
-        {/* The ghost recovery button, DESIGN.md Buttons: `1px` signal border, signal text
-            on ink, `0.5rem 1rem`, inverting to solid on hover. */}
-        <button
-          type="button"
-          onClick={retry}
-          className="code-line border border-signal px-4 py-2 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink"
-        >
+        <button type="button" onClick={retry} className={GHOST_RECOVERY}>
           Try again
         </button>
 

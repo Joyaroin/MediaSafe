@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { GHOST_RECOVERY, SOLID_RECOVERY } from "./recovery-buttons";
 import { ReferenceLine } from "./reference-line";
 import { type RaisedWriteFailure, writeFailures } from "./write-failure";
 
@@ -82,15 +83,10 @@ function WriteFailureToast({ failure }: { failure: RaisedWriteFailure }) {
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {/* The one primary recovery action is solid, per DESIGN.md Buttons. Retrying does
-            not take the toast down — whether the retry succeeded is the caller's to know,
-            and it says so by resolving. */}
+        {/* Retrying does not take the toast down — whether the retry succeeded is the
+            caller's to know, and it says so by resolving. */}
         {failure.retry ? (
-          <button
-            type="button"
-            onClick={failure.retry}
-            className="code-line bg-signal px-4 py-2 text-ink transition-[filter] duration-200 hover:brightness-90"
-          >
+          <button type="button" onClick={failure.retry} className={SOLID_RECOVERY}>
             Try again
           </button>
         ) : null}
@@ -98,7 +94,7 @@ function WriteFailureToast({ failure }: { failure: RaisedWriteFailure }) {
         <button
           type="button"
           onClick={() => writeFailures.dismiss(failure.id)}
-          className="code-line border border-signal px-4 py-2 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink"
+          className={GHOST_RECOVERY}
         >
           Dismiss
         </button>

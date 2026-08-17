@@ -15,6 +15,13 @@
  * A failure handler is a `catch` clause, the argument to `.catch()`, or the second
  * argument to `.then()`.
  *
+ * **What it does not catch**, so nobody mistakes a clean lint run for a proof: an empty
+ * array that reaches the handler through a variable (`const none = []` outside, `catch {
+ * return none }`), one returned by a function the handler calls, and a `catch` that
+ * swallows the error and falls through to a caller's own empty default. This rule closes
+ * the spelling that gets written by accident; the reasoning in `AGENTS.md` is what closes
+ * the rest.
+ *
  * @type {import('eslint').Rule.RuleModule}
  */
 const noEmptyCatch = {

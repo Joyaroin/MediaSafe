@@ -1,5 +1,15 @@
+"use client";
+
 /**
  * The write-failure toast's state, with no React in it.
+ *
+ * The directive above is a safety boundary, not a formality. `writeFailures` below is one
+ * module-level object, and module state on the server is shared by every request and so by
+ * every account — a title raised into it from a Server Action would be a title from one
+ * person's library appearing in another person's toast, in a product whose premise is that
+ * every account's library is completely isolated (`CONTEXT.md`). `"use client"` turns that
+ * mistake into a build-time client-reference error instead of a silent leak. Raise
+ * failures from the browser, where the write was attempted.
  *
  * **This has no caller yet.** Nothing in the app writes; step 4 of SPEC.md §11's build
  * order — the optimistic watch mark and its rollback — is the first. It is built now

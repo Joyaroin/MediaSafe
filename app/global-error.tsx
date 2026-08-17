@@ -1,5 +1,6 @@
 "use client";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
 
@@ -49,11 +50,7 @@ export default function RootFailure({
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <button
-              type="button"
-              onClick={retry}
-              className="code-line border border-signal px-4 py-2 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink"
-            >
+            <button type="button" onClick={retry} className={GHOST_RECOVERY}>
               Try again
             </button>
 
