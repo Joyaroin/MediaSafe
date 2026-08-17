@@ -130,9 +130,13 @@ issue #39 that no agent can reach.
       this file.
 - [ ] **A failed migration leaves the previous deployment serving.** Demonstrated locally
       (below); worth watching once for real when the first real migration lands.
-- [ ] **A pull request produces a preview against the shared schema-only branch.** Open
-      the preview and read `/` — the press check prints `current_database()`, so the
-      branch it reached is on the page rather than assumed.
+- [x] **A pull request produces a preview deployment.** Proven on PR #47: Vercel built
+      and deployed the branch, `Ready`.
+- [ ] **…and it is against the shared schema-only branch.** Not confirmed, and it cannot
+      be from outside: preview Vercel Authentication is on, so the preview answers `302`
+      to anything unauthenticated. Open it signed in and read `/` — the press check
+      prints `current_database()`, so the branch it reached is on the page rather than
+      assumed.
 - [ ] **Rolling back is a redeploy, exercised once.** Deliberately roll back to the
       previous deployment and back again, on a day when nothing is wrong. A recovery
       procedure first attempted during a failure is not a procedure.
@@ -168,3 +172,18 @@ narrowing is doing its job in both directions. **Neither throwaway is committed.
 **The build needs no database.** `npm run build` with `DATABASE_URL` unset completes:
 `/` is `force-dynamic`, so nothing is prerendered. That is what lets CI build without a
 connection string, and it means CI cannot migrate anything even by accident.
+
+**CI runs all four checks on a pull request.** Not argued from the workflow file — run
+[32068428234](https://github.com/Joyaroin/MediaSafe/actions/runs/32068428234) on PR #47
+is green across typecheck, lint, build and squawk.
+
+Its first run was not. `npm ci` failed before any check with
+`Missing: esbuild@0.28.2 from lock file` — and that was **not** a fault in this branch:
+`origin/main`'s lock fails npm 10 identically, checked by running `npm@10.9.8 ci` against
+it untouched. The lock is npm 11's, npm 11 writes tsx's nested optional-dependency
+subtree in a shape npm 10 rejects, and Node 22 ships npm 10. The bug was always there and
+had nothing to fail it until there was a CI job. The workflow now installs npm 11 before
+`npm ci`, and `docs/local-development.md` names npm 11 as a prerequisite in its own right.
+
+Which is the argument for this ticket sitting early, made by the ticket itself: the first
+thing the pipeline caught was the repository it was pointed at.
