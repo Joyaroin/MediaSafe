@@ -43,11 +43,20 @@ export interface BuildSteps {
  * every case. Naming the two that matter states the dependency instead of inheriting the
  * whole environment.
  *
- * Note that `process.env` is *not* assignable to this — TypeScript's weak-type check
- * rejects it, since `ProcessEnv` declares only an index signature and so has no property
- * in common with it. That is why the CLI entry at the bottom reads the two out by name
- * rather than passing `process.env` through, and it is the better shape anyway: the
- * dependency is two lines of code instead of a cast.
+ * Note that `process.env` is *not* assignable to this, which is why the CLI entry at the
+ * bottom reads the two out by name rather than passing it through. Every property here
+ * is optional, so this is a "weak type", and TypeScript rejects an assignment to a weak
+ * type from a source that shares none of its property names:
+ *
+ *     error TS2559: Type 'ProcessEnv' has no properties in common with type
+ *                   'BuildEnvironment'.
+ *
+ * `ProcessEnv` is not a bare index signature here — Next augments it with a required
+ * `NODE_ENV`, which is what makes an object literal missing that field fail too. But
+ * `NODE_ENV`, `VERCEL` and `VERCEL_ENV` are three different names, so the two types
+ * overlap in nothing and the weak-type check fires. Both errors were reproduced against
+ * this tsconfig rather than reasoned about; a passing `npm run typecheck` is not evidence
+ * either way, since neither assignment appears in the shipped code.
  */
 export interface BuildEnvironment {
   /** Set to `"1"` by Vercel on every build it runs, and by nothing else. */
