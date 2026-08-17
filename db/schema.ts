@@ -26,8 +26,17 @@
  *
  * MediaSafe's own six — `title`, `episode`, `library_entry`, `watch`, `list`,
  * `list_membership` — are build step 2, whole, in one migration, per SPEC.md §5 and
- * ADR-0001. They join this file by being declared in it directly; only Better Auth's
- * tables come through the generator.
+ * ADR-0001. They are declared by hand, in `db/tables.ts`; only Better Auth's tables come
+ * through the generator.
+ *
+ * Alongside them, in `db/views.ts`, are the three derived-state views —
+ * `library_entry_state`, `library_entry_progress` and `library_entry_up_next`. They are
+ * declared in the schema rather than written as query helpers so that drizzle-kit emits
+ * them into the same migration and `squawk` can read them: the five states, progress and
+ * up next are defined in the database, once, and changing one is a migration with a diff.
+ *
+ * This file is drizzle-kit's single entry point (`drizzle.config.ts`), so everything it
+ * must see is re-exported from here.
  *
  * Two columns in the generated file are worth naming here, because both look at first
  * glance like the thing issue #42 forbids and neither is:
@@ -44,3 +53,5 @@
  */
 
 export * from "@/auth-schema";
+export * from "./tables";
+export * from "./views";

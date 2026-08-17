@@ -83,8 +83,9 @@ the data with it. So a column on `user`, `session`, `account`, `verification` or
 declared in `lib/auth.ts` as a Better Auth `additionalFields` entry, where regeneration reproduces
 it. `user.timezone` is the worked example.
 
-MediaSafe's own six tables (build step 2) are declared in `db/schema.ts` directly. Only Better
-Auth's come through the generator.
+MediaSafe's own six tables are declared by hand in `db/tables.ts`, and the three derived-state
+views in `db/views.ts`; `db/schema.ts` re-exports all three files, because drizzle-kit reads it
+alone. Only Better Auth's tables come through the generator.
 
 ## The write-failure toast has no caller yet
 
