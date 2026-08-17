@@ -31,9 +31,9 @@
  *
  * Alongside them, in `db/views.ts`, are the three derived-state views —
  * `library_entry_state`, `library_entry_progress` and `library_entry_up_next`. They are
- * declared here rather than written as query helpers so that drizzle-kit emits them into
- * the same migration and `squawk` can read them: the five states, progress and up next
- * are defined in the database, once, and changing one is a migration with a diff.
+ * declared in the schema rather than written as query helpers so that drizzle-kit emits
+ * them into the same migration and `squawk` can read them: the five states, progress and
+ * up next are defined in the database, once, and changing one is a migration with a diff.
  *
  * This file is drizzle-kit's single entry point (`drizzle.config.ts`), so everything it
  * must see is re-exported from here.

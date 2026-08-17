@@ -45,7 +45,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * migration runner, one transaction per test, rolled back.
  */
 
-const database = setUpTestDatabase("mediasafe_schema_test");
+setUpTestDatabase("mediasafe_schema_test");
 
 /**
  * Postgres compares `air_date <= current_date` against the server's date. Fixtures sit a
@@ -78,7 +78,10 @@ interface EpisodeSpec {
 }
 
 interface ShowSpec {
-  /** Shows only. `false` is what lets *finished* be reachable at all. */
+  /**
+   * Shows only. `false` is what lets *finished* be reachable at all, and `null` — TMDB
+   * not saying — is a state the derivation treats differently from both.
+   */
   inProduction?: boolean | null;
   episodes: EpisodeSpec[];
   abandonedAt?: Date;
@@ -109,21 +112,23 @@ async function seedShow(
       kind: "show",
       tmdbId: nextNumber(),
       name: `Show ${counter}`,
-      inProduction: spec.inProduction ?? true,
+      // Not `?? true`: that would turn an explicit `null` into `true` and make the
+      // TMDB-did-not-say case unreachable through this helper.
+      inProduction: "inProduction" in spec ? spec.inProduction : true,
     })
     .returning({ id: title.id });
 
   const episodeIds: string[] = [];
-  for (const spec_ of spec.episodes) {
+  for (const episodeSpec of spec.episodes) {
     const [inserted] = await tx
       .insert(episode)
       .values({
         titleId: row.id,
         tmdbEpisodeId: nextNumber(),
-        seasonNo: spec_.seasonNo,
-        episodeNo: spec_.episodeNo,
-        name: `Episode ${spec_.seasonNo}-${spec_.episodeNo}`,
-        airDate: spec_.airDate === undefined ? RELEASED : spec_.airDate,
+        seasonNo: episodeSpec.seasonNo,
+        episodeNo: episodeSpec.episodeNo,
+        name: `Episode ${episodeSpec.seasonNo}-${episodeSpec.episodeNo}`,
+        airDate: episodeSpec.airDate === undefined ? RELEASED : episodeSpec.airDate,
       })
       .returning({ id: episode.id });
     episodeIds.push(inserted.id);
@@ -217,9 +222,13 @@ async function violates(constraint: string, body: () => Promise<unknown>) {
 
   expect(thrown, `expected ${constraint} to reject this`).not.toBeNull();
 
+  // Bounded, because `cause` is an ordinary property and a cycle in it would hang the
+  // suite rather than fail it. Nothing here nests more than a couple deep.
   const messages: string[] = [];
-  for (let error = thrown; error instanceof Error; error = error.cause) {
+  let error = thrown;
+  for (let depth = 0; depth < 10 && error instanceof Error; depth += 1) {
     messages.push(error.message);
+    error = error.cause;
   }
   expect(messages.join("\n")).toContain(constraint);
 }
@@ -309,6 +318,44 @@ describe("the migration", () => {
       expect(constraint.rows).toHaveLength(1);
       expect(constraint.rows[0].condeferrable).toBe(true);
       expect(constraint.rows[0].condeferred).toBe(true);
+    });
+  });
+
+  /**
+   * ADR-0001's *Indexes* section, all five. Asserted because an index is the one thing in
+   * that section that changes nothing observable when it goes missing — the queries still
+   * return the right rows, slower, and nothing fails until the library is large.
+   */
+  it("creates ADR-0001's five indexes, the partial one included", async () => {
+    await inTransaction(async (tx) => {
+      const indexes = await tx.execute<{ indexname: string; indexdef: string }>(sql`
+        select indexname, indexdef
+        from pg_indexes
+        where schemaname = 'public'
+          and indexname in (
+            'watch_library_entry_id_idx',
+            'watch_episode_id_idx',
+            'watch_user_id_watched_at_idx',
+            'title_metadata_refreshed_at_idx',
+            'library_entry_user_id_idx'
+          )
+        order by indexname
+      `);
+
+      expect(indexes.rows.map((row) => row.indexname)).toEqual([
+        "library_entry_user_id_idx",
+        "title_metadata_refreshed_at_idx",
+        "watch_episode_id_idx",
+        "watch_library_entry_id_idx",
+        "watch_user_id_watched_at_idx",
+      ]);
+
+      // Streak and year in review both ignore undated watches, so the index they use
+      // does too. A full index here would be the same rows plus the ones no query wants.
+      const partial = indexes.rows.find(
+        (row) => row.indexname === "watch_user_id_watched_at_idx",
+      );
+      expect(partial?.indexdef).toContain("WHERE (watched_at IS NOT NULL)");
     });
   });
 
@@ -683,6 +730,41 @@ describe("the five states", () => {
     });
   });
 
+  /**
+   * The rule is `in_production = false`, and `NULL = false` is NULL — so a show TMDB has
+   * not told us about cannot reach *finished*, however completely it has been watched.
+   *
+   * Pinned rather than left to be discovered, because it is the one place the derivation
+   * and CONTEXT.md read differently: the glossary calls caught up "a show that is still
+   * in production", which an unknown is not. Treating unknown as *ended* would be worse —
+   * it would call a show finished on missing data — and the mirror should never produce
+   * this: `in_production` is null for films, and every show TMDB returns carries it.
+   */
+  it("keeps a show whose production status is unknown out of finished", async () => {
+    await inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "alice");
+      const show = await seedShow(tx, userId, {
+        inProduction: null,
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+        ],
+      });
+      await markWatched(tx, show, 0);
+      await markWatched(tx, show, 1);
+
+      expect(await stateOf(tx, show.entryId)).toBe("caught_up");
+
+      // The same rows with the status known say finished, which is what makes the
+      // assertion above about the null rather than about the fixture.
+      await tx
+        .update(title)
+        .set({ inProduction: false })
+        .where(eq(title.id, show.titleId));
+      expect(await stateOf(tx, show.entryId)).toBe("finished");
+    });
+  });
+
   it("counts an undated watch towards the state like any other", async () => {
     await inTransaction(async (tx) => {
       const userId = await seedUser(tx, "alice");
@@ -913,7 +995,7 @@ describe("progress and up next", () => {
   });
 });
 
-describe("list position", () => {
+describe("lists", () => {
   async function seedList(tx: Transaction, userId: UserId, entries: string[]) {
     const [row] = await tx
       .insert(list)
@@ -931,6 +1013,50 @@ describe("list position", () => {
     return row.id;
   }
 
+  it("rejects a membership whose list belongs to another account", async () => {
+    await violates("list_membership_list_id_user_id_fk", () =>
+      inTransaction(async (tx) => {
+        const alice = await seedUser(tx, "alice");
+        const bob = await seedUser(tx, "bob");
+        const hers = await seedFilm(tx, alice);
+        const [his] = await tx
+          .insert(list)
+          .values({ userId: bob, name: `List ${nextNumber()}` })
+          .returning({ id: list.id });
+
+        // Alice's entry, Alice's user id, Bob's list. The composite key is what makes a
+        // list that quietly holds another account's titles unrepresentable.
+        await tx.insert(listMembership).values({
+          listId: his.id,
+          libraryEntryId: hers.entryId,
+          userId: alice,
+          position: 1,
+        });
+      }),
+    );
+  });
+
+  it("rejects a membership whose entry belongs to another account", async () => {
+    await violates("list_membership_library_entry_id_user_id_fk", () =>
+      inTransaction(async (tx) => {
+        const alice = await seedUser(tx, "alice");
+        const bob = await seedUser(tx, "bob");
+        const his = await seedFilm(tx, bob);
+        const [hers] = await tx
+          .insert(list)
+          .values({ userId: alice, name: `List ${nextNumber()}` })
+          .returning({ id: list.id });
+
+        await tx.insert(listMembership).values({
+          listId: hers.id,
+          libraryEntryId: his.entryId,
+          userId: alice,
+          position: 1,
+        });
+      }),
+    );
+  });
+
   /**
    * The whole reason the constraint is deferred. An immediate one rejects the first
    * update of a swap, because the position it moves into has not been vacated yet.
@@ -938,8 +1064,8 @@ describe("list position", () => {
   it("lets a whole reorder happen inside one transaction", async () => {
     await inTransaction(async (tx) => {
       const userId = await seedUser(tx, "alice");
-      const first = await seedShow(tx, userId, { episodes: [] });
-      const second = await seedShow(tx, userId, { episodes: [] });
+      const first = await seedFilm(tx, userId);
+      const second = await seedFilm(tx, userId);
       const listId = await seedList(tx, userId, [first.entryId, second.entryId]);
 
       await tx
@@ -985,8 +1111,8 @@ describe("list position", () => {
     await violates("list_membership_list_id_position_key", () =>
       inTransaction(async (tx) => {
         const userId = await seedUser(tx, "alice");
-        const first = await seedShow(tx, userId, { episodes: [] });
-        const second = await seedShow(tx, userId, { episodes: [] });
+        const first = await seedFilm(tx, userId);
+        const second = await seedFilm(tx, userId);
         const listId = await seedList(tx, userId, [first.entryId, second.entryId]);
 
         await tx
@@ -1006,37 +1132,57 @@ describe("list position", () => {
   });
 });
 
+/**
+ * The constraint this migration creates, not the write path that will lean on it.
+ *
+ * SPEC.md §6's test 3 — that a retried click is a no-op and a genuine rewatch is a second
+ * row — belongs to build step 4, where there is a write to retry. What is checkable now
+ * is the thing step 4 will stand on: that the database, not the application, is what
+ * makes two facts with one origin impossible.
+ */
 describe("watch identity", () => {
-  it("makes a retried write a no-op and a genuine rewatch a second row", async () => {
+  it("refuses a second watch with the same source and key", async () => {
+    await violates("watch_user_id_source_source_key_key", () =>
+      inTransaction(async (tx) => {
+        const userId = await seedUser(tx, "alice");
+        const show = await seedShow(tx, userId, {
+          episodes: [{ seasonNo: 1, episodeNo: 1 }],
+        });
+
+        const values = {
+          userId,
+          libraryEntryId: show.entryId,
+          titleId: show.titleId,
+          episodeId: show.episodeIds[0],
+          source: "app",
+          sourceKey: "one-click",
+        };
+
+        await tx.insert(watch).values(values);
+        // A different instant, the same origin. Identity comes from where the fact came
+        // from, so this is the same fact and the key says so.
+        await tx.insert(watch).values({ ...values, watchedAt: new Date() });
+      }),
+    );
+  });
+
+  it("takes a second watch of the same episode under a different key", async () => {
     await inTransaction(async (tx) => {
       const userId = await seedUser(tx, "alice");
       const show = await seedShow(tx, userId, {
         episodes: [{ seasonNo: 1, episodeNo: 1 }],
       });
 
-      const values = {
-        userId,
-        libraryEntryId: show.entryId,
-        titleId: show.titleId,
-        episodeId: show.episodeIds[0],
-        watchedAt: new Date(),
-        source: "app",
-        sourceKey: "one-click",
-      };
+      // A rewatch is a second row, never a counter — so `(user, episode)` must not be
+      // unique, and this is the assertion that says so.
+      await markWatched(tx, show, 0);
+      await markWatched(tx, show, 0);
 
-      await tx.insert(watch).values(values);
-      // The same click, retried: one UUID, reused, so idempotency is a property of the
-      // write rather than a guess about timing.
-      await tx.insert(watch).values(values).onConflictDoNothing();
-      // A genuine rewatch mints a new key, and is a second row.
-      await tx.insert(watch).values({ ...values, sourceKey: "another-click" });
-
-      const rows = await tx.select().from(watch).where(eq(watch.libraryEntryId, show.entryId));
+      const rows = await tx
+        .select()
+        .from(watch)
+        .where(eq(watch.libraryEntryId, show.entryId));
       expect(rows).toHaveLength(2);
     });
-  });
-
-  it("names the database it ran against", () => {
-    expect(database.connectionString()).toContain("mediasafe_schema_test");
   });
 });

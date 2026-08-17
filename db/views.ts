@@ -28,10 +28,15 @@ import { pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  *    the exclusion, *finished* would quietly come to mean "has no promotional clips" and
  *    a dozen shows would never reach it.
  *
- * `current_date` is the server's, not the reader's — which is the ADR's rule as written.
- * The user's IANA zone governs *day and year boundaries* (streak, year in review); an air
- * date is a `date` with no time in it, and a released-yesterday-or-tomorrow edge measured
- * in hours is not a distinction the data supports.
+ * **`current_date` is the server's, and that is an exception to a rule.** SPEC.md §5 says
+ * every day and year boundary is computed `AT TIME ZONE` the user's IANA zone, never UTC.
+ * ADR-0001 writes the released test as `air_date <= current_date` literally, and it is
+ * kept literal here, on the grounds that an air date is a `date` with no time in it —
+ * there is no instant to place in a zone, so "released on the 4th" is the whole fact TMDB
+ * gives us. The cost, stated rather than hidden: on a UTC server a reader in Auckland
+ * sees the day's episode as unreleased for the first ~13 hours of their day. If that ever
+ * matters, the fix is to join `user.timezone` here as the streak query does — a change to
+ * this view, with a migration and a diff.
  *
  * ── What these views do not do ───────────────────────────────────────────────────────
  *
@@ -77,6 +82,42 @@ import { pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  *
  * The film branch is reached only after *watchlist* has ruled out having no watches, so
  * "a film with a watch" needs no watch test of its own.
+ *
+ * ── Three edges where the rule and the glossary read differently ─────────────────────
+ *
+ * All three are the ADR followed literally, which is what #54 asked for. They are written
+ * down because each one is a place a later reader would otherwise assume a bug:
+ *
+ *  - **`in_production = NULL` on a show reads as *caught up*, never *finished*.** The
+ *    rule is `in_production = false`, and `NULL = false` is NULL, so the finished branch
+ *    cannot be reached. CONTEXT.md glosses caught up as "a show that is still in
+ *    production", which a null is not — but the alternative is treating *unknown* as
+ *    *ended*, which would call a show finished on missing data. The mirror should never
+ *    produce this: `in_production` is null for films, and every show TMDB returns has it.
+ *  - **A show whose watch carries no episode reads as *caught up*** once it has any
+ *    watch, because "every released episode has a watch" is vacuously true over a show
+ *    with no episodes mirrored. ADR §3 closes the opposite direction only — the
+ *    `(episode_id, title_id)` foreign key makes a *film* watch with an episode
+ *    unsatisfiable, and nothing makes a *show* watch without one. Build step 4 writes
+ *    episode watches for shows; this is what the derivation does if it ever does not.
+ *  - **A show with only unreleased episodes, one of them watched, reads as *caught up*.**
+ *    Same vacuous truth, and the honest answer for a show whose next season is dated but
+ *    not out.
+ *
+ * ── On the repetition below ──────────────────────────────────────────────────────────
+ *
+ * The *finished* and *caught up* branches share a `not exists (… not exists (…))` shape
+ * and differ only by the released test. That is deliberate: each `when` is a transcription
+ * of one row of the table above, and the value of this view is that it can be read against
+ * ADR-0001 side by side. Factoring the common half out would save six lines and cost the
+ * one property the view exists to have.
+ */
+/**
+ * `notNull()` on a view's columns is a claim about the query, not a constraint — Postgres
+ * enforces nothing here. Each one below is true by construction: the `case` has an `else`
+ * so `state` is total, and every other column comes from a `not null` column reached
+ * through an inner join. Changing a view without re-checking its column list is how these
+ * would start lying.
  */
 export const libraryEntryState = pgView("library_entry_state", {
   libraryEntryId: uuid("library_entry_id").notNull(),
