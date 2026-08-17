@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { SignInFailure } from "@/errors/sign-in-failure";
 import { authClient } from "@/lib/auth-client";
@@ -93,7 +93,7 @@ export function SignInSurface({
           disabled={inFlight}
           // DESIGN.md, Buttons: the one primary action on a surface is solid `signal`
           // with `ink` text. There is exactly one action here, so this is it.
-          className={`${SOLID_RECOVERY} disabled:cursor-wait disabled:brightness-75`}
+          className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
         >
           {inFlight ? "Taking you to Google" : "Continue with Google"}
         </button>

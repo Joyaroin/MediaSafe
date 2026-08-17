@@ -60,9 +60,20 @@ import { signupTimezoneFrom, TIMEZONE_FALLBACK } from "@/lib/timezone";
  */
 
 /**
- * Read at request time, not at import, for the reason above. Empty rather than throwing:
- * Better Auth's own validation produces a better message than a second one here would,
- * and a missing Google secret has to fail the sign-in attempt rather than the process.
+ * Empty rather than throwing.
+ *
+ * To be exact about when this runs, because the paragraph above is about deferral and
+ * this is not deferred: `authOptions` is a module-scope object literal, so this — and the
+ * `secret` and `baseURL` reads below — happen **at import**, like any other property in a
+ * literal. That is fine and is not what the laziness above is protecting. Reading an
+ * absent environment variable costs nothing and cannot fail; what would fail is opening
+ * the pool and validating the secret, and both of those are inside `betterAuth()`, which
+ * `getAuth()` is what defers.
+ *
+ * Empty rather than throwing, then, because Better Auth's own validation produces a better
+ * message than a second one here would — and because a missing Google credential has to
+ * fail the sign-in attempt, where issue #41's boundary is, rather than the import, where
+ * `next build` is.
  */
 function credential(name: string): string {
   return process.env[name] ?? "";

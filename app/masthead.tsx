@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { PressMark } from "./press-mark";
+import { Wordmark } from "./press-mark";
 
 /**
  * The masthead, at every width. `DESIGN.md`, Layout:
@@ -43,9 +43,8 @@ export function Masthead() {
   return (
     <header className="sticky top-0 z-30 flex items-stretch justify-between border-b border-rule bg-ink/95 backdrop-blur-[2px]">
       <div className="flex items-stretch">
-        <div className="flex items-center gap-3 border-r border-rule px-4 py-3 lg:px-6">
-          <PressMark className="h-5 w-5 shrink-0" />
-          <span className="bill-title text-bill-xs leading-none">MediaSafe</span>
+        <div className="border-r border-rule px-4 py-3 lg:px-6">
+          <Wordmark markClassName="h-5 w-5" />
         </div>
       </div>
 

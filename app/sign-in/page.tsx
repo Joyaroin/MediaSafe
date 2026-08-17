@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { isSignedIn } from "@/lib/session";
-import { PressMark } from "../press-mark";
+import { Wordmark } from "../press-mark";
 import { SignInSurface } from "./sign-in-surface";
 
 /**
@@ -54,10 +54,7 @@ export default async function SignInPage({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-16">
-      <div className="flex items-center gap-3">
-        <PressMark className="h-6 w-6 shrink-0" />
-        <span className="bill-title text-bill-xs leading-none">MediaSafe</span>
-      </div>
+      <Wordmark markClassName="h-6 w-6" />
 
       <h1 className="bill-title mt-8 text-bill-lg text-stock">
         A personal tracker for the films and shows you watch

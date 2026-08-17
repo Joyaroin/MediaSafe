@@ -1,3 +1,8 @@
+import {
+  FAILURE_HEADING,
+  FAILURE_PROSE,
+  FAILURE_SECTION,
+} from "./failure-treatment";
 import { ReferenceLine } from "./reference-line";
 
 /**
@@ -40,14 +45,23 @@ export function SignInFailure({
 }) {
   return (
     <section
-      // `assertive`, unlike the offline banner's `polite`: this is the result of
-      // something the reader just did, and they are waiting to hear about it.
-      role="alert"
-      className="border-t-2 border-signal py-6"
+      /**
+       * `role="status"`, not `role="alert"`.
+       *
+       * An alert interrupts whatever a screen reader is saying, which is right for
+       * something that happens *while* the reader is on the page — and this region has two
+       * arrivals, only one of which is that. Returning from Google with `?error=` renders
+       * it in the document's first paint, and a live region already present at load is not
+       * announced by most screen readers anyway; it is read in document order, above the
+       * control, which is where it needs to be. `status` is the honest one for a region
+       * that is sometimes new and sometimes just there.
+       */
+      role="status"
+      className={FAILURE_SECTION}
     >
-      <h2 className="bill-title text-bill-md text-signal">That did not sign you in</h2>
+      <h2 className={FAILURE_HEADING}>That did not sign you in</h2>
 
-      <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-stock">
+      <p className={FAILURE_PROSE}>
         MediaSafe did not hear back from Google, or heard back that the sign-in was
         refused. No account was created and nothing was lost. Try again below.
       </p>

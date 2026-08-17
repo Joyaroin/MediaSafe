@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+import {
+  FAILURE_HEADING,
+  FAILURE_PROSE,
+  FAILURE_SECTION,
+} from "@/errors/failure-treatment";
+import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { referenceFor } from "@/errors/reference";
+import { ReferenceLine } from "@/errors/reference-line";
 import { authClient } from "@/lib/auth-client";
 
 /**
@@ -45,9 +52,11 @@ export function SignOutButton() {
   const router = useRouter();
   const [inFlight, setInFlight] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
 
   async function signOut() {
     setFailed(false);
+    setReference(null);
     setInFlight(true);
 
     const { error } = await authClient.signOut();
@@ -55,6 +64,14 @@ export function SignOutButton() {
     if (error) {
       setInFlight(false);
       setFailed(true);
+      /**
+       * Reported, and the id shown. This is the one failure on a signed-in surface that
+       * leaves a live session behind, so it is the one worth being able to look up — and
+       * `SPEC.md` §6 allows the reader exactly one technical string for exactly this.
+       */
+      setReference(
+        referenceFor(new Error("Sign-out did not reach the server.")),
+      );
       return;
     }
 
@@ -67,14 +84,23 @@ export function SignOutButton() {
   return (
     <div>
       {failed ? (
-        <section role="alert" className="mb-6 border-t-2 border-signal py-6">
-          <h3 className="bill-title text-bill-sm text-signal">
-            You are still signed in
-          </h3>
-          <p className="mt-3 max-w-[60ch] text-note leading-relaxed text-stock">
+        // `alert` and not `status`, unlike the sign-in surface's: this region only ever
+        // appears in response to a press, never on arrival, and what it has to say is
+        // that something the reader believes happened did not.
+        <section role="alert" className={`mb-6 ${FAILURE_SECTION}`}>
+          <h3 className={FAILURE_HEADING}>You are still signed in</h3>
+
+          <p className={FAILURE_PROSE}>
             MediaSafe could not reach the server to end this session, so it has not ended.
-            Try again.
+            Try again — and do not walk away from this device until it says you are signed
+            out.
           </p>
+
+          {reference === null ? null : (
+            <div className="mt-6">
+              <ReferenceLine reference={reference} />
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -82,7 +108,7 @@ export function SignOutButton() {
         type="button"
         onClick={signOut}
         disabled={inFlight}
-        className={`${GHOST_RECOVERY} disabled:cursor-wait disabled:opacity-60`}
+        className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
       >
         {inFlight ? "Signing you out" : "Sign out"}
       </button>

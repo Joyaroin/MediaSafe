@@ -48,8 +48,19 @@ import { getAuth } from "@/lib/auth";
  * incident that never happened. Not being signed in is not a failure. It is a place to
  * go.
  */
+/**
+ * The one call to Better Auth in the codebase, and the reason this module is a module
+ * rather than two functions: both exports below need the answer, and *asking twice in two
+ * spellings* is how the second spelling eventually asks a slightly different question.
+ * Not exported — a caller holding a session is a caller that can read a user id off it
+ * without the branding, which is the whole thing `db/access.ts` is guarding.
+ */
+async function currentSession() {
+  return getAuth().api.getSession({ headers: await headers() });
+}
+
 export async function requireUserId(): Promise<UserId> {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const session = await currentSession();
 
   if (!session) redirect("/sign-in");
 
@@ -72,6 +83,5 @@ export async function requireUserId(): Promise<UserId> {
  * problem this module exists to prevent.
  */
 export async function isSignedIn(): Promise<boolean> {
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  return session !== null;
+  return (await currentSession()) !== null;
 }
