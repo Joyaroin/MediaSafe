@@ -153,7 +153,7 @@ export function parseArgs(argv: readonly string[]): SeedArgs {
  * batching: a seed run once is not where this needs to spend its concurrency budget, and
  * the progress line below is worth more than the time saved.
  */
-async function buildChunk(file: NativeImportFile): Promise<ImportChunk> {
+export async function buildChunk(file: NativeImportFile): Promise<ImportChunk> {
   const titles: ImportChunkTitle[] = [];
 
   for (const [index, one] of file.titles.entries()) {
