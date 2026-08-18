@@ -9,6 +9,13 @@
  * `programme-note-episodes.tsx`'s docblock records as measured, not assumed, depends on
  * that staying true on every row this mounts into.
  */
+/**
+ * The struck name's static, post-animation appearance — the same class string
+ * `programme-note-episodes.tsx`'s `EpisodeLine` and `FilmRow` both apply once `watched &&
+ * phase === "settled"`, named once now that `up-next-dominant-card.tsx` is a third caller.
+ */
+export const STRUCK_NAME = "text-stock-dim line-through decoration-2 decoration-signal";
+
 export function WatchStrike({ onSettled }: { readonly onSettled: () => void }) {
   return <span className="watch-strike" aria-hidden onAnimationEnd={onSettled} />;
 }
