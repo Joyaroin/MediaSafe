@@ -1,6 +1,8 @@
 import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
+import { user } from "@/auth-schema";
+
 import { type Executor, getDb } from "./client";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
 import { episode, libraryEntry, title, watch } from "./tables";
@@ -116,9 +118,10 @@ declare const userIdBrand: unique symbol;
 export type UserId = string & { readonly [userIdBrand]: true };
 
 /**
- * Marks a string as a user id. The one honest use is `lib/session.ts`, on the id Better
- * Auth just resolved from a session; tests use it on their own fixtures. Anywhere else
- * it is a cast wearing a function's clothes.
+ * Marks a string as a user id. The two honest uses are `lib/session.ts`, on the id
+ * Better Auth just resolved from a session, and `resolveSeedUserId` below, on a row this
+ * module just read back from `user` — never on an id nobody has looked up. Tests use it
+ * on their own fixtures. Anywhere else it is a cast wearing a function's clothes.
  */
 export function asUserId(id: string): UserId {
   return id as UserId;
@@ -614,6 +617,51 @@ export async function applyImportChunk(
       arrivedAbandoned: created.filter((row) => row.abandonedAt !== null).length,
     };
   });
+}
+
+/**
+ * The user id `npm run db:seed` writes to (issue #74) — the CLI's own resolution
+ * boundary, held to the same standard `lib/session.ts` is: a raw string becomes a
+ * `UserId` in exactly one place, and only after this module has looked the row up
+ * itself.
+ *
+ * Two modes, both refusing rather than guessing:
+ *
+ *  - **`requestedId` given** — must name a real `user` row, or this throws. A typo in
+ *    `--user` should not surface as a foreign-key error three writes into a chunk.
+ *  - **`requestedId` omitted** — resolves only when the database holds exactly one user.
+ *    Zero or several both throw, because picking which of several accounts receives
+ *    18,715 watches is not a default worth having, and the ambiguity is exactly the same
+ *    shape whether there are zero candidates or five.
+ */
+export async function resolveSeedUserId(
+  requestedId: string | undefined,
+  executor: Executor = getDb(),
+): Promise<UserId> {
+  if (requestedId !== undefined) {
+    const [found] = await executor
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.id, requestedId));
+    if (!found) {
+      throw new Error(`No user with id "${requestedId}" exists in this database.`);
+    }
+    return asUserId(found.id);
+  }
+
+  const rows = await executor.select({ id: user.id }).from(user);
+  if (rows.length === 0) {
+    throw new Error(
+      "This database has no users. Sign in once first, or pass --user <id> explicitly.",
+    );
+  }
+  if (rows.length > 1) {
+    throw new Error(
+      `This database holds ${rows.length} users. Pass --user <id> — guessing which one ` +
+        "receives the import is not a default worth having.",
+    );
+  }
+  return asUserId(rows[0].id);
 }
 
 /**

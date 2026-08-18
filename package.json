@@ -19,6 +19,7 @@
     "db:reset": "docker compose down -v && npm run db:up",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env db/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env scripts/db-seed.ts",
     "db:psql": "docker compose exec postgres psql -U mediasafe -d mediasafe",
     "auth:generate": "auth generate --config auth.config.ts --output auth-schema.ts --adapter drizzle --dialect postgresql --yes"
   },
