@@ -390,3 +390,36 @@ function episodeMirrors(seasons: readonly TmdbSeasonPayload[]): EpisodeMirror[] 
     (a, b) => a.seasonNo - b.seasonNo || a.episodeNo - b.episodeNo,
   );
 }
+
+/**
+ * A non-2xx answer from TMDB, carrying the status a caller can branch on. Thrown by
+ * `tmdb/catalogue.ts`'s `get()`, but declared here rather than there.
+ *
+ * Not a mapping — it is pure the same way the rest of this file is (no clock, no network,
+ * no database), just not TMDB-payload-shaped — and it lives here for a narrower reason
+ * than purity alone: `tmdb/catalogue.ts` is `import "server-only"`, which is a no-op
+ * inside Next's build but a hard throw under plain Node's module resolution, so a test
+ * that imported this class from there could never run under Vitest. `applyImportChunkAction`
+ * (#73) still reaches it through `catalogue.ts`'s own re-export — the split is invisible
+ * to that caller.
+ */
+export class TmdbHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "TmdbHttpError";
+  }
+}
+
+/**
+ * Whether a failed `titleMirror` call means *TMDB does not have this id*, as opposed to
+ * *TMDB could not be reached right now*. `SPEC.md` §7 draws exactly that line — *"a title
+ * TMDB cannot resolve is skipped"* against *"a chunk fails for any other reason"* — and a
+ * `429` or a `500` is the second of those, not the first. Named and tested on its own
+ * rather than left as an inline `instanceof` check nobody exercises directly.
+ */
+export function isUnresolvedTitle(error: unknown): boolean {
+  return error instanceof TmdbHttpError && error.status === 404;
+}
