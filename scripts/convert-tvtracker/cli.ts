@@ -66,6 +66,7 @@ function report(accounting: ConversionAccounting, bytes: number): void {
     `      with no watches      ${accounting.titlesWithNoWatches}   (watchlist entries)`,
     `    watches                ${accounting.watchesWritten}`,
     `      of which dated       ${accounting.watchesDated}`,
+    `      of which rewatches   ${accounting.rewatches}   (keyed :2 and up)`,
     `    size                   ${(bytes / 1_000_000).toFixed(2)} MB`,
     "",
     "    read from the export",
@@ -86,6 +87,12 @@ function report(accounting: ConversionAccounting, bytes: number): void {
 
   lines.push("    dropped");
   lines.push(...accounting.dropped.map((what) => `      ${what}`));
+  lines.push(
+    `      ${accounting.twoPartDuplicates} row(s) TV Time split that TMDB lists as one episode — ` +
+      "the watch is already there",
+    `      ${accounting.unplaceableDropped} watch(es) whose TV Time numbering TMDB does not share, ` +
+      "accepted by name in convert.confirm.json",
+  );
   lines.push("");
 
   console.log(lines.join("\n"));

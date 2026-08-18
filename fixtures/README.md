@@ -122,9 +122,14 @@ gzcat fixtures/tvtracker-2026-08-16T04-27-53Z-data.redacted.sql.gz | grep 'Data 
 ```
 
 `watch_events` being empty is not a dump error. `tvtracker`'s ADR-0003 called events
-canonical and nothing ever wrote one; the watch history lives entirely in
-`episode_overrides` and in the `shows.watched_through` / `watched_count` columns. **The
-conversion script must read those, not `watch_events`.**
+canonical and nothing ever wrote one, so **the conversion reads `shows` and
+`episode_overrides`, never `watch_events`.**
+
+**But those are not the whole record, and this line used to say they were.** Which episodes
+were watched lives in `episode_overrides` and the `shows.watched_through` watermark; *when*
+and *how many times* lives only in **`shows.legacy`**, the TV Time blob the v2 import
+preserved. See *`shows.legacy` is watch history* below — reading only the first two costs
+19,678 dates and every rewatch.
 
 ### ⚠️ The 472 are not all one person's
 
@@ -183,39 +188,80 @@ gzcat fixtures/tvtracker-2026-08-16T04-27-53Z-schema.sql.gz | less
 
 ## What has been read out of it so far
 
-**The conversion mapping landed in [#71](https://github.com/Joyaroin/MediaSafe/issues/71)**,
-and with it the prediction this section used to carry — *"when step 3 lands, that script is
-the first and only thing permitted to read these files, and `tests/fixture-archive.test.ts`
-will fail at that moment by design"*. That happened. The tripwire failed, the allowlist at
-the top of this file replaced it, and the numbers below are what the export actually holds,
-measured by `tests/tvtracker-conversion.test.ts` rather than quoted from a ticket:
+**The conversion landed in [#71](https://github.com/Joyaroin/MediaSafe/issues/71) and was run
+in [#61](https://github.com/Joyaroin/MediaSafe/issues/61)**, which is what retired the
+prediction this section used to carry — *"when step 3 lands, that script is the first and
+only thing permitted to read these files, and `tests/fixture-archive.test.ts` will fail at
+that moment by design"*. That happened, and the allowlist at the top of this file replaced
+the tripwire.
+
+`fixtures/mediasafe-seed.json` is now committed. What it holds, measured rather than
+quoted:
 
 | | |
 | --- | --- |
-| Titles converted | **462** — the account filter, asserted as a set and not only as a count |
-| Watches converted | **18,715**, before the two ambiguous watermarks are answered |
-| …of which dated | **19**. `SPEC.md` §7 and #16 §4 both say 18; see the note below |
+| Titles | **462** — the account filter, asserted as a set and not only as a count |
+| Watches | **19,558** |
+| …carrying a real date | **19,391** |
+| …that are rewatches (`:2` and up) | **1,156** |
 | Titles marked abandoned | **155** — 65 `Paused` + 90 short `Completed` |
-| Titles with no watches | **22** — watchlist entries, and they survive into the file |
+| Titles with no watches | **23** — watchlist entries, and they survive into the file |
+| Size | **2.75 MB** |
 
-> **The one figure that disagrees with the spec.** 19 titles carry a real
-> `last_watched_at`, and **all 19** end up with an episode to attach it to, so the file
-> dates 19 watches rather than 18. #16 §4's *"18 of them have an episode to attach it to"*
-> counted `Agatha Christie's Seven Dials` as having none — it has zero `watched = true`
-> rows — but #16 §3 expands that title anyway, whole show less one false row, and after
-> that expansion the episode exists. Dropping the date to reach 18 would discard a real
-> viewing date, which is the trade #16 §4 explicitly refused.
+### ⚠️ `shows.legacy` is watch history, not only borrowed metadata
 
-**`fixtures/mediasafe-seed.json` is still not here, and that is still expected.** `SPEC.md`
-§8 step 0 commits the raw export now and the seed when the script that derives it runs;
-#71 built the pure mapping and its proof, and
-[#61](https://github.com/Joyaroin/MediaSafe/issues/61) is the ticket that runs it against
-this archive and commits the result. The seed is reproducible from what is in this
-directory for as long as this directory exists; the export was not reproducible from
-anything.
+The single most consequential thing found in this archive, and it was found late. **456 of
+the 462 titles were imported from TV Time**, and `tvtracker` kept the whole TV Time record
+in `shows.legacy` — including two things its own v3 tables threw away:
 
-**One thing has to happen before that seed can exist**, and it is a decision rather than
-code: `scripts/convert-tvtracker/convert.confirm.json` is committed **empty**, so the
-conversion halts on `Hudson & Rex` and `Person of Interest` — 2 shows whose watches survive
-only as a watermark, with no record of which episodes it counted. That halt is the designed
-behaviour, not a bug to route around, and the answer is Adham's to give at cutover.
+- **`episodeWatchDates` — 19,678 per-episode timestamps across 455 titles**, 4,343 of them
+  distinct, spanning 2021-07-26 to 2026-07-09, with **none** inside the 2026-08-03 import
+  window. They are viewing history, not stamps.
+- **`episodeRewatchCounts` and repeated dates — 1,209 episodes watched more than once.**
+  `len(dates) == rewatchCount + 1` holds for 18,423 of 18,443 episodes, so the two records
+  corroborate each other.
+
+`SPEC.md` §7 says *"18 watches are dated — the only genuine `last_watched_at` values in the
+library"* and *"`source_key` … always `:1` in this file"*; #16 says *"there is no rewatch
+data in the library, and there never was."* **All three were reached from the v3 tables
+without opening `legacy`, and all three are wrong.** Following them would have discarded
+~19,600 real dates and every rewatch — which is the loss this archive was rescued to
+prevent.
+
+The blob also holds `title`, `posterPath`, `overview` and TMDB match bookkeeping. None of
+it is read: `parse.ts` takes four fields, and every one is a fact about the viewer.
+
+### TV Time numbers seasons differently from TMDB
+
+`tvtracker` kept TV Time's `s{n}e{n}` keys, and TMDB does not always agree with them — it
+merges seasons TV Time split (Hunter x Hunter's *season 2* is the back half of TMDB's single
+148-episode season) and splits episodes TV Time merged (The Office records 195 against
+TMDB's 186). **330 recorded watches across 44 shows named an episode TMDB does not list.**
+
+Two rules resolve 159 of them without inferring anything:
+
+- a title with as many recorded episodes as it has was **watched right through**, so every
+  episode TMDB lists gets a watch — true however the two catalogues number their seasons;
+- a leftover on a title that already holds every episode TMDB lists is **one half of a
+  two-part episode**, already counted.
+
+The remaining **171 across 20 titles** are accepted by name in
+`scripts/convert-tvtracker/convert.confirm.json`, each with its exact count so that a
+re-export whose numbers differ stops the script. Ordinal mapping was considered and
+rejected: it needs TV Time's complete season lengths, which the export does not record —
+it holds only the episodes that were interacted with — so it would place watches on
+episodes that were never watched, undetectably.
+
+### The day-one split this file implies
+
+| | this file | `SPEC.md` §7 |
+| --- | --- | --- |
+| watching | 63 | 62 |
+| abandoned | **155** | 155 |
+| finished-or-caught-up | 221 | 223 |
+| watchlist | 23 | 22 |
+
+#61 asks that this file's actual output settle such discrepancies, so it does. The deltas
+are the dropped rows above: `given`'s only record was an `S1E0` placeholder, which is not an
+episode, so it lands on the watchlist. The split remains a **cutover check** against a real
+import, not a CI test.

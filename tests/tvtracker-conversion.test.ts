@@ -83,7 +83,7 @@ function archive(): TvtrackerExport {
   return cached;
 }
 
-const EMPTY_CONFIRM: ConfirmFile = { confirmations: [] };
+const EMPTY_CONFIRM: ConfirmFile = { confirmations: [], unplaceable: [] };
 
 const key = ({ season, episode }: EpisodeCoordinate): string => `${season}:${episode}`;
 
@@ -177,7 +177,10 @@ function confirm(
 }
 
 function merge(...files: ConfirmFile[]): ConfirmFile {
-  return { confirmations: files.flatMap((file) => file.confirmations) };
+  return {
+    confirmations: files.flatMap((file) => file.confirmations),
+    unplaceable: files.flatMap((file) => file.unplaceable),
+  };
 }
 
 /** Seven episodes each, standing in for the answer a person gives at cutover. */
@@ -249,8 +252,8 @@ describe("the export is read whole", () => {
     ].join("\n");
     const row = (tmdbId: number, name: string) =>
       `INSERT INTO "public"."shows" ("id", "user_id", "tmdb_id", "name", "total_episodes", ` +
-      `"watch_status", "watched_through", "is_favourite", "is_pinned", "last_watched_at") VALUES\n` +
-      `\t('id-${tmdbId}', '${TVTRACKER_ACCOUNT_ID}', ${tmdbId}, '${name}', 1, 'Watching', 0, false, false, NULL);\n`;
+      `"watch_status", "watched_through", "is_favourite", "is_pinned", "last_watched_at", "legacy") VALUES\n` +
+      `\t('id-${tmdbId}', '${TVTRACKER_ACCOUNT_ID}', ${tmdbId}, '${name}', 1, 'Watching', 0, false, false, NULL, '{}');\n`;
 
     const parsed = parseTvtrackerDump(`${header}\n${row(1, "One")}${row(2, "Two")}`);
     expect(parsed.shows.map((show) => show.tmdbId)).toEqual([1, 2]);
@@ -316,7 +319,10 @@ describe("the mapping, against the real export", () => {
 
     const result = convert();
     const watches = watchesFor(result, ATTACK_ON_TITAN);
-    expect(watches).toHaveLength(30);
+    // 30 episodes, one of them watched twice — so 31 rows and 30 distinct episodes. The
+    // second account's 5 rows on S3E1-E5 are in neither number.
+    expect(new Set(watches.map((w) => w.tmdb_episode_id)).size).toBe(30);
+    expect(watches).toHaveLength(31);
 
     const index = stubEpisodeIndex(exported, EXTRA_EPISODES);
     const written = new Set(watches.map((watch) => watch.tmdb_episode_id));
@@ -329,75 +335,76 @@ describe("the mapping, against the real export", () => {
     expect(result.accounting.overridesRead).toBe(exported.overrides.length - 7);
   });
 
-  it("writes 18,729 watches once both ambiguous shows are answered", () => {
-    // 18,635 rows marked watched, less Schitt's Creek's single bogus row which its
-    // whole-show expansion replaces, plus 79 for that expansion and 2 for Seven Dials
-    // = 18,715. The two answered shows add 7 each.
-    expect(convert().json.watches).toHaveLength(18_729);
+  it("writes one watch per recorded viewing, rewatches included", () => {
+    // Far more than `SPEC.md` §7's 18,715, and the difference is the point: that figure
+    // counts one watch per *episode*, because it was derived from the v3 tables alone.
+    // `legacy` records one per *viewing*, and 1,209 episodes were viewed more than once.
+    const result = convert();
+    expect(result.json.watches).toHaveLength(19_948);
+    expect(result.accounting.rewatches).toBeGreaterThan(1_000);
+
+    // The two answered shows contribute 7 each on top of the stale-watermark reading.
+    expect(convert(CREDIT_NOTHING).json.watches).toHaveLength(19_934);
   });
 
-  it("writes 18,715 watches when both are answered 'the watermark is stale'", () => {
-    // The figure `SPEC.md` §7 and #16 both carry: the library before anyone decides what
-    // Hudson & Rex and Person of Interest were. #16 puts the pending pair at "+0 to 14".
-    expect(convert(CREDIT_NOTHING).json.watches).toHaveLength(18_715);
-  });
-
-  it("dates exactly 19 watches and synthesises no other date", () => {
+  it("carries the real per-episode dates out of legacy, and synthesises none", () => {
     const result = convert();
     const dated = result.json.watches.filter((watch) => watch.watched_at !== null);
 
     /**
-     * **This is 19, and `SPEC.md` §7 says 18.** The export decides, and it says 19.
+     * **19,726 dated watches, where `SPEC.md` §7 says 18.**
      *
-     * 19 titles carry a real `last_watched_at` — 8 distinct days between 2026-07-21 and
-     * 2026-08-15, none of them equal to that row's `added_at` or `updated_at`, which is
-     * what separates them from the import stamps every other title carries. All 19 end up
-     * with at least one watch, so all 19 have a furthest-watched episode to date.
+     * That figure — and #16 §4's *"the only genuine `last_watched_at` values in the
+     * library"* — was measured from the v3 tables, which kept *which* episodes were watched
+     * and threw away *when*. `shows.legacy` kept both: 19,678 per-episode timestamps across
+     * 455 titles, 4,343 of them distinct, spanning 2021-07-26 to 2026-07-09, and **none**
+     * inside the 2026-08-03 import window that makes every other timestamp in the dump a
+     * stamp rather than a fact.
      *
-     * #16 §4 wrote *"18 of them have an episode to attach it to"*, and the missing one is
-     * **Agatha Christie's Seven Dials**: it has zero `watched = true` rows, so counting
-     * override rows alone leaves it with nowhere to put its 2026-08-13. But #16 §3 also
-     * expands it — whole show less the one false row, 2 watches — and after that expansion
-     * the episode exists. The 18 is that section's own arithmetic run before its own
-     * expansion, not a separate measurement.
-     *
-     * Dropping it would discard a real viewing date to match a stale figure, which is the
-     * trade #16 §4 explicitly refused: *"discarding real data to make a chart look tidier
-     * is the wrong trade"*. Raised on the pull request rather than settled quietly here.
+     * Nothing here is synthesised. Every date below was read from the export, and a watch
+     * the export has no date for stays `null`.
      */
-    expect(dated).toHaveLength(19);
+    expect(dated).toHaveLength(19_726);
+    expect(dated.length).toBeLessThan(result.json.watches.length);
 
-    const withDates = new Set(dated.map((watch) => watch.tmdb_id));
-    expect(withDates.size).toBe(19);
-    expect(withDates.has(SEVEN_DIALS)).toBe(true);
+    for (const watch of dated) {
+      expect(watch.watched_at).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    }
 
-    const exported = archive();
-    const carryDates = exported.shows.filter(
-      (show) => show.userId === TVTRACKER_ACCOUNT_ID && show.lastWatchedAt !== null,
-    );
-    expect(carryDates).toHaveLength(19);
-    expect(new Set(carryDates.map((show) => show.tmdbId))).toEqual(withDates);
-
-    for (const watch of dated) expect(watch.watched_at).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    const days = new Set(dated.map((watch) => (watch.watched_at ?? "").slice(0, 10)));
+    expect(days.size).toBeGreaterThan(900);
+    expect([...days].sort()[0] >= "2021-07-26").toBe(true);
   });
 
-  it("lands each date on its title's furthest-watched episode", () => {
+  it("lands every date on the episode the export recorded it against", () => {
+    // Not on the furthest-watched episode any more — that was the best available guess
+    // when the only timestamp was the per-show `last_watched_at`. The blob names the
+    // episode, so each date goes where it was recorded.
+    const exported = archive();
+    const index = stubEpisodeIndex(exported, EXTRA_EPISODES);
     const result = convert();
-    const index = stubEpisodeIndex(archive(), EXTRA_EPISODES);
 
-    for (const watch of result.json.watches.filter((w) => w.watched_at !== null)) {
-      const forTitle = watchesFor(result, watch.tmdb_id);
-      const ids = new Set(forTitle.map((w) => w.tmdb_episode_id));
-      const episodes = (index.get(watch.tmdb_id) ?? []).filter((e) => ids.has(e.tmdbEpisodeId));
-      // Specials lose to any regular season — season 0 sorts first numerically but is not
-      // further along a show than season 6.
-      const furthest = [...episodes].sort((a, b) => {
-        const special = (a.season === 0 ? 1 : 0) - (b.season === 0 ? 1 : 0);
-        if (special !== 0) return special;
-        return a.season !== b.season ? b.season - a.season : b.episode - a.episode;
-      })[0];
-      expect(watch.tmdb_episode_id).toBe(furthest.tmdbEpisodeId);
+    const byTitle = new Map(
+      exported.shows
+        .filter((show) => show.userId === TVTRACKER_ACCOUNT_ID)
+        .map((show) => [show.tmdbId, show]),
+    );
+
+    let checked = 0;
+    for (const watch of result.json.watches.filter((w) => w.watched_at !== null).slice(0, 600)) {
+      const show = byTitle.get(watch.tmdb_id);
+      const episode = (index.get(watch.tmdb_id) ?? []).find(
+        (e) => e.tmdbEpisodeId === watch.tmdb_episode_id,
+      );
+      if (show === undefined || episode === undefined) continue;
+      const recorded = show.history.find(
+        (h) => h.season === episode.season && h.episode === episode.episode,
+      );
+      if (recorded === undefined) continue;
+      expect(recorded.watchedAt).toContain(watch.watched_at);
+      checked += 1;
     }
+    expect(checked).toBeGreaterThan(100);
   });
 
   it("marks 155 titles abandoned, as a boolean", () => {
@@ -452,16 +459,26 @@ describe("the mapping, against the real export", () => {
     }
   });
 
-  it("declares tvtracker as the source and ends every key :1", () => {
+  it("declares tvtracker as the source and numbers every key by occurrence", () => {
     const result = convert();
     expect(result.json.source).toBe(IMPORT_SOURCE);
     expect(result.json.source).toBe("tvtracker");
 
+    // `<tmdb_episode_id>:<occurrence>`. #16 reserved the suffix believing it would always
+    // be `:1`; `legacy` records 1,209 episodes watched more than once, so it is not.
+    const occurrences = new Map<number, number[]>();
     for (const watch of result.json.watches) {
-      // `<tmdb_episode_id>:<occurrence>`, and there are no rewatches in this library to
-      // express. The pair is what keeps backfilled history distinguishable from history
-      // recorded by hand, permanently.
-      expect(watch.key).toBe(`${watch.tmdb_episode_id}:1`);
+      const [id, occurrence] = watch.key.split(":");
+      expect(Number(id)).toBe(watch.tmdb_episode_id);
+      const seen = occurrences.get(watch.tmdb_episode_id) ?? [];
+      seen.push(Number(occurrence));
+      occurrences.set(watch.tmdb_episode_id, seen);
+    }
+    // Every episode's occurrences are 1..n with no gaps and no repeats.
+    for (const seen of occurrences.values()) {
+      expect([...seen].sort((x, y) => x - y)).toEqual(
+        Array.from({ length: seen.length }, (_, i) => i + 1),
+      );
     }
     expect(new Set(result.json.watches.map((w) => w.key)).size).toBe(result.json.watches.length);
   });
@@ -511,7 +528,7 @@ describe("the mapping, against the real export", () => {
     const text = `${JSON.stringify(convert().json, null, 2)}\n`;
     const read = readNativeImportFile(text);
     expect(read.titles).toHaveLength(462);
-    expect(read.watches).toHaveLength(18_729);
+    expect(read.watches).toHaveLength(19_948);
     expect(read.source).toBe("tvtracker");
   });
 
@@ -578,7 +595,11 @@ describe("the watermark cases", () => {
     // shortfall of one and is not: two episodes below the watermark are explicitly marked
     // *not* watched, so the rows already are the whole truth.
     const watches = watchesFor(convert(), NINE_ONE_ONE);
-    expect(watches).toHaveLength(133);
+    // The 133 episodes the override rows name, and no more — the watermark reads 134 only
+    // because two episodes below it are explicitly marked not watched. The row count is
+    // higher again, because many of the 133 were watched twice.
+    expect(new Set(watches.map((w) => w.tmdb_episode_id)).size).toBe(133);
+    expect(watches.length).toBeGreaterThan(133);
 
     const show = archive().shows.find((s) => s.tmdbId === NINE_ONE_ONE)!;
     expect(show.watchedThrough).toBe(134);
@@ -769,12 +790,54 @@ describe("convert.confirm.json, as committed", () => {
     ]);
     for (const confirmation of committed.confirmations) expect(confirmation.credit).toHaveLength(0);
 
-    const result = convert(committed);
+    /**
+     * The `unplaceable` half is dropped here, and that is a statement about the stub rather
+     * than about the file.
+     *
+     * `stubEpisodeIndex` is built from the export's own coordinates, so every one of them
+     * resolves and there is nothing unplaceable to accept. Those acceptances answer what
+     * *real* TMDB does not list, which only the live conversion sees — and the count check
+     * that guards them is asserted directly below instead.
+     */
+    const result = convert({ confirmations: committed.confirmations, unplaceable: [] });
     // The figure `SPEC.md` §7 and #16 both carry, and now the one the seed actually holds.
     expect(result.json.titles).toHaveLength(462);
-    expect(result.json.watches).toHaveLength(18_715);
+    expect(result.json.watches).toHaveLength(19_934);
     expect(watchesFor(result, HUDSON_AND_REX)).toHaveLength(53);
     expect(watchesFor(result, PERSON_OF_INTEREST)).toHaveLength(0);
+  });
+
+  it("holds an unplaceable acceptance to its exact count", () => {
+    // The guard that keeps the acceptances from rotting: `tvtracker` is re-exported at
+    // cutover, and an acceptance whose number no longer matches must stop the run rather
+    // than be inherited unread.
+    const exported = archive();
+    const full = stubEpisodeIndex(exported, EXTRA_EPISODES);
+    const shortened = new Map(
+      [...full].map(([tmdbId, episodes]) => [
+        tmdbId,
+        tmdbId === NINE_ONE_ONE ? episodes.slice(0, 10) : episodes,
+      ]),
+    );
+    const run = (drop: number) =>
+      mapToNativeImport(exported, {
+        accountId: TVTRACKER_ACCOUNT_ID,
+        episodeIndex: shortened,
+        confirmations: {
+          confirmations: ANSWERED.confirmations,
+          unplaceable: [
+            { tmdbId: NINE_ONE_ONE, title: "9-1-1", reason: "asserted by the test", drop },
+          ],
+        },
+      });
+
+    // 123 is what this shortened index cannot place; anything else is a stale acceptance.
+    expect(() => run(122)).toThrow(/accepts 122 unplaceable watch\(es\)[\s\S]*has 123/);
+    expect(() => run(0)).toThrow(ConversionHalt);
+
+    const accepted = run(123);
+    expect(accepted.accounting.unplaceableDropped).toBe(123);
+    expect(watchesFor(accepted, NINE_ONE_ONE).length).toBeGreaterThan(0);
   });
 
   it("still halts if an answer is removed", () => {
@@ -782,8 +845,9 @@ describe("convert.confirm.json, as committed", () => {
     // the run stops again, so a future re-export cannot inherit a half-answered file.
     const committed = parseConfirmFile(committedConfirmFile());
     for (const dropped of committed.confirmations) {
-      const partial = {
+      const partial: ConfirmFile = {
         confirmations: committed.confirmations.filter((c) => c.tmdbId !== dropped.tmdbId),
+        unplaceable: [],
       };
       expect(() => convert(partial)).toThrow(ConversionHalt);
     }
