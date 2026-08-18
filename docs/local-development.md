@@ -44,10 +44,12 @@ Search and add need one more, and it **is** a secret:
 TMDB_READ_ACCESS_TOKEN=
 ```
 
-It is the **v4 "API Read Access Token"** from
-<https://www.themoviedb.org/settings/api> — the long JWT, not the v3 `api_key`.
-`tmdb/catalogue.ts` sends it as a bearer header and never as a query parameter, so it
-does not end up in access logs or in a quoted URL.
+It is the **API Read Access Token** from
+<https://www.themoviedb.org/settings/api> — the long JWT, not the `api_key` sitting
+directly above it on the same page, which is the easy one to grab by mistake. One token
+covers both of TMDB's APIs, which is why `tmdb/catalogue.ts` calls `/3/` endpoints with a
+bearer header and that is not the mismatch it looks like. It is never sent as a query
+parameter, so it does not end up in access logs or in a quoted URL.
 
 Without it, `/search` renders its *search failed* state — deliberately, and
 distinguishably from *no results*. Nothing else in the application needs it: ADR-0001's

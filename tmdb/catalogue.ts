@@ -51,8 +51,17 @@ import {
 const TMDB_API = "https://api.themoviedb.org/3";
 
 /**
- * TMDB's v4 read access token, sent as a bearer. Not the v3 `api_key` query parameter:
- * a key in a URL is a key in every access log and every error report that quotes one.
+ * TMDB's **API Read Access Token**, sent as a bearer.
+ *
+ * Not the `api_key` query parameter, which sits on the same TMDB settings page and is the
+ * easy one to grab by mistake. Two reasons it is the wrong one: a key in a URL is a key in
+ * every access log and every error report that quotes one, and this token is **one
+ * credential for both of TMDB's APIs** rather than two.
+ *
+ * That last part is why the requests below are `/3/` paths carrying a bearer, which looks
+ * like a mismatch and is not: the read access token is valid across TMDB's v3 and v4 APIs,
+ * so v3's endpoints — which are the ones with `/search/multi` and season details on them —
+ * accept it. Do not also wire an `api_key`; there is nothing it would add.
  */
 function bearerToken(): string {
   const token = process.env.TMDB_READ_ACCESS_TOKEN;
@@ -60,7 +69,7 @@ function bearerToken(): string {
     // Loud and early, in the shape `db/driver.ts` uses for `DATABASE_URL`. The
     // alternative is a 401 several frames later wearing a stranger message.
     throw new Error(
-      "TMDB_READ_ACCESS_TOKEN is not set. It is TMDB's v4 API Read Access Token — see .env.example.",
+      "TMDB_READ_ACCESS_TOKEN is not set. It is TMDB's API Read Access Token, not the api_key on the same page — see .env.example.",
     );
   }
   return token;
