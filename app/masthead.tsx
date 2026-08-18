@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NavCells } from "./nav-cells";
 import { Wordmark } from "./press-mark";
 
 /**
@@ -19,16 +20,17 @@ import { Wordmark } from "./press-mark";
  * ── What it deliberately does not carry ──────────────────────────────────────────────
  *
  * `SPEC.md` §9: *ship none of these, and **reserve no space for them** — no empty rails,
- * no placeholder tabs, no "coming soon".* Three things are therefore absent, each because
+ * no placeholder tabs, no "coming soon".* Two things are therefore absent, each because
  * the thing it would point at does not exist:
  *
- *  - **One nav cell, not two.** *Search* is here because issue #55 built the route it
- *    points at. *Library* is not, because issue #56 has not: a nav item that goes nowhere
- *    is the reserved space §9 forbids, and it is worse than empty space because it looks
- *    like it works. The cell is rendered at every width for the same reason — the phone's
- *    three-tab bar needs *Library* and *Up next* too, and one tab alone is not a tab bar.
- *  - **No phone tab bar.** Its three tabs are Up next, Search and Library; two of the
- *    three are build steps 5 and 2's remaining tickets.
+ *  - **No phone tab bar.** Its three tabs are Up next, Search and Library, and *Up next*
+ *    is build step 5. Two of three is not a tab bar.
+ *
+ * That absence is why the two nav cells are **rendered at every width**, where `DESIGN.md`
+ * hides them below `lg`. It hides them because the phone reaches those two through its tab
+ * bar; until that bar exists, hiding them would leave a phone with no way to reach either
+ * screen at all. They go behind `lg:` in the same diff that builds the tab bar, and
+ * `SPEC.md` §10.3 records the deviation in the meantime.
  *  - **No display name.** It is inert text set from `user.name`, and it belongs with the
  *    control that sets it — build step 7 (#28). Rendering it now would mean rendering a
  *    name nobody can change.
@@ -52,17 +54,15 @@ export function Masthead() {
 
         {/* `DESIGN.md`, Navigation: full-height cells on the masthead's hairline,
             separated by `1px` borders, label typography, inactive dim bone hovering to
-            `ink-raised` + bone. The active/inverted state arrives with the second nav
-            item — with one cell there is nothing to be current *against*, and inverting
-            it on its own route would read as a pressed button rather than a location. */}
-        <Link
-          href="/search"
-          className="flex items-center border-r border-rule px-4 text-stock-dim transition-colors hover:bg-ink-raised hover:text-stock lg:px-5"
-        >
-          {/* *Search*, never *Find* and never *Filter*. CONTEXT.md gives this word to the
-              catalogue and gives *filter* to your own library. */}
-          <span className="code-line">Search</span>
-        </Link>
+            `ink-raised` + bone, and the current one inverted.
+
+            Both cells are here now. This section used to say why only one was — *a nav
+            item that goes nowhere is the reserved space §9 forbids, and it is worse than
+            empty space because it looks like it works* — and issue #56 built the route
+            *Library* points at. The inverted state arrived with it for the reason that
+            note also gave: with one cell there was nothing to be current against.
+            `nav-cells.tsx` holds both, because knowing which is current needs the path. */}
+        <NavCells />
       </div>
 
       <div className="flex items-stretch">

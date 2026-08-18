@@ -3,6 +3,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { type Executor, getDb } from "./client";
 import { episode, libraryEntry, title } from "./tables";
+import { libraryEntryState, libraryEntryUpNext } from "./views";
 /**
  * The direction is deliberate: `tmdb/mirror.ts` knows nothing about the database, and
  * what it produces is *rows*, so the shapes belong to the mapping that derives them
@@ -298,4 +299,150 @@ export async function addTitleToLibrary(
 
     return { added: created.length > 0 };
   });
+}
+
+/**
+ * The five states `library_entry_state` can return, and the list `stateFrom` matches
+ * against. Order carries no meaning — nothing reads it, and nothing should: the library's
+ * order is the query's `ORDER BY`.
+ *
+ * These are the strings the view emits, not labels. What a reader sees is the surface's to
+ * write; what is stored is snake_case because `db/views.ts` says so.
+ */
+export const LIBRARY_STATES = [
+  "watching",
+  "caught_up",
+  "finished",
+  "watchlist",
+  "abandoned",
+] as const;
+
+/** Where one title stands. Derived in `db/views.ts`, never stored (ADR-0001). */
+export type LibraryState = (typeof LIBRARY_STATES)[number];
+
+/**
+ * The episode after your progress, when there is one.
+ *
+ * **A named episode and an unnamed one are the same case; nothing next is a different
+ * one.** `episodeName` is `null` where TMDB has not named the episode, and the whole
+ * object is `null` where there is no next episode at all — a title you have not started,
+ * a film, a show you have watched to the end of what is mirrored. Collapsing the two
+ * would make *nothing to watch* and *the next episode has no name yet* the same line on
+ * the cell, and they are not the same fact.
+ *
+ * There is no season or episode number here on purpose. `docs/design/v1-surfaces.md` §4
+ * makes *episodes are named, never numbered alone* a hard rule with no degrading surface,
+ * so a surface that had the numbers to hand would be one keystroke from breaking it.
+ */
+export interface UpNext {
+  readonly episodeName: string | null;
+}
+
+/** One cell of the library grid, and everything it prints. */
+export interface LibraryEntryRow {
+  readonly libraryEntryId: string;
+  readonly titleId: string;
+  /** Borrowed. Replaced by a refresh, like every other fact about a title. */
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly state: LibraryState;
+  readonly upNext: UpNext | null;
+}
+
+/**
+ * Every library entry in one account, with where it stands and what is next in it.
+ *
+ * ── One query, 472 rows, no N+1 ──────────────────────────────────────────────────────
+ *
+ * `docs/design/v1-surfaces.md` §7 sizes this at 472 titles, which is what makes the shape
+ * of the read matter more than its cleverness: the state and the up-next episode are
+ * joined here rather than asked per cell, because 472 cells each asking two questions is
+ * the request storm `tvtracker` shipped (its cold deck once issued 114 requests for 57
+ * shows). The derivation itself is not repeated — the two views are the definition, and
+ * this joins them.
+ *
+ * ── Why the state join is inner and the up-next join is not ──────────────────────────
+ *
+ * `library_entry_state` has a row for **every** library entry: its `case` has an `else`,
+ * and it joins `title` through a `NOT NULL` foreign key. So an inner join drops nothing,
+ * and it is the honest one — a `left` join here would type `state` as nullable and invite
+ * a fallback, which is a state invented in TypeScript for a row the database could not
+ * classify. `library_entry_up_next` genuinely has no row when nothing is next, and that
+ * absence is the answer rather than a gap to fill.
+ *
+ * ── No ordering control, and an order anyway ─────────────────────────────────────────
+ *
+ * The sort control is issue #57's, and this ticket must reserve no space for it
+ * (`SPEC.md` §9). The grid still needs a fixed order, so it takes §7's default — **Title
+ * A–Z** — with the tiebreak §7 also requires: without one, two entries sharing a name
+ * swap places between two loads that read identical rows, and the grid reshuffles under a
+ * reader for no reason they can see. `lower()` rather than the database's collation, so
+ * the order does not turn on which locale the server was initialised in.
+ *
+ * ── There is no `try` here, and there will not be ────────────────────────────────────
+ *
+ * A failed read throws into `app/(signed-in)/library/error.tsx`. Returning `[]` from a
+ * failure is the one bug this codebase is built around not having (`AGENTS.md`), because
+ * an empty library and a database that is down would then be the same screen.
+ */
+export async function listLibraryEntries(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly LibraryEntryRow[]> {
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      name: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      state: libraryEntryState.state,
+      upNextEpisodeId: libraryEntryUpNext.episodeId,
+      upNextEpisodeName: episode.name,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(
+      libraryEntryState,
+      eq(libraryEntryState.libraryEntryId, libraryEntry.id),
+    )
+    .leftJoin(libraryEntryUpNext, eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id))
+    .leftJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
+    .where(ownedBy(userId, libraryEntry))
+    .orderBy(sql`lower(${title.name})`, libraryEntry.id);
+
+  return rows.map((row) => ({
+    libraryEntryId: row.libraryEntryId,
+    titleId: row.titleId,
+    name: row.name,
+    releaseYear: row.releaseYear,
+    posterPath: row.posterPath,
+    state: stateFrom(row.state),
+    /**
+     * The episode id, not the name, is what says whether anything is next — the name is
+     * nullable and an unnamed next episode is still a next episode.
+     */
+    upNext:
+      row.upNextEpisodeId === null ? null : { episodeName: row.upNextEpisodeName },
+  }));
+}
+
+/**
+ * The view's `state` column is `text`, which Drizzle types as `string`, and a cast here
+ * would be the surface trusting a promise nothing checks.
+ *
+ * So it is matched against the five instead — the same move `libraryCatalogueKeys` makes
+ * with catalogue keys — and a sixth value **throws**. That is deliberate and it is the
+ * error discipline, not an exception to it: a state nothing can render means the view and
+ * this file have gone out of step, and the honest treatment for that is the read failure
+ * the boundary already draws. A default of *watchlist* would put every title in the
+ * library on a shelf it is not on, and nobody would ever see an error.
+ */
+function stateFrom(value: string): LibraryState {
+  const known = LIBRARY_STATES.find((state) => state === value);
+  if (known === undefined) {
+    throw new Error(`library_entry_state returned an unknown state: ${value}`);
+  }
+  return known;
 }

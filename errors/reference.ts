@@ -49,6 +49,32 @@ export function referenceFor(
   return reference;
 }
 
+/**
+ * The reference for an error that arrived at a `error.tsx` boundary, which is every
+ * failure boundary in the application.
+ *
+ * ── Why the digest is a tag and not the reference ────────────────────────────────────
+ *
+ * When a Server Component render throws, React strips the error before it crosses to the
+ * browser: the boundary receives a generic message and a `digest`. The stack lives in the
+ * event `instrumentation.ts`'s `onRequestError` sent from the server, and tagging this
+ * event with the same digest is what joins the two — so the id a reader quotes leads to an
+ * event that names its server half.
+ *
+ * Printing the digest *instead* fails `SPEC.md` §6 outright: a digest is a hash of the
+ * error, identical for every occurrence, so it identifies a kind of failure rather than
+ * the reader's. Two people would quote the same string.
+ *
+ * It is one function because every boundary derives it identically and the derivation is
+ * the part that must not drift. `app/error.tsx` and `app/(signed-in)/library/error.tsx`
+ * had it written out twice; a third segment would have made three.
+ */
+export function referenceForBoundary(
+  error: Error & { digest?: string },
+): string | null {
+  return referenceFor(error, error.digest ? { digest: error.digest } : undefined);
+}
+
 function report(error: unknown, tags?: Record<string, string>): string | null {
   // `getClient()` returns a client even when `init()` ran without a DSN, and that client
   // drops everything it is given. The DSN is the honest test of whether an id will mean

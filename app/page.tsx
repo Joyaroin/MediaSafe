@@ -17,13 +17,14 @@ import { redirect } from "next/navigation";
  * this" in a second place — the thing `lib/session.ts` exists to prevent — to save one
  * redirect that nobody sees.
  *
- * ── Why Settings ─────────────────────────────────────────────────────────────────────
+ * ── Why the library ──────────────────────────────────────────────────────────────────
  *
- * Because it is the only signed-in destination that exists. `SPEC.md` §7 lands desktop on
- * **Library** and phone on **Up next**, and neither is built: the library arrives at
- * build step 2 and Up next at step 5. Landing somewhere real beats landing on a page
- * built to be landed on, and this line is expected to change twice more before v1.
+ * `SPEC.md` §7 lands desktop on **Library** and phone on **Up next**. The library exists
+ * as of issue #56, so this is now the destination §7 names for one of the two devices,
+ * where it previously pointed at Settings for want of anything real. Up next is build step
+ * 5, and the phone's landing is the last change this line is expected to take before v1 —
+ * it needs the tab bar, not just the route.
  */
 export default function Home() {
-  redirect("/settings");
+  redirect("/library");
 }
