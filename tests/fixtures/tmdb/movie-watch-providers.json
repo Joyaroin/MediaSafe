@@ -1,0 +1,57 @@
+{
+  "id": 550,
+  "results": {
+    "US": {
+      "link": "https://www.themoviedb.org/movie/550-fight-club/watch?locale=US",
+      "flatrate": [
+        {
+          "logo_path": "/wwemzKWzjKYJFfCeiB57q3r4Bcm.png",
+          "provider_id": 8,
+          "provider_name": "Netflix",
+          "display_priority": 0
+        },
+        {
+          "logo_path": "/97yvRBw1GzX7fXprcF80er19ot.png",
+          "provider_id": 337,
+          "provider_name": "Disney Plus",
+          "display_priority": 1
+        }
+      ],
+      "rent": [
+        {
+          "logo_path": "/9ghgSC0MA082EL6HLCW3GalykFD.png",
+          "provider_id": 2,
+          "provider_name": "Apple TV",
+          "display_priority": 0
+        }
+      ],
+      "buy": [
+        {
+          "logo_path": "/9ghgSC0MA082EL6HLCW3GalykFD.png",
+          "provider_id": 2,
+          "provider_name": "Apple TV",
+          "display_priority": 0
+        }
+      ]
+    },
+    "CA": {
+      "link": "https://www.themoviedb.org/movie/550-fight-club/watch?locale=CA",
+      "free": [
+        {
+          "logo_path": "/wJnpvz1WCsgSXsFo4ycmMoWkzhc.png",
+          "provider_id": 613,
+          "provider_name": "Crave",
+          "display_priority": 0
+        }
+      ],
+      "ads": [
+        {
+          "logo_path": "/dC5eD1AmzHRHzYUUcYAAOYMwUFT.png",
+          "provider_id": 300,
+          "provider_name": "Tubi",
+          "display_priority": 0
+        }
+      ]
+    }
+  }
+}

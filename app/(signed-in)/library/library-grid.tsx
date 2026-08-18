@@ -63,9 +63,11 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * 472 network requests for artwork, which is why `app/plate.tsx` marks every poster
  * `loading="lazy"` — the browser fetches the plates a reader actually scrolls to.
  *
- * This is a server component and stays one. Nothing in a cell takes input until #58, so
- * shipping 472 cells to the browser as client components would be paying hydration for a
- * printed sheet.
+ * This is a server component and stays one, even after #58 gives each cell a click
+ * target: `selectable-entry.tsx` is a thin client wrapper each cell's button sits inside,
+ * with the rest of the cell — plate, title, state line — passed to it as `children` and
+ * rendered on the server exactly as before. Shipping all 472 cells themselves as client
+ * components would be paying hydration for a printed sheet; only the button needs it.
  */
 export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }) {
   return (

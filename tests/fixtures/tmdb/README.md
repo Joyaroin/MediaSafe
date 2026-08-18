@@ -23,3 +23,17 @@ the mapping has to survive all three:
 - `air_date` and `first_air_date` arrive as `""` rather than `null` for undated entries.
 - `runtime` arrives as `null` on episodes TMDB has no timing for.
 - `/search/multi` returns `media_type: "person"` results mixed in with films and shows.
+
+## The live-facts fixtures
+
+`movie-credits.json`, `tv-credits.json`, `movie-watch-providers.json` and
+`tv-watch-providers.json` back `tests/tmdb-live-facts.test.ts` — the mapping in
+`tmdb/live-facts.ts` for the fields ADR-0001 fetches live and never stores. Unlike the
+four above, **these are hand-built to TMDB's documented response shape** for
+`/movie/{id}/credits`, `/tv/{id}/credits` and `/movie|tv/{id}/watch/providers`, not a live
+capture — no TMDB key is reachable from this environment. They deliberately carry the
+same awkward cases the mapping has to survive: a cast or crew member missing a name, an
+empty `character`, one person credited under two jobs, a `rent`/`buy` bucket the mapping
+must ignore, a region with no `flatrate`, and a provider with no name. Replace them with a
+live capture the same way the four above would be replaced — the tests read JSON off disk
+and assert on the mapping's output.

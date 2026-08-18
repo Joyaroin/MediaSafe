@@ -3,6 +3,7 @@ import { requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
+import { LibrarySurface } from "./library-surface";
 
 /**
  * The library — your library as a place you can look at, rather than a query you can run.
@@ -56,7 +57,7 @@ export default async function LibraryPage() {
   const entries = await listLibraryEntries(userId);
 
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <LibrarySurface hasEntries={entries.length > 0}>
       <LibraryHeading />
 
       {entries.length === 0 ? (
@@ -64,6 +65,6 @@ export default async function LibraryPage() {
       ) : (
         <LibraryGrid entries={entries} />
       )}
-    </main>
+    </LibrarySurface>
   );
 }

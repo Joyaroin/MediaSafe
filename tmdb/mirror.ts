@@ -188,12 +188,19 @@ function dateFrom(date: string | null | undefined): string | null {
   return date ? date : null;
 }
 
-/** `""` → `null`, so an unnamed episode is unnamed rather than named nothing. */
-function textFrom(value: string | null | undefined): string | null {
+/**
+ * `""` → `null`, so an unnamed episode is unnamed rather than named nothing.
+ *
+ * Exported: `tmdb/live-facts.ts` parses the same inconsistently-empty TMDB strings for
+ * the fields this file may not mirror (`overview`, cast and crew names, provider names),
+ * and this is the one normalisation both files need.
+ */
+export function textFrom(value: string | null | undefined): string | null {
   return value ? value : null;
 }
 
-function integerFrom(value: number | null | undefined): number | null {
+/** Exported for the same reason `textFrom` is — see its comment. */
+export function integerFrom(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 

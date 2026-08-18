@@ -1,0 +1,35 @@
+{
+  "id": 1396,
+  "results": {
+    "US": {
+      "link": "https://www.themoviedb.org/tv/1396-breaking-bad/watch?locale=US",
+      "flatrate": [
+        {
+          "logo_path": "/97yvRBw1GzX7fXprcF80er19ot.png",
+          "provider_id": 337,
+          "provider_name": "Disney Plus",
+          "display_priority": 1
+        }
+      ],
+      "free": [
+        {
+          "logo_path": "/97yvRBw1GzX7fXprcF80er19ot.png",
+          "provider_id": 337,
+          "provider_name": "Disney Plus",
+          "display_priority": 1
+        }
+      ]
+    },
+    "GB": {
+      "link": "https://www.themoviedb.org/tv/1396-breaking-bad/watch?locale=GB",
+      "flatrate": [
+        {
+          "logo_path": null,
+          "provider_id": 0,
+          "provider_name": "",
+          "display_priority": 0
+        }
+      ]
+    }
+  }
+}

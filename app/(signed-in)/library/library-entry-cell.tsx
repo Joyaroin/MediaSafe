@@ -1,5 +1,7 @@
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
 import { Plate } from "@/app/plate";
+import { STATE_LABELS } from "./library-state";
+import { SelectableEntry } from "./selectable-entry";
 
 /**
  * One programme entry — the bill's grid cell, and the only thing 472 of them are made of.
@@ -11,18 +13,13 @@ import { Plate } from "@/app/plate";
  * lift, no radius, no scale.* Every class below is that sentence, taken from the reference
  * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived.
  *
- * ── The button does not go anywhere yet ──────────────────────────────────────────────
+ * ── Where the button goes, since #58 ──────────────────────────────────────────────────
  *
- * Pressing it does nothing, and that is issue #56's edge: the destination is the programme
- * note, which is **issue #58**, blocked by this one. The element is a `button` rather than
- * a `div` because that is what #56's acceptance criteria specify and because it is what
- * #58 attaches to — the diff there is a handler, not a rewrite of the cell.
- *
- * It is the one thing in this ticket that reads as working before it does, and the
- * masthead's *Library* cell was withheld for exactly that reason until this route existed.
- * The difference is that a nav item that goes nowhere is a **destination** that does not
- * exist, and this is a surface that does: the entry, its state and what is next are all on
- * screen and all true. Nothing is being reserved and nothing is being promised.
+ * `selectable-entry.tsx`'s own docblock has the mechanism — a click here selects the
+ * entry on desktop and pushes the phone route, and neither is this file's concern. What
+ * stayed true from #56 is the element: a `button` rather than a `div`, because that is
+ * what #56's acceptance criteria specified and what #58 attached a handler to rather than
+ * rewriting.
  *
  * ── Abandoned is the only modified plate ─────────────────────────────────────────────
  *
@@ -40,17 +37,10 @@ import { Plate } from "@/app/plate";
 const BILL_PLATE = "h-[104px] w-[78px] shrink-0";
 
 /**
- * The five states as this cell renders them: what each is called, what colour the label is
- * set in, and the one line of what is next. **One table, because there is one thing to
- * know about a state** — a second lookup keyed by the same union is two places to edit
- * when a sixth state or a reworded line arrives, and one of them gets missed.
- *
- * ── The labels ───────────────────────────────────────────────────────────────────────
- *
- * `CONTEXT.md`'s words and no others. *Watching* is the only one in `signal` and *caught
- * up* the only one at full-strength `stock` — `DESIGN.md`'s Colour table gives vermilion
- * to the live state and bone to *Caught up* by name. The other three are metadata, so they
- * are dim.
+ * The one line of what is next, for each of the five states this cell renders. The label
+ * and its colour are `library-state.ts`'s `STATE_LABELS` — shared with the programme note
+ * (issue #58) — because a *tile*'s "what's next" line has no equivalent there, where the
+ * season/episode list is the answer to the same question at full length.
  *
  * ── The lines ────────────────────────────────────────────────────────────────────────
  *
@@ -69,59 +59,37 @@ const BILL_PLATE = "h-[104px] w-[78px] shrink-0";
  * Every line is a function of the entry, including the four that ignore it, so that the
  * table has one shape rather than a special case for the one state that reads a column.
  */
-const STATES: Record<
-  LibraryState,
-  { label: string; className: string; nextLine: (entry: LibraryEntryRow) => string }
-> = {
-  watching: {
-    label: "Watching",
-    className: "text-signal",
-    nextLine: (entry) => {
-      if (entry.upNext === null) {
-        /**
-         * Watching, with nothing after your progress. Reachable by skipping forward —
-         * progress is a high-water mark, so an unwatched earlier episode keeps the state
-         * at *watching* while `library_entry_up_next` has nothing later to point at.
-         */
-        return "Nothing listed after your progress";
-      }
-      return entry.upNext.episodeName === null
-        ? "Next episode not named yet"
-        : `Next — ${entry.upNext.episodeName}`;
-    },
+const NEXT_LINES: Record<LibraryState, (entry: LibraryEntryRow) => string> = {
+  watching: (entry) => {
+    if (entry.upNext === null) {
+      /**
+       * Watching, with nothing after your progress. Reachable by skipping forward —
+       * progress is a high-water mark, so an unwatched earlier episode keeps the state
+       * at *watching* while `library_entry_up_next` has nothing later to point at.
+       */
+      return "Nothing listed after your progress";
+    }
+    return entry.upNext.episodeName === null
+      ? "Next episode not named yet"
+      : `Next — ${entry.upNext.episodeName}`;
   },
-  caught_up: {
-    label: "Caught up",
-    className: "text-stock",
-    nextLine: () => "Nothing to watch now",
-  },
-  finished: {
-    label: "Finished",
-    className: "text-stock-dim",
-    nextLine: () => "Nothing left to watch",
-  },
-  watchlist: {
-    label: "Watchlist",
-    className: "text-stock-dim",
-    nextLine: () => "Not started",
-  },
-  abandoned: {
-    label: "Abandoned",
-    className: "text-stock-dim",
-    // `CONTEXT.md`: *watching the title again clears it.* The line says how to undo the
-    // one state you set by hand, because this cell is where you meet it again.
-    nextLine: () => "Watching it again clears this",
-  },
+  caught_up: () => "Nothing to watch now",
+  finished: () => "Nothing left to watch",
+  watchlist: () => "Not started",
+  // `CONTEXT.md`: *watching the title again clears it.* The line says how to undo the
+  // one state you set by hand, because this cell is where you meet it again.
+  abandoned: () => "Watching it again clears this",
 };
 
 export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
   const abandoned = entry.state === "abandoned";
-  const state = STATES[entry.state];
+  const state = STATE_LABELS[entry.state];
+  const nextLine = NEXT_LINES[entry.state];
 
   return (
     <li className="border-b border-r border-rule bg-ink">
-      <button
-        type="button"
+      <SelectableEntry
+        entryId={entry.libraryEntryId}
         className="flex w-full gap-4 p-4 text-left transition-colors duration-150 hover:bg-ink-raised"
       >
         <Plate
@@ -171,10 +139,10 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
             read as one printed sheet.
           */}
           <p className="mt-1 truncate text-item text-stock-dim">
-            {state.nextLine(entry)}
+            {nextLine(entry)}
           </p>
         </div>
-      </button>
+      </SelectableEntry>
     </li>
   );
 }
