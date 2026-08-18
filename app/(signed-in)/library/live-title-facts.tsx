@@ -7,6 +7,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
+import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import {
   titleCastAndCrewAction,
   titleSynopsisAction,
@@ -63,7 +64,10 @@ export function LiveTitleFacts({
 
       <LiveFactSection
         key={`providers:${forTitle}`}
-        heading="Where to watch"
+        // `CONTEXT.md`'s glossary is "Watch provider", and lists "where to watch"
+        // itself in that entry's own `_Avoid_` line — this is the term, not a
+        // paraphrase of it.
+        heading="Watch providers"
         kind={kind}
         tmdbId={tmdbId}
         fetcher={titleWatchProvidersAction}
@@ -150,7 +154,7 @@ function LiveFactSection<T>({
     // Quiet, per `docs/design/v1-surfaces.md` §6's "loading" row for this screen: metadata
     // and episodes arriving is a normal moment of this page, not an event.
     return (
-      <div className="mt-7 border-t border-rule pt-5">
+      <div className={PROGRAMME_NOTE_SECTION}>
         <p role="status" className="code-line text-stock-dim">
           {heading}
         </p>
@@ -160,7 +164,7 @@ function LiveFactSection<T>({
 
   if (phase.kind === "failed") {
     return (
-      <div className="mt-7 border-t border-rule pt-5">
+      <div className={PROGRAMME_NOTE_SECTION}>
         <p className="code-line text-stock-dim">{heading}</p>
         <p className="mt-3 max-w-[62ch] text-note text-stock">
           This did not load. Nothing else on this page did either — the rest of it is not
@@ -180,7 +184,7 @@ function LiveFactSection<T>({
   if (content === null) return null;
 
   return (
-    <div className="mt-7 border-t border-rule pt-5">
+    <div className={PROGRAMME_NOTE_SECTION}>
       <p className="code-line text-stock-dim">{heading}</p>
       <div className="mt-3">{content}</div>
     </div>

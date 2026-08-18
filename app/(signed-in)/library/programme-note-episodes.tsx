@@ -1,5 +1,6 @@
 import type { EpisodeDetail } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
+import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 
 /**
  * The season/episode list — the row that carries the product's most important rule
@@ -20,7 +21,7 @@ export function ProgrammeNoteEpisodes({
 
   if (episodes.length === 0) {
     return (
-      <div className="mt-7 border-t border-rule pt-5">
+      <div className={PROGRAMME_NOTE_SECTION}>
         <p className="text-item text-stock-dim">
           {/*
             Missing and empty stay distinct here as everywhere (`CONTEXT.md`): this is not
@@ -37,7 +38,7 @@ export function ProgrammeNoteEpisodes({
   return (
     <>
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
-        <div key={seasonNo} className="mt-7 border-t border-rule pt-5">
+        <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
           <p className="code-line text-stock-dim">
             {seasonNo === 0 ? "Specials" : `Season ${seasonNo}`}
           </p>

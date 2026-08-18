@@ -28,6 +28,14 @@ import { useLibrarySelection } from "./library-selection";
  * server-rendered branch, so resizing past the breakpoint mid-session changes which one a
  * click does without a reload.
  */
+/**
+ * `DESIGN.md`'s own cutoff for "Desktop", and the same value every `lg:` Tailwind class
+ * in this codebase compiles to. Named rather than inlined so there is exactly one place
+ * to change if that value ever moves — the CSS classes would still need updating
+ * separately, but at least this JS copy would no longer be a second, silent one.
+ */
+const DESKTOP_BREAKPOINT = "(min-width: 1024px)";
+
 export function SelectableEntry({
   entryId,
   className,
@@ -41,7 +49,7 @@ export function SelectableEntry({
   const { selectedEntryId, select } = useLibrarySelection();
 
   function onClick() {
-    if (window.matchMedia("(min-width: 1024px)").matches) {
+    if (window.matchMedia(DESKTOP_BREAKPOINT).matches) {
       select(entryId);
       return;
     }
