@@ -29,6 +29,11 @@ things around it are not.
 2. **"Never touch `abandoned_at`" is overturned** — [#25](https://github.com/Joyaroin/MediaSafe/issues/25),
    2026-08-17. Import **sets** `abandoned_at`, on entry creation only. See *Abandonment* and
    *Consequences*, both corrected in place below.
+3. **A fourth derived view, `library_entry_remaining`, is added** —
+   [#57](https://github.com/Joyaroin/MediaSafe/issues/57), 2026-08-18. Build step 2 specified three;
+   the library's *closest to finishing* sort (`SPEC.md` §7, #22) needs a per-entry count of unwatched
+   episodes that none of them answers, and *"no state is ever stored"* below binds it exactly as it
+   binds the other four. See *Remaining*, under *Derivation rules*.
 
 ## Context
 
@@ -114,9 +119,9 @@ A third, `kind`, was considered and rejected as redundant: films have no rows in
 ### 4. No state is ever stored
 
 There is no `watched_through`, no `watched_count`, no `watch_status`. All three were `tvtracker`
-columns; all three are queries here. The five states, progress and up next are **SQL views
-evaluated on every read** — which is what makes #7's ruling structurally true rather than a
-convention, because there is nowhere for a stored copy to hide.
+columns; all three are queries here. The five states, progress, up next and — since amendment 3 —
+remaining are **SQL views evaluated on every read** — which is what makes #7's ruling structurally
+true rather than a convention, because there is nowhere for a stored copy to hide.
 
 At ~19k episode rows and 20–40k watches after import, this is milliseconds with the indexes below.
 If it ever stops being, the fix is an index or a materialised view — a performance change, not a
@@ -288,6 +293,31 @@ JOIN watch w   ON w.library_entry_id = le.id
 JOIN episode e ON e.id = w.episode_id
 WHERE e.season_no > 0
 ORDER BY le.id, e.season_no DESC, e.episode_no DESC;
+```
+
+### Remaining
+
+**Amendment 3.** How many of a show's mirrored `season_no > 0` episodes carry no watch — the count
+`CONTEXT.md`'s **Remaining** entry names, and the figure the library's *closest to finishing* sort
+orders by. A film has no row: remaining is a show concept by the glossary's own words, not a count
+that happens to be zero for something with no episodes.
+
+Unlike every other derivation here, this one does **not** filter by `air_date`. It answers *how much
+of the whole series is left*, not *how much of it could be watched today* — a *caught up* show still
+has unaired episodes ahead of it, and only *finished* is genuinely at zero.
+
+```sql
+-- remaining
+SELECT le.id,
+       (SELECT count(*) FROM episode e
+        WHERE e.title_id = le.title_id AND e.season_no > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM watch w
+            WHERE w.library_entry_id = le.id AND w.episode_id = e.id
+          )) AS remaining
+FROM library_entry le
+JOIN title t ON t.id = le.title_id
+WHERE t.kind = 'show';
 ```
 
 ### Abandonment

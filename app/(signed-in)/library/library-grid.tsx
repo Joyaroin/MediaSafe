@@ -63,11 +63,21 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * 472 network requests for artwork, which is why `app/plate.tsx` marks every poster
  * `loading="lazy"` — the browser fetches the plates a reader actually scrolls to.
  *
- * This is a server component and stays one, even after #58 gives each cell a click
- * target: `selectable-entry.tsx` is a thin client wrapper each cell's button sits inside,
- * with the rest of the cell — plate, title, state line — passed to it as `children` and
- * rendered on the server exactly as before. Shipping all 472 cells themselves as client
- * components would be paying hydration for a printed sheet; only the button needs it.
+ * **Amended by #57, then by #58.** This component itself still takes no input and is
+ * still not marked `"use client"`. #57 put it inside `LibrarySurface`'s client boundary
+ * regardless — the chip and the filter-by-typing field (`SPEC.md` §7) narrow this same
+ * already-fetched array without a second database read, and the only place that slice can
+ * happen is client state above this component, so 472 cells now hydrate whether or not any
+ * one of them takes input. That is the trade this ticket takes deliberately rather than
+ * the one #56 assumed. Sort stays the exception: it changes the `ORDER BY` itself
+ * (`db/access.ts`), so it is the one control that is a real navigation and re-runs the
+ * query in `page.tsx`.
+ *
+ * #58 is what actually gives a cell a click target, and it does not change any of that:
+ * `selectable-entry.tsx` is a thin client wrapper each cell's button sits inside, with the
+ * rest of the cell — plate, title, state line — passed to it as `children` and rendered
+ * exactly as before. It adds no *further* client boundary; it is already inside the one
+ * #57 opened.
  */
 export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }) {
   return (
