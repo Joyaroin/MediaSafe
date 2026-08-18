@@ -12,15 +12,17 @@ import { STATE_LABELS } from "./library-state";
  * anything about *how it got here*; both wrap it in where it lives (`ProgrammeNotePane`'s
  * sticky aside, or the phone route's `<main>`).
  *
- * ── The abandon control, and the one thing it may change ─────────────────────────────
+ * ── `onStateChange`, and the two writes that report through it ───────────────────────
  *
- * `AbandonControl` (issue #87) is the one hand-set state in the model, and `onStateChange`
- * is this component's entire surface for it: a successful write patches `detail.state` in
- * place, in whichever component is holding this one's props (`ProgrammeNotePane` here,
- * the phone route in `app/(signed-in)/library/[entryId]/page.tsx`). Nothing else about the
- * title changes when abandonment does, so nothing else is re-read.
+ * `AbandonControl` (issue #87) is the one hand-set state in the model; `ProgrammeNoteEpisodes`'s
+ * film row (issue #90) is the other caller, for the one state a film's watch can always
+ * land on. Either way `onStateChange` is this component's entire surface for a landed
+ * write: it patches `detail.state` in place, in whichever component is holding this one's
+ * props (`ProgrammeNotePane` here, the phone route in
+ * `app/(signed-in)/library/[entryId]/page.tsx`). Nothing else about the title changes when
+ * either write lands, so nothing else is re-read.
  *
- * The entry id travels with it — `AbandonControl`'s own docblock explains why: this
+ * The entry id travels with both — `AbandonControl`'s own docblock explains why: this
  * component is never remounted on a title switch, so a write still in flight when the
  * caller moves on to a different entry must not patch the one now on screen.
  *
@@ -60,6 +62,8 @@ export function ProgrammeNoteContent({
         episodes={detail.episodes}
         libraryEntryId={detail.libraryEntryId}
         titleName={detail.name}
+        state={detail.state}
+        onStateChange={onStateChange}
       />
 
       <AbandonControl
