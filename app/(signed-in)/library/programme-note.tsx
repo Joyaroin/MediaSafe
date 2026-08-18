@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { TmdbAttribution } from "@/app/tmdb-attribution";
-import type { TitleDetailRow } from "@/db/access";
+import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
 import { ProgrammeNoteContent } from "./programme-note-content";
@@ -91,7 +91,18 @@ export function ProgrammeNotePane() {
               <ReadFailure reference={phase.reference} retry={retry} />
             </div>
           ) : null}
-          {phase.kind === "loaded" ? <ProgrammeNoteContent detail={phase.detail} /> : null}
+          {phase.kind === "loaded" ? (
+            <ProgrammeNoteContent
+              detail={phase.detail}
+              onStateChange={(state: LibraryState) =>
+                setPhase((prev) =>
+                  prev.kind === "loaded"
+                    ? { kind: "loaded", detail: { ...prev.detail, state } }
+                    : prev,
+                )
+              }
+            />
+          ) : null}
         </div>
 
         {/* Pinned to the foot, outside the scroll, and shown only while borrowed data

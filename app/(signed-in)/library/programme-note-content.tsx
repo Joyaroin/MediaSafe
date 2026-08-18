@@ -1,5 +1,6 @@
-import type { TitleDetailRow } from "@/db/access";
+import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { Plate } from "@/app/plate";
+import { AbandonControl } from "./abandon-control";
 import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { STATE_LABELS } from "./library-state";
@@ -11,19 +12,26 @@ import { STATE_LABELS } from "./library-state";
  * anything about *how it got here*; both wrap it in where it lives (`ProgrammeNotePane`'s
  * sticky aside, or the phone route's `<main>`).
  *
- * ── What is not here ─────────────────────────────────────────────────────────────────
+ * ── The abandon control, and the one thing it may change ─────────────────────────────
  *
- * No rating control and no abandon control — build steps 6 and 4, and issue #58 reserves
- * no space for either. **An abandoned title still reads as abandoned**, entirely through
- * the state label already on the page: `STATE_LABELS.abandoned` is the same dim line the
- * library grid renders, so this needs no separate treatment to satisfy that acceptance
- * criterion.
+ * `AbandonControl` (issue #87) is the one hand-set state in the model, and `onStateChange`
+ * is this component's entire surface for it: a successful write patches `detail.state` in
+ * place, in whichever component is holding this one's props (`ProgrammeNotePane` here,
+ * the phone route in `app/(signed-in)/library/[entryId]/page.tsx`). Nothing else about the
+ * title changes when abandonment does, so nothing else is re-read.
  *
- * TMDB's attribution is not here either — it is pinned to the foot of whichever surface
- * holds this component, outside this component's own scroll, which is a layout decision
- * belonging to the caller (`app/tmdb-attribution.tsx`'s own docblock says why).
+ * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
+ * this component, outside this component's own scroll, which is a layout decision
+ * belonging to the caller (`app/tmdb-attribution.tsx`'s own docblock says why). No rating
+ * control either — build step 6, and issue #58 reserves no space for it.
  */
-export function ProgrammeNoteContent({ detail }: { detail: TitleDetailRow }) {
+export function ProgrammeNoteContent({
+  detail,
+  onStateChange,
+}: {
+  detail: TitleDetailRow;
+  onStateChange: (state: LibraryState) => void;
+}) {
   const state = STATE_LABELS[detail.state];
   const meta = metaLine(detail);
 
@@ -44,6 +52,13 @@ export function ProgrammeNoteContent({ detail }: { detail: TitleDetailRow }) {
       <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} />
 
       <ProgrammeNoteEpisodes kind={detail.kind} episodes={detail.episodes} />
+
+      <AbandonControl
+        libraryEntryId={detail.libraryEntryId}
+        titleName={detail.name}
+        abandoned={detail.state === "abandoned"}
+        onChanged={onStateChange}
+      />
     </div>
   );
 }
