@@ -63,9 +63,15 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * 472 network requests for artwork, which is why `app/plate.tsx` marks every poster
  * `loading="lazy"` — the browser fetches the plates a reader actually scrolls to.
  *
- * This is a server component and stays one. Nothing in a cell takes input until #58, so
- * shipping 472 cells to the browser as client components would be paying hydration for a
- * printed sheet.
+ * **Amended by #57.** This component itself still takes no input and still is not marked
+ * `"use client"` — nothing in a cell does, either, and #58 is still where that changes.
+ * But it now renders inside `LibrarySurface`'s client boundary, because the chip and the
+ * filter-by-typing field (`SPEC.md` §7) narrow this same already-fetched array without a
+ * second database read, and the only place that slice can happen is client state above
+ * this component. That means 472 cells now do hydrate, which is the cost of not re-querying
+ * Postgres on every keystroke — the trade this ticket takes deliberately rather than the
+ * one #56 assumed. Sort stays the exception: it changes the `ORDER BY` itself (`db/access.ts`),
+ * so it is the one control that is a real navigation and re-runs the query in `page.tsx`.
  */
 export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }) {
   return (
