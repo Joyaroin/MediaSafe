@@ -220,11 +220,12 @@ Settled by #25, replacing #11's closest-to-finishing:
 
 Closest-to-finishing was overturned on measurement: it surfaces the shows watched once and quit
 (median 28.5 remaining) and its head freezes for weeks. Measured against the committed
-`fixtures/mediasafe-seed.json`, **438 of the 439 titles with any watch carry a dated watch** —
-recency does not cover 4 of the 62 day-one titles, it covers all but one. The air-date fallback is
-not scaffolding the ordering leans on until history accumulates: it applies to roughly one title on
-day one, and **the rule is already at the steady state it was designed to reach**, not self-healing
-toward it over time. See §10.5 for the correction and its source.
+`fixtures/mediasafe-seed.json`, **438 of the 439 titles with any watch carry a dated watch** — not
+4 of the 62 day-one titles, as this section once claimed. The air-date fallback is not scaffolding
+the ordering leans on until history accumulates: it applies to roughly one title on day one, and
+**the rule is already at the steady state it was designed to reach**, not self-healing toward it
+over time. **The ordering rule itself is unchanged and #25 does not reopen** — only this rationale
+was wrong; see §10.5 for the correction and its source.
 
 **No sort control on Up next, on either device.** A sort dropdown on the phone's landing screen is
 admin chrome on the daily surface.
