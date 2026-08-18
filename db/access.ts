@@ -663,14 +663,18 @@ export interface RecordWatchOutcome {
  *
  * ── Resuming, in the same statement as the insert ─────────────────────────────────────
  *
- * `abandoned_at` is cleared unconditionally, in the same transaction as the watch insert
- * — `CONTEXT.md`'s *watching it again clears it*, made true by the transaction rather
- * than by a follow-up write somebody could forget. It runs even when the insert is a
- * no-op: a retried click clearing an already-clear column is a wasted statement, not a
- * wrong one, and conditioning it on `recorded` would need a second reason to exist. Import
- * is the only writer that must never take this path, and it does not call this function —
- * `applyImportChunk` has its own insert, which is the whole reason that guard is spelled
- * where it is rather than shared here.
+ * `abandoned_at` is cleared in the same transaction as the watch insert — `CONTEXT.md`'s
+ * *watching it again clears it*, made true by the transaction rather than by a follow-up
+ * write somebody could forget. **It runs only when the insert actually wrote a row.** A
+ * retry is defined as a no-op (`ADR-0001`'s "same key twice is one row"), and a no-op
+ * that still clears a column is not one: picture a title watched, then deliberately
+ * abandoned again, with a stale optimistic retry of the *first* click still in flight —
+ * without this guard, that retry would silently un-abandon a title the person re-gave-up
+ * on after the watch it is retrying. Conditioning on `recorded` is what keeps "a retry is
+ * a no-op" true of the whole write rather than of the `watch` row alone. Import is the
+ * only writer that must never take this path regardless, and it does not call this
+ * function — `applyImportChunk` has its own insert, which is the whole reason that guard
+ * is spelled where it is rather than shared here.
  *
  * ── Nothing derived is written ─────────────────────────────────────────────────────────
  *
@@ -699,12 +703,17 @@ export async function recordWatch(
   executor: Executor = getDb(),
 ): Promise<RecordWatchOutcome> {
   return executor.transaction(async (tx) => {
+    // Built once and reused by both statements below — the isolation predicate is the
+    // one thing this function may never spell two different ways.
+    const entryFilter = and(
+      ownedBy(userId, libraryEntry),
+      eq(libraryEntry.id, params.libraryEntryId),
+    );
+
     const [entry] = await tx
       .select({ titleId: libraryEntry.titleId })
       .from(libraryEntry)
-      .where(
-        and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)),
-      );
+      .where(entryFilter);
 
     if (!entry) {
       throw new Error(
@@ -729,14 +738,12 @@ export async function recordWatch(
       .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
       .returning({ id: watch.id });
 
-    await tx
-      .update(libraryEntry)
-      .set({ abandonedAt: null })
-      .where(
-        and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)),
-      );
+    const recorded = written.length > 0;
+    if (recorded) {
+      await tx.update(libraryEntry).set({ abandonedAt: null }).where(entryFilter);
+    }
 
-    return { recorded: written.length > 0 };
+    return { recorded };
   });
 }
 

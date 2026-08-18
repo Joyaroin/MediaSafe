@@ -267,6 +267,38 @@ describe("recordWatch", () => {
       expect(await abandonedAtOf(tx, entryId)).not.toBeNull();
     }));
 
+  it("does not re-clear abandoned_at on a retry that lands after the title was re-abandoned", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, [
+        { seasonNo: 1, episodeNo: 1 },
+      ]);
+      const key = nextKey();
+
+      await recordWatch(
+        userId,
+        { libraryEntryId: entryId, episodeId: episodeIds["1-1"], sourceKey: key },
+        tx,
+      );
+      // Given up on again, deliberately, after the watch that resumed it.
+      await tx
+        .update(libraryEntry)
+        .set({ abandonedAt: new Date() })
+        .where(eq(libraryEntry.id, entryId));
+
+      // A stale optimistic retry of the *first* click finally lands.
+      const retried = await recordWatch(
+        userId,
+        { libraryEntryId: entryId, episodeId: episodeIds["1-1"], sourceKey: key },
+        tx,
+      );
+
+      expect(retried.recorded).toBe(false);
+      // A no-op write must be a no-op of the whole transaction, not just the watch row —
+      // otherwise a retry in flight can silently undo a decision made after it was sent.
+      expect(await abandonedAtOf(tx, entryId)).not.toBeNull();
+    }));
+
   it("moves a title from watchlist to watching on a first watch", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
