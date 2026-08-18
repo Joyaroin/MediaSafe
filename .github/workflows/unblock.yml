@@ -1,0 +1,117 @@
+# Unblock — clear the `blocked` label when every ticket in a "Blocked by" section closes.
+#
+# The tickets in this repository declare their dependencies in prose, under a `## Blocked
+# by` heading, because GitHub's own blocking relationship is Pro-or-above and was declined
+# along with rulesets and branch protection (`SPEC.md` §6, issue #17). Prose is the
+# tracker; this workflow is what stops it going stale.
+#
+# ── Why a label at all ───────────────────────────────────────────────────────────────
+#
+# The `ready-for-agent` label means *fully specified, ready for an AFK agent*, and every
+# ticket in a build step earns it the moment it is written. But roughly half of them
+# cannot be started yet, and an agent picking one up would build against a module that
+# does not exist. `blocked` is the difference between *specified* and *startable*, and
+# it is the one thing the frontier is read from.
+#
+# ── Why it is cleared here rather than by hand ───────────────────────────────────────
+#
+# A label maintained by hand is a label that is wrong within a week — and wrong in the
+# expensive direction, because the failure mode is a ticket that stays marked blocked
+# after its blocker merged, which is indistinguishable from work nobody is doing.
+#
+# ── What it reads ────────────────────────────────────────────────────────────────────
+#
+# Only the `## Blocked by` section, and every issue number in it, in either spelling
+# (`#98` or a full URL). Scoping to the section is the whole trick: these tickets cite
+# other issues freely in their prose — decisions, ADR amendments, superseded tickets —
+# and treating those as dependencies would leave everything blocked forever.
+#
+# It re-evaluates **every** open blocked issue on each close rather than only the ones
+# naming the issue that just closed. That is more API calls and it is the version that
+# cannot drift: a label applied by hand to something whose blockers were already closed
+# is still cleared on the next close, instead of never.
+#
+# ── What it does not do ──────────────────────────────────────────────────────────────
+#
+# It does not add the label. Applying it is a judgement about whether a dependency is
+# real, made when the ticket is written; removing it is arithmetic. Only the arithmetic
+# is automated.
+#
+# It also does not re-block on reopen. A reopened blocker is rare and worth a person
+# looking at what else that implies, rather than a label quietly reappearing.
+
+name: Unblock
+
+on:
+  issues:
+    types: [closed]
+
+# The default token is read-only on private repositories unless this says otherwise.
+permissions:
+  issues: write
+
+# One at a time. Two closes in quick succession would otherwise both read the label set
+# before either had written to it, and the second would undo nothing but waste the calls.
+concurrency:
+  group: unblock
+  cancel-in-progress: false
+
+jobs:
+  unblock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear `blocked` where every blocker has closed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          gh issue list --repo "$REPO" --label blocked --state open \
+            --limit 200 --json number,body > blocked.json
+
+          count=$(jq length blocked.json)
+          echo "Open issues carrying \`blocked\`: $count"
+
+          for i in $(seq 0 $((count - 1))); do
+            number=$(jq -r ".[$i].number" blocked.json)
+
+            # The `## Blocked by` section alone — from that heading to the next `## `.
+            blockers=$(
+              jq -r ".[$i].body" blocked.json \
+                | awk '/^## Blocked by/ { inside = 1; next } /^## / { inside = 0 } inside' \
+                | grep -oE '(#|/issues/)[0-9]+' \
+                | grep -oE '[0-9]+' \
+                | sort -u || true
+            )
+
+            if [ -z "$blockers" ]; then
+              # A ticket labelled blocked that names nothing is a labelling mistake, not a
+              # dependency. Say so and leave it alone — guessing either way is worse.
+              echo "#$number: labelled blocked but names no blocker. Leaving it."
+              continue
+            fi
+
+            still_open=""
+            for blocker in $blockers; do
+              state=$(gh issue view "$blocker" --repo "$REPO" --json state --jq .state 2>/dev/null || echo "MISSING")
+              if [ "$state" = "OPEN" ]; then
+                still_open="$still_open #$blocker"
+              elif [ "$state" = "MISSING" ]; then
+                # A number that is not an issue here — a pull request in another repo, a
+                # typo. Treated as unresolved rather than as satisfied: refusing to
+                # unblock is recoverable by hand, unblocking wrongly is not noticed.
+                still_open="$still_open #$blocker(unreadable)"
+              fi
+            done
+
+            if [ -n "$still_open" ]; then
+              echo "#$number: still blocked by$still_open"
+              continue
+            fi
+
+            echo "#$number: every blocker closed — unblocking"
+            gh issue edit "$number" --repo "$REPO" --remove-label blocked
+            gh issue comment "$number" --repo "$REPO" \
+              --body "Unblocked automatically — every ticket named in **Blocked by** is now closed. Ready to start."
+          done
