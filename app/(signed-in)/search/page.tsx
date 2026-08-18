@@ -1,6 +1,6 @@
 import { requireUserId } from "@/lib/session";
+import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { SearchSurface } from "./search-surface";
-import { TmdbAttribution } from "./tmdb-attribution";
 
 /**
  * Search — the catalogue, to add something you do not have.
@@ -57,7 +57,7 @@ export default async function SearchPage() {
         <SearchSurface />
       </div>
 
-      <TmdbAttribution />
+      <TmdbAttribution className="mt-12 pt-3" />
     </main>
   );
 }

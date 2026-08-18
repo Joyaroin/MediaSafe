@@ -1,0 +1,98 @@
+{
+  "id": 1396,
+  "cast": [
+    {
+      "adult": false,
+      "gender": 2,
+      "id": 17419,
+      "known_for_department": "Acting",
+      "name": "Bryan Cranston",
+      "original_name": "Bryan Cranston",
+      "popularity": 30.0,
+      "profile_path": "/7Jahy5LZX2Fo8fGJltMreAI49hC.jpg",
+      "character": "Walter White",
+      "credit_id": "5256c8b219c2956ff604858a",
+      "order": 0
+    },
+    {
+      "adult": false,
+      "gender": 2,
+      "id": 84497,
+      "known_for_department": "Acting",
+      "name": "Aaron Paul",
+      "original_name": "Aaron Paul",
+      "popularity": 22.0,
+      "profile_path": "/u5NG37w2Gc2GBmedMk4uxlwYaLu.jpg",
+      "character": "Jesse Pinkman",
+      "credit_id": "5256c8b219c2956ff6048592",
+      "order": 1
+    },
+    {
+      "adult": false,
+      "gender": 1,
+      "id": 92495,
+      "known_for_department": "Acting",
+      "name": "Anna Gunn",
+      "original_name": "Anna Gunn",
+      "popularity": 14.0,
+      "profile_path": null,
+      "character": "Skyler White",
+      "credit_id": "5256c8b219c2956ff6048596",
+      "order": 2
+    },
+    {
+      "adult": false,
+      "gender": 0,
+      "id": 33556,
+      "known_for_department": "Acting",
+      "name": "",
+      "original_name": "",
+      "popularity": 1.0,
+      "profile_path": null,
+      "character": "Uncredited Extra",
+      "credit_id": "5256c8b219c2956ff604859a",
+      "order": 3
+    }
+  ],
+  "crew": [
+    {
+      "adult": false,
+      "gender": 2,
+      "id": 66633,
+      "known_for_department": "Writing",
+      "name": "Vince Gilligan",
+      "original_name": "Vince Gilligan",
+      "popularity": 6.0,
+      "profile_path": null,
+      "credit_id": "5256c8a219c2956ff60480a2",
+      "department": "Production",
+      "job": "Creator"
+    },
+    {
+      "adult": false,
+      "gender": 2,
+      "id": 66633,
+      "known_for_department": "Writing",
+      "name": "Vince Gilligan",
+      "original_name": "Vince Gilligan",
+      "popularity": 6.0,
+      "profile_path": null,
+      "credit_id": "5256c8a219c2956ff60480a6",
+      "department": "Directing",
+      "job": "Director"
+    },
+    {
+      "adult": false,
+      "gender": 0,
+      "id": 12345,
+      "known_for_department": "Costume & Make-Up",
+      "name": "Jane Costumer",
+      "original_name": "Jane Costumer",
+      "popularity": 1.0,
+      "profile_path": null,
+      "credit_id": "5256c8a219c2956ff60480aa",
+      "department": "Costume & Make-Up",
+      "job": "Costume Designer"
+    }
+  ]
+}

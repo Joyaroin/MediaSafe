@@ -1,21 +1,31 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
 import { LibraryGrid } from "@/app/(signed-in)/library/library-grid";
+import { LibrarySelectionProvider } from "@/app/(signed-in)/library/library-selection";
 import {
   FilterField,
   LibraryChips,
   ZeroMatches,
-} from "@/app/(signed-in)/library/library-surface";
+} from "@/app/(signed-in)/library/library-filter-bar";
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
 import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 
 /**
- * The four things about this screen that would go wrong **silently**.
+ * `selectable-entry.tsx` (issue #58) wraps every cell's button in `useRouter()`, which
+ * throws outside a mounted Next.js app router — a real router is not this suite's job to
+ * stand up, for the same reason `search-surface.tsx`'s own state machine carries no
+ * render test here. Stubbed to the one method the cell's click handler can reach, so the
+ * markup below still renders and nothing after this asserts on navigation.
+ */
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
+
+/**
+ * The things about this screen that would go wrong **silently**.
  *
  * `tests/library-grid.test.ts` covers the query. This covers the render, and only the
  * parts of it whose failure nothing else would announce:
@@ -61,8 +71,15 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
   };
 }
 
+const NO_SELECTION = { selectedEntryId: null, select: () => {} };
+
+const withSelection = (children: React.ReactNode) =>
+  createElement(LibrarySelectionProvider, { value: NO_SELECTION }, children);
+
 const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
-  renderToStaticMarkup(createElement(LibraryEntryCell, { entry: entry(overrides) }));
+  renderToStaticMarkup(
+    withSelection(createElement(LibraryEntryCell, { entry: entry(overrides) })),
+  );
 
 describe("the empty library, zero matches, and a failed read", () => {
   const empty = renderToStaticMarkup(createElement(EmptyLibrary));
@@ -188,7 +205,9 @@ describe("the library entry cell", () => {
 
 describe("the grid", () => {
   const grid = renderToStaticMarkup(
-    createElement(LibraryGrid, { entries: [entry(), entry({ libraryEntryId: "e2" })] }),
+    withSelection(
+      createElement(LibraryGrid, { entries: [entry(), entry({ libraryEntryId: "e2" })] }),
+    ),
   );
 
   it("changes its column count at the documented breakpoints and nothing else", () => {

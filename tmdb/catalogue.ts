@@ -1,6 +1,18 @@
 import "server-only";
 
 import {
+  castFrom,
+  crewFrom,
+  synopsisFrom,
+  watchProvidersFrom,
+  type CastMember,
+  type CrewMember,
+  type TmdbCreditsPayload,
+  type TmdbOverviewPayload,
+  type TmdbWatchProvidersPayload,
+  type WatchProvider,
+} from "./live-facts";
+import {
   catalogueResults,
   filmMirror,
   seasonNumbers,
@@ -183,4 +195,60 @@ async function inBatches<In, Out>(
     results.push(...(await Promise.all(items.slice(start, start + size).map(run))));
   }
   return results;
+}
+
+/** `/movie/{id}` or `/tv/{id}` — the one fork every endpoint below shares. */
+function titlePath(kind: TitleKind, tmdbId: number): string {
+  return kind === "film" ? `/movie/${tmdbId}` : `/tv/${tmdbId}`;
+}
+
+/**
+ * The three live-only calls title detail makes — `tmdb/live-facts.ts`'s half of
+ * ADR-0001's metadata caching policy, fetched fresh on every visit and never mirrored.
+ *
+ * Three separate requests, deliberately, rather than one call with TMDB's
+ * `append_to_response`: `docs/design/v1-surfaces.md` says a live-only field fails inline
+ * **within its own section**, and that is only genuinely true if a synopsis TMDB answered
+ * can render while the credits request TMDB is 500ing on the same title cannot — which a
+ * combined call could not do, because one response either has everything or is one
+ * failure covering all three.
+ */
+
+/** `null` when TMDB has not written a synopsis, or has written the empty string. */
+export async function titleSynopsis(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<string | null> {
+  return synopsisFrom(await get<TmdbOverviewPayload>(titlePath(kind, tmdbId)));
+}
+
+export interface CastAndCrew {
+  readonly cast: readonly CastMember[];
+  readonly crew: readonly CrewMember[];
+}
+
+export async function titleCastAndCrew(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<CastAndCrew> {
+  const payload = await get<TmdbCreditsPayload>(`${titlePath(kind, tmdbId)}/credits`);
+  return { cast: castFrom(payload), crew: crewFrom(payload) };
+}
+
+/**
+ * MediaSafe is single-account and has no `user`-level region today, so this is a fixed
+ * default rather than a preference read from anywhere. `tmdb/live-facts.ts`'s
+ * `watchProvidersFrom` takes the region as a parameter for exactly this reason — the day
+ * a region setting exists, this is the one line that changes.
+ */
+const WATCH_PROVIDER_REGION = "CA";
+
+export async function titleWatchProviders(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<readonly WatchProvider[]> {
+  const payload = await get<TmdbWatchProvidersPayload>(
+    `${titlePath(kind, tmdbId)}/watch/providers`,
+  );
+  return watchProvidersFrom(payload, WATCH_PROVIDER_REGION);
 }

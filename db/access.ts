@@ -3,8 +3,12 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { type Executor, getDb } from "./client";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
-import { episode, libraryEntry, title } from "./tables";
-import { libraryEntryRemaining, libraryEntryState, libraryEntryUpNext } from "./views";
+import { episode, libraryEntry, title, watch } from "./tables";
+import {
+  libraryEntryRemaining,
+  libraryEntryState,
+  libraryEntryUpNext,
+} from "./views";
 /**
  * The direction is deliberate: `tmdb/mirror.ts` knows nothing about the database, and
  * what it produces is *rows*, so the shapes belong to the mapping that derives them
@@ -16,6 +20,7 @@ import { libraryEntryRemaining, libraryEntryState, libraryEntryUpNext } from "./
 import {
   catalogueKeyOf,
   type CatalogueKey,
+  type TitleKind,
   type TitleMirror,
 } from "@/tmdb/mirror";
 
@@ -498,4 +503,161 @@ function stateFrom(value: string): LibraryState {
     throw new Error(`library_entry_state returned an unknown state: ${value}`);
   }
   return known;
+}
+
+/** One row of a season/episode list — issue #58's title detail. */
+export interface EpisodeDetail {
+  readonly id: string;
+  /** 0 = specials — mirrored and markable, and shown here like any other season. */
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  /** `null` where TMDB has not named it. Never falls back to a bare number. */
+  readonly name: string | null;
+  readonly watched: boolean;
+  /** This is `library_entry_up_next`'s episode, if it has one. */
+  readonly upNext: boolean;
+}
+
+/** Everything title detail shows that is mirrored — nothing fetched live is in here. */
+export interface TitleDetailRow {
+  readonly libraryEntryId: string;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  /** Films only; `null` for shows. */
+  readonly runtimeMins: number | null;
+  readonly state: LibraryState;
+  /** Empty for a film, and for a show TMDB has no episode data for — the two read
+   *  identically here; `programme-note-episodes.tsx` is what tells them apart, from
+   *  `kind`. */
+  readonly episodes: readonly EpisodeDetail[];
+}
+
+/**
+ * One title, as the programme note and the phone route both show it — issue #58.
+ *
+ * ── Scoped by entry, not by title ─────────────────────────────────────────────────────
+ *
+ * `title` and `episode` are global (ADR-0001), but what this reads is *your* copy of one:
+ * `ownedBy(userId, libraryEntry)` combined with the entry id is what makes a tampered or
+ * stale id from another account's library answer nothing rather than someone else's row.
+ * A missing row and a row that belongs to somebody else are the same case here and are
+ * both a throw — there is nothing for this surface to degrade to, unlike
+ * `listLibraryEntries`'s empty library, which is a real, intended state.
+ *
+ * ── Watched, by a second query, not by a join ─────────────────────────────────────────
+ *
+ * A rewatch (`CONTEXT.md`) is a second `watch` row against the same episode, so a plain
+ * `leftJoin` on `watch` would multiply that episode into two rows the moment it had been
+ * watched twice. A `Set` of this entry's watched episode ids, built from its own query,
+ * dedupes a rewatch for free and needs no correlated subquery — which matters here for a
+ * reason worth naming: `episode` and `watch` are both selected by column name only
+ * (`db/schema.ts` gives Drizzle one `episode` table in scope, so it never table-qualifies
+ * `episode.id`), and `watch` happens to have its own `id` and `episode_id` columns. A
+ * `sql` fragment correlating `${episode.id}` inside a subquery `FROM watch` renders as
+ * the bare identifier `id`, which resolves to `watch`'s own primary key instead of
+ * reaching the outer table — silently, with no SQL error, and an `EXISTS` that is always
+ * false. Caught by `tests/title-detail.test.ts`; two separate queries sidestep the
+ * footgun entirely rather than working around it.
+ *
+ * ── Up next, by id, not by rebuilding the rule ────────────────────────────────────────
+ *
+ * `library_entry_up_next` already is "the episode after your progress" — a second query,
+ * not a second definition. A library entry with nothing next (unstarted, a film, a show
+ * finished to the edge of what is mirrored) simply has no row there, and every episode's
+ * `upNext` reads `false`.
+ *
+ * ── There is no `try` here ────────────────────────────────────────────────────────────
+ *
+ * Called directly from the phone route (`app/(signed-in)/library/[entryId]/page.tsx`),
+ * a throw here is what reaches that route's own `error.tsx`. The desktop pane cannot
+ * lean on a route boundary — it never navigates — so it calls this through
+ * `titleDetailAction`, which is what does the catching, for the reason
+ * `app/(signed-in)/search/actions.ts` already gives for the search screen.
+ */
+export async function getTitleDetail(
+  userId: UserId,
+  libraryEntryId: string,
+  executor: Executor = getDb(),
+): Promise<TitleDetailRow> {
+  const [row] = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      kind: title.kind,
+      tmdbId: title.tmdbId,
+      name: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
+      state: libraryEntryState.state,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)));
+
+  if (!row) {
+    throw new Error(
+      `Library entry ${libraryEntryId} was not found in this account's library.`,
+    );
+  }
+
+  const [upNextRow] = await executor
+    .select({ episodeId: libraryEntryUpNext.episodeId })
+    .from(libraryEntryUpNext)
+    .where(eq(libraryEntryUpNext.libraryEntryId, libraryEntryId));
+  const upNextEpisodeId = upNextRow?.episodeId ?? null;
+
+  const watchedRows = await executor
+    .select({ episodeId: watch.episodeId })
+    .from(watch)
+    .where(eq(watch.libraryEntryId, libraryEntryId));
+  // A film's watch carries no episode; only a show reaches this far with rows at all.
+  const watchedEpisodeIds = new Set(
+    watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
+  );
+
+  const episodeRows = await executor
+    .select({
+      id: episode.id,
+      seasonNo: episode.seasonNo,
+      episodeNo: episode.episodeNo,
+      name: episode.name,
+    })
+    .from(episode)
+    .where(eq(episode.titleId, row.titleId))
+    .orderBy(episode.seasonNo, episode.episodeNo);
+
+  return {
+    libraryEntryId: row.libraryEntryId,
+    kind: kindFrom(row.kind),
+    tmdbId: row.tmdbId,
+    name: row.name,
+    releaseYear: row.releaseYear,
+    posterPath: row.posterPath,
+    runtimeMins: row.runtimeMins,
+    state: stateFrom(row.state),
+    episodes: episodeRows.map((one) => ({
+      id: one.id,
+      seasonNo: one.seasonNo,
+      episodeNo: one.episodeNo,
+      name: one.name,
+      watched: watchedEpisodeIds.has(one.id),
+      upNext: one.id === upNextEpisodeId,
+    })),
+  };
+}
+
+/**
+ * `title.kind` carries `title_kind_check`, so this never fires against a row this
+ * application wrote — it is here for the reason `stateFrom` is: a column Drizzle types
+ * as `string` is a promise nothing at the type level checks, and the honest treatment of
+ * a broken promise is the read failure this throw feeds into, not a silent guess.
+ */
+function kindFrom(value: string): TitleKind {
+  if (value === "film" || value === "show") return value;
+  throw new Error(`title.kind was neither 'film' nor 'show': ${value}`);
 }

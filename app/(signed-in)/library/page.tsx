@@ -13,15 +13,15 @@ import { LibrarySurface } from "./library-surface";
  * joins the derived-state views, so where a title stands and what is next in it are
  * answered by `db/views.ts` and are not re-derived here or anywhere else.
  *
- * ── Two states this page still owns, and a third that lives below it ────────────────
+ * ── Two states this page still owns, and two more that live below it ────────────────
  *
  * There is one branch on this page and it is the important one:
  *
  *  - **`entries` is empty** → the library is genuinely empty. This is reachable *only*
  *    because the query returned zero rows, and it says so on screen in the empty
- *    treatment's own voice. No filter bar is rendered here — `SPEC.md` §9 forbids
- *    reserving space for controls with nothing to act on, and a chip that would read "0"
- *    for every state is exactly that.
+ *    treatment's own voice. No filter bar and no programme note render here — `SPEC.md`
+ *    §9 forbids reserving space for controls with nothing to act on, and a chip that would
+ *    read "0" for every state, or a pane with nothing to select into, are exactly that.
  *  - **The read failed** → the query throws, this component never renders, and
  *    `error.tsx` draws the read-failure treatment in its place.
  *
@@ -30,9 +30,11 @@ import { LibrarySurface } from "./library-surface";
  * `tvtracker` collapsed the two, and a database that was down looked exactly like a
  * library with nothing in it for the whole life of that app.
  *
- * **Zero matches is a third state, and it belongs to `LibrarySurface`.** Narrowing a
- * non-empty library down to nothing is a client-side fact about the chip and the filter
- * field, not a second server read, so it cannot arrive as a branch on this page.
+ * **Zero matches and which entry is selected both belong to `LibrarySurface`.** Narrowing
+ * a non-empty library down to nothing is a client-side fact about the chip and the filter
+ * field, and which tile is open in the programme note is a third, independent piece of
+ * client state (#58) — neither is a second server read, so neither can arrive as a branch
+ * on this page.
  *
  * ── Sort is the one control that is a real navigation ────────────────────────────────
  *
@@ -42,6 +44,13 @@ import { LibrarySurface } from "./library-surface";
  * query. `?sort=`, read here and handed to `listLibraryEntries`, is what makes a link to a
  * sorted library a link to that order rather than to whatever the default was when it was
  * clicked.
+ *
+ * ── Why `LibrarySurface` owns its own `<main>` ────────────────────────────────────────
+ *
+ * The populated case needs a two-column layout — the bill on the left, the programme note
+ * on the right (`DESIGN.md`'s Never-Navigate-Away Rule) — so `LibrarySurface` renders that
+ * `<main>` itself rather than this page wrapping one around it. The two branches are
+ * mutually exclusive, so there is never a nested `<main>` on screen.
  */
 
 /**
@@ -76,16 +85,14 @@ export default async function LibraryPage({
    */
   const entries = await listLibraryEntries(userId, sort);
 
-  return (
-    <main className="flex w-full flex-1 flex-col">
-      {entries.length === 0 ? (
-        <>
-          <LibraryHeading />
-          <EmptyLibrary />
-        </>
-      ) : (
-        <LibrarySurface entries={entries} sort={sort} />
-      )}
-    </main>
-  );
+  if (entries.length === 0) {
+    return (
+      <main className="flex w-full flex-1 flex-col">
+        <LibraryHeading />
+        <EmptyLibrary />
+      </main>
+    );
+  }
+
+  return <LibrarySurface entries={entries} sort={sort} />;
 }
