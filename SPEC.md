@@ -219,9 +219,12 @@ Settled by #25, replacing #11's closest-to-finishing:
 > closest-to-finishing survives as the final tiebreak.**
 
 Closest-to-finishing was overturned on measurement: it surfaces the shows watched once and quit
-(median 28.5 remaining) and its head freezes for weeks. Recency covers only 4 of the 62 day-one
-titles, which is why the air-date fallback exists — **the rule self-heals into pure recency** as real
-watches accumulate.
+(median 28.5 remaining) and its head freezes for weeks. Measured against the committed
+`fixtures/mediasafe-seed.json`, **438 of the 439 titles with any watch carry a dated watch** —
+recency does not cover 4 of the 62 day-one titles, it covers all but one. The air-date fallback is
+not scaffolding the ordering leans on until history accumulates: it applies to roughly one title on
+day one, and **the rule is already at the steady state it was designed to reach**, not self-healing
+toward it over time. See §10.5 for the correction and its source.
 
 **No sort control on Up next, on either device.** A sort dropdown on the phone's landing screen is
 admin chrome on the daily surface.
@@ -532,7 +535,7 @@ Beyond this product's destination, and returning only as a fresh decision:
 
 ## 10. Corrections this spec makes
 
-Four groups of committed artifact disagree with a later closed decision. Each is settled here.
+Five groups of committed artifact disagree with a later closed decision. Each is settled here.
 
 ### 10.1 `docs/adr/0001` — amended in this branch
 
@@ -635,6 +638,27 @@ what was believed at `/impeccable init` time, with a banner added pointing here.
 
 It also uses **"watch event"** throughout, which #7 killed as a term: same words, different grain.
 `CONTEXT.md`'s word is **Watch**.
+
+### 10.5 §7 `Up next — ordering` — corrected in this branch
+
+§7's rationale for the air-date fallback claimed **recency covers only 4 of the 62 day-one
+titles**, and that the fallback carries the ordering until real watches accumulate, self-healing
+into pure recency over time. That was measured before `shows.legacy` — the TV Time record
+`tvtracker` also kept, which the v3 tables never exposed — was opened. Measured against the
+committed `fixtures/mediasafe-seed.json`: **438 of the 439 titles with any watch carry a dated
+watch**. The fallback applies to roughly one title on day one, not four of 62.
+
+This is the same `shows.legacy` finding [#86](https://github.com/Joyaroin/MediaSafe/issues/86)
+corrected elsewhere — `shows.legacy` itself is explained in §10.1. #86 fixed §7's *import* numbers
+(the 19,558 watches figure) and never reached this paragraph, which is exactly how a corrected
+document keeps one wrong sentence. Recorded in [#97](https://github.com/Joyaroin/MediaSafe/issues/97)
+and applied here by [#99](https://github.com/Joyaroin/MediaSafe/issues/99).
+
+**The decision does not change and #25 does not reopen.** Most recent watch descending, air-date
+fallback, no-air-date sinking below both, closest-to-finishing as the final tiebreak, is unaffected
+— it is already at the steady state the wrong rationale described it as growing into. Only the
+*reasoning* was wrong; the rule it justified was right anyway, and better supported now than when
+it was written.
 
 ---
 
