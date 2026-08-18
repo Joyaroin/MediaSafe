@@ -40,7 +40,14 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
 }
 
 const episodes = (list: EpisodeDetail[], kind: "film" | "show" = "show") =>
-  renderToStaticMarkup(createElement(ProgrammeNoteEpisodes, { kind, episodes: list }));
+  renderToStaticMarkup(
+    createElement(ProgrammeNoteEpisodes, {
+      kind,
+      episodes: list,
+      libraryEntryId: "entry-1",
+      titleName: "Game of Thrones",
+    }),
+  );
 
 describe("the episode list", () => {
   it("never falls back to a bare number for an unnamed episode", () => {
@@ -78,6 +85,15 @@ describe("the episode list", () => {
     const markup = episodes([episode({ seasonNo: 2, episodeNo: 1 })]);
 
     expect(markup).toContain("Season 2");
+  });
+
+  it("carries the recording control on an unwatched episode, and not on a watched one", () => {
+    const markup = episodes([episode({ id: "e1", episodeNo: 1, watched: false })]);
+
+    expect(markup).toContain("Strike it");
+
+    const watchedMarkup = episodes([episode({ id: "e1", episodeNo: 1, watched: true })]);
+    expect(watchedMarkup).not.toContain("Strike it");
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {

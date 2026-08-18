@@ -55,7 +55,12 @@ export function ProgrammeNoteContent({
 
       <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} />
 
-      <ProgrammeNoteEpisodes kind={detail.kind} episodes={detail.episodes} />
+      <ProgrammeNoteEpisodes
+        kind={detail.kind}
+        episodes={detail.episodes}
+        libraryEntryId={detail.libraryEntryId}
+        titleName={detail.name}
+      />
 
       <AbandonControl
         libraryEntryId={detail.libraryEntryId}

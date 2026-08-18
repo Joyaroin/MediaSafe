@@ -4,8 +4,12 @@
    The visual world, as DESIGN.md specifies it.
 
    Twenty-one `@theme` declarations, no more: eight colours, an eight-step type ramp,
-   and five form-and-motion tokens. Plus the three `@utility` rules, which carry the
-   bundles of declarations a token cannot.
+   and five form-and-motion tokens. Plus the five `@utility` rules, which carry the
+   bundles of declarations a token cannot — `watch-strike` and `watch-stamp` are the
+   two added by issue #88, because DESIGN.md's Motion section is not one component's
+   decoration: it names the one authored moment of the whole product, and the two
+   tickets #88 itself lists as blocked on it (the Up Next row's strike, and the film
+   recording control) are what "extracts" means in its own title.
 
    This is the theme layer only — there are no components here, and there is no
    component library in this repository yet. That is deliberate: every later ticket
@@ -186,4 +190,69 @@
   background-size: 3px 3px;
   mix-blend-mode: multiply;
   opacity: 0.34;
+}
+
+/* ── The Material Event: DESIGN.md's Motion section ─────────────────────────────────
+   Marking a watch is a material event, not a state toggle, and it happens in exactly one
+   place: `--ease-press` (declared above) times both halves of it. Both utilities are
+   `position: absolute` and are applied only inside a `relative` ancestor sized for text —
+   `programme-note-episodes.tsx`'s own docblock is what proves neither ever changes the
+   row's bounding rect.
+
+   The strike scales in from the left over the name it sits on top of; the stamp lands
+   off-register, rotated, over the row's block. Both settle for good — `forwards` — rather
+   than reverting, and the caller unmounts them once its own `settled` phase takes over,
+   which is what keeps a completed mark from leaving one of these behind permanently. */
+@utility watch-strike {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--color-signal);
+  transform-origin: left center;
+  animation: watch-strike-in 420ms var(--ease-press) forwards;
+}
+
+@utility watch-stamp {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  border: 2px solid var(--color-signal);
+  padding: 0.25rem 0.625rem;
+  color: var(--color-signal);
+  background: var(--color-ink);
+  transform-origin: center;
+  animation: watch-stamp-in 340ms var(--ease-press) forwards;
+}
+
+@keyframes watch-strike-in {
+  from {
+    transform: scaleX(0) translateY(-50%);
+  }
+  to {
+    transform: scaleX(1) translateY(-50%);
+  }
+}
+
+@keyframes watch-stamp-in {
+  from {
+    transform: translateY(-50%) rotate(-9deg) scale(1.5);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) rotate(-9deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* DESIGN.md, Motion: "under `prefers-reduced-motion: reduce`, the strike and stamp
+   collapse to `1ms` — the event still happens, it just does not animate." The event is
+   the state flip in `programme-note-episodes.tsx`, which is unconditional and instant
+   already; this is only what keeps the two motions from taking 420ms and 340ms to reach
+   the state they both end on regardless. */
+@media (prefers-reduced-motion: reduce) {
+  .watch-strike,
+  .watch-stamp {
+    animation-duration: 1ms;
+  }
 }
