@@ -748,6 +748,100 @@ export async function recordWatch(
 }
 
 /**
+ * Give up on a title — issue #87, and the only hand-set state in the model
+ * (`CONTEXT.md`, *Abandoned*).
+ *
+ * ── Why this needs no state to hand back ──────────────────────────────────────────────
+ *
+ * `db/views.ts`'s `library_entry_state` tests `abandoned_at is not null` **first**, ahead
+ * of every derived rule — so setting it is the whole write. There is nothing to compute:
+ * the entry reads *abandoned* on the very next read regardless of what its watches say,
+ * which is the property `SPEC.md` §7 calls "abandoned outranks the state the watches
+ * would give."
+ *
+ * ── Neither this nor `unabandonTitle` below touches `watch` ─────────────────────────
+ *
+ * `abandoned_at` is the one column on `library_entry` a person sets directly. Giving up
+ * is not a fact about what was watched, so it is not recorded as one — `recordWatch`
+ * above is the only function that ever writes a `watch` row, and it is not called here.
+ *
+ * ── Authorization ──────────────────────────────────────────────────────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` combined with the entry id, same as `recordWatch`: a
+ * tampered or stale id updates nothing, `RETURNING` comes back empty, and that is a throw
+ * rather than a silent no-op — indistinguishable, from here, from the id belonging to
+ * somebody else's library.
+ */
+export async function abandonTitle(
+  userId: UserId,
+  libraryEntryId: string,
+  executor: Executor = getDb(),
+): Promise<void> {
+  const [row] = await executor
+    .update(libraryEntry)
+    .set({ abandonedAt: sql`now()` })
+    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)))
+    .returning({ id: libraryEntry.id });
+
+  if (!row) {
+    throw new Error(
+      `Library entry ${libraryEntryId} was not found in this account's library.`,
+    );
+  }
+}
+
+/**
+ * Take an abandonment back directly — the other of the two paths `CONTEXT.md`'s
+ * *Abandoned* names out of, and the one that does not require recording a watch that did
+ * not happen. The other path is the watch write itself: `recordWatch` already clears
+ * `abandoned_at` in the same transaction as an insert, for *watching it again clears it*.
+ *
+ * ── Restoring the derived state means clearing one column, not choosing one ──────────
+ *
+ * Nothing is re-marked by hand. `library_entry_state` re-evaluates its ordinary four
+ * rules against whatever `watch` rows already exist the moment `abandoned_at` is no
+ * longer in the way — so the state this returns is read back from that view rather than
+ * guessed here, and there is no second copy of the five-state rule for this function to
+ * drift from.
+ *
+ * ── One transaction ────────────────────────────────────────────────────────────────────
+ *
+ * The clear and the read need to agree on the same row, so both run against the same
+ * connection — nested as a savepoint when `executor` is already a transaction, exactly as
+ * `recordWatch` relies on.
+ */
+export interface UnabandonOutcome {
+  readonly state: LibraryState;
+}
+
+export async function unabandonTitle(
+  userId: UserId,
+  libraryEntryId: string,
+  executor: Executor = getDb(),
+): Promise<UnabandonOutcome> {
+  return executor.transaction(async (tx) => {
+    const [row] = await tx
+      .update(libraryEntry)
+      .set({ abandonedAt: null })
+      .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)))
+      .returning({ id: libraryEntry.id });
+
+    if (!row) {
+      throw new Error(
+        `Library entry ${libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    const [state] = await tx
+      .select({ state: libraryEntryState.state })
+      .from(libraryEntryState)
+      .where(eq(libraryEntryState.libraryEntryId, libraryEntryId));
+
+    return { state: stateFrom(state.state) };
+  });
+}
+
+/**
  * Records that the first-run **Bring your library in** offer has been answered — by
  * choosing to import or by declining, either one (issue #75, completing the column
  * issue #70 declared and deliberately left unwritten).

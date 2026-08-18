@@ -3,7 +3,7 @@ import Link from "next/link";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getTitleDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import { ProgrammeNoteContent } from "../programme-note-content";
+import { TitleDetailView } from "./title-detail-view";
 
 /**
  * Title detail, on the phone — a route you push and pop (issue #58, and the third of the
@@ -43,7 +43,7 @@ export default async function TitleDetailPage({
         </Link>
       </div>
 
-      <ProgrammeNoteContent detail={detail} />
+      <TitleDetailView detail={detail} />
 
       {/* Always on screen here, unlike the desktop pane's conditional footer: this route
           only ever renders once the mirrored read above has already succeeded, so

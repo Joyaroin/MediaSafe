@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { TmdbAttribution } from "@/app/tmdb-attribution";
-import type { TitleDetailRow } from "@/db/access";
+import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
 import { ProgrammeNoteContent } from "./programme-note-content";
@@ -91,7 +91,23 @@ export function ProgrammeNotePane() {
               <ReadFailure reference={phase.reference} retry={retry} />
             </div>
           ) : null}
-          {phase.kind === "loaded" ? <ProgrammeNoteContent detail={phase.detail} /> : null}
+          {phase.kind === "loaded" ? (
+            <ProgrammeNoteContent
+              detail={phase.detail}
+              onStateChange={(libraryEntryId: string, state: LibraryState) =>
+                setPhase((prev) =>
+                  // A write started against the entry this pane had selected when it was
+                  // pressed can still land after the reader has moved to a different one
+                  // — this pane never navigates, so nothing unmounts it in between. The
+                  // guard is what keeps that stale answer from patching whatever is on
+                  // screen now.
+                  prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
+                    ? { kind: "loaded", detail: { ...prev.detail, state } }
+                    : prev,
+                )
+              }
+            />
+          ) : null}
         </div>
 
         {/* Pinned to the foot, outside the scroll, and shown only while borrowed data

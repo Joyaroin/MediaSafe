@@ -1,6 +1,12 @@
 "use server";
 
-import { getTitleDetail, type TitleDetailRow } from "@/db/access";
+import {
+  abandonTitle,
+  getTitleDetail,
+  unabandonTitle,
+  type LibraryState,
+  type TitleDetailRow,
+} from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
 import {
@@ -91,5 +97,40 @@ export async function titleWatchProvidersAction(
       ok: false,
       reference: referenceFor(error, { surface: "title-watch-providers" }),
     };
+  }
+}
+
+/**
+ * The abandon control's two writes (issue #87) — `AbandonControl` calls whichever one its
+ * own current state says is next, and both report the same shape their sibling actions
+ * above already established. `abandonAction`'s result is always `"abandoned"`;
+ * `db/access.ts`'s `abandonTitle` needs no state back because that is the entire point of
+ * `abandoned_at` outranking every derived rule. `unabandonAction` has no such certainty —
+ * its outcome is read back from `unabandonTitle`, which reads it from the view rather
+ * than guessing, so this file adds no second copy of the five-state rule either.
+ */
+export type AbandonOutcome =
+  | { readonly ok: true; readonly state: LibraryState }
+  | { readonly ok: false; readonly reference: string | null };
+
+export async function abandonAction(libraryEntryId: string): Promise<AbandonOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    await abandonTitle(userId, libraryEntryId);
+    return { ok: true, state: "abandoned" };
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
+  }
+}
+
+export async function unabandonAction(libraryEntryId: string): Promise<AbandonOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    const outcome = await unabandonTitle(userId, libraryEntryId);
+    return { ok: true, state: outcome.state };
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
   }
 }
