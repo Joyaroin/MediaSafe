@@ -15,13 +15,14 @@ import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
 import { LibrarySelectionProvider } from "./library-selection";
 import { ProgrammeNotePane } from "./programme-note";
+import { UpNextRow } from "./up-next-row";
 
 /**
- * The populated library's whole shell: the heading bar's chips, filter field and sort
- * select (#57, `library-filter-bar.tsx`), the bill on the left, and the programme note on
- * the right (#58, `DESIGN.md`'s Never-Navigate-Away Rule). `library/page.tsx` still does
- * the one server read and decides whether the library is empty; this owns everything a
- * reader can do once it is not.
+ * The populated library's whole shell: TONIGHT above the bill (#100, `up-next-row.tsx`),
+ * the heading bar's chips, filter field and sort select (#57, `library-filter-bar.tsx`),
+ * the bill on the left, and the programme note on the right (#58, `DESIGN.md`'s
+ * Never-Navigate-Away Rule). `library/page.tsx` still does the one server read and decides
+ * whether the library is empty; this owns everything a reader can do once it is not.
  *
  * ── Two axes that narrow, one that selects, one that is a real navigation ────────────
  *
@@ -73,6 +74,8 @@ export function LibrarySurface({
     <LibrarySelectionProvider value={{ selectedEntryId, select: setSelectedEntryId }}>
       <main className="flex w-full flex-1 flex-col lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col">
+          <UpNextRow />
+
           <LibraryHeading>
             <LibraryChips value={chip} onChange={setChip} />
             <FilterField value={filterText} onChange={setFilterText} />

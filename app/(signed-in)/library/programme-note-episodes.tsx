@@ -5,7 +5,7 @@ import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { useWatchMark } from "./use-watch-mark";
-import { STRUCK_NAME, WatchStamp, WatchStrike } from "./watch-mark-motion";
+import { RECORDING_CONTROL, STRUCK_NAME, WatchStamp, WatchStrike } from "./watch-mark-motion";
 
 /**
  * The season/episode list — the row that carries the product's most important rule
@@ -446,7 +446,7 @@ function MarkWatchedButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`code-line shrink-0 border border-signal px-2.5 py-1 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink ${IN_FLIGHT}`}
+      className={`${RECORDING_CONTROL} ${IN_FLIGHT}`}
     >
       Strike it
     </button>
