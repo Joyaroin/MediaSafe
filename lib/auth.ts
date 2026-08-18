@@ -133,6 +133,29 @@ export const authOptions = {
         defaultValue: TIMEZONE_FALLBACK,
         input: false,
       },
+
+      /**
+       * Records that the first-run **Bring your library in** offer has been answered, so
+       * that declining it is a decline and not a dismissal — the app must not ask again
+       * at the next cold open (issue #70, blocking #75).
+       *
+       * Same mechanism as `timezone` above and for the same reason: declared here rather
+       * than patched into `auth-schema.ts`, which the CLI overwrites whole.
+       *
+       * `required: false` and no `defaultValue`, unlike `timezone` — the absence of a
+       * value *is* the unanswered state, so every existing row is correctly unanswered on
+       * migration rather than being backfilled into an answer nobody gave.
+       *
+       * Nothing reads or writes this field yet. That is deliberate, matching
+       * `library_entry.abandoned_at`'s precedent: it isolates this migration from the
+       * screen in #75 that will read and write it, so that screen starts with no schema
+       * change on its critical path.
+       */
+      importOfferAnsweredAt: {
+        type: "date",
+        required: false,
+        input: false,
+      },
     },
   },
 

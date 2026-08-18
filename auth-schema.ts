@@ -21,6 +21,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   timezone: text("timezone").default("UTC").notNull(),
+  importOfferAnsweredAt: timestamp("import_offer_answered_at"),
 });
 
 export const session = pgTable(
