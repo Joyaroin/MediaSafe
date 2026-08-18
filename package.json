@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:routes": "vitest run tests/route-manifest.test.ts",
+    "test:fixtures": "vitest run tests/fixture-archive.test.ts",
     "db:up": "docker compose up -d --wait && npm run db:migrate",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && npm run db:up",

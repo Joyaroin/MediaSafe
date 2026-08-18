@@ -23,12 +23,19 @@ import { describe, expect, it } from "vitest";
  *     live refresh tokens, OAuth identities, two real email addresses — does not enter
  *     this repository's history. Git history is permanent; this is what notices if a
  *     future re-import puts them back.
- *  3. **Nothing loads it.** The archive is *archived and never loaded*. No application
- *     code, test, seeding path or CI step may read it, and step 3's conversion script
- *     will be the first thing that ever does.
+ *  3. **Nothing names it.** The archive is *archived and never loaded*, and step 3's
+ *     conversion script will be the first thing that reads it.
  *
  * **This file is the one exception to property 3** — it reads the archive in order to
  * check it, which is why it excludes itself from its own scan below.
+ *
+ * **What property 3 does not check**, said plainly so nobody reads more into a green run
+ * than is there. The scan greps for the two *filenames*. A loader that never spells one —
+ * `readdirSync("fixtures")`, a glob, a name rebuilt from the timestamp — reads the
+ * archive and passes. So this is a tripwire on the obvious way in, not a proof that
+ * nothing loads it: it makes adding a loader take a deliberate step around a named check
+ * rather than an unnoticed import. The properties above it, 1 and 2, are the exhaustive
+ * ones — they are assertions about bytes that are all present here.
  */
 
 const REPO = path.resolve(import.meta.dirname, "..");
@@ -63,8 +70,22 @@ const REDACTED = {
   refresh_tokens: 7,
 } as const;
 
+/**
+ * The decompressed SQL, read and gunzipped once per archive.
+ *
+ * The data half is 231 KB compressed and 3.8 MB out, and the assertions below touch it
+ * nine times — six of those from one `it.each`. Memoising keeps the file's runtime in
+ * milliseconds; the archives are immutable, so there is nothing to invalidate.
+ */
+const decompressed = new Map<string, string>();
+
 function sql(archive: string): string {
-  return gunzipSync(readFileSync(path.join(FIXTURES, archive))).toString("utf8");
+  const cached = decompressed.get(archive);
+  if (cached !== undefined) return cached;
+
+  const text = gunzipSync(readFileSync(path.join(FIXTURES, archive))).toString("utf8");
+  decompressed.set(archive, text);
+  return text;
 }
 
 /**
@@ -184,7 +205,7 @@ describe("no Supabase auth row is in this repository", () => {
   });
 });
 
-describe("nothing loads the archive", () => {
+describe("nothing names the archive", () => {
   /**
    * Greps the tracked tree rather than a hand-written list of directories, so a loader
    * added in a directory that does not exist yet is still caught. `git grep` sees only
@@ -193,11 +214,15 @@ describe("nothing loads the archive", () => {
    *
    * Three exclusions, each for a different reason:
    *
-   *  - `fixtures/` — the archive and the note that documents it.
+   *  - the two archives themselves.
    *  - `*.md` — the docs are *required* to name it (#60 asks that it be findable without
    *    reading the ticket), so a prose mention is the goal here, not the violation.
    *  - this file — it reads the archive in order to check it, and a rule that catches its
    *    own enforcement catches nothing else.
+   *
+   * Note what is **not** excluded: `fixtures/` itself. Excluding the whole directory would
+   * have been the natural thing to write and would have left the widest hole in this
+   * check — a loader dropped next to the data it loads is exactly where one would go.
    *
    * What is left is every file that could actually execute: TypeScript, config, CI
    * workflows, `package.json`. **When step 3's conversion script arrives it will fail
@@ -211,7 +236,8 @@ describe("nothing loads the archive", () => {
         "git",
         [
           "grep", "-l", "-F", "-e", DATA, "-e", SCHEMA,
-          "--", ":!fixtures/", ":!*.md", ":!tests/fixture-archive.test.ts",
+          "--", `:!fixtures/${DATA}`, `:!fixtures/${SCHEMA}`,
+          ":!*.md", ":!tests/fixture-archive.test.ts",
         ],
         { cwd: REPO, encoding: "utf8" },
       );

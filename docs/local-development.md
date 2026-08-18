@@ -131,9 +131,11 @@ command to run.
 What *is* committed is the raw material it will be derived from:
 [`fixtures/README.md`](../fixtures/README.md) documents the rescued `tvtracker` database
 export, the only surviving copy of it. **Nothing loads those archives** — not the app, not
-the tests, not CI — and `tests/fixture-archive.test.ts` fails if anything starts to. Read
-that note before writing the conversion script; it records the `auth` rows that were
-stripped before committing, and the user filter the script has to apply.
+the tests, not CI — and `tests/fixture-archive.test.ts` fails if any tracked, executable
+file so much as names one. (It matches on the filename, so a loader that reaches the
+directory without spelling it would get past; the note says so.) Read that note before
+writing the conversion script — it records the `auth` rows stripped before committing, and
+the user filter the script has to apply.
 
 ## Tests
 
@@ -141,9 +143,13 @@ stripped before committing, and the user filter the script has to apply.
 runner. There is no in-memory substitute and no mocked constraint: the properties worth
 testing here live in Postgres, and a mock of a unique constraint tests the mock.
 
-One test file is the exception and needs no database: `tests/fixture-archive.test.ts`
-reads the committed `fixtures/` archives and checks their checksums, that no Supabase
-`auth` row survived, and that nothing outside `fixtures/` loads them.
+Two test files are the exception and need no database, which is why CI runs both on every
+pull request while the rest of the suite stays local:
+
+| | |
+| --- | --- |
+| `npm run test:routes` | Constraint 5 — reads the built route manifest and the compiled proxy matcher. Needs `npm run build` first. |
+| `npm run test:fixtures` | The rescued `tvtracker` archives — checksums, that no Supabase `auth` row survived, and that nothing names them. Needs nothing at all. |
 
 Tests create and drop their own scratch databases, so running them does not disturb the
 database you develop against.

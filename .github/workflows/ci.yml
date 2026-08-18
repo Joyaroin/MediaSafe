@@ -20,11 +20,13 @@
 # Postgres and the WebSocket proxy in front of it (`vitest.config.mts`), which is two
 # service containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set.
 #
-# The route-manifest check is the exception, and it is the exception because it needs
-# none of that: it reads two files `next build` just wrote and compares them
-# (`tests/route-manifest.test.ts`). Constraint 5 — *no unauthenticated route may ever be
-# added* — is a property of a pull request, so a check that cannot run on one is a check
-# that is not enforcing it. That is why it runs here and the rest of the suite does not.
+# Two files are the exception, and they are exceptions for the same reason: neither needs
+# a database. `tests/route-manifest.test.ts` reads two files `next build` just wrote and
+# compares them; `tests/fixture-archive.test.ts` reads the committed archives and nothing
+# else. Both enforce properties *of a pull request* — constraint 5, *no unauthenticated
+# route may ever be added*, and #60's *the rescue archive is intact and nothing loads
+# it* — and a check that cannot run on a pull request is a check that is not enforcing
+# anything. That is why these two run here and the rest of the suite does not.
 
 name: CI
 
@@ -109,6 +111,18 @@ jobs:
       - name: Route manifest
         if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.build.outcome == 'success' }}
         run: npm run test:routes
+
+      # The `tvtracker` rescue archive (#60), for the same reason as the step above: it
+      # needs neither the database nor the build, only the committed files, so a check
+      # that could not otherwise run on a pull request runs here.
+      #
+      # Without this step the archive's guarantees would hold only when somebody ran the
+      # full local suite with Docker up — which is to say, they would be a habit rather
+      # than a check. The archive is the one artefact in this repository that cannot be
+      # regenerated if it is lost or quietly altered.
+      - name: Fixture archive
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:fixtures
 
       # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather

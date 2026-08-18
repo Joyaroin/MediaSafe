@@ -177,6 +177,12 @@ owner.
 4. **squawk over the generated `.sql`**, narrowed to destructive rules, which makes expand-contract
    mechanically checkable.
 
+These four are the ones this section commits to. The suite has grown past them — each addition
+guards a property that would otherwise be a convention nobody can check, and #60's
+`tests/fixture-archive.test.ts` is the clearest case: the archive it checks is irreplaceable, so
+"it is intact and nothing loads it" is worth an assertion rather than a habit. *Deliberately
+untested* still means what it says for everything else.
+
 ---
 
 ## 7. The surfaces
@@ -375,7 +381,7 @@ in a state you could hand to a user and have them succeed at something.
 > comes *with* the library, because until either search or import exists there is no way to put a
 > title into a library and every library screen is unpopulatable.
 
-### Step 0 — Rescue the fixtures ⚠️ *time-boxed by `tvtracker`'s life* — **DONE** (#60)
+### Step 0 — Rescue the fixtures ⚠️ *time-boxed by `tvtracker`'s life*
 
 Commit into MediaSafe:
 

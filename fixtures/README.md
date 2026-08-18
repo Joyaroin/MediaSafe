@@ -1,8 +1,17 @@
 # The `tvtracker` rescue archive
 
 **This is the only surviving copy of `tvtracker`'s database.** It is *archived and never
-loaded* — nothing in the application, the test suite, the seeding path or CI reads it, and
-`tests/fixture-archive.test.ts` is what keeps that true.
+loaded* — nothing in the application, the test suite, the seeding path or CI reads it.
+
+`tests/fixture-archive.test.ts` guards that, and **CI runs it on every pull request** —
+`npm run test:fixtures`, which needs neither the database nor the build, unlike most of
+this repo's suite. A guarantee that only held when somebody happened to run the full local
+suite would be a habit rather than a check.
+
+It is worth knowing how far the guard reaches: it fails if any tracked, executable file
+**names** either archive — including one placed in this directory. A loader that never
+spells the filename — `readdirSync("fixtures")`, a glob, a name rebuilt from the
+timestamp — would slip past it. It is a tripwire on the obvious way in, not a proof.
 
 Committed by issue [#60](https://github.com/Joyaroin/MediaSafe/issues/60), which is
 `SPEC.md` §8 **step 0** — the one step in the build order that could be started too late.
@@ -87,7 +96,17 @@ Recorded because *not* removing something is as much a decision as removing it:
 | `public.shows` | **472** |
 | `public.episode_overrides` | **18,649** |
 | `public.movies`, `public.lists`, `public.list_items`, `public.watch_events` | 0 — all empty |
-| `storage.*` | 0 — all empty |
+| `storage.*` (7 tables) | 0 — all empty |
+
+Every count above is checkable against the data half alone. `pg_dump` emits a
+`-- Data for Name: <table>; Type: TABLE DATA; Schema: <schema>` header for every table it
+exported, including the empty ones, and writes no `INSERT` beneath an empty one — so the
+zero rows are as visible as the non-zero ones. The `storage.*` figure in particular cannot
+be checked against the schema half, which declares no `storage` object at all:
+
+```sh
+gzcat fixtures/tvtracker-2026-08-16T04-27-53Z-data.redacted.sql.gz | grep 'Data for Name:'
+```
 
 `watch_events` being empty is not a dump error. `tvtracker`'s ADR-0003 called events
 canonical and nothing ever wrote one; the watch history lives entirely in
