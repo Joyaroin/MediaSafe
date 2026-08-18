@@ -1,6 +1,6 @@
 {
   "$comment": [
-    "The enforced gate on ambiguous watermarks (SPEC.md §7, issue #16).",
+    "The enforced gate on ambiguous watermarks (SPEC.md §7, issues #16 and #71).",
     "",
     "tvtracker recorded most watches per episode, but a few titles carry watches only as",
     "shows.watched_through — an absolute ordinal across the whole show, with no record of",
@@ -8,28 +8,27 @@
     "account for, and the show was not watched right through, the export simply does not say",
     "which episodes those were. The conversion halts and names them rather than guess.",
     "",
-    "This file is where a person answers, and it is deliberately EMPTY. Two shows in the",
-    "2026-08-16 export need an answer nobody has given yet:",
+    "`credit` is an explicit list of episodes, never a count — a count would put the guess",
+    "back in the script. An EMPTY `credit` is a real answer: it records that the watermark is",
+    "stale and that nothing extra should be written for that show. The show keeps whatever",
+    "its episode rows actually record.",
     "",
-    "  Hudson & Rex (tmdb 87940) — watched through 60 of 122; 53 episodes marked watched,",
-    "    leaving 7 unaccounted for. The named episodes have real gaps (S1E1-10, S2E8-11)",
-    "    that contradict a watermark of 60, so 'the first 60' is not a safe reading.",
-    "  Person of Interest (tmdb 1411) — watched through 7 of 103, with no episode rows at",
-    "    all. There is no evidence in either direction.",
-    "",
-    "To answer one, add an entry naming the episodes to credit:",
-    "",
-    "  { \"tmdb_id\": 1411, \"title\": \"Person of Interest\",",
-    "    \"reason\": \"why this is the right answer\",",
-    "    \"credit\": [ { \"season\": 1, \"episode\": 1 } ] }",
-    "",
-    "`credit` is an explicit list, never a count — a count would put the guess back in the",
-    "script. An EMPTY `credit` is a real answer too: it records that the watermark is stale",
-    "and that nothing should be written for that show.",
-    "",
-    "tvtracker is re-exported at cutover, so this file is not a checklist that was ticked",
-    "once. A fresh export with different stragglers halts on them, and an answer left here",
-    "for a show that no longer needs one halts too, rather than being inherited unread."
+    "tvtracker is re-exported at cutover, so this file is not a checklist ticked once. A fresh",
+    "export with different stragglers halts on them, and an answer left here for a show that",
+    "no longer needs one halts too, rather than being inherited unread."
   ],
-  "confirmations": []
+  "confirmations": [
+    {
+      "tmdb_id": 87940,
+      "title": "Hudson & Rex",
+      "reason": "Adham's call, 2026-08-18: drop the watermark. It claims 60 of 122 episodes while the episode rows name 53, and those rows have real gaps — S1E1-10 and S2E8-11 — that a watermark of 60 contradicts. The 53 recorded watches stand; the 7 the watermark implies are not written, because nothing records which they were.",
+      "credit": []
+    },
+    {
+      "tmdb_id": 1411,
+      "title": "Person of Interest",
+      "reason": "Adham's call, 2026-08-18: drop the watermark. It claims 7 of 103 episodes with no episode rows at all, so there is no evidence in either direction. The title stays in the library as a watchlist entry rather than carrying 7 watches nothing can place.",
+      "credit": []
+    }
+  ]
 }

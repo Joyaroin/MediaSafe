@@ -726,23 +726,55 @@ describe("the watermark cases", () => {
   });
 });
 
+function committedConfirmFile(): unknown {
+  return JSON.parse(
+    readFileSync(path.join(REPO, "scripts", "convert-tvtracker", "convert.confirm.json"), "utf8"),
+  );
+}
+
 describe("convert.confirm.json, as committed", () => {
   it("is a valid confirm file", () => {
-    const raw: unknown = JSON.parse(
-      readFileSync(path.join(REPO, "scripts", "convert-tvtracker", "convert.confirm.json"), "utf8"),
-    );
-    expect(() => parseConfirmFile(raw)).not.toThrow();
+    expect(() => parseConfirmFile(committedConfirmFile())).not.toThrow();
   });
 
-  it("answers nothing yet, so the conversion halts on the two ambiguous shows", () => {
-    // Deliberate. Which episodes of Hudson & Rex and Person of Interest were watched is
-    // Adham's judgement at cutover, and inventing one here would put a guess into the
-    // only surviving record of what he watched.
-    const raw: unknown = JSON.parse(
-      readFileSync(path.join(REPO, "scripts", "convert-tvtracker", "convert.confirm.json"), "utf8"),
-    );
-    expect(parseConfirmFile(raw).confirmations).toHaveLength(0);
-    expect(() => convert(parseConfirmFile(raw))).toThrow(ConversionHalt);
+  it("records why each answer is the right one", () => {
+    // The answer outlives the person who wrote it, and the next re-export is read by
+    // whoever is at the terminal that day.
+    for (const confirmation of parseConfirmFile(committedConfirmFile()).confirmations) {
+      expect(confirmation.reason.length).toBeGreaterThan(40);
+      expect(confirmation.title.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("answers both ambiguous shows, so the conversion completes", () => {
+    // Answered by Adham on 2026-08-18 (#61 asks for exactly this and forbids the agent
+    // deciding it): drop both watermarks. Neither show gains a watch it cannot place, and
+    // neither loses the watches its episode rows actually record.
+    const committed = parseConfirmFile(committedConfirmFile());
+    expect(committed.confirmations.map((c) => c.tmdbId).sort()).toEqual([
+      PERSON_OF_INTEREST,
+      HUDSON_AND_REX,
+    ]);
+    for (const confirmation of committed.confirmations) expect(confirmation.credit).toHaveLength(0);
+
+    const result = convert(committed);
+    // The figure `SPEC.md` §7 and #16 both carry, and now the one the seed actually holds.
+    expect(result.json.titles).toHaveLength(462);
+    expect(result.json.watches).toHaveLength(18_715);
+    expect(watchesFor(result, HUDSON_AND_REX)).toHaveLength(53);
+    expect(watchesFor(result, PERSON_OF_INTEREST)).toHaveLength(0);
+  });
+
+  it("still halts if an answer is removed", () => {
+    // The gate has to stay a gate after it has been opened once. Drop either answer and
+    // the run stops again, so a future re-export cannot inherit a half-answered file.
+    const committed = parseConfirmFile(committedConfirmFile());
+    for (const dropped of committed.confirmations) {
+      const partial = {
+        confirmations: committed.confirmations.filter((c) => c.tmdbId !== dropped.tmdbId),
+      };
+      expect(() => convert(partial)).toThrow(ConversionHalt);
+    }
   });
 
   it("refuses a confirm file that is the wrong shape", () => {
