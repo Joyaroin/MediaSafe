@@ -20,12 +20,11 @@ things around it are not.
    2026-08-17. `watched_count` is not a rewatch total but `watchedThrough + extra − gaps` clamped to
    `total_episodes` (`packages/shared/src/episodes.ts:88-101`), fed a *dense* override map by
    `tvtracker`'s own v2→v3 import — so it double-counts, and that formula reproduces the column
-   **472/472**. **There is no rewatch data in the library and there never was**, so pressure 3 below
-   and the "217 shows" figure in *Context* and *Alternatives rejected* describe data that does not
-   exist. `UNIQUE (user_id, source, source_key)` is still the right identity for the two surviving
-   pressures — a rewatch is a second row, a retry is a no-op — and **nothing here reopens**. Import
-   expands nothing: the native file is already episode-grain, and the expansion happens in the
-   conversion script.
+   **472/472**. The "217 shows" figure in *Context* and *Alternatives rejected* describes that
+   double-counting artifact, not real rewatches, and pressure 3 below never existed.
+   `UNIQUE (user_id, source, source_key)` is still the right identity for the two surviving
+   pressures — a rewatch is a second row, a retry is a no-op. Import expands nothing: the native file
+   is already episode-grain, and the expansion happens in the conversion script.
 2. **"Never touch `abandoned_at`" is overturned** — [#25](https://github.com/Joyaroin/MediaSafe/issues/25),
    2026-08-17. Import **sets** `abandoned_at`, on entry creation only. See *Abandonment* and
    *Consequences*, both corrected in place below.
@@ -34,6 +33,16 @@ things around it are not.
    the library's *closest to finishing* sort (`SPEC.md` §7, #22) needs a per-entry count of unwatched
    episodes that none of them answers, and *"no state is ever stored"* below binds it exactly as it
    binds the other four. See *Remaining*, under *Derivation rules*.
+4. **Amendment 1 is itself amended** — [#86](https://github.com/Joyaroin/MediaSafe/issues/86),
+   2026-08-18. It originally went on to conclude **"there is no rewatch data in the library and
+   there never was."** That conclusion was wrong: it reasoned only from `watched_count`, a v3 field,
+   and never opened `shows.legacy` — the TV Time record `tvtracker` also kept, which the v3 tables
+   never exposed. Step 3's conversion opened it, and measured against `fixtures/mediasafe-seed.json`
+   it holds **1,156 rewatches** — 1,129 at `source_key` occurrence `:2`, 27 at `:3`. **The decision
+   does not reopen.** `UNIQUE (user_id, source, source_key)` is right for three pressures now, not
+   two — a genuine rewatch mints a new key exactly as designed, and it turns out one already had to.
+   Only the claim that this was hypothetical, rather than 1,156 rows already in the database, was
+   wrong.
 
 ## Context
 
@@ -55,7 +64,8 @@ follows exists to reconcile them:
 
 Three identical undated rows that must be creatable but not re-creatable. No uniqueness rule built
 from `(user, episode, date)` can satisfy all three: it either collapses the real rewatches ~~#6
-found on 217 shows~~ *(amendment 1 — there were none)*, or it lets a retry duplicate one.
+found on 217 shows~~ *(amendment 1 — that count was a double-counting artifact; the real rewatches
+were elsewhere, per amendment 4)*, or it lets a retry duplicate one.
 
 A fourth pressure came from #8, which opened public signup after this ticket was written. Other
 people's data is now in the database, authorization is enforced in **one application-layer choke

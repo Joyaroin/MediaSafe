@@ -246,8 +246,9 @@ Three rules the sort needs, all of which bite on day one:
 - **Sort state lives in the URL** (`?sort=`). Not a preferences column, and not `localStorage` —
   which would be the first crack in constraint 1.
 
-*Recently watched* was cut **on evidence**: `last_watched_at` is NULL on 450 of 470 titles and every
-imported watch is undated.
+*Recently watched* was cut **on evidence**: `last_watched_at` is NULL on 450 of 470 titles. It was
+also cut on the belief that every imported watch was undated — that belief was wrong (see §10);
+whether that reopens this sort is a decision for its own ticket, not this one.
 
 ### Library — filter chips
 
@@ -323,9 +324,11 @@ carrying metadata would let one account rewrite what every other account sees.
   `abandoned_at == added_at` identity holds in every environment that runs the file.
 - **The file is not hand-writable.** Accepted: the script is committed and tested, so "if the script
   were lost" is a git-history problem, not a data problem.
-- **`source_key` is `<tmdb_episode_id>:<occurrence>`**, always `:1` in this file — there are no
-  rewatches to express. This makes backfilled history **permanently distinguishable** from real
-  history, a stronger marker than "undated".
+- **`source_key` is `<tmdb_episode_id>:<occurrence>`** — not always `:1`. `shows.legacy`, the TV Time
+  record `tvtracker` kept and its own v3 tables never exposed, holds **1,156 rewatches** in this
+  file: 1,129 at `:2`, 27 at `:3`. This makes backfilled history **permanently distinguishable** from
+  real history, a stronger marker than "undated" — and it expresses genuine rewatches too, not only
+  first watches.
 - **Import only ever adds.** It never removes a title, a watch or a rating, and running the same file
   twice changes nothing the second time.
 - **The write path is client-driven chunks of ~25 titles**, forced by two verified Vercel Hobby
@@ -343,9 +346,10 @@ tab open, because constraint 1 forbids a queue and closing the tab really does a
 318 of 462 titles · 11,204 watches · 155 marked abandoned
 ```
 
-**Day-one numbers, measured**: 462 titles, ~18,715 watches, of which **18 are dated** — the only
-genuine `last_watched_at` values in the library. States on arrival: **62 watching · 155 abandoned ·
-223 finished-or-caught-up · 22 watchlist**.
+**Day-one numbers, measured against `fixtures/mediasafe-seed.json`**: 462 titles, **19,558 watches**,
+of which **19,391 are dated** — genuine values recovered from `shows.legacy`, the TV Time record
+`tvtracker` kept and its own v3 tables never exposed (see §10). States on arrival: **62 watching ·
+155 abandoned · 223 finished-or-caught-up · 22 watchlist**.
 
 > **On 472 vs 462 vs 470.** Three denominators appear across the closed tickets and they are not
 > typos. **472** is every title row in `tvtracker`'s production dump (#6) and is the figure the ADR
@@ -390,7 +394,7 @@ Commit into MediaSafe:
   loaded**, source of truth. **Two files, not one.** This line said `tvtracker-export.sql.gz` until
   #60 did the work and found the export is two halves; the data half is unreadable without the
   schema half, which holds the column types, constraints and RLS policies.
-- `fixtures/mediasafe-seed.json` — ~1.5 MB, 462 titles, ~18,715 watches, produced by the conversion
+- `fixtures/mediasafe-seed.json` — ~1.5 MB, 462 titles, ~19,558 watches, produced by the conversion
   script. **Still outstanding — it arrives with step 3.**
 
 Both copies currently live **only** in `tvtracker`'s `.local-fixtures/` and its `backups` branch, and
@@ -532,16 +536,24 @@ Four groups of committed artifact disagree with a later closed decision. Each is
 
 ### 10.1 `docs/adr/0001` — amended in this branch
 
-Two corrections, applied to the file itself rather than left as errata:
+Three corrections, applied to the file itself rather than left as errata:
 
 - **Its rewatch premise was never real.** The ADR reconciles three pressures, the third being that
   *"import expands `watched_count = 3` into three watches per episode"*.
   [#16](https://github.com/Joyaroin/MediaSafe/issues/16) proved `watched_count` is a derived progress
-  figure that double-counts (`watchedThrough + extra − gaps`, clamped), reproducible 472/472 — **there
-  is no rewatch data in the library and there never was**. The decision is unaffected:
-  `UNIQUE (user_id, source, source_key)` is still right for the two surviving pressures, and #16
-  confirmed nothing reopens. But a builder reading the *reasoning* would go looking for an expansion
+  figure that double-counts (`watchedThrough + extra − gaps`, clamped), reproducible 472/472 — so the
+  "217 shows" figure `watched_count` was read against is a double-counting artifact, not real
+  rewatches. The decision is unaffected: `UNIQUE (user_id, source, source_key)` is still right for the
+  two surviving pressures. But a builder reading the *reasoning* would go looking for an expansion
   that does not exist.
+- **Amendment 1 is itself amended.** It went on to conclude **"there is no rewatch data in the
+  library and there never was."** That conclusion was wrong: it reasoned only from `watched_count`, a
+  v3 field, and never opened `shows.legacy` — the TV Time record `tvtracker` also kept, which the v3
+  tables never exposed. Step 3's conversion opened it, and measured against
+  `fixtures/mediasafe-seed.json` it holds **1,156 rewatches** — 1,129 at `source_key` occurrence
+  `:2`, 27 at `:3`. **The decision does not reopen.** `UNIQUE (user_id, source, source_key)` is right
+  for three pressures now, not two — a genuine rewatch mints a new key exactly as designed. Only the
+  claim that this was a hypothetical, rather than 1,156 rows already in the database, was wrong.
 - **`never touch abandoned_at` is overturned.** #25 requires import to **set** it on entry creation —
   never on update, never clearing. The ADR's consequences bullet said the opposite.
 
@@ -553,7 +565,7 @@ The brief stands except where later tickets moved it. Do not build from these li
 |---|---|
 | §4 "Up next … ordering is closest-to-finishing" | #25 — last watch, then next air date (§7) |
 | §6 "Titles in *watching*: typical ~57, max ~114" | #16/#25 — **62** on day one, after 155 map to abandoned |
-| §6 "~18,649 watches by one import" | #16 — **~18,715** |
+| §6 "~18,649 watches by one import" | #16 said **~18,715**; #86 corrected that to **19,558**, from `shows.legacy` (§10.1) |
 | §6 + §7 open item 2 "Up next needs a bound" | #25 — **no cap** on phone; viewport on desktop |
 | §7 open item 1 "what Settings contains" | #28 — Profile / Data / Account |
 | §7 open item 3 "does the library sort or filter by rating" | #22 — **no**, to both |
@@ -614,7 +626,10 @@ what was believed at `/impeccable init` time, with a banner added pointing here.
 5. *"Because previews carry real data, no unauthenticated route may ever be added"* — the rule stands,
    the reason does not.
 6. *"MediaSafe imports from `tvtracker`"* — #18: import accepts MediaSafe-native files only.
-7. *"`watched_count` (443, of which 217 are real rewatch totals)"* — #16: no rewatch data exists.
+7. *"`watched_count` (443, of which 217 are real rewatch totals)"* — #16: `watched_count` is a
+   derived, double-counting progress figure, not a rewatch total, so 217 was never a real count. It
+   does not follow that no rewatch data exists — `shows.legacy` holds 1,156 real rewatches; see
+   §10.1.
 8. *"No visual identity exists yet"* / *"the repository is a README and this file"* / the list of
    "explicitly undecided" items — all six of those tickets are now closed.
 
