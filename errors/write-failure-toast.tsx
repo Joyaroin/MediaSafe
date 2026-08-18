@@ -12,10 +12,11 @@ import { type RaisedWriteFailure, writeFailures } from "./write-failure";
  * `text-bill-sm` in `signal`, the affected title and episode named in full, a solid *Try
  * again*, a ghost *Dismiss*, and a copyable reference id. It does not auto-dismiss.*
  *
- * **Nothing calls this yet**, and that is the point of building it now. Step 4 of SPEC.md
- * §11's build order is the optimistic watch mark with rollback — the one place in the
- * product where a write can be lost — and it needs a mechanism to raise a failure into,
- * not a component to design while also getting rollback right.
+ * **Its first caller is the add on the search screen** —
+ * `app/(signed-in)/search/catalogue-result.tsx`, issue #55 — and that it was built before
+ * the caller existed is the point. This file used to name step 4's optimistic watch mark
+ * as the first place in the product where a write can be lost. It is not: adding a title
+ * is a write too, and it is optimistic for the same reason.
  *
  * The API is `errors/write-failure.ts`:
  *
@@ -51,12 +52,13 @@ export function WriteFailureToasts() {
       // corner of the viewport even when it holds one short toast, and it must not swallow
       // clicks on whatever is underneath it.
       //
-      // ⚠ `bottom-0` on phone is provisional. DESIGN.md says the toast is full-bleed
-      // *above the tab bar*, and there is no tab bar yet — step 2 adds the three fixed
-      // tabs. The toast is not visible to anyone until step 4 raises one, so by the time
-      // it is first seen the tab bar will already be sitting on top of it. Whoever builds
-      // the tab bar must lift this by its height; whoever builds the toast's caller must
-      // check that they did.
+      // ⚠ `bottom-0` on phone is still provisional, and is now load-bearing rather than
+      // theoretical: issue #55's add raises real toasts and there is still no tab bar to
+      // sit above. That is correct today — the bar needs *Library* (#56) and *Up next*
+      // (step 5), and one tab is not a tab bar — so the toast currently sits on the
+      // bottom edge, which is where DESIGN.md wants it minus a bar that does not exist.
+      // **Whoever builds the tab bar must lift this by its height**, or it will cover a
+      // message about a write that was lost.
       className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex flex-col gap-px lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[420px]"
     >
       {failures.map((failure) => (

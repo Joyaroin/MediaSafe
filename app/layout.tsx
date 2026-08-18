@@ -19,8 +19,9 @@ export const metadata: Metadata = {
  *
  * - **Offline** is app-wide, so it is in the layout and above everything else on the page.
  * - **The write-failure toast** is app-wide too — a write can be lost from any surface,
- *   and the toast has to outlive the component that started the write. It renders nothing
- *   until something raises a failure, and nothing does yet.
+ *   and the toast has to outlive the component that started the write. That is not
+ *   theoretical any more: the add on the search screen (#55) raises into it from a row
+ *   that unmounts the moment the reader types the next query.
  * - **Read failures** are *not* here. They belong to the route that failed, so they live
  *   in `app/error.tsx`, which wraps the page and leaves this layout standing.
  */

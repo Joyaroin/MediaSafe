@@ -22,10 +22,13 @@ import { Wordmark } from "./press-mark";
  * no placeholder tabs, no "coming soon".* Three things are therefore absent, each because
  * the thing it would point at does not exist:
  *
- *  - **No nav cells.** *Library* and *Search* arrive with their destinations at build
- *    step 2. A nav item that goes nowhere is the reserved space §9 forbids, and it is
- *    worse than empty space because it looks like it works.
- *  - **No phone tab bar.** Its third tab is *Up next*, which is build step 5.
+ *  - **One nav cell, not two.** *Search* is here because issue #55 built the route it
+ *    points at. *Library* is not, because issue #56 has not: a nav item that goes nowhere
+ *    is the reserved space §9 forbids, and it is worse than empty space because it looks
+ *    like it works. The cell is rendered at every width for the same reason — the phone's
+ *    three-tab bar needs *Library* and *Up next* too, and one tab alone is not a tab bar.
+ *  - **No phone tab bar.** Its three tabs are Up next, Search and Library; two of the
+ *    three are build steps 5 and 2's remaining tickets.
  *  - **No display name.** It is inert text set from `user.name`, and it belongs with the
  *    control that sets it — build step 7 (#28). Rendering it now would mean rendering a
  *    name nobody can change.
@@ -46,6 +49,20 @@ export function Masthead() {
         <div className="border-r border-rule px-4 py-3 lg:px-6">
           <Wordmark markClassName="h-5 w-5" />
         </div>
+
+        {/* `DESIGN.md`, Navigation: full-height cells on the masthead's hairline,
+            separated by `1px` borders, label typography, inactive dim bone hovering to
+            `ink-raised` + bone. The active/inverted state arrives with the second nav
+            item — with one cell there is nothing to be current *against*, and inverting
+            it on its own route would read as a pressed button rather than a location. */}
+        <Link
+          href="/search"
+          className="flex items-center border-r border-rule px-4 text-stock-dim transition-colors hover:bg-ink-raised hover:text-stock lg:px-5"
+        >
+          {/* *Search*, never *Find* and never *Filter*. CONTEXT.md gives this word to the
+              catalogue and gives *filter* to your own library. */}
+          <span className="code-line">Search</span>
+        </Link>
       </div>
 
       <div className="flex items-stretch">

@@ -11,10 +11,12 @@
  * mistake into a build-time client-reference error instead of a silent leak. Raise
  * failures from the browser, where the write was attempted.
  *
- * **This has no caller yet.** Nothing in the app writes; step 4 of SPEC.md §11's build
- * order — the optimistic watch mark and its rollback — is the first. It is built now
- * because that step needs a mechanism to reach for, not a component to design under
- * pressure while also getting rollback right.
+ * **Its first caller is the add on the search screen** —
+ * `app/(signed-in)/search/catalogue-result.tsx`, issue #55. This file used to say step 4's
+ * optimistic watch mark would be the first, which was true when it was written and is not
+ * now: adding a title is a write, it is optimistic, and it can be lost. Building the toast
+ * ahead of either of them was still the point — the caller reached for a mechanism instead
+ * of designing one while also getting rollback right.
  *
  * SPEC.md §3.3: *a lost write is never silent.* The property bought is **never silent**,
  * not *always lands* — so a raised failure leaves the screen in exactly two ways, both of
