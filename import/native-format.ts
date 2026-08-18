@@ -86,6 +86,15 @@ function positiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
+/** `raw[field]` must be a positive integer, or `where.field must be a positive integer.` */
+function requirePositiveInteger(raw: Record<string, unknown>, field: string, where: string): number {
+  const value = raw[field];
+  if (!positiveInteger(value)) {
+    throw new Error(`${where}.${field} must be a positive integer.`);
+  }
+  return value;
+}
+
 function parseTitle(raw: unknown, index: number): NativeImportTitle {
   const where = `titles[${index}]`;
   if (!isPlainObject(raw)) {
@@ -93,9 +102,7 @@ function parseTitle(raw: unknown, index: number): NativeImportTitle {
   }
   assertNoExtraFields(raw, TITLE_FIELDS, where);
 
-  if (!positiveInteger(raw.tmdb_id)) {
-    throw new Error(`${where}.tmdb_id must be a positive integer.`);
-  }
+  const tmdbId = requirePositiveInteger(raw, "tmdb_id", where);
   if (raw.kind !== "film" && raw.kind !== "show") {
     throw new Error(`${where}.kind must be "film" or "show", not ${JSON.stringify(raw.kind)}.`);
   }
@@ -105,7 +112,7 @@ function parseTitle(raw: unknown, index: number): NativeImportTitle {
     );
   }
 
-  return { tmdbId: raw.tmdb_id, kind: raw.kind, abandoned: raw.abandoned };
+  return { tmdbId, kind: raw.kind, abandoned: raw.abandoned };
 }
 
 function parseWatch(raw: unknown, index: number): NativeImportWatch {
@@ -115,12 +122,8 @@ function parseWatch(raw: unknown, index: number): NativeImportWatch {
   }
   assertNoExtraFields(raw, WATCH_FIELDS, where);
 
-  if (!positiveInteger(raw.tmdb_id)) {
-    throw new Error(`${where}.tmdb_id must be a positive integer.`);
-  }
-  if (!positiveInteger(raw.tmdb_episode_id)) {
-    throw new Error(`${where}.tmdb_episode_id must be a positive integer.`);
-  }
+  const tmdbId = requirePositiveInteger(raw, "tmdb_id", where);
+  const tmdbEpisodeId = requirePositiveInteger(raw, "tmdb_episode_id", where);
   if (raw.watched_at !== null && typeof raw.watched_at !== "string") {
     throw new Error(`${where}.watched_at must be null or an ISO date-time string.`);
   }
@@ -132,8 +135,8 @@ function parseWatch(raw: unknown, index: number): NativeImportWatch {
   }
 
   return {
-    tmdbId: raw.tmdb_id,
-    tmdbEpisodeId: raw.tmdb_episode_id,
+    tmdbId,
+    tmdbEpisodeId,
     watchedAt: raw.watched_at,
     key: raw.key,
   };
@@ -186,10 +189,9 @@ export function readNativeImportFile(text: string): NativeImportFile {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
-  } catch (error) {
-    throw new Error(
-      `The import file is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-    );
+  } catch {
+    // AGENTS.md — user-facing strings are plain sentences, never an exception message.
+    throw new Error("The import file is not valid JSON.");
   }
   return parseNativeImportFile(raw);
 }
