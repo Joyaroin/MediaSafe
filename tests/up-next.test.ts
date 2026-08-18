@@ -926,14 +926,22 @@ describe("listUpNext — against the whole fixture", () => {
             return left < right ? 1 : -1;
           }
           /**
-           * Only two entries could ever reach this line, and only if they tied on the
-           * last watch: every synthesised title carries the same two unwatched episodes,
-           * so *closest to finishing* cannot separate any pair here and the name tiebreak
-           * is what comes next. **Nothing in this fixture ties** — 238 distinct watch
-           * instants across 238 dated titles — so the query's `remaining` and entry-id
-           * terms are not what this test covers; the small tests above are. This exists
-           * so that a fixture which one day does tie is still compared against a total
-           * order rather than against whatever order this array was built in.
+           * The rank-0 tiebreak, and only that. Two titles reach this line by tying on
+           * the last watch, and every synthesised title carries the same two unwatched
+           * episodes, so *closest to finishing* cannot separate them and the name is what
+           * comes next.
+           *
+           * **Nothing in this fixture ties** — 238 distinct watch instants across its 238
+           * dated deck titles — so the query's `remaining` and entry-id terms are not what
+           * this test covers; the small tests above are. This exists so that a fixture
+           * which one day does tie is still compared against a total order rather than
+           * against whatever order this array happened to be built in.
+           *
+           * It is deliberately not the whole rule: two *undated* titles would also land
+           * here, and the query would separate those by their next episode's air date
+           * descending, not by name. The fixture has exactly one undated title, so that
+           * pair cannot occur — a second one arriving means adding the air-date term here
+           * rather than trusting this line.
            */
           return `title ${a}` < `title ${b}` ? -1 : 1;
         })
