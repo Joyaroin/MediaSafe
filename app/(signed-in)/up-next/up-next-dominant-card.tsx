@@ -20,9 +20,14 @@ import { STRUCK_NAME, WatchStamp, WatchStrike } from "../library/watch-mark-moti
  * `../library/` unchanged — issue #87's own docblock calls this exact placement out by
  * name (*"a future Up next card … is free to do something else entirely, which is what
  * makes this reusable there"*), and the abandon control's own section in `DESIGN.md` says
- * it appears in exactly two places. Moving any of the three into a shared location is
- * #103's job, once the desktop row (#100) exists too and both callers are known; doing it
- * here would be restructuring a module this ticket only needs to call.
+ * it appears in exactly two places.
+ *
+ * This used to say moving all three into a shared location was #103's job once the desktop
+ * row (#100) existed. **#103 moved none of them**, and the anticipation was the wrong shape
+ * for what it turned out to be about: the collision it closes is two surfaces holding two
+ * optimistic states for one episode, so what moved was the *state*, out of the hook and
+ * into `../library/watch-marks.ts`, keyed by episode. The three imports above are still
+ * three imports from `../library/`, and this card is unchanged by that ticket.
  *
  * `initialWatched` is always `false`: `listUpNext` only ever returns a *watching* title's
  * unwatched next episode (`db/access.ts`), so there is no server-known watched state to

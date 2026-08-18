@@ -76,7 +76,11 @@ function upNextEpisodeFullName(entry: UpNextEntry): string {
  * the row rather than a name that reads on one line.
  *
  * Marking here is the exact hook `EpisodeLine` drives — no second write, no second
- * idempotency, no second rollback (issue #100's own acceptance criteria). A struck card
+ * idempotency, no second rollback (issue #100's own acceptance criteria). **And the same
+ * write, not merely the same code**: this row and the programme note are on screen at
+ * once, so a card and an episode line showing the same episode share one mark in
+ * `watch-marks.ts` (issue #103). Marking from either records one watch, a failure raises
+ * one toast, and both go struck together. A struck card
  * keeps its *Watched* label rather than disappearing: this row loads once per page view
  * (`up-next-row.tsx`), so the card leaving the deck is a fact of the *next* load, and a
  * card that vanished immediately would be gone out from under a cursor still resting on

@@ -210,11 +210,18 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  *
  * ── Idempotency, one key per outstanding write ───────────────────────────────────────
  *
- * `use-watch-mark.ts`'s `key` names the write, not the press: minted when none is
- * outstanding, reused by every route back to that same write, and cleared only when one
- * of them lands. #88 held one for the life of the row, which was correct while a row
- * could only be marked once. See that hook's `attempt` for why neither that nor
- * one-per-press is correct once a watch can be taken back.
+ * The key names the write, not the press: minted when none is outstanding, reused by every
+ * route back to that same write, and cleared only when one of them lands. #88 held one for
+ * the life of the row, which was correct while a row could only be marked once. See
+ * `watch-marks.ts`'s `mark` for why neither that nor one-per-press is correct once a watch
+ * can be taken back.
+ *
+ * **The key is no longer this row's, and neither is the rest of the state** — issue #103.
+ * It is held per *episode*, in `watch-marks.ts`, because on desktop the TONIGHT row
+ * (`up-next-grid.tsx`) is on screen at the same time as this pane and can be showing the
+ * same episode; two rows holding two optimistic states minted two keys against one
+ * episode, which is two rows in the table. Nothing about this file's markup changed —
+ * `useWatchMark` is still the one hook and still returns what it did.
  *
  * ── The two controls a struck row offers, and the one it does not ────────────────────
  *
