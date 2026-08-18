@@ -5,7 +5,7 @@ import { referenceFor } from "@/errors/reference";
 import { titleMirror } from "@/tmdb/catalogue";
 import type { NativeImportTitle, NativeImportWatch } from "@/import/native-format";
 import { requireUserId } from "@/lib/session";
-import type { TitleKind } from "@/tmdb/mirror";
+import { isUnresolvedTitle, type TitleKind } from "@/tmdb/mirror";
 
 /**
  * The one Server Action the import screen drives, once per chunk of ~25 titles
@@ -43,16 +43,21 @@ export type ImportChunkActionOutcome =
  *
  * ── Two failure modes, deliberately different (the ticket this is) ───────────────────
  *
- * A title TMDB cannot resolve is caught **per title**, inside the loop below, and turned
- * into a `SkippedTitle` — not reported to Sentry, because a title TMDB no longer serves is
- * an expected outcome of running a years-old export, not a bug. Its watches are dropped
- * with it: `applyImportChunk` cannot write a watch whose episode was never mirrored, and
- * silently keeping them would just move the same failure one function further in.
+ * Only a `404` from `titleMirror` — TMDB's own *no such id* — is caught per title, inside
+ * the loop below, and turned into a `SkippedTitle`. Not reported to Sentry: a title TMDB no
+ * longer serves is an expected outcome of running a years-old export, not a bug. Its
+ * watches are dropped with it — `applyImportChunk` cannot write a watch whose episode was
+ * never mirrored, and silently keeping them would just move the same failure one function
+ * further in.
  *
- * Anything else — the database, a network fault reaching TMDB at all, a chunk whose watch
- * names a title it does not carry — is not caught here and falls through to the outer
- * `catch`, which is the *halt* behaviour: reported to Sentry, answered with a reference id,
- * and nothing in this chunk is assumed written.
+ * Every other failure — a `429`, a `500`, a timeout, a network fault, the database, a
+ * chunk whose watch names a title it does not carry — is **not** what *"cannot be
+ * resolved"* means, and is not caught here. It falls through to the outer `catch`, which
+ * is the *halt* behaviour: reported to Sentry, answered with a reference id, and nothing
+ * in this chunk is assumed written. Collapsing the two — treating a TMDB outage the same
+ * as a dead id — is exactly the mistake `SPEC.md` §7 calls out: a chunk hit mid-outage
+ * would silently report all 25 of its titles as *not on TMDB* instead of halting the run
+ * where a reader can see it and retry.
  */
 export async function applyImportChunkAction(
   source: string,
@@ -71,8 +76,15 @@ export async function applyImportChunkAction(
         const mirror = await titleMirror(one.kind, one.tmdbId);
         resolved.push({ mirror, abandoned: one.abandoned });
         resolvedTmdbIds.add(one.tmdbId);
-      } catch {
-        skipped.push({ tmdbId: one.tmdbId, kind: one.kind });
+      } catch (error) {
+        // Only "TMDB does not have this id" is a skip. Everything else — a rate limit, an
+        // outage, a network fault — is not this title's fault and must halt the chunk
+        // rather than be misreported as one more dead id.
+        if (isUnresolvedTitle(error)) {
+          skipped.push({ tmdbId: one.tmdbId, kind: one.kind });
+          continue;
+        }
+        throw error;
       }
     }
 

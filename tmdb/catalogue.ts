@@ -17,6 +17,7 @@ import {
   filmMirror,
   seasonNumbers,
   showMirror,
+  TmdbHttpError,
   type CatalogueResult,
   type TitleKind,
   type TitleMirror,
@@ -128,10 +129,13 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
      * whole reason the search screen can tell *the catalogue has nothing for this* from
      * *MediaSafe could not reach the catalogue*.
      *
-     * The status is in the message because this message is for Sentry. Nothing puts it on
-     * screen: the reader gets a plain sentence and, at most, the reference id.
+     * `TmdbHttpError`, not a plain `Error`, so a caller that genuinely needs the status —
+     * the import screen (#73), telling *this id no longer exists on TMDB* apart from
+     * *TMDB is unreachable* — can ask for it directly rather than parsing it back out of
+     * a message written for Sentry. The message is unchanged either way: nothing puts the
+     * status on screen, and the reader gets a plain sentence and, at most, the reference id.
      */
-    throw new Error(`TMDB answered ${response.status} for ${path}`);
+    throw new TmdbHttpError(response.status, `TMDB answered ${response.status} for ${path}`);
   }
 
   return (await response.json()) as T;

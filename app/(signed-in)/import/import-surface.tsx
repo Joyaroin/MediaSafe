@@ -41,19 +41,21 @@ type Counters = {
 
 const ZERO_COUNTERS: Counters = { titlesAdded: 0, watchesAdded: 0, abandonedAdded: 0 };
 
+/** The three counters, plus the denominator only the file itself knows. One name, so `running`, `halted` and `done` — the three phases that have a run to report on — do not each spell the same intersection out by hand. */
+type Progress = Counters & { readonly totalTitles: number };
+
 type Phase =
   | { kind: "choose" }
   /** The file the reader picked is not one MediaSafe will write. */
   | { kind: "invalid"; message: string; reference: string | null }
-  | ({ kind: "running"; totalTitles: number } & Counters)
+  | ({ kind: "running" } & Progress)
   /** A chunk failed for a reason that is not "TMDB does not have this title". */
   | ({
       kind: "halted";
-      totalTitles: number;
       reference: string | null;
       skipped: readonly SkippedTitle[];
-    } & Counters)
-  | ({ kind: "done"; totalTitles: number; skipped: readonly SkippedTitle[] } & Counters);
+    } & Progress)
+  | ({ kind: "done"; skipped: readonly SkippedTitle[] } & Progress);
 
 export function ImportSurface() {
   const [phase, setPhase] = useState<Phase>({ kind: "choose" });
@@ -199,9 +201,7 @@ function InvalidFile({
 }
 
 /** The three counters, exactly as `SPEC.md` §7 writes them: `318 of 462 titles · 11,204 watches · 155 marked abandoned`. */
-function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Counters & {
-  totalTitles: number;
-}) {
+function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
   return (
     <p role="status" className="code-line text-stock" data-numeric>
       {titlesAdded} of {totalTitles} titles · {watchesAdded} watches · {abandonedAdded} marked
@@ -210,9 +210,7 @@ function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }:
   );
 }
 
-function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Counters & {
-  totalTitles: number;
-}) {
+function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
   return (
     <div>
       <h2 className="bill-title text-bill-md text-stock">Importing your library</h2>
@@ -232,6 +230,20 @@ function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Cou
   );
 }
 
+/**
+ * The *halt* failure mode (`SPEC.md` §7), rendered with `errors/failure-treatment.ts`'s
+ * inline block — the same one `ReadFailure` uses — rather than the write-failure toast.
+ *
+ * That is a deliberate departure from `AGENTS.md`'s blast-radius table, which files "one
+ * write was lost" under the toast. The ticket itself overrides it: *"Import's failures are
+ * not toasts. The write-failure toast is for a lost write on a surface that carries on
+ * around it; here the screen **is** the blast radius and is already showing you the run.
+ * Do not add a fifth error surface — §6's four treatments are the whole vocabulary."* A
+ * toast is for a failure the surface around it survives; this failure **is** the surface,
+ * with nothing else on it to carry on. Of the three treatments left once the toast is
+ * ruled out, inline is the one that fits — full-page belongs to a signed-out reader, and
+ * the offline banner belongs to the whole app being unreachable, not one chunk.
+ */
 function Halted({
   totalTitles,
   titlesAdded,
@@ -240,8 +252,7 @@ function Halted({
   reference,
   skipped,
   retry,
-}: Counters & {
-  totalTitles: number;
+}: Progress & {
   reference: string | null;
   skipped: readonly SkippedTitle[];
   retry: () => void;
@@ -276,10 +287,13 @@ function Halted({
   );
 }
 
-function Done({ totalTitles, titlesAdded, watchesAdded, abandonedAdded, skipped }: Counters & {
-  totalTitles: number;
-  skipped: readonly SkippedTitle[];
-}) {
+function Done({
+  totalTitles,
+  titlesAdded,
+  watchesAdded,
+  abandonedAdded,
+  skipped,
+}: Progress & { skipped: readonly SkippedTitle[] }) {
   return (
     <div>
       <h2 className="bill-title text-bill-md text-stock">Import done</h2>
