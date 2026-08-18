@@ -185,6 +185,12 @@ export class ConversionHalt extends Error {
 
 const coordinateKey = (season: number, episode: number): string => `${season}:${episode}`;
 
+/** An override row's `(season, episode)`, which is the only part of it that maps. */
+const coordinateOf = (row: TvtrackerOverrideRow): EpisodeCoordinate => ({
+  season: row.seasonNumber,
+  episode: row.episodeNumber,
+});
+
 const describeCoordinate = ({ season, episode }: EpisodeCoordinate): string =>
   `S${season}E${episode}`;
 
@@ -288,14 +294,7 @@ function expandWholeShow(
   // too many and look exactly like a correct run.
   const excluded = new Set(
     notWatched
-      .map((row) =>
-        resolveCoordinate(
-          episodes,
-          show,
-          { season: row.seasonNumber, episode: row.episodeNumber },
-          "records not having watched",
-        ),
-      )
+      .map((row) => resolveCoordinate(episodes, show, coordinateOf(row), "records not having watched"))
       .map((episode) => coordinateKey(episode.season, episode.episode)),
   );
 
@@ -505,12 +504,7 @@ export function mapToNativeImport(
       // explicitly marked not watched, so the apparent shortfall is an artifact.
       const episodes = watchedRows.length > 0 ? episodesFor(episodeIndex, show) : [];
       watched = watchedRows.map((row) =>
-        resolveCoordinate(
-          episodes,
-          show,
-          { season: row.seasonNumber, episode: row.episodeNumber },
-          "records a watch of",
-        ),
+        resolveCoordinate(episodes, show, coordinateOf(row), "records a watch of"),
       );
     } else if (show.watchedThrough === show.totalEpisodes && show.totalEpisodes > 0) {
       watched = expandWholeShow(show, episodesFor(episodeIndex, show), notWatchedRows);
@@ -525,9 +519,7 @@ export function mapToNativeImport(
       confirmedExpansions.push(straggler);
 
       const episodes = episodesFor(episodeIndex, show);
-      const named = new Set(
-        watchedRows.map((row) => coordinateKey(row.seasonNumber, row.episodeNumber)),
-      );
+      const named = new Set(watchedRows.map((row) => coordinateKey(row.seasonNumber, row.episodeNumber)));
       const credited = confirmation.credit.map((coordinate) => {
         const key = coordinateKey(coordinate.season, coordinate.episode);
         if (named.has(key)) {
@@ -543,12 +535,7 @@ export function mapToNativeImport(
 
       watched = [
         ...watchedRows.map((row) =>
-          resolveCoordinate(
-            episodes,
-            show,
-            { season: row.seasonNumber, episode: row.episodeNumber },
-            "records a watch of",
-          ),
+          resolveCoordinate(episodes, show, coordinateOf(row), "records a watch of"),
         ),
         ...credited,
       ];

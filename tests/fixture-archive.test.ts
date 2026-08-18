@@ -223,10 +223,10 @@ describe("no Supabase auth row is in this repository", () => {
  * permitted, and the alternative — adding it in the same pull request that adds the
  * reader — is the widening this list exists to stop.
  */
-const MAY_NAME_THE_ARCHIVE = [
+const MAY_NAME_THE_ARCHIVE: readonly string[] = [
   "scripts/convert-tvtracker/cli.ts",
   "tests/tvtracker-conversion.test.ts",
-] as const;
+];
 
 describe("only the conversion names the archive", () => {
   /**
@@ -274,7 +274,7 @@ describe("only the conversion names the archive", () => {
     }
 
     const naming = hits.trim().split("\n").filter(Boolean).sort();
-    expect(naming.filter((file) => !MAY_NAME_THE_ARCHIVE.includes(file as never))).toEqual([]);
+    expect(naming.filter((file) => !MAY_NAME_THE_ARCHIVE.includes(file))).toEqual([]);
 
     // And the allowlist is not allowed to go quietly dead. Test 1 reads the export by
     // definition, so if nothing names it any more, either the test stopped reading the

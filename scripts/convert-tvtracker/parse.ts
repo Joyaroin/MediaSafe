@@ -94,29 +94,54 @@ function readLiteral(text: string, open: number, end: number): string {
 }
 
 /**
- * The single `INSERT` statement for a table: from `INSERT` to its terminating `;`.
+ * The header `pg_dump` writes above every table it exported, empty ones included.
+ *
+ * This is what makes *"the table was empty"* distinguishable from *"the table was not
+ * found"*, and the two must never collapse into each other — `SPEC.md` §3 and `AGENTS.md`
+ * make that the rule the whole codebase is built on, and here the stakes are that a
+ * failure to find `shows` would otherwise convert to a valid, empty seed.
+ */
+function dataHeader(table: string): string {
+  return `-- Data for Name: ${table}; Type: TABLE DATA; Schema: public`;
+}
+
+/**
+ * **Every** `INSERT` statement for a table, each from `INSERT` to its terminating `;`.
  *
  * Stopping at the semicolon is load-bearing rather than tidy — slicing to end-of-file
  * makes `shows` swallow `episode_overrides`, and makes `episode_overrides` swallow the
  * trailing `setval(…)` whose argument list is one more top-level group.
  *
- * `undefined` means `pg_dump` wrote no `INSERT` for the table, which is exactly how it
- * spells an empty one — the `-- Data for Name:` header is still there with nothing
- * beneath it. That is a real answer rather than a failure, so callers read it as zero
- * rows.
+ * **All of them, not the first.** The committed archive holds one multi-row `INSERT` per
+ * table, but `tvtracker` is re-exported at cutover and `pg_dump --inserts` without
+ * `--rows-per-insert` writes *one statement per row*. Reading only the first would convert
+ * that export to a single title and a single watch, and would say it had worked.
  */
-function insertStatement(text: string, table: string): string | undefined {
-  const start = text.indexOf(`INSERT INTO "public"."${table}"`);
-  if (start < 0) return undefined;
+function insertStatements(text: string, table: string): readonly string[] {
+  const needle = `INSERT INTO "public"."${table}"`;
+  const statements: string[] = [];
 
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === "'") {
-      i = endOfLiteral(text, i) - 1;
-      continue;
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf(needle, from);
+    if (start < 0) return statements;
+
+    let end = -1;
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "'") {
+        i = endOfLiteral(text, i) - 1;
+        continue;
+      }
+      if (text[i] === ";") {
+        end = i;
+        break;
+      }
     }
-    if (text[i] === ";") return text.slice(start, i + 1);
+    if (end < 0) throw new Error(`The INSERT for public.${table} is not terminated.`);
+
+    statements.push(text.slice(start, end + 1));
+    from = end + 1;
   }
-  throw new Error(`The INSERT for public.${table} is not terminated.`);
 }
 
 /** The quoted column names between `INSERT INTO … (` and `) VALUES`. */
@@ -150,13 +175,11 @@ function splitRow(body: string): readonly SqlValue[] {
         i++;
       }
     } else {
+      // A bare field is `NULL`, `true`, `false` or a number — none of which can contain a
+      // comma or a bracket, so the next comma ends it and `interpretBare` rejects anything
+      // else rather than letting it through.
       const start = i;
-      let depth = 0;
-      while (i < body.length && !(body[i] === "," && depth === 0)) {
-        if (body[i] === "(") depth++;
-        else if (body[i] === ")") depth--;
-        i++;
-      }
+      while (i < body.length && body[i] !== ",") i++;
       values.push(interpretBare(body.slice(start, i).trim()));
     }
 
@@ -176,11 +199,54 @@ function interpretBare(text: string): SqlValue {
   throw new Error(`The export holds a value this parser does not recognise: ${text}`);
 }
 
-/** Every top-level `(…)` group after `VALUES`, as column-name → value records. */
+/**
+ * Every row of a table, across every `INSERT` that writes to it.
+ *
+ * **Not finding the table is a failure, not zero rows.** `pg_dump` writes a
+ * `-- Data for Name:` header for every table it exported, including the empty ones, and
+ * writes no `INSERT` beneath an empty one. So the header is what says *the table was
+ * exported* and the `INSERT` is what says *it had rows*, and reading a missing header as
+ * an empty table is the shape `AGENTS.md` forbids: it would turn an export this parser
+ * cannot read — a dump without quoted identifiers, say — into a seed with no history in
+ * it and no error anywhere.
+ */
 function rowsOf(text: string, table: string): readonly Record<string, SqlValue>[] {
-  const statement = insertStatement(text, table);
-  if (statement === undefined) return [];
+  if (!text.includes(dataHeader(table))) {
+    throw new Error(
+      `The export has no data section for public.${table}. Every table pg_dump exported ` +
+        "carries one, empty tables included, so its absence means this is not the export " +
+        "this parser was written for — and an empty result would be indistinguishable from " +
+        "a table that really was empty.",
+    );
+  }
 
+  const statements = insertStatements(text, table);
+
+  // The header says the table was exported; it does not say the `INSERT` beneath it is
+  // one this parser can read. `pg_dump` without `--quote-all-identifiers` writes
+  // `INSERT INTO public.shows`, which the exact match above skips — and skipping every
+  // statement for a table looks precisely like a table that was empty. So the loose
+  // spelling is counted too, and any statement found one way but not the other is a
+  // failure rather than a row count.
+  const loose =
+    text.match(
+      // The word boundary belongs to the bare spelling alone — after a closing quote
+      // there is none, so `(?:"shows"|shows)\b` matches nothing at all.
+      new RegExp(String.raw`INSERT INTO\s+(?:"public"|public)\s*\.\s*(?:"${table}"|${table}\b)`, "g"),
+    ) ?? [];
+  if (loose.length !== statements.length) {
+    throw new Error(
+      `The export writes ${loose.length} INSERT statement(s) for public.${table} and this ` +
+        `parser could read ${statements.length} of them. It is written for pg_dump's quoted ` +
+        "form, and reading the rest as zero rows would lose them without saying so.",
+    );
+  }
+
+  return statements.flatMap((statement) => rowsIn(statement, table));
+}
+
+/** Every top-level `(…)` group after `VALUES`, as column-name → value records. */
+function rowsIn(statement: string, table: string): readonly Record<string, SqlValue>[] {
   const columns = columnNames(statement, table);
   const values = /\bVALUES\b/.exec(statement);
   if (!values) throw new Error(`The INSERT for public.${table} has no VALUES.`);

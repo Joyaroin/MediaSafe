@@ -225,6 +225,39 @@ describe("the export is read whole", () => {
     expect(exported.movies).toHaveLength(0);
   });
 
+  it("fails rather than report zero rows when a table cannot be found", () => {
+    // `AGENTS.md`: empty and failed are structurally separate. A `pg_dump` this parser
+    // cannot read — unquoted identifiers, say, which is a flag away — must not convert to
+    // a seed with no history in it and no error anywhere. The header is what says the
+    // table was exported; the INSERT is what says it had rows.
+    const sql = gunzipSync(readFileSync(path.join(REPO, "fixtures", ARCHIVE))).toString("utf8");
+    const unquoted = sql.replaceAll('INSERT INTO "public"."shows"', "INSERT INTO public.shows");
+    expect(() => parseTvtrackerDump(unquoted)).toThrow(/could read 0 of them/);
+
+    const headerless = sql.replaceAll("-- Data for Name: shows; Type: TABLE DATA", "-- gone");
+    expect(() => parseTvtrackerDump(headerless)).toThrow(/no data section for public.shows/);
+  });
+
+  it("reads every INSERT for a table, not only the first", () => {
+    // `pg_dump --inserts` without `--rows-per-insert` writes one statement per row, and
+    // `tvtracker` is re-exported at cutover. Reading only the first would convert such an
+    // export to a single title and a single watch, and would report success.
+    const header = [
+      "-- Data for Name: shows; Type: TABLE DATA; Schema: public; Owner: postgres",
+      "-- Data for Name: episode_overrides; Type: TABLE DATA; Schema: public; Owner: postgres",
+      "-- Data for Name: movies; Type: TABLE DATA; Schema: public; Owner: postgres",
+    ].join("\n");
+    const row = (tmdbId: number, name: string) =>
+      `INSERT INTO "public"."shows" ("id", "user_id", "tmdb_id", "name", "total_episodes", ` +
+      `"watch_status", "watched_through", "is_favourite", "is_pinned", "last_watched_at") VALUES\n` +
+      `\t('id-${tmdbId}', '${TVTRACKER_ACCOUNT_ID}', ${tmdbId}, '${name}', 1, 'Watching', 0, false, false, NULL);\n`;
+
+    const parsed = parseTvtrackerDump(`${header}\n${row(1, "One")}${row(2, "Two")}`);
+    expect(parsed.shows.map((show) => show.tmdbId)).toEqual([1, 2]);
+    expect(parsed.overrides).toHaveLength(0);
+    expect(parsed.movies).toHaveLength(0);
+  });
+
   it("finds both accounts, with the split fixtures/README.md recorded", () => {
     const exported = archive();
     const mine = exported.shows.filter((show) => show.userId === TVTRACKER_ACCOUNT_ID);
