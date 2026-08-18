@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 
 import type { EpisodeDetail } from "@/db/access";
+import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
-import { recordWatchAction } from "./watch-action";
+import { recordWatchAction, undoWatchAction } from "./watch-action";
 
 /**
  * The season/episode list — the row that carries the product's most important rule
@@ -97,6 +98,67 @@ function episodeFullName(episode: EpisodeDetail): string {
 }
 
 /**
+ * Everything about one row that a press changes, in one object.
+ *
+ * They are one piece of state and not three because every write here sets all three at
+ * once and a failure puts all three back — and *back* has to mean the appearance the row
+ * had at the moment of that press, captured then rather than reconstructed later. Three
+ * `useState`s would make the rollback three statements that can drift out of step, and
+ * two of the three are only ever wrong in ways nothing on screen would show.
+ */
+interface Appearance {
+  /** Struck, in the reader's eye. Flips before the server has answered. */
+  readonly watched: boolean;
+  /** Whether there is an app watch to take back — `db/access.ts`'s `EpisodeDetail`. */
+  readonly undoable: boolean;
+  /**
+   * `unwatched` → `marking` → `settled`. An already-watched episode from the server
+   * mounts straight into `settled`: no animation plays for a mark that happened before
+   * this page loaded, and only a fresh press runs the sequence.
+   */
+  readonly phase: "unwatched" | "marking" | "settled";
+}
+
+function settledFrom(episode: EpisodeDetail): Appearance {
+  return {
+    watched: episode.watched,
+    undoable: episode.undoable,
+    phase: episode.watched ? "settled" : "unwatched",
+  };
+}
+
+/**
+ * The trailing slot, at one fixed measure in every state.
+ *
+ * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
+ * is the same rule applied along the other axis, and issue #89 is what makes it
+ * necessary: the slot now holds four different sets of things — *Up next* beside *Strike
+ * it*; *Watched* alone while the strike plays; *Rewatch* beside *Undo*; *Rewatch* beside
+ * *Watched* where the only other watch was imported — and they are not the
+ * same width. Left to size themselves, the episode name beside them would jump every time
+ * one gave way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways
+ * instead of vertically.
+ *
+ * So the slot is fixed and its contents are right-aligned inside it, the name takes the
+ * rest with `min-w-0`, and the name truncates rather than wrapping. Truncation is the
+ * cost, and it is the right one: a name that wraps takes the row's height with it, which
+ * is the property #88 measured twice to get.
+ *
+ * **`10rem` is what the row already needed, not new width.** Measured against the
+ * compiled CSS in a real browser, the widest of the four states is the one that was
+ * there before this ticket — *Up next* beside *Strike it*, at `153.8px`. The two this
+ * ticket adds come in under it: *Rewatch* beside *Undo* at `111.2px`, and *Rewatch*
+ * beside *Watched* at `136.5px`. So nothing had to give way to make room, and the
+ * episode name is exactly as wide as it was.
+ *
+ * That is also what settled the rewatch control's label. *Watch it again* measures
+ * `107.8px` and puts the imported-watch state at `182px` — over the slot, and only
+ * payable by taking `22px` off every episode name on the phone. *Rewatch* is
+ * `CONTEXT.md`'s own word for the thing, and it fits.
+ */
+const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
+
+/**
  * `DESIGN.md`, Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
  * **name** at `text-item` as the actual content; a trailing state code line. Watched
  * episodes are struck through in dim bone; the up-next episode inverts its number into a
@@ -141,12 +203,64 @@ function episodeFullName(episode: EpisodeDetail): string {
  * -strike, settled), and held at a `340px` phone width and with the *Up next* label
  * present alongside the control too.
  *
- * ── Idempotency, minted once ─────────────────────────────────────────────────────────
+ * **Re-measured again for issue #89**, which puts two more controls on the row and so
+ * could have broken it: same method, against the compiled CSS in a real browser, over
+ * every state the row now has — unwatched, unwatched-and-up-next, watched-with-undo,
+ * watched-from-an-import, and a name long enough to wrap. The `li` came back
+ * `371 × 44px` at a `420px` pane, `326 × 44px` at `375px` and `291 × 44px` at `340px`,
+ * **identical in every state at each width**, and the episode name beside it came back
+ * identical too (`151px`, `106px`, `71px`) rather than moving as the controls changed.
+ * Nothing was clipped at any width. The two things that buy that are the fixed trailing
+ * measure (`TRAILING`) and the name's `truncate`; without the second, the long name wraps
+ * and takes the row's height with it.
  *
- * `key` is a ref, set on the first press and reused for every retry of that same click —
- * `db/access.ts`'s `recordWatch` is what makes a repeated key a no-op rather than a
- * second watch, and it can only do that if this never mints a second key for a write that
- * has not yet succeeded.
+ * ── Idempotency, minted once per press ───────────────────────────────────────────────
+ *
+ * The key is minted in `press()` and passed down, so one press has one key and its
+ * retries reuse it — `db/access.ts`'s `recordWatch` is what makes a repeated key a no-op
+ * rather than a second watch. Issue #88 held it in a ref for the life of the row, which
+ * was correct while a row could only ever be marked once. It is not correct now that a
+ * row can be marked, undone and marked again: see `press()`.
+ *
+ * ── The two controls a struck row offers, and the one it does not ────────────────────
+ *
+ * Issue #89. A watched episode offers *Rewatch* and *Undo*, and **neither is the control
+ * that struck it** — the ghost *Strike it* button is gone the moment the row is watched,
+ * so the daily gesture cannot be repeated into a rewatch. That is the whole point:
+ * `ADR-0001`'s per-click key protects one click across its retries and can do nothing
+ * about two clicks, and a phantom rewatch is invisible by inspection next to the 1,156
+ * real ones already in the database.
+ *
+ * The distinction is carried in the chrome as well as the words. *Strike it* is the
+ * bordered ghost button `DESIGN.md`'s Buttons section specifies; both of these are
+ * underlined text controls with no border and no fill, which is that section's treatment
+ * for a control that must not compete with the daily gesture. *Rewatch* stays
+ * **vermilion**, because it records a watch and vermilion is what recording a watch looks
+ * like; *Undo* is dim and never vermilion, exactly as the abandon control is and for the
+ * same stated reason.
+ *
+ * *Undo* takes the trailing state line's place rather than sitting beside it, so where
+ * there is an undo to offer the row reads *Rewatch · Undo*, and where there is not —
+ * the watch was imported — it reads *Rewatch · Watched*. The struck name is what says
+ * *watched* in both (`DESIGN.md`, Episode Line); the code line beside it gives way to the
+ * control that acts on it, the way the abandon control's own reassurance gives way when
+ * it stops being the true statement.
+ *
+ * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
+ * for the length of the strike, and the controls arrive with `settled`. A control that
+ * materialises under a thumb still resting on the row it just touched is the same mistake
+ * as a row that resizes under it.
+ *
+ * ── Undo is offered from `undoable`, never guessed ───────────────────────────────────
+ *
+ * `episode.undoable` is *this account has a watch of this episode that the application
+ * recorded*. An episode whose only watch was imported reads as watched and offers no undo
+ * at all — `db/access.ts`'s `undoWatch` refuses that delete regardless, but a control
+ * that is never drawn is the honest half of the pair, not a duplicate of the check.
+ *
+ * Nothing here counts anything. `watched`, `undoable` and `phase` are the whole state,
+ * and there is no number of watches on this row to display — `CONTEXT.md`: a rewatch is
+ * *never a number kept on a title*.
  */
 function EpisodeLine({
   episode,
@@ -157,46 +271,128 @@ function EpisodeLine({
   libraryEntryId: string;
   titleName: string;
 }) {
-  const [watched, setWatched] = useState(episode.watched);
-  const [phase, setPhase] = useState<"unwatched" | "marking" | "settled">(
-    episode.watched ? "settled" : "unwatched",
-  );
-  const key = useRef<string | null>(null);
-  const raised = useRef<WriteFailureHandle | null>(null);
+  const [appearance, setAppearance] = useState<Appearance>(() => settledFrom(episode));
+  const [pending, setPending] = useState(false);
+  /**
+   * This row's outstanding lost write, and **which of the two it was**.
+   *
+   * The kind is not bookkeeping. `resolve()` means *the write landed, or the reader no
+   * longer needs to see this*, and a landed write only says that about a lost one of the
+   * same kind. A mark that lands after a lost mark genuinely settles it — the episode is
+   * watched, which is what the reader was trying to say. A **rewatch that lands after a
+   * lost undo settles nothing**: the undo is still lost, and there is now one more watch
+   * on the episode than the reader asked for. Resolving there would take the only notice
+   * of it off the screen, which is `SPEC.md` §3.3 broken by a write that succeeded.
+   */
+  const raised = useRef<{ kind: "watch" | "undo"; handle: WriteFailureHandle } | null>(null);
+  const { watched, undoable, phase } = appearance;
+
+  const fullName = episodeFullName(episode);
 
   /**
    * A function declaration, not `useCallback`, for the reason `catalogue-result.tsx`
-   * gives its own `attempt`: it hands itself to the toast as `retry`, and closes over
-   * nothing that changes across the life of this row.
+   * gives its own `attempt`: it hands itself to the toast as `retry`, and everything that
+   * varies between one press and the next is a parameter rather than a closed-over piece
+   * of state that a retry running minutes later would read stale.
    */
-  async function attempt(): Promise<void> {
-    if (key.current === null) key.current = crypto.randomUUID();
+  async function attemptWatch(sourceKey: string, previous: Appearance): Promise<void> {
+    setPending(true);
+    setAppearance({ watched: true, undoable: true, phase: "marking" });
 
-    setWatched(true);
-    setPhase("marking");
-
-    const outcome = await record(key.current);
+    const outcome = await record(sourceKey);
+    setPending(false);
 
     if (outcome.ok) {
       // The write landed — including a retry that landed after a failure, which is the
       // only thing besides the reader that ever takes this toast down.
-      raised.current?.resolve();
-      raised.current = null;
+      settle("watch");
       return;
     }
 
-    setWatched(false);
-    setPhase("unwatched");
+    setAppearance(previous);
 
     // One toast per lost write, not one per attempt.
     if (raised.current) return;
 
-    raised.current = writeFailures.raise({
-      title: titleName,
-      episode: episodeFullName(episode),
-      reference: outcome.reference,
-      retry: () => void attempt(),
-    });
+    raised.current = {
+      kind: "watch",
+      handle: writeFailures.raise({
+        title: titleName,
+        episode: fullName,
+        reference: outcome.reference,
+        retry: () => void attemptWatch(sourceKey, previous),
+      }),
+    };
+  }
+
+  /**
+   * ── Why this one is not offered a retry ───────────────────────────────────────────
+   *
+   * A lost *insert* is safe to send again: it carries an idempotency key, so the second
+   * attempt is either the same row or no row (`db/access.ts`, `recordWatch`). A lost
+   * *delete* carries no such thing. "The response never arrived" and "the delete never
+   * happened" are the same event from here, and a retry of the first one removes a second
+   * watch — the earlier half of a rewatch, gone, with nothing on any screen to say so.
+   * That is precisely the silent history edit this ticket exists to prevent, so the toast
+   * is raised without a `retry` (`errors/write-failure.ts` allows exactly this: *absent
+   * when there is nothing sensible to retry*) and the row goes back to being struck.
+   * Pressing undo again is then a deliberate act against a row the reader can see, which
+   * is the whole posture of this surface.
+   */
+  async function attemptUndo(previous: Appearance): Promise<void> {
+    setPending(true);
+    // The optimistic guess is *unwatched*, because it is right for every episode with one
+    // app watch and nothing underneath — which is nearly all of them. Where it is wrong,
+    // the outcome below says so and it is corrected rather than left standing.
+    setAppearance({ watched: false, undoable: false, phase: "unwatched" });
+
+    const outcome = await undo();
+    setPending(false);
+
+    if (outcome.ok) {
+      settle("undo");
+      // What survived, from the table: an imported watch underneath, or the earlier half
+      // of a rewatch, both of which leave this episode watched. `settled`, never
+      // `marking` — nothing was recorded here, so nothing is stamped.
+      setAppearance({
+        watched: outcome.watched,
+        undoable: outcome.undoable,
+        phase: outcome.watched ? "settled" : "unwatched",
+      });
+      return;
+    }
+
+    setAppearance(previous);
+
+    if (raised.current) return;
+
+    raised.current = {
+      kind: "undo",
+      handle: writeFailures.raise({
+        title: titleName,
+        episode: fullName,
+        reference: outcome.reference,
+      }),
+    };
+  }
+
+  /** Take the toast down only if it was raised by a lost write of this same kind. */
+  function settle(kind: "watch" | "undo"): void {
+    if (raised.current?.kind !== kind) return;
+    raised.current.handle.resolve();
+    raised.current = null;
+  }
+
+  /**
+   * The key is minted **here, in the browser, once per press** — and handed to the
+   * attempt, which hands the same one to its own retry. It is a parameter and not a ref
+   * for a reason this ticket is what surfaced: a row can now be marked, undone, and
+   * marked again, and a key held for the life of the row would make that third gesture
+   * collide with the first. `recordWatch` would treat it as a retry, write nothing, and
+   * answer *ok* — a struck row with no watch behind it, and no error anywhere.
+   */
+  function press(): void {
+    void attemptWatch(crypto.randomUUID(), appearance);
   }
 
   /**
@@ -221,6 +417,18 @@ function EpisodeLine({
     }
   }
 
+  /** The same wrapper as `record` above, around the delete. */
+  async function undo() {
+    try {
+      return await undoWatchAction({ libraryEntryId, episodeId: episode.id });
+    } catch (error) {
+      return {
+        ok: false as const,
+        reference: referenceFor(error, { surface: "undo-watch" }),
+      };
+    }
+  }
+
   return (
     <li className="relative flex min-h-11 items-center gap-3 py-2.5">
       <span
@@ -237,39 +445,76 @@ function EpisodeLine({
       {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
           TMDB not having named it yet — not a licence to print the number a second time
           in its place. */}
-      <span className="relative flex-1 text-item">
+      <span className="relative min-w-0 flex-1 text-item">
         <span
-          className={
+          className={`block truncate ${
             watched && phase === "settled"
               ? "text-stock-dim line-through decoration-2 decoration-signal"
               : episode.upNext && !watched
                 ? "font-medium"
                 : ""
-          }
+          }`}
         >
           {episode.name === null ? "Not yet named" : episode.name}
         </span>
 
         {phase === "marking" ? (
-          <span className="watch-strike" aria-hidden onAnimationEnd={() => setPhase("settled")} />
+          <span
+            className="watch-strike"
+            aria-hidden
+            onAnimationEnd={() =>
+              setAppearance((current) =>
+                current.phase === "marking" ? { ...current, phase: "settled" } : current,
+              )
+            }
+          />
         ) : null}
       </span>
 
-      {watched ? (
-        <span className="code-line text-stock-dim">Watched</span>
-      ) : (
-        <span className="flex shrink-0 items-center gap-3">
-          {episode.upNext ? <span className="code-line text-signal">Up next</span> : null}
-          <button
-            type="button"
-            onClick={() => void attempt()}
-            aria-label={`Mark ${episodeFullName(episode)} watched`}
-            className="code-line border border-signal px-2.5 py-1 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink"
-          >
-            Strike it
-          </button>
-        </span>
-      )}
+      <span className={TRAILING}>
+        {!watched ? (
+          <>
+            {episode.upNext ? <span className="code-line text-signal">Up next</span> : null}
+            <button
+              type="button"
+              onClick={press}
+              disabled={pending}
+              aria-label={`Mark ${fullName} watched`}
+              className={`code-line border border-signal px-2.5 py-1 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink ${IN_FLIGHT}`}
+            >
+              Strike it
+            </button>
+          </>
+        ) : phase === "marking" ? (
+          <span className="code-line text-stock-dim">Watched</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={press}
+              disabled={pending}
+              aria-label={`Watch ${fullName} again`}
+              className={`code-line text-signal underline decoration-signal underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+            >
+              Rewatch
+            </button>
+
+            {undoable ? (
+              <button
+                type="button"
+                onClick={() => void attemptUndo(appearance)}
+                disabled={pending}
+                aria-label={`Undo watching ${fullName}`}
+                className={`code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+              >
+                Undo
+              </button>
+            ) : (
+              <span className="code-line text-stock-dim">Watched</span>
+            )}
+          </>
+        )}
+      </span>
 
       {phase === "marking" ? (
         <span className="watch-stamp code-line" aria-hidden>
