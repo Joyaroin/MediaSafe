@@ -26,6 +26,7 @@ Read them in this order; where two disagree, the higher one wins.
 | [`docs/deployment.md`](docs/deployment.md) | Merge to production, previews, CI, and how to roll back. |
 | [`docs/design/v1-surfaces.md`](docs/design/v1-surfaces.md) | The screens. Partly superseded — see `SPEC.md` §10.2. |
 | [`PRODUCT.md`](PRODUCT.md) | Historical. Stale in eight places. Do not build from it. |
+| [`fixtures/README.md`](fixtures/README.md) | The rescued `tvtracker` export — what it holds, what was stripped out of it, and why nothing loads it. |
 
 ## The shape of the code
 
@@ -36,6 +37,7 @@ Read them in this order; where two disagree, the higher one wins.
 | `drizzle/` | Generated migrations, committed as plain SQL. Read `drizzle/README.md` before adding one. |
 | `errors/` | The three failure surfaces and the reference id. Read `AGENTS.md` before adding a fourth. |
 | `eslint-rules/` | Local rules. One so far: `no-empty-catch`, which is constraint 2 made mechanical. |
+| `fixtures/` | **The only surviving copy of `tvtracker`'s database**, archived and never loaded. Read [`fixtures/README.md`](fixtures/README.md) before touching it — the `auth` schema was removed and the reasons matter. |
 | `scripts/` | `build.ts` is the deploy build command — the migration is its first half. `provision.sh` is the setup wizard. |
 | `tests/` | Vitest, against a real local Postgres. |
 | `vercel.json` | Declares the framework as `nextjs` and the build command. See below — it is load-bearing, not boilerplate. |

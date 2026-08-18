@@ -119,11 +119,31 @@ Two rules bind every migration — **expand-contract, forward-only**, and **no s
 that Postgres forbids inside a transaction block**. Both are explained in
 `drizzle/README.md`, and the second one is not obvious. Read it before build step 2.
 
+## Seed data
+
+**Your local database starts empty, and will until build step 3.**
+
+Preview and local are both meant to be seeded by running MediaSafe's own import against
+`fixtures/mediasafe-seed.json` (`SPEC.md` §6). That file does not exist yet — the script
+that derives it is step 3, and until then there is nothing to seed from and no seeding
+command to run.
+
+What *is* committed is the raw material it will be derived from:
+[`fixtures/README.md`](../fixtures/README.md) documents the rescued `tvtracker` database
+export, the only surviving copy of it. **Nothing loads those archives** — not the app, not
+the tests, not CI — and `tests/fixture-archive.test.ts` fails if anything starts to. Read
+that note before writing the conversion script; it records the `auth` rows that were
+stripped before committing, and the user filter the script has to apply.
+
 ## Tests
 
 `npm test` runs against the real local Postgres, with migrations applied by the real
 runner. There is no in-memory substitute and no mocked constraint: the properties worth
 testing here live in Postgres, and a mock of a unique constraint tests the mock.
+
+One test file is the exception and needs no database: `tests/fixture-archive.test.ts`
+reads the committed `fixtures/` archives and checks their checksums, that no Supabase
+`auth` row survived, and that nothing outside `fixtures/` loads them.
 
 Tests create and drop their own scratch databases, so running them does not disturb the
 database you develop against.
