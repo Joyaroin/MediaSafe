@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "import_offer_answered_at" timestamp;

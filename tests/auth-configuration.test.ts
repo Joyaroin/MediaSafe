@@ -80,6 +80,30 @@ describe("what the auth configuration commits to", () => {
     });
   });
 
+  describe("user.importOfferAnsweredAt", () => {
+    it("is declared as an additionalFields entry", () => {
+      // Issue #70. Unlike timezone, absence is a meaningful state — the offer has not
+      // been answered — so there is no `defaultValue` and `required` is `false`.
+      expect(authOptions.user.additionalFields.importOfferAnsweredAt).toMatchObject({
+        type: "date",
+        required: false,
+        input: false,
+      });
+    });
+
+    it("survived regeneration into the schema drizzle-kit reads", () => {
+      const columns = getTableColumns(user);
+
+      expect(columns.importOfferAnsweredAt).toBeDefined();
+      expect(columns.importOfferAnsweredAt.name).toBe("import_offer_answered_at");
+      expect(columns.importOfferAnsweredAt.notNull).toBe(false);
+    });
+
+    it("is not something a client may set", () => {
+      expect(authOptions.user.additionalFields.importOfferAnsweredAt.input).toBe(false);
+    });
+  });
+
   describe("sessions", () => {
     it("slides for about a year", () => {
       const oneYear = 60 * 60 * 24 * 365;
