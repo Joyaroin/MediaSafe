@@ -51,7 +51,9 @@ const USER_ID_MINT_PATTERN = {
   group: ["**/db/access"],
   importNames: ["asUserId"],
   message:
-    "Only lib/session.ts mints a user id, from a session Better Auth resolved. Take the UserId as an argument (issue #40).",
+    "Only lib/session.ts mints a user id, from a session Better Auth resolved — and " +
+    "db/access.ts's own resolveSeedUserId, from a user row it looked up itself for " +
+    "npm run db:seed (issue #74). Take the UserId as an argument (issue #40).",
 };
 
 /**

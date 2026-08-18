@@ -63,6 +63,22 @@ merged to something long-lived. The accepted cost, taken knowingly:
 Local is the real check for schema work — `npm run db:up` against Docker Postgres runs
 the same runner over the same files.
 
+### Seeding the shared branch is a one-off, not a deploy step
+
+`npm run db:seed` (issue #74, [docs/local-development.md](local-development.md#seed-data))
+fills the shared preview branch by running MediaSafe's own import against it directly —
+`DATABASE_URL` pointed at the preview branch for the one command, same as any other
+manual `psql`/`drizzle-kit` operation against it. **It is not wired into any pipeline.**
+Migrations do not run on preview (above), so there is no build step this could hook into
+without moving the branch under every other open PR — the same cost that keeps migrations
+out.
+
+Whether the fixture is re-imported automatically on some cadence, and if so when, is a
+call nobody has made. `applyImportChunk`'s idempotence is what keeps that choice safe
+either way: running the command again writes only what has genuinely changed, so
+"run it by hand, occasionally" and "never run it again" are both fine outcomes, not just
+tolerable ones.
+
 ## CI
 
 `.github/workflows/ci.yml` runs **typecheck, lint, build and squawk** on every pull

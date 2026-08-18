@@ -106,6 +106,7 @@ the same thing inside the proxy as it does on your laptop. That is what lets one
 | `npm run db:reset` | Destroy the volume and start over. Everything local is lost. |
 | `npm run db:generate` | Diff `db/schema.ts` and write a new `.sql` into `drizzle/`. |
 | `npm run db:migrate` | Apply pending migrations. What production runs. |
+| `npm run db:seed` | Fill a database from a native import file, via `applyImportChunk`. See [Seed data](#seed-data) below. |
 | `npm run db:psql` | A `psql` shell in the database container. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run lint` | ESLint. |
@@ -144,21 +145,47 @@ that Postgres forbids inside a transaction block**. Both are explained in
 
 ## Seed data
 
-**Your local database starts empty, and will until build step 3.**
+**Your local database starts empty until you run the seed command.**
 
-Preview and local are both meant to be seeded by running MediaSafe's own import against
-`fixtures/mediasafe-seed.json` (`SPEC.md` §6). That file does not exist yet — the script
-that derives it is step 3, and until then there is nothing to seed from and no seeding
-command to run.
+```bash
+TMDB_READ_ACCESS_TOKEN=… npm run db:seed
+```
 
-What *is* committed is the raw material it will be derived from:
+`npm run db:seed` (issue #74) fills a database from a native import file by driving
+`applyImportChunk` — the same writer the import screen drives (issue #72) — rather than
+opening a second connection of its own. `SPEC.md` §6: preview and local are seeded by
+**running MediaSafe's own import**, never a `psql` restore or a direct-insert script.
+
+```bash
+npm run db:seed -- [file] [--user <id>]
+```
+
+- **`file`** defaults to `fixtures/mediasafe-seed.json`, the real 462-title conversion of
+  `tvtracker` — not committed yet; it lands from a separate conversion-script ticket. Until
+  then, pass one explicitly: `npm run db:seed -- tests/fixtures/native-import/sample.json`
+  works today against issue #69's hand-written sample.
+- **`--user <id>`** names the account to write to. Omit it and the command uses the
+  database's sole user — and **refuses rather than guesses** if it holds zero or several,
+  because picking who receives 18,715 watches is not a default worth having.
+- It needs `TMDB_READ_ACCESS_TOKEN` (below): the native format carries facts about an
+  account — a TMDB id, a kind, a judgement — never a name or a poster path
+  (`import/native-format.ts`), so every title's metadata is fetched live. Missing, it says
+  so immediately, before reading the file or touching the database — not partway through
+  462 titles.
+- **Re-running is inert.** `applyImportChunk`'s idempotence (`UNIQUE (user_id, source,
+  source_key)`, and `abandoned_at` stamped only on creation) means a second run against
+  the same file reports zero on every counter.
+- Runs with no server running — it is a CLI over the same writer, not a client that POSTs
+  to one.
+
+What is committed today is the raw material the real fixture will be derived from:
 [`fixtures/README.md`](../fixtures/README.md) documents the rescued `tvtracker` database
 export, the only surviving copy of it. **Nothing loads those archives** — not the app, not
-the tests, not CI — and `tests/fixture-archive.test.ts` fails if any tracked, executable
-file so much as names one. (It matches on the filename, so a loader that reaches the
-directory without spelling it would get past; the note says so.) Read that note before
-writing the conversion script — it records the `auth` rows stripped before committing, and
-the user filter the script has to apply.
+the tests, not CI, and not `db:seed` — and `tests/fixture-archive.test.ts` fails if any
+tracked, executable file so much as names one. (It matches on the filename, so a loader
+that reaches the directory without spelling it would get past; the note says so.) Read
+that note before writing the conversion script — it records the `auth` rows stripped
+before committing, and the user filter the script has to apply.
 
 ## Tests
 
