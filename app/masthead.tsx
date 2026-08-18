@@ -24,8 +24,13 @@ import { Wordmark } from "./press-mark";
  * the thing it would point at does not exist:
  *
  *  - **No phone tab bar.** Its three tabs are Up next, Search and Library, and *Up next*
- *    is build step 5. Two of three is not a tab bar, and the cells above are rendered at
- *    every width in the meantime.
+ *    is build step 5. Two of three is not a tab bar.
+ *
+ * That absence is why the two nav cells are **rendered at every width**, where `DESIGN.md`
+ * hides them below `lg`. It hides them because the phone reaches those two through its tab
+ * bar; until that bar exists, hiding them would leave a phone with no way to reach either
+ * screen at all. They go behind `lg:` in the same diff that builds the tab bar, and
+ * `SPEC.md` §10.3 records the deviation in the meantime.
  *  - **No display name.** It is inert text set from `user.name`, and it belongs with the
  *    control that sets it — build step 7 (#28). Rendering it now would mean rendering a
  *    name nobody can change.

@@ -2,7 +2,7 @@ import { listLibraryEntries } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
 import { LibraryGrid } from "./library-grid";
-import { LibraryHeading, LIBRARY_HEADING_ID } from "./library-heading";
+import { LibraryHeading } from "./library-heading";
 
 /**
  * The library — your library as a place you can look at, rather than a query you can run.
@@ -62,7 +62,7 @@ export default async function LibraryPage() {
       {entries.length === 0 ? (
         <EmptyLibrary />
       ) : (
-        <LibraryGrid entries={entries} labelledBy={LIBRARY_HEADING_ID} />
+        <LibraryGrid entries={entries} />
       )}
     </main>
   );

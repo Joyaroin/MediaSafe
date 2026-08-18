@@ -302,12 +302,12 @@ export async function addTitleToLibrary(
 }
 
 /**
- * The five states, as the words `CONTEXT.md` gives them, in the order the library's
- * filter chips will use (`SPEC.md` §7: *All · Watching · Caught up · Finished · Watchlist
- * · Abandoned*, minus the *All* that is not a state).
+ * The five states `library_entry_state` can return, and the list `stateFrom` matches
+ * against. Order carries no meaning — nothing reads it, and nothing should: the library's
+ * order is the query's `ORDER BY`.
  *
- * The values are the strings `library_entry_state` emits, not labels. What a reader sees
- * is the surface's to write; what is stored is snake_case because the view says so.
+ * These are the strings the view emits, not labels. What a reader sees is the surface's to
+ * write; what is stored is snake_case because `db/views.ts` says so.
  */
 export const LIBRARY_STATES = [
   "watching",

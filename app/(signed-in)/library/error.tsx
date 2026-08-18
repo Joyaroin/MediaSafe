@@ -1,7 +1,7 @@
 "use client";
 
 import { ReadFailure } from "@/errors/read-failure";
-import { referenceFor } from "@/errors/reference";
+import { referenceForBoundary } from "@/errors/reference";
 import { LibraryHeading } from "./library-heading";
 
 /**
@@ -18,18 +18,14 @@ import { LibraryHeading } from "./library-heading";
  * Nothing here is a second treatment. `errors/read-failure.tsx` draws it, exactly as the
  * root boundary and the sign-in surface do; this file only decides where it lands.
  *
- * ── The reference id, and why it is read during render ───────────────────────────────
+ * ── The reference id ─────────────────────────────────────────────────────────────────
  *
- * `referenceFor` is memoised on the error object, so the id is the Sentry event id and the
- * same failure answers with the same id however many times it is asked. `retry()`
- * re-renders *this* instance with a new `error` rather than remounting it, so state seeded
- * once at mount would leave a reader quoting the reference for the failure before last.
- * `app/error.tsx` carries the long version of this reasoning.
- *
- * A Server Component render that throws arrives here stripped of its stack — React leaves
- * a generic message and a `digest`. Tagging this event with that digest is what joins it
- * to the server-side event `instrumentation.ts` sent, so the id the reader quotes leads to
- * an event that names its server half.
+ * `referenceForBoundary` is the derivation every boundary shares, and `errors/reference.ts`
+ * holds both it and the reasoning: the id is the Sentry event id, the digest goes on as a
+ * tag rather than being printed, and the whole thing is memoised on the error object so it
+ * is safe to call while rendering. That last part matters here — `retry()` re-renders
+ * *this* instance with a new `error` rather than remounting it, so an id seeded once at
+ * mount would leave a reader quoting the reference for the failure before last.
  */
 export default function LibraryReadFailure({
   error,
@@ -40,10 +36,7 @@ export default function LibraryReadFailure({
   // means running the library query again. It is not `reset`.
   retry: () => void;
 }) {
-  const reference = referenceFor(
-    error,
-    error.digest ? { digest: error.digest } : undefined,
-  );
+  const reference = referenceForBoundary(error);
 
   return (
     <main className="flex w-full flex-1 flex-col">

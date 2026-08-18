@@ -561,7 +561,11 @@ The brief stands except where later tickets moved it. Do not build from these li
 | Wireframes, Settings box (*Display / Name / Theme*) | #28 — *Profile / Name / Timezone* |
 | Wireframes, import screen (two counters) | #25 — **three** |
 
-### 10.3 `DESIGN.md` and the prototype — two defects, one gap
+### 10.3 `DESIGN.md` and the prototype — every recorded divergence
+
+Two defects, one gap, and two build-time deviations. **This list is where a divergence from
+`DESIGN.md` lives.** A deviation argued only in a code comment is one nobody reading the design
+document will ever find, which is the drift this section exists to stop.
 
 - **The rating scale renders five cells** (`repertory-bill.html:453-457`). ADR-0001 settled
   `CHECK (rating BETWEEN 1 AND 10)` and named *"a rating is a whole number 1–10"* as a consequence
@@ -582,6 +586,21 @@ The brief stands except where later tickets moved it. Do not build from these li
   tabs and the absent grid; the masthead is documented only under Desktop, while the prototype renders
   it at every width with the *Settings* label hidden below `lg`. This matters now that #28 puts the
   display name in the masthead **on both devices**. **Corrected in this branch.**
+- **The library grid's column ladder gains a step below `640px`: one column, not two.**
+  `DESIGN.md`'s Layout gives the bill *"2 columns by default, 3 at `≥1280px`, 4 at `≥1536px`"*, and
+  the prototype never had to survive that on a phone — its bill is `hidden lg:block`, and
+  `DESIGN.md`'s Phone section says the grid is not rendered there at all. §7 overrules that and puts
+  the same grid on both devices, and **at 388px two columns do not read**: the cell is 194px, of
+  which the plate takes 78, the gap 16 and the padding 32, leaving **68px for a title set at
+  `2.15rem`**. Every name breaks to two or three letters a line, and the overflow scrolls the page
+  sideways. Measured in #56, not inferred. The cell, the plate's measure and the type step are
+  unchanged — **only the column count moves**, which is what §7 says is allowed to. Ladder:
+  **1 · 2 at `≥640px` · 3 at `≥1280px` · 4 at `≥1536px`**.
+- **The masthead's two nav cells are rendered at every width, where `DESIGN.md` hides them below
+  `lg`.** They are hidden there because the phone reaches Library and Search through its tab bar,
+  and the tab bar needs *Up next*, which is build step 5. Until it exists, hiding the cells would
+  leave a phone with no way to reach either screen. **This is temporary**: the same diff that builds
+  the tab bar puts them behind `lg:`.
 
 ### 10.4 `PRODUCT.md` — historical, and stale in eight places
 

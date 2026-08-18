@@ -40,23 +40,19 @@ import { Plate } from "@/app/plate";
 const BILL_PLATE = "h-[104px] w-[78px] shrink-0";
 
 /**
- * What each state is called, in `CONTEXT.md`'s words and no others, and what colour it is
- * set in.
+ * The five states as this cell renders them: what each is called, what colour the label is
+ * set in, and the one line of what is next. **One table, because there is one thing to
+ * know about a state** — a second lookup keyed by the same union is two places to edit
+ * when a sixth state or a reworded line arrives, and one of them gets missed.
  *
- * *Watching* is the only one in `signal`, and *caught up* the only one at full-strength
- * `stock` — `DESIGN.md`'s Colour table gives vermilion to the live state and bone to
- * *Caught up* by name. The other three are metadata, so they are dim.
- */
-const STATE_LABELS: Record<LibraryState, { label: string; className: string }> = {
-  watching: { label: "Watching", className: "text-signal" },
-  caught_up: { label: "Caught up", className: "text-stock" },
-  finished: { label: "Finished", className: "text-stock-dim" },
-  watchlist: { label: "Watchlist", className: "text-stock-dim" },
-  abandoned: { label: "Abandoned", className: "text-stock-dim" },
-};
-
-/**
- * The one line of what is next, which is a different sentence for every state.
+ * ── The labels ───────────────────────────────────────────────────────────────────────
+ *
+ * `CONTEXT.md`'s words and no others. *Watching* is the only one in `signal` and *caught
+ * up* the only one at full-strength `stock` — `DESIGN.md`'s Colour table gives vermilion
+ * to the live state and bone to *Caught up* by name. The other three are metadata, so they
+ * are dim.
+ *
+ * ── The lines ────────────────────────────────────────────────────────────────────────
  *
  * Two rules shape the wording, and neither is cosmetic:
  *
@@ -69,20 +65,18 @@ const STATE_LABELS: Record<LibraryState, { label: string; className: string }> =
  *    up as *"nothing to watch now; something to watch later"* and finished as a show that
  *    has ended or a film you have watched. Giving them one line would erase the only
  *    distinction between them that a reader of this grid can see.
+ *
+ * Every line is a function of the entry, including the four that ignore it, so that the
+ * table has one shape rather than a special case for the one state that reads a column.
  */
-function whatIsNext(entry: LibraryEntryRow): string {
-  switch (entry.state) {
-    case "abandoned":
-      // `CONTEXT.md`: *watching the title again clears it.* The line says how to undo the
-      // one state you set by hand, because this cell is where you meet it again.
-      return "Watching it again clears this";
-    case "watchlist":
-      return "Not started";
-    case "caught_up":
-      return "Nothing to watch now";
-    case "finished":
-      return "Nothing left to watch";
-    case "watching":
+const STATES: Record<
+  LibraryState,
+  { label: string; className: string; nextLine: (entry: LibraryEntryRow) => string }
+> = {
+  watching: {
+    label: "Watching",
+    className: "text-signal",
+    nextLine: (entry) => {
       if (entry.upNext === null) {
         /**
          * Watching, with nothing after your progress. Reachable by skipping forward —
@@ -94,12 +88,35 @@ function whatIsNext(entry: LibraryEntryRow): string {
       return entry.upNext.episodeName === null
         ? "Next episode not named yet"
         : `Next — ${entry.upNext.episodeName}`;
-  }
-}
+    },
+  },
+  caught_up: {
+    label: "Caught up",
+    className: "text-stock",
+    nextLine: () => "Nothing to watch now",
+  },
+  finished: {
+    label: "Finished",
+    className: "text-stock-dim",
+    nextLine: () => "Nothing left to watch",
+  },
+  watchlist: {
+    label: "Watchlist",
+    className: "text-stock-dim",
+    nextLine: () => "Not started",
+  },
+  abandoned: {
+    label: "Abandoned",
+    className: "text-stock-dim",
+    // `CONTEXT.md`: *watching the title again clears it.* The line says how to undo the
+    // one state you set by hand, because this cell is where you meet it again.
+    nextLine: () => "Watching it again clears this",
+  },
+};
 
 export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
   const abandoned = entry.state === "abandoned";
-  const state = STATE_LABELS[entry.state];
+  const state = STATES[entry.state];
 
   return (
     <li className="border-b border-r border-rule bg-ink">
@@ -153,7 +170,9 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
             name that wraps would add a third variation to a grid whose whole job is to
             read as one printed sheet.
           */}
-          <p className="mt-1 truncate text-item text-stock-dim">{whatIsNext(entry)}</p>
+          <p className="mt-1 truncate text-item text-stock-dim">
+            {state.nextLine(entry)}
+          </p>
         </div>
       </button>
     </li>

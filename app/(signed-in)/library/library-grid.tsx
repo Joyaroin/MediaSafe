@@ -1,5 +1,6 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { LibraryEntryCell } from "./library-entry-cell";
+import { LIBRARY_HEADING_ID } from "./library-heading";
 
 /**
  * The bill: every library entry, in one grid.
@@ -66,16 +67,13 @@ import { LibraryEntryCell } from "./library-entry-cell";
  * shipping 472 cells to the browser as client components would be paying hydration for a
  * printed sheet.
  */
-export function LibraryGrid({
-  entries,
-  labelledBy,
-}: {
-  entries: readonly LibraryEntryRow[];
-  labelledBy: string;
-}) {
+export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }) {
   return (
     <ol
-      aria-labelledby={labelledBy}
+      // The heading this list is under, taken from the heading itself rather than passed
+      // in: there is one library heading, and a prop would let a caller point the list at
+      // something else without anything noticing.
+      aria-labelledby={LIBRARY_HEADING_ID}
       className="grid grid-cols-1 bg-ink sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       {entries.map((entry) => (
