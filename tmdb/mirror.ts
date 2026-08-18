@@ -216,7 +216,18 @@ function integerFrom(value: number | null | undefined): number | null {
  * call, and `titleMirror` below throws.
  */
 export function catalogueResults(payload: TmdbSearchPayload): CatalogueResult[] {
-  const results: CatalogueResult[] = [];
+  /**
+   * Keyed, and TMDB's own relevance order preserved — a `Map` iterates in insertion
+   * order, so the first appearance of a title keeps its rank.
+   *
+   * **One row per `(kind, tmdb_id)`, because that is what the rest of the screen assumes.**
+   * `catalogueKeyOf` is the React key for the result list and the key of the
+   * already-in-your-library set, so a repeated result would render the same title twice
+   * with colliding keys — and pressing *Add* on one of them would leave the other still
+   * offering to add what you now have. TMDB is not guaranteed to be free of repeats, and
+   * the cost of assuming it is falls on the reader rather than on this function.
+   */
+  const byKey = new Map<string, CatalogueResult>();
 
   for (const result of payload.results ?? []) {
     const kind = kindOf(result.media_type);
@@ -226,7 +237,11 @@ export function catalogueResults(payload: TmdbSearchPayload): CatalogueResult[] 
     const name = kind === "film" ? result.title : result.name;
     if (tmdbId === null || !name) continue;
 
-    results.push({
+    const key = catalogueKeyOf({ kind, tmdbId });
+    // First wins: the later copy is the lower-ranked one, and TMDB ranked them.
+    if (byKey.has(key)) continue;
+
+    byKey.set(key, {
       kind,
       tmdbId,
       name,
@@ -237,7 +252,7 @@ export function catalogueResults(payload: TmdbSearchPayload): CatalogueResult[] 
     });
   }
 
-  return results;
+  return [...byKey.values()];
 }
 
 function kindOf(mediaType: string | undefined): TitleKind | null {

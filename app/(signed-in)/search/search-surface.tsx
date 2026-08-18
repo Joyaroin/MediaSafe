@@ -206,7 +206,13 @@ function SearchField({
         <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
       </svg>
       <input
-        type="search"
+        /**
+         * `text`, not `search`, and the prototype's filter field is `text` for the same
+         * reason: WebKit draws its own clear button inside a `type="search"` field, and a
+         * rounded grey ✕ that nothing in `DESIGN.md` describes is a control this world
+         * does not have. The field is already one keystroke from empty.
+         */
+        type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search the catalogue"

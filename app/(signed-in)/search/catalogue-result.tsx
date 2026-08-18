@@ -116,6 +116,12 @@ export function CatalogueResultRow({ result }: { result: MarkedResult }) {
         <button
           type="button"
           onClick={() => void attempt()}
+          /**
+           * The visible label is one word because the row it sits in is the context. A
+           * screen reader has no row — it has twenty buttons all called *Add* — so the
+           * accessible name carries the title the visible label leaves to the layout.
+           */
+          aria-label={`Add ${result.name} to your library`}
           className="code-line shrink-0 border border-rule-bold px-4 py-2 text-stock transition-colors duration-150 hover:bg-stock hover:text-ink"
         >
           Add

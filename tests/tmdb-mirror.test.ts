@@ -156,6 +156,25 @@ describe("catalogueResults", () => {
     });
   });
 
+  it("returns one row per catalogue key when TMDB repeats a result", () => {
+    // `catalogueKeyOf` is the React key of the result list *and* the key of the
+    // already-in-your-library set. A repeat would render one title twice with colliding
+    // keys, and adding one copy would leave the other still offering to add it.
+    const repeated = catalogueResults({
+      results: [
+        ...(searchPayload.results ?? []),
+        (searchPayload.results ?? [])[0],
+      ],
+    });
+    expect(repeated).toEqual(results);
+  });
+
+  it("keeps TMDB's relevance order", () => {
+    // TMDB ranked these; nothing here re-ranks them, and the dedupe above keeps the
+    // first — highest-ranked — appearance rather than the last.
+    expect(results.map((result) => result.tmdbId)).toEqual([1399, 11, 289283]);
+  });
+
   it("carries nothing that is fetched live and never stored", () => {
     const keys = keysAnywhere(results);
     for (const forbidden of NEVER_STORED) expect(keys).not.toContain(forbidden);
