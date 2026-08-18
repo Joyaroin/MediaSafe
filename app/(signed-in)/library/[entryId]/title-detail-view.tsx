@@ -19,7 +19,9 @@ export function TitleDetailView({ detail }: { detail: TitleDetailRow }) {
   return (
     <ProgrammeNoteContent
       detail={current}
-      onStateChange={(state) => setCurrent((prev) => ({ ...prev, state }))}
+      onStateChange={(libraryEntryId, state) =>
+        setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))
+      }
     />
   );
 }

@@ -94,9 +94,14 @@ export function ProgrammeNotePane() {
           {phase.kind === "loaded" ? (
             <ProgrammeNoteContent
               detail={phase.detail}
-              onStateChange={(state: LibraryState) =>
+              onStateChange={(libraryEntryId: string, state: LibraryState) =>
                 setPhase((prev) =>
-                  prev.kind === "loaded"
+                  // A write started against the entry this pane had selected when it was
+                  // pressed can still land after the reader has moved to a different one
+                  // — this pane never navigates, so nothing unmounts it in between. The
+                  // guard is what keeps that stale answer from patching whatever is on
+                  // screen now.
+                  prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
                     ? { kind: "loaded", detail: { ...prev.detail, state } }
                     : prev,
                 )

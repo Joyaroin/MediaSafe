@@ -20,6 +20,10 @@ import { STATE_LABELS } from "./library-state";
  * the phone route in `app/(signed-in)/library/[entryId]/page.tsx`). Nothing else about the
  * title changes when abandonment does, so nothing else is re-read.
  *
+ * The entry id travels with it — `AbandonControl`'s own docblock explains why: this
+ * component is never remounted on a title switch, so a write still in flight when the
+ * caller moves on to a different entry must not patch the one now on screen.
+ *
  * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
  * this component, outside this component's own scroll, which is a layout decision
  * belonging to the caller (`app/tmdb-attribution.tsx`'s own docblock says why). No rating
@@ -30,7 +34,7 @@ export function ProgrammeNoteContent({
   onStateChange,
 }: {
   detail: TitleDetailRow;
-  onStateChange: (state: LibraryState) => void;
+  onStateChange: (libraryEntryId: string, state: LibraryState) => void;
 }) {
   const state = STATE_LABELS[detail.state];
   const meta = metaLine(detail);
