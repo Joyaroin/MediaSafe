@@ -5,7 +5,7 @@ import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { useWatchMark } from "./use-watch-mark";
-import { WatchStamp, WatchStrike } from "./watch-mark-motion";
+import { STRUCK_NAME, WatchStamp, WatchStrike } from "./watch-mark-motion";
 
 /**
  * The season/episode list — the row that carries the product's most important rule
@@ -295,7 +295,7 @@ function EpisodeLine({
         <span
           className={`block truncate ${
             watched && phase === "settled"
-              ? "text-stock-dim line-through decoration-2 decoration-signal"
+              ? STRUCK_NAME
               : episode.upNext && !watched
                 ? "font-medium"
                 : ""
@@ -406,7 +406,7 @@ function FilmRow({
       <span className="relative flex-1 text-item">
         <span
           className={
-            watched && phase === "settled" ? "text-stock-dim line-through decoration-2 decoration-signal" : ""
+            watched && phase === "settled" ? STRUCK_NAME : ""
           }
         >
           {titleName}

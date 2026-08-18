@@ -7,7 +7,7 @@ import { Plate } from "@/app/plate";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { AbandonControl } from "../library/abandon-control";
 import { useWatchMark } from "../library/use-watch-mark";
-import { WatchStamp, WatchStrike } from "../library/watch-mark-motion";
+import { STRUCK_NAME, WatchStamp, WatchStrike } from "../library/watch-mark-motion";
 
 /**
  * The scene this whole product was shaped around — `docs/design/v1-surfaces.md`: *an
@@ -46,16 +46,24 @@ import { WatchStamp, WatchStrike } from "../library/watch-mark-motion";
  * thumb still resting on it.
  */
 export function UpNextDominantCard({ entry }: { entry: UpNextEntry }) {
+  // The on-screen label, in the dominant card's own spelled-out form — taken from
+  // `docs/design/prototypes/repertory-bill.html`'s hero card rather than re-derived, and
+  // deliberately not the compact deck's abbreviated "S1 E2" (`up-next-deck-row.tsx`): the
+  // two are different surfaces at different densities, the same way the bill grid and the
+  // desktop Up next row already print two different code lines for the same fact.
   const episodeLabel = `Season ${entry.seasonNo} · Episode ${entry.episodeNo}`;
   const episodeName = entry.episodeName ?? "Not yet named";
-  const fullEpisodeName = `${episodeLabel} — ${episodeName}`;
+  // The toast/aria text, in `programme-note-episodes.tsx`'s `episodeFullName` convention
+  // (comma, not the middot above) — this is what a lost-write toast actually prints, and
+  // it should read the same sentence whatever surface lost the write.
+  const toastEpisodeName = `Season ${entry.seasonNo}, Episode ${entry.episodeNo} — ${episodeName}`;
 
   const { watched, phase, pending, attempt, settle } = useWatchMark({
     initialWatched: false,
     libraryEntryId: entry.libraryEntryId,
     episodeId: entry.episodeId,
     titleName: entry.titleName,
-    episodeName: fullEpisodeName,
+    episodeName: toastEpisodeName,
   });
 
   return (
@@ -70,9 +78,7 @@ export function UpNextDominantCard({ entry }: { entry: UpNextEntry }) {
             <div className="relative mt-2 inline-block max-w-full pr-1">
               <span
                 className={`block truncate text-bill-xs font-medium leading-tight ${
-                  watched && phase === "settled"
-                    ? "text-stock-dim line-through decoration-2 decoration-signal"
-                    : ""
+                  watched && phase === "settled" ? STRUCK_NAME : ""
                 }`}
               >
                 {episodeName}
