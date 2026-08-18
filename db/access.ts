@@ -2,8 +2,9 @@ import { and, eq, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { type Executor, getDb } from "./client";
+import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
 import { episode, libraryEntry, title } from "./tables";
-import { libraryEntryState, libraryEntryUpNext } from "./views";
+import { libraryEntryRemaining, libraryEntryState, libraryEntryUpNext } from "./views";
 /**
  * The direction is deliberate: `tmdb/mirror.ts` knows nothing about the database, and
  * what it produces is *rows*, so the shapes belong to the mapping that derives them
@@ -351,34 +352,81 @@ export interface LibraryEntryRow {
 }
 
 /**
- * Every library entry in one account, with where it stands and what is next in it.
+ * The `ORDER BY` for one of the four sorts, always ending in the same tiebreak. The four
+ * choices themselves — the URL vocabulary and the default — are `db/library-sort.ts`,
+ * split out because none of it reads or writes a row; this is the one piece that has to
+ * stay here, because building `SQL` is the thing only this file may do.
+ *
+ * ── Title A–Z's tiebreak is everyone else's rule too ─────────────────────────────────
+ *
+ * `SPEC.md` §7: *"missing last, and every sort breaks ties by Title A–Z."* 457 titles
+ * share one `added_at` after import, so without it *recently added* would reshuffle
+ * between two loads of the same rows for the same reason the grid's own default order
+ * would. `lower()` rather than the database's collation, matching the existing default.
+ *
+ * `libraryEntry.id` is one further stabiliser underneath that — two entries can still
+ * share a title's exact name, and the query needs a total order, not just the one
+ * `SPEC.md` names, to promise the same two loads never swap them either.
+ *
+ * ── Why *closest to finishing* is two `ORDER BY` terms, not one ─────────────────────
+ *
+ * `library_entry_remaining` has no row for a film, so `remaining` arrives `NULL` through
+ * the `left` join below — the *missing* case `SPEC.md` §7 asks to sort last. A finished
+ * show is a real `0`, not missing, and it is asked to sort last too, which plain
+ * ascending order gets backwards: `0` is the smallest value a naive sort sees, so it would
+ * open the order with everything already finished. The leading `case` sorts the "at the
+ * bottom" titles — `0` and `NULL` alike — into one trailing group before `remaining`
+ * itself is even consulted, and only inside that group does `NULLS LAST` decide whether a
+ * film or a finished show comes first, which nothing asks it to care about.
+ */
+function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
+  const titleTiebreak = sql`lower(${title.name})`;
+
+  switch (sort) {
+    case "title":
+      return [titleTiebreak, libraryEntry.id];
+    case "recently-added":
+      return [sql`${libraryEntry.addedAt} desc`, titleTiebreak, libraryEntry.id];
+    case "release-year":
+      return [sql`${title.releaseYear} desc nulls last`, titleTiebreak, libraryEntry.id];
+    case "closest-to-finishing":
+      return [
+        sql`case when ${libraryEntryRemaining.remaining} is null or ${libraryEntryRemaining.remaining} = 0 then 1 else 0 end`,
+        sql`${libraryEntryRemaining.remaining} asc nulls last`,
+        titleTiebreak,
+        libraryEntry.id,
+      ];
+    default: {
+      const exhaustive: never = sort;
+      throw new Error(`Unknown library sort: ${String(exhaustive)}`);
+    }
+  }
+}
+
+/**
+ * Every library entry in one account, with where it stands and what is next in it, in one
+ * of the four orders `SPEC.md` §7 settles.
  *
  * ── One query, 472 rows, no N+1 ──────────────────────────────────────────────────────
  *
  * `docs/design/v1-surfaces.md` §7 sizes this at 472 titles, which is what makes the shape
- * of the read matter more than its cleverness: the state and the up-next episode are
- * joined here rather than asked per cell, because 472 cells each asking two questions is
- * the request storm `tvtracker` shipped (its cold deck once issued 114 requests for 57
- * shows). The derivation itself is not repeated — the two views are the definition, and
- * this joins them.
+ * of the read matter more than its cleverness: the state, the up-next episode and now the
+ * remaining count are joined here rather than asked per cell, because 472 cells each
+ * asking several questions is the request storm `tvtracker` shipped (its cold deck once
+ * issued 114 requests for 57 shows). The derivation itself is not repeated — the views are
+ * the definition, and this joins them. `library_entry_remaining` is joined unconditionally
+ * rather than only for `closest-to-finishing`, so there is still one query behind this
+ * screen and not four.
  *
- * ── Why the state join is inner and the up-next join is not ──────────────────────────
+ * ── Why the state join is inner and the other two are not ───────────────────────────
  *
  * `library_entry_state` has a row for **every** library entry: its `case` has an `else`,
  * and it joins `title` through a `NOT NULL` foreign key. So an inner join drops nothing,
  * and it is the honest one — a `left` join here would type `state` as nullable and invite
  * a fallback, which is a state invented in TypeScript for a row the database could not
- * classify. `library_entry_up_next` genuinely has no row when nothing is next, and that
- * absence is the answer rather than a gap to fill.
- *
- * ── No ordering control, and an order anyway ─────────────────────────────────────────
- *
- * The sort control is issue #57's, and this ticket must reserve no space for it
- * (`SPEC.md` §9). The grid still needs a fixed order, so it takes §7's default — **Title
- * A–Z** — with the tiebreak §7 also requires: without one, two entries sharing a name
- * swap places between two loads that read identical rows, and the grid reshuffles under a
- * reader for no reason they can see. `lower()` rather than the database's collation, so
- * the order does not turn on which locale the server was initialised in.
+ * classify. `library_entry_up_next` genuinely has no row when nothing is next, and
+ * `library_entry_remaining` genuinely has no row for a film — both absences are the answer
+ * rather than a gap to fill.
  *
  * ── There is no `try` here, and there will not be ────────────────────────────────────
  *
@@ -388,6 +436,7 @@ export interface LibraryEntryRow {
  */
 export async function listLibraryEntries(
   userId: UserId,
+  sort: LibrarySort = DEFAULT_LIBRARY_SORT,
   executor: Executor = getDb(),
 ): Promise<readonly LibraryEntryRow[]> {
   const rows = await executor
@@ -409,8 +458,12 @@ export async function listLibraryEntries(
     )
     .leftJoin(libraryEntryUpNext, eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id))
     .leftJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
+    .leftJoin(
+      libraryEntryRemaining,
+      eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
+    )
     .where(ownedBy(userId, libraryEntry))
-    .orderBy(sql`lower(${title.name})`, libraryEntry.id);
+    .orderBy(...orderByFor(sort));
 
   return rows.map((row) => ({
     libraryEntryId: row.libraryEntryId,

@@ -5,7 +5,13 @@ import { describe, expect, it } from "vitest";
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
 import { LibraryGrid } from "@/app/(signed-in)/library/library-grid";
+import {
+  FilterField,
+  LibraryChips,
+  ZeroMatches,
+} from "@/app/(signed-in)/library/library-surface";
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
+import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 
 /**
@@ -58,33 +64,78 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
 const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
   renderToStaticMarkup(createElement(LibraryEntryCell, { entry: entry(overrides) }));
 
-describe("the empty library and a failed read", () => {
+describe("the empty library, zero matches, and a failed read", () => {
   const empty = renderToStaticMarkup(createElement(EmptyLibrary));
+  const zero = renderToStaticMarkup(createElement(ZeroMatches, { onClear: () => {} }));
   const failed = renderToStaticMarkup(
     createElement(ReadFailure, { reference: "abc123", retry: () => {} }),
   );
 
-  it("are opposite in alignment", () => {
+  /**
+   * Three states `page.tsx` and `LibrarySurface` between them keep structurally apart:
+   * genuinely nothing stored, a filter that matched nothing in a library that is intact,
+   * and a read that failed outright. `DESIGN.md`'s States section gives each one a fixed
+   * shape rather than a form of words, which is what makes this worth asserting on class
+   * names — see the file-level comment above.
+   */
+
+  it("are centred alike, except the failure", () => {
     expect(empty).toContain("text-center");
+    expect(zero).toContain("text-center");
     expect(failed).not.toContain("text-center");
   });
 
-  it("are opposite in heading colour", () => {
+  it("share one heading colour between them, and the failure alone takes the other", () => {
     expect(failed).toContain("text-signal");
-    // Vermilion is the failure's, and appears on no heading of the empty state. The
-    // *button* is solid `signal` by DESIGN.md's own primary-recovery treatment, so the
-    // test is that no text is set in it.
-    expect(empty).not.toContain("text-signal");
+    // Vermilion is the failure's, and appears on no heading of the other two. The empty
+    // state's *button* is solid `signal` by DESIGN.md's own primary-recovery treatment,
+    // so this is a check on the heading text, not a blanket absence of the colour.
+    expect(empty).not.toContain("text-bill-lg text-signal");
+    expect(zero).not.toContain("text-bill-md text-signal");
   });
 
-  it("differ by the signal rule, which only the failure has", () => {
-    expect(failed).toContain("border-signal");
-    expect(empty).not.toContain("border-signal");
+  it("puts the empty library one heading step above zero matches and the failure", () => {
+    // `errors/failure-treatment.ts`: "text-bill-md is the step DESIGN.md's type table
+    // names for the zero-match and read-failure headlines" — the same step, so the
+    // failure is told apart from zero matches by colour and border, not by size.
+    expect(empty).toContain("text-bill-lg");
+    expect(zero).toContain("text-bill-md");
+    expect(failed).toContain("text-bill-md");
+    expect(zero).not.toContain("text-bill-lg");
+    expect(failed).not.toContain("text-bill-lg");
+  });
+
+  it("differ by the top signal rule, which only the failure has", () => {
+    // The literal string `errors/failure-treatment.ts` exports as `FAILURE_SECTION` — not
+    // a bare "border-signal" search, which the zero-match state's own *ghost* recovery
+    // button would also match and make this pass for the wrong reason.
+    expect(failed).toContain("border-t-2 border-signal");
+    expect(empty).not.toContain("border-t-2 border-signal");
+    expect(zero).not.toContain("border-t-2 border-signal");
   });
 
   it("differ by the reference id, which only the failure has", () => {
     expect(failed).toContain("Reference abc123");
     expect(empty).not.toContain("Reference");
+    expect(zero).not.toContain("Reference");
+  });
+
+  it("gives the empty library the one primary action, and zero matches a lesser one", () => {
+    // `DESIGN.md`, Buttons: the primary recovery action is solid `signal` with `ink`
+    // text; every other recovery action, including "Clear the filter", is the ghost
+    // treatment — a border rather than a fill. `errors/recovery-buttons.ts` names both
+    // class strings once, so the test is against those rather than a guess at a substring
+    // neither treatment's `hover:` half would also match.
+    expect(empty).toContain(SOLID_RECOVERY);
+    expect(empty).not.toContain(GHOST_RECOVERY);
+    expect(zero).toContain(GHOST_RECOVERY);
+    expect(zero).not.toContain(SOLID_RECOVERY);
+  });
+
+  it("names the actions each button actually offers", () => {
+    expect(empty).toContain("Search the catalogue");
+    expect(zero).toContain("Clear the filter");
+    expect(zero).not.toContain("Search the catalogue");
   });
 });
 
@@ -161,5 +212,62 @@ describe("the grid", () => {
     const [, gridClasses] = grid.match(/^<ol[^>]*class="([^"]*)"/) ?? [];
     expect(gridClasses).toBeDefined();
     expect(gridClasses).not.toMatch(/gap/);
+  });
+});
+
+describe("the filter chips", () => {
+  const chips = (value: "all" | LibraryState = "all") =>
+    renderToStaticMarkup(createElement(LibraryChips, { value, onChange: () => {} }));
+
+  it("renders exactly six, in CONTEXT.md's words and SPEC.md §7's order", () => {
+    const markup = chips();
+    const labels = [...markup.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map(
+      (match) => match[1],
+    );
+
+    expect(labels).toEqual([
+      "All",
+      "Watching",
+      "Caught up",
+      "Finished",
+      "Watchlist",
+      "Abandoned",
+    ]);
+  });
+
+  it("inverts the selected chip to bone ground with ink text", () => {
+    const markup = chips("finished");
+    const finishedButton = markup.match(/<button[^>]*>Finished<\/button>/)?.[0];
+
+    expect(finishedButton).toContain('aria-pressed="true"');
+    expect(finishedButton).toContain("bg-stock");
+    expect(finishedButton).toContain("text-ink");
+  });
+
+  it("keeps the Watching chip vermilion even unselected, and every other chip dim", () => {
+    const markup = chips("all");
+    const watchingButton = markup.match(/<button[^>]*>Watching<\/button>/)?.[0];
+    const finishedButton = markup.match(/<button[^>]*>Finished<\/button>/)?.[0];
+
+    expect(watchingButton).toContain('aria-pressed="false"');
+    expect(watchingButton).toContain("text-signal");
+    expect(finishedButton).toContain("text-stock-dim");
+    expect(finishedButton).not.toContain("text-signal");
+  });
+});
+
+describe("the filter field", () => {
+  const field = renderToStaticMarkup(
+    createElement(FilterField, { value: "", onChange: () => {} }),
+  );
+
+  it("says filter, and never search — CONTEXT.md gives the two words to different screens", () => {
+    expect(field).toContain("Filter your library");
+    expect(field.toLowerCase()).not.toContain("search");
+  });
+
+  it("is a text field, not a search field, so no browser clear control appears uninvited", () => {
+    expect(field).toContain('type="text"');
+    expect(field).not.toContain('type="search"');
   });
 });

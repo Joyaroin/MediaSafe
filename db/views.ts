@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
+import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
 
 /**
  * Where a title stands, how far into it you are, and what is after that — as three real
@@ -162,6 +162,54 @@ export const libraryEntryState = pgView("library_entry_state", {
     end as state
   from library_entry le
   join title t on t.id = le.title_id
+`);
+
+/**
+ * Remaining: how many of a show's mirrored `season_no > 0` episodes carry no watch.
+ * CONTEXT.md's **Remaining** entry is explicit that this is a show concept — "how much of
+ * a show you have left" — so a film's entry has no row here at all, which is what makes it
+ * the *missing* case in `db/access.ts`'s *closest to finishing* sort rather than a zero.
+ *
+ * ── Why unreleased episodes count too ────────────────────────────────────────────────
+ *
+ * Unlike `library_entry_state`, this does **not** filter by `air_date`. *Closest to
+ * finishing* ranks how much of the whole series is left to watch, not how much of it you
+ * could watch today — a show with three unaired episodes announced is not "finished" in
+ * the sense that sort cares about, and counting only released episodes would rank it
+ * alongside a show that has genuinely ended. This is also why a *caught up* show — every
+ * released episode watched, more still to come — reads as a positive remainder here and
+ * not as the zero `#22`'s rule reserves for *finished*.
+ *
+ * ── Zero is a real answer, not an absent row ─────────────────────────────────────────
+ *
+ * A finished show's entry is still here, at `0` — `SPEC.md` §7 is explicit that "0
+ * remaining is not missing". The distinction is what lets the sort push *finished* to the
+ * bottom deliberately (`case when remaining = 0`) rather than by the accident of `NULLS
+ * LAST` also catching every film.
+ */
+export const libraryEntryRemaining = pgView("library_entry_remaining", {
+  libraryEntryId: uuid("library_entry_id").notNull(),
+  userId: text("user_id").notNull(),
+  titleId: uuid("title_id").notNull(),
+  remaining: integer("remaining").notNull(),
+}).as(sql`
+  select
+    le.id as library_entry_id,
+    le.user_id as user_id,
+    le.title_id as title_id,
+    (
+      select count(*)::int
+      from episode e
+      where e.title_id = le.title_id
+        and e.season_no > 0
+        and not exists (
+          select 1 from watch w
+          where w.library_entry_id = le.id and w.episode_id = e.id
+        )
+    ) as remaining
+  from library_entry le
+  join title t on t.id = le.title_id
+  where t.kind = 'show'
 `);
 
 /**
