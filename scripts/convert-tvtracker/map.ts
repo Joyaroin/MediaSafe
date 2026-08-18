@@ -241,22 +241,41 @@ function episodesFor(index: EpisodeIndex, show: TvtrackerShowRow): readonly Inde
   return episodes;
 }
 
-/** Resolve one `(season, episode)` coordinate, or halt — never skip it. */
+/** One `(season, episode)` the export names and TMDB does not list. */
+export interface UnresolvedCoordinate {
+  readonly tmdbId: number;
+  readonly name: string;
+  readonly season: number;
+  readonly episode: number;
+  readonly watched: boolean;
+}
+
+/**
+ * Resolve one `(season, episode)` coordinate, recording a miss rather than throwing.
+ *
+ * **Collected, not thrown, and that is deliberate.** A conversion that dies on the first
+ * bad coordinate tells a person one thing, and there are 45 shows' worth of them in this
+ * export — they would fix one, re-run two minutes of TMDB requests, and be told the next.
+ * The run still halts and still writes nothing; it just says everything it found first.
+ */
 function resolveCoordinate(
   episodes: readonly IndexedEpisode[],
   show: TvtrackerShowRow,
   coordinate: EpisodeCoordinate,
-  because: string,
-): IndexedEpisode {
+  watched: boolean,
+  misses: UnresolvedCoordinate[],
+): IndexedEpisode | undefined {
   const found = episodes.find(
     (episode) => episode.season === coordinate.season && episode.episode === coordinate.episode,
   );
   if (found === undefined) {
-    throw new ConversionHalt(
-      `${show.name} (tmdb ${show.tmdbId}) ${because} ${describeCoordinate(coordinate)}, ` +
-        "which TMDB does not list for it. A numbering mismatch is not something this " +
-        "conversion resolves on its own, so nothing is converted.",
-    );
+    misses.push({
+      tmdbId: show.tmdbId,
+      name: show.name,
+      season: coordinate.season,
+      episode: coordinate.episode,
+      watched,
+    });
   }
   return found;
 }
@@ -278,14 +297,31 @@ function resolveCoordinate(
  */
 function expandWholeShow(
   show: TvtrackerShowRow,
-  episodes: readonly IndexedEpisode[],
+  allEpisodes: readonly IndexedEpisode[],
   notWatched: readonly TvtrackerOverrideRow[],
+  misses: UnresolvedCoordinate[],
 ): readonly IndexedEpisode[] {
+  /**
+   * **Regular seasons only.** `tvtracker`'s `total_episodes` counts season 1 upwards and
+   * never the specials — measured, not assumed: it equals TMDB's regular-episode count for
+   * **455 of the 462** titles in this export, and equals TMDB's *total* for almost none of
+   * them. Schitt's Creek is the case that makes it obvious: 79 episodes and 163 season-0
+   * clips, so expanding over everything TMDB lists would write 242 watches for a show the
+   * export says has 79.
+   *
+   * It is also the right reading of the fact. A watermark that says *watched right through*
+   * is a claim about the programme, not about 163 behind-the-scenes featurettes, and
+   * `SPEC.md` §5 keeps specials out of every derived state for the same reason. A special
+   * that really was watched has an override row of its own, and 28 of them do.
+   */
+  const episodes = allEpisodes.filter((episode) => episode.season >= 1);
+
   if (episodes.length !== show.totalEpisodes) {
     throw new ConversionHalt(
       `${show.name} (tmdb ${show.tmdbId}) was watched right through ${show.totalEpisodes} ` +
-        `episodes, but TMDB now lists ${episodes.length}. Expanding the watermark would ` +
-        "write a number of watches that the export does not support, so nothing is converted.",
+        `episodes, but TMDB lists ${episodes.length} outside its specials. Expanding the ` +
+        "watermark would write a number of watches the export does not support, so nothing " +
+        "is converted.",
     );
   }
 
@@ -294,7 +330,8 @@ function expandWholeShow(
   // too many and look exactly like a correct run.
   const excluded = new Set(
     notWatched
-      .map((row) => resolveCoordinate(episodes, show, coordinateOf(row), "records not having watched"))
+      .map((row) => resolveCoordinate(episodes, show, coordinateOf(row), false, misses))
+      .filter((episode) => episode !== undefined)
       .map((episode) => coordinateKey(episode.season, episode.episode)),
   );
 
@@ -466,6 +503,7 @@ export function mapToNativeImport(
     key: string;
   }[] = [];
 
+  const misses: UnresolvedCoordinate[] = [];
   const unanswered: StragglerReport[] = [];
   const wholeShowExpansions: StragglerReport[] = [];
   const confirmedExpansions: StragglerReport[] = [];
@@ -503,11 +541,11 @@ export function mapToNativeImport(
       // higher than its 133 watched rows only because an episode below the watermark is
       // explicitly marked not watched, so the apparent shortfall is an artifact.
       const episodes = watchedRows.length > 0 ? episodesFor(episodeIndex, show) : [];
-      watched = watchedRows.map((row) =>
-        resolveCoordinate(episodes, show, coordinateOf(row), "records a watch of"),
-      );
+      watched = watchedRows
+        .map((row) => resolveCoordinate(episodes, show, coordinateOf(row), true, misses))
+        .filter((episode) => episode !== undefined);
     } else if (show.watchedThrough === show.totalEpisodes && show.totalEpisodes > 0) {
-      watched = expandWholeShow(show, episodesFor(episodeIndex, show), notWatchedRows);
+      watched = expandWholeShow(show, episodesFor(episodeIndex, show), notWatchedRows, misses);
       wholeShowExpansions.push(straggler);
     } else {
       const confirmation = confirmations.get(show.tmdbId);
@@ -530,14 +568,14 @@ export function mapToNativeImport(
           );
         }
         named.add(key);
-        return resolveCoordinate(episodes, show, coordinate, "is credited by convert.confirm.json with");
+        return resolveCoordinate(episodes, show, coordinate, true, misses);
       });
 
       watched = [
-        ...watchedRows.map((row) =>
-          resolveCoordinate(episodes, show, coordinateOf(row), "records a watch of"),
-        ),
-        ...credited,
+        ...watchedRows
+          .map((row) => resolveCoordinate(episodes, show, coordinateOf(row), true, misses))
+          .filter((episode) => episode !== undefined),
+        ...credited.filter((episode) => episode !== undefined),
       ];
     }
 
@@ -590,6 +628,36 @@ export function mapToNativeImport(
         "guess. Add an entry for each to scripts/convert-tvtracker/convert.confirm.json naming " +
         "the episodes to credit — an empty credit list is a valid answer, and records that the " +
         "watermark is stale and nothing should be written.",
+    );
+  }
+
+  const unresolvedWatches = misses.filter((miss) => miss.watched);
+  if (unresolvedWatches.length > 0) {
+    const byShow = new Map<number, UnresolvedCoordinate[]>();
+    for (const miss of unresolvedWatches) {
+      const forShow = byShow.get(miss.tmdbId);
+      if (forShow === undefined) byShow.set(miss.tmdbId, [miss]);
+      else forShow.push(miss);
+    }
+
+    const shows = [...byShow.values()]
+      .sort((a, b) => a[0].name.localeCompare(b[0].name))
+      .map((forShow) => {
+        const coordinates = forShow
+          .map((miss) => describeCoordinate(miss))
+          .sort((a, b) => a.localeCompare(b));
+        return `  ${forShow[0].name} (tmdb ${forShow[0].tmdbId}) — ${coordinates.join(", ")}`;
+      });
+
+    throw new ConversionHalt(
+      `The conversion stopped: ${unresolvedWatches.length} recorded watch(es) across ` +
+        `${byShow.size} show(s) name an episode TMDB does not list.\n\n` +
+        shows.join("\n") +
+        "\n\nThese are watches that really happened — the export records them — but " +
+        "`tvtracker` numbered their seasons differently from TMDB, so there is no episode " +
+        "to key them to. The native format is keyed by tmdb_episode_id precisely so this " +
+        "fails here, in front of a person, rather than silently repointing history. " +
+        "Deciding what becomes of them is not this script's call, so nothing is converted.",
     );
   }
 

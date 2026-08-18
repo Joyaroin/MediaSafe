@@ -690,13 +690,25 @@ describe("the watermark cases", () => {
       ]),
     );
 
-    expect(() =>
+    let message = "";
+    try {
       mapToNativeImport(exported, {
         accountId: TVTRACKER_ACCOUNT_ID,
         episodeIndex: shortened,
         confirmations: ANSWERED,
-      }),
-    ).toThrow(/which TMDB does not list for it/);
+      });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+
+    expect(message).toMatch(/name an episode TMDB does not list/);
+    expect(message).toContain("9-1-1");
+
+    // Every miss at once, not the first. There are 45 shows' worth in the real export, and
+    // halting on one at a time means re-running two minutes of TMDB requests to be told
+    // about the next.
+    expect(message).toMatch(/123 recorded watch\(es\) across 1 show\(s\)/);
+    expect(message).toContain("S9E10");
   });
 
   it("halts when a title has no episodes resolved at all", () => {
