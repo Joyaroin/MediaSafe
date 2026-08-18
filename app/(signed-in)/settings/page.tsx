@@ -1,12 +1,16 @@
+import Link from "next/link";
+
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { requireUserId } from "@/lib/session";
 import { SignOutButton } from "./sign-out-button";
 
 /**
- * Settings, with **one section, genuinely finished**.
+ * Settings, with **two of three sections genuinely finished**.
  *
  * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). This
- * ships Account, and Account ships with sign-out. That is not a stub and it is not
- * reserved space: it is one of the three, complete as far as build step 1 goes.
+ * ships Data and Account; Data ships with the one thing it names, *Import a library ›*
+ * (issue #75), and Account ships with sign-out. Neither is a stub and neither is reserved
+ * space: both are complete as far as their own build step goes.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -15,13 +19,21 @@ import { SignOutButton } from "./sign-out-button";
  * has to be found and removed later, and this way the route it will live on for the rest
  * of the product's life exists from the first day there is anything to put on it.
  *
+ * ── Data links to `/import` unconditionally ───────────────────────────────────────────
+ *
+ * *The permanent door once first run is past* (`SPEC.md` §7) — but this link does not
+ * check whether first run is past, and should not: `/import` is reachable directly by URL
+ * regardless (`app/(signed-in)/import/page.tsx`), so hiding the link behind the offer
+ * being answered would only make the door harder to find for exactly nobody's benefit. The
+ * acceptance criterion is explicit — *works whether or not the offer was ever declined.*
+ *
  * ── What is not here ─────────────────────────────────────────────────────────────────
  *
  * *Sign out other devices* and *Delete account* are the other two thirds of the Account
  * section and they are build step 7 (`SPEC.md` §8). Profile — the display name and the
- * timezone control — and Data — *Import a library ›* — are step 7 and step 3. None of
- * them appears here as a heading with nothing under it: `SPEC.md` §9 forbids reserving
- * the space, and a section that announces what it will one day contain is exactly that.
+ * timezone control — is step 7 too. It does not appear here as a heading with nothing
+ * under it: `SPEC.md` §9 forbids reserving the space, and a section that announces what
+ * it will one day contain is exactly that.
  */
 
 /**
@@ -64,6 +76,23 @@ export default async function SettingsPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
       <h1 className="bill-title text-bill-lg text-stock">Settings</h1>
+
+      <section aria-labelledby="data-h" className="mt-12 border-t border-rule pt-6">
+        <h2 id="data-h" className="code-line text-stock-dim">
+          Data
+        </h2>
+
+        <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+          Bring in titles and watches from an export file. It only ever adds — running the
+          same file twice changes nothing the second time.
+        </p>
+
+        <div className="mt-6">
+          <Link href="/import" className={GHOST_RECOVERY}>
+            Import a library ›
+          </Link>
+        </div>
+      </section>
 
       <section aria-labelledby="account-h" className="mt-12 border-t border-rule pt-6">
         <h2 id="account-h" className="code-line text-stock-dim">

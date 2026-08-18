@@ -150,9 +150,16 @@ describe("the empty library, zero matches, and a failed read", () => {
   });
 
   it("names the actions each button actually offers", () => {
-    expect(empty).toContain("Search the catalogue");
+    expect(empty).toContain("Bring your library in");
     expect(zero).toContain("Clear the filter");
-    expect(zero).not.toContain("Search the catalogue");
+    expect(zero).not.toContain("Bring your library in");
+  });
+
+  it("points the empty library's button at the import route, not the first-run offer", () => {
+    // `/welcome` would just redirect straight back past this screen — the offer is
+    // already answered by the time a reader can be here (issue #75).
+    expect(empty).toContain('href="/import"');
+    expect(empty).not.toContain('href="/welcome"');
   });
 });
 

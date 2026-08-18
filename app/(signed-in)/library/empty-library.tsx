@@ -25,18 +25,21 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *
  * ── The button points at the door that exists ────────────────────────────────────────
  *
- * `DESIGN.md` draws this state's primary action as *Bring your library in*, and the
- * reference build's copy explains the empty library by saying you declined the import.
- * **Import is build step 6 and nothing here may point at it** (`SPEC.md` §9: ship none of
- * it and reserve no space for it), and the copy would be false besides — there is no
- * import to have declined yet.
+ * `DESIGN.md` draws this state's primary action as *Bring your library in*, and now it
+ * can: import shipped in issue #73 and the first-run offer that can be declined into this
+ * exact state shipped in #75. The only way to reach this component *at all* is through
+ * that decline — `/welcome` is what a first sign-in lands on instead, so a library with
+ * nothing in it is a library whose reader chose this. `SPEC.md` §8 step 3 asks for
+ * exactly this: *a route back that is not a dead end.*
  *
- * So the treatment is `DESIGN.md`'s, at the same solid `signal` step, aimed at the only
- * way a title can get into a library today: Search. When import ships, this button becomes
- * *Bring your library in* and the sentence above it gains the clause about declining.
+ * `/import`, not `/welcome` — the offer has already been answered by the time this
+ * renders, so `/welcome` would immediately redirect past it (`lib/session.ts`), and
+ * `/import` is the same permanent door `SPEC.md` §7's Settings section describes.
  *
  * *Search*, not *Find* and not *Filter*: `CONTEXT.md` gives that word to the catalogue and
- * gives *filter* to your own library.
+ * gives *filter* to your own library. Search stays reachable from the masthead nav even
+ * though the button no longer names it — nothing here removes a way in, only changes
+ * which one is the primary action.
  */
 export function EmptyLibrary() {
   return (
@@ -44,12 +47,13 @@ export function EmptyLibrary() {
       <h2 className="bill-title text-bill-lg text-stock">The bill is blank</h2>
 
       <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-stock-dim">
-        There is nothing in your library yet. Search the catalogue for a film or a show you
-        watch, and add it — everything you keep about it after that is yours.
+        There is nothing in your library yet. Bring it in from an export file in one pass,
+        or search the catalogue and add titles one at a time — everything you keep about a
+        title after that is yours.
       </p>
 
-      <Link href="/search" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>
-        Search the catalogue
+      <Link href="/import" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>
+        Bring your library in
       </Link>
     </section>
   );
