@@ -1,4 +1,5 @@
-import { listLibraryEntries, sortFrom } from "@/db/access";
+import { listLibraryEntries } from "@/db/access";
+import { sortFrom } from "@/db/library-sort";
 import { requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
 import { LibraryHeading } from "./library-heading";

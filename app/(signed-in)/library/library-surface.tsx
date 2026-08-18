@@ -3,14 +3,12 @@
 import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { LIBRARY_STATES, type LibraryEntryRow, type LibraryState } from "@/db/access";
 import {
   DEFAULT_LIBRARY_SORT,
   LIBRARY_SORTS,
-  LIBRARY_STATES,
-  type LibraryEntryRow,
   type LibrarySort,
-  type LibraryState,
-} from "@/db/access";
+} from "@/db/library-sort";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";

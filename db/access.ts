@@ -2,6 +2,7 @@ import { and, eq, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { type Executor, getDb } from "./client";
+import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
 import { episode, libraryEntry, title } from "./tables";
 import { libraryEntryRemaining, libraryEntryState, libraryEntryUpNext } from "./views";
 /**
@@ -351,39 +352,10 @@ export interface LibraryEntryRow {
 }
 
 /**
- * The four fixed orders `SPEC.md` §7 settles (#22), in the order the sort select lists
- * them — **Title A–Z is the default and carries no query-string value of its own**, so a
- * reader who never touches the control keeps a clean `/library`.
- *
- * The value is what `?sort=` carries, so it is written once here rather than translated
- * between a URL vocabulary and a query vocabulary that could drift apart.
- */
-export const LIBRARY_SORTS = [
-  { value: "title", label: "Title A–Z" },
-  { value: "closest-to-finishing", label: "Closest to finishing" },
-  { value: "recently-added", label: "Recently added" },
-  { value: "release-year", label: "Release year, newest first" },
-] as const;
-
-export type LibrarySort = (typeof LIBRARY_SORTS)[number]["value"];
-
-export const DEFAULT_LIBRARY_SORT: LibrarySort = "title";
-
-/**
- * `?sort=` off a URL a reader typed, bookmarked, or navigated back to — not a value this
- * codebase produced, so an unrecognised one is ordinary navigation noise and not a bug to
- * throw on. That is the opposite call from `stateFrom` below: a state the view did not
- * define means this file and the database have gone out of step, and the honest answer is
- * a failure. A stale or hand-edited `sort` just means falling back to the default order.
- */
-export function sortFrom(value: string | readonly string[] | undefined): LibrarySort {
-  const candidate = typeof value === "string" ? value : undefined;
-  const known = LIBRARY_SORTS.find((sort) => sort.value === candidate);
-  return known ? known.value : DEFAULT_LIBRARY_SORT;
-}
-
-/**
- * The `ORDER BY` for one of the four sorts, always ending in the same tiebreak.
+ * The `ORDER BY` for one of the four sorts, always ending in the same tiebreak. The four
+ * choices themselves — the URL vocabulary and the default — are `db/library-sort.ts`,
+ * split out because none of it reads or writes a row; this is the one piece that has to
+ * stay here, because building `SQL` is the thing only this file may do.
  *
  * ── Title A–Z's tiebreak is everyone else's rule too ─────────────────────────────────
  *
