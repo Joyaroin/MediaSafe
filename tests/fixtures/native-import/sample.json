@@ -1,0 +1,18 @@
+{
+  "source": "test-fixture",
+  "titles": [
+    { "tmdb_id": 1416, "kind": "show", "abandoned": false },
+    { "tmdb_id": 94605, "kind": "show", "abandoned": true },
+    { "tmdb_id": 1399, "kind": "show", "abandoned": false }
+  ],
+  "watches": [
+    { "tmdb_id": 94605, "tmdb_episode_id": 2033965, "watched_at": null, "key": "2033965:1" },
+    { "tmdb_id": 1399, "tmdb_episode_id": 63072, "watched_at": null, "key": "63072:1" },
+    {
+      "tmdb_id": 1399,
+      "tmdb_episode_id": 63056,
+      "watched_at": "2025-11-03T00:00:00.000Z",
+      "key": "63056:1"
+    }
+  ]
+}
