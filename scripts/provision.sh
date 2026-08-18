@@ -184,7 +184,7 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-TOTAL_STAGES=8
+TOTAL_STAGES=9
 
 banner "MediaSafe — provision the accounts, secrets and Neon branches (#37)"
 
@@ -405,6 +405,27 @@ write_env SENTRY_AUTH_TOKEN "$SENTRY_AUTH_TOKEN"
 pause
 
 # ── 8 ─────────────────────────────────────────────────────────────────────
+stage "TMDB — the API Read Access Token"
+say "TMDB is the single metadata source for every film, show, episode, air date"
+say "and poster in the product. Without this credential the catalogue cannot be"
+say "searched and nothing can be added to a library at all."
+open_url "https://www.themoviedb.org/settings/api"
+step "Sign in, or create a TMDB account."
+step "If you have no API access yet, request it. It is free, and a personal"
+step "  project is an accepted use — you will be asked for an application name"
+step "  and a URL. Your repository URL is a fine answer."
+say ""
+step "On the API settings page, find 'API Read Access Token'."
+warn "Take the READ ACCESS TOKEN, not the older 'API Key'. The token is a bearer"
+warn "credential that works across TMDB's v3 and v4 APIs, so it is the one"
+warn "credential rather than two. It is long, and it starts with 'eyJ'."
+ask_secret TMDB_READ_ACCESS_TOKEN "Paste the API Read Access Token:"
+write_env TMDB_READ_ACCESS_TOKEN "$TMDB_READ_ACCESS_TOKEN"
+note "Server-side only. It is deliberately NOT a NEXT_PUBLIC_ variable — it is a"
+note "bearer token, and bundling it would serve it to every visitor."
+pause
+
+# ── 9 ─────────────────────────────────────────────────────────────────────
 stage "Land it — .env.example, the secret check, and Vercel's scopes"
 say "Writing a committed example file that names every variable and carries no"
 say "real value."
@@ -436,6 +457,11 @@ NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
 SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
+
+# TMDB, the single metadata source. A bearer token, sent as an Authorization
+# header, valid across TMDB's v3 and v4 APIs. Server-side only — never
+# NEXT_PUBLIC_, or it would be bundled and served to every visitor.
+TMDB_READ_ACCESS_TOKEN=
 
 # Neon. Not used by the app locally — the app reads DATABASE_URL. These two are
 # recorded here so provisioning has one home, and are copied into Vercel:
@@ -477,10 +503,12 @@ printf '  %-24s %-28s %s\n' "BETTER_AUTH_SECRET" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "BETTER_AUTH_URL" "your production URL" "Production"
 printf '  %-24s %-28s %s\n' "GOOGLE_CLIENT_ID" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "GOOGLE_CLIENT_SECRET" "same as .env" "All"
+printf '  %-24s %-28s %s\n' "SENTRY_DSN" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "NEXT_PUBLIC_SENTRY_DSN" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "SENTRY_AUTH_TOKEN" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "SENTRY_ORG" "same as .env" "All"
 printf '  %-24s %-28s %s\n' "SENTRY_PROJECT" "same as .env" "All"
+printf '  %-24s %-28s %s\n' "TMDB_READ_ACCESS_TOKEN" "same as .env" "All"
 printf '\n'
 note "Both DATABASE_URL rows are deliberate: one variable, two scopes, two"
 note "different databases. Production carries the real library; Preview carries"
@@ -492,7 +520,7 @@ note "that expects them in the environment still uploads its source maps."
 warn "BETTER_AUTH_URL is Production-scoped here because a preview's URL is not"
 warn "known ahead of time. Preview sign-in is already blocked for that reason"
 warn "until #39 lands a stable alias — set it to that alias when it does."
-SKIPPED+=("Set the 10 Vercel environment variables above, at the scopes shown")
+SKIPPED+=("Set the 12 Vercel environment variables above, at the scopes shown")
 say ""
 
 # The £5/month ceiling is meant to stay unspent — worth one look, not an assumption.
