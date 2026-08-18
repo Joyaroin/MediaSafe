@@ -8,8 +8,8 @@
    bundles of declarations a token cannot — `watch-strike` and `watch-stamp` are the
    two added by issue #88, because DESIGN.md's Motion section is not one component's
    decoration: it names the one authored moment of the whole product, and the two
-   tickets #88 itself lists as blocked on it (the Up Next row's strike, and the film
-   recording control) are what "extracts" means in its own title.
+   things #88 itself lists as blocked on it — the watched episode's rewatch and undo
+   controls, and the film recording control — are what "extracts" means in its title.
 
    This is the theme layer only — there are no components here, and there is no
    component library in this repository yet. That is deliberate: every later ticket
@@ -218,7 +218,10 @@
   top: 50%;
   right: 0.5rem;
   border: 2px solid var(--color-signal);
-  padding: 0.25rem 0.625rem;
+  /* DESIGN.md's token mapping names this `stamp-watched` and pins its padding to
+     `0.25rem 0.5rem` — narrower than the strike button's `0.625rem`, and a different
+     value from it despite both being signal-on-ink. */
+  padding: 0.25rem 0.5rem;
   color: var(--color-signal);
   background: var(--color-ink);
   transform-origin: center;

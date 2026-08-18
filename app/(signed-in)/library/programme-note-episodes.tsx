@@ -130,13 +130,14 @@ function episodeFullName(episode: EpisodeDetail): string {
  * time: `min-h-[1.375rem]`, sized to the button's padding box alone, still let the row
  * settle about `0.6px` shorter once the button was gone, because Tailwind's preflight box
  * -sizing means `min-height` competes with the *taller* of the row's two states, not the
- * control alone. `min-h-[2.625rem]` is sized to the row's own tallest natural content
- * (name line + `py-2.5`) instead, which is what actually dominates, and pinning to that
- * clamps both states to the same number.
+ * control alone. `min-h-11` (`2.75rem`, Tailwind's own step — not an arbitrary value) is
+ * sized to comfortably clear the row's own tallest natural content (name line + `py-2.5`)
+ * instead, which is what actually dominates, and pinning to that clamps both states to
+ * the same number.
  *
  * Re-measured against the compiled CSS in a real Chromium tab (`getBoundingClientRect`),
  * not assumed from the class names: `x`, `y`, `width` and `height` were identical —
- * `42px` tall at a `420px` pane width — across all three phases (button showing, mid
+ * `44px` tall at a `420px` pane width — across all three phases (button showing, mid
  * -strike, settled), and held at a `340px` phone width and with the *Up next* label
  * present alongside the control too.
  *
@@ -198,6 +199,13 @@ function EpisodeLine({
     });
   }
 
+  /**
+   * The one failure `recordWatchAction` cannot report itself, turned into the same
+   * outcome shape: the request never reaching the server at all. `catalogue-result.tsx`'s
+   * `add()` is the same wrapper for the same reason — React strips a thrown Server
+   * Action's error before it crosses to the browser, so this is what lets `referenceFor`
+   * see the real one.
+   */
   async function record(sourceKey: string) {
     try {
       return await recordWatchAction({
@@ -214,7 +222,7 @@ function EpisodeLine({
   }
 
   return (
-    <li className="relative flex min-h-[2.625rem] items-center gap-3 py-2.5">
+    <li className="relative flex min-h-11 items-center gap-3 py-2.5">
       <span
         className={
           episode.upNext && !watched
