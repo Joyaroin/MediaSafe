@@ -51,10 +51,10 @@ import { getAuth } from "@/lib/auth";
  */
 /**
  * The one call to Better Auth in the codebase, and the reason this module is a module
- * rather than two functions: both exports below need the answer, and *asking twice in two
- * spellings* is how the second spelling eventually asks a slightly different question.
- * Not exported — a caller holding a session is a caller that can read a user id off it
- * without the branding, which is the whole thing `db/access.ts` is guarding.
+ * rather than one function per export: every export below needs the answer, and *asking
+ * twice in two spellings* is how the second spelling eventually asks a slightly different
+ * question. Not exported — a caller holding a session is a caller that can read a user id
+ * off it without the branding, which is the whole thing `db/access.ts` is guarding.
  */
 async function currentSession() {
   return getAuth().api.getSession({ headers: await headers() });
@@ -72,6 +72,27 @@ export async function requireUserId(): Promise<UserId> {
    * just resolved from a session, and from nothing else.
    */
   return asUserId(session.user.id);
+}
+
+/**
+ * Whether this signed-in reader has answered the first-run **Bring your library in**
+ * offer — by choosing to import or by declining, either one (issue #75).
+ *
+ * Reads `session.user.importOfferAnsweredAt` straight off the session Better Auth already
+ * resolved, rather than a second query through `db/access.ts`: the additional field is
+ * part of the user row `getSession()` returns, exactly like `session.user.timezone` would
+ * be, so there is nothing here worth a choke-point round trip of its own.
+ *
+ * Redirects rather than throwing on no session, for the same reason `requireUserId` does —
+ * every caller of this has already called that too, on a route with no session at all,
+ * but this stays correct on its own rather than trusting a call order nothing enforces.
+ */
+export async function requireImportOfferAnswered(): Promise<boolean> {
+  const session = await currentSession();
+
+  if (!session) redirect("/sign-in");
+
+  return session.user.importOfferAnsweredAt !== null;
 }
 
 /**

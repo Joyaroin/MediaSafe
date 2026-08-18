@@ -620,6 +620,33 @@ export async function applyImportChunk(
 }
 
 /**
+ * Records that the first-run **Bring your library in** offer has been answered — by
+ * choosing to import or by declining, either one (issue #75, completing the column
+ * issue #70 declared and deliberately left unwritten).
+ *
+ * `lib/auth.ts` marks `user.importOfferAnsweredAt` `input: false`, which stops Better
+ * Auth's own `update-user` endpoint from accepting it from a request body — it does not
+ * stop an ordinary write to the row, and there is no Better Auth flow for "the server
+ * decided this, not the reader" to go through instead. `resolveSeedUserId` above already
+ * reads the `user` table from this module for the same reason: it is Better Auth's table,
+ * but this is still the one place MediaSafe's own server code touches owned and
+ * account-adjacent rows.
+ *
+ * Always writes `new Date()`, even when called a second time — there is no unanswered
+ * state to return to, so re-answering only moves the timestamp forward, which is not a
+ * fact anything reads.
+ */
+export async function markImportOfferAnswered(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<void> {
+  await executor
+    .update(user)
+    .set({ importOfferAnsweredAt: new Date() })
+    .where(eq(user.id, userId));
+}
+
+/**
  * The user id `npm run db:seed` writes to (issue #74) — the CLI's own resolution
  * boundary, held to the same standard `lib/session.ts` is: a raw string becomes a
  * `UserId` in exactly one place, and only after this module has looked the row up

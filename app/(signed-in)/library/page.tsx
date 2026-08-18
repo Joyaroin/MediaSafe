@@ -1,6 +1,8 @@
+import { redirect } from "next/navigation";
+
 import { listLibraryEntries } from "@/db/access";
 import { sortFrom } from "@/db/library-sort";
-import { requireUserId } from "@/lib/session";
+import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
 import { LibraryHeading } from "./library-heading";
 import { LibrarySurface } from "./library-surface";
@@ -15,7 +17,9 @@ import { LibrarySurface } from "./library-surface";
  *
  * ── Two states this page still owns, and two more that live below it ────────────────
  *
- * There is one branch on this page and it is the important one:
+ * One redirect runs before either: a reader who has not answered the first-run **Bring
+ * your library in** offer is sent to `/welcome` before this page reads anything (issue
+ * #75). Past that, there is one branch on this page and it is the important one:
  *
  *  - **`entries` is empty** → the library is genuinely empty. This is reachable *only*
  *    because the query returned zero rows, and it says so on screen in the empty
@@ -73,6 +77,14 @@ export default async function LibraryPage({
    * `db/access.ts` takes.
    */
   const userId = await requireUserId();
+
+  /**
+   * *A first sign-in lands on Bring your library in, not on the empty library* (issue
+   * #75). This is the one place that redirect fires: `/` always lands here, so this is
+   * the desktop landing screen `SPEC.md` §7 means, and every reader who has not yet
+   * answered the offer is turned back to it before this page reads a single row.
+   */
+  if (!(await requireImportOfferAnswered())) redirect("/welcome");
 
   // `sortFrom` falls back to the default rather than throwing: a stale or hand-edited
   // `?sort=` is ordinary navigation noise, not corruption in the read below.
