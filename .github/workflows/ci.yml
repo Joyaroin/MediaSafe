@@ -124,6 +124,18 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:fixtures
 
+      # Test 1 of the four in `SPEC.md` §6 — the import mapping, run over the committed
+      # export (#71). It joins the two steps above for the same reason they are here: the
+      # mapping is pure, so it needs neither the database nor the build, only the archive
+      # that is already in the repository.
+      #
+      # It is the one of the four whose failure is quietest. A mapping bug does not throw,
+      # it writes a seed that is silently missing history, against the only surviving copy
+      # of a library that no longer has a source to be re-read from.
+      - name: Conversion mapping
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:conversion
+
       # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather
       # than remembered, on a database whose only safety net is six hours of Neon history.

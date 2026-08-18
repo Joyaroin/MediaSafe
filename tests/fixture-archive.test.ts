@@ -205,7 +205,30 @@ describe("no Supabase auth row is in this repository", () => {
   });
 });
 
-describe("nothing names the archive", () => {
+/**
+ * The two files permitted to name the archive, and nothing else (issue #71).
+ *
+ * Until step 3 this list was empty and the property was *never named*. That was always
+ * going to end — `fixtures/README.md` said so — and it ended here rather than eroding:
+ * the archive stops being never-loaded exactly when the conversion script reads it, and
+ * it took a visible diff to say so.
+ *
+ * **Both entries are required, and the second is the one that is easy to miss.**
+ * `SPEC.md` §6 defines test 1 as *"a pure function in `scripts/`, tested against the
+ * committed export"*, so the test necessarily names the file too. An allowlist of one
+ * would have failed the first time that test was written, and widening an allowlist under
+ * deadline is how it turns into a comment.
+ *
+ * `cli.ts` is listed before it exists. That is deliberate: the entry records what is
+ * permitted, and the alternative — adding it in the same pull request that adds the
+ * reader — is the widening this list exists to stop.
+ */
+const MAY_NAME_THE_ARCHIVE = [
+  "scripts/convert-tvtracker/cli.ts",
+  "tests/tvtracker-conversion.test.ts",
+] as const;
+
+describe("only the conversion names the archive", () => {
   /**
    * Greps the tracked tree rather than a hand-written list of directories, so a loader
    * added in a directory that does not exist yet is still caught. `git grep` sees only
@@ -225,11 +248,11 @@ describe("nothing names the archive", () => {
    * check — a loader dropped next to the data it loads is exactly where one would go.
    *
    * What is left is every file that could actually execute: TypeScript, config, CI
-   * workflows, `package.json`. **When step 3's conversion script arrives it will fail
-   * this test**, and that is the intended moment to revisit it — the archive stops being
-   * never-loaded exactly then, deliberately and in a diff.
+   * workflows, `package.json`. Step 3's conversion script arrived in #71 and this test
+   * failed exactly as it was designed to; what changed is the expected result, from *no
+   * file* to `MAY_NAME_THE_ARCHIVE`. It still fails for any other file.
    */
-  it("no executable tracked file names either archive", () => {
+  it("only the allowed files name either archive", () => {
     let hits: string;
     try {
       hits = execFileSync(
@@ -249,6 +272,14 @@ describe("nothing names the archive", () => {
       if (failure.status !== 1) throw error;
       hits = failure.stdout ?? "";
     }
-    expect(hits.trim().split("\n").filter(Boolean)).toEqual([]);
+
+    const naming = hits.trim().split("\n").filter(Boolean).sort();
+    expect(naming.filter((file) => !MAY_NAME_THE_ARCHIVE.includes(file as never))).toEqual([]);
+
+    // And the allowlist is not allowed to go quietly dead. Test 1 reads the export by
+    // definition, so if nothing names it any more, either the test stopped reading the
+    // real archive — which is the assertion `SPEC.md` §6 is buying — or this list is
+    // describing a file that no longer exists.
+    expect(naming).toContain("tests/tvtracker-conversion.test.ts");
   });
 });
