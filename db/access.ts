@@ -620,6 +620,127 @@ export async function applyImportChunk(
 }
 
 /**
+ * What one click needs, and everything about it that is the caller's to decide.
+ *
+ * ── The one field with a rule attached ────────────────────────────────────────────────
+ *
+ * `sourceKey` is minted **in the browser**, once per click, and reused for every retry of
+ * that click (ADR-0001, issue #84). A server-minted key is a new key per request, which
+ * is the precise shape of the bug `recordWatch` exists to prevent — so this function
+ * receives the key rather than inventing one, and there is deliberately no code path
+ * inside it that could.
+ *
+ * `titleId` is not here. `libraryEntryId` already identifies one title in one account,
+ * and `recordWatch` resolves it rather than trusting a second value that could disagree —
+ * the same reasoning `getTitleDetail` above already applies to the read side.
+ */
+export interface RecordWatchParams {
+  readonly libraryEntryId: string;
+  /** `null` for a film; a real `episode.id` for a show. */
+  readonly episodeId: string | null;
+  readonly sourceKey: string;
+}
+
+/** Whether the click wrote a new watch, or found a retry of one already there. */
+export interface RecordWatchOutcome {
+  readonly recorded: boolean;
+}
+
+/**
+ * The application's first write of a watch — issue #85, and the write everything from
+ * step 4 on is built against.
+ *
+ * ── Why a retry cannot become a rewatch ───────────────────────────────────────────────
+ *
+ * `UNIQUE (user_id, source, source_key)` (ADR-0001) makes idempotency a property of the
+ * statement: the same `sourceKey` twice is one row, `ON CONFLICT DO NOTHING`. A genuine
+ * rewatch is a different key, minted by a different click, and is a second row — nothing
+ * here tells the two apart by content, because content is not what identifies a watch.
+ *
+ * `source` is hard-coded to `'app'` and is not a parameter. Import's is `'tvtracker'`,
+ * permanently, and the distinction between recorded history and backfilled history is
+ * this function only ever writing one of the two — not a value a caller could pass wrong.
+ *
+ * ── Resuming, in the same statement as the insert ─────────────────────────────────────
+ *
+ * `abandoned_at` is cleared unconditionally, in the same transaction as the watch insert
+ * — `CONTEXT.md`'s *watching it again clears it*, made true by the transaction rather
+ * than by a follow-up write somebody could forget. It runs even when the insert is a
+ * no-op: a retried click clearing an already-clear column is a wasted statement, not a
+ * wrong one, and conditioning it on `recorded` would need a second reason to exist. Import
+ * is the only writer that must never take this path, and it does not call this function —
+ * `applyImportChunk` has its own insert, which is the whole reason that guard is spelled
+ * where it is rather than shared here.
+ *
+ * ── Nothing derived is written ─────────────────────────────────────────────────────────
+ *
+ * No progress column, no state, no count. The five states, progress and up next are the
+ * views in `db/views.ts`, evaluated on the next read — this function's whole job ends at
+ * the `watch` row and the one column it is allowed to touch beside it.
+ *
+ * ── One transaction, opened here ──────────────────────────────────────────────────────
+ *
+ * The insert and the clear must land together or not at all — a watch recorded without
+ * its resume, or a resume without its watch, is a state the application never asked for.
+ * Passing an executor that is already a transaction nests as a savepoint, exactly as
+ * `addTitleToLibrary` and `applyImportChunk` already rely on.
+ *
+ * ── Authorization, not a foreign-key gamble ───────────────────────────────────────────
+ *
+ * `params.libraryEntryId` is looked up through `ownedBy(userId, libraryEntry)` before
+ * anything is written, and a miss throws — the same treatment `getTitleDetail` gives a
+ * tampered or stale id. The composite foreign keys on `watch` would also reject a
+ * cross-account or cross-title row (ADR-0001 §3), but that is the backstop for a bug, not
+ * the mechanism this function leans on to say no.
+ */
+export async function recordWatch(
+  userId: UserId,
+  params: RecordWatchParams,
+  executor: Executor = getDb(),
+): Promise<RecordWatchOutcome> {
+  return executor.transaction(async (tx) => {
+    const [entry] = await tx
+      .select({ titleId: libraryEntry.titleId })
+      .from(libraryEntry)
+      .where(
+        and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)),
+      );
+
+    if (!entry) {
+      throw new Error(
+        `Library entry ${params.libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    const written = await tx
+      .insert(watch)
+      .values({
+        userId,
+        libraryEntryId: params.libraryEntryId,
+        titleId: entry.titleId,
+        episodeId: params.episodeId,
+        // The transaction's own instant, not a `Date` read in this process — "the moment
+        // of the click" is the write, and `now()` is what makes the resume below and this
+        // insert agree on when that was.
+        watchedAt: sql`now()`,
+        source: "app",
+        sourceKey: params.sourceKey,
+      })
+      .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
+      .returning({ id: watch.id });
+
+    await tx
+      .update(libraryEntry)
+      .set({ abandonedAt: null })
+      .where(
+        and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)),
+      );
+
+    return { recorded: written.length > 0 };
+  });
+}
+
+/**
  * Records that the first-run **Bring your library in** offer has been answered — by
  * choosing to import or by declining, either one (issue #75, completing the column
  * issue #70 declared and deliberately left unwritten).
