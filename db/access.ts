@@ -1,4 +1,4 @@
-import { and, eq, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { type Executor, getDb } from "./client";
@@ -23,6 +23,13 @@ import {
   type TitleKind,
   type TitleMirror,
 } from "@/tmdb/mirror";
+/**
+ * The native import format, declared once in `import/native-format.ts` and read from
+ * there rather than restated — the same direction as `tmdb/mirror.ts` above, and for the
+ * same reason. It is a pure module with no filesystem and no network in it, so importing
+ * it here brings neither.
+ */
+import type { NativeImportWatch } from "@/import/native-format";
 
 /**
  * The data-access choke point: the only module that reads or writes owned rows.
@@ -196,6 +203,109 @@ export async function libraryCatalogueKeys(
   return new Set(keys.map(catalogueKeyOf).filter((key) => held.has(key)));
 }
 
+/** One title's global rows, as they stand after being mirrored. */
+interface MirroredTitle {
+  readonly id: string;
+  /**
+   * The `episode` row id for each TMDB episode id in the mirror — what a watch needs in
+   * order to point at the right row, and the reason this is returned rather than the
+   * title id alone. The add path has no use for it and ignores it.
+   */
+  readonly episodeIds: ReadonlyMap<number, string>;
+}
+
+/**
+ * Write the global, unowned half of a title: the `title` row and its `episode` rows.
+ *
+ * ── One upsert, called twice, and why that is the whole point ────────────────────────
+ *
+ * `addTitleToLibrary` and `applyImportChunk` both put a mirror into these two tables, and
+ * they are **the same write** — so it is spelled once here rather than twice with two
+ * sets of conflict handling. `title` and `episode` are global and shared by every account
+ * (ADR-0001): two upserts against them is how the add path and the import path drift, and
+ * only one of the two ever gets fixed.
+ *
+ * ── The two conflicts, resolved differently on purpose ───────────────────────────────
+ *
+ *  - **`title`** upserts. Adding is the natural refresh point for a title somebody else
+ *    added months ago, and `metadata_refreshed_at` moves with it so the nightly sweep
+ *    (ADR-0001) does not immediately do the work again.
+ *  - **`episode`** upserts on `tmdb_episode_id`, which is identity; season and episode
+ *    numbers are borrowed attributes and are updated, never matched on. If TMDB has
+ *    renumbered a season since the last add, the *other* unique — `(title_id, season_no,
+ *    episode_no)` — can still reject the batch, and it should: that is a genuine upstream
+ *    renumbering, it is `SPEC.md` §11.3's open question arriving early, and ADR-0001's
+ *    standing answer is that it fails loudly rather than quietly repointing history.
+ *
+ * `DO UPDATE` rather than `DO NOTHING` is also what makes `RETURNING` total here: a
+ * conflicting row is returned by an update and skipped by a do-nothing, so the episode
+ * ids come back for a title whose episodes another account created years ago exactly as
+ * they do for one written for the first time. Import depends on that.
+ *
+ * **Not exported, and takes no user id**, because it touches no owned row. It is called
+ * inside a transaction its caller opened; it opens none of its own.
+ */
+async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredTitle> {
+  const [mirrored] = await tx
+    .insert(title)
+    .values({
+      kind: mirror.kind,
+      tmdbId: mirror.tmdbId,
+      name: mirror.name,
+      releaseYear: mirror.releaseYear,
+      posterPath: mirror.posterPath,
+      inProduction: mirror.inProduction,
+      runtimeMins: mirror.runtimeMins,
+    })
+    .onConflictDoUpdate({
+      target: [title.kind, title.tmdbId],
+      set: {
+        name: sql`excluded.name`,
+        releaseYear: sql`excluded.release_year`,
+        posterPath: sql`excluded.poster_path`,
+        inProduction: sql`excluded.in_production`,
+        runtimeMins: sql`excluded.runtime_mins`,
+        metadataRefreshedAt: sql`now()`,
+      },
+    })
+    .returning({ id: title.id });
+
+  if (mirror.episodes.length === 0) {
+    return { id: mirrored.id, episodeIds: new Map() };
+  }
+
+  const episodes = await tx
+    .insert(episode)
+    .values(
+      mirror.episodes.map((one) => ({
+        titleId: mirrored.id,
+        tmdbEpisodeId: one.tmdbEpisodeId,
+        seasonNo: one.seasonNo,
+        episodeNo: one.episodeNo,
+        name: one.name,
+        airDate: one.airDate,
+        runtimeMins: one.runtimeMins,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: episode.tmdbEpisodeId,
+      set: {
+        titleId: sql`excluded.title_id`,
+        seasonNo: sql`excluded.season_no`,
+        episodeNo: sql`excluded.episode_no`,
+        name: sql`excluded.name`,
+        airDate: sql`excluded.air_date`,
+        runtimeMins: sql`excluded.runtime_mins`,
+      },
+    })
+    .returning({ id: episode.id, tmdbEpisodeId: episode.tmdbEpisodeId });
+
+  return {
+    id: mirrored.id,
+    episodeIds: new Map(episodes.map((one) => [one.tmdbEpisodeId, one.id])),
+  };
+}
+
 /** Whether the add created a library entry, or found one already there. */
 export interface AddOutcome {
   readonly added: boolean;
@@ -227,15 +337,10 @@ export interface AddOutcome {
  *
  * ── The three conflicts, each resolved differently on purpose ────────────────────────
  *
- *  - **`title`** upserts. Adding is the natural refresh point for a title somebody else
- *    added months ago, and `metadata_refreshed_at` moves with it so the nightly sweep
- *    (ADR-0001) does not immediately do the work again.
- *  - **`episode`** upserts on `tmdb_episode_id`, which is identity; season and episode
- *    numbers are borrowed attributes and are updated, never matched on. If TMDB has
- *    renumbered a season since the last add, the *other* unique — `(title_id, season_no,
- *    episode_no)` — can still reject the batch, and it should: that is a genuine upstream
- *    renumbering, it is `SPEC.md` §11.3's open question arriving early, and ADR-0001's
- *    standing answer is that it fails loudly rather than quietly repointing history.
+ * `title` and `episode` are `mirrorTitle`'s two, and that function carries the reasoning
+ * for both — it is shared with `applyImportChunk` precisely so there is one upsert
+ * against the global tables rather than one per caller. The third is this function's own:
+ *
  *  - **`library_entry`** does nothing on conflict and reports it. A title already in your
  *    library is not added twice, and the caller is told which of the two happened rather
  *    than being left to assume.
@@ -246,56 +351,7 @@ export async function addTitleToLibrary(
   executor: Executor = getDb(),
 ): Promise<AddOutcome> {
   return executor.transaction(async (tx) => {
-    const [mirrored] = await tx
-      .insert(title)
-      .values({
-        kind: mirror.kind,
-        tmdbId: mirror.tmdbId,
-        name: mirror.name,
-        releaseYear: mirror.releaseYear,
-        posterPath: mirror.posterPath,
-        inProduction: mirror.inProduction,
-        runtimeMins: mirror.runtimeMins,
-      })
-      .onConflictDoUpdate({
-        target: [title.kind, title.tmdbId],
-        set: {
-          name: sql`excluded.name`,
-          releaseYear: sql`excluded.release_year`,
-          posterPath: sql`excluded.poster_path`,
-          inProduction: sql`excluded.in_production`,
-          runtimeMins: sql`excluded.runtime_mins`,
-          metadataRefreshedAt: sql`now()`,
-        },
-      })
-      .returning({ id: title.id });
-
-    if (mirror.episodes.length > 0) {
-      await tx
-        .insert(episode)
-        .values(
-          mirror.episodes.map((one) => ({
-            titleId: mirrored.id,
-            tmdbEpisodeId: one.tmdbEpisodeId,
-            seasonNo: one.seasonNo,
-            episodeNo: one.episodeNo,
-            name: one.name,
-            airDate: one.airDate,
-            runtimeMins: one.runtimeMins,
-          })),
-        )
-        .onConflictDoUpdate({
-          target: episode.tmdbEpisodeId,
-          set: {
-            titleId: sql`excluded.title_id`,
-            seasonNo: sql`excluded.season_no`,
-            episodeNo: sql`excluded.episode_no`,
-            name: sql`excluded.name`,
-            airDate: sql`excluded.air_date`,
-            runtimeMins: sql`excluded.runtime_mins`,
-          },
-        });
-    }
+    const mirrored = await mirrorTitle(tx, mirror);
 
     const created = await tx
       .insert(libraryEntry)
@@ -304,6 +360,259 @@ export async function addTitleToLibrary(
       .returning({ id: libraryEntry.id });
 
     return { added: created.length > 0 };
+  });
+}
+
+/**
+ * One title in a chunk: the judgement the file carries, and the mirror it is written
+ * from.
+ *
+ * The mirror is **passed in, never fetched here** — that is what keeps TMDB out of this
+ * module and lets every test of the import run with the network unplugged. Whoever built
+ * the chunk (the import screen, or the seed CLI) is where a mirror comes from.
+ *
+ * `abandoned` is the file's boolean and nothing more; `SPEC.md` §7 is explicit that the
+ * file never carries a timestamp, because import is what mints it and the
+ * `abandoned_at == added_at` identity has to hold in every environment that runs the file.
+ */
+export interface ImportChunkTitle {
+  readonly mirror: TitleMirror;
+  readonly abandoned: boolean;
+}
+
+/**
+ * One page of an import — `SPEC.md` §7 sizes it at ~25 titles, forced by Vercel Hobby's
+ * 300-second function duration and 4.5 MB request body.
+ *
+ * `titles` and `watches` are independent: 21 real titles have no watches at all and
+ * become watchlist entries, which is why nothing here nests one inside the other.
+ * `watches` is `import/native-format.ts`'s own type, so the shape is declared once and
+ * the writer cannot drift from the reader.
+ */
+export interface ImportChunk {
+  readonly source: string;
+  readonly titles: readonly ImportChunkTitle[];
+  readonly watches: readonly NativeImportWatch[];
+}
+
+/**
+ * What one chunk actually wrote — the three counters `SPEC.md` §7's progress line prints,
+ * and nothing else:
+ *
+ * ```
+ * 318 of 462 titles · 11,204 watches · 155 marked abandoned
+ * ```
+ *
+ * Every one of them counts **rows created**, not rows named. A chunk applied a second
+ * time reports zeroes, because the second run is a no-op and a counter that claimed
+ * otherwise would be reporting the file's size back to the reader as though it were work.
+ */
+export interface ImportChunkOutcome {
+  readonly titlesAdded: number;
+  readonly watchesAdded: number;
+  readonly arrivedAbandoned: number;
+}
+
+/**
+ * Where one of a chunk's mirrored episodes ended up, and which title claimed it —
+ * everything a watch needs in order to be written *and* checked.
+ *
+ * Collected across the whole chunk and keyed by `tmdb_episode_id`, because that column is
+ * globally unique and is identity (ADR-0001): the episode, not the title, is what locates
+ * a watch.
+ */
+interface ChunkEpisode {
+  readonly episodeId: string;
+  readonly titleId: string;
+  /** The mirror's own id, kept so that a watch naming a different title is refused. */
+  readonly titleTmdbId: number;
+}
+
+/**
+ * Write one chunk of an import: the only function that ever writes one.
+ *
+ * ── Why this is one function and not two ─────────────────────────────────────────────
+ *
+ * `SPEC.md` §6 seeds preview and local **by running MediaSafe's own import, not a
+ * separate loader**, and the only way to hold that is for one function to be the writer.
+ * The import screen (#73) and `npm run db:seed` (#74) are both callers of this; neither
+ * writes a row of its own.
+ *
+ * **It knows nothing about `tvtracker`.** Every fact about the old application lives in
+ * the conversion script (`SPEC.md` §7); this inserts what it is given and interprets
+ * nothing. *Paused* became *abandoned* before the file was written, not here.
+ *
+ * ── The guard that is the reason this ticket exists ──────────────────────────────────
+ *
+ * `abandoned_at` is **stamped only on the entries this call creates**, and it is stamped
+ * in the `INSERT` itself rather than by a follow-up `UPDATE`. That is deliberate, and it
+ * is stronger than an update scoped to the created ids: `ON CONFLICT DO NOTHING` cannot
+ * touch a row it did not insert, so *never on update, never cleared* is a property of the
+ * statement rather than of a `where` clause somebody has to keep correct.
+ *
+ * Both halves of it matter, and both are quiet failures:
+ *
+ *  - An import that **cleared** it would undo the judgement every time it added a watch
+ *    to an abandoned title — and `CONTEXT.md` makes watching again the thing that clears
+ *    *abandoned*, so a naive "watches mean you are watching" write does exactly that.
+ *  - An import that **re-set** it would resurrect the abandonment on every title since
+ *    un-abandoned, once per re-seed, on 155 titles, with nothing on any screen to say so.
+ *
+ * `UNIQUE (user_id, source, source_key)` gives the rest of the idempotence away for free.
+ * This is the one case it does not cover.
+ *
+ * ── One transaction per chunk ────────────────────────────────────────────────────────
+ *
+ * A `library_entry` pointing at a half-written show has wrong derived states — a show
+ * missing half its episodes reads *finished*. So a chunk lands whole or not at all, and a
+ * failure part-way through leaves the previous chunks intact and this one absent, which
+ * is exactly what re-running the file then repairs.
+ *
+ * ── A watch resolves through its episode, not through its title ──────────────────────
+ *
+ * `episode.tmdb_episode_id` is globally unique and is identity (ADR-0001), so the episode
+ * is what locates a watch — including for a title whose episodes another account created
+ * years ago, which `mirrorTitle`'s `DO UPDATE … RETURNING` covers. The `tmdb_id` the file
+ * puts on a watch is therefore redundant, and it is **checked rather than ignored**: a
+ * watch whose title and episode disagree is a corrupt file, and landing it against the
+ * episode's real title would put someone else's history on the wrong show silently.
+ *
+ * An episode the chunk does not carry is the same kind of failure and throws for the same
+ * reason. It cannot be written — `episode` needs season and episode numbers that only a
+ * mirror has — and dropping it would make an import that silently lost watches look
+ * identical to one that did not.
+ *
+ * ── A consequence inherited from the format: a film cannot arrive watched ────────────
+ *
+ * `watch.episode_id` is nullable and its composite foreign key is MATCH SIMPLE precisely
+ * so that a film's watch — no episode — is legal (`db/tables.ts`). Import cannot write
+ * one anyway, because `NativeImportWatch` requires a `tmdb_episode_id` and every watch
+ * here resolves through it. So a film in a file becomes a watchlist entry and stays one.
+ *
+ * That is **the format's limit, not this function's**, and it is not worked around here:
+ * inventing a film branch would mean guessing which title a watch meant from a `tmdb_id`
+ * that is ambiguous across kinds, which is the interpreting this function does not do.
+ * It costs nothing on day one — `tvtracker` holds 0 films — and the fix, when a file
+ * needs one, is a `tmdb_episode_id`-less watch in `import/native-format.ts`.
+ */
+export async function applyImportChunk(
+  userId: UserId,
+  chunk: ImportChunk,
+  executor: Executor = getDb(),
+): Promise<ImportChunkOutcome> {
+  return executor.transaction(async (tx) => {
+    /**
+     * The global rows first, one title at a time through the shared upsert. Sequential
+     * rather than batched: a batch would be a second spelling of the write the add path
+     * makes, which is the drift this is factored to avoid, and ~25 titles a chunk is not
+     * where an import that runs once spends its time.
+     */
+    const titleIds: string[] = [];
+    const abandonedTitleIds = new Set<string>();
+    const episodes = new Map<number, ChunkEpisode>();
+
+    for (const one of chunk.titles) {
+      const mirrored = await mirrorTitle(tx, one.mirror);
+      titleIds.push(mirrored.id);
+      if (one.abandoned) abandonedTitleIds.add(mirrored.id);
+      for (const [tmdbEpisodeId, episodeId] of mirrored.episodeIds) {
+        episodes.set(tmdbEpisodeId, {
+          episodeId,
+          titleId: mirrored.id,
+          titleTmdbId: one.mirror.tmdbId,
+        });
+      }
+    }
+
+    // `DO NOTHING` returns only the rows it inserted, so this *is* "which ones I created".
+    const created =
+      titleIds.length === 0
+        ? []
+        : await tx
+            .insert(libraryEntry)
+            .values(
+              titleIds.map((titleId) => ({
+                userId,
+                titleId,
+                /**
+                 * `now()`, not a `Date` from this process: it is the transaction's start,
+                 * which is also what `added_at` defaults to, so `SPEC.md` §7's
+                 * `abandoned_at == added_at` identity holds exactly rather than nearly.
+                 */
+                abandonedAt: abandonedTitleIds.has(titleId) ? sql`now()` : null,
+              })),
+            )
+            .onConflictDoNothing({
+              target: [libraryEntry.userId, libraryEntry.titleId],
+            })
+            .returning({
+              titleId: libraryEntry.titleId,
+              abandonedAt: libraryEntry.abandonedAt,
+            });
+
+    /**
+     * Every entry the chunk names, created here or already in the library — a watch needs
+     * the entry id either way, and `DO NOTHING` above deliberately did not return the
+     * ones it left alone. `ownedBy` is what keeps this to one account's entries.
+     */
+    const entryIds = new Map<string, string>();
+    if (titleIds.length > 0) {
+      const rows = await tx
+        .select({ id: libraryEntry.id, titleId: libraryEntry.titleId })
+        .from(libraryEntry)
+        .where(
+          and(ownedBy(userId, libraryEntry), inArray(libraryEntry.titleId, titleIds)),
+        );
+      for (const row of rows) entryIds.set(row.titleId, row.id);
+    }
+
+    const watchRows = chunk.watches.map((one) => {
+      const found = episodes.get(one.tmdbEpisodeId);
+      if (!found) {
+        throw new Error(
+          `This chunk has a watch of episode ${one.tmdbEpisodeId}, which none of its titles carries.`,
+        );
+      }
+      if (found.titleTmdbId !== one.tmdbId) {
+        throw new Error(
+          `A watch names title ${one.tmdbId}, but episode ${one.tmdbEpisodeId} belongs to title ${found.titleTmdbId}.`,
+        );
+      }
+      const libraryEntryId = entryIds.get(found.titleId);
+      if (libraryEntryId === undefined) {
+        // Unreachable: the entry was inserted or found above for every title in the chunk.
+        throw new Error(
+          `This chunk has a watch of episode ${one.tmdbEpisodeId} whose title has no library entry.`,
+        );
+      }
+
+      return {
+        userId,
+        libraryEntryId,
+        titleId: found.titleId,
+        episodeId: found.episodeId,
+        watchedAt: one.watchedAt === null ? null : new Date(one.watchedAt),
+        source: chunk.source,
+        sourceKey: one.key,
+      };
+    });
+
+    const written =
+      watchRows.length === 0
+        ? []
+        : await tx
+            .insert(watch)
+            .values(watchRows)
+            .onConflictDoNothing({
+              target: [watch.userId, watch.source, watch.sourceKey],
+            })
+            .returning({ id: watch.id });
+
+    return {
+      titlesAdded: created.length,
+      watchesAdded: written.length,
+      arrivedAbandoned: created.filter((row) => row.abandonedAt !== null).length,
+    };
   });
 }
 
