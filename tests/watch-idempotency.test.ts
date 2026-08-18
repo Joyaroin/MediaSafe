@@ -230,6 +230,38 @@ describe("recordWatch", () => {
       expect(detail.episodes.every((one) => !one.upNext)).toBe(true);
     }));
 
+  it("holds up next where a rewatch is of an earlier episode and something is still next", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, [
+        { seasonNo: 1, episodeNo: 1 },
+        { seasonNo: 1, episodeNo: 2 },
+        { seasonNo: 1, episodeNo: 3 },
+      ]);
+      for (const key of ["1-1", "1-2"]) {
+        await recordWatch(
+          userId,
+          { libraryEntryId: entryId, episodeId: episodeIds[key], sourceKey: nextKey() },
+          tx,
+        );
+      }
+
+      await recordWatch(
+        userId,
+        { libraryEntryId: entryId, episodeId: episodeIds["1-1"], sourceKey: nextKey() },
+        tx,
+      );
+
+      // Progress is a high-water mark, so a second watch of episode 1 moves nothing —
+      // the test above proves it against a show with nothing left, this one against a
+      // show that still has an up next to lose. Issue #89 asks for the second case by
+      // name: nothing had ever exercised it.
+      const detail = await getTitleDetail(userId, entryId, tx);
+      expect(detail.episodes.find((one) => one.episodeNo === 3)?.upNext).toBe(true);
+      expect(detail.episodes.filter((one) => one.upNext)).toHaveLength(1);
+      expect(detail.state).toBe("watching");
+    }));
+
   it("clears abandoned_at in the same transaction as the insert", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");

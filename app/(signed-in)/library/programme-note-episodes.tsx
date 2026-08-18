@@ -1,6 +1,7 @@
 "use client";
 
 import type { EpisodeDetail, LibraryState } from "@/db/access";
+import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { useWatchMark } from "./use-watch-mark";
@@ -119,6 +120,37 @@ function episodeFullName(episode: EpisodeDetail): string {
 }
 
 /**
+ * The trailing slot, at one fixed measure in every state.
+ *
+ * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
+ * is the same rule applied along the other axis, and issue #89 is what makes it
+ * necessary: the slot now holds four different sets of things — *Up next* beside *Strike
+ * it*; *Watched* alone while the strike plays; *Rewatch* beside *Undo*; *Rewatch* beside
+ * *Watched* where the only other watch was imported — and they are not the same width.
+ * Left to size themselves, the episode name beside them would jump every time one gave
+ * way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways instead of
+ * vertically.
+ *
+ * So the slot is fixed and its contents are right-aligned inside it, the name takes the
+ * rest with `min-w-0`, and the name truncates rather than wrapping. Truncation is the
+ * cost, and it is the right one: a name that wraps takes the row's height with it, which
+ * is the property #88 measured twice to get.
+ *
+ * **`10rem` is what the row already needed, not new width.** Measured against the
+ * compiled CSS in a real browser, the widest of the four states is the one that was there
+ * before this ticket — *Up next* beside *Strike it*, at `153.6px`. The two this ticket
+ * adds come in under it: *Rewatch* beside *Undo* at `111.2px`, and *Rewatch* beside
+ * *Watched* at `136.5px`. So nothing had to give way to make room, and the episode name
+ * is exactly as wide as it was.
+ *
+ * That is also what settled the rewatch control's label. *Watch it again* measures
+ * `107.8px` and puts the imported-watch state at `182px` — over the slot, and only
+ * payable by taking `22px` off every episode name on the phone. *Rewatch* is
+ * `CONTEXT.md`'s own word for the thing, and it fits.
+ */
+const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
+
+/**
  * `DESIGN.md`, Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
  * **name** at `text-item` as the actual content; a trailing state code line. Watched
  * episodes are struck through in dim bone; the up-next episode inverts its number into a
@@ -165,12 +197,64 @@ function episodeFullName(episode: EpisodeDetail): string {
  * same reason — a row that resizes when it succeeds is still a row that moves under a
  * thumb still resting on it, whether the row is an episode's or a film's.
  *
- * ── Idempotency, minted once ─────────────────────────────────────────────────────────
+ * **Re-measured again for issue #89**, which puts two more controls on the row and so
+ * could have broken it: same method, against the compiled CSS in a real browser, over
+ * every state the row now has — unwatched, unwatched-and-up-next, watched-with-undo,
+ * watched-from-an-import, and a name long enough to wrap. The `li` came back
+ * `371 × 44px` at a `420px` pane, `326 × 44px` at `375px` and `291 × 44px` at `340px`,
+ * **identical in every state at each width**, and the episode name beside it came back
+ * identical too (`151px`, `106px`, `71px`) rather than moving as the controls changed.
+ * Nothing was clipped at any width. The two things that buy that are the fixed trailing
+ * measure (`TRAILING`) and the name's `truncate`; without the second, a long name wraps
+ * and takes the row's height with it.
  *
- * `use-watch-mark.ts`'s `key` is a ref, set on the first press and reused for every retry
- * of that same click — `db/access.ts`'s `recordWatch` is what makes a repeated key a
- * no-op rather than a second watch, and it can only do that if this never mints a second
- * key for a write that has not yet succeeded.
+ * ── Idempotency, one key per outstanding write ───────────────────────────────────────
+ *
+ * `use-watch-mark.ts`'s `key` names the write, not the press: minted when none is
+ * outstanding, reused by every route back to that same write, and cleared only when one
+ * of them lands. #88 held one for the life of the row, which was correct while a row
+ * could only be marked once. See that hook's `attempt` for why neither that nor
+ * one-per-press is correct once a watch can be taken back.
+ *
+ * ── The two controls a struck row offers, and the one it does not ────────────────────
+ *
+ * Issue #89. A watched episode offers *Rewatch* and *Undo*, and **neither is the control
+ * that struck it** — the ghost *Strike it* button is gone the moment the row is watched,
+ * so the daily gesture cannot be repeated into a rewatch. `ADR-0001`'s per-click key
+ * protects one click across its retries and can do nothing about two clicks, and a
+ * phantom rewatch is invisible by inspection next to the 1,156 real ones already in the
+ * database.
+ *
+ * The distinction is carried in the chrome as well as the words. *Strike it* is the
+ * bordered ghost button `DESIGN.md`'s Buttons section specifies; both of these are
+ * underlined text controls with no border and no fill, which is that section's treatment
+ * for a control that must not compete with the daily gesture. *Rewatch* stays
+ * **vermilion**, because it records a watch and vermilion is what recording a watch looks
+ * like; *Undo* is dim and never vermilion, exactly as the abandon control is and for the
+ * same stated reason.
+ *
+ * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
+ * for the length of the strike, and the controls arrive with `settled`. A control that
+ * materialises under a thumb still resting on the row it just touched is the same mistake
+ * as a row that resizes under it.
+ *
+ * *Undo* takes the trailing state line's place rather than sitting beside it, so where
+ * there is an undo to offer the row reads *Rewatch · Undo*, and where there is not — the
+ * watch was imported — it reads *Rewatch · Watched*. The struck name is what says
+ * *watched* in both (`DESIGN.md`, Episode Line); the code line beside it gives way to the
+ * control that acts on it, the way the abandon control's own reassurance gives way when
+ * it stops being the true statement.
+ *
+ * ── Undo is offered from `undoable`, never guessed ───────────────────────────────────
+ *
+ * `episode.undoable` is *this account has a watch of this episode that the application
+ * recorded*. An episode whose only watch was imported reads as watched and offers no undo
+ * at all — `db/access.ts`'s `undoWatch` refuses that delete regardless, but a control that
+ * is never drawn is the honest half of the pair, not a duplicate of the check.
+ *
+ * Nothing here counts anything. `watched`, `undoable` and `phase` are the whole state, and
+ * there is no number of watches on this row to display — `CONTEXT.md`: a rewatch is
+ * *never a number kept on a title*.
  */
 function EpisodeLine({
   episode,
@@ -181,12 +265,14 @@ function EpisodeLine({
   libraryEntryId: string;
   titleName: string;
 }) {
-  const { watched, phase, attempt, settle } = useWatchMark({
+  const fullName = episodeFullName(episode);
+  const { watched, undoable, phase, pending, attempt, undo, settle } = useWatchMark({
     initialWatched: episode.watched,
+    initialUndoable: episode.undoable,
     libraryEntryId,
     episodeId: episode.id,
     titleName,
-    episodeName: episodeFullName(episode),
+    episodeName: fullName,
   });
 
   return (
@@ -205,15 +291,15 @@ function EpisodeLine({
       {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
           TMDB not having named it yet — not a licence to print the number a second time
           in its place. */}
-      <span className="relative flex-1 text-item">
+      <span className="relative min-w-0 flex-1 text-item">
         <span
-          className={
+          className={`block truncate ${
             watched && phase === "settled"
               ? "text-stock-dim line-through decoration-2 decoration-signal"
               : episode.upNext && !watched
                 ? "font-medium"
                 : ""
-          }
+          }`}
         >
           {episode.name === null ? "Not yet named" : episode.name}
         </span>
@@ -221,14 +307,46 @@ function EpisodeLine({
         {phase === "marking" ? <WatchStrike onSettled={settle} /> : null}
       </span>
 
-      {watched ? (
-        <span className="code-line text-stock-dim">Watched</span>
-      ) : (
-        <span className="flex shrink-0 items-center gap-3">
-          {episode.upNext ? <span className="code-line text-signal">Up next</span> : null}
-          <MarkWatchedButton label={`Mark ${episodeFullName(episode)} watched`} onClick={attempt} />
-        </span>
-      )}
+      <span className={TRAILING}>
+        {!watched ? (
+          <>
+            {episode.upNext ? <span className="code-line text-signal">Up next</span> : null}
+            <MarkWatchedButton
+              label={`Mark ${fullName} watched`}
+              onClick={attempt}
+              disabled={pending}
+            />
+          </>
+        ) : phase === "marking" ? (
+          <span className="code-line text-stock-dim">Watched</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void attempt()}
+              disabled={pending}
+              aria-label={`Watch ${fullName} again`}
+              className={`code-line text-signal underline decoration-signal underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+            >
+              Rewatch
+            </button>
+
+            {undoable ? (
+              <button
+                type="button"
+                onClick={() => void undo()}
+                disabled={pending}
+                aria-label={`Undo watching ${fullName}`}
+                className={`code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+              >
+                Undo
+              </button>
+            ) : (
+              <span className="code-line text-stock-dim">Watched</span>
+            )}
+          </>
+        )}
+      </span>
 
       {phase === "marking" ? <WatchStamp /> : null}
     </li>
@@ -256,9 +374,13 @@ function EpisodeLine({
  * `AbandonControl` already reports through, so both the state line on this page and the
  * next full read agree.
  *
- * No undo: neither `EpisodeLine` above nor this row offers one, because none exists on
- * this surface yet for an episode either — #88 did not add one, so this does not invent a
- * second, different rule for a film.
+ * **No undo, and the reason has changed.** #90 gave one: an episode had none either, so a
+ * film offering one would have invented a second rule. Issue #89 has since given the
+ * episode row *Rewatch* and *Undo*, so that reason is gone and this is now a scope
+ * statement instead — #89 is the watched **episode**, and a film's undo is nobody's ticket
+ * yet. Nothing below is in the way of it: `undoWatch` already takes a null `episodeId` and
+ * is tested for a film, and `useWatchMark` already offers `undo` to any row that wants to
+ * draw a control for it. What is missing is the decision and the design, not the write.
  */
 function FilmRow({
   libraryEntryId,
@@ -307,13 +429,24 @@ function FilmRow({
 /** `EpisodeLine` and `FilmRow`'s one interactive element, identical either way — the same
  *  border/press treatment `DESIGN.md`'s Material Event Rule reserves for a recording
  *  control: it never turns blue, slides, or removes the row. */
-function MarkWatchedButton({ label, onClick }: { label: string; onClick: () => void }) {
+function MarkWatchedButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  /** Absent on the film row, which has no second control a stray press could reach while
+   *  this one is in flight. `EpisodeLine` passes the hook's `pending` (issue #89). */
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
-      className="code-line shrink-0 border border-signal px-2.5 py-1 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink"
+      className={`code-line shrink-0 border border-signal px-2.5 py-1 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink ${IN_FLIGHT}`}
     >
       Strike it
     </button>

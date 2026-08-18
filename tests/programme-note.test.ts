@@ -35,6 +35,7 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     episodeNo: 1,
     name: "Winter Is Coming",
     watched: false,
+    undoable: false,
     upNext: false,
     ...overrides,
   };
@@ -101,6 +102,56 @@ describe("the episode list", () => {
 
     const watchedMarkup = episodes([episode({ id: "e1", episodeNo: 1, watched: true })]);
     expect(watchedMarkup).not.toContain("Strike it");
+  });
+
+  it("offers a watched episode a rewatch control that is not the one that struck it", () => {
+    const markup = episodes([episode({ watched: true, undoable: true })]);
+
+    expect(markup).toContain("Rewatch");
+    // The whole rule, at the only place it can be checked without a browser: the gesture
+    // that records the first watch is not on a watched row at all, so repeating it cannot
+    // produce a rewatch (issue #89).
+    expect(markup).not.toContain("Strike it");
+  });
+
+  it("offers undo on a watched episode the application recorded", () => {
+    const markup = episodes([episode({ watched: true, undoable: true })]);
+
+    expect(markup).toContain("Undo");
+  });
+
+  it("offers no undo on an episode whose only watch is imported", () => {
+    const markup = episodes([episode({ watched: true, undoable: false })]);
+
+    // Struck and readable as watched, and there is no control that could remove it —
+    // 19,391 imported watches are not editable from the application (issue #89).
+    expect(markup).toContain("line-through");
+    expect(markup).toContain("Watched");
+    expect(markup).not.toContain("Undo");
+  });
+
+  it("offers neither control on an unwatched episode", () => {
+    const markup = episodes([episode({ watched: false, undoable: false })]);
+
+    expect(markup).not.toContain("Rewatch");
+    expect(markup).not.toContain("Undo");
+  });
+
+  it("displays no rewatch count anywhere", () => {
+    const markup = episodes([episode({ watched: true, undoable: true })]);
+
+    /**
+     * `CONTEXT.md`, *Rewatch*: a rewatch is *never a number kept on a title*. A weaker
+     * assertion — no `×2`, no "watched twice" — only rules out the spellings somebody
+     * thought of, so this pins the row's visible words exactly instead. A count added
+     * anywhere on it fails this whether or not it looks like one.
+     */
+    const visible = markup
+      .replace(/<[^>]+>/g, "\n")
+      .split("\n")
+      .filter((one) => one.length > 0);
+
+    expect(visible).toEqual(["Season 1", "E1", "Winter Is Coming", "Rewatch", "Undo"]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {

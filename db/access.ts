@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { user } from "@/auth-schema";
@@ -620,6 +620,22 @@ export async function applyImportChunk(
 }
 
 /**
+ * `watch.source` for a watch this application recorded, as against `'tvtracker'` for one
+ * an import backfilled.
+ *
+ * It is a constant rather than three string literals because three functions now have to
+ * agree on it and the disagreement would be silent: `recordWatch` writes it, `undoWatch`
+ * refuses to delete anything else, and `getTitleDetail` decides from it whether a row can
+ * offer an undo at all. A typo in the second of those does not throw — it quietly deletes
+ * an imported watch, which is the one outcome issue #89 exists to prevent.
+ *
+ * There is deliberately no constant for the import's own source: `applyImportChunk` takes
+ * it from the file being imported, and pinning it here would imply this module gets to
+ * choose it.
+ */
+const APP_WATCH_SOURCE = "app";
+
+/**
  * What one click needs, and everything about it that is the caller's to decide.
  *
  * ── The one field with a rule attached ────────────────────────────────────────────────
@@ -732,7 +748,7 @@ export async function recordWatch(
         // of the click" is the write, and `now()` is what makes the resume below and this
         // insert agree on when that was.
         watchedAt: sql`now()`,
-        source: "app",
+        source: APP_WATCH_SOURCE,
         sourceKey: params.sourceKey,
       })
       .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
@@ -744,6 +760,149 @@ export async function recordWatch(
     }
 
     return { recorded };
+  });
+}
+
+/**
+ * Which watch to take back. The same two fields `recordWatch` identifies one by, and
+ * deliberately no third: there is no `watchId` here, because a surface that held one
+ * would be a surface that could be made to delete a specific row of somebody's history
+ * by editing a value in a request.
+ */
+export interface UndoWatchParams {
+  readonly libraryEntryId: string;
+  /** `null` for a film; a real `episode.id` for a show. */
+  readonly episodeId: string | null;
+}
+
+/**
+ * What is left afterwards — read back from the table, never assumed by the caller.
+ *
+ * `watched` and `undoable` are exactly what `getTitleDetail` reports for the same
+ * episode, so the row a browser is holding can be corrected from a returned outcome
+ * instead of guessing. The guess it would otherwise make is wrong in both of the cases
+ * this function exists for: an imported watch underneath still leaves the episode
+ * watched, and undoing a rewatch leaves an app watch to undo again.
+ */
+export interface UndoWatchOutcome {
+  /** Whether a watch was actually removed. `false` when there was none of ours to take. */
+  readonly removed: boolean;
+  /** Whether any watch of this episode survives — imported, or an earlier app one. */
+  readonly watched: boolean;
+  /** Whether an app watch survives, so undo can be offered again. */
+  readonly undoable: boolean;
+}
+
+/**
+ * Take back one watch — issue #89, and the only function in this module that removes one.
+ *
+ * ── Exactly one row, and only ever one of ours ────────────────────────────────────────
+ *
+ * A rewatch is a second `watch` row (`CONTEXT.md`, ADR-0001), so "undo" cannot mean
+ * *unwatch this episode*: it means **remove the most recent watch this account recorded
+ * through the app**, leaving anything underneath it standing. That is one `DELETE` of one
+ * id, resolved by the `SELECT … LIMIT 1` above it, and not a `DELETE` with a `LIMIT` this
+ * dialect does not have.
+ *
+ * **`source = 'app'` is stated on both statements.** The `SELECT` narrows to a row this
+ * application wrote; the `DELETE` then refuses to remove anything else even if handed an
+ * id that is not one. That is not redundancy for its own sake — it is the one predicate
+ * whose loss is silent. A `DELETE` by primary key alone is correct exactly as long as the
+ * query above it stays correct, and `tests/watch-undo.test.ts` asserts the survival of a
+ * `'tvtracker'` row directly rather than reading either query and believing it.
+ *
+ * The reason that matters is not symmetry with `recordWatch`. `SPEC.md` §7's 19,391
+ * imported watches were reconstructed once from an archive that no longer has a live
+ * source: they are not editable from the application at all, and an episode whose only
+ * watch is imported has no undo to offer (`getTitleDetail`'s `undoable` is what says so
+ * before a reader ever gets a control to press). If an imported watch is wrong, that is a
+ * conversion problem with a committed archive behind it — not a button.
+ *
+ * ── "Most recent" is when it was recorded ─────────────────────────────────────────────
+ *
+ * `created_at desc` first, because the sentence is *the most recent one this account
+ * **recorded***, and `created_at` is the only column that means that. `watched_at` breaks
+ * a tie and `id` breaks the tie after it, so the statement is total — two app watches
+ * written in the same transaction are otherwise indistinguishable by either timestamp,
+ * `now()` being the transaction's own clock. Which of two identical facts goes is not a
+ * property worth having an opinion about; *that the choice is deterministic* is.
+ *
+ * ── Nothing else moves ────────────────────────────────────────────────────────────────
+ *
+ * No derived state is written, because there is none to write (`db/views.ts`). And
+ * `abandoned_at` is **not** touched in either direction: `recordWatch` clears it because
+ * `CONTEXT.md` says watching something again clears it, and there is no matching rule
+ * saying taking a watch back gives up on a title. Undoing a mis-tap is a correction to
+ * the record, not a decision about the title.
+ *
+ * ── One transaction ───────────────────────────────────────────────────────────────────
+ *
+ * The delete and the read-back of what survives must agree on the same row set, so both
+ * run on the same connection — nested as a savepoint when `executor` already is one,
+ * exactly as `recordWatch` relies on.
+ *
+ * ── Authorization ─────────────────────────────────────────────────────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` combined with the entry id, and a miss throws — the
+ * same treatment `recordWatch` gives a tampered or stale id. `ownedBy(userId, watch)` is
+ * then stated on the watch statements too rather than trusted to follow from the entry:
+ * this is a delete, and the two predicates cost one index lookup between them.
+ */
+export async function undoWatch(
+  userId: UserId,
+  params: UndoWatchParams,
+  executor: Executor = getDb(),
+): Promise<UndoWatchOutcome> {
+  return executor.transaction(async (tx) => {
+    const [entry] = await tx
+      .select({ id: libraryEntry.id })
+      .from(libraryEntry)
+      .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)));
+
+    if (!entry) {
+      throw new Error(
+        `Library entry ${params.libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    // A film's watch carries no episode, so the two cases are `IS NULL` and `=` — not one
+    // comparison that would silently match nothing for every film.
+    const onThisEpisode =
+      params.episodeId === null
+        ? isNull(watch.episodeId)
+        : eq(watch.episodeId, params.episodeId);
+
+    const ours = and(
+      ownedBy(userId, watch),
+      eq(watch.libraryEntryId, params.libraryEntryId),
+      onThisEpisode,
+    );
+
+    const [target] = await tx
+      .select({ id: watch.id })
+      .from(watch)
+      .where(and(ours, eq(watch.source, APP_WATCH_SOURCE)))
+      .orderBy(desc(watch.createdAt), desc(watch.watchedAt), desc(watch.id))
+      .limit(1);
+
+    const removedRows =
+      target === undefined
+        ? []
+        : await tx
+            .delete(watch)
+            .where(and(eq(watch.id, target.id), eq(watch.source, APP_WATCH_SOURCE)))
+            .returning({ id: watch.id });
+
+    const surviving = await tx
+      .select({ source: watch.source })
+      .from(watch)
+      .where(ours);
+
+    return {
+      removed: removedRows.length > 0,
+      watched: surviving.length > 0,
+      undoable: surviving.some((one) => one.source === APP_WATCH_SOURCE),
+    };
   });
 }
 
@@ -1120,6 +1279,17 @@ export interface EpisodeDetail {
   /** `null` where TMDB has not named it. Never falls back to a bare number. */
   readonly name: string | null;
   readonly watched: boolean;
+  /**
+   * Whether one of this episode's watches is one the application recorded — `source =
+   * 'app'`, never an import's.
+   *
+   * Named for the question the surface asks rather than for the column behind it, the
+   * same way `upNext` above is: it is the *only* question anything asks of the source,
+   * and issue #89's rule is that an episode whose watches are all imported offers no undo
+   * at all. A watched episode with `undoable: false` is one somebody reconstructed from
+   * an archive, and this application is not the editor of it.
+   */
+  readonly undoable: boolean;
   /** This is `library_entry_up_next`'s episode, if it has one. */
   readonly upNext: boolean;
 }
@@ -1218,12 +1388,24 @@ export async function getTitleDetail(
   const upNextEpisodeId = upNextRow?.episodeId ?? null;
 
   const watchedRows = await executor
-    .select({ episodeId: watch.episodeId })
+    .select({ episodeId: watch.episodeId, source: watch.source })
     .from(watch)
     .where(eq(watch.libraryEntryId, libraryEntryId));
   // A film's watch carries no episode; only a show reaches this far with rows at all.
   const watchedEpisodeIds = new Set(
     watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
+  );
+  /**
+   * The same rows, narrowed to the ones this application wrote — issue #89's undo. It is
+   * a second `Set` over one query rather than a second query for the same reason the
+   * first one is a `Set` at all: a rewatch is two rows against one episode, and the
+   * question here is only ever *is there one of ours*.
+   */
+  const undoableEpisodeIds = new Set(
+    watchedRows
+      .filter((one) => one.source === APP_WATCH_SOURCE)
+      .map((one) => one.episodeId)
+      .filter((id) => id !== null),
   );
 
   const episodeRows = await executor
@@ -1252,6 +1434,7 @@ export async function getTitleDetail(
       episodeNo: one.episodeNo,
       name: one.name,
       watched: watchedEpisodeIds.has(one.id),
+      undoable: undoableEpisodeIds.has(one.id),
       upNext: one.id === upNextEpisodeId,
     })),
   };
