@@ -1,17 +1,30 @@
 # The `tvtracker` rescue archive
 
-**This is the only surviving copy of `tvtracker`'s database.** It is *archived and never
-loaded* — nothing in the application, the test suite, the seeding path or CI reads it.
+**This is the only surviving copy of `tvtracker`'s database.** Nothing in the application,
+the seeding path or the read paths touches it. **Two files may read it, and they are named
+in an allowlist** — the step 3 conversion and its test:
 
-`tests/fixture-archive.test.ts` guards that, and **CI runs it on every pull request** —
-`npm run test:fixtures`, which needs neither the database nor the build, unlike most of
-this repo's suite. A guarantee that only held when somebody happened to run the full local
-suite would be a habit rather than a check.
+```
+scripts/convert-tvtracker/cli.ts       ← reads the archive, writes the seed fixture
+tests/tvtracker-conversion.test.ts     ← SPEC.md §6's test 1, which reads it by definition
+```
+
+Until [#71](https://github.com/Joyaroin/MediaSafe/issues/71) this section said *archived
+and never loaded*, and the paragraph at the bottom of this file predicted the day that
+would end. It ended there: the conversion mapping is the thing the archive was rescued
+for, and the archive stops being never-loaded exactly when it is read. What changed is the
+expected result, not the check.
+
+`tests/fixture-archive.test.ts` holds that allowlist, and **CI runs it on every pull
+request** — `npm run test:fixtures`, which needs neither the database nor the build, unlike
+most of this repo's suite. A guarantee that only held when somebody happened to run the
+full local suite would be a habit rather than a check.
 
 It is worth knowing how far the guard reaches: it fails if any tracked, executable file
-**names** either archive — including one placed in this directory. A loader that never
-spells the filename — `readdirSync("fixtures")`, a glob, a name rebuilt from the
-timestamp — would slip past it. It is a tripwire on the obvious way in, not a proof.
+outside that allowlist **names** either archive — including one placed in this directory.
+A loader that never spells the filename — `readdirSync("fixtures")`, a glob, a name
+rebuilt from the timestamp — would slip past it. It is a tripwire on the obvious way in,
+not a proof.
 
 Committed by issue [#60](https://github.com/Joyaroin/MediaSafe/issues/60), which is
 `SPEC.md` §8 **step 0** — the one step in the build order that could be started too late.
@@ -168,14 +181,41 @@ To read either archive without loading it anywhere:
 gzcat fixtures/tvtracker-2026-08-16T04-27-53Z-schema.sql.gz | less
 ```
 
-## Still outstanding
+## What has been read out of it so far
 
-**`fixtures/mediasafe-seed.json` is not here yet, and that is expected.** `SPEC.md` §8 step
-0 commits the raw export now and the seed when the script that derives it exists — the
-conversion script is **step 3**, and the raw export was the irreplaceable half. The seed is
-reproducible from what is in this directory for as long as this directory exists; the
-export was not reproducible from anything.
+**The conversion mapping landed in [#71](https://github.com/Joyaroin/MediaSafe/issues/71)**,
+and with it the prediction this section used to carry — *"when step 3 lands, that script is
+the first and only thing permitted to read these files, and `tests/fixture-archive.test.ts`
+will fail at that moment by design"*. That happened. The tripwire failed, the allowlist at
+the top of this file replaced it, and the numbers below are what the export actually holds,
+measured by `tests/tvtracker-conversion.test.ts` rather than quoted from a ticket:
 
-When step 3 lands, that script is the **first and only** thing permitted to read these
-files, and `tests/fixture-archive.test.ts` will fail at that moment by design — the archive
-stops being never-loaded exactly then, and it should take a visible diff to say so.
+| | |
+| --- | --- |
+| Titles converted | **462** — the account filter, asserted as a set and not only as a count |
+| Watches converted | **18,715**, before the two ambiguous watermarks are answered |
+| …of which dated | **19**. `SPEC.md` §7 and #16 §4 both say 18; see the note below |
+| Titles marked abandoned | **155** — 65 `Paused` + 90 short `Completed` |
+| Titles with no watches | **22** — watchlist entries, and they survive into the file |
+
+> **The one figure that disagrees with the spec.** 19 titles carry a real
+> `last_watched_at`, and **all 19** end up with an episode to attach it to, so the file
+> dates 19 watches rather than 18. #16 §4's *"18 of them have an episode to attach it to"*
+> counted `Agatha Christie's Seven Dials` as having none — it has zero `watched = true`
+> rows — but #16 §3 expands that title anyway, whole show less one false row, and after
+> that expansion the episode exists. Dropping the date to reach 18 would discard a real
+> viewing date, which is the trade #16 §4 explicitly refused.
+
+**`fixtures/mediasafe-seed.json` is still not here, and that is still expected.** `SPEC.md`
+§8 step 0 commits the raw export now and the seed when the script that derives it runs;
+#71 built the pure mapping and its proof, and
+[#61](https://github.com/Joyaroin/MediaSafe/issues/61) is the ticket that runs it against
+this archive and commits the result. The seed is reproducible from what is in this
+directory for as long as this directory exists; the export was not reproducible from
+anything.
+
+**One thing has to happen before that seed can exist**, and it is a decision rather than
+code: `scripts/convert-tvtracker/convert.confirm.json` is committed **empty**, so the
+conversion halts on `Hudson & Rex` and `Person of Interest` — 2 shows whose watches survive
+only as a watermark, with no record of which episodes it counted. That halt is the designed
+behaviour, not a bug to route around, and the answer is Adham's to give at cutover.
