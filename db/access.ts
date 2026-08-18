@@ -1281,8 +1281,9 @@ function stateFrom(value: string): LibraryState {
  * deck with room to work down before the next fetch, against a real library whose
  * *watching* set is 284 titles.
  *
- * Exported for the tests, which have to page past it to prove that paging is stable, and
- * for the surfaces, which must never render it.
+ * Exported for the tests, which have to page past it to prove that paging is stable. No
+ * surface has any use for it: a page carries its own cursor, so a caller pages by asking
+ * whether there is one rather than by counting to twenty.
  */
 export const UP_NEXT_PAGE_SIZE = 20;
 
@@ -1311,9 +1312,16 @@ export const UP_NEXT_PAGE_SIZE = 20;
 export interface UpNextEntry {
   readonly libraryEntryId: string;
   readonly titleId: string;
+  /**
+   * Borrowed, and replaced by a refresh like every other fact about a title. Called
+   * `titleName` rather than `LibraryEntryRow`'s `name` because there are two names on
+   * this card and neither of them gets to be the unqualified one.
+   */
   readonly titleName: string;
+  /** Borrowed. */
   readonly posterPath: string | null;
   readonly episodeId: string;
+  /** Borrowed, and `null` where TMDB has not named the episode. */
   readonly episodeName: string | null;
   readonly seasonNo: number;
   readonly episodeNo: number;
@@ -1324,10 +1332,18 @@ export interface UpNextEntry {
  *
  * **Keyset, not an offset**, because the deck reorders under its own reader: marking the
  * top card watched makes that title the most recent watch, which moves it to the head of
- * the order. Against `OFFSET 20` every such write shifts the rows underneath it and page
- * two silently skips whatever slid across the boundary. A cursor made of the sort key
+ * the order. Against `OFFSET 20` every such write shifts the rows underneath it, so page
+ * two repeats whatever slid down across the boundary. A cursor made of the sort key
  * itself asks for *everything after this entry, in this order*, which stays a truthful
  * question after the deck has moved.
+ *
+ * **What that buys is exactly one guarantee: no entry is served twice.** It does not, and
+ * no cursor could, catch an entry that moves the other way — a title below the cursor
+ * that gains a watch jumps to the head of the order, ahead of a point page two only looks
+ * past, and so is not on page two. It is not lost: it is the first thing the next fetch
+ * from the start returns, which is what a surface does after recording a watch. Paging
+ * over a set that reorders under you can promise no duplicates or no misses, not both,
+ * and a deck you work down is served by the first.
  *
  * It is opaque to surfaces: a page hands back whatever it was given and never reads a
  * field of it. Tampering with one can only reorder the tamperer's own deck — the account
@@ -1374,6 +1390,12 @@ export interface UpNextPage {
  * a constant that decides nothing and exists so the expression is never null — a null
  * here would make the cursor's comparison unanswerable rather than false.
  *
+ * The `::timestamptz` on the air date reads the server's zone, which `db/views.ts` is at
+ * pains to keep out of what *released* means. Stated rather than hidden, and it is not
+ * the same exposure: every air date in rank 1 is cast the same way, so the cast is
+ * monotonic and cannot reorder two of them. It shifts the whole group by an offset, and
+ * the group is only ever compared with itself.
+ *
  * ── Why *closest to finishing* is one term here and two in the library sort ──────────
  *
  * `orderByFor` needs a leading `case` to push `NULL` (a film) and `0` (a finished show)
@@ -1395,25 +1417,42 @@ interface UpNextOrder {
   readonly remaining: PgColumn;
   readonly name: SQL;
   readonly entry: PgColumn;
+  /**
+   * The five terms above as the `ORDER BY` itself, with their directions — the same shape
+   * `orderByFor` returns for the library's four sorts.
+   *
+   * It is a member rather than something `listUpNext` assembles, because the sequence and
+   * the directions *are* half of the rule: `afterCursor` has to walk the same five terms
+   * in the same order, and a query that listed them itself would be a second place for
+   * that sequence to be written down and a second place for it to drift.
+   */
+  readonly orderBy: (SQL | PgColumn)[];
 }
 
 function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
-  return {
-    rank: sql`
+  const rank = sql`
       case
         when ${lastWatchedAt} is not null then 0
         when ${episode.airDate} is not null then 1
         else 2
-      end`,
-    at: sql`
+      end`;
+  const at = sql`
       coalesce(
         ${lastWatchedAt},
         ${episode.airDate}::timestamptz,
         '-infinity'::timestamptz
-      )`,
-    remaining: libraryEntryRemaining.remaining,
-    name: sql`lower(${title.name})`,
-    entry: libraryEntry.id,
+      )`;
+  const remaining = libraryEntryRemaining.remaining;
+  const name = sql`lower(${title.name})`;
+  const entry = libraryEntry.id;
+
+  return {
+    rank,
+    at,
+    remaining,
+    name,
+    entry,
+    orderBy: [rank, sql`${at} desc`, remaining, name, entry],
   };
 }
 
@@ -1549,22 +1588,41 @@ export async function listUpNext(
     .where(
       and(
         ownedBy(userId, libraryEntry),
-        eq(libraryEntryState.state, "watching"),
+        /**
+         * `satisfies`, not a bare string: `state` is a `text` column, so a typo here
+         * would be an empty deck rather than an error — silent, on the one predicate
+         * that decides what the deck contains.
+         */
+        eq(libraryEntryState.state, "watching" satisfies LibraryState),
         cursor === null ? undefined : afterCursor(order, cursor),
       ),
     )
-    .orderBy(
-      order.rank,
-      sql`${order.at} desc`,
-      order.remaining,
-      order.name,
-      order.entry,
-    )
+    .orderBy(...order.orderBy)
     .limit(UP_NEXT_PAGE_SIZE + 1);
 
   const more = rows.length > UP_NEXT_PAGE_SIZE;
   const page = more ? rows.slice(0, UP_NEXT_PAGE_SIZE) : rows;
-  const last = page.at(-1);
+
+  let nextCursor: UpNextCursor | null = null;
+  if (more) {
+    const last = page.at(-1);
+    if (last === undefined) {
+      /**
+       * Unreachable: `more` means the query returned more rows than a page holds, so the
+       * page sliced out of them has a last row. It throws rather than falling through to
+       * a null cursor, because the fallthrough is a deck that silently ends early — which
+       * is the shape of failure this whole read exists to not have.
+       */
+      throw new Error("A full page of Up next has no last entry to page from.");
+    }
+    nextCursor = {
+      rank: last.rank,
+      sortAt: last.sortAt,
+      remaining: last.remaining,
+      name: last.sortName,
+      libraryEntryId: last.libraryEntryId,
+    };
+  }
 
   return {
     entries: page.map((row) => ({
@@ -1577,16 +1635,7 @@ export async function listUpNext(
       seasonNo: row.seasonNo,
       episodeNo: row.episodeNo,
     })),
-    nextCursor:
-      more && last !== undefined
-        ? {
-            rank: last.rank,
-            sortAt: last.sortAt,
-            remaining: last.remaining,
-            name: last.sortName,
-            libraryEntryId: last.libraryEntryId,
-          }
-        : null,
+    nextCursor,
   };
 }
 

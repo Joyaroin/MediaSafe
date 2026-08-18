@@ -662,7 +662,10 @@ Named rather than hidden. **None of them blocks the v1 build.**
 ### Left open by a closed ticket, on purpose
 
 4. **The Up next fetch page size.** #25 dissolved the cap question into a fetch question —
-   *paginate* — and did not pick a number. A build-time call.
+   *paginate* — and did not pick a number. A build-time call. **Made, at twenty**
+   ([#98](https://github.com/Joyaroin/MediaSafe/issues/98)): `UP_NEXT_PAGE_SIZE` in
+   `db/access.ts`. It is a *fetch* size and not a cap — the phone deck still has no numeric
+   bound, and the count is never returned to a surface that could render it.
 5. **Whether Drizzle's `migrate()` wraps each migration file in a transaction.** ADR-0001 flagged
    this unverified on purpose. The WebSocket driver makes it possible; if the migrator does not do
    it, **the runner must open the transaction itself** — #17's halt-on-partial-failure is a

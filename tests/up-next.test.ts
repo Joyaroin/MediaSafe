@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/db/access";
 import type { Transaction } from "@/db/client";
 import { episode, libraryEntry, title, user, watch } from "@/db/schema";
+import { readNativeImportFile, type NativeImportFile } from "@/import/native-format";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
@@ -646,6 +647,53 @@ describe("listUpNext — paging", () => {
     });
   });
 
+  it("gives page two no repeat when a watch reorders the deck between the two fetches", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const shows: Show[] = [];
+      const total = UP_NEXT_PAGE_SIZE + 5;
+
+      for (let index = 0; index < total; index += 1) {
+        shows.push(
+          await seedWatching(tx, reader, {
+            name: `Show ${String(index).padStart(3, "0")}`,
+            watchedAt: daysAgo(index + 1),
+            remaining: 3,
+          }),
+        );
+      }
+
+      const first = await listUpNext(reader, null, tx);
+      expect(first.entries).toHaveLength(UP_NEXT_PAGE_SIZE);
+
+      // The write the cursor exists to survive: an entry sitting on page two is watched,
+      // which makes it the most recent watch of anything and moves it to the head of the
+      // order — across the boundary page one already went past.
+      const moved = shows[22];
+      await markWatched(tx, moved, 1, new Date());
+
+      const second = await listUpNext(reader, first.nextCursor, tx);
+      const walked = [...first.entries, ...second.entries].map(
+        (entry) => entry.libraryEntryId,
+      );
+
+      // The guarantee: nothing on page one comes back a second time. Against `OFFSET 20`
+      // this is exactly where a duplicate appears.
+      expect(new Set(walked).size).toBe(walked.length);
+
+      // And the limit, asserted rather than left to be discovered: a keyset cursor asks
+      // for what is *after* a point, so an entry that jumps ahead of that point is not on
+      // page two either. It is not lost — it is at the top of the deck on the next fetch
+      // from the start, which is what the surface does after recording a watch.
+      expect(second.entries.map((entry) => entry.libraryEntryId)).not.toContain(
+        moved.entryId,
+      );
+      expect((await listUpNext(reader, null, tx)).entries[0].libraryEntryId).toBe(
+        moved.entryId,
+      );
+    });
+  });
+
   it("walks the whole deck in the order one unbounded read would have given", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
@@ -682,35 +730,53 @@ describe("listUpNext — paging", () => {
  * What that leaves genuinely from the fixture is exactly what the ordering reads — which
  * titles carry a watch, which of those are abandoned, and the date on every watch. So the
  * assertions below are about the fixture's own numbers, not the synthesis'.
+ *
+ * ── What this proves, and what it does not ───────────────────────────────────────────
+ *
+ * It proves the primary path and the membership predicate at real size: 439 watched
+ * titles, 155 of them abandoned and 45 more caught up, ordered by recency across 22 pages
+ * with no entry repeated or skipped, and the air-date fallback firing for the one title
+ * §7's measurement said it eventually would.
+ *
+ * It does **not** prove the tiebreak cascade, and cannot: the real library has 238
+ * distinct last-watch instants across its 238 dated deck titles, so `remaining`,
+ * `lower(name)` and the entry id are never consulted. Nor does it reach rank 2 — every
+ * synthesised next episode is dated. Those are the small tests above, and this one is not
+ * a substitute for them.
  */
-interface SeedFixture {
-  readonly titles: readonly { tmdb_id: number; kind: string; abandoned: boolean }[];
-  readonly watches: readonly {
-    tmdb_id: number;
-    tmdb_episode_id: number;
-    watched_at: string | null;
-    key: string;
-  }[];
-}
-
 /** Kept clear of the fixture's own ids, which top out well below this. */
 const SYNTHETIC_EPISODE_BASE = 100_000_000;
 
-function readSeedFixture(): SeedFixture {
+/**
+ * Which of the fixture's titles are given an unaired next episode, and so read as *caught
+ * up* rather than *watching*. Deterministic, and declared here because the seeding and the
+ * expectation both have to agree on it.
+ */
+function isCaughtUpInFixture(tmdbId: number): boolean {
+  return tmdbId % 7 === 0;
+}
+
+/**
+ * Through `readNativeImportFile`, never `JSON.parse` — `import/native-format.ts` is the
+ * one place the shape is declared, and every reader of a native file goes through it
+ * (`scripts/db-seed.ts` is the other one). A second declaration here would be a second
+ * thing to keep in step with the format.
+ */
+function readSeedFixture(): NativeImportFile {
   const file = path.join(import.meta.dirname, "..", "fixtures", "mediasafe-seed.json");
-  return JSON.parse(readFileSync(file, "utf8")) as SeedFixture;
+  return readNativeImportFile(readFileSync(file, "utf8"));
 }
 
 async function seedWholeFixture(
   tx: Transaction,
   userId: UserId,
-  fixture: SeedFixture,
+  fixture: NativeImportFile,
 ): Promise<void> {
   const watchedEpisodes = new Map<number, number[]>();
   for (const one of fixture.watches) {
-    const seen = watchedEpisodes.get(one.tmdb_id) ?? [];
-    if (!seen.includes(one.tmdb_episode_id)) seen.push(one.tmdb_episode_id);
-    watchedEpisodes.set(one.tmdb_id, seen);
+    const seen = watchedEpisodes.get(one.tmdbId) ?? [];
+    if (!seen.includes(one.tmdbEpisodeId)) seen.push(one.tmdbEpisodeId);
+    watchedEpisodes.set(one.tmdbId, seen);
   }
 
   const titleIds = new Map<number, string>();
@@ -719,8 +785,8 @@ async function seedWholeFixture(
     .values(
       fixture.titles.map((one) => ({
         kind: one.kind,
-        tmdbId: one.tmdb_id,
-        name: `Title ${one.tmdb_id}`,
+        tmdbId: one.tmdbId,
+        name: `Title ${one.tmdbId}`,
         inProduction: true,
       })),
     )
@@ -735,8 +801,8 @@ async function seedWholeFixture(
     airDate: string;
   }[] = [];
   for (const one of fixture.titles) {
-    const titleId = titleIds.get(one.tmdb_id)!;
-    const watched = [...(watchedEpisodes.get(one.tmdb_id) ?? [])].sort((a, b) => a - b);
+    const titleId = titleIds.get(one.tmdbId)!;
+    const watched = [...(watchedEpisodes.get(one.tmdbId) ?? [])].sort((a, b) => a - b);
     watched.forEach((tmdbEpisodeId, index) => {
       episodeValues.push({
         titleId,
@@ -746,15 +812,26 @@ async function seedWholeFixture(
         airDate: RELEASED,
       });
     });
-    // Two unwatched episodes after them: one to be up next, one to keep the title
-    // *watching* rather than *caught up* whatever the first one's air date says.
+    /**
+     * Two unwatched episodes after them, and their air dates are what decide the title's
+     * state. Released, and the title is *watching* with the first of them up next;
+     * unreleased, and every episode that has aired is watched, so the title is *caught
+     * up* and the deck must leave it out.
+     *
+     * One title in every seven is put in that second group — deterministically, off the
+     * TMDB id, so the split is the same on every run. It is what makes the membership
+     * predicate mean something at fixture scale instead of only in the small tests above:
+     * without it, all 284 non-abandoned watched titles are *watching* and a query that
+     * had no state filter at all would pass this test.
+     */
+    const caughtUp = isCaughtUpInFixture(one.tmdbId);
     for (let offset = 0; offset < 2; offset += 1) {
       episodeValues.push({
         titleId,
-        tmdbEpisodeId: SYNTHETIC_EPISODE_BASE + one.tmdb_id * 4 + offset,
+        tmdbEpisodeId: SYNTHETIC_EPISODE_BASE + one.tmdbId * 4 + offset,
         seasonNo: 1,
         episodeNo: watched.length + offset + 1,
-        airDate: daysFromToday(-((one.tmdb_id % 900) + 1)),
+        airDate: caughtUp ? UNRELEASED : daysFromToday(-((one.tmdbId % 900) + 1)),
       });
     }
   }
@@ -774,73 +851,106 @@ async function seedWholeFixture(
     .values(
       fixture.titles.map((one) => ({
         userId,
-        titleId: titleIds.get(one.tmdb_id)!,
+        titleId: titleIds.get(one.tmdbId)!,
         abandonedAt: one.abandoned ? daysAgo(400) : undefined,
       })),
     )
     .returning({ id: libraryEntry.id, titleId: libraryEntry.titleId });
   const entryByTitleId = new Map(entryRows.map((row) => [row.titleId, row.id]));
   for (const one of fixture.titles) {
-    entryIds.set(one.tmdb_id, entryByTitleId.get(titleIds.get(one.tmdb_id)!)!);
+    entryIds.set(one.tmdbId, entryByTitleId.get(titleIds.get(one.tmdbId)!)!);
   }
 
   const watchValues = fixture.watches.map((one) => ({
     userId,
-    libraryEntryId: entryIds.get(one.tmdb_id)!,
-    titleId: titleIds.get(one.tmdb_id)!,
-    episodeId: episodeIds.get(one.tmdb_episode_id)!,
-    watchedAt: one.watched_at === null ? null : new Date(one.watched_at),
+    libraryEntryId: entryIds.get(one.tmdbId)!,
+    titleId: titleIds.get(one.tmdbId)!,
+    episodeId: episodeIds.get(one.tmdbEpisodeId)!,
+    watchedAt: one.watchedAt === null ? null : new Date(one.watchedAt),
     source: "tvtracker",
     sourceKey: one.key,
   }));
   for (let start = 0; start < watchValues.length; start += 2_000) {
     await tx.insert(watch).values(watchValues.slice(start, start + 2_000));
   }
+
+  /**
+   * **Not an optimisation — without it this test measures the planner, not the query.**
+   *
+   * The three derived-state views are correlated `NOT EXISTS` subqueries over `episode`
+   * and `watch`, and forty thousand rows have just arrived in tables Postgres has no
+   * statistics for. Worse, the statistics it does have are actively wrong: every test
+   * above this one inserted and rolled back, which leaves dead tuples behind and can
+   * trigger an autoanalyze that records these tables as empty. The planner then picks
+   * nested loops sized for nothing against rows numbering in the thousands, and the same
+   * test that passes in two seconds on its own runs for minutes after its neighbours.
+   *
+   * `ANALYZE` inside the transaction is rolled back with everything else, and it is what
+   * any real database this query runs against would have. What is being asserted below
+   * is the *order*, and the order must not be reached through a plan no deployment would
+   * ever use.
+   */
+  await tx.execute(sql`analyze title, episode, library_entry, watch`);
 }
 
 describe("listUpNext — against the whole fixture", () => {
-  it("orders all 284 of the fixture's watching titles, in one walk", async () => {
+  it("orders all 239 of the fixture's watching titles, in one walk", async () => {
     await inTransaction(async (tx) => {
       const fixture = readSeedFixture();
       const reader = await seedUser(tx, "adham");
       await seedWholeFixture(tx, reader, fixture);
 
       const abandoned = new Set(
-        fixture.titles.filter((one) => one.abandoned).map((one) => one.tmdb_id),
+        fixture.titles.filter((one) => one.abandoned).map((one) => one.tmdbId),
       );
       const lastWatch = new Map<number, string | null>();
       for (const one of fixture.watches) {
-        if (one.watched_at === null) {
-          if (!lastWatch.has(one.tmdb_id)) lastWatch.set(one.tmdb_id, null);
+        if (one.watchedAt === null) {
+          if (!lastWatch.has(one.tmdbId)) lastWatch.set(one.tmdbId, null);
           continue;
         }
-        const held = lastWatch.get(one.tmdb_id) ?? null;
-        if (held === null || one.watched_at > held) {
-          lastWatch.set(one.tmdb_id, one.watched_at);
+        const held = lastWatch.get(one.tmdbId) ?? null;
+        if (held === null || one.watchedAt > held) {
+          lastWatch.set(one.tmdbId, one.watchedAt);
         }
       }
 
       const expected = [...lastWatch.keys()]
-        .filter((tmdbId) => !abandoned.has(tmdbId))
+        .filter((tmdbId) => !abandoned.has(tmdbId) && !isCaughtUpInFixture(tmdbId))
         .sort((a, b) => {
           const left = lastWatch.get(a) ?? null;
           const right = lastWatch.get(b) ?? null;
-          if (left === null) return 1;
-          if (right === null) return -1;
-          return left < right ? 1 : left > right ? -1 : 0;
+          // The undated title sinks to the fallback group; nothing else here reaches it.
+          if (left === null !== (right === null)) return left === null ? 1 : -1;
+          if (left !== null && right !== null && left !== right) {
+            return left < right ? 1 : -1;
+          }
+          /**
+           * Only two entries could ever reach this line, and only if they tied on the
+           * last watch: every synthesised title carries the same two unwatched episodes,
+           * so *closest to finishing* cannot separate any pair here and the name tiebreak
+           * is what comes next. **Nothing in this fixture ties** — 238 distinct watch
+           * instants across 238 dated titles — so the query's `remaining` and entry-id
+           * terms are not what this test covers; the small tests above are. This exists
+           * so that a fixture which one day does tie is still compared against a total
+           * order rather than against whatever order this array was built in.
+           */
+          return `title ${a}` < `title ${b}` ? -1 : 1;
         })
         .map((tmdbId) => `Title ${tmdbId}`);
 
-      // 439 titles carry a watch and 155 of them are abandoned; the remainder is the deck.
-      expect(expected).toHaveLength(284);
+      // 439 titles carry a watch. 155 are abandoned and 45 more are caught up, so the
+      // deck is 239 — and every one of the 200 excluded is excluded by the state
+      // predicate, not by having nothing next.
+      expect(expected).toHaveLength(239);
       // Exactly one of the fixture's titles has no dated watch at all, so exactly one
-      // reaches the air-date fallback — and it therefore sorts below all 283 others.
+      // reaches the air-date fallback — and it therefore sorts below all 238 others.
       expect([...lastWatch.values()].filter((at) => at === null)).toHaveLength(1);
 
       const walked = await wholeDeck(tx, reader);
 
       expect(walked.map((entry) => entry.titleName)).toEqual(expected);
-      expect(new Set(walked.map((entry) => entry.libraryEntryId)).size).toBe(284);
+      expect(new Set(walked.map((entry) => entry.libraryEntryId)).size).toBe(239);
       expect(walked.at(-1)!.titleName).toBe("Title 292144");
     });
   }, 120_000);
