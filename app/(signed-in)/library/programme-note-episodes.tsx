@@ -214,13 +214,12 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * measure (`TRAILING`) and the name's `truncate`; without the second, the long name wraps
  * and takes the row's height with it.
  *
- * ── Idempotency, minted once per press ───────────────────────────────────────────────
+ * ── Idempotency, one key per outstanding write ───────────────────────────────────────
  *
- * The key is minted in `press()` and passed down, so one press has one key and its
- * retries reuse it — `db/access.ts`'s `recordWatch` is what makes a repeated key a no-op
- * rather than a second watch. Issue #88 held it in a ref for the life of the row, which
- * was correct while a row could only ever be marked once. It is not correct now that a
- * row can be marked, undone and marked again: see `press()`.
+ * The key names the write, not the press: minted when none is outstanding, reused by
+ * every route back to that same write, and cleared only when one of them lands. Issue #88
+ * held one for the life of the row, which was correct while a row could only be marked
+ * once. See `press()` for why neither that nor one-per-press is correct now.
  *
  * ── The two controls a struck row offers, and the one it does not ────────────────────
  *
@@ -285,6 +284,11 @@ function EpisodeLine({
    * of it off the screen, which is `SPEC.md` §3.3 broken by a write that succeeded.
    */
   const raised = useRef<{ kind: "watch" | "undo"; handle: WriteFailureHandle } | null>(null);
+  /**
+   * The idempotency key of the watch write that has not landed yet, or `null` when none
+   * is outstanding. See `press()` — this identifies the **write**, not the press.
+   */
+  const key = useRef<string | null>(null);
   const { watched, undoable, phase } = appearance;
 
   const fullName = episodeFullName(episode);
@@ -304,7 +308,9 @@ function EpisodeLine({
 
     if (outcome.ok) {
       // The write landed — including a retry that landed after a failure, which is the
-      // only thing besides the reader that ever takes this toast down.
+      // only thing besides the reader that ever takes this toast down. Clearing the key
+      // is what makes the *next* press a new watch rather than a retry of this one.
+      key.current = null;
       settle("watch");
       return;
     }
@@ -384,15 +390,33 @@ function EpisodeLine({
   }
 
   /**
-   * The key is minted **here, in the browser, once per press** — and handed to the
-   * attempt, which hands the same one to its own retry. It is a parameter and not a ref
-   * for a reason this ticket is what surfaced: a row can now be marked, undone, and
-   * marked again, and a key held for the life of the row would make that third gesture
-   * collide with the first. `recordWatch` would treat it as a retry, write nothing, and
-   * answer *ok* — a struck row with no watch behind it, and no error anywhere.
+   * The key is minted **here, in the browser**, and reused for every attempt at the write
+   * it names — the toast's retry, and a second press of the control while the first is
+   * still unresolved. `db/access.ts`'s `recordWatch` is what makes a repeated key a no-op
+   * rather than a second watch, and it can only do that if this never mints a second key
+   * for a write that has not landed.
+   *
+   * ── Cleared on success, and that is the whole of issue #89's change here ────────────
+   *
+   * Issue #88 minted the key once and held it for the life of the row, which was correct
+   * while a row could only ever be marked once. It is not correct now: a row that is
+   * marked, undone and marked again would give that third gesture the first one's key,
+   * `recordWatch` would treat it as a retry, write nothing, and answer *ok* — a struck row
+   * with no watch behind it and no error anywhere.
+   *
+   * Minting one per *press* instead would fix that and open something worse. After a lost
+   * mark the row shows *Strike it* again **and** the toast still offers *Try again*; those
+   * are two live controls for one write. Two different keys through them is two rows
+   * against the same episode — a phantom rewatch, invisible by inspection next to 1,156
+   * real ones, which is the exact failure this ticket exists to prevent.
+   *
+   * So the key belongs to the **write**, not to the press: minted when none is
+   * outstanding, reused by every route back to that same write, and cleared only once one
+   * of them has actually landed.
    */
   function press(): void {
-    void attemptWatch(crypto.randomUUID(), appearance);
+    if (key.current === null) key.current = crypto.randomUUID();
+    void attemptWatch(key.current, appearance);
   }
 
   /**
