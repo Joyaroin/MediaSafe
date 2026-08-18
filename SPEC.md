@@ -177,6 +177,12 @@ owner.
 4. **squawk over the generated `.sql`**, narrowed to destructive rules, which makes expand-contract
    mechanically checkable.
 
+These four are the ones this section commits to. The suite has grown past them — each addition
+guards a property that would otherwise be a convention nobody can check, and #60's
+`tests/fixture-archive.test.ts` is the clearest case: the archive it checks is irreplaceable, so
+"it is intact and nothing loads it" is worth an assertion rather than a habit. *Deliberately
+untested* still means what it says for everything else.
+
 ---
 
 ## 7. The surfaces
@@ -379,9 +385,13 @@ in a state you could hand to a user and have them succeed at something.
 
 Commit into MediaSafe:
 
-- `fixtures/tvtracker-export.sql.gz` — the raw export, **archived and never loaded**, source of truth
+- `fixtures/tvtracker-2026-08-16T04-27-53Z-data.redacted.sql.gz` and
+  `fixtures/tvtracker-2026-08-16T04-27-53Z-schema.sql.gz` — the raw export, **archived and never
+  loaded**, source of truth. **Two files, not one.** This line said `tvtracker-export.sql.gz` until
+  #60 did the work and found the export is two halves; the data half is unreadable without the
+  schema half, which holds the column types, constraints and RLS policies.
 - `fixtures/mediasafe-seed.json` — ~1.5 MB, 462 titles, ~18,715 watches, produced by the conversion
-  script
+  script. **Still outstanding — it arrives with step 3.**
 
 Both copies currently live **only** in `tvtracker`'s `.local-fixtures/` and its `backups` branch, and
 **they die with that repo.** Losing them strands cutover *and* every preview and local environment,
@@ -389,6 +399,17 @@ permanently. Nothing else in this build order can be started late; this one can 
 
 *(Producing `mediasafe-seed.json` needs the script from step 3. Commit the raw export now and the
 seed when the script exists — the raw export is the irreplaceable half.)*
+
+The archive's **`auth` schema was removed before committing** — live refresh tokens, OAuth identity
+records and two real email addresses, which git history would have kept permanently. What was taken
+out, what was deliberately left in, and the checksums are recorded in `fixtures/README.md`;
+`tests/fixture-archive.test.ts` enforces all of it.
+
+**One requirement lands on step 3 from this step.** The export holds 472 shows, of which **462 are
+Adham's and 10 belong to a second account** — which is why the seed figure above is 462 and the
+archive's total is 472. The conversion script must filter by user, or §6's guarantee that *no
+environment outside production ever holds another person's rows* fails at the seed rather than at
+the database — silently, because 472 rows look no more wrong than 462.
 
 ### Step 1 — Skeleton, auth, and the error discipline
 
