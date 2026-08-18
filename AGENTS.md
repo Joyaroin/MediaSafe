@@ -87,10 +87,17 @@ MediaSafe's own six tables are declared by hand in `db/tables.ts`, and the three
 views in `db/views.ts`; `db/schema.ts` re-exports all three files, because drizzle-kit reads it
 alone. Only Better Auth's tables come through the generator.
 
-## The write-failure toast has no caller yet
+## The write-failure toast, and how to call it
 
-Nothing in the app writes. Step 4 of `SPEC.md` §11's build order — the optimistic watch
-mark and its rollback — is the first, and the toast was built ahead of it on purpose. When
-you get there, `raise()` it and `resolve()` it when the write lands. Do not add a timer to
-it: *a lost write is never silent* (§3.3) is the property, and a toast that expires on its
-own makes the write silent again a few seconds later.
+Its first caller is **the add on the search screen** —
+`app/(signed-in)/search/catalogue-result.tsx`, issue #55. This section used to say the
+first would be step 4's optimistic watch mark; that was true when it was written and is
+not now, because adding a title is a write and it is optimistic for the same reason.
+
+`raise()` it when the write is lost, and `resolve()` it when the write lands — including
+a retry that lands after a failure. Two rules that are not negotiable:
+
+- **Do not add a timer.** *A lost write is never silent* (§3.3) is the property, and a
+  toast that expires on its own makes the write silent again a few seconds later.
+- **Raise one toast per lost write, not one per attempt.** A retry that fails again has
+  nothing new to say, and a stack of identical toasts buries the title that was lost.

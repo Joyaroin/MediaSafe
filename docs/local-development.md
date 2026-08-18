@@ -36,6 +36,29 @@ Neither is a secret: that database is local, empty, and holds nobody's watch his
 WebSocket protocol itself, and setting it there would route production through a proxy
 that does not exist.
 
+### The TMDB token
+
+Search and add need one more, and it **is** a secret:
+
+```bash
+TMDB_READ_ACCESS_TOKEN=
+```
+
+It is the **API Read Access Token** from
+<https://www.themoviedb.org/settings/api> — the long JWT, not the `api_key` sitting
+directly above it on the same page, which is the easy one to grab by mistake. One token
+covers both of TMDB's APIs, which is why `tmdb/catalogue.ts` calls `/3/` endpoints with a
+bearer header and that is not the mismatch it looks like. It is never sent as a query
+parameter, so it does not end up in access logs or in a quoted URL.
+
+Without it, `/search` renders its *search failed* state — deliberately, and
+distinguishably from *no results*. Nothing else in the application needs it: ADR-0001's
+*the read path never calls TMDB for a mirrored field* means the library, the five states,
+progress and up next all work with TMDB unreachable and this variable unset.
+
+The same value goes into Vercel's Production **and** Preview scopes; preview builds
+against the schema-only Neon branch still want a working search.
+
 `npm run db:up` is the one command that brings the database up and migrates it: it waits
 for Postgres to report healthy, then runs the same migration runner that production runs.
 

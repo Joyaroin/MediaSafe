@@ -1,0 +1,83 @@
+{
+  "page": 1,
+  "results": [
+    {
+      "adult": false,
+      "backdrop_path": "/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg",
+      "id": 1399,
+      "name": "Game of Thrones",
+      "original_language": "en",
+      "original_name": "Game of Thrones",
+      "overview": "Seven noble families fight for control of the mythical land of Westeros. Friction between the houses leads to full-scale war. All while a very ancient evil awakens in the farthest north. Amidst the war, a neglected military order of misfits, the Night's Watch, is all that stands between the realms of men and icy horrors beyond.",
+      "poster_path": "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+      "media_type": "tv",
+      "genre_ids": [10765, 18, 10759],
+      "popularity": 369.594,
+      "first_air_date": "2011-04-17",
+      "vote_average": 8.438,
+      "vote_count": 21390,
+      "origin_country": ["US"]
+    },
+    {
+      "adult": false,
+      "backdrop_path": "/aDYSnJAK0BTVeE8osOy22Kz3SXY.jpg",
+      "id": 11,
+      "title": "Star Wars",
+      "original_language": "en",
+      "original_title": "Star Wars",
+      "overview": "Princess Leia is captured and held hostage by the evil Imperial forces in their effort to take over the galactic Empire. Venturesome Luke Skywalker and dashing captain Han Solo team together with the loveable robot duo R2-D2 and C-3PO to rescue the beautiful princess and restore peace and justice in the Empire.",
+      "poster_path": "/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg",
+      "media_type": "movie",
+      "genre_ids": [12, 28, 878],
+      "popularity": 78.047,
+      "release_date": "1977-05-25",
+      "video": false,
+      "vote_average": 8.208,
+      "vote_count": 18528
+    },
+    {
+      "adult": false,
+      "gender": 2,
+      "id": 2,
+      "known_for_department": "Acting",
+      "media_type": "person",
+      "name": "Mark Hamill",
+      "original_name": "Mark Hamill",
+      "popularity": 44.298,
+      "profile_path": "/2ZulC2Ccq1yv3pemusks6Zlfy2s.jpg",
+      "known_for": [
+        {
+          "adult": false,
+          "backdrop_path": "/aDYSnJAK0BTVeE8osOy22Kz3SXY.jpg",
+          "id": 11,
+          "title": "Star Wars",
+          "media_type": "movie",
+          "overview": "Princess Leia is captured and held hostage by the evil Imperial forces.",
+          "poster_path": "/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg",
+          "release_date": "1977-05-25",
+          "vote_average": 8.205,
+          "vote_count": 18535
+        }
+      ]
+    },
+    {
+      "adult": false,
+      "backdrop_path": null,
+      "id": 289283,
+      "name": "Star Wars: Andor - Season 3",
+      "original_language": "en",
+      "original_name": "Star Wars: Andor - Season 3",
+      "overview": "",
+      "poster_path": null,
+      "media_type": "tv",
+      "genre_ids": [],
+      "popularity": 0.6,
+      "first_air_date": "",
+      "vote_average": 0,
+      "vote_count": 0,
+      "origin_country": []
+    }
+  ],
+  "total_pages": 11,
+  "total_results": 201
+}
