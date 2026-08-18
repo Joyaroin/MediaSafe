@@ -1270,6 +1270,375 @@ function stateFrom(value: string): LibraryState {
   return known;
 }
 
+/**
+ * How many entries one fetch of the deck returns.
+ *
+ * `SPEC.md` §11.4 left the number open as a build-time call — #25 dissolved the *cap*
+ * question into a *fetch* question and deliberately picked no figure. This is that call,
+ * and it is a fetch size and not a cap: `DESIGN.md` forbids a numeric bound on the phone
+ * deck ("Don't … put a numeric cap on the phone deck, or a 'showing 10 of 62' line"), and
+ * the desktop row is bounded by the viewport instead. Twenty is one screen's worth of
+ * deck with room to work down before the next fetch, against a real library whose
+ * *watching* set is 284 titles.
+ *
+ * Exported for the tests, which have to page past it to prove that paging is stable. No
+ * surface has any use for it: a page carries its own cursor, so a caller pages by asking
+ * whether there is one rather than by counting to twenty.
+ */
+export const UP_NEXT_PAGE_SIZE = 20;
+
+/**
+ * One entry of the deck: a title, and the episode of it you are up to.
+ *
+ * ── Why the season and episode numbers are here, and not on `LibraryEntryRow` ────────
+ *
+ * `UpNext` above deliberately carries no numbers, because the library cell has no place
+ * to print them and a surface holding them would be one keystroke from breaking *episodes
+ * are named, never numbered alone*. The Up next card is the opposite case: `DESIGN.md`
+ * sets the number **beside** the name as a dim code line — "S3 E4" over "Sweet Vitriol" —
+ * on both the desktop row and the phone deck, so withholding them here would force a
+ * surface to fetch them somewhere else.
+ *
+ * `episodeName` is still `null` where TMDB has not named the episode. That is the honest
+ * answer and it stays the surface's problem: the rule the surfaces follow is that they
+ * never *degrade* to the number, and nothing this read could invent would help them keep
+ * it.
+ *
+ * There is no remainder here, and no count of anything. The remainder is a sort key
+ * below, not a fact either card prints — `DESIGN.md`'s Up next card is a plate, a code
+ * line, a title, an episode name and a control, and the wireframe's "▓▓▓░ 12" meter did
+ * not survive into it.
+ */
+export interface UpNextEntry {
+  readonly libraryEntryId: string;
+  readonly titleId: string;
+  /**
+   * Borrowed, and replaced by a refresh like every other fact about a title. Called
+   * `titleName` rather than `LibraryEntryRow`'s `name` because there are two names on
+   * this card and neither of them gets to be the unqualified one.
+   */
+  readonly titleName: string;
+  /** Borrowed. */
+  readonly posterPath: string | null;
+  readonly episodeId: string;
+  /** Borrowed, and `null` where TMDB has not named the episode. */
+  readonly episodeName: string | null;
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+}
+
+/**
+ * Where the last page stopped — the whole sort key of its final entry, and nothing else.
+ *
+ * **Keyset, not an offset**, because the deck reorders under its own reader: marking the
+ * top card watched makes that title the most recent watch, which moves it to the head of
+ * the order. Against `OFFSET 20` every such write shifts the rows underneath it, so page
+ * two repeats whatever slid down across the boundary. A cursor made of the sort key
+ * itself asks for *everything after this entry, in this order*, which stays a truthful
+ * question after the deck has moved.
+ *
+ * **What that buys is exactly one guarantee: no entry is served twice.** It does not, and
+ * no cursor could, catch an entry that moves the other way — a title below the cursor
+ * that gains a watch jumps to the head of the order, ahead of a point page two only looks
+ * past, and so is not on page two. It is not lost: it is the first thing the next fetch
+ * from the start returns, which is what a surface does after recording a watch. Paging
+ * over a set that reorders under you can promise no duplicates or no misses, not both,
+ * and a deck you work down is served by the first.
+ *
+ * It is opaque to surfaces: a page hands back whatever it was given and never reads a
+ * field of it. Tampering with one can only reorder the tamperer's own deck — the account
+ * scope is `ownedBy`, never the cursor.
+ */
+export interface UpNextCursor {
+  /** 0 recency, 1 the air-date fallback, 2 nothing to date it by. */
+  readonly rank: number;
+  /** The timestamp that rank sorts by, as Postgres prints it. */
+  readonly sortAt: string;
+  readonly remaining: number;
+  /** The title's name, lower-cased — the same expression the order uses. */
+  readonly name: string;
+  readonly libraryEntryId: string;
+}
+
+/** One fetch of the deck. **No total**, and there is nowhere for one to be added. */
+export interface UpNextPage {
+  readonly entries: readonly UpNextEntry[];
+  /** `null` means this was the last page — not that the deck is empty. */
+  readonly nextCursor: UpNextCursor | null;
+}
+
+/**
+ * The five terms of `SPEC.md` §7's Up next order, built once and handed to both the
+ * `ORDER BY` and the cursor's `WHERE`, so there is one definition of the order and not a
+ * copy of it in each place that has to agree with it.
+ *
+ * ── The rule, transcribed ────────────────────────────────────────────────────────────
+ *
+ * > Your most recent watch of the title, descending. Undated titles fall back to the air
+ * > date of their next unwatched episode, newest first. A next episode with no air date
+ * > sinks below both, and closest-to-finishing survives as the final tiebreak.
+ *
+ * **It is a cascade, not one comparison.** A title with any dated watch is ordered by
+ * that watch and never consults an air date — so a watch from eight years ago still
+ * outranks the whole fallback group, and a next episode TMDB has not dated sinks a title
+ * only if the title had no dated watch to be ranked by in the first place. `rank` is that
+ * cascade, and it leads the order.
+ *
+ * `at` then holds whichever date the rank chose. Two different kinds of date share one
+ * expression, which is safe precisely because `rank` is compared first: a watch timestamp
+ * is never compared against an air date. Rank 2 has no date at all and takes `-infinity`,
+ * a constant that decides nothing and exists so the expression is never null — a null
+ * here would make the cursor's comparison unanswerable rather than false.
+ *
+ * The `::timestamptz` on the air date reads the server's zone, which `db/views.ts` is at
+ * pains to keep out of what *released* means. Stated rather than hidden, and it is not
+ * the same exposure: every air date in rank 1 is cast the same way, so the cast is
+ * monotonic and cannot reorder two of them. It shifts the whole group by an offset, and
+ * the group is only ever compared with itself.
+ *
+ * ── Why *closest to finishing* is one term here and two in the library sort ──────────
+ *
+ * `orderByFor` needs a leading `case` to push `NULL` (a film) and `0` (a finished show)
+ * to the bottom of its own sort. Neither reaches this deck: it holds *watching* shows,
+ * every one of which has a `library_entry_remaining` row with at least one released
+ * unwatched episode counted in it. So the tiebreak is a plain ascending `remaining`, and
+ * the two are not one expression written twice — they are one rule applied to two sets.
+ *
+ * ── The last two terms are not in `SPEC.md`, and are not optional ───────────────────
+ *
+ * `lower(name)` and the entry id are the total order underneath the rule. §7's own
+ * *"every sort breaks ties by Title A–Z"* covers the first; the second is what makes
+ * *two identical loads give an identical order* true of two entries that share a name,
+ * and what lets a cursor name one row rather than a group of them.
+ */
+interface UpNextOrder {
+  readonly rank: SQL;
+  readonly at: SQL;
+  readonly remaining: PgColumn;
+  readonly name: SQL;
+  readonly entry: PgColumn;
+  /**
+   * The five terms above as the `ORDER BY` itself, with their directions — the same shape
+   * `orderByFor` returns for the library's four sorts.
+   *
+   * It is a member rather than something `listUpNext` assembles, because the sequence and
+   * the directions *are* half of the rule: `afterCursor` has to walk the same five terms
+   * in the same order, and a query that listed them itself would be a second place for
+   * that sequence to be written down and a second place for it to drift.
+   */
+  readonly orderBy: (SQL | PgColumn)[];
+}
+
+function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
+  const rank = sql`
+      case
+        when ${lastWatchedAt} is not null then 0
+        when ${episode.airDate} is not null then 1
+        else 2
+      end`;
+  const at = sql`
+      coalesce(
+        ${lastWatchedAt},
+        ${episode.airDate}::timestamptz,
+        '-infinity'::timestamptz
+      )`;
+  const remaining = libraryEntryRemaining.remaining;
+  const name = sql`lower(${title.name})`;
+  const entry = libraryEntry.id;
+
+  return {
+    rank,
+    at,
+    remaining,
+    name,
+    entry,
+    orderBy: [rank, sql`${at} desc`, remaining, name, entry],
+  };
+}
+
+/**
+ * *Everything after this entry, in this order* — the five order terms as one predicate,
+ * written as the flat sum of their prefixes.
+ *
+ * Each line is one term: equal on everything before it, and strictly past it on that one.
+ * Postgres's row constructor would say the same thing in a line, but only for an order
+ * that ascends throughout, and this one descends on `at`. Spelling the cascade out keeps
+ * it checkable against the `ORDER BY` line for line, which is the property worth having
+ * in the one place a paging bug would show up as a missing card rather than an error.
+ */
+function afterCursor(order: UpNextOrder, cursor: UpNextCursor): SQL {
+  const rank = sql`${cursor.rank}`;
+  const at = sql`${cursor.sortAt}::timestamptz`;
+  const remaining = sql`${cursor.remaining}`;
+  const name = sql`${cursor.name}`;
+  const entry = sql`${cursor.libraryEntryId}::uuid`;
+
+  return sql`(
+    ${order.rank} > ${rank}
+    or (${order.rank} = ${rank} and ${order.at} < ${at})
+    or (${order.rank} = ${rank} and ${order.at} = ${at}
+        and ${order.remaining} > ${remaining})
+    or (${order.rank} = ${rank} and ${order.at} = ${at}
+        and ${order.remaining} = ${remaining} and ${order.name} > ${name})
+    or (${order.rank} = ${rank} and ${order.at} = ${at}
+        and ${order.remaining} = ${remaining} and ${order.name} = ${name}
+        and ${order.entry} > ${entry})
+  )`;
+}
+
+/**
+ * One fetch of Up next — **the one definition of what is next**, so the phone deck and
+ * the desktop TONIGHT row cannot disagree about which titles are on it or in what order.
+ *
+ * `library_entry_up_next` has known *which episode* since build step 2. Which titles, in
+ * what order, has never existed anywhere until here, and it exists here once: `upNextOrder`
+ * above is the only place `SPEC.md` §7's rule is written down, and both surfaces read it
+ * through this function.
+ *
+ * ── The deck's membership, which is one predicate ────────────────────────────────────
+ *
+ * `state = 'watching'` and nothing else. A caught-up show's next episode has not aired,
+ * and offering it is offering something that does not exist yet; abandoned outranks every
+ * derived state, so an abandoned title stays out whatever its watches say; a watchlist
+ * title has no watches, so `library_entry_up_next` has no row for it and the inner join
+ * removes it without being asked. Finished is out on both counts. That is the same set
+ * Library's *Watching* chip holds, which is what `DESIGN.md` needs to be true when it
+ * says the desktop row's remainder lives one click below behind that chip.
+ *
+ * There is deliberately **no air-date filter on the next episode**. `library_entry_state`
+ * has already ruled out the case where nothing has aired, and §7's rule expects an unaired
+ * or undated next episode to be *ordered* — that is what ranks 1 and 2 are for. Filtering
+ * here would make half of the rule unreachable.
+ *
+ * The one place the deck is a strict subset of the chip: a show whose progress has passed
+ * every mirrored episode — you skipped one and watched the last — is *watching* with
+ * nothing after it, so `library_entry_up_next` has no row and there is no card to draw.
+ *
+ * ── The title's most recent watch, joined rather than correlated ─────────────────────
+ *
+ * A rewatch is a second `watch` row (`CONTEXT.md`), so joining `watch` into the deck
+ * directly would multiply an entry by its watches. `last_watch` groups them first. It is
+ * scoped by `ownedBy` too — the join is on the entry, so it could not read across accounts
+ * either way, but an unscoped read of an owned table is the one habit this module exists
+ * to not have.
+ *
+ * ── One extra row, and no count ──────────────────────────────────────────────────────
+ *
+ * The query asks for `UP_NEXT_PAGE_SIZE + 1` and returns at most `UP_NEXT_PAGE_SIZE`. The
+ * row that does not fit is not data — it is the whole of what the page knows about what
+ * comes after it, and it is spent on deciding whether `nextCursor` is null. No `count(*)`
+ * is issued and no total is returned, because §7 gives the phone deck no numeric cap and
+ * `DESIGN.md` forbids the "showing 10 of 62" line a total invites: a number nothing can
+ * render is a number nothing can render wrong.
+ *
+ * ── There is no `try` here ───────────────────────────────────────────────────────────
+ *
+ * A failed read throws, and the Up next surfaces' own error boundaries catch it
+ * (`AGENTS.md`). An empty deck — everything caught up, or a library not yet imported — is
+ * a real state and arrives as an empty `entries` with a null cursor, which is reachable
+ * only from a query that succeeded.
+ */
+export async function listUpNext(
+  userId: UserId,
+  cursor: UpNextCursor | null = null,
+  executor: Executor = getDb(),
+): Promise<UpNextPage> {
+  const lastWatch = executor
+    .select({
+      libraryEntryId: watch.libraryEntryId,
+      watchedAt: sql<string | null>`max(${watch.watchedAt})`.as("watched_at"),
+    })
+    .from(watch)
+    .where(ownedBy(userId, watch))
+    .groupBy(watch.libraryEntryId)
+    .as("last_watch");
+
+  const order = upNextOrder(lastWatch.watchedAt);
+
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      posterPath: title.posterPath,
+      episodeId: libraryEntryUpNext.episodeId,
+      episodeName: episode.name,
+      seasonNo: libraryEntryUpNext.seasonNo,
+      episodeNo: libraryEntryUpNext.episodeNo,
+      remaining: libraryEntryRemaining.remaining,
+      rank: sql<number>`${order.rank}`.as("sort_rank"),
+      /**
+       * Postgres's own rendering of the timestamp, so that the value a cursor carries and
+       * the value it is compared against are the same one. Handing back whatever a driver
+       * happened to parse it into would put a second date format in the loop.
+       */
+      sortAt: sql<string>`${order.at}::text`.as("sort_at"),
+      sortName: sql<string>`${order.name}`.as("sort_name"),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .innerJoin(libraryEntryUpNext, eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id))
+    .innerJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
+    .innerJoin(
+      libraryEntryRemaining,
+      eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
+    )
+    .leftJoin(lastWatch, eq(lastWatch.libraryEntryId, libraryEntry.id))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        /**
+         * `satisfies`, not a bare string: `state` is a `text` column, so a typo here
+         * would be an empty deck rather than an error — silent, on the one predicate
+         * that decides what the deck contains.
+         */
+        eq(libraryEntryState.state, "watching" satisfies LibraryState),
+        cursor === null ? undefined : afterCursor(order, cursor),
+      ),
+    )
+    .orderBy(...order.orderBy)
+    .limit(UP_NEXT_PAGE_SIZE + 1);
+
+  const more = rows.length > UP_NEXT_PAGE_SIZE;
+  const page = more ? rows.slice(0, UP_NEXT_PAGE_SIZE) : rows;
+
+  let nextCursor: UpNextCursor | null = null;
+  if (more) {
+    const last = page.at(-1);
+    if (last === undefined) {
+      /**
+       * Unreachable: `more` means the query returned more rows than a page holds, so the
+       * page sliced out of them has a last row. It throws rather than falling through to
+       * a null cursor, because the fallthrough is a deck that silently ends early — which
+       * is the shape of failure this whole read exists to not have.
+       */
+      throw new Error("A full page of Up next has no last entry to page from.");
+    }
+    nextCursor = {
+      rank: last.rank,
+      sortAt: last.sortAt,
+      remaining: last.remaining,
+      name: last.sortName,
+      libraryEntryId: last.libraryEntryId,
+    };
+  }
+
+  return {
+    entries: page.map((row) => ({
+      libraryEntryId: row.libraryEntryId,
+      titleId: row.titleId,
+      titleName: row.titleName,
+      posterPath: row.posterPath,
+      episodeId: row.episodeId,
+      episodeName: row.episodeName,
+      seasonNo: row.seasonNo,
+      episodeNo: row.episodeNo,
+    })),
+    nextCursor,
+  };
+}
+
 /** One row of a season/episode list — issue #58's title detail. */
 export interface EpisodeDetail {
   readonly id: string;
