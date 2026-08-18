@@ -17,9 +17,12 @@ import { LibrarySurface } from "./library-surface";
  *
  * ── Two states this page still owns, and two more that live below it ────────────────
  *
- * One redirect runs before either: a reader who has not answered the first-run **Bring
- * your library in** offer is sent to `/welcome` before this page reads anything (issue
- * #75). Past that, there is one branch on this page and it is the important one:
+ * One redirect runs before the empty branch below: a reader with no library **and** no
+ * answer on file for the first-run **Bring your library in** offer is sent to `/welcome`
+ * (issue #75) rather than shown the empty state. Checked only when `entries` is already
+ * empty — see `LibraryPage` below for why a non-empty library skips the offer-answered
+ * read entirely, not just the redirect. Past that, there is one branch on this page and
+ * it is the important one:
  *
  *  - **`entries` is empty** → the library is genuinely empty. This is reachable *only*
  *    because the query returned zero rows, and it says so on screen in the empty
@@ -78,14 +81,6 @@ export default async function LibraryPage({
    */
   const userId = await requireUserId();
 
-  /**
-   * *A first sign-in lands on Bring your library in, not on the empty library* (issue
-   * #75). This is the one place that redirect fires: `/` always lands here, so this is
-   * the desktop landing screen `SPEC.md` §7 means, and every reader who has not yet
-   * answered the offer is turned back to it before this page reads a single row.
-   */
-  if (!(await requireImportOfferAnswered())) redirect("/welcome");
-
   // `sortFrom` falls back to the default rather than throwing: a stale or hand-edited
   // `?sort=` is ordinary navigation noise, not corruption in the read below.
   const { sort: sortParam } = await searchParams;
@@ -98,6 +93,24 @@ export default async function LibraryPage({
   const entries = await listLibraryEntries(userId, sort);
 
   if (entries.length === 0) {
+    /**
+     * *A first sign-in lands on Bring your library in, not on the empty library* (issue
+     * #75). Checked here rather than before the query above, and checked against real
+     * rows rather than the column alone, for one reason: `/import` is its own route,
+     * reachable directly by URL, and nothing stops a reader from running a real import
+     * there without ever passing through `/welcome` — `answerImportOfferAction` is
+     * `/welcome`'s own write and nothing on `/import`'s path calls it. A reader who did
+     * that has, in the only sense that matters, already answered the offer; asking
+     * `requireImportOfferAnswered()` alone would send them back to `/welcome` forever,
+     * in front of a library `listLibraryEntries` just proved is not empty.
+     *
+     * Guarding the read this way — rather than always calling both checks — also means a
+     * reader with a real library never pays for the additional session read at all: this
+     * only runs once `entries` is already known to be empty, which is the one case where
+     * the answer can still be no.
+     */
+    if (!(await requireImportOfferAnswered())) redirect("/welcome");
+
     return (
       <main className="flex w-full flex-1 flex-col">
         <LibraryHeading />

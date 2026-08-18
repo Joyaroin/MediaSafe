@@ -31,10 +31,14 @@ import { answerImportOfferAction } from "./actions";
  *
  * ── A failure here is not a toast ─────────────────────────────────────────────────────
  *
- * The same reasoning `import-surface.tsx` carries for the halted import: this screen has
- * one control and no surface around it that carries on if the write is lost, so the
- * inline failure treatment is the one that fits, not a toast meant for a lost write on a
- * surface that survives it.
+ * `errors/write-failure.ts`'s `LostWrite` requires a `title` — the toast composes its own
+ * sentence from *the affected title, named in full* — and this write has none: answering
+ * the offer is an account-level fact, not a fact about a title. The toast's shape cannot
+ * represent it, which is a structural reason rather than a judgement call. `sign-out-button.tsx`
+ * is the precedent for exactly this case — another write with no title or episode to name —
+ * and it renders the same inline treatment used below: `role="alert"`, `FAILURE_SECTION`,
+ * a plain sentence, and the reference line. This is that pattern, not `import-surface.tsx`'s
+ * separate one, where the departure is instead that the screen already *is* the blast radius.
  */
 export function WelcomeSurface() {
   const router = useRouter();
