@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ProgrammeNoteEpisodes } from "@/app/(signed-in)/library/programme-note-episodes";
-import type { EpisodeDetail } from "@/db/access";
+import type { EpisodeDetail, LibraryState } from "@/db/access";
 
 /**
  * The season/episode list (issue #58) — the row `DESIGN.md` calls out as carrying the
@@ -14,7 +14,8 @@ import type { EpisodeDetail } from "@/db/access";
  *     with no degrading surface — this is the surface it would degrade on if it ever did.
  *  2. **Missing and empty stay distinct.** A show with nothing mirrored says so; it does
  *     not render an empty season.
- *  3. **A film has no episode section at all** — not an empty one.
+ *  3. **A film has no episode section at all** — not an empty one, and not a season
+ *     heading either. Issue #90 gives that slot to the film recording control instead.
  *
  * ── Why this file stops at the episode list ───────────────────────────────────────────
  *
@@ -40,13 +41,19 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
   };
 }
 
-const episodes = (list: EpisodeDetail[], kind: "film" | "show" = "show") =>
+const episodes = (
+  list: EpisodeDetail[],
+  kind: "film" | "show" = "show",
+  state: LibraryState = "watchlist",
+) =>
   renderToStaticMarkup(
     createElement(ProgrammeNoteEpisodes, {
       kind,
       episodes: list,
       libraryEntryId: "entry-1",
       titleName: "Game of Thrones",
+      state,
+      onStateChange: () => {},
     }),
   );
 
@@ -154,9 +161,35 @@ describe("the episode list", () => {
     expect(markup).not.toContain("Season");
   });
 
-  it("renders nothing at all for a film — not even the no-episode-data line", () => {
+  it("renders no episode list, no no-episode-data line and no season for a film", () => {
     const markup = episodes([], "film");
 
-    expect(markup).toBe("");
+    expect(markup).not.toContain("No episode data yet.");
+    expect(markup).not.toContain("Season");
+    expect(markup).not.toContain("Specials");
+  });
+
+  it("carries the film recording control on an unwatched film, and not on a finished one", () => {
+    const markup = episodes([], "film", "watchlist");
+
+    expect(markup).toContain("Strike it");
+    expect(markup).toContain("Mark Game of Thrones watched");
+
+    const finishedMarkup = episodes([], "film", "finished");
+    expect(finishedMarkup).not.toContain("Strike it");
+    expect(finishedMarkup).toContain("Watched");
+  });
+
+  it("strikes through a finished film's own name and says so, the same as a watched episode", () => {
+    const markup = episodes([], "film", "finished");
+
+    expect(markup).toContain("line-through");
+    expect(markup).toContain("Game of Thrones");
+  });
+
+  it("shows the film recording control for an abandoned, never-watched film too", () => {
+    const markup = episodes([], "film", "abandoned");
+
+    expect(markup).toContain("Strike it");
   });
 });

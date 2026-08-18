@@ -20,6 +20,15 @@ next-env.d.ts
 .playwright-mcp/
 .claude/
 
+# The impeccable hook's own scratch state — session ids, per-file edit counts, and
+# absolute paths into whichever worktree wrote them. It is machine-written on every
+# edit, it is one single line, and it was tracked: two branches that both touched a
+# file both rewrote that one line, so git had nothing to merge line-wise and every
+# parallel branch conflicted on it. Twelve commits on main carry a change to it and
+# nothing has ever read one. `.impeccable/config.json` and `design.json` are real
+# project artefacts and stay tracked — only the cache goes.
+.impeccable/hook.cache.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
