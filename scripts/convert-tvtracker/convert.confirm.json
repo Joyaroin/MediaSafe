@@ -1,35 +1,172 @@
 {
   "$comment": [
-    "The enforced gate on ambiguous watermarks (SPEC.md §7, issue #16).",
+    "The two enforced gates on this conversion (SPEC.md §7, issues #16, #61 and #71).",
     "",
-    "tvtracker recorded most watches per episode, but a few titles carry watches only as",
-    "shows.watched_through — an absolute ordinal across the whole show, with no record of",
-    "which episodes it counted. Where that ordinal claims more watches than the episode rows",
-    "account for, and the show was not watched right through, the export simply does not say",
-    "which episodes those were. The conversion halts and names them rather than guess.",
+    "── confirmations: ambiguous watermarks ──────────────────────────────────────────────",
     "",
-    "This file is where a person answers, and it is deliberately EMPTY. Two shows in the",
-    "2026-08-16 export need an answer nobody has given yet:",
+    "A few titles carry watches only as shows.watched_through — an absolute ordinal across",
+    "the whole show, with no record of which episodes it counted. Where that ordinal claims",
+    "more than the episode rows account for, and the show was not watched right through, the",
+    "export does not say which episodes those were. `credit` is an explicit list, never a",
+    "count; an EMPTY `credit` records that the watermark is stale and nothing extra is",
+    "written.",
     "",
-    "  Hudson & Rex (tmdb 87940) — watched through 60 of 122; 53 episodes marked watched,",
-    "    leaving 7 unaccounted for. The named episodes have real gaps (S1E1-10, S2E8-11)",
-    "    that contradict a watermark of 60, so 'the first 60' is not a safe reading.",
-    "  Person of Interest (tmdb 1411) — watched through 7 of 103, with no episode rows at",
-    "    all. There is no evidence in either direction.",
+    "── unplaceable: TV Time numbering that TMDB does not share ──────────────────────────",
     "",
-    "To answer one, add an entry naming the episodes to credit:",
+    "456 of the 462 titles came from TV Time, and tvtracker kept TV Time's season and",
+    "episode numbers. TMDB numbers some shows differently — it merges seasons TV Time split",
+    "(Hunter x Hunter's 'season 2' is the back half of TMDB's single 148-episode season) and",
+    "splits episodes TV Time merged. Where a recorded watch names an episode TMDB does not",
+    "list, there is no episode id to key it to.",
     "",
-    "  { \"tmdb_id\": 1411, \"title\": \"Person of Interest\",",
-    "    \"reason\": \"why this is the right answer\",",
-    "    \"credit\": [ { \"season\": 1, \"episode\": 1 } ] }",
+    "Two of those cases are handled without anyone deciding anything, and are not listed",
+    "here: a show with as many recorded episodes as it has was watched right through, so",
+    "every episode TMDB lists gets a watch; and a leftover on a show that already holds every",
+    "episode TMDB lists is one half of a two-part episode, already counted. Between them",
+    "those place 159 of the original 330.",
     "",
-    "`credit` is an explicit list, never a count — a count would put the guess back in the",
-    "script. An EMPTY `credit` is a real answer too: it records that the watermark is stale",
-    "and that nothing should be written for that show.",
+    "What remains is below. `drop` is the exact count for a reason: tvtracker is re-exported",
+    "at cutover, and a re-export whose numbers differ stops the script rather than inheriting",
+    "an acceptance nobody looked at.",
     "",
-    "tvtracker is re-exported at cutover, so this file is not a checklist that was ticked",
-    "once. A fresh export with different stragglers halts on them, and an answer left here",
-    "for a show that no longer needs one halts too, rather than being inherited unread."
+    "Ordinal mapping was considered and rejected. It needs TV Time's complete season lengths,",
+    "which the export does not record — it holds only the episodes that were interacted with.",
+    "Guessing them would place watches on episodes that were never watched, undetectably."
   ],
-  "confirmations": []
+  "confirmations": [
+    {
+      "tmdb_id": 87940,
+      "title": "Hudson & Rex",
+      "reason": "Adham's call, 2026-08-18: drop the watermark. It claims 60 of 122 episodes while the episode rows name 53, and those rows have real gaps — S1E1-10 and S2E8-11 — that a watermark of 60 contradicts. The 53 recorded watches stand; the 7 the watermark implies are not written, because nothing records which they were.",
+      "credit": []
+    },
+    {
+      "tmdb_id": 1411,
+      "title": "Person of Interest",
+      "reason": "Adham's call, 2026-08-18: drop the watermark. It claims 7 of 103 episodes with no episode rows at all, so there is no evidence in either direction. The title stays in the library as a watchlist entry rather than carrying 7 watches nothing can place.",
+      "credit": []
+    }
+  ],
+  "unplaceable": [
+    {
+      "tmdb_id": 46298,
+      "title": "Hunter x Hunter (2011)",
+      "reason": "TV Time splits this into two seasons; TMDB lists one season of 148. Its 'S2E1-62' are TMDB's 87th episode onward, but the show is only partly watched (140 of 148 recorded), so TV Time's first-season length cannot be recovered and the offset cannot be computed.",
+      "drop": 62
+    },
+    {
+      "tmdb_id": 37854,
+      "title": "One Piece",
+      "reason": "TMDB groups One Piece's 1,181 episodes into sagas that do not match TV Time's seasons. Only 37 episodes are recorded, so TV Time's season lengths cannot be recovered.",
+      "drop": 29
+    },
+    {
+      "tmdb_id": 61775,
+      "title": "Ever After High",
+      "reason": "TV Time carries five seasons plus an S0E0 placeholder; TMDB lists 65 episodes grouped differently. 62 of 65 are recorded, so the show is not complete and the grouping cannot be derived.",
+      "drop": 23
+    },
+    {
+      "tmdb_id": 95479,
+      "title": "JUJUTSU KAISEN",
+      "reason": "TV Time numbers the second cour as season 2; TMDB continues the first season's numbering. 39 of 59 episodes are recorded, so the boundary cannot be recovered.",
+      "drop": 15
+    },
+    {
+      "tmdb_id": 65931,
+      "title": "Bungo Stray Dogs",
+      "reason": "Same shape as JUJUTSU KAISEN — TV Time's season 2 is a later run TMDB numbers within an existing season. 36 of 60 recorded.",
+      "drop": 12
+    },
+    {
+      "tmdb_id": 127532,
+      "title": "Solo Leveling",
+      "reason": "TV Time's season 2 is TMDB's continuation of season 1. 20 of 25 episodes recorded, so the split point cannot be derived.",
+      "drop": 8
+    },
+    {
+      "tmdb_id": 61838,
+      "title": "Barbie: Life in the Dreamhouse",
+      "reason": "TV Time's season 4 runs past the length TMDB gives it. 84 of 110 recorded, so the season lengths cannot be reconstructed.",
+      "drop": 7
+    },
+    {
+      "tmdb_id": 38867,
+      "title": "Lab Rats (2012)",
+      "reason": "An S4E0 placeholder, which is not an episode, and two rows past the end of TMDB's season 4.",
+      "drop": 3
+    },
+    {
+      "tmdb_id": 34573,
+      "title": "A.N.T. Farm",
+      "reason": "One S0E0 row. Episode zero is not an episode — it is a placeholder TV Time wrote.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 346,
+      "title": "American Dragon: Jake Long",
+      "reason": "One S0E0 placeholder row.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 289892,
+      "title": "Helluva Boss",
+      "reason": "One S0E0 placeholder row.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 88040,
+      "title": "given",
+      "reason": "One S1E0 row. Episode zero is not an episode, and it is the only thing recorded for this title, so it stays on the watchlist.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 57961,
+      "title": "Mighty Med",
+      "reason": "One S2E0 placeholder row.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 2345,
+      "title": "Kim Possible",
+      "reason": "One S0E3 row — a special TMDB does not list under season 0.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 62649,
+      "title": "Superstore",
+      "reason": "One S0E1 row — a special TMDB numbers differently.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 60735,
+      "title": "The Flash (2014)",
+      "reason": "One S0E5 row — a special TMDB numbers differently.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 125935,
+      "title": "Abbott Elementary",
+      "reason": "One S3E2 row past the end of TMDB's season 3, which is shorter than TV Time's.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 1416,
+      "title": "Grey's Anatomy",
+      "reason": "One S11E25 row; TMDB's season 11 has 24 episodes.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 61915,
+      "title": "K.C. Undercover",
+      "reason": "One S1E28 row; TMDB's season 1 is shorter.",
+      "drop": 1
+    },
+    {
+      "tmdb_id": 1400,
+      "title": "Seinfeld",
+      "reason": "One S5E23 row; TMDB's season 5 has 22 episodes.",
+      "drop": 1
+    }
+  ]
 }
