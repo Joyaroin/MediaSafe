@@ -4,6 +4,7 @@ import type { EpisodeDetail, LibraryState } from "@/db/access";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+import { groupBySeason, seasonHeading } from "./season-grouping";
 import { useWatchMark } from "./use-watch-mark";
 import { RECORDING_CONTROL, WATCHED_NAME, WatchSweep } from "./watch-mark-motion";
 
@@ -78,9 +79,7 @@ export function ProgrammeNoteEpisodes({
     <>
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
         <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
-          <p className="code-line text-dim">
-            {seasonNo === 0 ? "Specials" : `Season ${seasonNo}`}
-          </p>
+          <p className="code-line text-dim">{seasonHeading(seasonNo)}</p>
           <ol className="mt-3 divide-y divide-hair">
             {inSeason.map((one) => (
               <EpisodeLine
@@ -97,26 +96,12 @@ export function ProgrammeNoteEpisodes({
   );
 }
 
-/** Episodes arrive from `getTitleDetail` already ordered `(season_no, episode_no)`, so a
- *  `Map`'s insertion order is the season order — nothing here re-sorts. */
-function groupBySeason(
-  episodes: readonly EpisodeDetail[],
-): readonly (readonly [number, EpisodeDetail[]])[] {
-  const bySeason = new Map<number, EpisodeDetail[]>();
-  for (const one of episodes) {
-    const inSeason = bySeason.get(one.seasonNo);
-    if (inSeason) inSeason.push(one);
-    else bySeason.set(one.seasonNo, [one]);
-  }
-  return [...bySeason.entries()];
-}
-
-/** `CONTEXT.md`: an episode is never referred to by number alone. The season word matches
- *  whichever heading this episode is grouped under above — `Specials`, not `Season 0`. */
+/** `CONTEXT.md`: an episode is never referred to by number alone. The season word comes
+ *  from `seasonHeading`, the same function that writes the heading this episode is
+ *  grouped under above — `Specials`, not `Season 0`. */
 function episodeFullName(episode: EpisodeDetail): string {
-  const season = episode.seasonNo === 0 ? "Specials" : `Season ${episode.seasonNo}`;
   const name = episode.name === null ? "Not yet named" : episode.name;
-  return `${season}, Episode ${episode.episodeNo} — ${name}`;
+  return `${seasonHeading(episode.seasonNo)}, Episode ${episode.episodeNo} — ${name}`;
 }
 
 /**
