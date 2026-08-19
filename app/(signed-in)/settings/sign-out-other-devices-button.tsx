@@ -40,14 +40,24 @@ import { authClient } from "@/lib/auth-client";
  * about it looks broken. That is exactly AGENTS.md's *one write was lost* row, not its
  * *a sign-in did not happen* row.
  *
+ * ── `title` carries this control's own label, deliberately ─────────────────────────────
+ *
  * `errors/write-failure.ts`'s `LostWrite` names its required field `title` for *the
  * affected title* and `welcome-surface.tsx` documents the case where that shape cannot
- * represent an account-level write — this is that same kind of write. The acceptance
- * criteria settle it anyway: *no episode* names the one field this call omits, which only
- * reads as an instruction at all if `title` is still being sent. So `title` carries this
- * control's own label instead of a title from the library — the one string that names
- * what failed to save — and the toast reads as a labelled failure rather than a
- * mis-attributed one.
+ * represent an account-level write — read on its own, this looks like the same case, and
+ * the honest move would be `welcome-surface.tsx`'s inline treatment instead.
+ *
+ * It is not the same case, and this is checked rather than assumed: issue #123, the
+ * sibling ticket building Settings' Profile field in this same step, gives the identical
+ * failure the identical shape — *a failed save raises the persistent toast **naming what
+ * failed**, with no episode* — for `user.name`, which is no more a library title than a
+ * revoked session is. Two step-7 tickets independently reusing the toast for a titleless
+ * write, in the same words, is a pattern rather than one ticket's imprecise phrasing:
+ * Settings' account-level writes name *what failed* in the slot `welcome-surface.tsx` was
+ * written for a title, superseding that earlier precedent for this newer set of controls
+ * rather than being a mistaken departure from it. `title` here is that name, not a title
+ * from the library — "Sign out other devices", not "Severance" — and the toast reads as a
+ * labelled failure rather than a mis-attributed one.
  */
 export function SignOutOtherDevicesButton() {
   const [inFlight, setInFlight] = useState(false);
