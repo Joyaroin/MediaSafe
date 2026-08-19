@@ -51,6 +51,10 @@ about watching: progress, where a title stands, rewatches, streaks and stats are
 watches and never kept alongside them.
 _Avoid_: watch event, play, view, log entry
 
+**Unwatch**:
+Removing a watch you had recorded; the episode goes back to unwatched.
+_Avoid_: undo, unmark, reset, clear
+
 **Undated watch**:
 A watch you know happened but not when. Anything derived from dates ignores it; anything derived
 from what you watched counts it like any other.

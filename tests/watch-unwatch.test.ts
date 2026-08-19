@@ -6,7 +6,7 @@ import {
   getTitleDetail,
   ownedBy,
   recordWatch,
-  undoWatch,
+  unwatch,
   type UserId,
 } from "@/db/access";
 import type { Transaction } from "@/db/client";
@@ -14,19 +14,19 @@ import { episode, libraryEntry, title, user, watch } from "@/db/schema";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * `undoWatch`, against real Postgres — issue #89.
+ * `unwatch`, against real Postgres — issue #89.
  *
  * ── Why this file exists rather than more of `watch-idempotency.test.ts` ─────────────
  *
  * That file proves a write cannot become two. This one proves a *delete* cannot become
  * the wrong one, and the two rules it guards are not the same rule:
  *
- *  1. **Exactly one watch goes.** Undoing a rewatch leaves the earlier watch standing.
+ *  1. **Exactly one watch goes.** Unwatching a rewatch leaves the earlier watch standing.
  *  2. **An imported watch never goes.** `source = 'tvtracker'` rows are not editable from
  *     the application, and there are 19,391 of them in the real database reconstructed
  *     from an archive that no longer has a live source (issue #89).
  *
- * The second is asserted **directly** — a `source = 'tvtracker'` row is seeded, undo is
+ * The second is asserted **directly** — a `source = 'tvtracker'` row is seeded, unwatch is
  * called, and the row is read back — rather than inferred from the shape of the query.
  * A predicate that has been dropped from a `where` clause still reads like one in a diff;
  * only the row surviving proves it ran.
@@ -36,7 +36,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * Ids in, rows out. Nothing here calls TMDB, exactly as `watch-idempotency.test.ts`.
  */
 
-setUpTestDatabase("mediasafe_watch_undo_test");
+setUpTestDatabase("mediasafe_watch_unwatch_test");
 
 function daysFromToday(days: number): string {
   const date = new Date();
@@ -192,7 +192,7 @@ async function watchExists(tx: Transaction, watchId: string): Promise<boolean> {
 const EARLIER = new Date("2026-01-01T20:00:00Z");
 const LATER = new Date("2026-02-01T20:00:00Z");
 
-describe("undoWatch", () => {
+describe("unwatch", () => {
   it("removes the one watch the application recorded", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
@@ -202,9 +202,9 @@ describe("undoWatch", () => {
       const episodeId = episodeIds["1-1"];
       await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
 
-      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+      const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId }, tx);
 
-      expect(outcome).toEqual({ removed: true, watched: false, undoable: false });
+      expect(outcome).toEqual({ removed: true, watched: false, unwatchable: false });
       expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(0);
     }));
 
@@ -217,7 +217,7 @@ describe("undoWatch", () => {
       const episodeId = episodeIds["1-1"];
       const imported = await importedWatch(tx, userId, entryId, titleId, episodeId);
 
-      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+      const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId }, tx);
 
       // 19,391 rows somebody reconstructed once from an archive with no live source
       // behind it. A v1 that lets a mis-tap delete one has become an editor of history
@@ -226,7 +226,7 @@ describe("undoWatch", () => {
       expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(1);
       // Nothing was removed, and the episode is still watched — so the row must not go
       // back to reading unwatched either.
-      expect(outcome).toEqual({ removed: false, watched: true, undoable: false });
+      expect(outcome).toEqual({ removed: false, watched: true, unwatchable: false });
     }));
 
   it("leaves an imported watch standing underneath the app watch it removes", () =>
@@ -241,9 +241,9 @@ describe("undoWatch", () => {
 
       // The imported watch is the *more recent* of the two, so a rule that only looked at
       // the timestamps would take it. Source is the filter, not recency.
-      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+      const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId }, tx);
 
-      expect(outcome).toEqual({ removed: true, watched: true, undoable: false });
+      expect(outcome).toEqual({ removed: true, watched: true, unwatchable: false });
       expect(await watchExists(tx, recorded)).toBe(false);
       expect(await watchExists(tx, imported)).toBe(true);
     }));
@@ -258,9 +258,9 @@ describe("undoWatch", () => {
       const first = await appWatch(tx, userId, entryId, titleId, episodeId, EARLIER);
       const rewatch = await appWatch(tx, userId, entryId, titleId, episodeId, LATER);
 
-      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+      const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId }, tx);
 
-      expect(outcome).toEqual({ removed: true, watched: true, undoable: true });
+      expect(outcome).toEqual({ removed: true, watched: true, unwatchable: true });
       expect(await watchExists(tx, rewatch)).toBe(false);
       expect(await watchExists(tx, first)).toBe(true);
     }));
@@ -275,7 +275,7 @@ describe("undoWatch", () => {
       await appWatch(tx, userId, entryId, titleId, episodeId, EARLIER);
       await appWatch(tx, userId, entryId, titleId, episodeId, LATER);
 
-      await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+      await unwatch(userId, { libraryEntryId: entryId, episodeId }, tx);
 
       expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(1);
     }));
@@ -295,7 +295,7 @@ describe("undoWatch", () => {
         );
       }
 
-      await undoWatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-2"] }, tx);
+      await unwatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-2"] }, tx);
 
       expect(await watchesOnEpisode(tx, userId, episodeIds["1-1"])).toHaveLength(1);
       expect(await watchesOnEpisode(tx, userId, episodeIds["1-2"])).toHaveLength(0);
@@ -308,13 +308,13 @@ describe("undoWatch", () => {
         { seasonNo: 1, episodeNo: 1 },
       ]);
 
-      const outcome = await undoWatch(
+      const outcome = await unwatch(
         userId,
         { libraryEntryId: entryId, episodeId: episodeIds["1-1"] },
         tx,
       );
 
-      expect(outcome).toEqual({ removed: false, watched: false, undoable: false });
+      expect(outcome).toEqual({ removed: false, watched: false, unwatchable: false });
     }));
 
   it("takes the state, progress and up next with it", () =>
@@ -338,7 +338,7 @@ describe("undoWatch", () => {
       }
       expect((await getTitleDetail(userId, entryId, tx)).state).toBe("finished");
 
-      await undoWatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-2"] }, tx);
+      await unwatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-2"] }, tx);
 
       const detail = await getTitleDetail(userId, entryId, tx);
       expect(detail.state).toBe("watching");
@@ -360,9 +360,9 @@ describe("undoWatch", () => {
       );
       expect((await getTitleDetail(userId, entryId, tx)).state).toBe("finished");
 
-      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId: null }, tx);
+      const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId: null }, tx);
 
-      expect(outcome).toEqual({ removed: true, watched: false, undoable: false });
+      expect(outcome).toEqual({ removed: true, watched: false, unwatchable: false });
       expect((await getTitleDetail(userId, entryId, tx)).state).toBe("watchlist");
     }));
 
@@ -372,9 +372,9 @@ describe("undoWatch", () => {
       const { entryId, titleId } = await seedFilm(tx, userId);
       const imported = await importedWatch(tx, userId, entryId, titleId, null);
 
-      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId: null }, tx);
+      const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId: null }, tx);
 
-      expect(outcome).toEqual({ removed: false, watched: true, undoable: false });
+      expect(outcome).toEqual({ removed: false, watched: true, unwatchable: false });
       expect(await watchExists(tx, imported)).toBe(true);
     }));
 
@@ -392,7 +392,7 @@ describe("undoWatch", () => {
       const abandonedAt = new Date("2026-03-01T20:00:00Z");
       await tx.update(libraryEntry).set({ abandonedAt }).where(eq(libraryEntry.id, entryId));
 
-      await undoWatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-1"] }, tx);
+      await unwatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-1"] }, tx);
 
       // Abandonment is the one hand-set state in the model (`CONTEXT.md`), and taking a
       // watch back is not a statement about it in either direction.
@@ -412,15 +412,15 @@ describe("undoWatch", () => {
       await recordWatch(owner, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
 
       await expect(
-        undoWatch(stranger, { libraryEntryId: entryId, episodeId }, tx),
+        unwatch(stranger, { libraryEntryId: entryId, episodeId }, tx),
       ).rejects.toThrow();
 
       expect(await watchesOnEpisode(tx, owner, episodeId)).toHaveLength(1);
     }));
 });
 
-describe("getTitleDetail's undoable", () => {
-  it("offers no undo on an episode whose only watch is imported", () =>
+describe("getTitleDetail's unwatchable", () => {
+  it("offers no unwatch on an episode whose only watch is imported", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId, titleId, episodeIds } = await seedShow(tx, userId, [
@@ -431,10 +431,10 @@ describe("getTitleDetail's undoable", () => {
       const [one] = (await getTitleDetail(userId, entryId, tx)).episodes;
 
       expect(one.watched).toBe(true);
-      expect(one.undoable).toBe(false);
+      expect(one.unwatchable).toBe(false);
     }));
 
-  it("offers undo on an episode the application recorded", () =>
+  it("offers unwatch on an episode the application recorded", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId, episodeIds } = await seedShow(tx, userId, [
@@ -448,10 +448,10 @@ describe("getTitleDetail's undoable", () => {
 
       const [one] = (await getTitleDetail(userId, entryId, tx)).episodes;
 
-      expect(one.undoable).toBe(true);
+      expect(one.unwatchable).toBe(true);
     }));
 
-  it("offers undo where an app watch sits on top of an imported one", () =>
+  it("offers unwatch where an app watch sits on top of an imported one", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId, titleId, episodeIds } = await seedShow(tx, userId, [
@@ -466,10 +466,10 @@ describe("getTitleDetail's undoable", () => {
 
       const [one] = (await getTitleDetail(userId, entryId, tx)).episodes;
 
-      expect(one.undoable).toBe(true);
+      expect(one.unwatchable).toBe(true);
     }));
 
-  it("offers no undo on an unwatched episode", () =>
+  it("offers no unwatch on an unwatched episode", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId } = await seedShow(tx, userId, [{ seasonNo: 1, episodeNo: 1 }]);
@@ -477,6 +477,6 @@ describe("getTitleDetail's undoable", () => {
       const [one] = (await getTitleDetail(userId, entryId, tx)).episodes;
 
       expect(one.watched).toBe(false);
-      expect(one.undoable).toBe(false);
+      expect(one.unwatchable).toBe(false);
     }));
 });
