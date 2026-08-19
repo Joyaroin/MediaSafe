@@ -64,15 +64,19 @@ describe("the episode list", () => {
     expect(markup).not.toMatch(/>\s*S\d+\s*E\d+\s*</);
   });
 
-  it("strikes through a watched episode, and lets the strike be what says so", () => {
+  it("dims a watched episode's name, and lets the dimming be what says so", () => {
     const markup = episodes([episode({ watched: true })]);
 
-    // The struck name is the statement (`DESIGN.md`, Episode Line). It used to be said
-    // twice: a *Watched* code line stood in the trailing slot wherever there was no
-    // unwatch to offer, which #145 makes unreachable. That label now belongs to the
-    // length of the strike alone — the control test below owns the other half, so this
-    // one asserts only what it is about.
-    expect(markup).toContain("line-through");
+    // The dimmed name is the statement (`DESIGN.md`, Episode Line, as issue #139 redraws
+    // it) — the strike-through this used to draw is retired with the world it came from.
+    // A *Watched* code line stood in the trailing slot wherever there was no unwatch to
+    // offer, which #145 makes unreachable; the control test below owns the other half, so
+    // this one asserts only what it is about.
+    // Scoped to the name's own element, not just "text-dim" appearing anywhere on the row
+    // (the trailing Unwatch control and an unselected episode number are dim too) — and
+    // tolerant of the class list's own order, unlike pinning the literal attribute string.
+    expect(markup).toMatch(/class="[^"]*\btext-dim\b[^"]*">Winter Is Coming</);
+    expect(markup).not.toContain("line-through");
     expect(markup).not.toContain(">Watched<");
   });
 
@@ -185,11 +189,13 @@ describe("the episode list", () => {
     expect(finishedMarkup).toContain("Watched");
   });
 
-  it("strikes through a finished film's own name and says so, the same as a watched episode", () => {
+  it("dims a finished film's own name and says so, the same as a watched episode", () => {
     const markup = episodes([], "film", "finished");
 
-    expect(markup).toContain("line-through");
-    expect(markup).toContain("Game of Thrones");
+    // Scoped to the title's own element for the same reason as the episode assertion
+    // above — "text-dim" alone would also match the trailing *Watched* code line.
+    expect(markup).toMatch(/class="[^"]*\btext-dim\b[^"]*">Game of Thrones</);
+    expect(markup).not.toContain("line-through");
   });
 
   it("shows the film recording control for an abandoned, never-watched film too", () => {

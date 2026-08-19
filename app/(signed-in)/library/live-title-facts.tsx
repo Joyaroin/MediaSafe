@@ -191,19 +191,19 @@ function LiveFactSection<T>({
   );
 }
 
+/**
+ * Issue #139 dropped the bordered chip this used to render each provider as — a card with
+ * a border, on a surface whose new-world treatment has none. A plain line, joined by " · "
+ * the same way `CastAndCrewLine` below already renders its own two rows, says the same
+ * thing without drawing a box around each name.
+ */
 function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) {
   if (providers.length === 0) {
     return <p className="text-item text-dim">Nothing listed for streaming.</p>;
   }
 
   return (
-    <ul className="flex flex-wrap gap-2">
-      {providers.map((provider) => (
-        <li key={provider.id} className="code-line border border-hair px-3 py-1.5">
-          {provider.name}
-        </li>
-      ))}
-    </ul>
+    <p className="text-item text-dim">{providers.map((provider) => provider.name).join(" · ")}</p>
   );
 }
 

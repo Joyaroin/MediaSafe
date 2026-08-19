@@ -10,9 +10,10 @@ import { abandonAction, unabandonAction, type AbandonOutcome } from "./title-det
 
 /**
  * The one hand-set state in the model, and the way back out of it — issue #87.
- * `DESIGN.md`'s Abandon Control section is binding: a hairline-topped row carrying a dim
- * underlined text button, no border, no fill, no icon, and **never vermilion** in any
- * state, because vermilion is reserved for recording a watch.
+ * `DESIGN.md`'s Abandon Control section is binding: a row carrying a dim underlined text
+ * button, no border, no fill, no icon, and **never accent** in any state, because the
+ * accent is reserved for recording a watch. Issue #139 drops the row's own hairline top —
+ * title detail's new-world treatment separates its blocks by gap alone.
  *
  * ── One row, both directions ──────────────────────────────────────────────────────────
  *
@@ -86,7 +87,7 @@ export function AbandonControl({
   }
 
   return (
-    <div className="mt-7 flex items-baseline justify-between border-t border-hair pt-5">
+    <div className="mt-7 flex items-baseline justify-between">
       <button
         type="button"
         onClick={() => void attempt()}
