@@ -83,15 +83,15 @@ export function UpNextSurface({ firstPage }: { firstPage: UpNextPage }) {
       <UpNextDominantCard entry={dominant} />
 
       {deck.length === 0 ? null : (
-        <ol className="border-t border-rule">
+        <ol className="border-t border-hair">
           {deck.map((entry) => (
             <UpNextDeckRow key={entry.libraryEntryId} entry={entry} />
           ))}
         </ol>
       )}
 
-      <div ref={sentinelRef} className="border-t border-rule px-4 py-3">
-        <p className="code-line text-stock-dim">
+      <div ref={sentinelRef} className="border-t border-hair px-4 py-3">
+        <p className="code-line text-dim">
           A deck you work down — more load as you go
         </p>
 
@@ -99,7 +99,7 @@ export function UpNextSurface({ firstPage }: { firstPage: UpNextPage }) {
           <button
             type="button"
             onClick={() => void loadMore()}
-            className="code-line mt-2 text-signal underline decoration-signal underline-offset-4 transition-colors duration-150 hover:text-stock"
+            className="code-line mt-2 text-accent underline decoration-accent underline-offset-4 transition-colors duration-150 hover:text-text"
           >
             Try again
           </button>

@@ -156,14 +156,14 @@ export function ImportSurface() {
 function FilePicker({ onChoose }: { onChoose: (files: FileList | null) => void }) {
   return (
     <div>
-      <p className="max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <p className="max-w-[62ch] text-note leading-relaxed text-dim">
         Pick the file below. MediaSafe writes it in chunks of about 25 titles at a time,
         right here on this screen — keep this tab open until it says the import is done.
         Closing it stops the import where it is; reopening this page and picking the file
         again finishes it, because nothing already written is touched twice.
       </p>
 
-      <label className="code-line mt-8 inline-block cursor-pointer bg-signal px-4 py-2 text-ink transition-[filter] duration-200 hover:brightness-90">
+      <label className="code-line mt-8 inline-block cursor-pointer bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90">
         Choose your file
         <input
           type="file"
@@ -203,7 +203,7 @@ function InvalidFile({
 /** The three counters, exactly as `SPEC.md` §7 writes them: `318 of 462 titles · 11,204 watches · 155 marked abandoned`. */
 function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
   return (
-    <p role="status" className="code-line text-stock" data-numeric>
+    <p role="status" className="code-line text-text" data-numeric>
       {titlesAdded} of {totalTitles} titles · {watchesAdded} watches · {abandonedAdded} marked
       abandoned
     </p>
@@ -213,8 +213,8 @@ function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }:
 function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
   return (
     <div>
-      <h2 className="bill-title text-bill-md text-stock">Importing your library</h2>
-      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <h2 className="bill-title text-bill-md text-text">Importing your library</h2>
+      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
         Keep this tab open. Nothing here is a queue — the import runs only while this
         screen is watching it, and closing the tab leaves it exactly where it stands.
       </p>
@@ -296,8 +296,8 @@ function Done({
 }: Progress & { skipped: readonly SkippedTitle[] }) {
   return (
     <div>
-      <h2 className="bill-title text-bill-md text-stock">Import done</h2>
-      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <h2 className="bill-title text-bill-md text-text">Import done</h2>
+      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
         Your file has been written in full. Running it again — from this file or a newer
         export of the same library — changes nothing that is already here.
       </p>
@@ -324,13 +324,13 @@ function SkippedTitleList({ skipped }: { skipped: readonly SkippedTitle[] }) {
   if (skipped.length === 0) return null;
 
   return (
-    <div className="mt-8 border-t border-rule pt-6">
-      <h3 className="code-line text-stock-dim">
+    <div className="mt-8 border-t border-hair pt-6">
+      <h3 className="code-line text-dim">
         {skipped.length} {skipped.length === 1 ? "title" : "titles"} TMDB could not find, skipped
       </h3>
       <ul className="mt-3 space-y-1">
         {skipped.map((one) => (
-          <li key={`${one.kind}:${one.tmdbId}`} className="text-item text-stock-dim" data-numeric>
+          <li key={`${one.kind}:${one.tmdbId}`} className="text-item text-dim" data-numeric>
             {one.kind === "film" ? "Film" : "Show"} · TMDB {one.tmdbId}
           </li>
         ))}

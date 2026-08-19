@@ -57,10 +57,12 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
  * is the honest one: `SPEC.md`'s caveat is that watches this application recorded are
  * restorable by no means at all, in the product or out of it.
  *
- * ── Quiet, and never vermilion ───────────────────────────────────────────────────────
+ * ── Quiet, and never the accent ──────────────────────────────────────────────────────
  *
- * `DESIGN.md` reserves vermilion for recording a watch and names the abandon control as the
- * thing that must never take it. This is quieter still and takes it no more: dim underlined
+ * The accent is reserved for recording a watch — `app/globals.css` since issue #134, which
+ * replaced the vermilion this rule was first written about with the Catalogue Wall's amber
+ * and left the reservation exactly as it was. `DESIGN.md` names the abandon control as the
+ * thing that must never take it; this is quieter still and takes it no more: dim underlined
  * type, no border, no fill, no icon. Loudness is not what protects a reader here — the
  * confirmation's real numbers are, and they are one navigation away.
  */
@@ -76,7 +78,7 @@ export function RemoveControl({
       <Link
         href={`/library/${libraryEntryId}/remove`}
         aria-label={`Remove ${titleName} from your library`}
-        className="code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+        className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
       >
         Remove from library ›
       </Link>
@@ -85,7 +87,7 @@ export function RemoveControl({
           opposite effect. It names both things the removal takes, because the confirmation
           is going to count them and a reader should not first learn what is at stake on the
           page that is about to destroy it. */}
-      <p className="code-line mt-2 text-stock-dim">
+      <p className="code-line mt-2 text-dim">
         Your watches and your rating go with it. Nothing brings them back.
       </p>
     </div>

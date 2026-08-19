@@ -19,8 +19,8 @@ import { rateTitleAction, type RatingOutcome } from "./rating-action";
  * which then built five without ever choosing a five-point scale. `SPEC.md` §10.3 records
  * the divergence and rules for the schema. The treatment is unchanged and quoted straight
  * off `docs/design/prototypes/repertory-bill.html:452-458` — square cells, `1px` gaps over
- * `rule`, tabular numerals, label typography, unselected `ink` with dim bone, the chosen
- * value inverted to solid `signal` with `ink` text, hover previewing the same inversion.
+ * `hair`, tabular numerals, label typography, unselected `ground` with dim bone, the chosen
+ * value inverted to solid `accent` with `accent-ink` text, hover previewing the same inversion.
  *
  * ── The one build-time deviation: the cells share the row rather than sizing to a digit ─
  *
@@ -129,14 +129,14 @@ export function RatingControl({
   }
 
   return (
-    <div className="mt-7 border-t border-rule pt-5">
-      <p className="code-line text-stock-dim">Your rating</p>
+    <div className="mt-7 border-t border-hair pt-5">
+      <p className="code-line text-dim">Your rating</p>
 
       {/* The `1px` gaps are the group's own ground showing through, not ten borders —
-          `DESIGN.md`'s *`1px` gaps over `rule`*. `items-stretch` is what keeps every cell
+          `DESIGN.md`'s *`1px` gaps over `hair`*. `items-stretch` is what keeps every cell
           the same height once one of them is taller than its neighbours. */}
       <div
-        className="mt-3 flex items-stretch gap-px bg-rule"
+        className="mt-3 flex items-stretch gap-px bg-hair"
         role="group"
         aria-label={`Rate ${titleName}`}
       >
@@ -190,8 +190,8 @@ function Cell({
       data-numeric
       className={`code-line flex-1 px-1 py-2 text-center transition-colors duration-150 ${IN_FLIGHT} ${
         chosen
-          ? "bg-signal text-ink"
-          : "bg-ink text-stock-dim hover:bg-signal hover:text-ink"
+          ? "bg-accent text-accent-ink"
+          : "bg-ground text-dim hover:bg-accent hover:text-accent-ink"
       }`}
     >
       {value}

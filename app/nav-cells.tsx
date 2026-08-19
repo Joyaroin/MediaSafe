@@ -7,9 +7,9 @@ import { usePathname } from "next/navigation";
  * The masthead's two nav cells, and the one thing about them that needs the browser.
  *
  * `DESIGN.md`, Layout: *two nav items (Library, Search) as full-height inverted cells*.
- * Inversion is the strongest emphasis this system has — a solid bone block with ink type —
- * and Elevation & Depth is explicit that it *replaces elevation*: the current location is
- * not underlined, not tinted, and not raised.
+ * Inversion is the strongest emphasis this system has — a solid `text`-coloured block with
+ * `ground`-coloured type — and Elevation & Depth is explicit that it *replaces elevation*:
+ * the current location is not underlined, not tinted, and not raised.
  *
  * ── Why this is a client component ───────────────────────────────────────────────────
  *
@@ -55,8 +55,8 @@ export function NavCells() {
             aria-current={current ? "page" : undefined}
             className={
               current
-                ? "flex items-center border-r border-rule bg-stock px-4 text-ink lg:px-5"
-                : "flex items-center border-r border-rule px-4 text-stock-dim transition-colors duration-150 hover:bg-ink-raised hover:text-stock lg:px-5"
+                ? "flex items-center border-r border-hair bg-text px-4 text-ground lg:px-5"
+                : "flex items-center border-r border-hair px-4 text-dim transition-colors duration-150 hover:bg-raised hover:text-text lg:px-5"
             }
           >
             <span className="code-line">{item.label}</span>

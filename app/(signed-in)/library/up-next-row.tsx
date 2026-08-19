@@ -75,19 +75,19 @@ export function UpNextRow() {
   }, []);
 
   return (
-    <section className="hidden border-b border-rule-bold lg:block">
+    <section className="hidden border-b border-hair lg:block">
       {/* `DESIGN.md`'s type table: "Desktop section heads (`Tonight` via `lg:text-bill-sm`,
           `The library`)" — the same step and colour `LibraryHeading` sets for the bill's
           own heading, so the two read as one family of section head. */}
       <h2
         id={UP_NEXT_HEADING_ID}
-        className="bill-title px-6 pb-3 pt-4 lg:text-bill-sm text-stock"
+        className="bill-title px-6 pb-3 pt-4 lg:text-bill-sm text-text"
       >
         Tonight
       </h2>
 
       {phase.kind === "loading" ? (
-        <p role="status" className="code-line px-6 pb-5 text-stock-dim">
+        <p role="status" className="code-line px-6 pb-5 text-dim">
           Reading
         </p>
       ) : phase.kind === "failed" ? (
@@ -114,7 +114,7 @@ export function UpNextRow() {
 function NothingPartWayThrough() {
   return (
     <div className="px-6 pb-5">
-      <p className="text-item text-stock-dim">You&rsquo;re caught up on everything.</p>
+      <p className="text-item text-dim">You&rsquo;re caught up on everything.</p>
     </div>
   );
 }

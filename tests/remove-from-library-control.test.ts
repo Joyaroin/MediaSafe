@@ -63,10 +63,15 @@ describe("the remove control", () => {
     expect(render()).toContain('aria-label="Remove The Bear from your library"');
   });
 
-  it("is never vermilion", () => {
-    // `DESIGN.md`: vermilion is the live signal, reserved for recording a watch, and the
-    // abandon control is already named as the thing that must never take it. This is
-    // quieter still.
+  it("never takes the reserved accent", () => {
+    // The accent means a watch was recorded and nothing else (`app/globals.css`, issue
+    // #134), and the abandon control is already named as the thing that must never take
+    // it. This is quieter still.
+    //
+    // Both names are asserted on purpose: `signal` was the token before #134 renamed it,
+    // and a revert or a stale copy reintroducing it would otherwise pass a check written
+    // only against the new one.
+    expect(render()).not.toMatch(/accent/);
     expect(render()).not.toMatch(/signal/);
   });
 });

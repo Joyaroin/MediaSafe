@@ -50,7 +50,7 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  *
  * ── Structure is drawn, not spaced ───────────────────────────────────────────────────
  *
- * `DESIGN.md`'s Hairline Rule: cells are divided by `1px` `rule` borders on their bottom
+ * `DESIGN.md`'s Hairline Rule: cells are divided by `1px` `hair` borders on their bottom
  * and right edges — not by gaps, not by cards. There is no `gap` on this grid for the same
  * reason there is no radius and no shadow anywhere in this application.
  *
@@ -86,7 +86,7 @@ export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }
       // in: there is one library heading, and a prop would let a caller point the list at
       // something else without anything noticing.
       aria-labelledby={LIBRARY_HEADING_ID}
-      className="grid grid-cols-1 bg-ink sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      className="grid grid-cols-1 bg-ground sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       {entries.map((entry) => (
         <LibraryEntryCell key={entry.libraryEntryId} entry={entry} />

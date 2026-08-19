@@ -7,15 +7,15 @@ import { Wordmark } from "./press-mark";
 /**
  * The masthead, at every width. `DESIGN.md`, Layout:
  *
- * > A sticky masthead on a `1px` rule … Ground is `ink` at 95% opacity with a `2px`
+ * > A sticky masthead on a `1px` rule … Ground is `ground` at 95% opacity with a `2px`
  * > backdrop blur, so type scrolling underneath greys rather than disappears.
  *
- * > **The masthead is present at every width**, not desktop-only. Same sticky `ink/95`
+ * > **The masthead is present at every width**, not desktop-only. Same sticky `ground/95`
  * > cell on its `1px` rule, carrying press mark and wordmark.
  *
  * The measurements are load-bearing and are taken from the prototype
- * (`docs/design/prototypes/repertory-bill.html`) rather than re-derived: `bg-ink/95`,
- * `backdrop-blur-[2px]`, `border-b border-rule`, and cells divided by `1px` borders
+ * (`docs/design/prototypes/repertory-bill.html`) rather than re-derived: `bg-ground/95`,
+ * `backdrop-blur-[2px]`, `border-b border-hair`, and cells divided by `1px` borders
  * rather than by gaps.
  *
  * ── The display name ─────────────────────────────────────────────────────────────────
@@ -54,15 +54,15 @@ export async function Masthead() {
   const displayName = await currentDisplayName();
 
   return (
-    <header className="sticky top-0 z-30 flex items-stretch justify-between border-b border-rule bg-ink/95 backdrop-blur-[2px]">
+    <header className="sticky top-0 z-30 flex items-stretch justify-between border-b border-hair bg-ground/95 backdrop-blur-[2px]">
       <div className="flex items-stretch">
-        <div className="border-r border-rule px-4 py-3 lg:px-6">
+        <div className="border-r border-hair px-4 py-3 lg:px-6">
           <Wordmark markClassName="h-5 w-5" />
         </div>
 
         {/* `DESIGN.md`, Navigation: full-height cells on the masthead's hairline,
             separated by `1px` borders, label typography, inactive dim bone hovering to
-            `ink-raised` + bone, and the current one inverted.
+            `raised` + bone, and the current one inverted.
 
             Both cells are here now. This section used to say why only one was — *a nav
             item that goes nowhere is the reserved space §9 forbids, and it is worse than
@@ -83,8 +83,8 @@ export async function Masthead() {
           // Inert — a `span`, not a `Link` or a `button`. `DESIGN.md`, Phone: *never an
           // entrance*. `truncate` plus the capped width keep a full 24-character name
           // from ever stretching or wrapping this header, at any viewport.
-          <div className="flex min-w-0 items-center border-l border-rule px-4 lg:px-5">
-            <span className="code-line block max-w-[9rem] truncate text-stock-dim lg:max-w-[16rem]">
+          <div className="flex min-w-0 items-center border-l border-hair px-4 lg:px-5">
+            <span className="code-line block max-w-[9rem] truncate text-dim lg:max-w-[16rem]">
               {displayName}
             </span>
           </div>
@@ -93,7 +93,7 @@ export async function Masthead() {
         <Link
           href="/settings"
           aria-label="Settings"
-          className="flex items-center gap-2 border-l border-rule px-4 text-stock-dim transition-colors hover:bg-ink-raised hover:text-stock lg:px-5"
+          className="flex items-center gap-2 border-l border-hair px-4 text-dim transition-colors hover:bg-raised hover:text-text lg:px-5"
         >
           {/* Three struck rules with sliders on them — the same rectilinear vocabulary as
               the press mark, and the same drawing as the prototype's. */}

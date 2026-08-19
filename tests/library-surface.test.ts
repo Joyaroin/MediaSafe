@@ -32,7 +32,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  *
  *  1. **An empty library and a failed read look nothing like each other.** The one bug
  *     this whole ticket is shaped around. If a later edit centres the failure or drops its
- *     `signal` rule, every test still passes, the app still works, and a database that is
+ *     `accent` rule, every test still passes, the app still works, and a database that is
  *     down starts reading as a library with nothing in it — which is exactly how
  *     `tvtracker` shipped it for its entire life.
  *  2. **An abandoned entry dims its plate *and* its name.** `DESIGN.md`: *"that pairing is
@@ -49,7 +49,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  * section separates empty from failed by alignment, heading step, colour and border, and
  * every one of those is a utility class — there is no other artefact to assert against
  * short of rendering to a browser and comparing pixels. The assertions are written against
- * what `DESIGN.md` names (`text-signal`, `border-signal`, `text-center`, `opacity-45`) and
+ * what `DESIGN.md` names (`text-accent`, `border-accent`, `text-center`, `opacity-45`) and
  * not against whole class strings, so restyling that keeps the treatment keeps these
  * passing.
  *
@@ -103,12 +103,12 @@ describe("the empty library, zero matches, and a failed read", () => {
   });
 
   it("share one heading colour between them, and the failure alone takes the other", () => {
-    expect(failed).toContain("text-signal");
+    expect(failed).toContain("text-accent");
     // Vermilion is the failure's, and appears on no heading of the other two. The empty
-    // state's *button* is solid `signal` by DESIGN.md's own primary-recovery treatment,
+    // state's *button* is solid `accent` by DESIGN.md's own primary-recovery treatment,
     // so this is a check on the heading text, not a blanket absence of the colour.
-    expect(empty).not.toContain("text-bill-lg text-signal");
-    expect(zero).not.toContain("text-bill-md text-signal");
+    expect(empty).not.toContain("text-bill-lg text-accent");
+    expect(zero).not.toContain("text-bill-md text-accent");
   });
 
   it("puts the empty library one heading step above zero matches and the failure", () => {
@@ -122,13 +122,13 @@ describe("the empty library, zero matches, and a failed read", () => {
     expect(failed).not.toContain("text-bill-lg");
   });
 
-  it("differ by the top signal rule, which only the failure has", () => {
+  it("differ by the top accent rule, which only the failure has", () => {
     // The literal string `errors/failure-treatment.ts` exports as `FAILURE_SECTION` — not
-    // a bare "border-signal" search, which the zero-match state's own *ghost* recovery
+    // a bare "border-accent" search, which the zero-match state's own *ghost* recovery
     // button would also match and make this pass for the wrong reason.
-    expect(failed).toContain("border-t-2 border-signal");
-    expect(empty).not.toContain("border-t-2 border-signal");
-    expect(zero).not.toContain("border-t-2 border-signal");
+    expect(failed).toContain("border-t-2 border-accent");
+    expect(empty).not.toContain("border-t-2 border-accent");
+    expect(zero).not.toContain("border-t-2 border-accent");
   });
 
   it("differ by the reference id, which only the failure has", () => {
@@ -138,8 +138,8 @@ describe("the empty library, zero matches, and a failed read", () => {
   });
 
   it("gives the empty library the one primary action, and zero matches a lesser one", () => {
-    // `DESIGN.md`, Buttons: the primary recovery action is solid `signal` with `ink`
-    // text; every other recovery action, including "Clear the filter", is the ghost
+    // `DESIGN.md`, Buttons: the primary recovery action is solid `accent` with
+    // `accent-ink` text; every other recovery action, including "Clear the filter", is the ghost
     // treatment — a border rather than a fill. `errors/recovery-buttons.ts` names both
     // class strings once, so the test is against those rather than a guess at a substring
     // neither treatment's `hover:` half would also match.
@@ -168,7 +168,7 @@ describe("the library entry cell", () => {
     const abandoned = cell({ state: "abandoned" });
 
     expect(abandoned).toContain("opacity-45");
-    expect(abandoned).toContain("text-stock-dim");
+    expect(abandoned).toContain("text-dim");
     expect(abandoned).toContain("Abandoned");
 
     // And leaves both alone otherwise — the plate is modified in exactly one place.
@@ -230,7 +230,7 @@ describe("the grid", () => {
   });
 
   it("draws its structure with hairlines rather than gaps", () => {
-    expect(grid).toContain("border-b border-r border-rule");
+    expect(grid).toContain("border-b border-r border-hair");
 
     // The Hairline Rule is about the space *between* cells, so the assertion is on the
     // grid's own class list and not on the markup: the `gap-4` inside a cell is the
@@ -261,13 +261,13 @@ describe("the filter chips", () => {
     ]);
   });
 
-  it("inverts the selected chip to bone ground with ink text", () => {
+  it("inverts the selected chip to a text-coloured ground with ground-coloured text", () => {
     const markup = chips("finished");
     const finishedButton = markup.match(/<button[^>]*>Finished<\/button>/)?.[0];
 
     expect(finishedButton).toContain('aria-pressed="true"');
-    expect(finishedButton).toContain("bg-stock");
-    expect(finishedButton).toContain("text-ink");
+    expect(finishedButton).toContain("bg-text");
+    expect(finishedButton).toContain("text-ground");
   });
 
   it("keeps the Watching chip vermilion even unselected, and every other chip dim", () => {
@@ -276,9 +276,9 @@ describe("the filter chips", () => {
     const finishedButton = markup.match(/<button[^>]*>Finished<\/button>/)?.[0];
 
     expect(watchingButton).toContain('aria-pressed="false"');
-    expect(watchingButton).toContain("text-signal");
-    expect(finishedButton).toContain("text-stock-dim");
-    expect(finishedButton).not.toContain("text-signal");
+    expect(watchingButton).toContain("text-accent");
+    expect(finishedButton).toContain("text-dim");
+    expect(finishedButton).not.toContain("text-accent");
   });
 });
 

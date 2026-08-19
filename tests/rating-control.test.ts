@@ -72,12 +72,12 @@ describe("the rating control", () => {
     ]);
   });
 
-  it("inverts the chosen value to solid signal with ink text, and marks it pressed", () => {
+  it("inverts the chosen value to solid accent with accent-ink text, and marks it pressed", () => {
     const markup = render(7);
 
     expect(pressedNumber(markup)).toBe("7");
     expect(markup).toMatch(
-      /<button[^>]*class="[^"]*bg-signal text-ink[^"]*"[^>]*>7<\/button>/,
+      /<button[^>]*class="[^"]*bg-accent text-accent-ink[^"]*"[^>]*>7<\/button>/,
     );
   });
 
@@ -95,7 +95,7 @@ describe("the rating control", () => {
     // Its width comes from the row, not from its digits, so it carries the same classes
     // as every other chosen cell would.
     expect(markup).toMatch(
-      /<button[^>]*class="[^"]*flex-1[^"]*bg-signal text-ink[^"]*"[^>]*>10<\/button>/,
+      /<button[^>]*class="[^"]*flex-1[^"]*bg-accent text-accent-ink[^"]*"[^>]*>10<\/button>/,
     );
   });
 
@@ -103,9 +103,9 @@ describe("the rating control", () => {
     const markup = render(null);
 
     expect(pressedNumber(markup)).toBeNull();
-    // `hover:bg-signal` is on every cell and is the preview, not a choice — the lookbehind
+    // `hover:bg-accent` is on every cell and is the preview, not a choice — the lookbehind
     // is what makes this assert the absence of the inversion rather than of the word.
-    expect(markup).not.toMatch(/(?<!hover:)bg-signal/);
+    expect(markup).not.toMatch(/(?<!hover:)bg-accent/);
   });
 
   it("says nothing to an unrated title beyond naming the control", () => {
@@ -131,10 +131,10 @@ describe("the rating control", () => {
   it("sizes its cells from the row, with 1px gaps over rule", () => {
     const markup = render(null);
 
-    // `gap-px` over a `rule` ground is DESIGN.md's "1px gaps over rule"; `flex-1` on
+    // `gap-px` over a `hair` ground is DESIGN.md's "1px gaps over rule"; `flex-1` on
     // every cell is what makes ten of them fit a 420px panel and a phone alike, rather
     // than a fixed horizontal padding that fits one and overflows the other.
-    expect(markup).toContain("flex items-stretch gap-px bg-rule");
+    expect(markup).toContain("flex items-stretch gap-px bg-hair");
     expect([...markup.matchAll(/flex-1/g)]).toHaveLength(10);
   });
 

@@ -48,7 +48,7 @@ describe("the sign-out-other-devices control", () => {
     expect([...rendered.matchAll(/<button/g)]).toHaveLength(1);
     // The boolean attribute, not the `disabled:` Tailwind variant inside `class="..."`.
     expect(rendered).not.toMatch(/ disabled=""/);
-    expect(rendered).toContain("border-signal");
+    expect(rendered).toContain("border-accent");
   });
 });
 

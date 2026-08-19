@@ -86,15 +86,15 @@ export default async function RemoveTitlePage({
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
       <RemoveTitleHeading />
 
-      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock">
-        This removes <span className="text-stock">{footprint.name}</span> from your library
+      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-text">
+        This removes <span className="text-text">{footprint.name}</span> from your library
         and destroys everything MediaSafe holds about your watching of it. It happens
         immediately and it cannot be undone — there is no grace period, nothing is kept, and
         there is nothing to restore from.
       </p>
 
-      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="destroyed-h" className="code-line text-stock-dim">
+      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="destroyed-h" className="code-line text-dim">
           What this destroys
         </h2>
 
@@ -111,19 +111,19 @@ export default async function RemoveTitlePage({
           )}
         </dl>
 
-        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-dim">
           {footprint.name} itself is not destroyed — it stays in the catalogue MediaSafe
           shares between accounts, and nobody else&rsquo;s library is touched. You can add it
           again afterwards, and it arrives on your watchlist with none of this behind it.
         </p>
       </section>
 
-      <section aria-labelledby="instead-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="instead-h" className="code-line text-stock-dim">
+      <section aria-labelledby="instead-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="instead-h" className="code-line text-dim">
           If you only want to stop watching it
         </h2>
 
-        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
           Giving up on a title is the other thing, and it is not this one. It keeps every
           watch and every rating, takes the title out of Up next, and undoes itself the
           moment you watch the show again. It is on the title&rsquo;s own page, where you
@@ -131,8 +131,8 @@ export default async function RemoveTitlePage({
         </p>
       </section>
 
-      <section aria-labelledby="confirm-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="confirm-h" className="code-line text-stock-dim">
+      <section aria-labelledby="confirm-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="confirm-h" className="code-line text-dim">
           Confirm
         </h2>
 

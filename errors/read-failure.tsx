@@ -10,15 +10,15 @@ import { ReferenceLine } from "./reference-line";
 
 /**
  * The read-failure treatment, per DESIGN.md's States section: inline, left-aligned, a
- * `2px` `signal` top border, the heading at `text-bill-md` in `signal`, a ghost *Try
+ * `2px` `accent` top border, the heading at `text-bill-md` in `accent`, a ghost *Try
  * again*, and a dim tabular reference id.
  *
  * ── Why it looks nothing like an empty state ──────────────────────────────────────
  *
  * This is the whole point of the component, and it is why every one of those choices is
  * the opposite of the empty and zero-match treatments rather than merely different from
- * them. Those two are **centred**, with the heading in **`stock`** and no border at all.
- * This one is **left-aligned**, with the heading in **`signal`** under a **`2px` `signal`
+ * them. Those two are **centred**, with the heading in **`text`** and no border at all.
+ * This one is **left-aligned**, with the heading in **`accent`** under a **`2px` `accent`
  * rule** — the only place in the application where vermilion appears without a watch
  * having been recorded.
  *

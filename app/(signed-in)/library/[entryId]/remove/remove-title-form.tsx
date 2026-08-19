@@ -29,15 +29,16 @@ import { removeTitleAction, type RemoveTitleOutcome } from "./actions";
  *
  * ── Ghost, where the delete-account button is solid ──────────────────────────────────
  *
- * `DESIGN.md`'s Buttons section scopes solid `signal` on `ink` to the phone's recording
+ * `DESIGN.md`'s Buttons section scopes the solid accent — `bg-accent` on `text-accent-ink`
+ * since issue #134 renamed the ink, `signal` on `ink` before it — to the phone's recording
  * control and *the one primary recovery action*; issue #125 widened it for deleting an
  * account and said so out loud. **This does not widen it again**, and the difference is not
  * timidity. That button spends its life dead and arms only once the word is typed, so the
- * vermilion arriving *is* a live state — the job `DESIGN.md` gives the ink. Nothing arms
- * this one, so a solid vermilion field would sit on the page from the moment it loads,
- * which is vermilion used as a ground rather than as an event and is the thing the Two Inks
- * Rule forbids. The ghost treatment keeps it an outline until the hover inverts it, and the
- * inversion is an affordance `DESIGN.md` already sanctions.
+ * accent arriving *is* a live state, which is the job the ink is given. Nothing arms this
+ * one, so a solid accent field would sit on the page from the moment it loads — the accent
+ * used as a ground rather than as an event, and a colour that means *a watch was recorded*
+ * spent on a page where nothing has been. The ghost treatment keeps it an outline until the
+ * hover inverts it, and the inversion is an affordance `DESIGN.md` already sanctions.
  *
  * `GHOST_RECOVERY` is named for where it was first needed, and its own docblock says it is
  * *only errors-only today*. This is the second kind of surface to want it.
@@ -130,10 +131,10 @@ export function RemoveTitleForm({
           </p>
 
           {failure.kind === "unknown" ? (
-            <p className="mt-6 text-item text-stock-dim">
+            <p className="mt-6 text-item text-dim">
               <Link
                 href="/library"
-                className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+                className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
               >
                 Open your library ›
               </Link>

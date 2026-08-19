@@ -36,9 +36,9 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  * `DISABLED_DIM`, so the dim stays a decision taken in one place; only the cursor differs,
  * because *busy* and *refusing* are not the same fact.
  *
- * ── Solid `signal` here is a stated extension, not a quotation ───────────────────────
+ * ── Solid `accent` here is a stated extension, not a quotation ───────────────────────
  *
- * `DESIGN.md`'s Buttons section scopes solid `signal` on `ink` to two things: the phone's
+ * `DESIGN.md`'s Buttons section scopes solid `accent` on `accent-ink` to two things: the phone's
  * recording control, and *the one primary recovery action*. This is neither, so using
  * `SOLID_RECOVERY` here widens the list and that is said out loud rather than left to be
  * discovered — the same courtesy `recovery-buttons.ts` extends for the disabled variant.
@@ -48,7 +48,7 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  * is the other irreversible authored moment, and it is the only one that cannot be undone.
  * A quieter treatment would make the most consequential control in the application read as
  * less live than a rewatch. The button is also dead until the word is typed, so the full
- * vermilion arriving *is* a live state — which is the job `DESIGN.md` gives the ink.
+ * accent arriving *is* a live state — which is the job `DESIGN.md` gives it.
  */
 /**
  * The distinction moved to `errors/irreversible-failure.ts` when issue #142's remove became
@@ -146,12 +146,12 @@ export function DeleteAccountForm() {
 
       <label
         htmlFor="delete-confirmation"
-        className="block max-w-[60ch] text-note leading-relaxed text-stock-dim"
+        className="block max-w-[60ch] text-note leading-relaxed text-dim"
       >
         {/* Not `code-line`, which uppercases: the word has to be readable in the case it
             has to be typed in, and a label reading DELETE above a field that refuses
             `DELETE` would be the page arguing with itself. */}
-        To confirm, type <span className="text-stock">{CONFIRMATION_WORD}</span> below.
+        To confirm, type <span className="text-text">{CONFIRMATION_WORD}</span> below.
       </label>
 
       <input
@@ -169,10 +169,11 @@ export function DeleteAccountForm() {
         autoCorrect="off"
         autoCapitalize="none"
         spellCheck={false}
-        // `DESIGN.md`, Inputs: a `1px` `rule-bold` border on a transparent ground at
-        // `text-item`, the border moving to `signal` on focus with the input's own
+        // `DESIGN.md`, Inputs: a `1px` `hair` border on a transparent ground at
+        // `text-item`, the border moving to `text` at `2px` on focus — issue #134 moves
+        // focus off the accent onto brightness and border weight — with the input's own
         // outline suppressed in favour of it.
-        className="mt-4 block w-full max-w-[16rem] border border-rule-bold bg-transparent px-3 py-2 text-item text-stock focus:border-signal focus:outline-none"
+        className="mt-4 block w-full max-w-[16rem] border border-hair bg-transparent px-3 py-2 text-item text-text focus:border-2 focus:border-text focus:outline-none"
       />
 
       <div className="mt-8">

@@ -45,18 +45,19 @@ const CHIPS: { value: Chip; label: string }[] = [
 ];
 
 /**
- * `DESIGN.md`, Chips: *selected inverts to bone ground with ink text. Unselected is `ink`
- * with dim bone text, hovering to `ink-raised` with bone text. The Watching chip is the
- * one exception: its text is vermilion even when unselected, because vermilion always
- * means live.* One function rather than a lookup table, because there is exactly one
- * exception to name and a table would give it the same shape as five identical rows.
+ * `DESIGN.md`, Chips: *selected inverts to a `text`-coloured ground with `ground`-coloured
+ * text. Unselected is `ground` with dim `text` text, hovering to `raised` with full-strength
+ * text. The Watching chip is the one exception: its text is accent-coloured even when
+ * unselected, because the accent always means live.* One function rather than a lookup
+ * table, because there is exactly one exception to name and a table would give it the same
+ * shape as five identical rows.
  */
 function chipClassName(value: Chip, selected: boolean): string {
-  if (selected) return "bg-stock px-3 py-1.5 text-ink code-line";
+  if (selected) return "bg-text px-3 py-1.5 text-ground code-line";
   if (value === "watching") {
-    return "bg-ink px-3 py-1.5 text-signal code-line transition-colors hover:bg-ink-raised";
+    return "bg-ground px-3 py-1.5 text-accent code-line transition-colors hover:bg-raised";
   }
-  return "bg-ink px-3 py-1.5 text-stock-dim code-line transition-colors hover:bg-ink-raised hover:text-stock";
+  return "bg-ground px-3 py-1.5 text-dim code-line transition-colors hover:bg-raised hover:text-text";
 }
 
 export function LibraryChips({
@@ -68,7 +69,7 @@ export function LibraryChips({
 }) {
   return (
     <div
-      className="flex flex-wrap items-center gap-px bg-rule"
+      className="flex flex-wrap items-center gap-px bg-hair"
       role="group"
       aria-label="Filter by where a title stands"
     >
@@ -88,7 +89,7 @@ export function LibraryChips({
 }
 
 /**
- * `DESIGN.md`, Inputs: *a `1px` `rule-bold` bordered row with a bar icon, `13rem` wide,
+ * `DESIGN.md`, Inputs: *a `1px` `hair` bordered row with a bar icon, `13rem` wide,
  * transparent ground, bone text at `text-item`, dim bone placeholder reading "Filter your
  * library".* The same treatment as the search screen's field, and — per `CONTEXT.md` and
  * `SPEC.md` §4 — never its copy: this one narrows the library you already have, and the
@@ -102,8 +103,8 @@ export function FilterField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="ml-auto flex items-center gap-2 border border-rule-bold px-3 py-1.5 focus-within:border-signal">
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-stock-dim" aria-hidden="true">
+    <label className="ml-auto flex items-center gap-2 border border-hair px-3 py-1.5 focus-within:border-2 focus-within:border-text">
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-dim" aria-hidden="true">
         <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
         <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
         <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
@@ -118,7 +119,7 @@ export function FilterField({
         placeholder="Filter your library"
         autoComplete="off"
         aria-label="Filter your library"
-        className="w-52 bg-transparent text-item text-stock placeholder:text-stock-dim focus:outline-none"
+        className="w-52 bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
       />
     </label>
   );
@@ -153,13 +154,13 @@ export function SortSelect({ value }: { value: LibrarySort }) {
 
   return (
     <label className="flex items-center gap-2">
-      <span className="code-line text-stock-dim">Sort</span>
+      <span className="code-line text-dim">Sort</span>
       <span className="relative inline-flex items-center">
         <select
           value={value}
           onChange={(event) => onChange(event.target.value as LibrarySort)}
           aria-label="Sort the library"
-          className="appearance-none border border-rule-bold bg-ink py-1.5 pl-3 pr-9 text-item text-stock focus:border-signal focus:outline-none"
+          className="appearance-none border border-hair bg-ground py-1.5 pl-3 pr-9 text-item text-text focus:border-2 focus:border-text focus:outline-none"
         >
           {LIBRARY_SORTS.map((sort) => (
             <option key={sort.value} value={sort.value}>
@@ -169,7 +170,7 @@ export function SortSelect({ value }: { value: LibrarySort }) {
         </select>
         <svg
           viewBox="0 0 12 8"
-          className="pointer-events-none absolute right-3 h-2 w-3 text-signal"
+          className="pointer-events-none absolute right-3 h-2 w-3 text-accent"
           aria-hidden="true"
         >
           <polygon points="0,0 12,0 6,8" fill="currentColor" />
@@ -191,10 +192,10 @@ export function SortSelect({ value }: { value: LibrarySort }) {
  */
 export function ZeroMatches({ onClear }: { onClear: () => void }) {
   return (
-    <section className="border-t border-rule px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-md text-stock">Nothing under that filter</h2>
+    <section className="border-t border-hair px-6 py-16 text-center">
+      <h2 className="bill-title text-bill-md text-text">Nothing under that filter</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-note text-stock-dim">
+      <p className="mx-auto mt-3 max-w-[60ch] text-note text-dim">
         Your library still holds everything it did. Clear the filter to see it again.
       </p>
 

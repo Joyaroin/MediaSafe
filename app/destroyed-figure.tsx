@@ -44,14 +44,14 @@ export function DestroyedFigure({
 }) {
   return (
     <div className="flex flex-col-reverse">
-      <dt className="code-line mt-2 text-stock-dim">{label}</dt>
-      <dd className="bill-title text-bill-lg text-stock" data-numeric>
+      <dt className="code-line mt-2 text-dim">{label}</dt>
+      <dd className="bill-title text-bill-lg text-text" data-numeric>
         {outOf === undefined ? (
           count.toLocaleString("en-GB")
         ) : (
           <>
             {count}
-            <span className="text-stock-dim">/{outOf}</span>
+            <span className="text-dim">/{outOf}</span>
           </>
         )}
       </dd>

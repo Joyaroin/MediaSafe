@@ -14,7 +14,7 @@ import { RECORDING_CONTROL, WatchStamp, WatchStrike } from "./watch-mark-motion"
  * is the seam `tests/up-next-grid.test.ts` renders directly.
  *
  * `DESIGN.md`, Up Next Row (desktop): *an auto-fill grid, not a scroller. Cards are
- * `minmax(292px, 1fr)` on `1px` gaps over `bg-rule`, `0.75rem` padding, ground `ink`, and
+ * `minmax(292px, 1fr)` on `1px` gaps over `bg-hair`, `0.75rem` padding, ground `ground`, and
  * the whole row is capped at `max-height: 122px` with `overflow: hidden` so exactly one
  * row of whole cards renders.* Every class below is that sentence — there is no second
  * breakpoint here, no scroller and no numeric cap on how many entries are passed in. The
@@ -40,7 +40,7 @@ export function UpNextGrid({
   return (
     <ol
       aria-labelledby={headingId}
-      className="grid max-h-[122px] grid-cols-[repeat(auto-fill,minmax(292px,1fr))] gap-px overflow-hidden bg-rule"
+      className="grid max-h-[122px] grid-cols-[repeat(auto-fill,minmax(292px,1fr))] gap-px overflow-hidden bg-hair"
     >
       {entries.map((entry) => (
         <UpNextCard key={entry.libraryEntryId} entry={entry} />
@@ -97,7 +97,7 @@ function UpNextCard({ entry }: { entry: UpNextEntry }) {
   });
 
   return (
-    <li className="flex gap-3 bg-ink p-3">
+    <li className="flex gap-3 bg-ground p-3">
       <Plate posterPath={entry.posterPath} className="h-[92px] w-[69px] shrink-0" />
 
       {/* `WatchStamp`'s own relative container — the card's right-hand block, offset to
@@ -109,15 +109,15 @@ function UpNextCard({ entry }: { entry: UpNextEntry }) {
             the strike's `top: 50%` line across the stacked title/episode/code lines
             rather than through the title itself. */}
         <span className="relative block">
-          <p className="bill-title truncate text-bill-sm text-stock">{entry.titleName}</p>
+          <p className="bill-title truncate text-bill-sm text-text">{entry.titleName}</p>
           {phase === "marking" ? <WatchStrike onSettled={settle} /> : null}
         </span>
 
-        <p className="mt-1 truncate text-item text-stock-dim">
+        <p className="mt-1 truncate text-item text-dim">
           {upNextEpisodeName(entry)}
         </p>
 
-        <p className="code-line mt-1 text-stock-dim" data-numeric>
+        <p className="code-line mt-1 text-dim" data-numeric>
           S{entry.seasonNo} E{entry.episodeNo}
         </p>
 
@@ -132,7 +132,7 @@ function UpNextCard({ entry }: { entry: UpNextEntry }) {
             Strike it
           </button>
         ) : (
-          <span className="code-line mt-auto text-stock-dim">Watched</span>
+          <span className="code-line mt-auto text-dim">Watched</span>
         )}
 
         {phase === "marking" ? <WatchStamp /> : null}

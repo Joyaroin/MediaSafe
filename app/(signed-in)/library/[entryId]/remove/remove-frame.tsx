@@ -22,7 +22,7 @@ import Link from "next/link";
  * to the numbers it was read with, in one statement.
  */
 export function RemoveTitleHeading() {
-  return <h1 className="bill-title text-bill-lg text-stock">Remove from library</h1>;
+  return <h1 className="bill-title text-bill-lg text-text">Remove from library</h1>;
 }
 
 /**
@@ -55,10 +55,10 @@ export function RemoveTitleHeading() {
  */
 export function BackToLibrary() {
   return (
-    <p className="mt-8 text-item text-stock-dim">
+    <p className="mt-8 text-item text-dim">
       <Link
         href="/library"
-        className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+        className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
       >
         ‹ Back to your library
       </Link>
