@@ -129,7 +129,7 @@ export function RatingControl({
   }
 
   return (
-    <div className="mt-7 border-t border-hair pt-5">
+    <div className="mt-7">
       <p className="code-line text-dim">Your rating</p>
 
       {/* The `1px` gaps are the group's own ground showing through, not ten borders —

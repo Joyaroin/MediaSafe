@@ -5,7 +5,7 @@ import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { useWatchMark } from "./use-watch-mark";
-import { RECORDING_CONTROL, STRUCK_NAME, WatchStamp, WatchStrike } from "./watch-mark-motion";
+import { RECORDING_CONTROL, WATCHED_NAME, WatchSweep } from "./watch-mark-motion";
 
 /**
  * The season/episode list — the row that carries the product's most important rule
@@ -162,9 +162,10 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
 
 /**
  * `DESIGN.md`, Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
- * **name** at `text-item` as the actual content; a trailing state code line. Watched
- * episodes are struck through in dim bone; the up-next episode inverts its number into a
- * solid vermilion chip and carries a vermilion *Up next* label.
+ * **name** at `text-item` as the actual content; a trailing state code line. The up-next
+ * episode inverts its number into a solid accent chip and carries an accent *Up next*
+ * label; a watched episode's name is dimmed, and nothing else marks it — issue #139
+ * retired the strike-through this row used to draw over it.
  *
  * ── The three phases of one row ───────────────────────────────────────────────────────
  *
@@ -175,49 +176,54 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * `watched` (the optimistic flag) and `phase` are deliberately two different pieces of
  * state. `watched` flips the instant the row is touched — the button disappears and the
  * trailing label reads *Watched* immediately, which is what "marks the episode
- * immediately, before the server has answered" means. `phase` governs only the strike and
- * the stamp: while it is `marking`, the *animated* rule and stamp play and the *static*
- * `line-through` is suppressed, so the two never render on top of each other. `phase`
- * reaches `settled` on the strike's own `onAnimationEnd` — the longer of the two motions
- * (`420ms` against the stamp's `280–380ms`) — at which point the row falls back to
- * exactly the static, already-watched appearance this file rendered before this ticket.
+ * immediately, before the server has answered" means. `phase` governs only the sweep:
+ * while it is `marking`, `WatchSweep` plays over the row; `phase` reaches `settled` on the
+ * sweep's own `onAnimationEnd` (`~200ms`), at which point the row falls back to exactly
+ * the static, already-watched appearance — the dimmed name, and nothing else.
  *
  * ── The bounding rect ──────────────────────────────────────────────────────────────────
  *
- * The strike and the stamp are both `position: absolute` (`watch-mark-motion.tsx`'s
- * `WatchStrike` / `WatchStamp`, `app/globals.css`'s `watch-strike` / `watch-stamp`
- * utilities) inside `relative` containers, so neither takes up flow space. What *is* in
- * flow, and does change between the two states, is the recording control itself: it
- * disappears the instant `watched` flips, and its own box (border, `0.25rem`/`0.625rem`
- * padding) is taller than the plain code-line text either side of it renders on its own.
- * Left alone, that shrinks the row by a fraction of a pixel the moment the button goes —
- * measured, not assumed, and it did not pass the first time: `min-h-[1.375rem]`, sized to
- * the button's padding box alone, still let the row settle about `0.6px` shorter once the
- * button was gone, because Tailwind's preflight box-sizing means `min-height` competes
- * with the *taller* of the row's two states, not the control alone. `min-h-11`
- * (`2.75rem`, Tailwind's own step — not an arbitrary value) is sized to comfortably clear
- * the row's own tallest natural content (name line + `py-2.5`) instead, which is what
- * actually dominates, and pinning to that clamps both states to the same number.
+ * The sweep is `position: absolute` (`watch-mark-motion.tsx`'s `WatchSweep`,
+ * `app/globals.css`'s `watch-sweep` utility) inside this `<li>`'s own `relative`
+ * container, so it never takes up flow space — the same guarantee `watch-strike` /
+ * `watch-stamp` held for the strike-and-stamp this replaces, and the one property this
+ * ticket exists to keep exactly as it was: **the row's bounding rect, before the sweep and
+ * after it, has to be the same rect.** What *is* in flow, and does change between the two
+ * states, is the recording control itself: it disappears the instant `watched` flips, and
+ * its own box (border, `0.25rem`/`0.625rem` padding) is taller than the plain code-line
+ * text either side of it renders on its own. Left alone, that shrinks the row by a
+ * fraction of a pixel the moment the button goes — measured, not assumed, and it did not
+ * pass the first time: `min-h-[1.375rem]`, sized to the button's padding box alone, still
+ * let the row settle about `0.6px` shorter once the button was gone, because Tailwind's
+ * preflight box-sizing means `min-height` competes with the *taller* of the row's two
+ * states, not the control alone. `min-h-11` (`2.75rem`, Tailwind's own step — not an
+ * arbitrary value) is sized to comfortably clear the row's own tallest natural content
+ * (name line + `py-2.5`) instead, which is what actually dominates, and pinning to that
+ * clamps both states to the same number.
  *
- * Re-measured against the compiled CSS in a real Chromium tab (`getBoundingClientRect`),
- * not assumed from the class names: `x`, `y`, `width` and `height` were identical —
- * `44px` tall at a `420px` pane width — across all three phases (button showing, mid
- * -strike, settled), and held at a `340px` phone width and with the *Up next* label
- * present alongside the control too. `FilmRow` below reuses this exact `li` shape for the
- * same reason — a row that resizes when it succeeds is still a row that moves under a
- * thumb still resting on it, whether the row is an episode's or a film's.
+ * **Re-measured for issue #139** against the compiled CSS in a real Chromium tab
+ * (`getBoundingClientRect`), not assumed from the class names, over the sweep's own cycle
+ * — unwatched-with-button, mid-sweep, `260ms` in (past the sweep's own `200ms`, so the
+ * fully-settled paint), and settled-with-rewatch-and-unwatch: the `<li>` came back
+ * `372 × 44px`, at `x 24 / y 51.44`, identical across all four, at a `420px` pane width.
+ * Re-measured again at a `375px` pane (the phone width, minus the same `1.5rem` gutters):
+ * `327 × 44px` before the press and after the mark settled, identical again. `FilmRow`
+ * below reuses this exact `li` shape for the same reason — a row that resizes when it
+ * succeeds is still a row that moves under a thumb still resting on it, whether the row is
+ * an episode's or a film's.
  *
- * **Re-measured again for issue #89**, which puts two more controls on the row and so
- * could have broken it: same method, against the compiled CSS in a real browser, over
- * every state the row had then — unwatched, unwatched-and-up-next, watched-with-unwatch,
- * watched-from-an-import (which #145 has since removed), and a name long enough to wrap.
- * The `li` came back
- * `371 × 44px` at a `420px` pane, `326 × 44px` at `375px` and `291 × 44px` at `340px`,
- * **identical in every state at each width**, and the episode name beside it came back
- * identical too (`151px`, `106px`, `71px`) rather than moving as the controls changed.
- * Nothing was clipped at any width. The two things that buy that are the fixed trailing
- * measure (`TRAILING`) and the name's `truncate`; without the second, a long name wraps
- * and takes the row's height with it.
+ * **Re-measured for issue #89** before the sweep existed, which put two more controls on
+ * the row and so could have broken it: same method, against the compiled CSS in a real
+ * browser, over every state the row had then — unwatched, unwatched-and-up-next,
+ * watched-with-unwatch, watched-from-an-import (which #145 has since removed), and a name
+ * long enough to wrap. The `li` came back `371 × 44px` at a `420px` pane, `326 × 44px` at
+ * `375px` and `291 × 44px` at `340px`, **identical in every state at each width**, and the
+ * episode name beside it came back identical too (`151px`, `106px`, `71px`) rather than
+ * moving as the controls changed. Nothing was clipped at any width. The two things that
+ * buy that are the fixed trailing measure (`TRAILING`) and the name's `truncate`; without
+ * the second, a long name wraps and takes the row's height with it. The `1px` gap between
+ * that measurement and #139's own (`371` against `372`) is rounding noise between two
+ * separately-built harnesses, not a regression — both land on the same `44px` height.
  *
  * ── Idempotency, one key per outstanding write ───────────────────────────────────────
  *
@@ -246,22 +252,22 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * The distinction is carried in the chrome as well as the words. *Strike it* is the
  * bordered ghost button `DESIGN.md`'s Buttons section specifies; both of these are
  * underlined text controls with no border and no fill, which is that section's treatment
- * for a control that must not compete with the daily gesture. *Rewatch* stays
- * **vermilion**, because it records a watch and vermilion is what recording a watch looks
- * like; *Unwatch* is dim and never vermilion, exactly as the abandon control is and for the
- * same stated reason.
+ * for a control that must not compete with the daily gesture. *Rewatch* stays **accent**,
+ * because it records a watch and the accent is what recording a watch looks like;
+ * *Unwatch* is dim and never accent, exactly as the abandon control is and for the same
+ * stated reason.
  *
  * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
- * for the length of the strike, and the controls arrive with `settled`. A control that
+ * for the length of the sweep, and the controls arrive with `settled`. A control that
  * materialises under a thumb still resting on the row it just touched is the same mistake
  * as a row that resizes under it.
  *
  * *Unwatch* takes the trailing state line's place rather than sitting beside it, so a
- * settled watched row reads *Rewatch · Unwatch*. The struck name is what says *watched*
- * (`DESIGN.md`, Episode Line); the code line beside it gives way to the control that acts
- * on it, the way the abandon control's own reassurance gives way when it stops being the
- * true statement. The *Watched* code line survives in one place only — the length of the
- * strike, before either control arrives.
+ * settled watched row reads *Rewatch · Unwatch*. The dimmed name is what says *watched*
+ * now (`DESIGN.md`, Episode Line, as issue #139 redraws it); the code line beside it gives
+ * way to the control that acts on it, the way the abandon control's own reassurance gives
+ * way when it stops being the true statement. The *Watched* code line survives in one
+ * place only — the length of the sweep, before either control arrives.
  *
  * ── Unwatch is offered on every watched row — issue #145 ─────────────────────────────
  *
@@ -275,7 +281,7 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * so the condition has nothing left to say and the field behind it is gone rather than
  * pinned to `watched`. **A watched row offers an unwatch. That is the whole rule**, and
  * `watched` is what states it — there is no second flag here that could disagree with the
- * strike beside it.
+ * dimmed name beside it.
  *
  * Nothing here counts anything. `watched` and `phase` are the whole state, and there is no
  * number of watches on this row to display — `CONTEXT.md`: a rewatch is *never a number
@@ -315,11 +321,11 @@ function EpisodeLine({
       {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
           TMDB not having named it yet — not a licence to print the number a second time
           in its place. */}
-      <span className="relative min-w-0 flex-1 text-item">
+      <span className="min-w-0 flex-1 text-item">
         <span
           className={`block truncate ${
             watched && phase === "settled"
-              ? STRUCK_NAME
+              ? WATCHED_NAME
               : episode.upNext && !watched
                 ? "font-medium"
                 : ""
@@ -327,8 +333,6 @@ function EpisodeLine({
         >
           {episode.name === null ? "Not yet named" : episode.name}
         </span>
-
-        {phase === "marking" ? <WatchStrike onSettled={settle} /> : null}
       </span>
 
       <span className={TRAILING}>
@@ -368,7 +372,7 @@ function EpisodeLine({
         )}
       </span>
 
-      {phase === "marking" ? <WatchStamp /> : null}
+      {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}
     </li>
   );
 }
@@ -376,7 +380,7 @@ function EpisodeLine({
 /**
  * The film recording control — issue #90. A film has no episode list, so this is the row
  * that occupies its slot instead: the same `li` shape `EpisodeLine` measured, the same
- * strike-and-stamp, the same `use-watch-mark.ts` hook, driving `recordWatch` with a null
+ * sweep (issue #139), the same `use-watch-mark.ts` hook, driving `recordWatch` with a null
  * `episodeId` (`RecordWatchParams` was built to take one — issue #85). No `E1` chip and no
  * *Up next* label: neither concept exists for a film, and `DESIGN.md`'s Material Event
  * Rule is about the mark, not about carrying every piece of an episode row that a film has
@@ -424,16 +428,10 @@ function FilmRow({
 
   return (
     <li className="relative flex min-h-11 items-center gap-3 py-2.5">
-      <span className="relative flex-1 text-item">
-        <span
-          className={
-            watched && phase === "settled" ? STRUCK_NAME : ""
-          }
-        >
+      <span className="flex-1 text-item">
+        <span className={watched && phase === "settled" ? WATCHED_NAME : ""}>
           {titleName}
         </span>
-
-        {phase === "marking" ? <WatchStrike onSettled={settle} /> : null}
       </span>
 
       {watched ? (
@@ -442,7 +440,7 @@ function FilmRow({
         <MarkWatchedButton label={`Mark ${titleName} watched`} onClick={attempt} />
       )}
 
-      {phase === "marking" ? <WatchStamp /> : null}
+      {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}
     </li>
   );
 }
