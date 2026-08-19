@@ -48,7 +48,12 @@ export interface SweepQuarantine {
   readonly reason: QuarantineReason;
 }
 
-/** One title repointed at the id that survived, with what evidenced it (issue #116). */
+/**
+ * One title repointed at the id that survived (issue #116).
+ *
+ * The evidencing external id is not repeated here — it is `candidate.externalId`, and a
+ * repoint cannot happen without one. `title_reconciliation` is where it is written down.
+ */
 export interface SweepRepoint {
   readonly candidate: SweepCandidate;
   readonly toTmdbId: number;

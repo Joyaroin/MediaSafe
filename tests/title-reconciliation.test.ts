@@ -174,6 +174,26 @@ function survivorMirror(tmdbId: number, episodes: readonly EpisodeMirror[]): Tit
   };
 }
 
+/**
+ * A show with one episode, one viewer, and one watch on that episode.
+ *
+ * Every quarantine below is seeded through this rather than with a bare title, so that
+ * *"no watch is ever repointed, under any branch"* is asserted **on every branch** rather
+ * than only on the branch that is about watches. A quarantine with no watches in the
+ * database cannot tell a watch left alone from a watch there never was.
+ */
+async function seedWatchedShow(
+  tx: Transaction,
+  seed: { externalId?: ExternalId | null; metadataRefreshedAt?: Date } = {},
+): Promise<SeededTitle & { readonly watchedTmdbEpisodeId: number }> {
+  const show = await seedShow(tx, seed);
+  const watchedTmdbEpisodeId = 530_000 + nextNumber();
+  const episodeId = await seedEpisode(tx, show.id, watchedTmdbEpisodeId, 1);
+  const [userId, libraryEntryId] = await seedViewer(tx, show.id);
+  await seedWatch(tx, { userId, libraryEntryId, titleId: show.id, episodeId });
+  return { ...show, watchedTmdbEpisodeId };
+}
+
 /** `/find` answering with exactly one surviving show. */
 const findsOne = (tmdbId: number): FindByExternalId => async () =>
   ({ tv_results: [{ id: tmdbId }] }) satisfies TmdbFindPayload;
@@ -320,29 +340,37 @@ describe("a 404 that reconciles", () => {
 
 describe("a 404 that is quarantined", () => {
   /**
-   * The property every case below shares, asserted the same way each time: nothing was
-   * written. The title's id, its name and its `metadata_refreshed_at` are all exactly what
-   * they were, no reconciliation was recorded, every watch is untouched, and the title is
-   * still in the queue on the next run rather than stamped as done.
+   * Snapshot everything a quarantine must not change, and return the check that proves it
+   * did not: the title's id, its name, its `metadata_refreshed_at`, that no reconciliation
+   * was recorded, and every watch row for row.
+   *
+   * **A closure rather than a pair of arguments**, and that is the whole reason it is
+   * shaped this way. The obvious spelling takes a "before" and compares it to an "after",
+   * and a caller can hand it a snapshot read *after* the sweep — which still passes,
+   * because it is then comparing the result to itself. Reading the baseline is the act of
+   * asking for the check, so there is no order left to get wrong.
    */
-  async function expectUntouched(
+  async function untouchedAfter(
     tx: Transaction,
     show: SeededTitle,
-    before: Awaited<ReturnType<typeof titleRow>>,
-    watchesBefore: Awaited<ReturnType<typeof allWatches>>,
-  ): Promise<void> {
-    const after = await titleRow(tx, show.id);
-    expect(after.tmdbId).toBe(show.tmdbId);
-    expect(after.name).toBe(before.name);
-    expect(after.metadataRefreshedAt.getTime()).toBe(before.metadataRefreshedAt.getTime());
-    expect(await reconciliationsOf(tx, show.id)).toEqual([]);
-    expect(await allWatches(tx)).toEqual(watchesBefore);
+  ): Promise<() => Promise<void>> {
+    const before = await titleRow(tx, show.id);
+    const watchesBefore = await allWatches(tx);
+
+    return async () => {
+      const after = await titleRow(tx, show.id);
+      expect(after.tmdbId).toBe(show.tmdbId);
+      expect(after.name).toBe(before.name);
+      expect(after.metadataRefreshedAt.getTime()).toBe(before.metadataRefreshedAt.getTime());
+      expect(await reconciliationsOf(tx, show.id)).toEqual([]);
+      expect(await allWatches(tx)).toEqual(watchesBefore);
+    };
   }
 
   it("quarantines a title with no external id, and never looks anything up", () =>
     inTransaction(async (tx) => {
-      const show = await seedShow(tx, { externalId: null });
-      const before = await titleRow(tx, show.id);
+      const show = await seedWatchedShow(tx, { externalId: null });
+      const stillUntouched = await untouchedAfter(tx, show);
 
       const neverSearched: FindByExternalId = () => {
         throw new Error("no external id: nothing may be looked up, and nothing searched");
@@ -355,13 +383,13 @@ describe("a 404 that is quarantined", () => {
       );
 
       expect(outcome.quarantined.map((one) => one.reason)).toEqual(["no-external-id"]);
-      await expectUntouched(tx, show, before, await allWatches(tx));
+      await stillUntouched();
     }));
 
   it("quarantines when the external id resolves to nothing", () =>
     inTransaction(async (tx) => {
-      const show = await seedShow(tx);
-      const before = await titleRow(tx, show.id);
+      const show = await seedWatchedShow(tx);
+      const stillUntouched = await untouchedAfter(tx, show);
 
       const outcome = await runNightlySweep(
         fetchExcept(show.tmdbId, survivorMirror(show.tmdbId + 100_000, [])),
@@ -371,13 +399,13 @@ describe("a 404 that is quarantined", () => {
       );
 
       expect(outcome.quarantined.map((one) => one.reason)).toEqual(["no-surviving-id"]);
-      await expectUntouched(tx, show, before, await allWatches(tx));
+      await stillUntouched();
     }));
 
   it("quarantines when the external id resolves to more than one, rather than picking", () =>
     inTransaction(async (tx) => {
-      const show = await seedShow(tx);
-      const before = await titleRow(tx, show.id);
+      const show = await seedWatchedShow(tx);
+      const stillUntouched = await untouchedAfter(tx, show);
       const [first, second] = [show.tmdbId + 100_000, show.tmdbId + 200_000];
 
       const findsTwo: FindByExternalId = async () => ({
@@ -393,11 +421,14 @@ describe("a 404 that is quarantined", () => {
       expect(outcome.quarantined.map((one) => one.reason)).toEqual([
         "more-than-one-surviving-id",
       ]);
-      await expectUntouched(tx, show, before, await allWatches(tx));
+      await stillUntouched();
     }));
 
   it("quarantines when an episode carrying watches is missing from the survivor", () =>
     inTransaction(async (tx) => {
+      // Seeded by hand rather than through `seedWatchedShow`, because this case needs
+      // to name the watched episode's TMDB id: the survivor's own S1 E1 must carry a
+      // different one for the assertion below to mean anything.
       const show = await seedShow(tx);
       const watchedEpisode = await seedEpisode(tx, show.id, 520_001, 1);
       const [userId, libraryEntryId] = await seedViewer(tx, show.id);
@@ -407,8 +438,7 @@ describe("a 404 that is quarantined", () => {
         titleId: show.id,
         episodeId: watchedEpisode,
       });
-      const before = await titleRow(tx, show.id);
-      const watchesBefore = await allWatches(tx);
+      const stillUntouched = await untouchedAfter(tx, show);
 
       const survivingId = show.tmdbId + 100_000;
       // The survivor has an S1 E1 of its own, under a different TMDB episode id. Same
@@ -425,7 +455,7 @@ describe("a 404 that is quarantined", () => {
       expect(outcome.quarantined.map((one) => one.reason)).toEqual([
         "watched-episode-missing",
       ]);
-      await expectUntouched(tx, show, before, watchesBefore);
+      await stillUntouched();
       // Not repointed, and not created either: the survivor's episode was never written.
       const written = await tx
         .select({ id: episode.id })
@@ -436,15 +466,22 @@ describe("a 404 that is quarantined", () => {
 
   it("quarantines rather than merging when the surviving id is already a title of its own", () =>
     inTransaction(async (tx) => {
-      const show = await seedShow(tx);
+      const show = await seedWatchedShow(tx);
       // Somebody already added the entry TMDB merged this one into. Repointing would
       // collide with `UNIQUE (kind, tmdb_id)`, and merging the two rows would mean moving
       // watches between titles — which never happens.
       const survivorRow = await seedShow(tx, { metadataRefreshedAt: new Date() });
-      const before = await titleRow(tx, show.id);
+      const stillUntouched = await untouchedAfter(tx, show);
 
+      // The survivor still carries the watched episode, so the episode check passes and
+      // this reaches the write — which is the only place the collision can be found. A
+      // survivor without it would quarantine one step earlier, as `watched-episode-
+      // missing`, and this test would pass while proving nothing about the collision.
+      const survivor = survivorMirror(survivorRow.tmdbId, [
+        episodeMirror(show.watchedTmdbEpisodeId, 1),
+      ]);
       const outcome = await runNightlySweep(
-        fetchExcept(show.tmdbId, survivorMirror(survivorRow.tmdbId, [])),
+        fetchExcept(show.tmdbId, survivor),
         findsOne(survivorRow.tmdbId),
         // A cap of 1 so the sweep picks only the vanished title: it is the older of the
         // two by `metadata_refreshed_at`, and `titlesDueForRefresh` reads oldest first.
@@ -455,7 +492,7 @@ describe("a 404 that is quarantined", () => {
       expect(outcome.quarantined.map((one) => one.reason)).toEqual([
         "surviving-id-already-mirrored",
       ]);
-      await expectUntouched(tx, show, before, await allWatches(tx));
+      await stillUntouched();
       // And the title that was already there is untouched too.
       expect((await titleRow(tx, survivorRow.id)).tmdbId).toBe(survivorRow.tmdbId);
     }));
