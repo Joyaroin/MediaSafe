@@ -143,7 +143,7 @@ async function seedEntry(
 async function seedList(
   tx: Transaction,
   userId: UserId,
-  entryId: string,
+  titleId: string,
 ): Promise<string> {
   const number = nextNumber();
   const [row] = await tx
@@ -152,7 +152,7 @@ async function seedList(
     .returning({ id: list.id });
   await tx
     .insert(listMembership)
-    .values({ listId: row.id, libraryEntryId: entryId, userId, position: 1 });
+    .values({ listId: row.id, titleId, userId, position: 1 });
   return row.id;
 }
 
@@ -239,8 +239,8 @@ describe("deleting the account", () => {
       const reader = await seedUser(tx, "reader");
       await seedSignedIn(tx, reader);
       const show = await seedShow(tx);
-      const entryId = await seedEntry(tx, reader, show, { rating: 7, watches: 2 });
-      await seedList(tx, reader, entryId);
+      await seedEntry(tx, reader, show, { rating: 7, watches: 2 });
+      await seedList(tx, reader, show.titleId);
 
       expect(await ownedRowCounts(tx, reader)).toEqual({
         entries: 1,
@@ -293,8 +293,8 @@ describe("deleting the account", () => {
       const shared = await seedShow(tx);
 
       await seedEntry(tx, reader, shared, { rating: 3, watches: 2 });
-      const theirEntry = await seedEntry(tx, other, shared, { rating: 10, watches: 4 });
-      await seedList(tx, other, theirEntry);
+      await seedEntry(tx, other, shared, { rating: 10, watches: 4 });
+      await seedList(tx, other, shared.titleId);
 
       await deleteAccount(reader, tx);
 
