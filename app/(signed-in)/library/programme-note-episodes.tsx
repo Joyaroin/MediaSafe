@@ -147,10 +147,16 @@ function episodeFullName(episode: EpisodeDetail): string {
  * `136.5px`, was the narrower of the two watched states and is unreachable now that every
  * watched row offers an unwatch. The widest state is the one it always was.
  *
- * That is also what settled the rewatch control's label. *Watch it again* measures
- * `107.8px` and puts the imported-watch state at `182px` — over the slot, and only
- * payable by taking `22px` off every episode name on the phone. *Rewatch* is
- * `CONTEXT.md`'s own word for the thing, and it fits.
+ * That is also what settled the rewatch control's label, and the argument outlives the
+ * state it was measured against. #89 measured *Watch it again* at `107.8px` and recorded
+ * what it did to *Rewatch · Watched*: `136.5px` became `182px`. That state is gone with
+ * #145 — but the two recorded numbers are what matter, and their difference is the
+ * label's own cost, `45.5px`, which it charges to whichever watched state is on screen.
+ * The state that replaced it is the wider of the two at `138.1px`, so the swap lands past
+ * `183px` there: over the `160px` slot, and only payable by taking `22px` off every
+ * episode name on the phone. *Rewatch* is `CONTEXT.md`'s own word for the thing, and it
+ * fits. (Arithmetic on #89's measurements, not a fresh one — nothing about the two
+ * surviving states' widths changed, so there was nothing new to measure.)
  */
 const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
 
