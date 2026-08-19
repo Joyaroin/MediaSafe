@@ -124,12 +124,11 @@ function episodeFullName(episode: EpisodeDetail): string {
  *
  * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
  * is the same rule applied along the other axis, and issue #89 is what makes it
- * necessary: the slot now holds four different sets of things — *Up next* beside *Strike
- * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch*; *Rewatch* beside
- * *Watched* where the only other watch was imported — and they are not the same width.
- * Left to size themselves, the episode name beside them would jump every time one gave
- * way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways instead of
- * vertically.
+ * necessary: the slot holds three different sets of things — *Up next* beside *Strike
+ * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch* — and they are
+ * not the same width. Left to size themselves, the episode name beside them would jump
+ * every time one gave way to another, which is `DESIGN.md`'s *nothing reflows* broken
+ * sideways instead of vertically.
  *
  * So the slot is fixed and its contents are right-aligned inside it, the name takes the
  * rest with `min-w-0`, and the name truncates rather than wrapping. Truncation is the
@@ -137,16 +136,27 @@ function episodeFullName(episode: EpisodeDetail): string {
  * is the property #88 measured twice to get.
  *
  * **`10rem` is what the row already needed, not new width.** Measured against the
- * compiled CSS in a real browser, the widest of the four states is the one that was there
- * before issue #89 — *Up next* beside *Strike it*, at `153.6px`. The two #89 adds come in
- * under it: *Rewatch* beside *Unwatch* at `138.1px` (re-measured for #140, which renamed
- * the label from *Undo*), and *Rewatch* beside *Watched* at `136.5px`. So nothing had to
- * give way to make room, and the episode name is exactly as wide as it was.
+ * compiled CSS in a real browser, the widest of the three states is the one that was
+ * there before issue #89 — *Up next* beside *Strike it*, at `153.6px`. The one #89 adds
+ * comes in under it: *Rewatch* beside *Unwatch* at `138.1px` (re-measured for #140, which
+ * renamed the label from *Undo*). So nothing had to give way to make room, and the
+ * episode name is exactly as wide as it was.
  *
- * That is also what settled the rewatch control's label. *Watch it again* measures
- * `107.8px` and puts the imported-watch state at `182px` — over the slot, and only
- * payable by taking `22px` off every episode name on the phone. *Rewatch* is
- * `CONTEXT.md`'s own word for the thing, and it fits.
+ * #145 needs no re-measurement, and this is the case where saying why is worth more than
+ * a number: it **removes** a state rather than adding one. *Rewatch* beside *Watched*, at
+ * `136.5px`, was the narrower of the two watched states and is unreachable now that every
+ * watched row offers an unwatch. The widest state is the one it always was.
+ *
+ * That is also what settled the rewatch control's label, and the argument outlives the
+ * state it was measured against. #89 measured *Watch it again* at `107.8px` and recorded
+ * what it did to *Rewatch · Watched*: `136.5px` became `182px`. That state is gone with
+ * #145 — but the two recorded numbers are what matter, and their difference is the
+ * label's own cost, `45.5px`, which it charges to whichever watched state is on screen.
+ * The state that replaced it is the wider of the two at `138.1px`, so the swap lands past
+ * `183px` there: over the `160px` slot, and only payable by taking `22px` off every
+ * episode name on the phone. *Rewatch* is `CONTEXT.md`'s own word for the thing, and it
+ * fits. (Arithmetic on #89's measurements, not a fresh one — nothing about the two
+ * surviving states' widths changed, so there was nothing new to measure.)
  */
 const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
 
@@ -199,8 +209,9 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  *
  * **Re-measured again for issue #89**, which puts two more controls on the row and so
  * could have broken it: same method, against the compiled CSS in a real browser, over
- * every state the row now has — unwatched, unwatched-and-up-next, watched-with-unwatch,
- * watched-from-an-import, and a name long enough to wrap. The `li` came back
+ * every state the row had then — unwatched, unwatched-and-up-next, watched-with-unwatch,
+ * watched-from-an-import (which #145 has since removed), and a name long enough to wrap.
+ * The `li` came back
  * `371 × 44px` at a `420px` pane, `326 × 44px` at `375px` and `291 × 44px` at `340px`,
  * **identical in every state at each width**, and the episode name beside it came back
  * identical too (`151px`, `106px`, `71px`) rather than moving as the controls changed.
@@ -245,24 +256,30 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * materialises under a thumb still resting on the row it just touched is the same mistake
  * as a row that resizes under it.
  *
- * *Unwatch* takes the trailing state line's place rather than sitting beside it, so where
- * there is an unwatch to offer the row reads *Rewatch · Unwatch*, and where there is not —
- * the watch was imported — it reads *Rewatch · Watched*. The struck name is what says
- * *watched* in both (`DESIGN.md`, Episode Line); the code line beside it gives way to the
- * control that acts on it, the way the abandon control's own reassurance gives way when
- * it stops being the true statement.
+ * *Unwatch* takes the trailing state line's place rather than sitting beside it, so a
+ * settled watched row reads *Rewatch · Unwatch*. The struck name is what says *watched*
+ * (`DESIGN.md`, Episode Line); the code line beside it gives way to the control that acts
+ * on it, the way the abandon control's own reassurance gives way when it stops being the
+ * true statement. The *Watched* code line survives in one place only — the length of the
+ * strike, before either control arrives.
  *
- * ── Unwatch is offered from `unwatchable`, never guessed ─────────────────────────────
+ * ── Unwatch is offered on every watched row — issue #145 ─────────────────────────────
  *
- * `episode.unwatchable` is *this account has a watch of this episode that the application
- * recorded*. An episode whose only watch was imported reads as watched and offers no
- * unwatch at all — `db/access.ts`'s `unwatch` refuses that delete regardless, but a
- * control that is never drawn is the honest half of the pair, not a duplicate of the
- * check.
+ * It used to be conditional. `episode.unwatchable` said *this account has a watch of this
+ * episode that the application recorded*, and an episode whose only watch was imported
+ * read as watched and offered no unwatch at all. The library is 19,558 imported watches
+ * (`SPEC.md` §7), so that control did not render on essentially anything its only reader
+ * owns: the feature existed and was structurally invisible to him.
  *
- * Nothing here counts anything. `watched`, `unwatchable` and `phase` are the whole state,
- * and there is no number of watches on this row to display — `CONTEXT.md`: a rewatch is
- * *never a number kept on a title*.
+ * `db/access.ts`'s `unwatch` now removes every watch of an episode whatever recorded it,
+ * so the condition has nothing left to say and the field behind it is gone rather than
+ * pinned to `watched`. **A watched row offers an unwatch. That is the whole rule**, and
+ * `watched` is what states it — there is no second flag here that could disagree with the
+ * strike beside it.
+ *
+ * Nothing here counts anything. `watched` and `phase` are the whole state, and there is no
+ * number of watches on this row to display — `CONTEXT.md`: a rewatch is *never a number
+ * kept on a title*.
  */
 function EpisodeLine({
   episode,
@@ -274,9 +291,8 @@ function EpisodeLine({
   titleName: string;
 }) {
   const fullName = episodeFullName(episode);
-  const { watched, unwatchable, phase, pending, attempt, unwatch, settle } = useWatchMark({
+  const { watched, phase, pending, attempt, unwatch, settle } = useWatchMark({
     initialWatched: episode.watched,
-    initialUnwatchable: episode.unwatchable,
     libraryEntryId,
     episodeId: episode.id,
     titleName,
@@ -339,19 +355,15 @@ function EpisodeLine({
               Rewatch
             </button>
 
-            {unwatchable ? (
-              <button
-                type="button"
-                onClick={() => void unwatch()}
-                disabled={pending}
-                aria-label={`Unwatch ${fullName}`}
-                className={`code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
-              >
-                Unwatch
-              </button>
-            ) : (
-              <span className="code-line text-dim">Watched</span>
-            )}
+            <button
+              type="button"
+              onClick={() => void unwatch()}
+              disabled={pending}
+              aria-label={`Unwatch ${fullName}`}
+              className={`code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
+            >
+              Unwatch
+            </button>
           </>
         )}
       </span>

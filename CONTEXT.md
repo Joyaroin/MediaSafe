@@ -55,7 +55,8 @@ watches and never kept alongside them.
 _Avoid_: watch event, play, view, log entry
 
 **Unwatch**:
-Removing a watch you had recorded; the episode goes back to unwatched.
+Removing every watch of one thing — an episode, or a film — whatever recorded them; it goes back to
+unwatched.
 _Avoid_: undo, unmark, reset, clear
 
 **Undated watch**:

@@ -40,30 +40,29 @@ export async function recordWatchAction(
 }
 
 /**
- * Taking one watch back — issue #89, over `db/access.ts`'s `unwatch`. The same thin
- * wrapper as `recordWatchAction` above, for the same two reasons, and it is worth saying
- * that the thinness is the point on a delete in particular: **there is no rule here.**
- * *Never an imported watch*, *exactly one row*, *the most recent one this account
- * recorded* — all three live in `unwatch`, where `tests/watch-unwatch.test.ts` reaches
- * them against real Postgres. A guard restated here would be a second copy of a rule that
- * has to hold at the table, and a second copy is how the two come to disagree.
+ * Unwatching an episode — issue #89, rewritten by #145, over `db/access.ts`'s `unwatch`.
+ * The same thin wrapper as `recordWatchAction` above, for the same two reasons, and the
+ * thinness is the point on a delete in particular: **there is no rule here.** *Every
+ * watch of that episode*, *only that episode's*, *only this account's* all live in
+ * `unwatch`, where `tests/watch-unwatch.test.ts` reaches them against real Postgres. A
+ * guard restated here would be a second copy of a rule that has to hold at the table, and
+ * a second copy is how the two come to disagree.
  *
- * ── What comes back, and why it is not a boolean ──────────────────────────────────────
+ * ── Why nothing comes back but `ok` ───────────────────────────────────────────────────
  *
- * Two facts about what survives, both read from the table rather than assumed: whether
- * the episode is still watched at all, and whether there is still an app watch to
- * unwatch. A browser cannot work either out — an imported watch underneath is invisible
- * to it, and so is the earlier half of a rewatch — so its optimistic guess of *unwatched*
- * is corrected from these rather than left standing.
+ * #89 returned two facts about what survived — still watched at all, and still an app
+ * watch to take back — because the browser's optimistic guess of *unwatched* was wrong
+ * whenever an imported watch or the earlier half of a rewatch was underneath, and could
+ * not be worked out from here. #145 removes every watch of the episode, so **the guess is
+ * now always right** and there is nothing to correct it with. A field carrying `false`
+ * for ever is a field a surface eventually branches on.
  *
- * `unwatch`'s own `removed` is deliberately **not** on the wire. Nothing renders it: a
- * press that removed nothing because there was nothing of this account's to remove is not
- * a lost write, it is the row having been out of date, and the two fields above are what
- * put it right. Adding a third field no surface reads is how a surface eventually invents
- * a use for it.
+ * `unwatch`'s own `removed` stays off the wire, as it was. A press that removed nothing
+ * is a row that was out of date, not a lost write, and the appearance it lands on —
+ * unwatched — is the same either way.
  */
 export type UnwatchActionOutcome =
-  | { readonly ok: true; readonly watched: boolean; readonly unwatchable: boolean }
+  | { readonly ok: true }
   | { readonly ok: false; readonly reference: string | null };
 
 export async function unwatchAction(
@@ -72,8 +71,8 @@ export async function unwatchAction(
   const userId = await requireUserId();
 
   try {
-    const outcome = await unwatch(userId, params);
-    return { ok: true, watched: outcome.watched, unwatchable: outcome.unwatchable };
+    await unwatch(userId, params);
+    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unwatch" }) };
   }
