@@ -140,8 +140,10 @@ describe("the rating control", () => {
     const markup = render(null);
 
     expect(markup).toContain('aria-label="Rate The Bear"');
-    expect(markup).toContain('aria-label="10"');
-    // Ten cells each repeating the title would make the scale unusable to listen to.
+    // Exactly one `aria-label` in the whole control — the group's. A cell's accessible
+    // name is its own text, so labelling it again would be redundant, and labelling it
+    // with the title would make the scale unusable to listen to.
+    expect([...markup.matchAll(/aria-label=/g)]).toHaveLength(1);
     expect([...markup.matchAll(/The Bear/g)]).toHaveLength(1);
   });
 });

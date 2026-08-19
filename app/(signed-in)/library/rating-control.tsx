@@ -179,11 +179,10 @@ function Cell({
       type="button"
       onClick={onChoose}
       disabled={busy}
-      // `aria-pressed` is the whole of what a screen reader is told, so the label is the
-      // number and nothing else — the group above already says what is being rated, and
-      // repeating it ten times is how a scale becomes unusable to listen to.
+      // No `aria-label`: the cell's own text already names it, and the group above says
+      // what is being rated. Ten cells each repeating the title is how a scale becomes
+      // unusable to listen to, and `aria-pressed` is the whole of the rest.
       aria-pressed={chosen}
-      aria-label={String(value)}
       data-numeric
       className={`code-line flex-1 px-1 py-2 text-center transition-colors duration-150 ${IN_FLIGHT} ${
         chosen
