@@ -67,11 +67,14 @@ export function useWatchMark({
 
   /**
    * What this surface was rendered knowing, from the server read behind it — and only
-   * ever a *seed*. It is what the mark is created from if this is the first surface to
-   * show this episode, and it is discarded if another one already is (`watch-marks.ts`:
-   * a mark is never released). Lazy and held in state so its identity is stable:
-   * `useSyncExternalStore` compares snapshots by identity, and a fresh object per render
-   * would re-render for ever while nothing was outstanding.
+   * ever a *seed*. It creates the mark if no surface has shown this episode yet, replaces
+   * it if one has but nothing has been written to it, and is discarded once something
+   * has: past that point the store knows things a server read does not, including a write
+   * still in flight. `watch-marks.ts`'s `subscribe` is where that rule lives.
+   *
+   * Lazy and held in state so its identity is stable: `useSyncExternalStore` compares
+   * snapshots by identity, and a fresh object per render would re-render for ever while
+   * nothing was outstanding.
    */
   const [initial] = useState<WatchMarkView>(() => ({
     watched: initialWatched,

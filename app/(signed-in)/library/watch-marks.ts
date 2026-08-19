@@ -421,6 +421,10 @@ export function createWatchMarks({
   return {
     subscribe(subject, initial, onChange) {
       const one = ensure(subject, initial);
+      // Listening before reseeding, so the surface that brought the newer read is told
+      // about it like any other. `useSyncExternalStore` re-reads after subscribing and
+      // would catch it either way; this does not make anyone depend on that.
+      one.listeners.add(onChange);
       // The newer server read wins over a mark nothing has written to — and only over
       // that one. `restore` moves with it: what a failure puts back is what the episode
       // looked like before the press, and that is now this.
@@ -428,7 +432,6 @@ export function createWatchMarks({
         one.restore = appearanceOf(initial);
         apply(one, initial);
       }
-      one.listeners.add(onChange);
       return () => {
         one.listeners.delete(onChange);
       };
