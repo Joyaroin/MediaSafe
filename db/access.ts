@@ -113,8 +113,10 @@ declare const userIdBrand: unique symbol;
  * Better Auth's `user.id` — `text`, not a uuid — and branded, so that it is not
  * interchangeable with the other strings this app is about to be full of.
  *
- * ADR-0001 gives `library_entry`, `watch`, `list` and `list_membership` a uuid `id` of
- * their own alongside `user_id`, and `watch` carries a `source_key`. Read into variables,
+ * ADR-0001 gives `library_entry`, `watch` and `list` a uuid `id` of their own alongside
+ * `user_id`, and `watch` carries a `source_key`. (`list_membership` never had one — its
+ * key is composite, `(list_id, title_id)` since amendment 7 — and this line said it did
+ * until #143 went looking.) Read into variables,
  * those are all `string`, and so is a user id — so `readWatches(entryId)` against a
  * signature expecting a user id compiles clean and scopes to nobody's rows, which is the
  * benign half of that mistake.
@@ -906,9 +908,9 @@ export async function applyImportChunk(
  * an import backfilled.
  *
  * It is a constant rather than three string literals because three functions now have to
- * agree on it and the disagreement would be silent: `recordWatch` writes it, `undoWatch`
+ * agree on it and the disagreement would be silent: `recordWatch` writes it, `unwatch`
  * refuses to delete anything else, and `getTitleDetail` decides from it whether a row can
- * offer an undo at all. A typo in the second of those does not throw — it quietly deletes
+ * offer an unwatch at all. A typo in the second of those does not throw — it quietly deletes
  * an imported watch, which is the one outcome issue #89 exists to prevent.
  *
  * There is deliberately no constant for the import's own source: `applyImportChunk` takes
@@ -1051,7 +1053,7 @@ export async function recordWatch(
  * would be a surface that could be made to delete a specific row of somebody's history
  * by editing a value in a request.
  */
-export interface UndoWatchParams {
+export interface UnwatchParams {
   readonly libraryEntryId: string;
   /** `null` for a film; a real `episode.id` for a show. */
   readonly episodeId: string | null;
@@ -1060,19 +1062,19 @@ export interface UndoWatchParams {
 /**
  * What is left afterwards — read back from the table, never assumed by the caller.
  *
- * `watched` and `undoable` are exactly what `getTitleDetail` reports for the same
+ * `watched` and `unwatchable` are exactly what `getTitleDetail` reports for the same
  * episode, so the row a browser is holding can be corrected from a returned outcome
  * instead of guessing. The guess it would otherwise make is wrong in both of the cases
  * this function exists for: an imported watch underneath still leaves the episode
- * watched, and undoing a rewatch leaves an app watch to undo again.
+ * watched, and unwatching a rewatch leaves an app watch to unwatch again.
  */
-export interface UndoWatchOutcome {
+export interface UnwatchOutcome {
   /** Whether a watch was actually removed. `false` when there was none of ours to take. */
   readonly removed: boolean;
   /** Whether any watch of this episode survives — imported, or an earlier app one. */
   readonly watched: boolean;
-  /** Whether an app watch survives, so undo can be offered again. */
-  readonly undoable: boolean;
+  /** Whether an app watch survives, so unwatch can be offered again. */
+  readonly unwatchable: boolean;
 }
 
 /**
@@ -1080,23 +1082,23 @@ export interface UndoWatchOutcome {
  *
  * ── Exactly one row, and only ever one of ours ────────────────────────────────────────
  *
- * A rewatch is a second `watch` row (`CONTEXT.md`, ADR-0001), so "undo" cannot mean
- * *unwatch this episode*: it means **remove the most recent watch this account recorded
- * through the app**, leaving anything underneath it standing. That is one `DELETE` of one
- * id, resolved by the `SELECT … LIMIT 1` above it, and not a `DELETE` with a `LIMIT` this
- * dialect does not have.
+ * A rewatch is a second `watch` row (`CONTEXT.md`, ADR-0001), so unwatching cannot mean
+ * *put the episode itself back to unwatched*: it means **remove the most recent watch this
+ * account recorded through the app**, leaving anything underneath it standing. That is one
+ * `DELETE` of one id, resolved by the `SELECT … LIMIT 1` above it, and not a `DELETE` with
+ * a `LIMIT` this dialect does not have.
  *
  * **`source = 'app'` is stated on both statements.** The `SELECT` narrows to a row this
  * application wrote; the `DELETE` then refuses to remove anything else even if handed an
  * id that is not one. That is not redundancy for its own sake — it is the one predicate
  * whose loss is silent. A `DELETE` by primary key alone is correct exactly as long as the
- * query above it stays correct, and `tests/watch-undo.test.ts` asserts the survival of a
+ * query above it stays correct, and `tests/watch-unwatch.test.ts` asserts the survival of a
  * `'tvtracker'` row directly rather than reading either query and believing it.
  *
  * The reason that matters is not symmetry with `recordWatch`. `SPEC.md` §7's 19,391
  * imported watches were reconstructed once from an archive that no longer has a live
  * source: they are not editable from the application at all, and an episode whose only
- * watch is imported has no undo to offer (`getTitleDetail`'s `undoable` is what says so
+ * watch is imported has no unwatch to offer (`getTitleDetail`'s `unwatchable` is what says so
  * before a reader ever gets a control to press). If an imported watch is wrong, that is a
  * conversion problem with a committed archive behind it — not a button.
  *
@@ -1114,7 +1116,7 @@ export interface UndoWatchOutcome {
  * No derived state is written, because there is none to write (`db/views.ts`). And
  * `abandoned_at` is **not** touched in either direction: `recordWatch` clears it because
  * `CONTEXT.md` says watching something again clears it, and there is no matching rule
- * saying taking a watch back gives up on a title. Undoing a mis-tap is a correction to
+ * saying taking a watch back gives up on a title. Unwatching a mis-tap is a correction to
  * the record, not a decision about the title.
  *
  * ── One transaction ───────────────────────────────────────────────────────────────────
@@ -1130,11 +1132,11 @@ export interface UndoWatchOutcome {
  * then stated on the watch statements too rather than trusted to follow from the entry:
  * this is a delete, and the two predicates cost one index lookup between them.
  */
-export async function undoWatch(
+export async function unwatch(
   userId: UserId,
-  params: UndoWatchParams,
+  params: UnwatchParams,
   executor: Executor = getDb(),
-): Promise<UndoWatchOutcome> {
+): Promise<UnwatchOutcome> {
   return executor.transaction(async (tx) => {
     const [entry] = await tx
       .select({ id: libraryEntry.id })
@@ -1183,7 +1185,7 @@ export async function undoWatch(
     return {
       removed: removedRows.length > 0,
       watched: surviving.length > 0,
-      undoable: surviving.some((one) => one.source === APP_WATCH_SOURCE),
+      unwatchable: surviving.some((one) => one.source === APP_WATCH_SOURCE),
     };
   });
 }
@@ -1595,10 +1597,12 @@ export async function accountFootprint(
  *
  * ── Why there is so little here ──────────────────────────────────────────────────────
  *
- * `library_entry`, `list`, `session` and `account` all carry
- * `REFERENCES "user"(id) ON DELETE CASCADE`, and `watch` and `list_membership` cascade
- * transitively through their composite keys to `library_entry` and `list` (ADR-0001,
- * `db/tables.ts`). So the deletion is one `DELETE`, and the ordering, the atomicity and
+ * `library_entry`, `list`, `list_membership`, `session` and `account` all carry
+ * `REFERENCES "user"(id) ON DELETE CASCADE`, and `watch` cascades transitively through
+ * its composite key to `library_entry` (ADR-0001, `db/tables.ts`). `list_membership`
+ * gained its direct key with amendment 7, when it stopped reaching `user` through
+ * `library_entry`; it also still cascades through `list`, and either route alone would
+ * take it. So the deletion is one `DELETE`, and the ordering, the atomicity and
  * the completeness are Postgres's rather than a hand-written sequence's — which is the
  * only version of this that cannot be got half-right. A list of deletes in application
  * code is a list a seventh owned table gets left off.
@@ -2263,11 +2267,11 @@ export interface EpisodeDetail {
    *
    * Named for the question the surface asks rather than for the column behind it, the
    * same way `upNext` above is: it is the *only* question anything asks of the source,
-   * and issue #89's rule is that an episode whose watches are all imported offers no undo
-   * at all. A watched episode with `undoable: false` is one somebody reconstructed from
-   * an archive, and this application is not the editor of it.
+   * and issue #89's rule is that an episode whose watches are all imported offers no
+   * unwatch at all. A watched episode with `unwatchable: false` is one somebody
+   * reconstructed from an archive, and this application is not the editor of it.
    */
-  readonly undoable: boolean;
+  readonly unwatchable: boolean;
   /** This is `library_entry_up_next`'s episode, if it has one. */
   readonly upNext: boolean;
 }
@@ -2383,12 +2387,12 @@ export async function getTitleDetail(
     watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
   );
   /**
-   * The same rows, narrowed to the ones this application wrote — issue #89's undo. It is
-   * a second `Set` over one query rather than a second query for the same reason the
+   * The same rows, narrowed to the ones this application wrote — issue #89's unwatch. It
+   * is a second `Set` over one query rather than a second query for the same reason the
    * first one is a `Set` at all: a rewatch is two rows against one episode, and the
    * question here is only ever *is there one of ours*.
    */
-  const undoableEpisodeIds = new Set(
+  const unwatchableEpisodeIds = new Set(
     watchedRows
       .filter((one) => one.source === APP_WATCH_SOURCE)
       .map((one) => one.episodeId)
@@ -2422,7 +2426,7 @@ export async function getTitleDetail(
       episodeNo: one.episodeNo,
       name: one.name,
       watched: watchedEpisodeIds.has(one.id),
-      undoable: undoableEpisodeIds.has(one.id),
+      unwatchable: unwatchableEpisodeIds.has(one.id),
       upNext: one.id === upNextEpisodeId,
     })),
   };

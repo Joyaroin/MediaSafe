@@ -33,13 +33,13 @@ export type { WatchAppearance, WatchMarkPhase } from "./watch-marks";
  * `episodeName` is left absent for a film for the same reason: `LostWrite.episode` is
  * optional precisely so the toast can name a title with no episode.
  *
- * `undo` is offered to every caller and drawn by one. `FilmRow` does not call it — a
- * film's undo is not #89's scope, which is the watched *episode* — and this makes no
+ * `unwatch` is offered to every caller and drawn by one. `FilmRow` does not call it — a
+ * film's unwatch is not #89's scope, which is the watched *episode* — and this makes no
  * decision about that; it offers the write, the row decides whether to draw a control.
  */
 export function useWatchMark({
   initialWatched,
-  initialUndoable = false,
+  initialUnwatchable = false,
   libraryEntryId,
   episodeId,
   titleName,
@@ -47,8 +47,8 @@ export function useWatchMark({
   onRecorded,
 }: {
   readonly initialWatched: boolean;
-  /** Absent for a film, which draws no undo control and so never reads this. */
-  readonly initialUndoable?: boolean;
+  /** Absent for a film, which draws no unwatch control and so never reads this. */
+  readonly initialUnwatchable?: boolean;
   readonly libraryEntryId: string;
   readonly episodeId: string | null;
   readonly titleName: string;
@@ -78,7 +78,7 @@ export function useWatchMark({
    */
   const [initial] = useState<WatchMarkView>(() => ({
     watched: initialWatched,
-    undoable: initialUndoable,
+    unwatchable: initialUnwatchable,
     phase: initialWatched ? "settled" : "unwatched",
     pending: false,
   }));
@@ -107,7 +107,7 @@ export function useWatchMark({
   return {
     ...view,
     attempt: () => watchMarks.mark(subject, naming, onRecorded),
-    undo: () => watchMarks.undo(subject, naming),
+    unwatch: () => watchMarks.unwatch(subject, naming),
     settle: () => watchMarks.settle(subject),
   };
 }

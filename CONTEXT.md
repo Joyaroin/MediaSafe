@@ -35,12 +35,15 @@ mind. There is one per title and never one per watch.
 _Avoid_: score, stars, review, favourite
 
 **List**:
-A named group of library entries you curate by hand. Films and shows may sit in the same list.
+A named group of titles you curate by hand. Films and shows may sit in the same list, and so may
+titles you have never added to your library — a list is your own grouping, not a view of what you
+own.
 _Avoid_: collection, folder, tag, category
 
 **List membership**:
-The fact that one library entry belongs to one list. Yours, never derived from anything MediaSafe
-knows about the title.
+The fact that one **title** belongs to one list, at one position. Yours, never derived from anything
+MediaSafe knows about the title. It survives that title leaving your library, because one action
+must not silently edit a grouping you ordered by hand.
 _Avoid_: list item, list entry
 
 ## Watching
@@ -50,6 +53,10 @@ A record that you watched one episode, or one film, once. This is the only thing
 about watching: progress, where a title stands, rewatches, streaks and stats are all read out of
 watches and never kept alongside them.
 _Avoid_: watch event, play, view, log entry
+
+**Unwatch**:
+Removing a watch you had recorded; the episode goes back to unwatched.
+_Avoid_: undo, unmark, reset, clear
 
 **Undated watch**:
 A watch you know happened but not when. Anything derived from dates ignores it; anything derived

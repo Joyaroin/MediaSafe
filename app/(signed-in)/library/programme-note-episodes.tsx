@@ -125,7 +125,7 @@ function episodeFullName(episode: EpisodeDetail): string {
  * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
  * is the same rule applied along the other axis, and issue #89 is what makes it
  * necessary: the slot now holds four different sets of things — *Up next* beside *Strike
- * it*; *Watched* alone while the strike plays; *Rewatch* beside *Undo*; *Rewatch* beside
+ * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch*; *Rewatch* beside
  * *Watched* where the only other watch was imported — and they are not the same width.
  * Left to size themselves, the episode name beside them would jump every time one gave
  * way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways instead of
@@ -138,10 +138,10 @@ function episodeFullName(episode: EpisodeDetail): string {
  *
  * **`10rem` is what the row already needed, not new width.** Measured against the
  * compiled CSS in a real browser, the widest of the four states is the one that was there
- * before this ticket — *Up next* beside *Strike it*, at `153.6px`. The two this ticket
- * adds come in under it: *Rewatch* beside *Undo* at `111.2px`, and *Rewatch* beside
- * *Watched* at `136.5px`. So nothing had to give way to make room, and the episode name
- * is exactly as wide as it was.
+ * before issue #89 — *Up next* beside *Strike it*, at `153.6px`. The two #89 adds come in
+ * under it: *Rewatch* beside *Unwatch* at `138.1px` (re-measured for #140, which renamed
+ * the label from *Undo*), and *Rewatch* beside *Watched* at `136.5px`. So nothing had to
+ * give way to make room, and the episode name is exactly as wide as it was.
  *
  * That is also what settled the rewatch control's label. *Watch it again* measures
  * `107.8px` and puts the imported-watch state at `182px` — over the slot, and only
@@ -199,7 +199,7 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  *
  * **Re-measured again for issue #89**, which puts two more controls on the row and so
  * could have broken it: same method, against the compiled CSS in a real browser, over
- * every state the row now has — unwatched, unwatched-and-up-next, watched-with-undo,
+ * every state the row now has — unwatched, unwatched-and-up-next, watched-with-unwatch,
  * watched-from-an-import, and a name long enough to wrap. The `li` came back
  * `371 × 44px` at a `420px` pane, `326 × 44px` at `375px` and `291 × 44px` at `340px`,
  * **identical in every state at each width**, and the episode name beside it came back
@@ -225,7 +225,7 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  *
  * ── The two controls a struck row offers, and the one it does not ────────────────────
  *
- * Issue #89. A watched episode offers *Rewatch* and *Undo*, and **neither is the control
+ * Issue #89. A watched episode offers *Rewatch* and *Unwatch*, and **neither is the control
  * that struck it** — the ghost *Strike it* button is gone the moment the row is watched,
  * so the daily gesture cannot be repeated into a rewatch. `ADR-0001`'s per-click key
  * protects one click across its retries and can do nothing about two clicks, and a
@@ -237,7 +237,7 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * underlined text controls with no border and no fill, which is that section's treatment
  * for a control that must not compete with the daily gesture. *Rewatch* stays
  * **vermilion**, because it records a watch and vermilion is what recording a watch looks
- * like; *Undo* is dim and never vermilion, exactly as the abandon control is and for the
+ * like; *Unwatch* is dim and never vermilion, exactly as the abandon control is and for the
  * same stated reason.
  *
  * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
@@ -245,22 +245,23 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * materialises under a thumb still resting on the row it just touched is the same mistake
  * as a row that resizes under it.
  *
- * *Undo* takes the trailing state line's place rather than sitting beside it, so where
- * there is an undo to offer the row reads *Rewatch · Undo*, and where there is not — the
- * watch was imported — it reads *Rewatch · Watched*. The struck name is what says
+ * *Unwatch* takes the trailing state line's place rather than sitting beside it, so where
+ * there is an unwatch to offer the row reads *Rewatch · Unwatch*, and where there is not —
+ * the watch was imported — it reads *Rewatch · Watched*. The struck name is what says
  * *watched* in both (`DESIGN.md`, Episode Line); the code line beside it gives way to the
  * control that acts on it, the way the abandon control's own reassurance gives way when
  * it stops being the true statement.
  *
- * ── Undo is offered from `undoable`, never guessed ───────────────────────────────────
+ * ── Unwatch is offered from `unwatchable`, never guessed ─────────────────────────────
  *
- * `episode.undoable` is *this account has a watch of this episode that the application
- * recorded*. An episode whose only watch was imported reads as watched and offers no undo
- * at all — `db/access.ts`'s `undoWatch` refuses that delete regardless, but a control that
- * is never drawn is the honest half of the pair, not a duplicate of the check.
+ * `episode.unwatchable` is *this account has a watch of this episode that the application
+ * recorded*. An episode whose only watch was imported reads as watched and offers no
+ * unwatch at all — `db/access.ts`'s `unwatch` refuses that delete regardless, but a
+ * control that is never drawn is the honest half of the pair, not a duplicate of the
+ * check.
  *
- * Nothing here counts anything. `watched`, `undoable` and `phase` are the whole state, and
- * there is no number of watches on this row to display — `CONTEXT.md`: a rewatch is
+ * Nothing here counts anything. `watched`, `unwatchable` and `phase` are the whole state,
+ * and there is no number of watches on this row to display — `CONTEXT.md`: a rewatch is
  * *never a number kept on a title*.
  */
 function EpisodeLine({
@@ -273,9 +274,9 @@ function EpisodeLine({
   titleName: string;
 }) {
   const fullName = episodeFullName(episode);
-  const { watched, undoable, phase, pending, attempt, undo, settle } = useWatchMark({
+  const { watched, unwatchable, phase, pending, attempt, unwatch, settle } = useWatchMark({
     initialWatched: episode.watched,
-    initialUndoable: episode.undoable,
+    initialUnwatchable: episode.unwatchable,
     libraryEntryId,
     episodeId: episode.id,
     titleName,
@@ -338,15 +339,15 @@ function EpisodeLine({
               Rewatch
             </button>
 
-            {undoable ? (
+            {unwatchable ? (
               <button
                 type="button"
-                onClick={() => void undo()}
+                onClick={() => void unwatch()}
                 disabled={pending}
-                aria-label={`Undo watching ${fullName}`}
+                aria-label={`Unwatch ${fullName}`}
                 className={`code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
               >
-                Undo
+                Unwatch
               </button>
             ) : (
               <span className="code-line text-stock-dim">Watched</span>
@@ -381,13 +382,14 @@ function EpisodeLine({
  * `AbandonControl` already reports through, so both the state line on this page and the
  * next full read agree.
  *
- * **No undo, and the reason has changed.** #90 gave one: an episode had none either, so a
- * film offering one would have invented a second rule. Issue #89 has since given the
- * episode row *Rewatch* and *Undo*, so that reason is gone and this is now a scope
- * statement instead — #89 is the watched **episode**, and a film's undo is nobody's ticket
- * yet. Nothing below is in the way of it: `undoWatch` already takes a null `episodeId` and
- * is tested for a film, and `useWatchMark` already offers `undo` to any row that wants to
- * draw a control for it. What is missing is the decision and the design, not the write.
+ * **No unwatch, and the reason has changed.** #90 gave one: an episode had none either, so
+ * a film offering one would have invented a second rule. Issue #89 has since given the
+ * episode row *Rewatch* and *Unwatch*, so that reason is gone and this is now a scope
+ * statement instead — #89 is the watched **episode**, and a film's unwatch is nobody's
+ * ticket yet. Nothing below is in the way of it: `unwatch` already takes a null
+ * `episodeId` and is tested for a film, and `useWatchMark` already offers `unwatch` to any
+ * row that wants to draw a control for it. What is missing is the decision and the
+ * design, not the write.
  */
 function FilmRow({
   libraryEntryId,

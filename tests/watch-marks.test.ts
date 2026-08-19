@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  UndoActionOutcome,
+  UnwatchActionOutcome,
   WatchActionOutcome,
 } from "@/app/(signed-in)/library/watch-action";
 import {
@@ -45,7 +45,7 @@ const NAMING = { title: "Better Call Saul", episode: "Season 1, Episode 2 — Mi
 /** What every surface but the programme note's seeds an episode with. */
 const UNWATCHED: WatchMarkView = {
   watched: false,
-  undoable: false,
+  unwatchable: false,
   phase: "unwatched",
   pending: false,
 };
@@ -53,7 +53,7 @@ const UNWATCHED: WatchMarkView = {
 /** An episode the server already knows this account has an app watch of. */
 const WATCHED: WatchMarkView = {
   watched: true,
-  undoable: true,
+  unwatchable: true,
   phase: "settled",
   pending: false,
 };
@@ -62,7 +62,7 @@ function harness() {
   /** Every `sourceKey` the writer was handed, in order — the file's central assertion. */
   const recorded: string[] = [];
   const answerRecord: Array<(outcome: WatchActionOutcome) => void> = [];
-  const answerRemove: Array<(outcome: UndoActionOutcome) => void> = [];
+  const answerRemove: Array<(outcome: UnwatchActionOutcome) => void> = [];
   let minted = 0;
 
   const failures = createWriteFailureStore();
@@ -308,23 +308,23 @@ describe("a lost write, across surfaces", () => {
     expect(row.view()).toMatchObject({ watched: true, pending: false });
   });
 
-  it("does not let a landed mark take down a lost undo's toast", async () => {
+  it("does not let a landed mark take down a lost unwatch's toast", async () => {
     const { marks, failures, answerRecord, answerRemove, surface } = harness();
     surface(EPISODE, WATCHED);
 
-    const lostUndo = marks.undo(EPISODE, NAMING);
+    const lostUnwatch = marks.unwatch(EPISODE, NAMING);
     answerRemove[0]({ ok: false, reference: "ref-1" });
-    await lostUndo;
+    await lostUnwatch;
     expect(failures.get()).toHaveLength(1);
-    // A lost delete is not offered a retry — see `undo`'s docblock.
+    // A lost delete is not offered a retry — see `unwatch`'s docblock.
     expect(onlyToast(failures)?.retry).toBeUndefined();
 
     const rewatch = marks.mark(EPISODE, NAMING);
     answerRecord[0]({ ok: true });
     await rewatch;
 
-    // The undo is still lost, and there is now one more watch than the reader asked for.
-    // Resolving here would take the only notice of it off the screen.
+    // The unwatch is still lost, and there is now one more watch than the reader asked
+    // for. Resolving here would take the only notice of it off the screen.
     expect(failures.get()).toHaveLength(1);
   });
 });
