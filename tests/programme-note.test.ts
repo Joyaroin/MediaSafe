@@ -64,15 +64,16 @@ describe("the episode list", () => {
     expect(markup).not.toMatch(/>\s*S\d+\s*E\d+\s*</);
   });
 
-  it("strikes through a watched episode, which is what says so", () => {
+  it("strikes through a watched episode, and lets the strike be what says so", () => {
     const markup = episodes([episode({ watched: true })]);
 
     // The struck name is the statement (`DESIGN.md`, Episode Line). It used to be said
-    // twice — a *Watched* code line stood in the trailing slot wherever there was no
-    // unwatch to offer — and #145 leaves an unwatch on every watched row, so that label
-    // now appears only for the length of the strike.
+    // twice: a *Watched* code line stood in the trailing slot wherever there was no
+    // unwatch to offer, which #145 makes unreachable. That label now belongs to the
+    // length of the strike alone — the control test below owns the other half, so this
+    // one asserts only what it is about.
     expect(markup).toContain("line-through");
-    expect(markup).toContain("Unwatch");
+    expect(markup).not.toContain(">Watched<");
   });
 
   it("marks exactly the up-next episode, inverted, and nothing else", () => {
@@ -126,9 +127,9 @@ describe("the episode list", () => {
      * **absent**, because an episode whose only watch was imported offered none. There is
      * no such input any more: `EpisodeDetail` carries nothing derived from a watch's
      * source, so there is no watched row this component can be handed that would render
-     * without an unwatch. 19,391 of the library's watches are imported, and a control
-     * that skipped them was a control that rendered on essentially nothing its only
-     * reader owns.
+     * without an unwatch. All 19,558 of the library's watches are imported
+     * (`SPEC.md` §7), and a control that skipped them rendered on essentially nothing its
+     * only reader owns.
      */
     expect(markup).toContain("Unwatch");
     expect(markup).toContain("Unwatch Season 1, Episode 1 — Winter Is Coming");

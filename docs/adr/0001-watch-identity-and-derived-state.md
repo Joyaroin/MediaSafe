@@ -117,14 +117,15 @@ things around it that are not are listed here, newest last.
    `source = 'app'` on both the `SELECT` and the `DELETE`, so a watch an import had written could
    not be removed from the application at all.
 
-   **The justification was that imported watches are unrecoverable.** `SPEC.md` §7's 19,391 of them
+   **The justification was that imported watches are unrecoverable.** The library's 19,558 of them
    were reconstructed once from an archive with no live source behind it, so deleting one was said
    to destroy a fact nothing could put back. **That is not true of this repository**, and it was not
    true when it was written:
 
    - the raw export is committed — `fixtures/tvtracker-2026-08-16T04-27-53Z-schema.sql.gz` and
      `…-data.redacted.sql.gz`, pinned by checksum in `tests/fixture-archive.test.ts`;
-   - so is the converted seed, `fixtures/mediasafe-seed.json`, all 472 titles of it;
+   - so is the converted seed, `fixtures/mediasafe-seed.json` — 462 titles and 19,558 watches,
+     counted from the file (`SPEC.md` §7: *size surfaces for 472; assert counts against 462*);
    - import is idempotent by `UNIQUE (user_id, source, source_key)` above — the property this ADR
      chose the identity *for* — so re-running it adds nothing and duplicates nothing;
    - and its keys are deterministic: `scripts/convert-tvtracker/map.ts` mints
@@ -134,9 +135,11 @@ things around it that are not are listed here, newest last.
    — nothing can produce a second copy of it, which is why it is checksummed — but that is a
    statement about the file, not about the rows, and #89 read the one as the other.
 
-   What the wrong premise bought was a feature nobody could use. The library is 19,391 imported
-   watches, so the control did not render on essentially anything its only reader owns. **The
-   predicate is removed, not narrowed**: unwatch now deletes
+   What the wrong premise bought was a feature nobody could use. The library is 19,558 imported
+   watches, so the control did not render on essentially anything its only reader owns. (#89 said
+   19,391, which `SPEC.md` §7 gives as the **dated** subset, not the total — the argument does not
+   turn on which, but the number should be the one the seed actually holds.) **The predicate is
+   removed, not narrowed**: unwatch now deletes
    every watch of one episode for one account, imported and recorded alike, and `EpisodeDetail`'s
    `unwatchable` — the flag that decided whether a row could offer the control — is deleted with it
    rather than pinned to `watched`.

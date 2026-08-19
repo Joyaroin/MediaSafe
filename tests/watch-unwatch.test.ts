@@ -24,9 +24,10 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * is seeded by the same helper, and it must now be **gone**.
  *
  * The reason is not that the old rule was badly built — it is that it was built on a
- * false premise. 19,391 of the watches in the real library are imported, so a control
- * that refuses them renders on essentially nothing its only reader owns, and *unwatch*
- * meant *unwatch unless I happened to import it*. It now means unwatched.
+ * false premise. All 19,558 of the watches in the real library are imported (`SPEC.md`
+ * §7; 19,391 is the *dated* subset that #89 quoted as the total), so a control that
+ * refuses them renders on essentially nothing its only reader owns, and *unwatch* meant
+ * *unwatch unless I happened to import it*. It now means unwatched.
  *
  * It is still asserted **directly** rather than inferred from the shape of the query.
  * A predicate dropped from a `where` clause still reads like one in a diff; only the row
@@ -36,11 +37,13 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * `source` was never doing the isolation work. `ownedBy(userId, watch)`, the library
  * entry and the episode are what keep one press off everything else — and they now carry
- * it with nothing behind them, so this file asks all three questions rather than the one
- * it used to: not another episode, not another title, not another account. `episode` is
- * global (ADR-0001), so two accounts watching the same episode is the case where a
- * missing owner predicate would delete somebody else's history and no local test would
- * notice.
+ * it with nothing behind them, so the questions this file asks about isolation went from
+ * two to four. #89 already asked *not another episode of this title* and *not another
+ * account's library entry*; #145 adds **not another title of mine**, and **not another
+ * account's watch of the very same episode**. That last one is the case worth having:
+ * `episode` is global (ADR-0001), so two accounts hold watches against one episode id,
+ * and a missing owner predicate would delete somebody else's history with nothing on this
+ * screen or in the other three tests to notice.
  *
  * ── Nothing here is about which watch goes ───────────────────────────────────────────
  *
@@ -214,7 +217,7 @@ describe("unwatch", () => {
       const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId }, tx);
 
       // The inversion, and the whole of issue #145 in three lines. #89 asserted this row
-      // survived; 19,391 of the watches in the real library look exactly like it, so an
+      // survived; all 19,558 watches in the real library look exactly like it, so an
       // unwatch that spared it was an unwatch nobody could reach. `npm run db:seed` is
       // what puts it back — the raw export and the seed are both committed, import is
       // idempotent, and `62085:1` is always the same row.

@@ -267,9 +267,9 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  *
  * It used to be conditional. `episode.unwatchable` said *this account has a watch of this
  * episode that the application recorded*, and an episode whose only watch was imported
- * read as watched and offered no unwatch at all. Adham's library is 19,391 imported
- * watches, so that control did not render on essentially anything he owns: the feature
- * existed and was structurally invisible to its only reader.
+ * read as watched and offered no unwatch at all. The library is 19,558 imported watches
+ * (`SPEC.md` §7), so that control did not render on essentially anything its only reader
+ * owns: the feature existed and was structurally invisible to him.
  *
  * `db/access.ts`'s `unwatch` now removes every watch of an episode whatever recorded it,
  * so the condition has nothing left to say and the field behind it is gone rather than

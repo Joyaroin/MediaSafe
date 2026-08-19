@@ -1085,8 +1085,8 @@ export interface UnwatchOutcome {
 }
 
 /**
- * Unwatch an episode — issue #89, rewritten by #145, and the only function in this module
- * that removes a watch.
+ * Unwatch an episode — or a film, which is the same write with a null `episodeId`. Issue
+ * #89, rewritten by #145, and the only function in this module that removes a watch.
  *
  * ── Every watch of that episode, and nothing else ─────────────────────────────────────
  *
@@ -1102,23 +1102,19 @@ export interface UnwatchOutcome {
  * one predicate whose loss is silent*. **It is removed, not narrowed**, and that removal
  * is the whole of issue #145.
  *
- * It was not wrong to be careful; it was wrong about the facts. The rule rested on
- * `SPEC.md` §7's 19,391 imported watches having been reconstructed once from an archive
- * with no live source — unrecoverable, and so not this application's to edit. That claim
- * does not survive contact with the repository:
- *
- * - the raw export (`fixtures/tvtracker-2026-08-16T04-27-53Z-*.sql.gz`) and the converted
- *   seed (`fixtures/mediasafe-seed.json`) are **both committed**;
- * - import is idempotent by `UNIQUE (user_id, source, source_key)` (ADR-0001), so re-running
- *   it adds nothing and duplicates nothing;
- * - its keys are deterministic — `scripts/convert-tvtracker/map.ts` mints
- *   `${tmdbEpisodeId}:${occurrence}`, so `62085:1` is always the same row.
+ * It was not wrong to be careful; it was wrong about the facts. The rule rested on the
+ * library's imported watches having been reconstructed once from an archive with no live
+ * source — unrecoverable, and so not this application's to edit. **ADR-0001 amendment 8
+ * is where that is taken apart**, with the committed export, the committed seed, import's
+ * idempotency and its deterministic keys as the evidence; it is not restated here, because
+ * an argument kept in two places is an argument that comes to differ between them.
  *
  * `npm run db:seed` therefore restores any imported watch exactly, which makes the *cost*
  * of removing one a command on a laptop rather than a fact destroyed. Against that: the
- * library is 19,391 imported watches, so a control that refused them rendered on
- * essentially nothing its only reader owns. The careful rule made the feature invisible
- * and bought a recovery guarantee that `db:seed` already gave.
+ * library is **19,558** imported watches (`SPEC.md` §7 — 19,391 is the *dated* subset of
+ * them, and #89 quoted that figure as the total), so a control that refused them rendered
+ * on essentially nothing its only reader owns. The careful rule made the feature
+ * invisible and bought a recovery guarantee that `db:seed` already gave.
  *
  * Restoring is still not a button, and there is no undo in the product. What justifies
  * one press with no dialog is that it is one episode.
@@ -1156,8 +1152,9 @@ export interface UnwatchOutcome {
  * That predicate mattered before and is load-bearing now: `episode` is global (ADR-0001),
  * so two accounts can hold a watch of the very same episode id, and `source` was never
  * what kept one person's press off the other's row. Owner, library entry and episode are
- * the whole of the isolation, which is why the tests that grew for #145 are the ones
- * about another episode, another title and another account.
+ * the whole of the isolation, which is why the tests #145 adds are the two isolation
+ * questions #89 never asked: another title of the same account, and another account's
+ * watch of the same episode.
  */
 export async function unwatch(
   userId: UserId,
