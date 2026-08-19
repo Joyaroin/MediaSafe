@@ -24,6 +24,26 @@ the mapping has to survive all three:
 - `runtime` arrives as `null` on episodes TMDB has no timing for.
 - `/search/multi` returns `media_type: "person"` results mixed in with films and shows.
 
+## `external_ids` on `tv-details.json`
+
+`tv-details.json` is a capture of `/tv/{id}?append_to_response=external_ids`, not of a bare
+`/tv/{id}` — that append is how the show half of `title.external_id` arrives, and the
+constant naming it is `SHOW_APPEND_TO_RESPONSE` in `tmdb/mirror.ts`. The `external_ids`
+block was added by hand to TMDB's published example response, in TMDB's own documented
+shape for that endpoint. **The eight ids beside `imdb_id` are the point of keeping it
+whole**: `freebase_mid`, `freebase_id`, `tvdb_id`, `tvrage_id`, `wikidata_id`,
+`facebook_id`, `instagram_id` and `twitter_id` are all in `NEVER_STORED`, so the fixture
+is what proves the mapping takes one id out of that object and leaves the social handles
+where it found them. Trimming them would make that assertion vacuous, exactly as trimming
+`overview` would.
+
+The film side needs no append: `/movie/{id}` carries `imdb_id` at the top level, and
+`movie-details.json` already had it — `tt0076759`, unedited.
+
+Two branches no single capture can hold at once, so they are built inline in
+`tests/tmdb-mirror.test.ts` from `showPayload` rather than kept as files: a show TMDB has
+a TVDB id but no IMDb id for, and a show it has neither for.
+
 ## The live-facts fixtures
 
 `movie-credits.json`, `tv-credits.json`, `movie-watch-providers.json` and

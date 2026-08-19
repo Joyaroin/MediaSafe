@@ -254,6 +254,7 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
     .values({
       kind: mirror.kind,
       tmdbId: mirror.tmdbId,
+      externalId: mirror.externalId,
       name: mirror.name,
       releaseYear: mirror.releaseYear,
       posterPath: mirror.posterPath,
@@ -263,6 +264,13 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
     .onConflictDoUpdate({
       target: [title.kind, title.tmdbId],
       set: {
+        /**
+         * Overwritten like every other borrowed column, including with `NULL`. It is
+         * borrowed, so the last thing TMDB said is what the mirror says — a stored id
+         * TMDB has since disowned is worse than none, because the one thing that will
+         * read this column repoints titles on the strength of it.
+         */
+        externalId: sql`excluded.external_id`,
         name: sql`excluded.name`,
         releaseYear: sql`excluded.release_year`,
         posterPath: sql`excluded.poster_path`,
