@@ -1,18 +1,21 @@
 import Link from "next/link";
 
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { requireUserId } from "@/lib/session";
+import { requireDisplayName, requireUserId } from "@/lib/session";
+import { DisplayNameControl } from "./display-name-control";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
 
 /**
- * Settings, with **two of three sections genuinely finished**.
+ * Settings, with **all three sections now real**.
  *
- * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). This
- * ships Data and Account; Data ships with the one thing it names, *Import a library ›*
- * (issue #75), and Account ships with sign-out and sign-out other devices (issue #124).
- * Neither section is a stub and neither is reserved space: both are complete as far as
- * their own build step goes.
+ * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). Profile
+ * arrives with issue #123, carrying the one thing built so far, the display name; the
+ * timezone control that table row also names is a separate ticket (#123 blocks it) and
+ * does not appear here as a heading over nothing — `SPEC.md` §9 forbids that. Data ships
+ * with *Import a library ›* (issue #75), and Account ships with sign-out and sign-out
+ * other devices (issue #124). None of the three is a stub: each is complete as far as
+ * its own build step goes.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -32,10 +35,9 @@ import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
  * ── What is not here ─────────────────────────────────────────────────────────────────
  *
  * *Delete account* is the remaining third of the Account section, its own page rather
- * than a dialog per `SPEC.md` §7, and Profile — the display name and the timezone
- * control — is not here either. Both are still build step 7 (`SPEC.md` §8). Neither
- * appears here as a heading with nothing under it: `SPEC.md` §9 forbids reserving the
- * space, and a section that announces what it will one day contain is exactly that.
+ * than a dialog per `SPEC.md` §7, and it is still build step 7 (`SPEC.md` §8). Profile's
+ * timezone control is the same step and is not here either — issue #123 blocks it, and
+ * it drops into the section this ticket creates rather than arriving with it.
  */
 
 /**
@@ -64,20 +66,32 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   /**
-   * The gate, and the only line on this page that decides anything. A reader with no
-   * session is sent to sign-in from here rather than shown an empty Settings — see
-   * `lib/session.ts` on why that is a redirect and not a thrown read failure.
+   * The gate, and a reader with no session is sent to sign-in from here rather than
+   * shown an empty Settings — see `lib/session.ts` on why that is a redirect and not a
+   * thrown read failure.
    *
-   * The id is deliberately not used yet. Nothing on this page reads a row: the display
-   * name is step 7 and the timezone control is step 7. Calling this anyway is what makes
-   * the route protected today, and `tests/route-manifest.test.ts` is what proves it stays
-   * that way.
+   * The id itself is still unused: nothing on this page reads a database row, the
+   * display name included — `requireDisplayName()` below reads it straight off the
+   * session Better Auth already resolved, the same shape `requireImportOfferAnswered()`
+   * takes elsewhere. Calling this is what makes the route protected today, and
+   * `tests/route-manifest.test.ts` is what proves it stays that way.
    */
   await requireUserId();
+  const name = await requireDisplayName();
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
       <h1 className="bill-title text-bill-lg text-stock">Settings</h1>
+
+      <section aria-labelledby="profile-h" className="mt-12 border-t border-rule pt-6">
+        <h2 id="profile-h" className="code-line text-stock-dim">
+          Profile
+        </h2>
+
+        <div className="mt-6">
+          <DisplayNameControl name={name} />
+        </div>
+      </section>
 
       <section aria-labelledby="data-h" className="mt-12 border-t border-rule pt-6">
         <h2 id="data-h" className="code-line text-stock-dim">
