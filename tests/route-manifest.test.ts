@@ -28,11 +28,11 @@ import {
  */
 
 /**
- * **The two exemptions, named.**
+ * **The three exemptions, named.**
  *
- * Everything else in the build must be behind the matcher. Adding a third route to this
- * list is the visible diff issue #43 asks for — a line in a pull request with a name on
- * it, rather than two characters appended to a regular expression where nobody looks.
+ * Everything else in the build must be behind the matcher. Adding a route to this list is
+ * the visible diff issue #43 asks for — a line in a pull request with a name on it,
+ * rather than two characters appended to a regular expression where nobody looks.
  *
  * They are written as the manifest writes them, brackets and all, because that is what
  * they are compared against.
@@ -45,6 +45,13 @@ const EXEMPT = [
    * there is a session to check, so gating it would make signing in impossible.
    */
   "/api/auth/[...all]",
+  /**
+   * The nightly metadata sweep (issue #115). Vercel's cron sends no session cookie, so
+   * this route is un-sessioned — **not unauthenticated**: it checks a bearer
+   * `CRON_SECRET` itself and rejects anything without it
+   * (`app/api/cron/nightly-sweep/route.ts`).
+   */
+  "/api/cron/nightly-sweep",
 ] as const;
 
 describe("every route is behind the proxy matcher", () => {
@@ -62,7 +69,7 @@ describe("every route is behind the proxy matcher", () => {
     expect(built.matcher).toEqual(config.matcher);
   });
 
-  it("covers every route in the build except the two named above", () => {
+  it("covers every route in the build except the three named above", () => {
     const audit = auditRouteProtection(built, EXEMPT);
 
     // Three separate assertions rather than one on the whole object, so a failure names
@@ -73,8 +80,8 @@ describe("every route is behind the proxy matcher", () => {
   });
 
   /**
-   * The `_next/` clause in the matcher is an exclusion, not a third exemption, and this is
-   * the assertion that keeps it one.
+   * The `_next/` clause in the matcher is an exclusion, not a fourth exemption, and this
+   * is the assertion that keeps it one.
    *
    * It is there so the gate does not redirect the sign-in page's own JavaScript to the
    * sign-in page. It is defensible only while nothing routable lives under that prefix —
@@ -89,13 +96,16 @@ describe("every route is behind the proxy matcher", () => {
 
   /**
    * The exemptions are anchored, so a route added under one of their prefixes is covered
-   * rather than quietly inheriting the exemption. Neither path exists today; the point is
-   * what happens on the day one of them does.
+   * rather than quietly inheriting the exemption. None of these paths exists today; the
+   * point is what happens on the day one of them does.
    */
-  it("does not extend either exemption to its neighbours", () => {
+  it("does not extend any exemption to its neighbours", () => {
     expect(matcherRunsOn(built.matcher, "/sign-in/help")).toBe(true);
     expect(matcherRunsOn(built.matcher, "/sign-instead")).toBe(true);
     expect(matcherRunsOn(built.matcher, "/api/authorize")).toBe(true);
+    // `api/cron/nightly-sweep$`, not `(?:$|/)`: unlike `api/auth`, this route has no
+    // sub-paths, so nothing under it should inherit the exemption.
+    expect(matcherRunsOn(built.matcher, "/api/cron/nightly-sweep/extra")).toBe(true);
   });
 
   /**
@@ -159,8 +169,12 @@ describe("the check fails when the gate is widened", () => {
   it("reports an exemption left behind by a deleted route", () => {
     const audit = auditRouteProtection(
       {
-        routes: ["/", "/sign-in"],
-        matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)).*)"],
+        // The cron route is still here, so only the deleted auth route goes stale —
+        // this fixture isolates one leftover exemption rather than two.
+        routes: ["/", "/sign-in", "/api/cron/nightly-sweep"],
+        matcher: [
+          "/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$).*)",
+        ],
       },
       EXEMPT,
     );

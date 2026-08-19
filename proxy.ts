@@ -22,6 +22,16 @@ import { carriesSessionCookie } from "@/lib/session-cookie";
  * `eslint.config.mjs` all still say *middleware matcher* — the name in the spec and the
  * name on disk are one Next.js release apart, and the spec is not being rewritten for it.
  *
+ * ── A third exemption, issue #115 ────────────────────────────────────────────────────
+ *
+ * `api/cron/nightly-sweep$` is the nightly metadata sweep's cron route. Vercel's cron
+ * sends no session cookie, so behind this matcher unexempted it would be redirected to
+ * sign-in and the refresh would silently never run — the exact failure ADR-0001's sweep
+ * exists to prevent. **It is un-sessioned, not unauthenticated**: the route checks a
+ * bearer `CRON_SECRET` itself and rejects anything without it
+ * (`app/api/cron/nightly-sweep/route.ts`). This comment says so precisely because the
+ * list below must never read as three unprotected routes.
+ *
  * ── This is a gate, not the authorization ────────────────────────────────────────────
  *
  * It reads a cookie. It does not read the session table, and it must not: Next's own
@@ -55,7 +65,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 /**
- * **The matcher, and the two exemptions, as one literal.**
+ * **The matcher, and the three exemptions, as one literal.**
  *
  * It has to be a literal, and Next enforces that itself: a matcher assembled from
  * variables fails the build with *Entry `matcher[0]` need to be static strings or static
@@ -65,8 +75,8 @@ export function proxy(request: NextRequest): NextResponse {
  * in no `.js` file at all — grepping the JavaScript for it finds nothing and proves
  * nothing.
  *
- * **Two exemptions and one exclusion**, which are different things. An exemption is a
- * route a reader may reach without a session, and there are two. The exclusion is not a
+ * **Three exemptions and one exclusion**, which are different things. An exemption is a
+ * route a reader may reach without a session, and there are three. The exclusion is not a
  * route at all.
  *
  *  - **`sign-in$`** — the sign-in route. Anchored, so `/sign-in/anything` is covered
@@ -75,6 +85,11 @@ export function proxy(request: NextRequest): NextResponse {
  *    redirects to is here, and a session cannot exist until it has run, so gating it
  *    would make signing in impossible. Anchored the same way, so `/api/authorize` is
  *    covered.
+ *  - **`api/cron/nightly-sweep$`** — issue #115's nightly metadata sweep. Vercel's cron
+ *    sends no session cookie, and this route checks a bearer `CRON_SECRET` itself rather
+ *    than relying on this gate — see the note above. Anchored with `$` alone, not
+ *    `(?:$|/)`: the route has no sub-paths, so a future one would not inherit this
+ *    exemption by accident the way `api/auth`'s deliberately lets its children.
  *  - **`_next/`** — the exclusion. The compiled bundles, the image optimiser, the build
  *    output. Nothing in the route manifest maps under this prefix, and
  *    `tests/route-manifest.test.ts` asserts that rather than trusting this sentence, so
@@ -83,11 +98,11 @@ export function proxy(request: NextRequest): NextResponse {
  *    sign-in page is the one surface a signed-out reader is meant to reach.
  *
  * **`/icon.svg` is a route, and it is covered**, so a signed-out reader gets no tab icon
- * on the sign-in page. A known cost, taken deliberately: the alternative is a third
- * exemption in the ticket that exists to make a third exemption hard, and a missing
+ * on the sign-in page. A known cost, taken deliberately: the alternative is a fourth
+ * exemption in the ticket that exists to make a fourth exemption hard, and a missing
  * favicon is a smaller price than the rule being negotiable on the day it is written. If
  * that trade is wrong, it is a product decision, and the place to make it is `SPEC.md`.
  */
 export const config = {
-  matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)).*)"],
+  matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$).*)"],
 };
