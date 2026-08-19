@@ -2287,6 +2287,10 @@ export interface EpisodeDetail {
 /** Everything title detail shows that is mirrored — nothing fetched live is in here. */
 export interface TitleDetailRow {
   readonly libraryEntryId: string;
+  /** Issue #147: what `addTitleToList` keys a membership on — a list holds titles, not
+   *  library entries, so the control that adds this title to one needs this rather than
+   *  `libraryEntryId`. */
+  readonly titleId: string;
   readonly kind: TitleKind;
   readonly tmdbId: number;
   readonly name: string;
@@ -2414,6 +2418,7 @@ export async function getTitleDetail(
 
   return {
     libraryEntryId: row.libraryEntryId,
+    titleId: row.titleId,
     kind: kindFrom(row.kind),
     tmdbId: row.tmdbId,
     name: row.name,
@@ -2558,4 +2563,173 @@ export async function deleteList(
   if (!row) {
     throw new Error(`List ${listId} was not found in this account's lists.`);
   }
+}
+
+/** Whether the add created a membership, or found one already there — `AddOutcome`'s own
+ *  shape, for the reason its docblock gives. `position` is the row's, or `null` when
+ *  nothing was written because the title was already a member. */
+export interface AddToListOutcome {
+  readonly added: boolean;
+  readonly position: number | null;
+}
+
+/**
+ * Put one title in one list, at the next position — issue #147.
+ *
+ * ── Ownership, enforced by the foreign key rather than a second query ────────────────
+ *
+ * `list_membership_list_id_user_id_fk` (`db/tables.ts`) is `(list_id, user_id)` against
+ * `list(id, user_id)`. Insert `userId` here paired with a `listId` that names somebody
+ * else's list, and there is no row in `list` for that pair to satisfy — Postgres rejects
+ * the write and this throws, the same shape `deleteList` uses for a tampered id. There is
+ * nothing to pre-check.
+ *
+ * ── At most once, by the primary key ──────────────────────────────────────────────────
+ *
+ * `(list_id, title_id)` is `list_membership`'s primary key, so a title already in the
+ * list conflicts on it. `onConflictDoNothing` targets that key directly, the same way
+ * `addTitleToLibrary` targets its own — a second add is not an error and not a duplicate
+ * row, it is a write that found nothing to do.
+ *
+ * ── The next position, read and written in one transaction ───────────────────────────
+ *
+ * `db/tables.ts`'s own docblock: `UNIQUE (list_id, position) DEFERRABLE INITIALLY
+ * DEFERRED`, built for a whole reorder to commit as one transaction without colliding
+ * with itself. A plain append does not need that deferral — it only needs the read of
+ * the current maximum and the insert to happen together, which is what the transaction
+ * below is for. `coalesce(max(position), 0) + 1` is deterministic for an empty list (the
+ * first title lands at `1`) and never touches a row already there, which is the acceptance
+ * criterion this exists to meet: *existing positions do not shuffle*.
+ */
+export async function addTitleToList(
+  userId: UserId,
+  listId: string,
+  titleId: string,
+  executor: Executor = getDb(),
+): Promise<AddToListOutcome> {
+  return executor.transaction(async (tx) => {
+    const [{ next }] = await tx
+      .select({
+        next: sql<number>`coalesce(max(${listMembership.position}), 0) + 1`.mapWith(Number),
+      })
+      .from(listMembership)
+      .where(eq(listMembership.listId, listId));
+
+    const created = await tx
+      .insert(listMembership)
+      .values({ listId, titleId, userId, position: next })
+      .onConflictDoNothing({ target: [listMembership.listId, listMembership.titleId] })
+      .returning({ position: listMembership.position });
+
+    return { added: created.length > 0, position: created[0]?.position ?? null };
+  });
+}
+
+/**
+ * Make a list and add one title to it, as one write — issue #147's *creating a new list
+ * is available in the same action, so the first list is not a separate errand.*
+ *
+ * One transaction, so a duplicate name leaves no membership behind either: `createList`'s
+ * own `onConflictDoNothing` reports the duplicate without writing a row, and returning
+ * before `addTitleToList` runs is what keeps the two in step. Nesting `addTitleToList`'s
+ * own `executor.transaction` inside this one costs nothing — `repointTitle` and
+ * `addTitleToLibrary` already lean on Drizzle nesting a passed-in transaction as a
+ * savepoint rather than a second, unrelated transaction.
+ */
+export async function createListAndAddTitle(
+  userId: UserId,
+  name: string,
+  titleId: string,
+  executor: Executor = getDb(),
+): Promise<CreateListOutcome> {
+  return executor.transaction(async (tx) => {
+    const created = await createList(userId, name, tx);
+    if (!created.ok) return created;
+
+    await addTitleToList(userId, created.list.id, titleId, tx);
+
+    return { ok: true, list: { ...created.list, titleCount: 1 } };
+  });
+}
+
+/** One row of a list's titles, in position order — issue #147. */
+export interface ListDetailTitleRow {
+  readonly titleId: string;
+  /** This account's own copy of the title, when they have one — `null` for a title the
+   *  list holds that is not in their library. A list holds anything in the catalogue. */
+  readonly libraryEntryId: string | null;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly position: number;
+}
+
+/** A list's own facts, and its titles in order — issue #147. */
+export interface ListDetailRow {
+  readonly id: string;
+  readonly name: string;
+  readonly titles: readonly ListDetailTitleRow[];
+}
+
+/**
+ * One list, and the ordered rows it holds — issue #147.
+ *
+ * ── Scoped by list, the same shape `getTitleDetail` uses for an entry ────────────────
+ *
+ * `ownedBy(userId, list)` combined with the list id: a missing row and a row belonging to
+ * somebody else are the same case, and both throw. There is nothing for this surface to
+ * degrade to — `SPEC.md`'s *one account cannot read another account's list* is a
+ * boundary, not a state this function ever returns.
+ *
+ * ── `title`, left-joined against this account's own library entry ────────────────────
+ *
+ * A list holds a title, not a library entry (ADR-0001 amendment 7), so the read starts
+ * from `list_membership` and joins `title` for the borrowed facts a row shows. The `left
+ * join` against `library_entry` is scoped by `userId` *and* `title.id` together — the
+ * same pairing `library_entry_user_id_title_id_key` makes unique — so it can answer at
+ * most one row per title and never invents an owner the membership itself does not carry.
+ * `libraryEntryId` is `null` exactly when this account has not added the title, which is
+ * expected: issue #133 decided a list survives its titles leaving the library.
+ */
+export async function getListDetail(
+  userId: UserId,
+  listId: string,
+  executor: Executor = getDb(),
+): Promise<ListDetailRow> {
+  const [row] = await executor
+    .select({ id: list.id, name: list.name })
+    .from(list)
+    .where(and(ownedBy(userId, list), eq(list.id, listId)));
+
+  if (!row) {
+    throw new Error(`List ${listId} was not found in this account's lists.`);
+  }
+
+  const titleRows = await executor
+    .select({
+      titleId: title.id,
+      libraryEntryId: libraryEntry.id,
+      kind: title.kind,
+      tmdbId: title.tmdbId,
+      name: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      position: listMembership.position,
+    })
+    .from(listMembership)
+    .innerJoin(title, eq(title.id, listMembership.titleId))
+    .leftJoin(
+      libraryEntry,
+      and(eq(libraryEntry.userId, userId), eq(libraryEntry.titleId, title.id)),
+    )
+    .where(eq(listMembership.listId, listId))
+    .orderBy(asc(listMembership.position));
+
+  return {
+    id: row.id,
+    name: row.name,
+    titles: titleRows.map((one) => ({ ...one, kind: kindFrom(one.kind) })),
+  };
 }
