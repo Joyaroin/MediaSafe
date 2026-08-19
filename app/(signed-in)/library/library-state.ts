@@ -10,13 +10,13 @@ import type { LibraryState } from "@/db/access";
  * the programme note has no "next line" in the same sense, it has the season/episode list
  * itself.
  *
- * *Watching* is the only one in `signal` and *Caught up* the only one at full-strength
- * `stock` — the other three are metadata, so they are dim.
+ * *Watching* is the only one in `accent` and *Caught up* the only one at full-strength
+ * `text` — the other three are metadata, so they are dim.
  */
 export const STATE_LABELS: Record<LibraryState, { label: string; className: string }> = {
-  watching: { label: "Watching", className: "text-signal" },
-  caught_up: { label: "Caught up", className: "text-stock" },
-  finished: { label: "Finished", className: "text-stock-dim" },
-  watchlist: { label: "Watchlist", className: "text-stock-dim" },
-  abandoned: { label: "Abandoned", className: "text-stock-dim" },
+  watching: { label: "Watching", className: "text-accent" },
+  caught_up: { label: "Caught up", className: "text-text" },
+  finished: { label: "Finished", className: "text-dim" },
+  watchlist: { label: "Watchlist", className: "text-dim" },
+  abandoned: { label: "Abandoned", className: "text-dim" },
 };

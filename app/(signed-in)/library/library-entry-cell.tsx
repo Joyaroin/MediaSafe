@@ -6,10 +6,10 @@ import { SelectableEntry } from "./selectable-entry";
 /**
  * One programme entry — the bill's grid cell, and the only thing 472 of them are made of.
  *
- * `DESIGN.md`, Components: *a full-width button, not a card. Ground `ink`, hairline right
+ * `DESIGN.md`, Components: *a full-width button, not a card. Ground `ground`, hairline right
  * and bottom borders, `1rem` padding, `1rem` gap. Left: the plate at `78×104px`. Right:
  * the title in condensed 900 at `2.15rem`, a dim code line, the state label, and a single
- * truncated line of what's next. Hover fills the cell with `ink-raised`. No shadow, no
+ * truncated line of what's next. Hover fills the cell with `raised`. No shadow, no
  * lift, no radius, no scale.* Every class below is that sentence, taken from the reference
  * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived.
  *
@@ -87,10 +87,10 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
   const nextLine = NEXT_LINES[entry.state];
 
   return (
-    <li className="border-b border-r border-rule bg-ink">
+    <li className="border-b border-r border-hair bg-ground">
       <SelectableEntry
         entryId={entry.libraryEntryId}
-        className="flex w-full gap-4 p-4 text-left transition-colors duration-150 hover:bg-ink-raised"
+        className="flex w-full gap-4 p-4 text-left transition-colors duration-150 hover:bg-raised"
       >
         <Plate
           posterPath={entry.posterPath}
@@ -106,7 +106,7 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
             was added: 552px of content in a 388px viewport.
           */}
           <p
-            className={`bill-title break-words text-bill-md ${abandoned ? "text-stock-dim" : "text-stock"}`}
+            className={`bill-title break-words text-bill-md ${abandoned ? "text-dim" : "text-text"}`}
           >
             {entry.name}
           </p>
@@ -125,7 +125,7 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
             borrowed fact is not an error and an apology is the wrong shape for it.
           */}
           {entry.releaseYear === null ? null : (
-            <p className="code-line mt-2 text-stock-dim" data-numeric>
+            <p className="code-line mt-2 text-dim" data-numeric>
               {entry.releaseYear}
             </p>
           )}
@@ -138,7 +138,7 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
             name that wraps would add a third variation to a grid whose whole job is to
             read as one printed sheet.
           */}
-          <p className="mt-1 truncate text-item text-stock-dim">
+          <p className="mt-1 truncate text-item text-dim">
             {nextLine(entry)}
           </p>
         </div>

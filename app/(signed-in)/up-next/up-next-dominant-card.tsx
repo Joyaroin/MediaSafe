@@ -72,7 +72,7 @@ export function UpNextDominantCard({ entry }: { entry: UpNextEntry }) {
   });
 
   return (
-    <article className="relative flex flex-col border-t border-rule">
+    <article className="relative flex flex-col border-t border-hair">
       <Link href={`/library/${entry.libraryEntryId}`} className="flex flex-col">
         <Plate posterPath={entry.posterPath} className="aspect-[5/4] w-full shrink-0" />
 
@@ -92,7 +92,7 @@ export function UpNextDominantCard({ entry }: { entry: UpNextEntry }) {
               {phase === "marking" ? <WatchStrike onSettled={settle} /> : null}
             </div>
 
-            <p className="code-line mt-1.5 text-stock-dim" data-numeric>
+            <p className="code-line mt-1.5 text-dim" data-numeric>
               {episodeLabel}
             </p>
 
@@ -125,7 +125,7 @@ export function UpNextDominantCard({ entry }: { entry: UpNextEntry }) {
             ? `${entry.titleName}, ${episodeLabel} watched`
             : `Mark ${entry.titleName}, ${episodeLabel} watched`
         }
-        className={`flex w-full shrink-0 items-center justify-center gap-3 border-t-2 border-signal bg-signal py-5 text-ink transition-[filter] duration-200 active:brightness-90 ${IN_FLIGHT}`}
+        className={`flex w-full shrink-0 items-center justify-center gap-3 border-t-2 border-accent bg-accent py-5 text-accent-ink transition-[filter] duration-200 active:brightness-90 ${IN_FLIGHT}`}
       >
         {watched ? (
           <span className="code-line">Watched</span>

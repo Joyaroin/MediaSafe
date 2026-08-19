@@ -41,7 +41,7 @@ import { authClient } from "@/lib/auth-client";
  * It does not navigate, and it says so. The blast radius is one region — the reader is
  * still on a working page, still signed in, and one thing they asked for did not happen —
  * so `SPEC.md` §6 places it inline, replacing that region. It is the established
- * treatment rather than a new one: `2px` `signal` top rule, heading in `signal`, a plain
+ * treatment rather than a new one: `2px` `accent` top rule, heading in `accent`, a plain
  * sentence, and the same button as the recovery action.
  *
  * Navigating anyway would be the serious bug. The reader would see a sign-in page,

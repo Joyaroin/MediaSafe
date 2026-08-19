@@ -60,14 +60,14 @@ export default async function DeleteAccountPage() {
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
       <DeleteAccountHeading />
 
-      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock">
+      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-text">
         This destroys everything MediaSafe holds about you. It happens immediately and it
         cannot be undone — there is no grace period, nothing is kept, and there is nothing
         to restore from.
       </p>
 
-      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="destroyed-h" className="code-line text-stock-dim">
+      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="destroyed-h" className="code-line text-dim">
           What this destroys
         </h2>
 
@@ -83,7 +83,7 @@ export default async function DeleteAccountPage() {
           <Destroyed label="Ratings" count={footprint.ratings} />
         </dl>
 
-        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-dim">
           Titles counts what is in your library, not the catalogue MediaSafe shares between
           accounts — what is destroyed is your shelf, every watch you have recorded and
           every rating you have given. Signing in again with the same Google account makes
@@ -91,8 +91,8 @@ export default async function DeleteAccountPage() {
         </p>
       </section>
 
-      <section aria-labelledby="google-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="google-h" className="code-line text-stock-dim">
+      <section aria-labelledby="google-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="google-h" className="code-line text-dim">
           Google
         </h2>
 
@@ -104,22 +104,22 @@ export default async function DeleteAccountPage() {
           deletion is worse than an honest sentence. Deleting the account makes no outbound
           call at all; this link is the reader's own, taken in their own time.
         */}
-        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
           Deleting your account here does not remove MediaSafe from your Google account. It
           stays listed under your connected apps until you remove it there.{" "}
           <a
             href="https://myaccount.google.com/permissions"
             target="_blank"
             rel="noreferrer"
-            className="text-stock underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:decoration-signal"
+            className="text-text underline decoration-hair underline-offset-4 transition-colors duration-150 hover:decoration-accent"
           >
             Your Google connected apps ›
           </a>
         </p>
       </section>
 
-      <section aria-labelledby="confirm-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="confirm-h" className="code-line text-stock-dim">
+      <section aria-labelledby="confirm-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="confirm-h" className="code-line text-dim">
           Confirm
         </h2>
 
@@ -144,8 +144,8 @@ export default async function DeleteAccountPage() {
 function Destroyed({ label, count }: { label: string; count: number }) {
   return (
     <div className="flex flex-col-reverse">
-      <dt className="code-line mt-2 text-stock-dim">{label}</dt>
-      <dd className="bill-title text-bill-lg text-stock" data-numeric>
+      <dt className="code-line mt-2 text-dim">{label}</dt>
+      <dd className="bill-title text-bill-lg text-text" data-numeric>
         {count.toLocaleString("en-GB")}
       </dd>
     </div>

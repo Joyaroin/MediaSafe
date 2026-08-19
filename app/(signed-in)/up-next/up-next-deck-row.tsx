@@ -23,16 +23,16 @@ export function UpNextDeckRow({ entry }: { entry: UpNextEntry }) {
   const episodeName = entry.episodeName ?? "Not yet named";
 
   return (
-    <li className="border-t border-rule">
+    <li className="border-t border-hair">
       <Link
         href={`/library/${entry.libraryEntryId}`}
-        className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-ink-raised"
+        className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-raised"
       >
         <Plate posterPath={entry.posterPath} className={DECK_PLATE} />
 
         <div className="min-w-0 flex-1">
           <p className="bill-title break-words text-bill-xs">{entry.titleName}</p>
-          <p className="code-line mt-1 truncate text-stock-dim">
+          <p className="code-line mt-1 truncate text-dim">
             {episodeName} · S{entry.seasonNo} E{entry.episodeNo}
           </p>
         </div>

@@ -1,7 +1,7 @@
 /**
  * DESIGN.md, Buttons: *Recovery buttons (`Try again`, `Clear the filter`): the same ghost
  * treatment at `0.5rem 1rem`. The one primary recovery action (`Bring your library in`,
- * `Try again` in the toast) is solid `signal` with `ink` text.*
+ * `Try again` in the toast) is solid `accent` with `accent-ink` text.*
  *
  * "The same ghost treatment" is one thing, so it is written once. Three surfaces already
  * render it — the read-failure boundary, the root-layout failure, and the toast's
@@ -21,14 +21,14 @@
 
 /** The recovery action a reader can take. Inverts to solid on hover. */
 export const GHOST_RECOVERY =
-  "code-line border border-signal px-4 py-2 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink";
+  "code-line border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
 
 /**
  * The one primary recovery action on a surface. Pressed state is `brightness(0.9)` over
  * `200ms`, per DESIGN.md's recording control.
  */
 export const SOLID_RECOVERY =
-  "code-line bg-signal px-4 py-2 text-ink transition-[filter] duration-200 hover:brightness-90";
+  "code-line bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
 
 /**
  * How a disabled control is dimmed — **the dim alone, and one string for all of them.**

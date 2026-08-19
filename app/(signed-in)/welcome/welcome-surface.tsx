@@ -17,7 +17,7 @@ import { answerImportOfferAction } from "./actions";
  * (`SPEC.md` §7, issue #75).
  *
  * `DESIGN.md`, Buttons: *the one primary recovery action (`Bring your library in`) is
- * solid `signal` with `ink` text* — named there before this screen existed to hold it, and
+ * solid `accent` with `accent-ink` text* — named there before this screen existed to hold it, and
  * the decline sits beside it at the ghost treatment the same section gives every lesser
  * action.
  *

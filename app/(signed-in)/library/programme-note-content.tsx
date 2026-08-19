@@ -63,7 +63,7 @@ export function ProgrammeNoteContent({
       <h2 className="bill-title mt-5 text-bill-xl">{detail.name}</h2>
 
       {meta === null ? null : (
-        <p className="code-line mt-3 text-stock-dim" data-numeric>
+        <p className="code-line mt-3 text-dim" data-numeric>
           {meta}
         </p>
       )}
