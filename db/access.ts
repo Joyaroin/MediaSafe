@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { user } from "@/auth-schema";
@@ -11,6 +11,13 @@ import {
   libraryEntryState,
   libraryEntryUpNext,
 } from "./views";
+/**
+ * Re-exported so a caller outside `db/` that needs to pass its own transaction — the
+ * nightly sweep's route handler is the one that exists today — can type it without
+ * reaching for `@/db/client` itself, which `eslint.config.mjs`'s choke point forbids
+ * everywhere but here. The type is inert on its own; only `db/client.ts` can produce one.
+ */
+export type { Executor };
 /**
  * The direction is deliberate: `tmdb/mirror.ts` knows nothing about the database, and
  * what it produces is *rows*, so the shapes belong to the mapping that derives them
@@ -315,6 +322,133 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
     id: mirrored.id,
     episodeIds: new Map(episodes.map((one) => [one.tmdbEpisodeId, one.id])),
   };
+}
+
+/**
+ * One title the nightly sweep may refresh — enough to fetch its mirror from TMDB and
+ * write it back through `refreshTitleMirror` below. `kind` and `tmdbId` are what
+ * `tmdb/catalogue.ts`'s `titleMirror()` takes; `id` is carried only so the sweep can
+ * report which title a failure was, and so this query can exclude tier 1's rows from
+ * tier 2 without a second round trip.
+ */
+export interface SweepCandidate {
+  readonly id: string;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+}
+
+/**
+ * ADR-0001's cap, and issue #115's: at 472 titles the whole library turns over roughly
+ * every three days, comfortably inside TMDB's six-month cache ceiling.
+ */
+export const NIGHTLY_SWEEP_CAP = 200;
+
+/** `title.kind` is `text` with a `CHECK`; every row read here already passed it. */
+function asSweepCandidate(row: {
+  id: string;
+  kind: string;
+  tmdbId: number;
+}): SweepCandidate {
+  return { id: row.id, kind: row.kind as TitleKind, tmdbId: row.tmdbId };
+}
+
+/**
+ * Which titles the nightly sweep refreshes next, in ADR-0001's priority order, capped at
+ * `cap` in total.
+ *
+ * ── Tier 1: a show that may have just aired something new ────────────────────────────
+ *
+ * `in_production = true` **and** an episode whose `air_date` fell after the title's own
+ * `metadata_refreshed_at` and on or before today. There is no stored "next air date" to
+ * compare against — only the mirrored episodes — so this is what *"whose next air date
+ * has passed since their last refresh"* means recomputed from them: an episode that, as
+ * of the last time this title was checked, had not happened yet, and now has.
+ *
+ * ── Tier 2: whatever has waited longest ───────────────────────────────────────────────
+ *
+ * Every other title, oldest `metadata_refreshed_at` first.
+ *
+ * ── "Come first" is exclusion, not a tiebreak ─────────────────────────────────────────
+ *
+ * Tier 1 is answered in full — up to `cap` — before tier 2 is asked at all, and tier 2
+ * explicitly excludes tier 1's rows rather than merely being asked to sort after them:
+ * two `ORDER BY` terms could not express "come first" here, because a tier-1 title's own
+ * `metadata_refreshed_at` may well be newer than plenty of tier-2 titles it must still
+ * precede. The second query only runs, and only asks for the remainder, when the first
+ * did not already fill the cap — the same short-circuit `libraryCatalogueKeys` takes for
+ * an empty `keys` array, and for the same reason: no query is the cheapest query.
+ */
+export async function titlesDueForRefresh(
+  cap: number = NIGHTLY_SWEEP_CAP,
+  executor: Executor = getDb(),
+): Promise<SweepCandidate[]> {
+  const columns = { id: title.id, kind: title.kind, tmdbId: title.tmdbId };
+
+  const airedSinceLastRefresh = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(episode)
+      .where(
+        and(
+          eq(episode.titleId, title.id),
+          sql`${episode.seasonNo} > 0`,
+          sql`${episode.airDate} is not null`,
+          sql`${episode.airDate} > ${title.metadataRefreshedAt}::date`,
+          sql`${episode.airDate} <= current_date`,
+        ),
+      ),
+  );
+
+  const tier1Rows = await executor
+    .select(columns)
+    .from(title)
+    .where(and(eq(title.kind, "show"), eq(title.inProduction, true), airedSinceLastRefresh))
+    .orderBy(asc(title.metadataRefreshedAt), title.id)
+    .limit(cap);
+
+  const tier1 = tier1Rows.map(asSweepCandidate);
+  if (tier1.length >= cap) return tier1;
+
+  const tier2Rows = await executor
+    .select(columns)
+    .from(title)
+    .where(
+      tier1.length > 0
+        ? notInArray(title.id, tier1.map((row) => row.id))
+        : undefined,
+    )
+    .orderBy(asc(title.metadataRefreshedAt), title.id)
+    .limit(cap - tier1.length);
+
+  return [...tier1, ...tier2Rows.map(asSweepCandidate)];
+}
+
+/**
+ * Write one title's refreshed mirror — the nightly sweep's only write, and every write
+ * `mirrorTitle` already makes for `addTitleToLibrary` and `applyImportChunk`, reused
+ * rather than respelled: refreshing a title on a schedule is not a different write from
+ * mirroring it on add, and ADR-0001 mirrors only through the one pure mapping.
+ *
+ * `metadata_refreshed_at` moves to `now()` as part of that upsert (`mirrorTitle`), which
+ * is what makes **not calling this** the entire mechanism behind *"a title skipped for
+ * any reason does not get `metadata_refreshed_at` stamped."* There is no separate "mark
+ * refreshed" statement a caller could reach by mistake — the sweep calls this only after
+ * TMDB has actually answered, and a title that 404s or times out never reaches it.
+ *
+ * **Its own transaction**, opened here exactly as `addTitleToLibrary`'s is: the `title`
+ * row and its `episode` rows must land together or not at all, because a season TMDB has
+ * renumbered since the last refresh can still make the episode upsert violate
+ * `UNIQUE (title_id, season_no, episode_no)` (`mirrorTitle`'s own note on that), and a
+ * title left with new episode data but the old season numbers is worse than one left
+ * untouched. Nesting as a savepoint when `executor` is already a transaction is what lets
+ * the test harness roll a whole sweep back in one `inTransaction`, same as every other
+ * write in this file.
+ */
+export async function refreshTitleMirror(
+  mirror: TitleMirror,
+  executor: Executor = getDb(),
+): Promise<void> {
+  await executor.transaction((tx) => mirrorTitle(tx, mirror));
 }
 
 /** Whether the add created a library entry, or found one already there. */
