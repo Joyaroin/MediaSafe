@@ -386,7 +386,7 @@ describe("showMirror", () => {
   });
 
   it("mirrors no external id from a show fetched without the append", () => {
-    // Not a failure mode this file can prevent — `SHOW_APPEND_TO_RESPONSE` is what keeps
+    // Not a failure mode this file can prevent — `SHOW_EXTERNAL_IDS_APPEND` is what keeps
     // the two fetchers asking for it. Pinned so the behaviour is *stated*: the column
     // stays null and looks exactly like a show TMDB has no external id for.
     expect(showMirror({ id: 1399, name: "Game of Thrones" }, []).externalId).toBeNull();

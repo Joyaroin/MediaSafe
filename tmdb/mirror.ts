@@ -160,7 +160,7 @@ export interface TmdbShowPayload {
   poster_path?: string | null;
   in_production?: boolean;
   seasons?: TmdbShowSeasonPayload[];
-  /** Present only when the request carried `SHOW_APPEND_TO_RESPONSE`. */
+  /** Present only when the request carried `SHOW_EXTERNAL_IDS_APPEND`. */
   external_ids?: TmdbExternalIdsPayload | null;
 }
 
@@ -441,7 +441,7 @@ export function showMirror(
 ): TitleMirror {
   return {
     ...identity("show", show.id, show.name),
-    // Null unless the request carried `SHOW_APPEND_TO_RESPONSE` — see the constant.
+    // Null unless the request carried `SHOW_EXTERNAL_IDS_APPEND` — see the constant.
     externalId: externalIdFrom(show.external_ids),
     releaseYear: releaseYearFrom(show.first_air_date),
     posterPath: textFrom(show.poster_path),
