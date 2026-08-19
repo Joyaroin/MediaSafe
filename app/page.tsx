@@ -33,7 +33,7 @@ import { useRouter } from "next/navigation";
  * and only one can be fetched.
  *
  * This never renders visible content — `router.replace` fires before the first paint a
- * reader would notice, over the `body`'s own `ink` ground, so there is nothing to flash.
+ * reader would notice, over the `body`'s own ground, so there is nothing to flash.
  */
 export default function Home() {
   const router = useRouter();

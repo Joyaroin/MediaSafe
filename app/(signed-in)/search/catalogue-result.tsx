@@ -90,8 +90,8 @@ export function CatalogueResultRow({ result }: { result: MarkedResult }) {
       <Plate posterPath={result.posterPath} className="h-[104px] w-[78px] shrink-0" />
 
       <div className="min-w-0 flex-1">
-        <h2 className="bill-title text-bill-md text-stock">{result.name}</h2>
-        <p className="code-line mt-2 text-stock-dim" data-numeric>
+        <h2 className="bill-title text-bill-md text-text">{result.name}</h2>
+        <p className="code-line mt-2 text-dim" data-numeric>
           {/* The year and the kind, and nothing else. A synopsis here would be both the
               dense row `SPEC.md` §3.4 forbids and a field ADR-0001 forbids storing. */}
           {result.releaseYear === null ? "Year unknown" : result.releaseYear}
@@ -106,7 +106,7 @@ export function CatalogueResultRow({ result }: { result: MarkedResult }) {
          * reader can reach and cannot use is an invitation withdrawn, and this is a
          * statement of fact about their library.
          */
-        <p className="code-line shrink-0 text-stock-dim">In your library</p>
+        <p className="code-line shrink-0 text-dim">In your library</p>
       ) : (
         /**
          * The chip treatment from `DESIGN.md`, inverted on hover — **not** vermilion.
@@ -122,7 +122,7 @@ export function CatalogueResultRow({ result }: { result: MarkedResult }) {
            * accessible name carries the title the visible label leaves to the layout.
            */
           aria-label={`Add ${result.name} to your library`}
-          className="code-line shrink-0 border border-rule-bold px-4 py-2 text-stock transition-colors duration-150 hover:bg-stock hover:text-ink"
+          className="code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground"
         >
           Add
         </button>

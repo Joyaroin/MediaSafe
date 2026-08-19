@@ -46,14 +46,14 @@ describe("the desktop Up next row's grid", () => {
 
     expect(markup).toContain("Better Call Saul");
     // The name sits in its own line, beside the S1 E2 code line — not folded into it.
-    expect(markup).toContain('text-item text-stock-dim">Wine and Roses</p>');
+    expect(markup).toContain('text-item text-dim">Wine and Roses</p>');
     expect(markup).toContain("S1 E2");
   });
 
   it("names an episode TMDB has not named, rather than falling back to its number", () => {
     const markup = grid([entry({ episodeName: null })]);
 
-    expect(markup).toContain('text-item text-stock-dim">Not yet named</p>');
+    expect(markup).toContain('text-item text-dim">Not yet named</p>');
     // The S1 E2 code line still prints — it is the numbers that never stand alone.
     expect(markup).toContain("S1 E2");
   });

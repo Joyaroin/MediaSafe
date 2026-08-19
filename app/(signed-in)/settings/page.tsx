@@ -92,10 +92,10 @@ export default async function SettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-stock">Settings</h1>
+      <h1 className="bill-title text-bill-lg text-text">Settings</h1>
 
-      <section aria-labelledby="profile-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="profile-h" className="code-line text-stock-dim">
+      <section aria-labelledby="profile-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="profile-h" className="code-line text-dim">
           Profile
         </h2>
 
@@ -106,12 +106,12 @@ export default async function SettingsPage() {
         <TimezoneControl timezone={timezone} />
       </section>
 
-      <section aria-labelledby="data-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="data-h" className="code-line text-stock-dim">
+      <section aria-labelledby="data-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="data-h" className="code-line text-dim">
           Data
         </h2>
 
-        <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-dim">
           Bring in titles and watches from an export file. It only ever adds — running the
           same file twice changes nothing the second time.
         </p>
@@ -123,12 +123,12 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <section aria-labelledby="account-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="account-h" className="code-line text-stock-dim">
+      <section aria-labelledby="account-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="account-h" className="code-line text-dim">
           Account
         </h2>
 
-        <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-dim">
           Signing out ends this session on this device. Your library, your watches and
           your ratings are kept, and signing back in with the same Google account returns
           you to all of them.
@@ -138,7 +138,7 @@ export default async function SettingsPage() {
           <SignOutButton />
         </div>
 
-        <p className="mt-8 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-8 max-w-[60ch] text-note leading-relaxed text-dim">
           Ends every other session signed in as you — a phone sold, lost or lent, or a
           browser you signed into somewhere else. This device stays signed in.
         </p>
@@ -156,20 +156,20 @@ export default async function SettingsPage() {
 
           Set apart from the two sign-outs above by its own rule rather than by colour.
           Vermilion here would be the section shouting before the reader has asked it
-          anything, and `DESIGN.md` keeps `signal` for a live state or a recorded mark; the
-          page it leads to is where that ink belongs.
+          anything, and `DESIGN.md` keeps `accent` for a live state or a recorded mark; the
+          page it leads to is where that accent belongs.
         */}
-        <div className="mt-8 border-t border-rule pt-6">
-          <p className="max-w-[60ch] text-note leading-relaxed text-stock-dim">
+        <div className="mt-8 border-t border-hair pt-6">
+          <p className="max-w-[60ch] text-note leading-relaxed text-dim">
             Deleting your account destroys your library, your watches and your ratings
             permanently. The next page says how many of each, and nothing happens until you
             confirm it there.
           </p>
 
-          <p className="mt-6 text-item text-stock-dim">
+          <p className="mt-6 text-item text-dim">
             <Link
               href="/settings/delete-account"
-              className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+              className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
             >
               Delete account ›
             </Link>

@@ -30,13 +30,13 @@ export function ReferenceLine({ reference }: { reference: string }) {
   }
 
   return (
-    <p className="code-line text-stock-dim">
+    <p className="code-line text-dim">
       <button
         type="button"
         onClick={copy}
         // `text-left` because the id wraps on a phone, and a wrapped centred id is
         // harder to read back than a wrapped ragged-right one.
-        className="text-left underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+        className="text-left underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
         data-numeric
       >
         Reference {reference}

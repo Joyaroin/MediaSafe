@@ -7,9 +7,9 @@ import { ReferenceLine } from "./reference-line";
 import { type RaisedWriteFailure, writeFailures } from "./write-failure";
 
 /**
- * DESIGN.md, States: *a persistent toast on solid `ink` inside a `2px` `signal` border —
+ * DESIGN.md, States: *a persistent toast on solid `ground` inside a `2px` `accent` border —
  * `420px` bottom-right on desktop, full-bleed above the tab bar on phone. Heading at
- * `text-bill-sm` in `signal`, the affected title and episode named in full, a solid *Try
+ * `text-bill-sm` in `accent`, the affected title and episode named in full, a solid *Try
  * again*, a ghost *Dismiss*, and a copyable reference id. It does not auto-dismiss.*
  *
  * **Its first caller is the add on the search screen** —
@@ -71,20 +71,20 @@ function WriteFailureToast({ failure }: { failure: RaisedWriteFailure }) {
       // Assertive, unlike the offline banner: this is the result of something the reader
       // just did, and it says that the thing did not happen.
       role="alert"
-      className="pointer-events-auto border-2 border-signal bg-ink p-4"
+      className="pointer-events-auto border-2 border-accent bg-ground p-4"
     >
-      <h2 className="bill-title text-bill-sm text-signal">That did not save</h2>
+      <h2 className="bill-title text-bill-sm text-accent">That did not save</h2>
 
       {/* Named in full, both of them, and set as their own block rather than folded into
           the sentence. CONTEXT.md gives episodes real names — "Season 2, Episode 4 —
           Woe's Hollow" — and a sentence with one of those inside it collides with its own
           punctuation and stops being readable at exactly the moment it matters. */}
-      <p className="mt-3 text-item text-stock">{failure.title}</p>
+      <p className="mt-3 text-item text-text">{failure.title}</p>
       {failure.episode ? (
-        <p className="text-item text-stock-dim">{failure.episode}</p>
+        <p className="text-item text-dim">{failure.episode}</p>
       ) : null}
 
-      <p className="mt-3 text-note leading-relaxed text-stock">
+      <p className="mt-3 text-note leading-relaxed text-text">
         Your change did not reach MediaSafe. Nothing else was affected.
       </p>
 
