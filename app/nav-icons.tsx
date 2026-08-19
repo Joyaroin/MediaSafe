@@ -1,13 +1,16 @@
 /**
- * The four glyphs the app's navigation draws with — one rectilinear vocabulary shared by
+ * The five glyphs the app's navigation draws with — one rectilinear vocabulary shared by
  * every surface that lists a destination, rather than a set redrawn per surface.
  *
  * `tab-bar.tsx` minted the first three for the phone tab bar (issue #102); `sidebar.tsx`
  * (issue #136) is the second caller, and the reason they moved here — a sidebar with the
- * same four destinations drawing its own copies is exactly the kind of drift that leaves a
+ * same destinations drawing its own copies is exactly the kind of drift that leaves a
  * product with two play marks that quietly stop agreeing. `SettingsIcon` is `masthead.tsx`'s
  * original inline drawing, extracted for the same reason: the sidebar's own Settings entry
  * needed it, and inlining a second copy was the alternative this file exists to avoid.
+ * `ListsIcon` is issue #146's own drawing, moved here from `tab-bar.tsx` when #136's merge
+ * gave the sidebar a fourth primary destination to match — the icon is unchanged, only its
+ * address.
  */
 
 /** A play mark — the same triangle vocabulary as the sort select's caret
@@ -43,6 +46,22 @@ export function LibraryIcon({ className }: { className?: string }) {
       <rect x="13" y="2" width="9" height="9" fill="currentColor" />
       <rect x="2" y="13" width="9" height="9" fill="currentColor" />
       <rect x="13" y="13" width="9" height="9" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Three bulleted rows — a grouping made by hand, not the poster grid `LibraryIcon` draws
+ *  or the tapering search bars: a list is ranked rows, and this is that shape in miniature
+ *  (issue #146). */
+export function ListsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <rect x="2" y="3" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="3" width="14" height="3" fill="currentColor" />
+      <rect x="2" y="10.5" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="10.5" width="14" height="3" fill="currentColor" />
+      <rect x="2" y="18" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="18" width="14" height="3" fill="currentColor" />
     </svg>
   );
 }

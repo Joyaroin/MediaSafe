@@ -20,7 +20,7 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  *
  * Issue #56 asks for two columns by default. On a phone that does not read, and it was
  * measured rather than guessed: at a 388px viewport, two columns leave a cell 194px wide,
- * of which the plate takes 78px, the gap 16px and the padding 32px — **68px for a title
+ * of which the poster takes 78px, the gap 16px and the padding 32px — **68px for a title
  * set at `2.15rem`**. Every name then breaks to two or three letters a line, and before
  * `break-words` was added to the cell the overflow scrolled the whole page sideways
  * (552px of content in a 388px viewport).
@@ -31,11 +31,11 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * of the overrule arriving at 390px.
  *
  * One column is the smallest answer that stays inside the ticket's own constraint: *the
- * column count is the only thing that changes between devices.* The plate keeps its
- * measure, the title keeps its step, the cell keeps its shape — there is no phone
+ * column count is the only thing that changes between devices.* The poster keeps its
+ * width, the title keeps its step, the cell keeps its shape — there is no phone
  * stylesheet, no smaller type ramp and no second layout. The alternative fixes were all
  * larger: shrinking the type would add a device-dependent ramp step, and stacking the
- * plate above the title would make the *cell* differ between devices, which is the thing
+ * poster above the title would make the *cell* differ between devices, which is the thing
  * §7 and #56 both forbid.
  *
  * Two columns return at `sm` (`≥640px`), where a cell is 320px and the title has 194px —
@@ -51,8 +51,9 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * ── Structure is drawn, not spaced ───────────────────────────────────────────────────
  *
  * `DESIGN.md`'s Hairline Rule: cells are divided by `1px` `hair` borders on their bottom
- * and right edges — not by gaps, not by cards. There is no `gap` on this grid for the same
- * reason there is no radius and no shadow anywhere in this application.
+ * and right edges — not by gaps, not by cards. There is no `gap` on this grid, and no
+ * shadow — the poster's own `7px` radius (#135) is the one exception to zero radius in
+ * this application, and it is the poster's alone, not the cell's.
  *
  * ── 472 of these ─────────────────────────────────────────────────────────────────────
  *
@@ -60,8 +61,8 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * renders all of them. No pagination, no virtual list, no "show more": the whole point of
  * the screen is *your library as a place you can look at, rather than a query you can
  * run*, and 472 rows of already-fetched text is not what makes a page slow. What would is
- * 472 network requests for artwork, which is why `app/plate.tsx` marks every poster
- * `loading="lazy"` — the browser fetches the plates a reader actually scrolls to.
+ * 472 network requests for artwork, which is why `app/poster.tsx` marks every poster
+ * `loading="lazy"` — the browser fetches the posters a reader actually scrolls to.
  *
  * **Amended by #57, then by #58.** This component itself still takes no input and is
  * still not marked `"use client"`. #57 put it inside `LibrarySurface`'s client boundary
@@ -75,7 +76,7 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  *
  * #58 is what actually gives a cell a click target, and it does not change any of that:
  * `selectable-entry.tsx` is a thin client wrapper each cell's button sits inside, with the
- * rest of the cell — plate, title, state line — passed to it as `children` and rendered
+ * rest of the cell — poster, title, state line — passed to it as `children` and rendered
  * exactly as before. It adds no *further* client boundary; it is already inside the one
  * #57 opened.
  */

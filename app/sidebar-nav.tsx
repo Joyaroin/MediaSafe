@@ -3,13 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LibraryIcon, SearchIcon, SettingsIcon, UpNextIcon } from "./nav-icons";
+import { LibraryIcon, ListsIcon, SearchIcon, SettingsIcon, UpNextIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 
 /**
- * The sidebar's four destinations, and the one thing about them that needs the browser —
- * issue #136. `sidebar.tsx` renders the wordmark and the display name around this; this
- * is only the part that has to know which route the reader is on.
+ * The sidebar's five destinations, and the one thing about them that needs the browser —
+ * issue #136, merged against issue #146 rather than after it. `sidebar.tsx` renders the
+ * wordmark and the display name around this; this is only the part that has to know which
+ * route the reader is on.
+ *
+ * ── Lists, arriving already built ────────────────────────────────────────────────────
+ *
+ * #146 shipped *Lists* onto the masthead's nav cells and the phone tab bar while this
+ * sidebar did not exist yet, saying explicitly that whatever #132's eventual sidebar did
+ * would inherit the destination rather than re-decide it (`SPEC.md` §9). It is the fourth
+ * item in `PRIMARY` for that reason — not a fresh design decision made here, but the one
+ * #146 already made, carried into the nav that finally exists to carry it.
  *
  * ── No accent, on purpose ─────────────────────────────────────────────────────────────
  *
@@ -30,12 +39,15 @@ import { isCurrentRoute } from "./nav-route";
  * `nav-route.ts`'s one function, shared with `tab-bar.tsx` rather than each file keeping
  * its own copy of the same `startsWith` check: *Library* and *Search* carry pushed and
  * replaced routes under them, and a reader three screens into either is still in that
- * section. *Settings* gets the same treatment for `/settings/delete-account`.
+ * section. *Lists* has no route under it — `/lists` is flat — but the check costs
+ * nothing to apply uniformly, the same reasoning `tab-bar.tsx` gives for *Up next*.
+ * *Settings* gets the pushed-route treatment for real, for `/settings/delete-account`.
  */
 const PRIMARY = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
+  { href: "/lists", label: "Lists", Icon: ListsIcon },
 ] as const;
 
 const SETTINGS = { href: "/settings", label: "Settings", Icon: SettingsIcon } as const;
@@ -68,7 +80,7 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {/* `DESIGN.md`'s Hairline Rule: a `1px` `hair` rule between the three primary
+      {/* `DESIGN.md`'s Hairline Rule: a `1px` `hair` rule between the four primary
           destinations and Settings, the same division the masthead used to draw between
           its nav cells and its Settings entrance — carried over as a rule rather than as
           another bordered cell, since the sidebar is a column, not a row. */}

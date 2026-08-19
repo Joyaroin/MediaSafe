@@ -56,8 +56,9 @@
      one `@theme` declaration serve both colour schemes. `rule` and `rule-bold` collapse
      into the single `hair` the prototype uses everywhere; the prototype draws every
      division at `1px` and lets weight and type carry hierarchy, not a second hairline
-     colour. `--color-spot`, the duotone plate's ground, has no replacement token — the
-     plate now reads `--color-raised` directly, and the plate itself is retired in #135. */
+     colour. `--color-spot` has no replacement token — it was the duotone plate's ground,
+     and the plate itself is retired in #135; there is nothing left for a spot ink to be
+     a ground for. */
   --color-ground: var(--ground);
   --color-raised: var(--raised);
   --color-hair: var(--hair);
@@ -179,47 +180,21 @@
   line-height: 1.1;
 }
 
-/* The plate: how a borrowed poster is forced into one measure.
-   grayscale → a neutral ground → half-tone screen. Every artwork, at one measure,
-   whatever it arrived looking like. Its artwork filter and half-tone screen are plain
-   CSS, below, because a `@utility` cannot reach a child or a pseudo-element.
+/* The poster (#135) — what replaces the plate. Full-colour TMDB artwork at its own
+   `2/3` ratio, uncropped: no grayscale, no ground ink standing in for missing artwork's
+   colour, no half-tone screen. `app/poster.tsx`'s own docblock has the rest — one
+   `@utility` is enough now because nothing here reaches a child or a pseudo-element, which
+   is the plain-CSS block this replaces along with the plate itself.
 
-   Its ground used to be a duotone spot ink; #134 retires that token, so the plate reads
-   `--color-raised` directly rather than a colour reserved for the plate alone. The plate
-   itself — the duotone treatment on top of this ground — is retired in #135. */
-@utility plate {
+   `background: var(--color-raised)` only ever shows for a title with no artwork — TMDB's
+   CDN is never asked for a size the surface doesn't render, so there is no loading flash
+   this covers for. */
+@utility poster {
   position: relative;
-  isolation: isolate;
   overflow: hidden;
   background: var(--color-raised);
-}
-
-/* The plate's other two layers, in the one plain-CSS block DESIGN.md's opening paragraph
-   accounts for. They are here rather than beside `app/plate.tsx` because they are
-   selectors on a child and on a pseudo-element: the first thing a CSS module or an inline
-   style cannot express, and the reason the prototype has this block too.
-
-   `#000` in the screen is *screen ink* under `mix-blend-mode: multiply`, not a surface
-   colour — a recorded detector exception in `.impeccable/config.json`, not a stray hex. */
-.plate > .art {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(1) contrast(1.12);
-  mix-blend-mode: luminosity;
-  opacity: 0.95;
-}
-
-.plate::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background-image: radial-gradient(circle at 50% 50%, #000 0.9px, transparent 1.05px);
-  background-size: 3px 3px;
-  mix-blend-mode: multiply;
-  opacity: 0.34;
+  aspect-ratio: 2 / 3;
+  border-radius: 7px;
 }
 
 /* ── The Material Event: DESIGN.md's Motion section ─────────────────────────────────

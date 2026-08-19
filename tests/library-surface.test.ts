@@ -35,9 +35,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  *     `accent` rule, every test still passes, the app still works, and a database that is
  *     down starts reading as a library with nothing in it — which is exactly how
  *     `tvtracker` shipped it for its entire life.
- *  2. **An abandoned entry dims its plate *and* its name.** `DESIGN.md`: *"that pairing is
- *     the only place the plate is modified."* Half of it is a rendering fault that reads
- *     as a state.
+ *  2. **An abandoned entry dims its poster *and* its name.** `library-entry-cell.tsx`:
+ *     *"that pairing is the only place the poster is modified."* Half of it is a
+ *     rendering fault that reads as a state.
  *  3. **The column ladder.** One number in one class string, and nothing else in the suite
  *     touches a breakpoint.
  *  4. **An unnamed next episode never degrades to a number.** The rule
@@ -164,14 +164,14 @@ describe("the empty library, zero matches, and a failed read", () => {
 });
 
 describe("the library entry cell", () => {
-  it("dims an abandoned entry's plate and its name together", () => {
+  it("dims an abandoned entry's poster and its name together", () => {
     const abandoned = cell({ state: "abandoned" });
 
     expect(abandoned).toContain("opacity-45");
     expect(abandoned).toContain("text-dim");
     expect(abandoned).toContain("Abandoned");
 
-    // And leaves both alone otherwise — the plate is modified in exactly one place.
+    // And leaves both alone otherwise — the poster is modified in exactly one place.
     expect(cell()).not.toContain("opacity-45");
   });
 
@@ -206,6 +206,9 @@ describe("the library entry cell", () => {
 
     expect(one).toContain("<button");
     expect(one).toContain("w-full");
+    // The poster inside carries a `7px` radius of its own (#135), via the `poster`
+    // `@utility` rather than a `rounded-*` class, so it does not trip this assertion —
+    // the button and every Tailwind class on this cell are still flat.
     expect(one).not.toMatch(/rounded|shadow|scale-|translate-y/);
   });
 });
@@ -234,7 +237,7 @@ describe("the grid", () => {
 
     // The Hairline Rule is about the space *between* cells, so the assertion is on the
     // grid's own class list and not on the markup: the `gap-4` inside a cell is the
-    // plate-to-title measure `DESIGN.md` asks for, and would fail a blanket search.
+    // poster-to-title measure `DESIGN.md` asks for, and would fail a blanket search.
     const [, gridClasses] = grid.match(/^<ol[^>]*class="([^"]*)"/) ?? [];
     expect(gridClasses).toBeDefined();
     expect(gridClasses).not.toMatch(/gap/);

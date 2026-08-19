@@ -3,10 +3,13 @@ import { SidebarNav } from "./sidebar-nav";
 import { Wordmark } from "./press-mark";
 
 /**
- * The desktop sidebar — issue #136, replacing the masthead's two nav cells and Settings
- * entrance with one always-visible rail. `.impeccable/mocks/catalogue-wall.html`'s `.side`
- * is the approved mock this is built from: wordmark at the top, three destinations, a
- * rule, Settings, and the display name pinned to the foot.
+ * The desktop sidebar — issue #136, merged against issue #146 rather than after it, and
+ * replacing the masthead's nav cells (three by the time #146 landed *Lists* on them) and
+ * its Settings entrance with one always-visible rail.
+ * `.impeccable/mocks/catalogue-wall.html`'s `.side` is the approved mock this is built
+ * from: wordmark at the top, its three destinations, a rule, Settings, and the display
+ * name pinned to the foot — the mock predates #146, so *Lists* is a fourth item in
+ * `sidebar-nav.tsx`'s own `PRIMARY` array rather than in the mock, at the same measures.
  *
  * `196px` (`w-[196px]`) is the mock's own measure, taken rather than re-derived — the same
  * principle `masthead.tsx` states for its own borrowed numbers. It is a placeholder width
@@ -31,8 +34,8 @@ import { Wordmark } from "./press-mark";
  * chrome in the build — this rail, the phone masthead, the phone tab bar — paying the
  * same small cost rather than introducing a second, heavier one.
  *
- * Hidden below `lg` — the phone reaches the same four destinations through `masthead.tsx`
- * and `tab-bar.tsx` instead.
+ * Hidden below `lg` — the phone reaches *Up next*, *Search*, *Library* and *Lists* through
+ * `tab-bar.tsx`'s four tabs, and *Settings* through `masthead.tsx`'s icon instead.
  */
 export async function Sidebar() {
   const displayName = await currentDisplayName();

@@ -202,10 +202,13 @@ were written, and the ones a builder most often invents.
 fourth.
 
 1. **Navigation and landing — overturned by [#136](https://github.com/Joyaroin/MediaSafe/issues/136).**
-   A sidebar on desktop, always visible: **Up next · Library · Search**, a rule, then **Settings** —
-   four destinations, not the two nav items this bullet used to name, and Up next is a destination
-   now rather than the one thing it explicitly was not. Phone: unchanged, three tabs (Up next,
-   Search, Library). **Both devices land on Up next.** The two used to diverge here because `/`
+   A sidebar on desktop, always visible: **Up next · Library · Search · Lists**, a rule, then
+   **Settings** — five destinations, not the two nav items this bullet used to name, and Up next is
+   a destination now rather than the one thing it explicitly was not. Lists is [#146](https://github.com/Joyaroin/MediaSafe/issues/146)'s,
+   merged into this sidebar rather than left behind on the masthead cells #146 built it against — see
+   §9's *Their own destination on both devices* for the handoff. Phone: **four** tabs now (Up next,
+   Search, Library, Lists — #146 again); the tab bar itself is untouched by this ticket beyond going
+   frosted, same as the masthead. **Both devices land on Up next.** The two used to diverge here because `/`
    split on viewport — desktop to Library, phone to Up next — which existed only because Up next was
    not yet a desktop destination; #136 deleted that redirect rather than rewiring it, which is also
    the one place in the build that read a viewport fact in JavaScript instead of Tailwind, now gone.
@@ -536,12 +539,17 @@ something v1 does not have, and that judgement was wrong.
 What came in with them, and what did not:
 
 - **Their own destination on both devices**, not a rail on Up next — that stays below, because *what
-  do I watch tonight* is a different question from *what did I group*. Where the destination sits is
-  [#132](https://github.com/Joyaroin/MediaSafe/issues/132)'s to say, and #133 defers to it: as of
-  [#136](https://github.com/Joyaroin/MediaSafe/issues/136) the desktop nav is a sidebar with four
-  destinations, Up next, Library, Search and Settings (`app/sidebar.tsx`), and the phone still has
-  three tabs (`app/tab-bar.tsx`), so any count of items is still a count in a design Lists has not
-  landed in.
+  do I watch tonight* is a different question from *what did I group*. `#133` deferred where the
+  destination sits to [#132](https://github.com/Joyaroin/MediaSafe/issues/132)'s sidebar redesign,
+  reasoning that Lists would be its fifth item; #132 had not landed by the time
+  [#146](https://github.com/Joyaroin/MediaSafe/issues/146) built the destination, so it went into the
+  nav that actually existed then instead of waiting on one that did not — three masthead cells,
+  Library, Search and Lists, and a fourth phone tab. **#132's sidebar landed as
+  [#136](https://github.com/Joyaroin/MediaSafe/issues/136), merged against #146 rather than after
+  it, and #146's own prediction is what settled the integration**: the desktop nav is a sidebar with
+  five destinations — Up next, Library, Search, Lists, a rule, then Settings — replacing the
+  masthead cells entirely (`app/sidebar.tsx`), and the phone keeps its four tabs
+  (`app/tab-bar.tsx`), Lists included.
 - **A list holds anything in the catalogue**, not only what you own, and is **ordered by hand**. So
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your
@@ -672,18 +680,20 @@ document will ever find, which is the drift this section exists to stop.
   the landing redirect (phone on Up next, desktop on Library) now exist, and the cells go behind
   `lg:` in the same diff that builds the bar, exactly as this bullet said would happen.
 - **`DESIGN.md`'s Navigation section no longer describes the desktop.** *"Desktop: full-height cells
-  on the masthead's hairline… Two items only: Library and Search"* — [#136](https://github.com/Joyaroin/MediaSafe/issues/136)
-  deletes the desktop masthead those cells lived on and replaces it with `app/sidebar.tsx`, a
-  four-destination rail (Up next, Library, Search, Settings). The same section's *"Active is
-  inverted (bone ground, ink text)"* is also overturned there, on purpose and not by omission: the
+  on the masthead's hairline… Three items: Library, Search, Lists"* — [#136](https://github.com/Joyaroin/MediaSafe/issues/136)
+  deletes the desktop masthead those cells lived on (and #146's third cell with them) and replaces
+  it with `app/sidebar.tsx`, a five-destination rail (Up next, Library, Search, Lists, Settings). The
+  same section's *"Active is inverted (bone ground, ink text)"* is also overturned there, on purpose
+  and not by omission: the
   sidebar's current tab is a `2px` left rule plus full-strength `text` against `dim` siblings —
   taken from the approved mock at `.impeccable/mocks/catalogue-wall.html`'s `.side a.on` rule
   (*"no accent here — accent means live action"*) — because inversion is a block treatment built
   for a row of cells, and the reserved `accent` is precisely what a naive port of it to a rail would
   have reached for. `DESIGN.md`'s Layout section's `top: 57px` sticky offset for the programme note
   is stale for the same reason: nothing sits above that column on desktop any more, and the pane is
-  `top: 0` now (`programme-note.tsx`). The Phone section of Navigation is unaffected — the phone
-  still reaches Settings through the masthead's icon, not through a fourth tab.
+  `top: 0` now (`programme-note.tsx`). The Phone section of Navigation is unaffected by any of
+  this — the phone's fourth tab is Lists (#146), and it still reaches Settings through the
+  masthead's icon rather than a fifth one.
 
 ### 10.4 `PRODUCT.md` — historical, and stale in eight places
 

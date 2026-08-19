@@ -13,8 +13,8 @@
 
 ## Amendments
 
-Recorded rather than rewritten, because an ADR is a record. **The decision below is unchanged**; two
-things around it are not.
+Recorded rather than rewritten, because an ADR is a record. **The decision below is unchanged**; the
+things around it that are not are listed here, newest last.
 
 1. **The rewatch premise in *Context* was never real** — [#16](https://github.com/Joyaroin/MediaSafe/issues/16),
    2026-08-17. `watched_count` is not a rewatch total but `watchedThrough + extra − gaps` clamped to
@@ -108,6 +108,53 @@ things around it are not.
    forward-only, `library_entry_id` stays behind nullable and unread, and
    [#150](https://github.com/Joyaroin/MediaSafe/issues/150) drops it in its own change. See *Owned*
    below, corrected in place.
+
+8. **An unwatch removes every watch of an episode, and the reason it did not was false** —
+   [#89](https://github.com/Joyaroin/MediaSafe/issues/89) built the narrow rule,
+   [#145](https://github.com/Joyaroin/MediaSafe/issues/145) removed it, 2026-08-19. This ADR gave
+   `source` / `source_key` one job — identifying a watch by where it came from — and #89 gave the
+   column a second one it was never designed for: **a veto**. Its unwatch narrowed to
+   `source = 'app'` on both the `SELECT` and the `DELETE`, so a watch an import had written could
+   not be removed from the application at all.
+
+   **The justification was that imported watches are unrecoverable.** The library's 19,558 of them
+   were reconstructed once from an archive with no live source behind it, so deleting one was said
+   to destroy a fact nothing could put back. **That is not true of this repository**, and it was not
+   true when it was written:
+
+   - the raw export is committed — `fixtures/tvtracker-2026-08-16T04-27-53Z-schema.sql.gz` and
+     `…-data.redacted.sql.gz`, pinned by checksum in `tests/fixture-archive.test.ts`;
+   - so is the converted seed, `fixtures/mediasafe-seed.json` — 462 titles and 19,558 watches,
+     counted from the file (`SPEC.md` §7: *size surfaces for 472; assert counts against 462*);
+   - import is idempotent by `UNIQUE (user_id, source, source_key)` above — the property this ADR
+     chose the identity *for* — so re-running it adds nothing and duplicates nothing;
+   - and its keys are deterministic: `scripts/convert-tvtracker/map.ts` mints
+     `${tmdb_episode_id}:${occurrence}`, so `62085:1` is always the same row.
+
+   `npm run db:seed` therefore restores any imported watch **exactly**. The archive is irreplaceable
+   — nothing can produce a second copy of it, which is why it is checksummed — but that is a
+   statement about the file, not about the rows, and #89 read the one as the other.
+
+   What the wrong premise bought was a feature nobody could use. The library is 19,558 imported
+   watches, so the control did not render on essentially anything its only reader owns. (#89 said
+   19,391, which `SPEC.md` §7 gives as the **dated** subset, not the total — the argument does not
+   turn on which, but the number should be the one the seed actually holds.) **The predicate is
+   removed, not narrowed**: unwatch now deletes
+   every watch of one episode for one account, imported and recorded alike, and `EpisodeDetail`'s
+   `unwatchable` — the flag that decided whether a row could offer the control — is deleted with it
+   rather than pinned to `watched`.
+
+   **Nothing about the decision below reopens.** A rewatch is still a second row; unwatch removes
+   both because *unwatched* means unwatched, which is a statement about one episode and not about
+   watch identity. Isolation was never carried by `source` and is unchanged: `ownedBy`, the library
+   entry and the episode. *No state is ever stored* is what makes progress and up next follow with
+   nothing to recalculate. And **`abandoned_at` is untouched** — *Abandonment* below clears it only
+   in the same transaction as a watch **insert**, and taking a watch back is not a judgement about
+   the show.
+
+   The cost, stated plainly because the product does not state it: restoring an imported watch means
+   running a command on a laptop, not pressing a button, and **there is no undo**. What justifies one
+   press with no dialog is that it is one episode.
 
 ## Context
 

@@ -35,7 +35,6 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     episodeNo: 1,
     name: "Winter Is Coming",
     watched: false,
-    unwatchable: false,
     upNext: false,
     ...overrides,
   };
@@ -65,11 +64,16 @@ describe("the episode list", () => {
     expect(markup).not.toMatch(/>\s*S\d+\s*E\d+\s*</);
   });
 
-  it("strikes through a watched episode and says so", () => {
+  it("strikes through a watched episode, and lets the strike be what says so", () => {
     const markup = episodes([episode({ watched: true })]);
 
+    // The struck name is the statement (`DESIGN.md`, Episode Line). It used to be said
+    // twice: a *Watched* code line stood in the trailing slot wherever there was no
+    // unwatch to offer, which #145 makes unreachable. That label now belongs to the
+    // length of the strike alone — the control test below owns the other half, so this
+    // one asserts only what it is about.
     expect(markup).toContain("line-through");
-    expect(markup).toContain("Watched");
+    expect(markup).not.toContain(">Watched<");
   });
 
   it("marks exactly the up-next episode, inverted, and nothing else", () => {
@@ -105,7 +109,7 @@ describe("the episode list", () => {
   });
 
   it("offers a watched episode a rewatch control that is not the one that struck it", () => {
-    const markup = episodes([episode({ watched: true, unwatchable: true })]);
+    const markup = episodes([episode({ watched: true })]);
 
     expect(markup).toContain("Rewatch");
     // The whole rule, at the only place it can be checked without a browser: the gesture
@@ -114,31 +118,32 @@ describe("the episode list", () => {
     expect(markup).not.toContain("Strike it");
   });
 
-  it("offers unwatch on a watched episode the application recorded", () => {
-    const markup = episodes([episode({ watched: true, unwatchable: true })]);
+  it("offers unwatch on every watched episode, whatever recorded the watch", () => {
+    const markup = episodes([episode({ watched: true })]);
 
+    /**
+     * The inversion of #89's rule, at the surface — issue #145. This assertion used to
+     * have a twin that rendered `unwatchable: false` and asserted the control was
+     * **absent**, because an episode whose only watch was imported offered none. There is
+     * no such input any more: `EpisodeDetail` carries nothing derived from a watch's
+     * source, so there is no watched row this component can be handed that would render
+     * without an unwatch. All 19,558 of the library's watches are imported
+     * (`SPEC.md` §7), and a control that skipped them rendered on essentially nothing its
+     * only reader owns.
+     */
     expect(markup).toContain("Unwatch");
-  });
-
-  it("offers no unwatch on an episode whose only watch is imported", () => {
-    const markup = episodes([episode({ watched: true, unwatchable: false })]);
-
-    // Struck and readable as watched, and there is no control that could remove it —
-    // 19,391 imported watches are not editable from the application (issue #89).
-    expect(markup).toContain("line-through");
-    expect(markup).toContain("Watched");
-    expect(markup).not.toContain("Unwatch");
+    expect(markup).toContain("Unwatch Season 1, Episode 1 — Winter Is Coming");
   });
 
   it("offers neither control on an unwatched episode", () => {
-    const markup = episodes([episode({ watched: false, unwatchable: false })]);
+    const markup = episodes([episode({ watched: false })]);
 
     expect(markup).not.toContain("Rewatch");
     expect(markup).not.toContain("Unwatch");
   });
 
   it("displays no rewatch count anywhere", () => {
-    const markup = episodes([episode({ watched: true, unwatchable: true })]);
+    const markup = episodes([episode({ watched: true })]);
 
     /**
      * `CONTEXT.md`, *Rewatch*: a rewatch is *never a number kept on a title*. A weaker

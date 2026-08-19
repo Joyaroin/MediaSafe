@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
-import { Plate } from "@/app/plate";
+import { Poster } from "@/app/poster";
 import { addToLibraryAction, type MarkedResult } from "./actions";
 
 /**
@@ -87,7 +87,7 @@ export function CatalogueResultRow({ result }: { result: MarkedResult }) {
 
   return (
     <li className="flex items-center gap-4 py-4">
-      <Plate posterPath={result.posterPath} className="h-[104px] w-[78px] shrink-0" />
+      <Poster posterPath={result.posterPath} width={78} className="w-[78px] shrink-0" />
 
       <div className="min-w-0 flex-1">
         <h2 className="bill-title text-bill-md text-text">{result.name}</h2>

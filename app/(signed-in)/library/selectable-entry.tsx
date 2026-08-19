@@ -15,7 +15,7 @@ import { useLibrarySelection } from "./library-selection";
  * diff there is a handler, not a rewrite of the cell."* This is that handler, wrapping
  * `children` — the cell's existing, still server-rendered markup — rather than replacing
  * it. Composing a Server Component as a Client Component's `children` is what keeps the
- * plate, the title and the state line off the client bundle; only the button and its
+ * poster, the title and the state line off the client bundle; only the button and its
  * `onClick` are here.
  *
  * ── Desktop selects; the phone route navigates ────────────────────────────────────────

@@ -38,10 +38,14 @@ export type { WatchAppearance, WatchMarkPhase } from "./watch-marks";
  * `unwatch` is offered to every caller and drawn by one. `FilmRow` does not call it — a
  * film's unwatch is not #89's scope, which is the watched *episode* — and this makes no
  * decision about that; it offers the write, the row decides whether to draw a control.
+ *
+ * `initialUnwatchable` is gone with #145. It seeded *whether there is an app watch to
+ * take back*, which stopped being a separate question the moment unwatch began removing
+ * every watch of an episode: a watched row has one to offer, and `initialWatched` is
+ * already that.
  */
 export function useWatchMark({
   initialWatched,
-  initialUnwatchable = false,
   libraryEntryId,
   episodeId,
   titleName,
@@ -49,8 +53,6 @@ export function useWatchMark({
   onRecorded,
 }: {
   readonly initialWatched: boolean;
-  /** Absent for a film, which draws no unwatch control and so never reads this. */
-  readonly initialUnwatchable?: boolean;
   readonly libraryEntryId: string;
   readonly episodeId: string | null;
   readonly titleName: string;
@@ -80,7 +82,6 @@ export function useWatchMark({
    */
   const [initial] = useState<WatchMarkView>(() => ({
     watched: initialWatched,
-    unwatchable: initialUnwatchable,
     phase: initialWatched ? "settled" : "unwatched",
     pending: false,
   }));

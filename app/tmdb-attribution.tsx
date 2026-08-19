@@ -4,13 +4,13 @@
  * `docs/design/v1-surfaces.md` §7 names its two homes: title detail and search — *"where
  * borrowed data is on screen"*. Search was the first of the two to exist; issue #58 is
  * the second, which is why this moved out of `app/(signed-in)/search/` to sit beside
- * `app/plate.tsx` — the other borrowed-artwork device both surfaces share.
+ * `app/poster.tsx` — the other borrowed-artwork device both surfaces share.
  *
  * `className` carries the wrapper's spacing rather than this component fixing it, because
  * the two homes are not laid out alike: search leaves it at the end of a flowing page
  * (`mt-12 … pt-3`), and title detail pins it to the foot of a fixed pane, outside the
  * scroll, on its own ground (`bg-ground px-6 py-3`, no `mt-12`). One notice, two frames — the
- * same reason `Plate` takes its measure from the caller rather than fixing one itself.
+ * same reason `Poster` takes its measure from the caller rather than fixing one itself.
  *
  * Pinned to the foot of whichever surface it is on, rather than left at the end of the
  * results, as the prototype has it

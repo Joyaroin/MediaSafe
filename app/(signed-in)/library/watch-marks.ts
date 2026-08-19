@@ -103,18 +103,19 @@ export type WatchMarkPhase = "unwatched" | "marking" | "settled";
 /**
  * Everything about one episode that a press changes, in one object.
  *
- * They are one piece of state and not three because every write here sets all three at
- * once and a failure puts all three back — and *back* has to mean the appearance the
- * episode had at the moment of that press, captured then rather than reconstructed later.
- * Three fields updated separately would make the rollback three statements that can drift
- * out of step, and two of the three are only ever wrong in ways nothing on screen would
- * show.
+ * They are one piece of state and not two because every write here sets both at once and
+ * a failure puts both back — and *back* has to mean the appearance the episode had at the
+ * moment of that press, captured then rather than reconstructed later. Fields updated
+ * separately would make the rollback two statements that can drift out of step.
+ *
+ * There were three until #145. `unwatchable` said whether there was an app watch to take
+ * back, because an episode whose watches were all imported offered no unwatch; unwatch
+ * now removes every watch of an episode whatever recorded it, so the answer was always
+ * `watched` and the field went with the rule.
  */
 export interface WatchAppearance {
   /** Struck, in the reader's eye. Flips before the server has answered. */
   readonly watched: boolean;
-  /** Whether there is an app watch to take back — `db/access.ts`'s `EpisodeDetail`. */
-  readonly unwatchable: boolean;
   readonly phase: WatchMarkPhase;
 }
 
@@ -190,7 +191,6 @@ export interface WatchMarks {
 /** What a mark starts as when a write reaches an episode no surface is showing. */
 const UNSEEN: WatchMarkView = {
   watched: false,
-  unwatchable: false,
   phase: "unwatched",
   pending: false,
 };
@@ -230,13 +230,12 @@ interface Mark {
 }
 
 function appearanceOf(view: WatchMarkView): WatchAppearance {
-  return { watched: view.watched, unwatchable: view.unwatchable, phase: view.phase };
+  return { watched: view.watched, phase: view.phase };
 }
 
 function sameView(one: WatchMarkView, other: WatchMarkView): boolean {
   return (
     one.watched === other.watched &&
-    one.unwatchable === other.unwatchable &&
     one.phase === other.phase &&
     one.pending === other.pending
   );
@@ -317,7 +316,7 @@ export function createWatchMarks({
     const sourceKey = one.key;
 
     holdRestore(one);
-    apply(one, { watched: true, unwatchable: true, phase: "marking", pending: true });
+    apply(one, { watched: true, phase: "marking", pending: true });
 
     const outcome = await record(subject, sourceKey);
 
@@ -346,7 +345,6 @@ export function createWatchMarks({
       // only an appearance that was actually put back has a strike left to play.
       apply(one, {
         watched: true,
-        unwatchable: true,
         phase: one.view.phase === "unwatched" ? "marking" : one.view.phase,
         pending: false,
       });
@@ -376,42 +374,50 @@ export function createWatchMarks({
   }
 
   /**
-   * Take one watch back — issue #89.
+   * Unwatch an episode — issue #89, and every watch of it since #145.
    *
-   * ── Why this one is not offered a retry ───────────────────────────────────────────
+   * ── The optimistic guess is now simply right ──────────────────────────────────────
    *
-   * A lost *insert* is safe to send again: it carries an idempotency key, so the second
-   * attempt is either the same row or no row. A lost *delete* carries no such thing.
-   * "The response never arrived" and "the delete never happened" are the same event from
-   * here, and a retry of the first removes a second watch — the earlier half of a
-   * rewatch, gone, with nothing on any screen to say so. That is precisely the silent
-   * history edit #89 exists to prevent, so the toast is raised without a `retry`
-   * (`errors/write-failure.ts` allows exactly this: *absent when there is nothing
-   * sensible to retry*) and the episode goes back to being struck. Pressing unwatch again
-   * is then a deliberate act against a row the reader can see.
+   * #89 guessed *unwatched* and then corrected itself from the outcome, because the guess
+   * was wrong wherever an imported watch or the earlier half of a rewatch was underneath
+   * — neither of which a browser can see. Both are removed now, so a landed unwatch
+   * always leaves the episode unwatched and there is nothing left to correct. What
+   * follows a success is `pending: false` and the truth restated, not news.
+   *
+   * ── Why this one is still not offered a retry ─────────────────────────────────────
+   *
+   * The reason #89 gave has expired and is worth saying so: it was that a lost *delete*
+   * carries no idempotency key, so re-sending one could remove a *second* watch — the
+   * earlier half of a rewatch, gone silently. That cannot happen any more. This delete is
+   * over a predicate rather than a row, so sending it twice removes exactly what sending
+   * it once removes.
+   *
+   * The conclusion survives on a different footing. "The response never arrived" and "the
+   * delete never happened" are still the same event from here, and the reader may well
+   * have re-watched the episode in between — a *Try again* pressed against a stale toast
+   * would then remove a watch they meant to keep, with nothing on screen to say so. So
+   * the toast is raised without a `retry` (`errors/write-failure.ts` allows exactly this:
+   * *absent when there is nothing sensible to retry*) and the episode goes back to being
+   * struck. Pressing unwatch again is then a deliberate act against a row the reader can
+   * see.
    */
   async function unwatch(subject: WatchSubject, naming: WatchNaming): Promise<void> {
     const one = ensure(subject, UNSEEN);
     one.written = true;
 
     holdRestore(one);
-    // The optimistic guess is *unwatched*, because it is right for every episode with one
-    // app watch and nothing underneath — which is nearly all of them. Where it is wrong,
-    // the outcome below says so and it is corrected rather than left standing.
-    apply(one, { watched: false, unwatchable: false, phase: "unwatched", pending: true });
+    apply(one, { watched: false, phase: "unwatched", pending: true });
 
     const outcome = await removeWatch(subject);
 
     if (outcome.ok) {
-      // What survived, from the table: an imported watch underneath, or the earlier half
-      // of a rewatch, both of which leave this episode watched. `settled`, never
-      // `marking` — nothing was recorded here, so nothing is stamped.
-      apply(one, {
-        watched: outcome.watched,
-        unwatchable: outcome.unwatchable,
-        phase: outcome.watched ? "settled" : "unwatched",
-        pending: false,
-      });
+      // Restated from the write that landed rather than left as the press set it: a
+      // *concurrent* attempt's failure can have rolled the appearance back to struck
+      // while this one was still on the wire, and inheriting that would leave an episode
+      // reading watched with no watch behind it — the mirror of the case `mark` above
+      // guards. `unwatched`, never `settled`: nothing was recorded, so nothing is
+      // stamped and there is no strike to play out.
+      apply(one, { watched: false, phase: "unwatched", pending: false });
       settleToast(one, "unwatch");
       return;
     }

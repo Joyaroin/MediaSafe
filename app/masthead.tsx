@@ -18,13 +18,14 @@ import { Wordmark } from "./press-mark";
  * ── `lg:hidden`, since issue #136 ─────────────────────────────────────────────────────
  *
  * `DESIGN.md`'s Layout section used to call this masthead *present at every width, not
- * desktop-only*, carrying two nav cells and a Settings entrance beside the wordmark on
- * desktop. Issue #136 gave desktop `sidebar.tsx` instead — a rail that absorbs the
- * wordmark, all three destinations and the Settings entrance in one always-visible
- * column — and removed the desktop masthead entirely rather than leaving a second,
- * redundant strip above it. This component is now the phone's own header and nothing
- * else, so every `lg:` variant that used to widen its padding or reveal a hidden label
- * is gone with it — there is no width left at which those variants could ever fire.
+ * desktop-only*, carrying nav cells (three by the time issue #146 landed *Lists* on them)
+ * and a Settings entrance beside the wordmark on desktop. Issue #136 gave desktop
+ * `sidebar.tsx` instead — a rail that absorbs the wordmark, every destination and the
+ * Settings entrance in one always-visible column — and removed the desktop masthead
+ * entirely rather than leaving a second, redundant strip above it. This component is now
+ * the phone's own header and nothing else, so every `lg:` variant that used to widen its
+ * padding or reveal a hidden label is gone with it — there is no width left at which
+ * those variants could ever fire.
  *
  * ── The display name ─────────────────────────────────────────────────────────────────
  *

@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LibraryIcon, SearchIcon, UpNextIcon } from "./nav-icons";
+import { LibraryIcon, ListsIcon, SearchIcon, UpNextIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 
 /**
- * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet.
- * `DESIGN.md`, Navigation: *three fixed tabs at the bottom on a `1px` gap over `hair`,
- * with a `hair` top border. Each tab is a rectilinear icon over a label. Active is
- * inverted to bone/ink. Lands on Up next.*
+ * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
+ * and widened to four by issue #146. `DESIGN.md`, Navigation: *fixed tabs at the bottom
+ * on a `1px` gap over `hair`, with a `hair` top border. Each tab is a rectilinear icon
+ * over a label. Active is inverted to bone/ink. Lands on Up next.*
  *
  * ── Frosted, since issue #136 ─────────────────────────────────────────────────────────
  *
@@ -64,6 +64,7 @@ const TABS = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
+  { href: "/lists", label: "Lists", Icon: ListsIcon },
 ] as const;
 
 /** `49px`: `py-2` (`16px`) plus a `16px` icon, a `4px` gap and an `11px` code line
@@ -81,7 +82,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 divide-x divide-hair border-t-2 border-hair bg-ground/95 backdrop-blur-[2px] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 divide-x divide-hair border-t-2 border-hair bg-ground/95 backdrop-blur-[2px] lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = isCurrentRoute(pathname, href);
