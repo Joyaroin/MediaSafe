@@ -6,8 +6,7 @@
  * a title you do not own renders the same seasons under the same headings, minus every
  * control. Written once for the reason `programme-note-section.ts` gives its own string —
  * two copies of *what season 0 is called* is two places for one of them to start saying
- * `Season 0`, and the Named Episode Rule (`CONTEXT.md`) is not a rule two components get
- * to hold separately.
+ * `Season 0`, and a season's name is not a thing two components get to answer separately.
  *
  * Both are pure and take no owned fact: they are shape, not state, which is what lets the
  * owned surface (`programme-note-episodes.tsx`, whose rows carry `watched` and `upNext`)

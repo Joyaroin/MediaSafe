@@ -42,13 +42,17 @@ import {
  *
  * The toast handle is a ref, and `attempt` is a function declaration so it can hand itself
  * to the toast as `retry`; `catalogue-result.tsx` carries the full reasoning for both, and
- * for **one toast per lost write, not one per attempt** (`AGENTS.md`). `standing()` is
- * asked before suppressing, because a reader who dismissed the first toast must still be
- * told about the next lost write.
+ * for **one toast per lost write, not one per attempt** (`AGENTS.md`).
  *
- * The caller mounts this under a key of the title it is about, for the reason
- * `page.tsx` gives there: neither the ref nor `pending` may survive onto a different
- * title, and a standing toast for one lost add must not suppress another title's.
+ * The suppression guard is `standing()` rather than the bare `if (raised.current) return`
+ * that file uses. `errors/write-failure.ts`'s own docblock is why, and it is the blind
+ * spot in the bare form: a reader who dismisses a toast leaves the ref holding a handle
+ * for a failure that is no longer on screen, and the *next* lost write is then suppressed
+ * entirely — *a lost write is never silent* (`SPEC.md` §3.3) broken by the reader's own
+ * tidying up.
+ *
+ * The caller mounts this under a key of the title it is about, for the reason `page.tsx`
+ * gives there: neither the ref nor `pending` may survive onto a different title.
  */
 export function AddToLibraryControl({
   kind,

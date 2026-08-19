@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  catalogueKeyFrom,
   catalogueResults,
   filmMirror,
   seasonNumbers,
@@ -410,5 +411,42 @@ describe("showMirror", () => {
       episodes: [{ episode_number: 4, season_number: 1, name: "Cripples, Bastards" }],
     };
     expect(showMirror(showPayload, [withBrokenEpisode]).episodes).toEqual([]);
+  });
+});
+
+/**
+ * The one predicate three doors share — issue #148. A URL segment and a Server Action's
+ * arguments are both *whatever the caller sent*, and both reach `title_kind_check` and an
+ * `integer` column. What earns a test here is not the happy path but the two ways a
+ * hand-written check drifts: reading a string as the number it happens to start with, and
+ * letting `0` through.
+ */
+describe("catalogueKeyFrom", () => {
+  it("takes a route's two string segments", () => {
+    expect(catalogueKeyFrom("show", "1399")).toEqual({ kind: "show", tmdbId: 1399 });
+    expect(catalogueKeyFrom("film", "27205")).toEqual({ kind: "film", tmdbId: 27205 });
+  });
+
+  it("takes a Server Action's already-numeric argument", () => {
+    expect(catalogueKeyFrom("show", 1399)).toEqual({ kind: "show", tmdbId: 1399 });
+  });
+
+  it("refuses a kind that is neither film nor show", () => {
+    expect(() => catalogueKeyFrom("episode", 1)).toThrow();
+    expect(() => catalogueKeyFrom("Show", 1)).toThrow();
+    expect(() => catalogueKeyFrom(undefined, 1)).toThrow();
+  });
+
+  it("refuses an id that is not a whole number above zero", () => {
+    // `Number("")` and `Number(null)` are both 0, and 0 is not a TMDB id.
+    for (const id of [0, -1, 1.5, "", null, undefined, NaN, Infinity]) {
+      expect(() => catalogueKeyFrom("show", id)).toThrow();
+    }
+  });
+
+  it("never reads a segment as the number it happens to start with", () => {
+    // `parseInt("12abc")` is 12. That is the drift this function exists to not have.
+    expect(() => catalogueKeyFrom("show", "12abc")).toThrow();
+    expect(() => catalogueKeyFrom("show", "1399/../..")).toThrow();
   });
 });

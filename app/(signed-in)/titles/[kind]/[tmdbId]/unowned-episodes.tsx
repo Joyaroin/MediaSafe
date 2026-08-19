@@ -1,5 +1,11 @@
 import type { UnownedEpisodeDetail } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
+import {
+  EPISODE_NAME_CELL,
+  EPISODE_NUMBER,
+  EPISODE_ROW,
+  SEASON_LIST,
+} from "@/app/(signed-in)/library/episode-line";
 import { PROGRAMME_NOTE_SECTION } from "@/app/(signed-in)/library/programme-note-section";
 import {
   groupBySeason,
@@ -61,10 +67,14 @@ export function UnownedEpisodes({
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
         <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
           <p className="code-line text-dim">{seasonHeading(seasonNo)}</p>
-          <ol className="mt-3 divide-y divide-hair">
+          <ol className={SEASON_LIST}>
             {inSeason.map((one) => (
-              <li key={one.id} className="flex min-h-11 items-center gap-3 py-2.5">
-                <span className="code-line w-9 shrink-0 text-dim" data-numeric>
+              /* The row's measure is `episode-line.ts`'s, shared with the owned list
+                 rather than copied from it: those numbers are a measurement
+                 (`programme-note-episodes.tsx` records how), and a second copy of them is
+                 a row nobody measured. */
+              <li key={one.id} className={EPISODE_ROW}>
+                <span className={EPISODE_NUMBER} data-numeric>
                   E{one.episodeNo}
                 </span>
 
@@ -73,7 +83,7 @@ export function UnownedEpisodes({
                     number a second time in its place. Never dimmed, never struck: the
                     dimmed name means *watched* on the owned list, and there is nobody
                     here it could be watched by. */}
-                <span className="min-w-0 flex-1 text-item">
+                <span className={EPISODE_NAME_CELL}>
                   <span className="block truncate">
                     {one.name === null ? "Not yet named" : one.name}
                   </span>

@@ -3,6 +3,12 @@
 import type { EpisodeDetail, LibraryState } from "@/db/access";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
+import {
+  EPISODE_NAME_CELL,
+  EPISODE_NUMBER,
+  EPISODE_ROW,
+  SEASON_LIST,
+} from "./episode-line";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { groupBySeason, seasonHeading } from "./season-grouping";
 import { useWatchMark } from "./use-watch-mark";
@@ -80,7 +86,7 @@ export function ProgrammeNoteEpisodes({
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
         <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
           <p className="code-line text-dim">{seasonHeading(seasonNo)}</p>
-          <ol className="mt-3 divide-y divide-hair">
+          <ol className={SEASON_LIST}>
             {inSeason.map((one) => (
               <EpisodeLine
                 key={one.id}
@@ -293,12 +299,12 @@ function EpisodeLine({
   });
 
   return (
-    <li className="relative flex min-h-11 items-center gap-3 py-2.5">
+    <li className={`relative ${EPISODE_ROW}`}>
       <span
         className={
           episode.upNext && !watched
             ? "code-line w-9 shrink-0 bg-accent px-1 py-0.5 text-center text-accent-ink"
-            : "code-line w-9 shrink-0 text-dim"
+            : EPISODE_NUMBER
         }
         data-numeric
       >
@@ -308,7 +314,7 @@ function EpisodeLine({
       {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
           TMDB not having named it yet — not a licence to print the number a second time
           in its place. */}
-      <span className="min-w-0 flex-1 text-item">
+      <span className={EPISODE_NAME_CELL}>
         <span
           className={`block truncate ${
             watched && phase === "settled"
@@ -414,7 +420,7 @@ function FilmRow({
   });
 
   return (
-    <li className="relative flex min-h-11 items-center gap-3 py-2.5">
+    <li className={`relative ${EPISODE_ROW}`}>
       <span className="flex-1 text-item">
         <span className={watched && phase === "settled" ? WATCHED_NAME : ""}>
           {titleName}

@@ -8,7 +8,7 @@ import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getUnownedTitleDetail, libraryEntryIdForTitle } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import type { TitleKind } from "@/tmdb/mirror";
+import { catalogueKeyFrom } from "@/tmdb/mirror";
 import { AddToLibraryControl } from "./add-to-library-control";
 import { UnownedEpisodes } from "./unowned-episodes";
 
@@ -64,7 +64,20 @@ export default async function UnownedTitlePage({
 }: {
   params: Promise<{ kind: string; tmdbId: string }>;
 }) {
-  const { kind, tmdbId } = titleKeyFrom(await params);
+  /**
+   * A URL is whatever somebody typed, and both segments reach the database — `kind`
+   * against `title_kind_check`, `tmdbId` against an `integer` column. `catalogueKeyFrom`
+   * is the one predicate the two adds use as well, so a route and the action it leads to
+   * cannot disagree about what a catalogue key is.
+   *
+   * A throw lands in this route's own `error.tsx`, the same place a failed read would:
+   * the page did not load. Not `notFound()`, because there is no fifth error treatment in
+   * this application (`AGENTS.md` names four, by blast radius) and a hand-edited URL on a
+   * signed-in-only route is not a class of visitor worth minting one for —
+   * `getListDetail` already answers a made-up list id exactly this way.
+   */
+  const segments = await params;
+  const { kind, tmdbId } = catalogueKeyFrom(segments.kind, segments.tmdbId);
   const userId = await requireUserId();
 
   const owned = await libraryEntryIdForTitle(userId, kind, tmdbId);
@@ -89,6 +102,19 @@ export default async function UnownedTitlePage({
       </div>
 
       <div className="px-6 py-5">
+        {/* `382` is `programme-note-content.tsx`'s number, taken deliberately rather than
+            re-derived: the borrowed half of this page is the same borrowed half, and a
+            poster served at a different size on one of the two title pages would be the
+            first place they stopped being that.
+
+            Said plainly, because the number's own reasoning does not fully transfer: `382`
+            was chosen for the desktop pane (`420px` minus `px-6`) and a large phone
+            viewport, and this page has no pane — on desktop it fills the shell's column,
+            which is wider than either. That is not new here. The owned phone route is
+            reachable on desktop by exactly the same list rows and renders exactly the same
+            `w-full` poster, so both title pages share the behaviour and issue #141's
+            poster morph is what owns changing it. Every width in play still lands in
+            TMDB's `w500` bucket (`app/poster.tsx`), so nothing served differs meanwhile. */}
         <Poster posterPath={detail.posterPath} width={382} className="w-full" />
 
         {/* An `h1` where the owned page's shared content renders an `h2`: that component
@@ -107,6 +133,10 @@ export default async function UnownedTitlePage({
             stands with you. It stands nowhere with you yet, and this is the one control
             that changes that, so it takes the slot rather than sitting at the foot of a
             page you would have to scroll to reach. */}
+        {/* Keyed on the same argument as the control below it, and inert for the same
+            reason — with one more: the success path unmounts this by navigating away, so
+            only a *failed* add leaves state (a standing toast's handle) that a reconciled
+            remount could carry onto another title. */}
         <AddToLibraryControl
           key={`${detail.kind}:${detail.tmdbId}`}
           kind={detail.kind}
@@ -121,10 +151,15 @@ export default async function UnownedTitlePage({
             page until this one existed, and it is keyed by `titleId` because a list holds
             titles, not library entries.
 
-            `key`, as on the owned page and for the same reason: two titles' pages are the
+            `key`, as on the owned page — and belt-and-braces here, said outright: nothing
+            links one unowned title's page to another today, so there is no navigation for
+            it to catch. It costs one line, and it means the two callers of this control
+            agree rather than one of them relying on a topology property to be safe, which
+            is the trade `title-detail-view.tsx` already makes for its own entry-id guard.
+            The property it would rely on is not free either: two titles' pages are the
             same route segment in the same tree position, so React reconciles one onto the
-            other rather than remounting, and this control's open dialog and fetched rows
-            would carry over to a title they are not about. */}
+            other rather than remounting, and an open dialog and its fetched rows would
+            carry over to a title they are not about. */}
         <AddToListControl
           key={detail.titleId}
           titleId={detail.titleId}
@@ -142,31 +177,3 @@ export default async function UnownedTitlePage({
   );
 }
 
-/**
- * The route's two segments, as the read takes them.
- *
- * A URL is whatever somebody typed, and both of these reach the database — `kind` against
- * a `CHECK` constraint, `tmdbId` against an `integer` column. A throw is the honest
- * treatment and it lands in this route's own `error.tsx`, the same place a failed read
- * would: the page did not load. Not `notFound()`, because there is no fourth error
- * treatment in this application (`AGENTS.md` names four, by blast radius) and a
- * hand-edited URL on a signed-in-only route is not a class of visitor worth minting one
- * for — `getListDetail` already answers a made-up list id exactly this way.
- */
-function titleKeyFrom(params: { kind: string; tmdbId: string }): {
-  kind: TitleKind;
-  tmdbId: number;
-} {
-  if (params.kind !== "film" && params.kind !== "show") {
-    throw new Error(`Title detail asked for kind ${JSON.stringify(params.kind)}.`);
-  }
-
-  // `Number` and not `parseInt`: `parseInt("12abc")` is 12, and a URL segment that is not
-  // a number should not be read as the number it starts with.
-  const tmdbId = Number(params.tmdbId);
-  if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
-    throw new Error(`Title detail asked for TMDB id ${JSON.stringify(params.tmdbId)}.`);
-  }
-
-  return { kind: params.kind, tmdbId };
-}

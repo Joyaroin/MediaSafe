@@ -4,7 +4,7 @@ import { addTitleToLibrary, libraryEntryIdForTitle } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
 import { titleMirror } from "@/tmdb/catalogue";
-import type { TitleKind } from "@/tmdb/mirror";
+import { catalogueKeyFrom, type TitleKind } from "@/tmdb/mirror";
 
 /**
  * The one write on the page for a title you do not own — issue #148's *Add to library*.
@@ -57,21 +57,16 @@ export async function addUnownedTitleToLibraryAction(
     /**
      * Validated inside the `try`, so a tampered call and a TMDB outage leave by the same
      * door — reported to Sentry, answered with a reference id. A Server Action is a POST
-     * endpoint whose arguments are whatever the caller sent, and both of these reach a
-     * `UNIQUE (kind, tmdb_id)` and a `CHECK` constraint. The page's own params are
-     * validated separately, in `[kind]/[tmdbId]/page.tsx`: this action is reachable
-     * without ever loading that page.
+     * endpoint whose arguments are whatever the caller sent, whatever this signature says
+     * they are. The page's params are checked by the same function, in
+     * `[kind]/[tmdbId]/page.tsx`: this action is reachable without ever loading that page,
+     * so neither check stands in for the other.
      */
-    if (kind !== "film" && kind !== "show") {
-      throw new Error(`Add asked for kind ${JSON.stringify(kind)}.`);
-    }
-    if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
-      throw new Error(`Add asked for TMDB id ${JSON.stringify(tmdbId)}.`);
-    }
+    const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibrary(userId, await titleMirror(kind, tmdbId));
+    await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId));
 
-    const libraryEntryId = await libraryEntryIdForTitle(userId, kind, tmdbId);
+    const libraryEntryId = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
     if (libraryEntryId === null) {
       /**
        * Unreachable: the write above either created this account's entry or found one
@@ -81,7 +76,7 @@ export async function addUnownedTitleToLibraryAction(
        * as landed at once.
        */
       throw new Error(
-        `Added ${kind} ${tmdbId} to the library and then found no entry for it.`,
+        `Added ${key.kind} ${key.tmdbId} to the library and then found no entry for it.`,
       );
     }
 

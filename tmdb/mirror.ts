@@ -204,6 +204,47 @@ export interface CatalogueKey {
 }
 
 /**
+ * The same key, out of two values nobody has checked — a URL segment, a Server Action's
+ * arguments, anything else that arrives as *whatever the caller sent*.
+ *
+ * ── Why it is one function rather than a check at each door ───────────────────────────
+ *
+ * Every door still calls it: `search/actions.ts`'s add, `titles/actions.ts`'s add, and
+ * the unowned title route, which parses its two segments through this before either read
+ * runs. A Server Action is a POST endpoint anyone with a session can call with any
+ * arguments, and a route's params are whatever was typed, so validating at the boundary is
+ * not a formality — both values reach `title_kind_check` and an `integer` column. What
+ * those three call sites do **not** each need is their own copy of the predicate: three
+ * copies is three places for one of them to start accepting `0`, or to read `"12abc"` as
+ * `12`, while the other two do not.
+ *
+ * ── `unknown`, and `Number` rather than `parseInt` ────────────────────────────────────
+ *
+ * `unknown` because a value the type system has been told about is exactly the value this
+ * exists to distrust — a Server Action's declared parameter types are erased at the
+ * network boundary. `Number` and not `parseInt`, because `parseInt("12abc")` is `12` and a
+ * segment that is not a number must not be read as the number it happens to start with.
+ * `Number(null)` and `Number("")` are both `0`, which `<= 0` rejects.
+ *
+ * It throws rather than returning a null key: every caller is inside something that
+ * already turns a throw into the right treatment — a Server Action's `catch` and its
+ * reference id, or the route's own `error.tsx` — and a key that could be absent would put
+ * a second, quieter failure path beside the one that already works.
+ */
+export function catalogueKeyFrom(kind: unknown, tmdbId: unknown): CatalogueKey {
+  if (kind !== "film" && kind !== "show") {
+    throw new Error(`A catalogue key was asked for kind ${JSON.stringify(kind)}.`);
+  }
+
+  const id = Number(tmdbId);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`A catalogue key was asked for TMDB id ${JSON.stringify(tmdbId)}.`);
+  }
+
+  return { kind, tmdbId: id };
+}
+
+/**
  * One catalogue key as a string, for set membership and for React keys.
  *
  * It lives in this file rather than in `db/access.ts`, where the question *is this in the
