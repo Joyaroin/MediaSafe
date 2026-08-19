@@ -1,6 +1,7 @@
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { AbandonControl } from "./abandon-control";
+import { AddToListControl } from "./add-to-list-control";
 import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { RatingControl } from "./rating-control";
@@ -111,6 +112,12 @@ export function ProgrammeNoteContent({
         rating={detail.rating}
         onRated={onRated}
       />
+
+      {/* Issue #147, keyed by `titleId` rather than `libraryEntryId` for the reason its
+          own docblock gives: the desktop pane never remounts on a selection change, so
+          this key is what gives every title a clean picker rather than five pieces of
+          local state this component would otherwise have to reset by hand. */}
+      <AddToListControl key={detail.titleId} titleId={detail.titleId} titleName={detail.name} />
 
       <ProgrammeNoteEpisodes
         kind={detail.kind}

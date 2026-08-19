@@ -1,10 +1,13 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
+  addTitleToList,
   asUserId,
   createList,
+  createListAndAddTitle,
   deleteList,
+  getListDetail,
   listLists,
   ownedBy,
   type UserId,
@@ -249,6 +252,197 @@ describe("deleting a list", () => {
 
       await expect(
         deleteList(reader, "00000000-0000-0000-0000-000000000000", tx),
+      ).rejects.toThrow();
+    });
+  });
+});
+
+describe("adding a title to a list", () => {
+  it("holds a title that is not in the library", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Someday", tx));
+
+      const outcome = await addTitleToList(reader, target.id, show, tx);
+
+      expect(outcome).toEqual({ added: true });
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id));
+      expect(rows).toMatchObject([{ titleId: show, position: 1 }]);
+    });
+  });
+
+  it("lands each new title at the next deterministic position, without shuffling", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+      const showC = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "In order", tx));
+
+      const first = await addTitleToList(reader, target.id, showA, tx);
+      const second = await addTitleToList(reader, target.id, showB, tx);
+      const third = await addTitleToList(reader, target.id, showC, tx);
+
+      expect(first.added).toBe(true);
+      expect(second.added).toBe(true);
+      expect(third.added).toBe(true);
+
+      const rows = await tx
+        .select({ titleId: listMembership.titleId, position: listMembership.position })
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id))
+        .orderBy(asc(listMembership.position));
+      expect(rows).toEqual([
+        { titleId: showA, position: 1 },
+        { titleId: showB, position: 2 },
+        { titleId: showC, position: 3 },
+      ]);
+    });
+  });
+
+  it("is not an error and not a duplicate when the title is already a member", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Once", tx));
+      await addTitleToList(reader, target.id, show, tx);
+
+      const second = await addTitleToList(reader, target.id, show, tx);
+
+      expect(second).toEqual({ added: false });
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id));
+      expect(rows).toHaveLength(1);
+      expect(rows[0].position).toBe(1);
+    });
+  });
+
+  it("refuses to add to another account's list", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const show = await seedShow(tx);
+      const { list: theirs } = unwrap(await createList(other, "Theirs", tx));
+
+      await expect(addTitleToList(reader, theirs.id, show, tx)).rejects.toThrow();
+
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, theirs.id));
+      expect(rows).toHaveLength(0);
+    });
+  });
+});
+
+describe("making a list from the same action that adds a title", () => {
+  it("creates the list and adds the title in one write", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+
+      const outcome = await createListAndAddTitle(reader, "Watch with Dad", show, tx);
+
+      expect(outcome).toMatchObject({ ok: true, list: { name: "Watch with Dad" } });
+      if (!outcome.ok) throw new Error("unreachable");
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, outcome.list.id));
+      expect(rows).toMatchObject([{ titleId: show, position: 1 }]);
+    });
+  });
+
+  it("writes neither the list nor the membership when the name is a duplicate", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      await createList(reader, "Rewatch", tx);
+
+      const outcome = await createListAndAddTitle(reader, "Rewatch", show, tx);
+
+      expect(outcome).toEqual({ ok: false, reason: "duplicate" });
+      const lists = await tx.select().from(list).where(ownedBy(reader, list));
+      expect(lists).toHaveLength(1);
+      const memberships = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.titleId, show));
+      expect(memberships).toHaveLength(0);
+    });
+  });
+});
+
+describe("reading a list's titles in order", () => {
+  it("returns rows in position order, each with its own facts", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Ordered", tx));
+      await addTitleToList(reader, target.id, showA, tx);
+      await addTitleToList(reader, target.id, showB, tx);
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      expect(detail.name).toBe("Ordered");
+      expect(detail.titles.map((one) => one.titleId)).toEqual([showA, showB]);
+      expect(detail.titles.map((one) => one.position)).toEqual([1, 2]);
+    });
+  });
+
+  it("marks a title not in the library with a null library entry id", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Someday", tx));
+      await addTitleToList(reader, target.id, show, tx);
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      expect(detail.titles).toMatchObject([{ titleId: show, libraryEntryId: null }]);
+    });
+  });
+
+  it("carries the library entry id for a title this account owns", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Mine", tx));
+      await addTitleToList(reader, target.id, show, tx);
+      const [entry] = await tx
+        .insert(libraryEntry)
+        .values({ userId: reader, titleId: show })
+        .returning({ id: libraryEntry.id });
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      expect(detail.titles).toMatchObject([{ titleId: show, libraryEntryId: entry.id }]);
+    });
+  });
+
+  it("refuses to read another account's list", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const { list: theirs } = unwrap(await createList(other, "Theirs", tx));
+
+      await expect(getListDetail(reader, theirs.id, tx)).rejects.toThrow();
+    });
+  });
+
+  it("throws on a list id that names no row", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      await expect(
+        getListDetail(reader, "00000000-0000-0000-0000-000000000000", tx),
       ).rejects.toThrow();
     });
   });
