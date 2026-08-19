@@ -43,6 +43,8 @@ function showMirrorFixture(overrides: Partial<TitleMirror> = {}): TitleMirror {
   return {
     kind: "show",
     tmdbId,
+    // TVDB, which is the branch a show takes when TMDB has no IMDb id for it.
+    externalId: `tvdb:${tmdbId}`,
     name: `Show ${tmdbId}`,
     releaseYear: 2011,
     posterPath: "/poster.jpg",
@@ -75,6 +77,9 @@ function filmMirrorFixture(): TitleMirror {
   return {
     kind: "film",
     tmdbId,
+    // The other half of the column: a title TMDB has no external id for. It is written
+    // as absent, never as a placeholder, and the row is perfectly valid without one.
+    externalId: null,
     name: `Film ${tmdbId}`,
     releaseYear: 1977,
     posterPath: "/film.jpg",
@@ -102,6 +107,10 @@ describe("addTitleToLibrary", () => {
         .where(and(eq(title.kind, "show"), eq(title.tmdbId, mirror.tmdbId)));
       expect(row.name).toBe(mirror.name);
       expect(row.inProduction).toBe(false);
+      // Written on every add, though nothing reads it yet: it is the only handle that
+      // survives TMDB forgetting this title's id, and it can only be filled in by a
+      // refresh that happens before the title vanishes.
+      expect(row.externalId).toBe(mirror.externalId);
 
       const episodes = await tx
         .select()
@@ -129,6 +138,7 @@ describe("addTitleToLibrary", () => {
         .from(title)
         .where(and(eq(title.kind, "film"), eq(title.tmdbId, mirror.tmdbId)));
       expect(row.runtimeMins).toBe(121);
+      expect(row.externalId).toBeNull();
       expect(await tx.select().from(episode).where(eq(episode.titleId, row.id))).toEqual(
         [],
       );
@@ -184,6 +194,9 @@ describe("addTitleToLibrary", () => {
         ...mirror,
         name: "Game of Thrones",
         inProduction: true,
+        // And TMDB now has an IMDb id where it had only a TVDB one. Borrowed like every
+        // other column here: the last thing TMDB said is what the mirror says.
+        externalId: "imdb:tt0944947",
         episodes: [
           ...mirror.episodes,
           {
@@ -204,9 +217,33 @@ describe("addTitleToLibrary", () => {
         .where(and(eq(title.kind, "show"), eq(title.tmdbId, mirror.tmdbId)));
       expect(row.name).toBe("Game of Thrones");
       expect(row.inProduction).toBe(true);
+      expect(row.externalId).toBe("imdb:tt0944947");
       expect(await tx.select().from(episode).where(eq(episode.titleId, row.id))).toHaveLength(
         3,
       );
+    }));
+
+  it("clears the external id when TMDB stops sending one", () =>
+    inTransaction(async (tx) => {
+      const adham = await seedUser(tx, "adham");
+      const other = await seedUser(tx, "other");
+      const mirror = showMirrorFixture();
+
+      await addTitleToLibrary(adham, mirror, tx);
+
+      // The other direction of the same rule, and the deliberate one: `external_id` is
+      // borrowed, so a refresh that no longer carries one *clears* it rather than keeping
+      // a handle TMDB has disowned. Pinned because it is the branch that loses something
+      // — the column's whole purpose is to survive TMDB forgetting this title — and a
+      // behaviour that costs that much should fail a test if it is ever changed by
+      // accident rather than on purpose.
+      await addTitleToLibrary(other, { ...mirror, externalId: null }, tx);
+
+      const [row] = await tx
+        .select()
+        .from(title)
+        .where(and(eq(title.kind, "show"), eq(title.tmdbId, mirror.tmdbId)));
+      expect(row.externalId).toBeNull();
     }));
 
   it("keeps a film and a show that share a TMDB id apart", () =>

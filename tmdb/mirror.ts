@@ -26,7 +26,14 @@
  * | name, kind, release year, poster path | synopsis / overview |
  * | `in_production`, runtime | cast and crew |
  * | every episode's number, name, air date | backdrops and additional images |
- * | | watch providers |
+ * | one external id — IMDb, else TVDB | watch providers |
+ *
+ * The external id is the newest entry and the one that does not fit the dividing line the
+ * rest of the table follows — nothing renders it, and nothing reads it at all yet. It is
+ * mirrored because TMDB publishes no successor id: a deleted or merged title answers 404
+ * and nothing else, so the stored id is the only thing a vanished title can be re-found
+ * by. The rest of what TMDB packs into `external_ids` — the social handles, Wikidata —
+ * is on the right-hand side of the line like everything else, and stays there.
  *
  * Adding a field to the right-hand column's side of that line is not a mapping change. It
  * is a schema change, an ADR amendment, and a migration — in that order.
@@ -41,6 +48,23 @@
 
 /** `title.kind`. TMDB numbers films and shows separately, so it is part of the key. */
 export type TitleKind = "film" | "show";
+
+/**
+ * `title.external_id` — the catalogue and the id, in one value: `imdb:tt0944947`,
+ * `tvdb:121361`.
+ *
+ * A union rather than a bare `string`, for the reason `TitleKind` is one: the column is
+ * `text` with a `CHECK` (`title_external_id_check`), and the type is the half of that pair
+ * TypeScript can hold. `externalIdFrom` is the only function that can mint one — every
+ * other spelling, including a raw `imdb_id` concatenated in by a later reader, fails to
+ * typecheck rather than reaching the database and failing there.
+ *
+ * The source is in the value because the only thing that will ever read this column hands
+ * it back to TMDB's `/find/{id}?external_source=`, which takes the source as a required
+ * parameter. Recovering it from the id's shape at read time would work and would be a
+ * convention; this is the same fact, checked.
+ */
+export type ExternalId = `imdb:tt${string}` | `tvdb:${number}`;
 
 /**
  * TMDB's payloads, declared as narrowly as this file reads them and as loosely as TMDB
@@ -76,7 +100,54 @@ export interface TmdbMoviePayload {
   release_date?: string | null;
   poster_path?: string | null;
   runtime?: number | null;
+  /**
+   * `/movie/{id}` carries this at the top level, so a film costs no extra request. Shows
+   * do not — see `TmdbShowPayload.external_ids`.
+   */
+  imdb_id?: string | null;
 }
+
+/**
+ * TMDB's `external_ids` object: the ids somebody else assigned this title.
+ *
+ * Declared as narrowly as `externalIdFrom` reads it. TMDB sends several more —
+ * `wikidata_id`, `facebook_id`, `instagram_id`, `twitter_id`, `tvrage_id` — and none of
+ * them is a catalogue MediaSafe could look a title up in, which is the only thing this
+ * object is here for. Leaving them undeclared is how that stays true.
+ */
+export interface TmdbExternalIdsPayload {
+  imdb_id?: string | null;
+  tvdb_id?: number | null;
+}
+
+/**
+ * The `append_to_response` a `/tv/{id}` request must carry for `showMirror` to have an
+ * external id to mirror.
+ *
+ * A show fetched without it parses perfectly and mirrors `null`, which is the failure
+ * worth naming: it is silent, it is indistinguishable from a show TMDB genuinely has no
+ * external id for, and — because the upsert overwrites this column like every other
+ * borrowed one — a *refresh* that forgets the append does not merely fail to fill the
+ * column in, it clears it. The constant lives here, beside the payload type it fills in,
+ * so that no call site has to remember the string.
+ *
+ * **Three call sites fetch `/tv/{id}` and hand it to `showMirror`; two of them need this
+ * and one does not.**
+ *
+ *  - `tmdb/catalogue.ts` — the search add and the import screen. Carries it.
+ *  - `scripts/db-seed.ts` — its own thin client, because `catalogue.ts` is `server-only`
+ *    and would throw under `tsx`. Carries it.
+ *  - `scripts/convert-tvtracker/resolve.ts` — reads `showMirror(...).episodes` and throws
+ *    the title away, so it writes no `title` row and has no external id to get wrong. It
+ *    is the one that may skip this, and only for exactly that reason: **the moment it
+ *    keeps anything but the episodes, it needs the append.**
+ *
+ * `append_to_response` rather than a second `/tv/{id}/external_ids` call, and this is not
+ * the trade `tmdb/catalogue.ts` refuses for the live fields. That refusal buys *separate
+ * failures* — a synopsis that renders while credits are 500ing — and an add has no such
+ * granularity to buy: one failed season already fails the whole add.
+ */
+export const SHOW_EXTERNAL_IDS_APPEND = "external_ids";
 
 export interface TmdbShowSeasonPayload {
   season_number?: number;
@@ -89,6 +160,8 @@ export interface TmdbShowPayload {
   poster_path?: string | null;
   in_production?: boolean;
   seasons?: TmdbShowSeasonPayload[];
+  /** Present only when the request carried `SHOW_EXTERNAL_IDS_APPEND`. */
+  external_ids?: TmdbExternalIdsPayload | null;
 }
 
 export interface TmdbEpisodePayload {
@@ -159,6 +232,19 @@ export interface EpisodeMirror {
 export interface TitleMirror {
   readonly kind: TitleKind;
   readonly tmdbId: number;
+  /**
+   * `imdb:tt0944947`, `tvdb:121361`, or `null` where TMDB has neither.
+   *
+   * The source is part of the value, not a second column: the only thing that will ever
+   * read this has to hand it back to TMDB's `/find/{id}?external_source=` and cannot
+   * guess which of the two it holds. `title_external_id_check` in `db/tables.ts` holds
+   * the same two spellings at the database.
+   *
+   * **Absent rather than invented.** Nothing here derives one, searches for one, or
+   * carries one over from a previous mirror of the same title — a wrong external id is a
+   * wrong id on a global row, and the thing that will read it repoints titles.
+   */
+  readonly externalId: ExternalId | null;
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
@@ -202,6 +288,43 @@ export function textFrom(value: string | null | undefined): string | null {
 /** Exported for the same reason `textFrom` is — see its comment. */
 export function integerFrom(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+/** IMDb title ids, and only title ids — `nm…` is a person and `co…` is a company. */
+const IMDB_TITLE_ID = /^tt\d+$/;
+
+/**
+ * A type predicate rather than a bare `.test()`, so that the `imdb:` half of `ExternalId`
+ * is reached by narrowing instead of by assertion. Nothing here is cast.
+ */
+function isImdbTitleId(value: string): value is `tt${string}` {
+  return IMDB_TITLE_ID.test(value);
+}
+
+/**
+ * `title.external_id`: IMDb where TMDB has one, TVDB otherwise, `null` where it has
+ * neither.
+ *
+ * **Anything that does not match is `null`, not stored.** TMDB sends `""` for an id it
+ * does not have as readily as it omits the field, and sends `0` for an unset `tvdb_id`.
+ * The column exists so that a 404'd title can be looked up by this value; a value no
+ * lookup can be made from is not a weaker version of that, it is a row that *claims* a
+ * handle exists — and the reader of that claim repoints a global title row.
+ *
+ * IMDb first because it is the id TMDB holds for both kinds, where `tvdb_id` is shows
+ * only. There is no preference to express for films: `/movie/{id}` carries an IMDb id or
+ * nothing.
+ */
+function externalIdFrom(
+  ids: TmdbExternalIdsPayload | null | undefined,
+): ExternalId | null {
+  const imdbId = textFrom(ids?.imdb_id);
+  if (imdbId !== null && isImdbTitleId(imdbId)) return `imdb:${imdbId}`;
+
+  const tvdbId = integerFrom(ids?.tvdb_id);
+  if (tvdbId !== null && tvdbId > 0) return `tvdb:${tvdbId}`;
+
+  return null;
 }
 
 /**
@@ -290,6 +413,9 @@ export function seasonNumbers(show: TmdbShowPayload): number[] {
 export function filmMirror(movie: TmdbMoviePayload): TitleMirror {
   return {
     ...identity("film", movie.id, movie.title),
+    // `/movie/{id}` carries `imdb_id` itself, and carries no TVDB id at all, so a film's
+    // external id costs no request and has only one source to consider.
+    externalId: externalIdFrom({ imdb_id: movie.imdb_id }),
     releaseYear: releaseYearFrom(movie.release_date),
     posterPath: textFrom(movie.poster_path),
     // Shows only. A film carrying it would be a film carrying a column that says nothing
@@ -315,6 +441,8 @@ export function showMirror(
 ): TitleMirror {
   return {
     ...identity("show", show.id, show.name),
+    // Null unless the request carried `SHOW_EXTERNAL_IDS_APPEND` — see the constant.
+    externalId: externalIdFrom(show.external_ids),
     releaseYear: releaseYearFrom(show.first_air_date),
     posterPath: textFrom(show.poster_path),
     inProduction: show.in_production ?? null,

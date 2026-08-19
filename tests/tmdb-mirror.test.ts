@@ -93,6 +93,20 @@ const NEVER_STORED = [
   "production_companies",
   "budget",
   "revenue",
+  /**
+   * `append_to_response=external_ids` brings eight more ids along with the one that is
+   * mirrored. None of them is a catalogue a title could be looked up in, so none of them
+   * is on the left-hand side of ADR-0001's line — and the object itself is not stored
+   * either, only the one string derived from it.
+   */
+  "external_ids",
+  "freebase_mid",
+  "freebase_id",
+  "tvrage_id",
+  "wikidata_id",
+  "facebook_id",
+  "instagram_id",
+  "twitter_id",
 ];
 
 /** Every key appearing anywhere in `value`, at any depth. */
@@ -198,6 +212,9 @@ describe("filmMirror", () => {
       name: "Star Wars",
       releaseYear: 1977,
       posterPath: "/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg",
+      // `/movie/{id}` carries `imdb_id` itself. A film has no TVDB id to fall back to,
+      // so this branch is the only one a film can take.
+      externalId: "imdb:tt0076759",
       // Shows only. A film with `in_production` set would be a film with a column that
       // means nothing about it.
       inProduction: null,
@@ -209,6 +226,20 @@ describe("filmMirror", () => {
   it("carries nothing that is fetched live and never stored", () => {
     const keys = keysAnywhere(film);
     for (const forbidden of NEVER_STORED) expect(keys).not.toContain(forbidden);
+  });
+
+  it("leaves the external id absent where TMDB has none", () => {
+    // The accepted case, and the reason the column is nullable: a title with nothing to
+    // be re-found by is still a perfectly valid row. It is never invented.
+    expect(filmMirror({ id: 11, title: "Star Wars" }).externalId).toBeNull();
+  });
+
+  it("reads TMDB's empty-string IMDb id as absent, not as an id", () => {
+    // The same `""`-for-nothing habit `release_date` has, on a column whose whole job is
+    // to be handed back to TMDB as a lookup key.
+    expect(
+      filmMirror({ id: 11, title: "Star Wars", imdb_id: "" }).externalId,
+    ).toBeNull();
   });
 
   it("throws rather than mirroring a title with no name", () => {
@@ -244,6 +275,9 @@ describe("showMirror", () => {
     expect(show.releaseYear).toBe(2011);
     expect(show.posterPath).toBe("/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg");
     expect(show.inProduction).toBe(false);
+    // IMDb where TMDB has one — and TMDB has one for this show alongside a TVDB id, so
+    // this is also the assertion that the two are not both stored and not concatenated.
+    expect(show.externalId).toBe("imdb:tt0944947");
     // Films only. `episode_run_time` is a per-episode average and is not this column.
     expect(show.runtimeMins).toBeNull();
   });
@@ -333,6 +367,41 @@ describe("showMirror", () => {
 
   it("throws rather than mirroring a show with no name", () => {
     expect(() => showMirror({ id: 1399 }, [])).toThrow(/name/i);
+  });
+
+  it("falls back to TVDB where TMDB has no IMDb id for a show", () => {
+    // TVDB is the *otherwise* half of the rule, and the reason the source is written
+    // into the value: the lookup that reads this has to name which catalogue it is.
+    const noImdb = showMirror(
+      { ...showPayload, external_ids: { imdb_id: null, tvdb_id: 121361 } },
+      [],
+    );
+    expect(noImdb.externalId).toBe("tvdb:121361");
+  });
+
+  it("leaves the external id absent where TMDB has neither", () => {
+    expect(
+      showMirror({ ...showPayload, external_ids: { tvdb_id: 0 } }, []).externalId,
+    ).toBeNull();
+  });
+
+  it("mirrors no external id from a show fetched without the append", () => {
+    // Not a failure mode this file can prevent — `SHOW_EXTERNAL_IDS_APPEND` is what keeps
+    // the two fetchers asking for it. Pinned so the behaviour is *stated*: the column
+    // stays null and looks exactly like a show TMDB has no external id for.
+    expect(showMirror({ id: 1399, name: "Game of Thrones" }, []).externalId).toBeNull();
+  });
+
+  it("refuses an external id it could not look a title up by", () => {
+    // A row that claims a handle exists is worse than one that claims nothing: the thing
+    // that will read this column repoints a global title on the strength of it.
+    expect(
+      showMirror({ ...showPayload, external_ids: { imdb_id: "nm0000206" } }, [])
+        .externalId,
+    ).toBeNull();
+    expect(
+      showMirror({ ...showPayload, external_ids: { imdb_id: "121361" } }, []).externalId,
+    ).toBeNull();
   });
 
   it("drops an episode with no TMDB id rather than writing a row keyed by nothing", () => {

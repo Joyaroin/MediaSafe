@@ -51,6 +51,27 @@ export const title = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     kind: text("kind").notNull(),
     tmdbId: integer("tmdb_id").notNull(),
+    /**
+     * The one handle on this title that survives TMDB forgetting its own id.
+     *
+     * `imdb:tt0944947` or `tvdb:121361` — IMDb where TMDB has one, TVDB otherwise, and
+     * the source is written into the value because the only thing that will ever read
+     * this column has to hand it back to TMDB's `/find/{id}?external_source=` and cannot
+     * guess which source it is. One column and one fact, not two columns; the `CHECK`
+     * below is what keeps the two spellings from becoming three.
+     *
+     * **Nullable on purpose, and null on every row today.** TMDB publishes no successor
+     * id — a deleted or merged title answers 404 with error code 6 and nothing else — so
+     * a title that vanishes upstream can only be re-found by something that is not its
+     * TMDB id. The nightly sweep fills this in as it refreshes each title, which is why
+     * there is no backfill migration: the sweep is the mechanism, and a second writer
+     * would be a second definition of what a mirrored title contains.
+     *
+     * Nothing reads it yet. It lands early because a title that vanishes before its
+     * first refresh has nothing to be re-found by, and that window closes only by
+     * starting it.
+     */
+    externalId: text("external_id"),
     name: text("name").notNull(),
     releaseYear: smallint("release_year"),
     posterPath: text("poster_path"),
@@ -64,6 +85,18 @@ export const title = pgTable(
   },
   (t) => [
     check("title_kind_check", sql`${t.kind} in ('film','show')`),
+    /**
+     * An external id MediaSafe cannot hand back to TMDB is not evidence, it is a string.
+     * `tmdb/mirror.ts` already declines to mirror anything that does not match, and its
+     * `ExternalId` union is the same rule in the type system; this is that rule held by
+     * the database, on a row every account reads. The pairing is `title.kind`'s exactly —
+     * a union in the mapping, a `CHECK` here — and `tests/schema-and-derived-state.test.ts`
+     * asserts the two halves still agree.
+     */
+    check(
+      "title_external_id_check",
+      sql`${t.externalId} ~ '^(imdb:tt[0-9]+|tvdb:[0-9]+)$'`,
+    ),
     // TMDB numbers films and shows separately, so the id alone is not unique.
     unique("title_kind_tmdb_id_key").on(t.kind, t.tmdbId),
     // The nightly metadata sweep reads oldest-first.

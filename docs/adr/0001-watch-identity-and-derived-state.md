@@ -43,6 +43,17 @@ things around it are not.
    two — a genuine rewatch mints a new key exactly as designed, and it turns out one already had to.
    Only the claim that this was hypothetical, rather than 1,156 rows already in the database, was
    wrong.
+5. **`title` gains one nullable external id** — [#114](https://github.com/Joyaroin/MediaSafe/issues/114),
+   2026-08-18. *Metadata caching policy* below divided TMDB's fields into mirrored and live and did
+   not list this one, because until step 6 there was nothing that needed a handle on a title other
+   than its TMDB id. The nightly refresh needs one: **TMDB publishes no successor id.** A deleted or
+   merged title answers `404` with error code 6 and nothing else — ids are never reused, duplicates
+   are resolved by keeping the oldest entry, and the long-standing request for a *deleted as a
+   duplicate, here is the new id* response was never implemented. So when a title vanishes upstream
+   the only route to what survived that is not a guess is a lookup by something that is **not** the
+   TMDB id. The column is the thing that makes reconciliation possible at all; nothing else changes,
+   and no field moves across the dividing line. See *Borrowed* and *Metadata caching policy* below,
+   both corrected in place.
 
 ## Context
 
@@ -157,6 +168,8 @@ CREATE TABLE title (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   kind                  text NOT NULL CHECK (kind IN ('film','show')),
   tmdb_id               integer NOT NULL,
+  external_id           text                -- amendment 5; 'imdb:tt…' or 'tvdb:…', NULL until refreshed
+    CHECK (external_id ~ '^(imdb:tt[0-9]+|tvdb:[0-9]+)$'),
   name                  text NOT NULL,
   release_year          smallint,
   poster_path           text,
@@ -405,7 +418,7 @@ TMDB fields are **borrowed, not owned** (#3), under a 6-month cache ceiling.
 | name, kind, release year, poster path | synopsis / overview |
 | `in_production`, runtime | cast and crew |
 | every episode's number, name, air date | backdrops and additional images |
-| | **watch providers** — region-specific and change weekly |
+| `external_id` — one external id *(amendment 5)* | **watch providers** — region-specific and change weekly |
 
 The dividing line is **what a 472-row library render needs**. Everything mirrored is required either
 by a derived state or by the glossary rule that *an episode is never referred to by number alone* —
@@ -414,6 +427,24 @@ live appears on a detail page, where one title means one call.
 
 Posters are referenced by `poster_path` and served from TMDB's CDN. No image blobs are stored.
 Attribution is the logo-plus-notice requirement from #3 and is #11/#12's to place.
+
+**`external_id` is the one entry that dividing line does not explain, and amendment 5 is why it is
+mirrored anyway.** Nothing renders it and no read path touches it. It is stored because **TMDB
+publishes no successor id**: a deleted or merged title returns `404` with error code 6 and nothing
+else, so a title that vanishes upstream can only be re-found through a catalogue that is not TMDB.
+IMDb where TMDB has one, TVDB otherwise, with the source written into the value (`imdb:tt0944947`,
+`tvdb:121361`) because the lookup that reads it must name which catalogue it is querying. It is
+**absent rather than invented** where TMDB has neither, and rejected where it is not a shape a lookup
+can be made from — a stored id nothing can be found by is a claim that reconciliation has evidence
+when it does not, and reconciliation writes global rows.
+
+**It is backfilled by the sweep, not by a migration.** The column starts `NULL` on every existing
+title and is written as each one is refreshed, so the library carries one within about three days of
+the sweep going live. A one-off backfill script would be a second writer of global rows and therefore
+a second definition of what a mirrored title contains. The accepted cost is stated rather than
+worked around: **a title that vanishes before its first refresh cannot be reconciled**, because there
+is nothing to re-find it by. That window is why the column lands ahead of the sweep and the
+reconciliation that use it rather than alongside them.
 
 **Refresh is a nightly sweep, never a read.** Vercel Hobby permits 100 cron jobs but a minimum
 interval of **once per day** with ±59 minutes of precision — verified against Vercel's own limits

@@ -62,6 +62,7 @@ function showMirror(
   return {
     kind: "show",
     tmdbId,
+    externalId: `tvdb:${tmdbId}`,
     name: `Show ${tmdbId}`,
     releaseYear: 2011,
     posterPath: "/poster.jpg",

@@ -8,6 +8,7 @@ import { readNativeImportFile, type NativeImportFile } from "@/import/native-for
 import {
   filmMirror,
   seasonNumbers,
+  SHOW_EXTERNAL_IDS_APPEND,
   showMirror,
   type TitleKind,
   type TitleMirror,
@@ -104,7 +105,11 @@ async function fetchTitleMirror(kind: TitleKind, tmdbId: number): Promise<TitleM
     return filmMirror(await get<TmdbMoviePayload>(`/movie/${tmdbId}`));
   }
 
-  const show = await get<TmdbShowPayload>(`/tv/${tmdbId}`);
+  // The same request `tmdb/catalogue.ts` makes, including the append — a show fetched
+  // without it mirrors a null external id and says nothing about why.
+  const show = await get<TmdbShowPayload>(
+    `/tv/${tmdbId}?append_to_response=${SHOW_EXTERNAL_IDS_APPEND}`,
+  );
   const seasons = await inBatches(seasonNumbers(show), SEASON_CONCURRENCY, (number) =>
     get<TmdbSeasonPayload>(`/tv/${tmdbId}/season/${number}`),
   );
