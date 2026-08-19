@@ -30,12 +30,13 @@ the mapping has to survive all three:
 `/tv/{id}` — that append is how the show half of `title.external_id` arrives, and the
 constant naming it is `SHOW_APPEND_TO_RESPONSE` in `tmdb/mirror.ts`. The `external_ids`
 block was added by hand to TMDB's published example response, in TMDB's own documented
-shape for that endpoint. **The eight ids beside `imdb_id` are the point of keeping it
-whole**: `freebase_mid`, `freebase_id`, `tvdb_id`, `tvrage_id`, `wikidata_id`,
-`facebook_id`, `instagram_id` and `twitter_id` are all in `NEVER_STORED`, so the fixture
-is what proves the mapping takes one id out of that object and leaves the social handles
-where it found them. Trimming them would make that assertion vacuous, exactly as trimming
-`overview` would.
+shape for that endpoint. Two of the nine ids in it are the ones the mapping may read —
+`imdb_id`, and `tvdb_id` as the fallback. **The other seven are the point of keeping the
+block whole**: `freebase_mid`, `freebase_id`, `tvrage_id`, `wikidata_id`, `facebook_id`,
+`instagram_id` and `twitter_id` are all in `NEVER_STORED`, so the fixture is what proves
+the mapping takes one id out of that object and leaves the social handles where it found
+them. Trimming them would make that assertion vacuous, exactly as trimming `overview`
+would.
 
 The film side needs no append: `/movie/{id}` carries `imdb_id` at the top level, and
 `movie-details.json` already had it — `tt0076759`, unedited.
