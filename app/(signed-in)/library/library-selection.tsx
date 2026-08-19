@@ -10,6 +10,13 @@ import { createContext, useContext } from "react";
  * not about routing — there is no URL segment for "which entry is selected" on desktop,
  * on purpose, so this is plain React context rather than a search param or a route.
  *
+ * **Two surfaces provide it, since issue #137.** `library-surface.tsx` for the bill, and
+ * `up-next/up-next-panel-selection.tsx` for the desktop Up next rails, which swap the same
+ * panel by the same rule. It stays here rather than moving somewhere neutral because the
+ * pane it drives lives here too: the Up next page imports `ProgrammeNotePane` from this
+ * folder, and a context in a third place would put the state further from the one component
+ * that reads it.
+ *
  * `null` is "nothing selected yet" — the pane's own resting state before a first click,
  * not an error and not the same as a failed read (`programme-note.tsx` keeps those
  * separate the same way every other read on this screen does).
@@ -28,15 +35,17 @@ const LibrarySelectionContext = createContext<LibrarySelection | null>(null);
 export const LibrarySelectionProvider = LibrarySelectionContext.Provider;
 
 /**
- * `null` when there is no pane to select into — `library-entry-cell.tsx`'s only caller
- * outside the library route is nothing today, but the guard is what makes "used outside
- * `LibrarySurface`" a thrown sentence instead of a silent `undefined.select` a phone
- * click would otherwise hit.
+ * `null` when there is no pane to select into. The guard is what makes a tile rendered
+ * outside either provider a thrown sentence instead of a silent `undefined.select` the
+ * first click would hit — and it earned its keep the moment there was a second provider
+ * (#137), since a rail is a tile in a place `LibrarySurface` never wrapped.
  */
 export function useLibrarySelection(): LibrarySelection {
   const context = useContext(LibrarySelectionContext);
   if (context === null) {
-    throw new Error("useLibrarySelection was called outside LibrarySurface.");
+    throw new Error(
+      "useLibrarySelection was called outside a LibrarySelectionProvider.",
+    );
   }
   return context;
 }
