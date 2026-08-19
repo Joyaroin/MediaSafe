@@ -91,8 +91,8 @@ export function SignInSurface({
           type="button"
           onClick={continueWithGoogle}
           disabled={inFlight}
-          // DESIGN.md, Buttons: the one primary action on a surface is solid `signal`
-          // with `ink` text. There is exactly one action here, so this is it.
+          // DESIGN.md, Buttons: the one primary action on a surface is solid `accent`
+          // with `accent-ink` text. There is exactly one action here, so this is it.
           className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
         >
           {inFlight ? "Taking you to Google" : "Continue with Google"}

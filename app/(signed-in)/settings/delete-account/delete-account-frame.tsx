@@ -12,12 +12,12 @@ import Link from "next/link";
  * Neither of these is a new treatment. The heading is `bill-title` at `text-bill-lg`, the
  * step `DESIGN.md`'s type table gives full-surface headlines and the same one `/settings`
  * uses. The link is the quiet underline `errors/reference-line.tsx` already sets — `1px`
- * `rule-bold` decoration at a `4px` offset, brightening to `stock` on hover — rather than a
+ * `hair` decoration at a `4px` offset, brightening to `text` on hover — rather than a
  * second ghost button competing with the delete for the reader's eye.
  */
 
 export function DeleteAccountHeading() {
-  return <h1 className="bill-title text-bill-lg text-stock">Delete account</h1>;
+  return <h1 className="bill-title text-bill-lg text-text">Delete account</h1>;
 }
 
 /**
@@ -29,10 +29,10 @@ export function DeleteAccountHeading() {
  */
 export function BackToSettings() {
   return (
-    <p className="mt-8 text-item text-stock-dim">
+    <p className="mt-8 text-item text-dim">
       <Link
         href="/settings"
-        className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+        className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
       >
         ‹ Back to Settings
       </Link>

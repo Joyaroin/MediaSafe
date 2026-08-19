@@ -55,7 +55,7 @@ export function LiveTitleFacts({
         fetcher={titleSynopsisAction}
         render={(overview) =>
           overview === null ? null : (
-            <p className="max-w-[68ch] text-note leading-relaxed text-stock-dim">
+            <p className="max-w-[68ch] text-note leading-relaxed text-dim">
               {overview}
             </p>
           )
@@ -155,7 +155,7 @@ function LiveFactSection<T>({
     // and episodes arriving is a normal moment of this page, not an event.
     return (
       <div className={PROGRAMME_NOTE_SECTION}>
-        <p role="status" className="code-line text-stock-dim">
+        <p role="status" className="code-line text-dim">
           {heading}
         </p>
       </div>
@@ -165,8 +165,8 @@ function LiveFactSection<T>({
   if (phase.kind === "failed") {
     return (
       <div className={PROGRAMME_NOTE_SECTION}>
-        <p className="code-line text-stock-dim">{heading}</p>
-        <p className="mt-3 max-w-[62ch] text-note text-stock">
+        <p className="code-line text-dim">{heading}</p>
+        <p className="mt-3 max-w-[62ch] text-note text-text">
           This did not load. Nothing else on this page did either — the rest of it is not
           affected.
         </p>
@@ -185,7 +185,7 @@ function LiveFactSection<T>({
 
   return (
     <div className={PROGRAMME_NOTE_SECTION}>
-      <p className="code-line text-stock-dim">{heading}</p>
+      <p className="code-line text-dim">{heading}</p>
       <div className="mt-3">{content}</div>
     </div>
   );
@@ -193,13 +193,13 @@ function LiveFactSection<T>({
 
 function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) {
   if (providers.length === 0) {
-    return <p className="text-item text-stock-dim">Nothing listed for streaming.</p>;
+    return <p className="text-item text-dim">Nothing listed for streaming.</p>;
   }
 
   return (
     <ul className="flex flex-wrap gap-2">
       {providers.map((provider) => (
-        <li key={provider.id} className="code-line border border-rule-bold px-3 py-1.5">
+        <li key={provider.id} className="code-line border border-hair px-3 py-1.5">
           {provider.name}
         </li>
       ))}
@@ -209,18 +209,18 @@ function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) 
 
 function CastAndCrewLine({ credit }: { credit: CastAndCrew }) {
   if (credit.cast.length === 0 && credit.crew.length === 0) {
-    return <p className="text-item text-stock-dim">Nothing listed.</p>;
+    return <p className="text-item text-dim">Nothing listed.</p>;
   }
 
   return (
     <div className="space-y-3">
       {credit.crew.length === 0 ? null : (
-        <p className="text-item text-stock-dim">
+        <p className="text-item text-dim">
           {credit.crew.map((one) => `${one.name} (${one.job})`).join(" · ")}
         </p>
       )}
       {credit.cast.length === 0 ? null : (
-        <p className="text-item text-stock-dim">
+        <p className="text-item text-dim">
           {credit.cast.map((one) => one.name).join(" · ")}
         </p>
       )}

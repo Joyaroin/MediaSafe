@@ -83,7 +83,7 @@ describe("the episode list", () => {
     ]);
 
     expect(markup).toContain("Up next");
-    expect(markup).toContain("bg-signal");
+    expect(markup).toContain("bg-accent");
   });
 
   it("groups specials under their own heading, not 'Season 0'", () => {

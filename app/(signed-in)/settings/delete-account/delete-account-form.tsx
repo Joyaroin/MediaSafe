@@ -8,6 +8,7 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
+import type { IrreversibleWriteFailure } from "@/errors/irreversible-failure";
 import { IN_FLIGHT, NOT_YET_ARMED, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
@@ -35,9 +36,9 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  * `DISABLED_DIM`, so the dim stays a decision taken in one place; only the cursor differs,
  * because *busy* and *refusing* are not the same fact.
  *
- * ── Solid `signal` here is a stated extension, not a quotation ───────────────────────
+ * ── Solid `accent` here is a stated extension, not a quotation ───────────────────────
  *
- * `DESIGN.md`'s Buttons section scopes solid `signal` on `ink` to two things: the phone's
+ * `DESIGN.md`'s Buttons section scopes solid `accent` on `accent-ink` to two things: the phone's
  * recording control, and *the one primary recovery action*. This is neither, so using
  * `SOLID_RECOVERY` here widens the list and that is said out loud rather than left to be
  * discovered — the same courtesy `recovery-buttons.ts` extends for the disabled variant.
@@ -47,24 +48,15 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  * is the other irreversible authored moment, and it is the only one that cannot be undone.
  * A quieter treatment would make the most consequential control in the application read as
  * less live than a rewatch. The button is also dead until the word is typed, so the full
- * vermilion arriving *is* a live state — which is the job `DESIGN.md` gives the ink.
+ * accent arriving *is* a live state — which is the job `DESIGN.md` gives it.
  */
 /**
- * The two ways this can fail, which are **not the same fact** and must not print the same
- * sentence.
- *
- * `refused` is the server's own answer: it ran, the delete did not happen, and the account
- * is provably intact — a `DELETE` commits or rolls back whole, so there is no partial state
- * to hedge about. That is the failure issue #125 names, and it says so plainly.
- *
- * `unknown` is the call never coming back — a dropped connection, a server that went away
- * mid-request. The account may be gone and it may not, and **the one thing that must not be
- * printed here is `refused`'s sentence**, because on the branch where the delete did land
- * *your library is all still here* is a lie told about an irreversible operation. So this
- * says what is true — that MediaSafe does not know — and then asks the server, which is the
- * only thing that does.
+ * The distinction moved to `errors/irreversible-failure.ts` when issue #142's remove became
+ * the second form to need it; that file carries the argument, including why *what settles an
+ * `unknown`* is each form's own and not shared. Here it is the server that is asked, because
+ * being signed out is the answer and the reader cannot see it for themselves.
  */
-type Failure = { readonly kind: "refused" | "unknown"; readonly reference: string | null };
+type Failure = IrreversibleWriteFailure;
 
 export function DeleteAccountForm() {
   const router = useRouter();
@@ -154,12 +146,12 @@ export function DeleteAccountForm() {
 
       <label
         htmlFor="delete-confirmation"
-        className="block max-w-[60ch] text-note leading-relaxed text-stock-dim"
+        className="block max-w-[60ch] text-note leading-relaxed text-dim"
       >
         {/* Not `code-line`, which uppercases: the word has to be readable in the case it
             has to be typed in, and a label reading DELETE above a field that refuses
             `DELETE` would be the page arguing with itself. */}
-        To confirm, type <span className="text-stock">{CONFIRMATION_WORD}</span> below.
+        To confirm, type <span className="text-text">{CONFIRMATION_WORD}</span> below.
       </label>
 
       <input
@@ -177,10 +169,11 @@ export function DeleteAccountForm() {
         autoCorrect="off"
         autoCapitalize="none"
         spellCheck={false}
-        // `DESIGN.md`, Inputs: a `1px` `rule-bold` border on a transparent ground at
-        // `text-item`, the border moving to `signal` on focus with the input's own
+        // `DESIGN.md`, Inputs: a `1px` `hair` border on a transparent ground at
+        // `text-item`, the border moving to `text` at `2px` on focus — issue #134 moves
+        // focus off the accent onto brightness and border weight — with the input's own
         // outline suppressed in favour of it.
-        className="mt-4 block w-full max-w-[16rem] border border-rule-bold bg-transparent px-3 py-2 text-item text-stock focus:border-signal focus:outline-none"
+        className="mt-4 block w-full max-w-[16rem] border border-hair bg-transparent px-3 py-2 text-item text-text focus:border-2 focus:border-text focus:outline-none"
       />
 
       <div className="mt-8">

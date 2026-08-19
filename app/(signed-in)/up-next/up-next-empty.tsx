@@ -11,16 +11,16 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * entries; a failed read throws past this into `error.tsx`.
  *
  * Framed as caught up, not as empty, the way the acceptance criteria ask for it: centred,
- * `text-bill-lg` in `stock`, no border — the same shape `empty-library.tsx` uses and the
- * opposite of `errors/read-failure.tsx`'s left-aligned `signal` treatment, so the two can
+ * `text-bill-lg` in `text`, no border — the same shape `empty-library.tsx` uses and the
+ * opposite of `errors/read-failure.tsx`'s left-aligned `accent` treatment, so the two can
  * never be mistaken for each other.
  */
 export function UpNextEmpty() {
   return (
     <section className="px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-lg text-stock">You&rsquo;re caught up</h2>
+      <h2 className="bill-title text-bill-lg text-text">You&rsquo;re caught up</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+      <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
         Nothing in your library is watching right now. Search the catalogue to start
         something new — the moment it&rsquo;s watching, it shows up here.
       </p>

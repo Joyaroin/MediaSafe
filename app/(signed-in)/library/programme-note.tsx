@@ -79,7 +79,7 @@ export function ProgrammeNotePane() {
 
   return (
     <aside
-      className="hidden w-[420px] shrink-0 border-l border-rule-bold lg:block"
+      className="hidden w-[420px] shrink-0 border-l border-hair lg:block"
       aria-label="Programme note"
     >
       <div className="sticky top-[57px] flex max-h-[calc(100vh-57px)] flex-col">
@@ -127,7 +127,7 @@ export function ProgrammeNotePane() {
             is on screen *whenever borrowed data is* — not always, which would put it in
             front of an empty pane nobody has selected anything into yet. */}
         {phase.kind === "loaded" ? (
-          <TmdbAttribution className="bg-ink px-6 py-3" />
+          <TmdbAttribution className="bg-ground px-6 py-3" />
         ) : null}
       </div>
     </aside>
@@ -137,7 +137,7 @@ export function ProgrammeNotePane() {
 function NothingSelected() {
   return (
     <div className="px-6 py-5">
-      <p className="max-w-[60ch] text-note leading-relaxed text-stock-dim">
+      <p className="max-w-[60ch] text-note leading-relaxed text-dim">
         Select an entry from the bill to read it here.
       </p>
     </div>
@@ -150,7 +150,7 @@ function Loading() {
       {/* `status`, not `alert`: metadata and episodes arriving is a normal moment of this
           page (`docs/design/v1-surfaces.md` §6), not an event worth interrupting anyone
           for. */}
-      <p role="status" className="code-line text-stock-dim">
+      <p role="status" className="code-line text-dim">
         Reading
       </p>
     </div>

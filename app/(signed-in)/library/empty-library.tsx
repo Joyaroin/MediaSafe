@@ -17,9 +17,9 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * ── Everything about it is the opposite of the failure ───────────────────────────────
  *
  * `DESIGN.md`, States, makes the distinction structural rather than a matter of wording:
- * this one is **centred**, headed at **`text-bill-lg`** in **`stock`**, with **no border
- * at all**. The read failure is left-aligned, headed at `text-bill-md` in `signal`, under
- * a `2px` `signal` rule, and carries a reference id. Alignment, type step, colour, border
+ * this one is **centred**, headed at **`text-bill-lg`** in **`text`**, with **no border
+ * at all**. The read failure is left-aligned, headed at `text-bill-md` in `accent`, under
+ * a `2px` `accent` rule, and carries a reference id. Alignment, type step, colour, border
  * and id: five differences, and no reader has to notice more than the first to tell them
  * apart.
  *
@@ -44,9 +44,9 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
 export function EmptyLibrary() {
   return (
     <section className="px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-lg text-stock">The bill is blank</h2>
+      <h2 className="bill-title text-bill-lg text-text">The bill is blank</h2>
 
-      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
         There is nothing in your library yet. Bring it in from an export file in one pass,
         or search the catalogue and add titles one at a time — everything you keep about a
         title after that is yours.

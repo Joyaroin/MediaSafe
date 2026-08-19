@@ -40,9 +40,9 @@ export default async function WelcomePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-stock">Bring your library in</h1>
+      <h1 className="bill-title text-bill-lg text-text">Bring your library in</h1>
 
-      <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-dim">
         MediaSafe can bring in your whole library from an export file in one pass — every
         title and every watch — instead of adding titles one at a time. You can also start
         with an empty library and add titles as you go, from Search.

@@ -61,7 +61,7 @@ export function ProgrammeNoteEpisodes({
   if (episodes.length === 0) {
     return (
       <div className={PROGRAMME_NOTE_SECTION}>
-        <p className="text-item text-stock-dim">
+        <p className="text-item text-dim">
           {/*
             Missing and empty stay distinct here as everywhere (`CONTEXT.md`): this is not
             "a season with nothing in it", which would be a `library_entry` bug — it is
@@ -78,10 +78,10 @@ export function ProgrammeNoteEpisodes({
     <>
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
         <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
-          <p className="code-line text-stock-dim">
+          <p className="code-line text-dim">
             {seasonNo === 0 ? "Specials" : `Season ${seasonNo}`}
           </p>
-          <ol className="mt-3 divide-y divide-rule">
+          <ol className="mt-3 divide-y divide-hair">
             {inSeason.map((one) => (
               <EpisodeLine
                 key={one.id}
@@ -304,8 +304,8 @@ function EpisodeLine({
       <span
         className={
           episode.upNext && !watched
-            ? "code-line w-9 shrink-0 bg-signal px-1 py-0.5 text-center text-ink"
-            : "code-line w-9 shrink-0 text-stock-dim"
+            ? "code-line w-9 shrink-0 bg-accent px-1 py-0.5 text-center text-accent-ink"
+            : "code-line w-9 shrink-0 text-dim"
         }
         data-numeric
       >
@@ -334,7 +334,7 @@ function EpisodeLine({
       <span className={TRAILING}>
         {!watched ? (
           <>
-            {episode.upNext ? <span className="code-line text-signal">Up next</span> : null}
+            {episode.upNext ? <span className="code-line text-accent">Up next</span> : null}
             <MarkWatchedButton
               label={`Mark ${fullName} watched`}
               onClick={attempt}
@@ -342,7 +342,7 @@ function EpisodeLine({
             />
           </>
         ) : phase === "marking" ? (
-          <span className="code-line text-stock-dim">Watched</span>
+          <span className="code-line text-dim">Watched</span>
         ) : (
           <>
             <button
@@ -350,7 +350,7 @@ function EpisodeLine({
               onClick={() => void attempt()}
               disabled={pending}
               aria-label={`Watch ${fullName} again`}
-              className={`code-line text-signal underline decoration-signal underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+              className={`code-line text-accent underline decoration-accent underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
             >
               Rewatch
             </button>
@@ -360,7 +360,7 @@ function EpisodeLine({
               onClick={() => void unwatch()}
               disabled={pending}
               aria-label={`Unwatch ${fullName}`}
-              className={`code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+              className={`code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
             >
               Unwatch
             </button>
@@ -437,7 +437,7 @@ function FilmRow({
       </span>
 
       {watched ? (
-        <span className="code-line text-stock-dim">Watched</span>
+        <span className="code-line text-dim">Watched</span>
       ) : (
         <MarkWatchedButton label={`Mark ${titleName} watched`} onClick={attempt} />
       )}

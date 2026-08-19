@@ -1,49 +1,71 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════════════
-   The visual world, as DESIGN.md specifies it.
+   The visual world, as issue #134 begins replacing it — the Catalogue Wall's palette,
+   from `design/catalogue-wall.html`. The bone/ink/vermilion letterpress world named
+   below in the type ramp and utilities is still in place; this is the first slice, and
+   `DESIGN.md` is rewritten from the finished build in #144, not before.
 
-   Twenty-one `@theme` declarations, no more: eight colours, an eight-step type ramp,
-   and five form-and-motion tokens. Plus the five `@utility` rules, which carry the
-   bundles of declarations a token cannot — `watch-strike` and `watch-stamp` are the
-   two added by issue #88, because DESIGN.md's Motion section is not one component's
-   decoration: it names the one authored moment of the whole product, and the two
-   things #88 itself lists as blocked on it — the watched episode's rewatch and unwatch
-   controls, and the film recording control — are what "extracts" means in its title.
+   The colour tokens are declared once — `--ground`, `--raised`, `--hair`, `--text`,
+   `--dim`, `--accent`, `--accent-ink` — as plain custom properties on `:root`,
+   with a single `prefers-color-scheme: dark` override. `@theme` then points Tailwind's
+   generated colour utilities at those properties rather than at fixed hex, which is
+   what makes one declared token resolve differently per system setting with no theme
+   picker, no `.dark` class, and no second copy of the palette.
 
-   This is the theme layer only — there are no components here, and there is no
-   component library in this repository yet. That is deliberate: every later ticket
-   consumes these tokens rather than inventing values, and the alternative is a set of
-   components designed under delivery pressure in whichever ticket needed one first.
+   Neither theme is "the" theme — the phone at 11pm and the desktop in daylight are both
+   real scenes, so `color-scheme` follows the system instead of being pinned to dark, and
+   the browser's own surfaces (selection, scrollbars, caret, focus ring) are painted from
+   the same tokens in both.
 
-   There is deliberately NO spacing token (Tailwind's default 0.25rem step is used
-   throughout), NO shadow or elevation token, NO second palette, and NO line-height
-   token. None of those is an oversight; DESIGN.md has none of them, and adding one
-   here is how the world stops being one world.
-
-   One committed world: no theme picker, no light mode, no alternate palette
-   (SPEC.md §9). `color-scheme: dark` is declared and the browser's own surfaces —
-   selection, scrollbars, caret, focus ring — are painted from the same eight colours.
+   The accent is reserved for recording a watch. Focus, selection and the caret used to
+   be painted from it; they now use brightness and border weight instead, off `--text`,
+   so that a colour spent on focus state is not a colour that also means "this was
+   marked".
    ═══════════════════════════════════════════════════════════════════════════════════ */
 
-@theme {
-  /* ── Ink and stock ──────────────────────────────────────────────
-     A bill printed in two spot inks, reversed out of night stock.
-     ink = the paper (warm black, never blue-black)
-     stock = the ink it is printed in (bone, never pure white)      */
-  --color-ink: #0e0d0b;
-  --color-ink-raised: #16140f;
-  --color-stock: #e8e2d4;
-  --color-stock-dim: #a29b8b;
-  --color-rule: #2a2621;
-  --color-rule-bold: #453e33;
+:root {
+  /* Light — the desktop in daylight. Values taken from `design/catalogue-wall.html`'s
+     `:root[data-theme="light"]`, unchanged. */
+  --ground: #f6f5f3;
+  --raised: #ffffff;
+  --hair: #e4e3df;
+  --text: #16161a;
+  --dim: #6e6e6b;
+  --accent: #a85d06;
+  --accent-ink: #ffffff;
+}
 
-  /* Second spot: a field ink. Never sets fine type — it is a solid.
-     Reachable only through the `plate` utility; no `*-spot` class is
-     written anywhere, and that is structural, not incidental.      */
-  --color-spot: #2740c8;
-  /* Signal spot: the one live state, and the recording mark.        */
-  --color-signal: #e85a38;
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s
+       `:root`, unchanged. */
+    --ground: #0a0a0b;
+    --raised: #17171a;
+    --hair: #242429;
+    --text: #f4f4f2;
+    --dim: #8c8c8a;
+    --accent: #ffb020;
+    --accent-ink: #0a0a0b;
+  }
+}
+
+@theme {
+  /* Tailwind's generated utilities (`bg-ground`, `text-dim`, `border-hair`, …) read
+     these, which read the plain custom properties above — the indirection is what lets
+     one `@theme` declaration serve both colour schemes. `rule` and `rule-bold` collapse
+     into the single `hair` the prototype uses everywhere; the prototype draws every
+     division at `1px` and lets weight and type carry hierarchy, not a second hairline
+     colour. `--color-spot`, the duotone plate's ground, has no replacement token — the
+     plate now reads `--color-raised` directly, and the plate itself is retired in #135. */
+  --color-ground: var(--ground);
+  --color-raised: var(--raised);
+  --color-hair: var(--hair);
+  --color-text: var(--text);
+  --color-dim: var(--dim);
+  /* The one reserved accent: recording a watch, and nothing else. */
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
 
   /* The prototype loaded Archivo from a CDN. Here it is self-hosted by
      `next/font`, which mints the family name into `--font-archivo`; the
@@ -70,8 +92,8 @@
   --text-item: 0.85rem; /* episode names, metadata, fields     */
   --text-fine: 0.7rem; /* attribution and legal notices       */
 
-  /* A bill has no rounded corners and no drop shadows. Depth is ink
-     density and rules. These are zeroed deliberately, not skipped.  */
+  /* A bill has no rounded corners and no drop shadows. Depth is surface
+     layering and hairlines. These are zeroed deliberately, not skipped. */
   --radius-none: 0px;
 
   --tracking-code: 0.16em;
@@ -81,21 +103,25 @@
 
 @layer base {
   html {
-    color-scheme: dark;
+    /* Follows the system setting rather than being pinned — SPEC.md §9's ban on a theme
+       picker survives; the one-committed-world rule it used to justify does not. */
+    color-scheme: light dark;
   }
 
   body {
-    background: var(--color-ink);
-    color: var(--color-stock);
+    background: var(--color-ground);
+    color: var(--color-text);
     font-family: var(--font-text);
     font-variation-settings: "wdth" 100;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Browser surfaces carry the design too. */
+  /* Browser surfaces carry the design too. Selection, the caret and the focus ring used
+     to be painted in the accent; they now use brightness — the brightest neutral against
+     the ground — so the accent stays reserved for recording a watch. */
   ::selection {
-    background: var(--color-signal);
-    color: var(--color-ink);
+    background: var(--color-text);
+    color: var(--color-ground);
   }
 
   ::-webkit-scrollbar {
@@ -103,26 +129,26 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-ink);
+    background: var(--color-ground);
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-rule-bold);
+    background: var(--color-hair);
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-stock-dim);
+    background: var(--color-dim);
   }
   * {
-    scrollbar-color: var(--color-rule-bold) var(--color-ink);
+    scrollbar-color: var(--color-hair) var(--color-ground);
     scrollbar-width: thin;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-signal);
+    outline: 2px solid var(--color-text);
     outline-offset: 2px;
   }
 
   input {
-    caret-color: var(--color-signal);
+    caret-color: var(--color-text);
   }
 
   [data-numeric] {
@@ -153,15 +179,19 @@
   line-height: 1.1;
 }
 
-/* The plate: how a borrowed poster is forced into the bill's ink.
-   grayscale → one spot ink → half-tone screen. Every artwork, at one measure, in one
-   ink, whatever it arrived looking like. Its artwork filter and half-tone screen are
-   plain CSS, below, because a `@utility` cannot reach a child or a pseudo-element. */
+/* The plate: how a borrowed poster is forced into one measure.
+   grayscale → a neutral ground → half-tone screen. Every artwork, at one measure,
+   whatever it arrived looking like. Its artwork filter and half-tone screen are plain
+   CSS, below, because a `@utility` cannot reach a child or a pseudo-element.
+
+   Its ground used to be a duotone spot ink; #134 retires that token, so the plate reads
+   `--color-raised` directly rather than a colour reserved for the plate alone. The plate
+   itself — the duotone treatment on top of this ground — is retired in #135. */
 @utility plate {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: var(--color-spot);
+  background: var(--color-raised);
 }
 
 /* The plate's other two layers, in the one plain-CSS block DESIGN.md's opening paragraph
@@ -208,7 +238,7 @@
   inset-inline: 0;
   top: 50%;
   height: 2px;
-  background: var(--color-signal);
+  background: var(--color-accent);
   transform-origin: left center;
   animation: watch-strike-in 420ms var(--ease-press) forwards;
 }
@@ -217,13 +247,13 @@
   position: absolute;
   top: 50%;
   right: 0.5rem;
-  border: 2px solid var(--color-signal);
+  border: 2px solid var(--color-accent);
   /* DESIGN.md's token mapping names this `stamp-watched` and pins its padding to
      `0.25rem 0.5rem` — narrower than the strike button's `0.625rem`, and a different
-     value from it despite both being signal-on-ink. */
+     value from it despite both being accent-on-ground. */
   padding: 0.25rem 0.5rem;
-  color: var(--color-signal);
-  background: var(--color-ink);
+  color: var(--color-accent);
+  background: var(--color-ground);
   transform-origin: center;
   animation: watch-stamp-in 340ms var(--ease-press) forwards;
 }

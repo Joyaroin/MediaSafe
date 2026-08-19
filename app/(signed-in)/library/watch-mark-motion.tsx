@@ -14,7 +14,7 @@
  * `programme-note-episodes.tsx`'s `EpisodeLine` and `FilmRow` both apply once `watched &&
  * phase === "settled"`, named once now that `up-next-dominant-card.tsx` is a third caller.
  */
-export const STRUCK_NAME = "text-stock-dim line-through decoration-2 decoration-signal";
+export const STRUCK_NAME = "text-dim line-through decoration-2 decoration-accent";
 
 export function WatchStrike({ onSettled }: { readonly onSettled: () => void }) {
   return <span className="watch-strike" aria-hidden onAnimationEnd={onSettled} />;
@@ -29,12 +29,12 @@ export function WatchStamp() {
 }
 
 /**
- * The recording control's own treatment (`DESIGN.md`, Buttons: ghost, `1px` `signal`
- * border, `signal` text on `ink`, inverting to solid on hover) — one definition, so the
+ * The recording control's own treatment (`DESIGN.md`, Buttons: ghost, `1px` `accent`
+ * border, `accent` text on `ground`, inverting to solid on hover) — one definition, so the
  * class string does not drift the way `errors/recovery-buttons.ts`'s own docblock warns
  * against. `MarkWatchedButton` (`programme-note-episodes.tsx`, issue #88) and the desktop
  * Up next row's *Strike it* button (`up-next-grid.tsx`, issue #100) both compose this with
  * `errors/recovery-buttons.ts`'s `IN_FLIGHT`.
  */
 export const RECORDING_CONTROL =
-  "code-line shrink-0 border border-signal px-2.5 py-1 text-signal transition-colors duration-150 hover:bg-signal hover:text-ink";
+  "code-line shrink-0 border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";

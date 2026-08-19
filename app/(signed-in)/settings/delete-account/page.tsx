@@ -1,3 +1,4 @@
+import { DestroyedFigure } from "@/app/destroyed-figure";
 import { accountFootprint } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
@@ -60,14 +61,14 @@ export default async function DeleteAccountPage() {
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
       <DeleteAccountHeading />
 
-      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock">
+      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-text">
         This destroys everything MediaSafe holds about you. It happens immediately and it
         cannot be undone — there is no grace period, nothing is kept, and there is nothing
         to restore from.
       </p>
 
-      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="destroyed-h" className="code-line text-stock-dim">
+      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="destroyed-h" className="code-line text-dim">
           What this destroys
         </h2>
 
@@ -78,12 +79,12 @@ export default async function DeleteAccountPage() {
           without a breakpoint deciding it.
         */}
         <dl className="mt-6 flex flex-wrap gap-x-16 gap-y-8">
-          <Destroyed label="Titles" count={footprint.titles} />
-          <Destroyed label="Watches" count={footprint.watches} />
-          <Destroyed label="Ratings" count={footprint.ratings} />
+          <DestroyedFigure label="Titles" count={footprint.titles} />
+          <DestroyedFigure label="Watches" count={footprint.watches} />
+          <DestroyedFigure label="Ratings" count={footprint.ratings} />
         </dl>
 
-        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-dim">
           Titles counts what is in your library, not the catalogue MediaSafe shares between
           accounts — what is destroyed is your shelf, every watch you have recorded and
           every rating you have given. Signing in again with the same Google account makes
@@ -91,8 +92,8 @@ export default async function DeleteAccountPage() {
         </p>
       </section>
 
-      <section aria-labelledby="google-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="google-h" className="code-line text-stock-dim">
+      <section aria-labelledby="google-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="google-h" className="code-line text-dim">
           Google
         </h2>
 
@@ -104,22 +105,22 @@ export default async function DeleteAccountPage() {
           deletion is worse than an honest sentence. Deleting the account makes no outbound
           call at all; this link is the reader's own, taken in their own time.
         */}
-        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
           Deleting your account here does not remove MediaSafe from your Google account. It
           stays listed under your connected apps until you remove it there.{" "}
           <a
             href="https://myaccount.google.com/permissions"
             target="_blank"
             rel="noreferrer"
-            className="text-stock underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:decoration-signal"
+            className="text-text underline decoration-hair underline-offset-4 transition-colors duration-150 hover:decoration-accent"
           >
             Your Google connected apps ›
           </a>
         </p>
       </section>
 
-      <section aria-labelledby="confirm-h" className="mt-12 border-t border-rule pt-6">
-        <h2 id="confirm-h" className="code-line text-stock-dim">
+      <section aria-labelledby="confirm-h" className="mt-12 border-t border-hair pt-6">
+        <h2 id="confirm-h" className="code-line text-dim">
           Confirm
         </h2>
 
@@ -130,24 +131,5 @@ export default async function DeleteAccountPage() {
         <BackToSettings />
       </section>
     </main>
-  );
-}
-
-/**
- * One figure and its label.
- *
- * `data-numeric` turns on `tabular-nums` (`app/globals.css`) and `en-GB` grouping is
- * passed explicitly rather than left to the server's locale: 18,715 read as 18715 is a
- * number a reader has to count digits on, and a number that changes shape depending on
- * which machine rendered it is worse than either.
- */
-function Destroyed({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex flex-col-reverse">
-      <dt className="code-line mt-2 text-stock-dim">{label}</dt>
-      <dd className="bill-title text-bill-lg text-stock" data-numeric>
-        {count.toLocaleString("en-GB")}
-      </dd>
-    </div>
   );
 }

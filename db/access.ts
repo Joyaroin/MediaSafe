@@ -5,7 +5,7 @@ import { user } from "@/auth-schema";
 
 import { type Executor, getDb } from "./client";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
-import { episode, libraryEntry, title, titleReconciliation, watch } from "./tables";
+import { episode, libraryEntry, list, listMembership, title, titleReconciliation, watch } from "./tables";
 import {
   libraryEntryRemaining,
   libraryEntryState,
@@ -1341,6 +1341,161 @@ export async function rateTitle(
 }
 
 /**
+ * What removing one title from this library would destroy, in the numbers the
+ * confirmation states — issue #142.
+ *
+ * `AccountFootprint` below is the shape this is modelled on and the one the ticket names:
+ * the numbers are the whole argument for pressing the button, so they are read rather than
+ * described in the abstract. The difference is scope. That one counts an account and this
+ * one counts a single library entry — the account's is *titles, watches, ratings*, and a
+ * single title has exactly one entry and at most one rating, so *how many watches* and
+ * *whether there is a rating* is all that is left to state.
+ *
+ * `name` comes back with them rather than being fetched separately by the caller, because
+ * the confirmation has to name the title it is about and a second read for the name would
+ * be a second snapshot: a repoint by the nightly sweep between the two would put one
+ * title's name over another title's counts.
+ *
+ * ── One statement, one snapshot ──────────────────────────────────────────────────────
+ *
+ * The join, for `accountFootprint`'s reason: two queries are two snapshots, and a watch
+ * recorded on another device between them would show under a count that was taken before
+ * it. `left`, not `inner` — a title in the library that has never been watched is still a
+ * title being removed, and an inner join would make it answer nothing at all, which this
+ * function would then report as *not in this library*.
+ *
+ * The scope is `ownedBy` on `library_entry` combined with the entry id, and it is
+ * sufficient on its own: `watch`'s foreign key is composite —
+ * `(library_entry_id, user_id, title_id)` — so a watch reached through this entry belongs
+ * to this entry, and to this account, by construction. There is no watch of another title
+ * or another account's copy of this one that the join can see.
+ *
+ * ── A count that cannot be read is not a zero ────────────────────────────────────────
+ *
+ * There is no `try` here and there must never be one (`AGENTS.md`, `SPEC.md` §3.2). On
+ * this surface it is the difference between *this title has nothing behind it* and
+ * *MediaSafe could not tell you what you are about to destroy*, and the confirmation page's
+ * own boundary is what turns the throw into a read failure with no remove button under it.
+ *
+ * ── A missing entry and somebody else's entry are the same case ──────────────────────
+ *
+ * Both throw, exactly as they do in `getTitleDetail`, `abandonTitle` and `rateTitle`. There
+ * is nothing for this surface to degrade to: a confirmation that cannot find the title it
+ * is about has nothing to confirm.
+ *
+ * ── What the numbers are, exactly ────────────────────────────────────────────────────
+ *
+ * True when the confirmation was offered, and not re-read at the press — the trade
+ * `accountFootprint` sets out at length and for the same reasons. A watch recorded on
+ * another device in between goes with the rest and was never counted. What must never
+ * drift is the shape: this read and `removeTitleFromLibrary` below scope by the same
+ * account and the same entry and nothing else, and `tests/remove-from-library.test.ts` is
+ * what holds that.
+ */
+export interface TitleFootprint {
+  /** The title's own name, so the confirmation can say which title it is about. */
+  readonly name: string;
+  readonly watches: number;
+  /** `null` where the title is unrated — the confirmation says nothing about a rating. */
+  readonly rating: number | null;
+}
+
+export async function titleFootprint(
+  userId: UserId,
+  libraryEntryId: string,
+  executor: Executor = getDb(),
+): Promise<TitleFootprint> {
+  const [row] = await executor
+    .select({
+      name: title.name,
+      rating: libraryEntry.rating,
+      watches: sql<number>`count(${watch.id})`.mapWith(Number),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .leftJoin(watch, eq(watch.libraryEntryId, libraryEntry.id))
+    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)))
+    .groupBy(libraryEntry.id, libraryEntry.rating, title.name);
+
+  if (!row) {
+    throw new Error(
+      `Library entry ${libraryEntryId} was not found in this account's library.`,
+    );
+  }
+
+  return { name: row.name, watches: row.watches, rating: row.rating };
+}
+
+/**
+ * Remove one title from this account's library — issue #142, and the second irreversible
+ * write in the product.
+ *
+ * ── One statement, and the cascade is the schema's ───────────────────────────────────
+ *
+ * `deleteAccount` below is the precedent and the argument is identical: `watch`'s
+ * composite foreign key to `library_entry` is `ON DELETE CASCADE` (`db/tables.ts`,
+ * ADR-0001), so deleting the entry takes that title's watches with it, atomically, and the
+ * ordering and the completeness are Postgres's rather than a hand-written sequence's. A
+ * list of deletes in application code is a list an eighth owned table gets left off.
+ *
+ * It needs no explicit transaction for that reason — a single statement and the cascades it
+ * fires are one atomic unit already. `executor` is still last, so the test harness runs it
+ * inside its rollback.
+ *
+ * ── What it deliberately leaves standing ─────────────────────────────────────────────
+ *
+ * `title` and `episode`, exactly as they survive account deletion: they are global and
+ * unowned, one row per TMDB id shared by every account, and `library_entry.title_id`
+ * references `title` with **no** cascade, so this statement cannot reach them. A Title is a
+ * fact about the world (`CONTEXT.md`) and removing it from your library is not a statement
+ * about it. It is also what makes the title addable again afterwards — the add finds the
+ * mirrored rows rather than re-fetching them, and mints a fresh entry with no watches
+ * behind it, which is a watchlist title.
+ *
+ * ── What it leaves standing that is easy to assume it takes ──────────────────────────
+ *
+ * **The lists the title was in.** `list_membership` hangs off `title` rather than
+ * `library_entry` since issue #143's repoint, so this statement cannot reach a membership
+ * any more than it can reach the catalogue — which is issue #133's decision, arrived at by
+ * the schema rather than by a clause here: *a list is your own grouping, not a view of your
+ * library, and one action must not silently edit a list you ordered by hand.* The entry in
+ * the list then reads as untracked, and adding the title again is what fills it back in.
+ *
+ * This is worth stating precisely because it is invisible in the statement below. Nothing
+ * here mentions lists, and the reason that is correct rather than an omission is the shape
+ * of the key; before the repoint the same one-line `DELETE` would silently have taken every
+ * membership with it.
+ *
+ * ── A missing entry and somebody else's entry are the same case ──────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` combined with the entry id, and `RETURNING` coming back
+ * empty is a throw rather than a silent no-op — the shape `abandonTitle` and `rateTitle`
+ * already use. A Server Action is a POST endpoint anyone can call with any arguments, so
+ * the predicate that scopes this to one account is the one that may never be left out.
+ *
+ * ── A removal that fails ─────────────────────────────────────────────────────────────
+ *
+ * It throws, and the entry is intact — there is no partial state a single `DELETE` can
+ * leave. The caller is what turns that into a sentence saying so.
+ */
+export async function removeTitleFromLibrary(
+  userId: UserId,
+  libraryEntryId: string,
+  executor: Executor = getDb(),
+): Promise<void> {
+  const [row] = await executor
+    .delete(libraryEntry)
+    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)))
+    .returning({ id: libraryEntry.id });
+
+  if (!row) {
+    throw new Error(
+      `Library entry ${libraryEntryId} was not found in this account's library.`,
+    );
+  }
+}
+
+/**
  * Records that the first-run **Bring your library in** offer has been answered — by
  * choosing to import or by declining, either one (issue #75, completing the column
  * issue #70 declared and deliberately left unwritten).
@@ -2287,4 +2442,120 @@ export async function getTitleDetail(
 function kindFrom(value: string): TitleKind {
   if (value === "film" || value === "show") return value;
   throw new Error(`title.kind was neither 'film' nor 'show': ${value}`);
+}
+
+/**
+ * A list's own facts, and the one number the delete confirmation needs — issue #146.
+ *
+ * `titleCount` is read from `list_membership` rather than carried on `list` itself: there
+ * is no stored count anywhere in this schema, so it is counted the same way
+ * `accountFootprint` counts a rating — at read time, off the rows that are the only truth
+ * about it.
+ */
+export interface ListSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly titleCount: number;
+}
+
+/**
+ * This account's lists, alphabetically — issue #146.
+ *
+ * Alphabetical rather than by creation order: nothing here asks for a ranking among lists
+ * themselves — ordering is `list_membership.position`, a title's place inside one list,
+ * not one list's place among the others — so the tie is broken the way a reader scanning
+ * for a list they made finds it fastest, by name.
+ *
+ * `left join`, not inner: a list with no memberships yet — every list, until the ticket
+ * that lets you add to one ships — must still appear, with `titleCount` at zero rather
+ * than the list vanishing from its own destination.
+ */
+export async function listLists(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<ListSummary[]> {
+  return executor
+    .select({
+      id: list.id,
+      name: list.name,
+      titleCount: sql<number>`count(${listMembership.titleId})`.mapWith(Number),
+    })
+    .from(list)
+    .leftJoin(listMembership, eq(listMembership.listId, list.id))
+    .where(ownedBy(userId, list))
+    .groupBy(list.id)
+    .orderBy(asc(sql`lower(${list.name})`));
+}
+
+/**
+ * A list name's length, checked here for the same reason `rateTitle` checks its rating's
+ * range: a Server Action is a POST endpoint anyone with a session can call with any
+ * argument, and `NOT NULL` is the only constraint the column itself carries.
+ */
+export const LIST_NAME_MAX_LENGTH = 60;
+
+export type CreateListOutcome =
+  | { readonly ok: true; readonly list: ListSummary }
+  /** `list_user_id_name_key` — one account, one list of a given name. */
+  | { readonly ok: false; readonly reason: "duplicate" };
+
+/**
+ * Make a list, and name it — issue #146.
+ *
+ * ── The duplicate name is caught by the constraint, not pre-checked ─────────────────
+ *
+ * `onConflictDoNothing` targets `list_user_id_name_key` directly rather than this
+ * function running a `SELECT` first and hoping nothing else inserts between the two: two
+ * requests racing the same name would both pass a pre-check and one would still hit the
+ * constraint, so the constraint has to be the real answer regardless. Reading it off
+ * `RETURNING` coming back empty keeps that to one round trip either way.
+ */
+export async function createList(
+  userId: UserId,
+  name: string,
+  executor: Executor = getDb(),
+): Promise<CreateListOutcome> {
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || trimmed.length > LIST_NAME_MAX_LENGTH) {
+    throw new Error(
+      `A list name must be 1-${LIST_NAME_MAX_LENGTH} characters; got ${JSON.stringify(name)}.`,
+    );
+  }
+
+  const [row] = await executor
+    .insert(list)
+    .values({ userId, name: trimmed })
+    .onConflictDoNothing({ target: [list.userId, list.name] })
+    .returning({ id: list.id, name: list.name });
+
+  if (!row) return { ok: false, reason: "duplicate" };
+
+  return { ok: true, list: { ...row, titleCount: 0 } };
+}
+
+/**
+ * Delete a list — issue #146.
+ *
+ * ── Why there is nothing here about memberships ──────────────────────────────────────
+ *
+ * `list_membership_list_id_user_id_fk` cascades on `list`'s deletion (`db/tables.ts`), so
+ * the memberships go with the one statement below, the same way `deleteAccount` leans on
+ * Postgres for its cascades rather than a hand-written sequence. Nothing else references a
+ * list, so nothing else is at risk — the acceptance criterion this exists to meet is
+ * *removes its memberships and nothing else*, and "nothing else" is true because there is
+ * nothing else to reach.
+ */
+export async function deleteList(
+  userId: UserId,
+  listId: string,
+  executor: Executor = getDb(),
+): Promise<void> {
+  const [row] = await executor
+    .delete(list)
+    .where(and(ownedBy(userId, list), eq(list.id, listId)))
+    .returning({ id: list.id });
+
+  if (!row) {
+    throw new Error(`List ${listId} was not found in this account's lists.`);
+  }
 }

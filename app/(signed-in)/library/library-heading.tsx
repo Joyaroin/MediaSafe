@@ -25,8 +25,8 @@ export const LIBRARY_HEADING_ID = "library-heading";
 
 export function LibraryHeading({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-rule px-6 py-4">
-      <h1 id={LIBRARY_HEADING_ID} className="bill-title text-bill-sm text-stock">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-hair px-6 py-4">
+      <h1 id={LIBRARY_HEADING_ID} className="bill-title text-bill-sm text-text">
         The library
       </h1>
 

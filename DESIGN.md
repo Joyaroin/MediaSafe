@@ -651,8 +651,8 @@ else. Every other state in the model is derived; this is the only one a person s
 
 - **Desktop:** full-height cells on the masthead's hairline, separated by `1px` borders, label
   typography. Active is inverted (bone ground, ink text, `aria-current="page"`); inactive is dim bone
-  hovering to `ink-raised` + bone. Two items only: *Library* and *Search*.
-- **Phone:** three fixed tabs at the bottom on a `1px` gap over `rule`, with a `rule-bold` top
+  hovering to `ink-raised` + bone. Three items: *Library*, *Search*, *Lists* (issue #146).
+- **Phone:** four fixed tabs at the bottom on a `1px` gap over `rule`, with a `rule-bold` top
   border. Each tab is a rectilinear icon over a label. Active is inverted to bone/ink. Lands on
   *Up next*.
 

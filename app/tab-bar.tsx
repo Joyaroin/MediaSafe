@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet.
- * `DESIGN.md`, Navigation: *three fixed tabs at the bottom on a `1px` gap over `rule`,
- * with a `rule-bold` top border. Each tab is a rectilinear icon over a label. Active is
- * inverted to bone/ink. Lands on Up next.*
+ * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
+ * and widened to four by issue #146. `DESIGN.md`, Navigation: *fixed tabs at the bottom
+ * on a `1px` gap over `hair`, with a `hair` top border. Each tab is a rectilinear icon
+ * over a label. Active is inverted to bone/ink. Lands on Up next.*
  *
  * ── Why this is a client component ───────────────────────────────────────────────────
  *
@@ -17,11 +17,11 @@ import { usePathname } from "next/navigation";
  * results), and a reader three screens deep is still in that section. *Up next* has no
  * routes under it, but the pattern costs nothing to apply uniformly.
  *
- * ── `gap-px bg-rule`, not borders between cells ──────────────────────────────────────
+ * ── `gap-px bg-hair`, not borders between cells ──────────────────────────────────────
  *
- * `DESIGN.md`'s Hairline Rule: structure is drawn by a `1px` gap over a `rule`-coloured
+ * `DESIGN.md`'s Hairline Rule: structure is drawn by a `1px` gap over a `hair`-coloured
  * ground, the same device `up-next-row.tsx`'s clipped grid uses. The container's own top
- * edge is the one place a `rule-bold` border belongs — Elevation & Depth names *"the phone
+ * edge is the one place a `hair` border belongs — Elevation & Depth names *"the phone
  * tab bar's top edge"* as that rule's own worked example.
  *
  * ── Fixed, and what that costs every screen beneath it ───────────────────────────────
@@ -42,10 +42,11 @@ const TABS = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
+  { href: "/lists", label: "Lists", Icon: ListsIcon },
 ] as const;
 
 /** `49px`: `py-2` (`16px`) plus a `16px` icon, a `4px` gap and an `11px` code line
- *  (`0.625rem` at its own `1.1` line-height), plus the `2px` `rule-bold` top border —
+ *  (`0.625rem` at its own `1.1` line-height), plus the `2px` `hair` top border —
  *  `16 + 16 + 4 + 11 + 2 = 49`, and measured against the rendered bar to confirm it,
  *  not taken on faith. Hand-summed here because two other files
  *  (`(signed-in)/layout.tsx`, `errors/write-failure-toast.tsx`) have to reserve or match
@@ -59,7 +60,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-px border-t-2 border-rule-bold bg-rule lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-px border-t-2 border-hair bg-hair lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = pathname === href || pathname.startsWith(`${href}/`);
@@ -71,8 +72,8 @@ export function TabBar() {
             aria-current={current ? "page" : undefined}
             className={
               current
-                ? "flex flex-col items-center justify-center gap-1 bg-stock py-2 text-ink"
-                : "flex flex-col items-center justify-center gap-1 bg-ink py-2 text-stock-dim"
+                ? "flex flex-col items-center justify-center gap-1 bg-text py-2 text-ground"
+                : "flex flex-col items-center justify-center gap-1 bg-ground py-2 text-dim"
             }
           >
             <Icon className="h-4 w-4" />
@@ -117,6 +118,22 @@ function LibraryIcon({ className }: { className?: string }) {
       <rect x="13" y="2" width="9" height="9" fill="currentColor" />
       <rect x="2" y="13" width="9" height="9" fill="currentColor" />
       <rect x="13" y="13" width="9" height="9" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Three bulleted rows — a grouping made by hand, not the poster grid `LibraryIcon` draws
+ *  or the tapering search bars: a list is ranked rows, and this is that shape in miniature
+ *  (issue #146). */
+function ListsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <rect x="2" y="3" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="3" width="14" height="3" fill="currentColor" />
+      <rect x="2" y="10.5" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="10.5" width="14" height="3" fill="currentColor" />
+      <rect x="2" y="18" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="18" width="14" height="3" fill="currentColor" />
     </svg>
   );
 }

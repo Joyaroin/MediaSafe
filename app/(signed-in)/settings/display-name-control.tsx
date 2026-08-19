@@ -98,12 +98,12 @@ export function DisplayNameControl({ name }: { readonly name: string }) {
 
   return (
     <div>
-      <label htmlFor="display-name" className="code-line text-stock-dim">
+      <label htmlFor="display-name" className="code-line text-dim">
         Display name
       </label>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <div className="border border-rule-bold px-3 py-2 focus-within:border-signal">
+        <div className="border border-hair px-3 py-2 focus-within:border-2 focus-within:border-text">
           <input
             id="display-name"
             type="text"
@@ -112,7 +112,7 @@ export function DisplayNameControl({ name }: { readonly name: string }) {
             maxLength={DISPLAY_NAME_MAX_LENGTH}
             disabled={inFlight}
             autoComplete="off"
-            className="w-48 bg-transparent text-item text-stock focus:outline-none"
+            className="w-48 bg-transparent text-item text-text focus:outline-none"
           />
         </div>
 
@@ -126,7 +126,7 @@ export function DisplayNameControl({ name }: { readonly name: string }) {
         </button>
       </div>
 
-      <p className="mt-2 code-line text-stock-dim" data-numeric>
+      <p className="mt-2 code-line text-dim" data-numeric>
         {trimmed.length} / {DISPLAY_NAME_MAX_LENGTH}
       </p>
     </div>

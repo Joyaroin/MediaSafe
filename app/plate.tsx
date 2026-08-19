@@ -3,10 +3,11 @@
  * borrowed posters look like one printed sheet.
  *
  * TMDB artwork arrives in inconsistent ratios and clashing colour. The plate forces all of
- * it into one ink at one measure: ultramarine ground, artwork contributing only its
- * luminosity, and a half-tone screen over both. A dark poster renders as a near-black
- * plate and a bright one as a pale ultramarine one — the value range of the original
- * survives, only the colour does not.
+ * it into one measure: a neutral ground, artwork contributing only its luminosity, and a
+ * half-tone screen over both. The ground was ultramarine (`--color-spot`) until #134
+ * retired that token; it is `--color-raised` now, and the duotone treatment itself is
+ * retired in #135. A dark poster renders as a near-black plate and a bright one as a pale
+ * one — the value range of the original survives, only the colour does not.
  *
  * Three layers, and only the first is expressible as a class: the `plate` utility is the
  * container, and `.plate > .art` and `.plate::after` are plain CSS in `app/globals.css`
