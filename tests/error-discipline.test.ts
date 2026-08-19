@@ -155,6 +155,49 @@ describe("the write-failure toast store", () => {
     expect(store.get()).toEqual([]);
   });
 
+  /**
+   * `standing()` — issue #113. Every caller of this store guards on a handle held in a ref
+   * to keep AGENTS.md's *one toast per lost write, not one per attempt*, and without a way
+   * to ask whether the toast is still there, a handle the reader dismissed goes on
+   * suppressing later failures for ever. That is `SPEC.md` §3.3 broken by the reader's own
+   * tidying up, so the question has to be answerable.
+   */
+  it("says a raised failure is standing until it goes", () => {
+    const store = createWriteFailureStore();
+    const raised = store.raise(lostWatch);
+
+    expect(raised.standing()).toBe(true);
+  });
+
+  it("stops standing once the reader dismisses it", () => {
+    const store = createWriteFailureStore();
+    const raised = store.raise(lostWatch);
+
+    store.dismiss(raised.id);
+
+    expect(raised.standing()).toBe(false);
+  });
+
+  it("stops standing once the caller resolves it", () => {
+    const store = createWriteFailureStore();
+    const raised = store.raise(lostWatch);
+
+    raised.resolve();
+
+    expect(raised.standing()).toBe(false);
+  });
+
+  it("answers per handle — one failure going does not unseat another", () => {
+    const store = createWriteFailureStore();
+    const first = store.raise({ ...lostWatch, title: "Severance" });
+    const second = store.raise({ ...lostWatch, title: "The Bear" });
+
+    store.dismiss(first.id);
+
+    expect(first.standing()).toBe(false);
+    expect(second.standing()).toBe(true);
+  });
+
   it("keeps every unresolved failure, in the order they were raised", () => {
     const store = createWriteFailureStore();
     const first = store.raise({ ...lostWatch, title: "Severance" });

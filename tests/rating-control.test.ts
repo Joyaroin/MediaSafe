@@ -6,6 +6,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RatingControl } from "@/app/(signed-in)/library/rating-control";
+import { LIBRARY_STATES } from "@/db/access";
+import { LIBRARY_SORTS } from "@/db/library-sort";
 
 /**
  * The rating control (issue #113) — the one place in the application that writes
@@ -170,13 +172,16 @@ describe("where the rating control appears", () => {
   });
 
   it("adds no seventh filter chip, and no Unrated one", () => {
-    const bar = readFileSync(
-      path.resolve(import.meta.dirname, "../app/(signed-in)/library/library-filter-bar.tsx"),
-      "utf8",
-    );
+    // The chips are *All* plus one per state, so the states are the thing to count — a
+    // structural check rather than a grep for the word, which a passing comment could
+    // fail and a chip built from a renamed constant could slip past.
+    expect(LIBRARY_STATES).toHaveLength(5);
+    expect(LIBRARY_STATES.map(String)).not.toContain("unrated");
+  });
 
-    expect(bar).not.toMatch(/unrated/i);
-    expect(bar).not.toMatch(/\brating\b/i);
+  it("adds no sort by rating", () => {
+    expect(LIBRARY_SORTS.map((sort) => sort.value)).not.toContain("rating");
+    expect(LIBRARY_SORTS.map((sort) => sort.label).join(" ")).not.toMatch(/rating/i);
   });
 });
 

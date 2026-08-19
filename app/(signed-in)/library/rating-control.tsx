@@ -113,7 +113,11 @@ export function RatingControl({
 
     setOptimistic(null);
 
-    if (raised.current) return;
+    // One toast per lost write, not one per attempt (AGENTS.md) — but only while the
+    // reader can still see it. `standing()` is what separates the two: a handle the reader
+    // has dismissed names a toast that is gone, and returning early on it would make the
+    // *next* lost write silent, which is the one thing `SPEC.md` §3.3 does not allow.
+    if (raised.current?.standing()) return;
     raised.current = writeFailures.raise({
       // No `episode`, and that is the point of it being optional: this is a write about
       // the title itself, and there is no episode it could name that would be true.
