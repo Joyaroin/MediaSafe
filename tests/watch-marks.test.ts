@@ -45,15 +45,13 @@ const NAMING = { title: "Better Call Saul", episode: "Season 1, Episode 2 — Mi
 /** What every surface but the programme note's seeds an episode with. */
 const UNWATCHED: WatchMarkView = {
   watched: false,
-  unwatchable: false,
   phase: "unwatched",
   pending: false,
 };
 
-/** An episode the server already knows this account has an app watch of. */
+/** An episode the server already knows this account has watched. */
 const WATCHED: WatchMarkView = {
   watched: true,
-  unwatchable: true,
   phase: "settled",
   pending: false,
 };
@@ -306,6 +304,43 @@ describe("a lost write, across surfaces", () => {
     await second;
     expect(failures.get()).toHaveLength(0);
     expect(row.view()).toMatchObject({ watched: true, pending: false });
+  });
+
+  it("leaves the episode unwatched once an unwatch lands, on every surface", async () => {
+    const { marks, answerRemove, surface } = harness();
+    const row = surface(EPISODE, WATCHED);
+    const note = surface(EPISODE, WATCHED);
+
+    const unwatching = marks.unwatch(EPISODE, NAMING);
+    // Struck off before the server has answered — the optimistic half.
+    expect(row.view()).toMatchObject({ watched: false, pending: true });
+
+    answerRemove[0]({ ok: true });
+    await unwatching;
+
+    // #89 read `watched` and `unwatchable` back off the wire here, because an imported
+    // watch or the earlier half of a rewatch could have survived the delete and left the
+    // row struck. #145 removes every watch of the episode, so the guess the press made is
+    // simply right, and `ok` is all that comes back.
+    expect(row.view()).toEqual({ watched: false, phase: "unwatched", pending: false });
+    expect(note.view()).toEqual(row.view());
+  });
+
+  it("puts a lost unwatch back to struck and names it in a toast that does not expire", async () => {
+    const { marks, failures, answerRemove, surface } = harness();
+    const row = surface(EPISODE, WATCHED);
+
+    const lost = marks.unwatch(EPISODE, NAMING);
+    answerRemove[0]({ ok: false, reference: "ref-1" });
+    await lost;
+
+    // Back to exactly the appearance the row had at the moment of the press.
+    expect(row.view()).toEqual(WATCHED);
+    expect(onlyToast(failures)).toMatchObject({
+      title: NAMING.title,
+      episode: NAMING.episode,
+      reference: "ref-1",
+    });
   });
 
   it("does not let a landed mark take down a lost unwatch's toast", async () => {
