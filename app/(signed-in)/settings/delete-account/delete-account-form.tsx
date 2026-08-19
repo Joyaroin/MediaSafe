@@ -8,9 +8,10 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
-import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { IN_FLIGHT, NOT_YET_ARMED, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
-import { deleteAccountAction } from "./actions";
+import { deleteAccountAction, type DeleteAccountOutcome } from "./actions";
 import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
 
 /**
@@ -28,19 +29,48 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  *
  * ── The disabled button has two reasons and they are not the same reason ─────────────
  *
- * `errors/recovery-buttons.ts`'s `IN_FLIGHT` is deliberately not used here. Its own
- * docblock pins its meaning — *the control is not refusing, it is busy* — and for almost
- * all of this button's life the opposite is true: it is refusing, because the word has not
- * been typed. `cursor-wait` on a control that is waiting for the reader would be a small
- * lie in the one place the page cannot afford one, so the cursor is chosen from the actual
- * reason and the dimming, which is the same either way, is shared.
+ * `IN_FLIGHT` while the delete is running; `NOT_YET_ARMED` — added to
+ * `errors/recovery-buttons.ts` by this ticket — for the state this button spends most of
+ * its life in, refusing because the word has not been typed. Both carry the one
+ * `DISABLED_DIM`, so the dim stays a decision taken in one place; only the cursor differs,
+ * because *busy* and *refusing* are not the same fact.
+ *
+ * ── Solid `signal` here is a stated extension, not a quotation ───────────────────────
+ *
+ * `DESIGN.md`'s Buttons section scopes solid `signal` on `ink` to two things: the phone's
+ * recording control, and *the one primary recovery action*. This is neither, so using
+ * `SOLID_RECOVERY` here widens the list and that is said out loud rather than left to be
+ * discovered — the same courtesy `recovery-buttons.ts` extends for the disabled variant.
+ *
+ * The argument for widening it: `DESIGN.md`'s Motion section calls marking a watch *the one
+ * authored moment of the whole product*, and gives it this exact ground. Deleting an account
+ * is the other irreversible authored moment, and it is the only one that cannot be undone.
+ * A quieter treatment would make the most consequential control in the application read as
+ * less live than a rewatch. The button is also dead until the word is typed, so the full
+ * vermilion arriving *is* a live state — which is the job `DESIGN.md` gives the ink.
  */
+/**
+ * The two ways this can fail, which are **not the same fact** and must not print the same
+ * sentence.
+ *
+ * `refused` is the server's own answer: it ran, the delete did not happen, and the account
+ * is provably intact — a `DELETE` commits or rolls back whole, so there is no partial state
+ * to hedge about. That is the failure issue #125 names, and it says so plainly.
+ *
+ * `unknown` is the call never coming back — a dropped connection, a server that went away
+ * mid-request. The account may be gone and it may not, and **the one thing that must not be
+ * printed here is `refused`'s sentence**, because on the branch where the delete did land
+ * *your library is all still here* is a lie told about an irreversible operation. So this
+ * says what is true — that MediaSafe does not know — and then asks the server, which is the
+ * only thing that does.
+ */
+type Failure = { readonly kind: "refused" | "unknown"; readonly reference: string | null };
+
 export function DeleteAccountForm() {
   const router = useRouter();
   const [typed, setTyped] = useState("");
   const [inFlight, setInFlight] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [reference, setReference] = useState<string | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
 
   const armed = confirmationMatches(typed);
 
@@ -50,16 +80,35 @@ export function DeleteAccountForm() {
     // Enter in the field — so the guard is here rather than only on the button.
     if (!armed || inFlight) return;
 
-    setFailed(false);
-    setReference(null);
+    setFailure(null);
     setInFlight(true);
 
-    const outcome = await deleteAccountAction(typed);
+    let outcome: DeleteAccountOutcome;
+    try {
+      outcome = await deleteAccountAction(typed);
+    } catch (error) {
+      /**
+       * The call itself did not come back. Reported and shown — never softened into a
+       * refusal, and never into a success.
+       *
+       * `router.refresh()` is what resolves the ambiguity without the reader having to do
+       * anything: the server re-renders this page, and it is the only party that knows the
+       * answer. If the account went, `requireUserId()` sends them to sign-in and the
+       * question is settled. If it did not, the counts come back and the message below is
+       * standing over them, which is exactly the state they are in.
+       */
+      setInFlight(false);
+      setFailure({
+        kind: "unknown",
+        reference: referenceFor(error, { surface: "delete-account" }),
+      });
+      router.refresh();
+      return;
+    }
 
     if (!outcome.ok) {
       setInFlight(false);
-      setFailed(true);
-      setReference(outcome.reference);
+      setFailure({ kind: "refused", reference: outcome.reference });
       return;
     }
 
@@ -79,26 +128,29 @@ export function DeleteAccountForm() {
 
   return (
     <form onSubmit={submit}>
-      {failed ? (
+      {failure === null ? null : (
         // `alert`, not `status`: this appears only in response to a press, and what it has
         // to say is that something the reader believes happened did not.
         <section role="alert" className={`mb-8 ${FAILURE_SECTION}`}>
-          <h2 className={FAILURE_HEADING}>Your account was not deleted</h2>
+          <h2 className={FAILURE_HEADING}>
+            {failure.kind === "refused"
+              ? "Your account was not deleted"
+              : "MediaSafe does not know whether your account was deleted"}
+          </h2>
 
           <p className={FAILURE_PROSE}>
-            MediaSafe could not reach the server to delete your account, so nothing was
-            destroyed. Your library, your watches and your ratings are all still here, and
-            you are still signed in. Try again — and if it keeps happening, the reference
-            below identifies this exact failure.
+            {failure.kind === "refused"
+              ? "MediaSafe reached the server and the deletion did not happen, so nothing was destroyed. Your library, your watches and your ratings are all still here, and you are still signed in. Try again — and if it keeps happening, the reference below identifies this exact failure."
+              : "The connection dropped before the server answered, so MediaSafe cannot tell you whether the deletion happened. It is checking now: if you are still signed in a moment from now, and the numbers above are still there, nothing was destroyed and you can try again."}
           </p>
 
-          {reference === null ? null : (
+          {failure.reference === null ? null : (
             <div className="mt-6">
-              <ReferenceLine reference={reference} />
+              <ReferenceLine reference={failure.reference} />
             </div>
           )}
         </section>
-      ) : null}
+      )}
 
       <label
         htmlFor="delete-confirmation"
@@ -135,9 +187,7 @@ export function DeleteAccountForm() {
         <button
           type="submit"
           disabled={!armed || inFlight}
-          className={`${SOLID_RECOVERY} disabled:brightness-75 ${
-            inFlight ? "disabled:cursor-wait" : "disabled:cursor-not-allowed"
-          }`}
+          className={`${SOLID_RECOVERY} ${inFlight ? IN_FLIGHT : NOT_YET_ARMED}`}
         >
           {inFlight ? "Deleting your account" : "Delete my account"}
         </button>

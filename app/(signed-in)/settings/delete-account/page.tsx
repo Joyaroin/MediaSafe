@@ -1,7 +1,6 @@
-import Link from "next/link";
-
 import { accountFootprint } from "@/db/access";
 import { requireUserId } from "@/lib/session";
+import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
 import { DeleteAccountForm } from "./delete-account-form";
 
 /**
@@ -59,7 +58,7 @@ export default async function DeleteAccountPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-stock">Delete account</h1>
+      <DeleteAccountHeading />
 
       <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-stock">
         This destroys everything MediaSafe holds about you. It happens immediately and it
@@ -128,20 +127,7 @@ export default async function DeleteAccountPage() {
           <DeleteAccountForm />
         </div>
 
-        {/*
-          The way out of the way out. Plain type rather than a second button: leaving is
-          what happens by default on this page, and giving it equal weight to the delete
-          would make the page read as a choice between two actions rather than as one
-          action a reader has to arm.
-        */}
-        <p className="mt-8 text-item text-stock-dim">
-          <Link
-            href="/settings"
-            className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
-          >
-            ‹ Back to Settings
-          </Link>
-        </p>
+        <BackToSettings />
       </section>
     </main>
   );

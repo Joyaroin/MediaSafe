@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
-
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
+import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
 
 /**
  * The counts did not load — and so there is nothing on this page to confirm.
@@ -42,20 +41,13 @@ export default function DeleteAccountReadFailure({
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-stock">Delete account</h1>
+      <DeleteAccountHeading />
 
       <div className="mt-8">
         <ReadFailure reference={reference} retry={retry} />
       </div>
 
-      <p className="mt-8 text-item text-stock-dim">
-        <Link
-          href="/settings"
-          className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
-        >
-          ‹ Back to Settings
-        </Link>
-      </p>
+      <BackToSettings />
     </main>
   );
 }

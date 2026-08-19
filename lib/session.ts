@@ -16,7 +16,14 @@ import { asUserId, type UserId } from "@/db/access";
 import { authOptions, getAuth } from "@/lib/auth";
 
 /**
- * The one boundary where a session becomes a user id.
+ * The one boundary where a session becomes a user id — **and the one place a session is
+ * ended by something other than Better Auth's own sign-out endpoint.**
+ *
+ * Those are one responsibility rather than two, and the second was added deliberately
+ * (issue #125, `clearSessionCookie`): a module that owns *is there a session, and whose* is
+ * the module that owns *there is no longer one*. Splitting them would put half the answer
+ * in a file that cannot see the other half, and the alternative home — `lib/session-cookie.ts`
+ * — is ruled out by that file's own reason for existing, which `clearSessionCookie` sets out.
  *
  * Everything downstream of here — every function in `db/access.ts`, every server action,
  * every route handler — takes the user id as an argument. This module is the only place
@@ -138,7 +145,39 @@ export async function requireImportOfferAnswered(): Promise<boolean> {
  * every request, and importing `authOptions` there would undo exactly that.
  */
 export async function clearSessionCookie(): Promise<void> {
-  (await cookies()).delete(getCookies(authOptions).sessionToken.name);
+  const { name, attributes } = getCookies(authOptions).sessionToken;
+
+  /**
+   * Expired with **its own attributes**, rather than `cookies().delete(name)`.
+   *
+   * That shorter spelling is a no-op in production, and silently. Expiring a cookie is
+   * setting it again with no lifetime, so the `Set-Cookie` that removes it has to match the
+   * one that created it — and `delete(name)` writes no `Secure`. Over HTTPS the cookie is
+   * `__Secure-better-auth.session_token`, and a browser **must reject** any `__Secure-`
+   * cookie set without `Secure` (RFC 6265bis, cookie name prefixes), so the header is
+   * discarded and the original cookie stays exactly where it was.
+   *
+   * This is invisible from localhost, which is the whole reason it is written out here:
+   * `getCookies` returns the unprefixed name and `secure: false` on `http://`, so the short
+   * version passes every local test and fails only on Vercel, where nothing would say so.
+   *
+   * Both headers were read off a real build with `BETTER_AUTH_URL` set to an `https` origin,
+   * rather than reasoned about:
+   *
+   *     delete(name)  → Set-Cookie: __Secure-…=; Path=/; Expires=Thu, 01 Jan 1970 …
+   *     this          → Set-Cookie: __Secure-…=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=lax
+   *
+   * The first is the one a browser throws away.
+   *
+   * `maxAge: 0` on the spread is what expires it; `path`, `sameSite`, `httpOnly` and
+   * `secure` come from Better Auth's own derivation, so there is no second copy of any of
+   * them here to drift.
+   */
+  (await cookies()).set(name, "", {
+    ...attributes,
+    sameSite: attributes.sameSite.toLowerCase() as "lax" | "strict" | "none",
+    maxAge: 0,
+  });
 }
 
 /**

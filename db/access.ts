@@ -1407,6 +1407,18 @@ export interface AccountFootprint {
  * *MediaSafe could not tell you what you are about to lose*. A failure throws, the page's
  * boundary catches it, and the reader is shown a read failure with no confirmation field
  * under it.
+ *
+ * ── What the numbers are, exactly ────────────────────────────────────────────────────
+ *
+ * True at page load, and not re-read at the press. A watch recorded on another device
+ * between arriving here and typing the word is destroyed along with everything else and
+ * was never counted, so the figure the reader saw can be one short of what went. This is
+ * accepted rather than overlooked: closing it means locking the account's rows for as long
+ * as somebody stares at the page, or re-counting and re-confirming after the reader has
+ * already decided — both of which buy an exactness the decision does not turn on, since
+ * *473 titles* and *472 titles* are the same decision. What must never drift is the shape
+ * of the answer — these three counts and the delete both scope by `user_id` and nothing
+ * else — and `tests/delete-account.test.ts` is what holds that.
  */
 export async function accountFootprint(
   userId: UserId,
