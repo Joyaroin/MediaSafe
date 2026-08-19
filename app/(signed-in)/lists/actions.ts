@@ -14,13 +14,19 @@ import { requireUserId } from "@/lib/session";
  * and `proxy.ts` only proves a cookie was present.
  */
 
-export type CreateListOutcome =
+/**
+ * Distinct from `db/access.ts`'s own `CreateListOutcome` — this one, deliberately, so the
+ * two are never mistaken for each other in an import: this adds the `"failed"` variant for
+ * an infrastructure failure `createList` never produces on its own, since that one throws
+ * rather than returning it.
+ */
+export type CreateListActionOutcome =
   | { readonly ok: true; readonly list: ListSummary }
   /** The name matches an existing list — not a lost write, so no reference. */
   | { readonly ok: false; readonly reason: "duplicate" }
   | { readonly ok: false; readonly reason: "failed"; readonly reference: string | null };
 
-export async function createListAction(name: string): Promise<CreateListOutcome> {
+export async function createListAction(name: string): Promise<CreateListActionOutcome> {
   const userId = await requireUserId();
 
   try {

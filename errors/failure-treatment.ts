@@ -2,7 +2,7 @@
  * The failure treatment, written once.
  *
  * `DESIGN.md`, States, gives a failure that replaces a region — or a page — a fixed shape:
- * a `2px` `signal` top rule, the heading at `text-bill-md` in `signal`, and the prose at
+ * a `2px` `accent` top rule, the heading at `text-bill-md` in `accent`, and the prose at
  * `text-note` capped at `62ch`. Three surfaces now render it: the read-failure boundary,
  * the sign-in failure, and the sign-out failure in Settings.
  *
@@ -26,21 +26,22 @@
  */
 
 /**
- * The block itself. `2px` `signal` on top, and nothing else — no ground, no border on the
- * other three sides. Depth in this world is ink density and rules (`app/globals.css`).
+ * The block itself. `2px` `accent` on top, and nothing else — no ground, no border on the
+ * other three sides. Depth in this world is surface layering and hairlines
+ * (`app/globals.css`).
  */
-export const FAILURE_SECTION = "border-t-2 border-signal py-6";
+export const FAILURE_SECTION = "border-t-2 border-accent py-6";
 
 /**
  * The headline. `text-bill-md` is the step `DESIGN.md`'s type table names for "the
- * zero-match and read-failure headlines", and `signal` is the one place vermilion appears
+ * zero-match and read-failure headlines", and `accent` is the one place vermilion appears
  * without a watch having been recorded.
  */
-export const FAILURE_HEADING = "bill-title text-bill-md text-signal";
+export const FAILURE_HEADING = "bill-title text-bill-md text-accent";
 
 /**
  * The sentences. `62ch` is the measure `DESIGN.md`'s type table gives read-failure prose.
- * `text-stock` rather than `text-stock-dim`: the sentence explaining what went wrong is
+ * `text-text` rather than `text-dim`: the sentence explaining what went wrong is
  * the thing the reader is here to read, so it is not the quietest text on screen.
  */
-export const FAILURE_PROSE = "mt-4 max-w-[62ch] text-note leading-relaxed text-stock";
+export const FAILURE_PROSE = "mt-4 max-w-[62ch] text-note leading-relaxed text-text";

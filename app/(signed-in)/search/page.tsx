@@ -47,9 +47,9 @@ export default async function SearchPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-stock">Search</h1>
+      <h1 className="bill-title text-bill-lg text-text">Search</h1>
 
-      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
         The catalogue of everything there is. Your own library is somewhere else.
       </p>
 

@@ -56,11 +56,11 @@ export default async function SignInPage({
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-16">
       <Wordmark markClassName="h-6 w-6" />
 
-      <h1 className="bill-title mt-8 text-bill-lg text-stock">
+      <h1 className="bill-title mt-8 text-bill-lg text-text">
         A personal tracker for the films and shows you watch
       </h1>
 
-      <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-dim">
         Sign in with Google to reach your library. MediaSafe has no password to remember
         and asks for nothing else — everything it knows about you comes from the account
         you choose.

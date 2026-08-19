@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { LIST_NAME_MAX_LENGTH, type ListSummary } from "@/db/access";
-import { IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { createListAction } from "./actions";
 
@@ -27,6 +27,15 @@ import { createListAction } from "./actions";
  * needs the server's id (it is what the delete control keys on), so `onCreated` fires only
  * from a `{ ok: true }` outcome. The field disables meanwhile, which is the write's own
  * in-flight indicator.
+ *
+ * ── `GHOST_RECOVERY`, not `SOLID_RECOVERY` ──────────────────────────────────────────────
+ *
+ * `errors/recovery-buttons.ts` reserves solid `accent` for *the one primary recovery
+ * action* on a surface — `Bring your library in`, a toast's `Try again` — and
+ * `globals.css` narrows the accent further still: it is reserved for recording a watch.
+ * `New list` is neither: it is an everyday, always-on control, not a recovery from a
+ * failure and not the one irreversible authored moment `delete-account-form.tsx` widens
+ * the treatment for. It stays at the ghost treatment every other secondary action uses.
  */
 export function CreateListForm({
   onCreated,
@@ -85,7 +94,7 @@ export function CreateListForm({
         <label htmlFor="new-list-name" className="sr-only">
           List name
         </label>
-        <div className="border border-rule-bold px-3 py-2 focus-within:border-signal">
+        <div className="border border-hair px-3 py-2 focus-within:border-2 focus-within:border-text">
           <input
             id="new-list-name"
             type="text"
@@ -98,18 +107,18 @@ export function CreateListForm({
             disabled={inFlight}
             placeholder="Name a new list"
             autoComplete="off"
-            className="w-48 bg-transparent text-item text-stock placeholder:text-stock-dim focus:outline-none"
+            className="w-48 bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
           />
         </div>
 
         {duplicate ? (
-          <p role="alert" className="mt-2 text-item text-signal">
+          <p role="alert" className="mt-2 text-item text-accent">
             You already have a list called &ldquo;{trimmed}&rdquo;.
           </p>
         ) : null}
       </div>
 
-      <button type="submit" disabled={disabled} className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}>
+      <button type="submit" disabled={disabled} className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}>
         {inFlight ? "Creating" : "New list"}
       </button>
     </form>

@@ -9,9 +9,9 @@ import { usePathname } from "next/navigation";
  * `DESIGN.md`, Layout, named two nav items — *Library, Search* — as full-height inverted
  * cells; issue #146 adds a third, *Lists*, and that update is carried into `DESIGN.md`'s
  * own Navigation section rather than left for this file alone to know. Inversion is the
- * strongest emphasis this system has — a solid bone block with ink type — and Elevation &
- * Depth is explicit that it *replaces elevation*: the current location is not underlined,
- * not tinted, and not raised.
+ * strongest emphasis this system has — a solid `text`-coloured block with `ground`-coloured
+ * type — and Elevation & Depth is explicit that it *replaces elevation*: the current
+ * location is not underlined, not tinted, and not raised.
  *
  * `SPEC.md` §9 describes *Lists* as a fifth sidebar item, reasoning from #132's
  * not-yet-built sidebar redesign. That redesign has not landed — this masthead is still
@@ -64,8 +64,8 @@ export function NavCells() {
             aria-current={current ? "page" : undefined}
             className={
               current
-                ? "flex items-center border-r border-rule bg-stock px-4 text-ink lg:px-5"
-                : "flex items-center border-r border-rule px-4 text-stock-dim transition-colors duration-150 hover:bg-ink-raised hover:text-stock lg:px-5"
+                ? "flex items-center border-r border-hair bg-text px-4 text-ground lg:px-5"
+                : "flex items-center border-r border-hair px-4 text-dim transition-colors duration-150 hover:bg-raised hover:text-text lg:px-5"
             }
           >
             <span className="code-line">{item.label}</span>

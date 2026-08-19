@@ -21,8 +21,8 @@ import { searchCatalogueAction, type MarkedResult, type SearchOutcome } from "./
  * | `idle` | You have not typed yet | One dim line under the field. No heading, no button. |
  * | `searching` | A debounced query is in flight | A dim code line. Nothing else moves. |
  * | `results` | The catalogue answered, with titles | The list |
- * | `empty` | The catalogue answered, with nothing | Centred, `text-bill-md` heading in **`stock`** |
- * | `failed` | MediaSafe could not reach the catalogue | Left-aligned, `2px` `signal` rule, heading in **`signal`**, a reference id |
+ * | `empty` | The catalogue answered, with nothing | Centred, `text-bill-md` heading in **`text`** |
+ * | `failed` | MediaSafe could not reach the catalogue | Left-aligned, `2px` `accent` rule, heading in **`accent`**, a reference id |
  *
  * `empty` and `failed` are not merely different words: they are opposite in alignment,
  * opposite in heading colour, and only one of them has a border and an id. That is
@@ -179,9 +179,10 @@ async function search(query: string): Promise<SearchOutcome> {
 }
 
 /**
- * `DESIGN.md`, Inputs: *a `1px` `rule-bold` bordered row with a bar icon, transparent
+ * `DESIGN.md`, Inputs: *a `1px` `hair` bordered row with a bar icon, transparent
  * ground, bone text at `text-item`, dim bone placeholder. Focus moves the border to
- * `signal` via `focus-within`; the input's own outline is suppressed in favour of the
+ * `text` at `2px` via `focus-within`* — issue #134 moves focus off the accent onto
+ * brightness and border weight — *the input's own outline is suppressed in favour of the
  * border shift.*
  *
  * The same treatment as the library's filter field, and **not the same copy** — this one
@@ -197,10 +198,10 @@ function SearchField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 border border-rule-bold px-3 py-2 focus-within:border-signal">
+    <label className="flex items-center gap-3 border border-hair px-3 py-2 focus-within:border-2 focus-within:border-text">
       {/* The filter field's bars, in the same rectilinear vocabulary as the press mark. A
           magnifier would be the only curve in the application. */}
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-stock-dim" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
         <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
         <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
         <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
@@ -220,7 +221,7 @@ function SearchField({
         // The label's own text is the placeholder, which a placeholder may not be on its
         // own — this is the accessible name, and it stays whatever the field says.
         aria-label="Search the catalogue"
-        className="w-full bg-transparent text-item text-stock placeholder:text-stock-dim focus:outline-none"
+        className="w-full bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
       />
     </label>
   );
@@ -235,7 +236,7 @@ function SearchField({
  */
 function NotYetTyped() {
   return (
-    <p className="max-w-[60ch] text-note leading-relaxed text-stock-dim">
+    <p className="max-w-[60ch] text-note leading-relaxed text-dim">
       Type the name of a film or a show. What you find here is the catalogue — everything
       that exists, not what you already keep — and adding one puts it in your library.
     </p>
@@ -246,7 +247,7 @@ function NotYetTyped() {
 function InFlight() {
   return (
     // `status`, not `alert`: it is progress, and it must not interrupt anyone mid-word.
-    <p role="status" className="code-line text-stock-dim">
+    <p role="status" className="code-line text-dim">
       Searching the catalogue
     </p>
   );
@@ -256,7 +257,7 @@ function InFlight() {
  * The catalogue answered, and has nothing.
  *
  * `DESIGN.md`, States, *zero matches*: centred, heading at `text-bill-md`, body at
- * `text-note` capped at `60ch`. The heading is **`stock`**, not `signal` — vermilion on
+ * `text-note` capped at `60ch`. The heading is **`text`**, not `accent` — vermilion on
  * this screen would make a successful search look like a failed one, which is the exact
  * confusion this state exists on the other side of.
  *
@@ -267,8 +268,8 @@ function InFlight() {
 function NoResults({ query }: { query: string }) {
   return (
     <section className="mx-auto max-w-[60ch] py-10 text-center">
-      <h2 className="bill-title text-bill-md text-stock">Nothing by that name</h2>
-      <p className="mt-4 text-note leading-relaxed text-stock-dim">
+      <h2 className="bill-title text-bill-md text-text">Nothing by that name</h2>
+      <p className="mt-4 text-note leading-relaxed text-dim">
         The catalogue has no film or show matching “{query}”. Try fewer words, or the name
         it was released under.
       </p>
@@ -278,7 +279,7 @@ function NoResults({ query }: { query: string }) {
 
 function Results({ results }: { results: readonly MarkedResult[] }) {
   return (
-    <ol className="divide-y divide-rule border-y border-rule">
+    <ol className="divide-y divide-hair border-y border-hair">
       {results.map((result) => (
         <CatalogueResultRow key={catalogueKeyOf(result)} result={result} />
       ))}

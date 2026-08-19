@@ -86,13 +86,13 @@ export function AbandonControl({
   }
 
   return (
-    <div className="mt-7 flex items-baseline justify-between border-t border-rule pt-5">
+    <div className="mt-7 flex items-baseline justify-between border-t border-hair pt-5">
       <button
         type="button"
         onClick={() => void attempt()}
         disabled={optimistic !== null}
         aria-label={shown ? `Take back giving up on ${titleName}` : `Give up on ${titleName}`}
-        className={`code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock ${IN_FLIGHT}`}
+        className={`code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
       >
         {shown ? "Take it back" : "Give up on this"}
       </button>
@@ -100,7 +100,7 @@ export function AbandonControl({
       {/* `DESIGN.md`: the reassurance sits opposite, as a dim code line, only where it is
           the true statement — there is nothing left to reassure once it is abandoned. */}
       {shown ? null : (
-        <span className="code-line text-stock-dim">Watching it again clears it</span>
+        <span className="code-line text-dim">Watching it again clears it</span>
       )}
     </div>
   );

@@ -11,9 +11,9 @@
 export function EmptyLists() {
   return (
     <section className="px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-lg text-stock">Group it your own way</h2>
+      <h2 className="bill-title text-bill-lg text-text">Group it your own way</h2>
 
-      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-stock-dim">
+      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
         The five states are derived — they are not yours to choose, and they cannot say
         &ldquo;comfort shows&rdquo;, &ldquo;watch with Dad&rdquo;, or &ldquo;the ones I
         keep meaning to start&rdquo;. A list can. Name one above to begin — adding titles

@@ -5,8 +5,8 @@
  */
 export function ListsHeading() {
   return (
-    <div className="border-b border-rule px-6 py-4">
-      <h1 className="bill-title text-bill-sm text-stock">Lists</h1>
+    <div className="border-b border-hair px-6 py-4">
+      <h1 className="bill-title text-bill-sm text-text">Lists</h1>
     </div>
   );
 }

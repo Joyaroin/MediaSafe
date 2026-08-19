@@ -38,13 +38,13 @@ export default function RootFailure({
       <body>
         {/* Not the read-failure treatment. That one is inline — it replaces a grid and
             leaves the page around it standing. This is the whole page, so it is set as
-            one, and the `2px` signal rule sits at the top of the document. */}
-        <main className="mx-auto max-w-3xl border-t-2 border-signal px-6 py-16">
-          <h1 className="bill-title text-bill-lg text-signal">
+            one, and the `2px` accent rule sits at the top of the document. */}
+        <main className="mx-auto max-w-3xl border-t-2 border-accent px-6 py-16">
+          <h1 className="bill-title text-bill-lg text-accent">
             MediaSafe did not start
           </h1>
 
-          <p className="mt-5 max-w-[60ch] text-note leading-relaxed text-stock">
+          <p className="mt-5 max-w-[60ch] text-note leading-relaxed text-text">
             Something went wrong before the page could be drawn. Your library is untouched
             — nothing here writes anything. Loading the page again usually clears it.
           </p>

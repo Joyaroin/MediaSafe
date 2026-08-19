@@ -103,7 +103,7 @@ export function SignOutOtherDevicesButton() {
       </button>
 
       {succeeded ? (
-        <p className="mt-3 code-line text-stock-dim">Other devices are signed out.</p>
+        <p className="mt-3 code-line text-dim">Other devices are signed out.</p>
       ) : null}
     </div>
   );

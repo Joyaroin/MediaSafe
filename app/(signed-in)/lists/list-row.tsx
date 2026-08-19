@@ -4,6 +4,7 @@ import { useRef } from "react";
 
 import type { ListSummary } from "@/db/access";
 import { DeleteListDialog } from "./delete-list-dialog";
+import { formatTitleCount } from "./title-count";
 
 /**
  * One list, as a hairline-divided row — the same device `programme-note-episodes.tsx`
@@ -12,9 +13,9 @@ import { DeleteListDialog } from "./delete-list-dialog";
  * so there is nothing here to click into yet.
  *
  * The delete control follows `abandon-control.tsx`'s own vocabulary — a dim underlined
- * text button, never vermilion — because giving up on a grouping is exactly as quiet an
+ * text button, never the accent — because giving up on a grouping is exactly as quiet an
  * act as giving up on a show, and for the same reason: it must never compete visually
- * with the one control DESIGN.md reserves vermilion for.
+ * with the one thing the accent is reserved for.
  */
 export function ListRow({
   list,
@@ -26,19 +27,19 @@ export function ListRow({
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   return (
-    <li className="flex items-center justify-between gap-4 border-b border-rule px-6 py-4">
-      <span className="text-item text-stock">{list.name}</span>
+    <li className="flex items-center justify-between gap-4 border-b border-hair px-6 py-4">
+      <span className="text-item text-text">{list.name}</span>
 
       <div className="flex items-center gap-4">
-        <span className="code-line text-stock-dim" data-numeric>
-          {list.titleCount === 1 ? "1 title" : `${list.titleCount.toLocaleString("en-GB")} titles`}
+        <span className="code-line text-dim" data-numeric>
+          {formatTitleCount(list.titleCount)}
         </span>
 
         <button
           type="button"
           onClick={() => dialogRef.current?.showModal()}
           aria-label={`Delete ${list.name}`}
-          className="code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
         >
           Delete
         </button>

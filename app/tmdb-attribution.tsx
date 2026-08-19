@@ -9,7 +9,7 @@
  * `className` carries the wrapper's spacing rather than this component fixing it, because
  * the two homes are not laid out alike: search leaves it at the end of a flowing page
  * (`mt-12 … pt-3`), and title detail pins it to the foot of a fixed pane, outside the
- * scroll, on its own ground (`bg-ink px-6 py-3`, no `mt-12`). One notice, two frames — the
+ * scroll, on its own ground (`bg-ground px-6 py-3`, no `mt-12`). One notice, two frames — the
  * same reason `Plate` takes its measure from the caller rather than fixing one itself.
  *
  * Pinned to the foot of whichever surface it is on, rather than left at the end of the
@@ -27,7 +27,7 @@
  */
 export function TmdbAttribution({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex shrink-0 items-center gap-3 border-t border-rule ${className}`}>
+    <div className={`flex shrink-0 items-center gap-3 border-t border-hair ${className}`}>
       <svg
         viewBox="0 0 34 12"
         className="h-3 w-auto shrink-0"
@@ -37,7 +37,7 @@ export function TmdbAttribution({ className = "" }: { className?: string }) {
         <rect width="34" height="12" fill="#0d253f" />
         <rect x="3" y="4.5" width="28" height="3" fill="#01b4e4" />
       </svg>
-      <p className="text-fine leading-snug text-stock-dim">
+      <p className="text-fine leading-snug text-dim">
         This product uses the TMDB API but is not endorsed or certified by TMDB.
       </p>
     </div>

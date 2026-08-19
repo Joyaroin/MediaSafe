@@ -121,13 +121,13 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
 
   return (
     <div className="mt-10">
-      <span className="code-line text-stock-dim">Timezone</span>
+      <span className="code-line text-dim">Timezone</span>
 
-      <p className="mt-3 text-item text-stock" data-numeric>
+      <p className="mt-3 text-item text-text" data-numeric>
         {displayed}
       </p>
 
-      <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+      <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
         Changing your timezone re-buckets your whole history, not just what you watch
         from now on.
       </p>
@@ -165,7 +165,7 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
               value={displayed}
               onChange={(event) => pickFromList(event.target.value)}
               disabled={inFlight}
-              className="appearance-none border border-rule-bold bg-ink py-1.5 pl-3 pr-9 text-item text-stock focus:border-signal focus:outline-none"
+              className="appearance-none border border-hair bg-ground py-1.5 pl-3 pr-9 text-item text-text focus:border-2 focus:border-text focus:outline-none"
             >
               {zoneOptions(displayed).map((zone) => (
                 <option key={zone} value={zone}>
@@ -175,7 +175,7 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
             </select>
             <svg
               viewBox="0 0 12 8"
-              className="pointer-events-none absolute right-3 h-2 w-3 text-signal"
+              className="pointer-events-none absolute right-3 h-2 w-3 text-accent"
               aria-hidden="true"
             >
               <polygon points="0,0 12,0 6,8" fill="currentColor" />

@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { deleteListAction } from "./actions";
+import { formatTitleCount } from "./title-count";
 
 /**
  * The plain confirmation issue #146 asks for — *naming the list, saying how many titles
@@ -28,7 +29,7 @@ import { deleteListAction } from "./actions";
  *
  * ── The confirm button is `GHOST_RECOVERY`, not `SOLID_RECOVERY` ───────────────────────
  *
- * `DESIGN.md`'s Buttons section reserves solid `signal` for *the one primary recovery
+ * `errors/recovery-buttons.ts` reserves solid `accent` for *the one primary recovery
  * action*, and `delete-account-form.tsx` widens that once, by name, to the one other
  * irreversible authored moment in the product. Deleting a list is neither: nothing here is
  * destroyed that cannot be remade by naming a new list, so the confirm stays at the ghost
@@ -78,19 +79,15 @@ export function DeleteListDialog({
     <dialog
       ref={ref}
       aria-labelledby={`delete-list-${listId}-h`}
-      className="border-2 border-signal bg-ink p-6 text-stock backdrop:bg-ink/80"
+      className="border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
     >
-      <h2 id={`delete-list-${listId}-h`} className="bill-title text-bill-sm text-stock">
+      <h2 id={`delete-list-${listId}-h`} className="bill-title text-bill-sm text-text">
         Delete &ldquo;{listName}&rdquo;?
       </h2>
 
-      <p className="mt-3 max-w-[46ch] text-note leading-relaxed text-stock-dim">
-        {titleCount === 0
-          ? "It holds no titles."
-          : titleCount === 1
-            ? "It holds 1 title."
-            : `It holds ${titleCount.toLocaleString("en-GB")} titles.`}{" "}
-        Nothing about those shows changes — this only removes the list itself.
+      <p className="mt-3 max-w-[46ch] text-note leading-relaxed text-dim">
+        It holds {formatTitleCount(titleCount)}. Nothing about those shows changes — this
+        only removes the list itself.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -107,7 +104,7 @@ export function DeleteListDialog({
           type="button"
           onClick={() => ref.current?.close()}
           disabled={inFlight}
-          className="code-line text-stock-dim underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
         >
           Cancel
         </button>

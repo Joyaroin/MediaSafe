@@ -5,8 +5,8 @@ import { useSyncExternalStore } from "react";
 import { browserConnectivitySource, createConnectivityStore } from "./connectivity";
 
 /**
- * DESIGN.md, States: *a sticky full-width `signal` banner with `ink` label type at the very
- * top of the page.*
+ * DESIGN.md, States: *a sticky full-width `accent` banner with `accent-ink` label type at the
+ * very top of the page.*
  *
  * Blast radius decides placement (SPEC.md §6): a read failure is inline because it affects
  * one region, a write failure is a toast because it affects one action, and losing the
@@ -37,7 +37,7 @@ export function OfflineBanner() {
       // and it must not interrupt whatever a screen reader is in the middle of.
       role="status"
       aria-live="polite"
-      className="code-line sticky top-0 z-50 w-full bg-signal px-4 py-2 text-center text-ink"
+      className="code-line sticky top-0 z-50 w-full bg-accent px-4 py-2 text-center text-accent-ink"
     >
       {/* One plain sentence, and it is honest about the consequence. SPEC.md §3.1 rules
           out an offline queue, a read cache and a service worker, so nothing is being
