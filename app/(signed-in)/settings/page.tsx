@@ -27,13 +27,21 @@ import { SignOutButton } from "./sign-out-button";
  * being answered would only make the door harder to find for exactly nobody's benefit. The
  * acceptance criterion is explicit — *works whether or not the offer was ever declined.*
  *
+ * ── Account gained its door out, and it is a link ────────────────────────────────────
+ *
+ * *Delete account* (issue #125) is here as one link, because `SPEC.md` §7 puts it on **its
+ * own page, not a dialog** — a dialog is dismissed, a page is left. What Settings owes it
+ * is a way to be found, which is a sentence and a link; everything that makes the decision
+ * a real one — the three counts, the word to type, the sentence about Google — is on the
+ * page itself, where a reader who arrived by URL sees it too.
+ *
  * ── What is not here ─────────────────────────────────────────────────────────────────
  *
- * *Sign out other devices* and *Delete account* are the other two thirds of the Account
- * section and they are build step 7 (`SPEC.md` §8). Profile — the display name and the
- * timezone control — is step 7 too. It does not appear here as a heading with nothing
- * under it: `SPEC.md` §9 forbids reserving the space, and a section that announces what
- * it will one day contain is exactly that.
+ * *Sign out other devices* is the last third of the Account section, and it is the rest of
+ * build step 7 (`SPEC.md` §8). Profile — the display name and the timezone control — is
+ * step 7 too. Neither appears here as a heading with nothing under it: `SPEC.md` §9
+ * forbids reserving the space, and a section that announces what it will one day contain
+ * is exactly that.
  */
 
 /**
@@ -107,6 +115,35 @@ export default async function SettingsPage() {
 
         <div className="mt-6">
           <SignOutButton />
+        </div>
+
+        {/*
+          The door out (issue #125). A link and not a control: `SPEC.md` §7 puts account
+          deletion on **its own page, not a dialog**, so the thing that belongs in this
+          section is the way to that page and nothing else. Nothing is destroyed by
+          following it — the page states what would be, in real numbers, and refuses to do
+          anything until the reader types the word.
+
+          Set apart from sign-out by its own rule rather than by colour. Vermilion here
+          would be the section shouting before the reader has asked it anything, and
+          `DESIGN.md` keeps `signal` for a live state or a recorded mark; the page it leads
+          to is where that ink belongs.
+        */}
+        <div className="mt-8 border-t border-rule pt-6">
+          <p className="max-w-[60ch] text-note leading-relaxed text-stock-dim">
+            Deleting your account destroys your library, your watches and your ratings
+            permanently. The next page says how many of each, and nothing happens until you
+            confirm it there.
+          </p>
+
+          <p className="mt-6 text-item text-stock-dim">
+            <Link
+              href="/settings/delete-account"
+              className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+            >
+              Delete account ›
+            </Link>
+          </p>
         </div>
       </section>
     </main>

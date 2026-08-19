@@ -1,4 +1,5 @@
-import { headers } from "next/headers";
+import { getCookies } from "better-auth/cookies";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { asUserId, type UserId } from "@/db/access";
@@ -7,8 +8,12 @@ import { asUserId, type UserId } from "@/db/access";
  * the one place a session becomes a user id, so it is the one place that needs the
  * instance to ask. `eslint.config.mjs` keeps `**\/lib/auth` restricted even inside `lib/`
  * so that this stays a line with a reason beside it rather than an open door.
+ *
+ * `authOptions` comes through the same door and for the same reason: it is the object the
+ * cookie name is derived from, and deriving it anywhere else would be a second copy of the
+ * secure-prefix rule. See `clearSessionCookie`.
  */
-import { getAuth } from "@/lib/auth";
+import { authOptions, getAuth } from "@/lib/auth";
 
 /**
  * The one boundary where a session becomes a user id.
@@ -93,6 +98,47 @@ export async function requireImportOfferAnswered(): Promise<boolean> {
   if (!session) redirect("/sign-in");
 
   return session.user.importOfferAnsweredAt !== null;
+}
+
+/**
+ * Drop this browser's session cookie — the tidy-up after an account has been deleted, and
+ * the only caller is `app/(signed-in)/settings/delete-account/actions.ts` (issue #125).
+ *
+ * ── Why this is not a sign-out ───────────────────────────────────────────────────────
+ *
+ * Sign-out revokes: `authClient.signOut()` posts to Better Auth, which deletes the session
+ * row and clears the cookie. By the time this runs there is no row to delete — the account
+ * is gone and `session.user_id` cascaded with it — so the revocation has already happened,
+ * more completely than a sign-out could manage. What is left is a string in the browser
+ * pointing at nothing.
+ *
+ * That string is harmless: `lib/session.ts` queries the session table on every call, and a
+ * token whose row is gone resolves to nobody, so every protected page redirects to
+ * sign-in. Clearing it anyway is the difference between *signed out* and *signed out, and
+ * the browser has stopped claiming otherwise* — and on the one screen that promises to
+ * remove everything, leaving a live-looking credential behind would be the promise not
+ * quite meaning what it says.
+ *
+ * ── Why the deletion runs first and this second ──────────────────────────────────────
+ *
+ * The other order — sign out, then delete — was rejected. A delete that then failed would
+ * leave the reader signed out of an account that still exists, on a page whose *nothing was
+ * destroyed* message they can no longer act on. This way the irreversible statement goes
+ * first and this cannot fail in a way that matters: a cookie that outlives the account it
+ * named authenticates nothing.
+ *
+ * ── The name is derived, never written out ───────────────────────────────────────────
+ *
+ * `getCookies(authOptions).sessionToken.name` — Better Auth's own derivation, from the
+ * same options object the instance is built from, so it is `better-auth.session_token` on
+ * `localhost` and `__Secure-better-auth.session_token` over HTTPS without this file
+ * knowing that rule. `lib/session-cookie.ts` reads the cookie through Better Auth's reader
+ * for the same reason and is the wrong home for this: it exists so that `proxy.ts` can
+ * read a header without pulling `lib/auth.ts` and the Neon driver into the module graph of
+ * every request, and importing `authOptions` there would undo exactly that.
+ */
+export async function clearSessionCookie(): Promise<void> {
+  (await cookies()).delete(getCookies(authOptions).sessionToken.name);
 }
 
 /**
