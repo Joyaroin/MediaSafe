@@ -114,6 +114,19 @@ export async function requireDisplayName(): Promise<string> {
 }
 
 /**
+ * The current zone for Settings' Profile section — `SPEC.md` §7, issue #126. Same shape
+ * as `requireDisplayName` above: reads `session.user.timezone` straight off the session
+ * Better Auth already resolved, rather than a second query through `db/access.ts`.
+ */
+export async function requireTimezone(): Promise<string> {
+  const session = await currentSession();
+
+  if (!session) redirect("/sign-in");
+
+  return session.user.timezone;
+}
+
+/**
  * The display name for the masthead, or `null` with no session.
  *
  * Never redirects — the masthead is not the gate (`app/(signed-in)/layout.tsx`'s

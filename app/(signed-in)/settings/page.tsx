@@ -1,21 +1,20 @@
 import Link from "next/link";
 
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { requireDisplayName, requireUserId } from "@/lib/session";
+import { requireDisplayName, requireTimezone, requireUserId } from "@/lib/session";
 import { DisplayNameControl } from "./display-name-control";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
+import { TimezoneControl } from "./timezone-control";
 
 /**
  * Settings, with **all three sections now real**.
  *
  * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). Profile
- * arrives with issue #123, carrying the one thing built so far, the display name; the
- * timezone control that table row also names is a separate ticket (#123 blocks it) and
- * does not appear here as a heading over nothing — `SPEC.md` §9 forbids that. Data ships
- * with *Import a library ›* (issue #75), and Account ships with sign-out and sign-out
- * other devices (issue #124). None of the three is a stub: each is complete as far as
- * its own build step goes.
+ * carries the display name (issue #123) and, now, the timezone control (issue #126) that
+ * same table row named from the start. Data ships with *Import a library ›* (issue #75),
+ * and Account ships with sign-out and sign-out other devices (issue #124). None of the
+ * three is a stub: each is complete as far as its own build step goes.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -35,9 +34,7 @@ import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
  * ── What is not here ─────────────────────────────────────────────────────────────────
  *
  * *Delete account* is the remaining third of the Account section, its own page rather
- * than a dialog per `SPEC.md` §7, and it is still build step 7 (`SPEC.md` §8). Profile's
- * timezone control is the same step and is not here either — issue #123 blocks it, and
- * it drops into the section this ticket creates rather than arriving with it.
+ * than a dialog per `SPEC.md` §7, and it is still build step 7 (`SPEC.md` §8).
  */
 
 /**
@@ -71,13 +68,15 @@ export default async function SettingsPage() {
    * thrown read failure.
    *
    * The id itself is still unused: nothing on this page reads a database row, the
-   * display name included — `requireDisplayName()` below reads it straight off the
-   * session Better Auth already resolved, the same shape `requireImportOfferAnswered()`
-   * takes elsewhere. Calling this is what makes the route protected today, and
-   * `tests/route-manifest.test.ts` is what proves it stays that way.
+   * display name and timezone included — `requireDisplayName()` and `requireTimezone()`
+   * below both read straight off the session Better Auth already resolved, the same
+   * shape `requireImportOfferAnswered()` takes elsewhere. Calling this is what makes the
+   * route protected today, and `tests/route-manifest.test.ts` is what proves it stays
+   * that way.
    */
   await requireUserId();
   const name = await requireDisplayName();
+  const timezone = await requireTimezone();
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
@@ -91,6 +90,8 @@ export default async function SettingsPage() {
         <div className="mt-6">
           <DisplayNameControl name={name} />
         </div>
+
+        <TimezoneControl timezone={timezone} />
       </section>
 
       <section aria-labelledby="data-h" className="mt-12 border-t border-rule pt-6">

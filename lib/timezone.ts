@@ -84,8 +84,11 @@ const LONGEST_PLAUSIBLE_ZONE = 64;
  * the API offers. It manufactures no result from a failure — the caller's fallback is
  * chosen for the *absence* of a zone, not for an error, and nothing that could be a read
  * of the database passes through here. SPEC.md §3.2 is about the other thing.
+ *
+ * Exported: step 7's control validates a zone before it lets it reach Better Auth's
+ * update path, the same question asked of the signup cookie below.
  */
-function isKnownZone(zone: string): boolean {
+export function isKnownZone(zone: string): boolean {
   try {
     new Intl.DateTimeFormat("en-GB", { timeZone: zone });
     return true;
@@ -136,6 +139,23 @@ export function signupTimezoneFrom(cookieHeader: string | null): string {
 }
 
 /**
+ * The one reader for "where is this device", asked by both ends of the mechanism: the
+ * sign-in control below, on its way to Google, and step 7's timezone control, on a
+ * button press. A second reader would be a second answer to the same question — the
+ * thing `AGENTS.md` calls out this ticket for avoiding by name.
+ *
+ * Never null and never a zone this runtime cannot parse: a browser too old for `Intl`,
+ * or one that resolves an empty string, gets `TIMEZONE_FALLBACK` — the same fallback
+ * `signupTimezoneFrom` reaches for when the cookie is unusable. One fallback concept,
+ * not two.
+ */
+export function readDeviceTimezone(): string {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!zone || !isKnownZone(zone)) return TIMEZONE_FALLBACK;
+  return zone;
+}
+
+/**
  * The browser half of the same mechanism: write the zone down on the way out to Google.
  *
  * It lives beside the reader rather than in the component that calls it, because the
@@ -149,12 +169,11 @@ export function signupTimezoneFrom(cookieHeader: string | null): string {
  *
  * It asks nobody's permission and shows no control, which is the requirement: *a new
  * account's timezone is defaulted from the browser at signup without asking.* The control
- * that changes it is build step 7, and until then this is the only thing that ever sets
- * one.
+ * that changes it is build step 7, and this remains the only thing that ever sets one at
+ * signup.
  */
 export function writeSignupTimezoneCookie(): void {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  if (!zone) return;
+  const zone = readDeviceTimezone();
 
   const attributes = [
     `${SIGNUP_TIMEZONE_COOKIE}=${encodeURIComponent(zone)}`,

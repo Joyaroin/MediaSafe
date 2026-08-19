@@ -17,7 +17,7 @@ import * as authSchema from "@/auth-schema";
  * happen. `eslint.config.mjs` names this file, and only this file, for the exemption.
  */
 import { getDb } from "@/db/client";
-import { signupTimezoneFrom, TIMEZONE_FALLBACK } from "@/lib/timezone";
+import { isKnownZone, signupTimezoneFrom, TIMEZONE_FALLBACK } from "@/lib/timezone";
 
 /**
  * Better Auth, self-hosted against the same Postgres as everything else.
@@ -131,7 +131,35 @@ export const authOptions = {
         type: "string",
         required: true,
         defaultValue: TIMEZONE_FALLBACK,
-        input: false,
+        /**
+         * `input: true` — issue #126, step 7's control. This was `false` from build step
+         * 1 until now, because until now nothing was meant to set this field but the
+         * create hook below. `authClient.updateUser({ timezone })` is Better Auth's own
+         * update path, and it is gated by this flag: flipping it is the whole change
+         * that lets `timezone-control.tsx` use it rather than a bespoke server action or
+         * a hand-written column write, either of which would be a second way to change a
+         * user row that the rest of this codebase reaches through Better Auth alone.
+         *
+         * The validator below is what keeps the flip safe: a client can now reach this
+         * field, so the zone reaching the database must be checked here rather than
+         * merely trusted, the same posture `signupTimezoneFrom` already takes with the
+         * signup cookie. It has no bearing on account creation — `databaseHooks.user
+         * .create.before` sets this field on the data it hands the adapter directly,
+         * which is not client input and does not pass through a field validator.
+         */
+        input: true,
+        validator: {
+          input: {
+            "~standard": {
+              version: 1,
+              vendor: "mediasafe",
+              validate: (value: unknown) =>
+                typeof value === "string" && isKnownZone(value)
+                  ? { value }
+                  : { issues: [{ message: "Unrecognised timezone." }] },
+            },
+          },
+        },
       },
 
       /**
