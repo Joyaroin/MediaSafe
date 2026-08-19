@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -266,7 +266,7 @@ describe("adding a title to a list", () => {
 
       const outcome = await addTitleToList(reader, target.id, show, tx);
 
-      expect(outcome).toEqual({ added: true, position: 1 });
+      expect(outcome).toEqual({ added: true });
       const rows = await tx
         .select()
         .from(listMembership)
@@ -287,21 +287,20 @@ describe("adding a title to a list", () => {
       const second = await addTitleToList(reader, target.id, showB, tx);
       const third = await addTitleToList(reader, target.id, showC, tx);
 
-      expect(first.position).toBe(1);
-      expect(second.position).toBe(2);
-      expect(third.position).toBe(3);
+      expect(first.added).toBe(true);
+      expect(second.added).toBe(true);
+      expect(third.added).toBe(true);
 
       const rows = await tx
         .select({ titleId: listMembership.titleId, position: listMembership.position })
         .from(listMembership)
-        .where(eq(listMembership.listId, target.id));
-      expect(rows).toEqual(
-        expect.arrayContaining([
-          { titleId: showA, position: 1 },
-          { titleId: showB, position: 2 },
-          { titleId: showC, position: 3 },
-        ]),
-      );
+        .where(eq(listMembership.listId, target.id))
+        .orderBy(asc(listMembership.position));
+      expect(rows).toEqual([
+        { titleId: showA, position: 1 },
+        { titleId: showB, position: 2 },
+        { titleId: showC, position: 3 },
+      ]);
     });
   });
 
@@ -314,7 +313,7 @@ describe("adding a title to a list", () => {
 
       const second = await addTitleToList(reader, target.id, show, tx);
 
-      expect(second).toEqual({ added: false, position: null });
+      expect(second).toEqual({ added: false });
       const rows = await tx
         .select()
         .from(listMembership)

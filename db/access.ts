@@ -2570,11 +2570,12 @@ export async function deleteList(
 }
 
 /** Whether the add created a membership, or found one already there — `AddOutcome`'s own
- *  shape, for the reason its docblock gives. `position` is the row's, or `null` when
- *  nothing was written because the title was already a member. */
+ *  shape, for the reason its docblock gives: nothing here reads a position back, the same
+ *  way nothing reads a library entry id back from `addTitleToLibrary`. A caller wanting a
+ *  title's position reads it from `getListDetail`, the same read the list page itself
+ *  uses, rather than this write carrying a second, narrower copy of the same fact. */
 export interface AddToListOutcome {
   readonly added: boolean;
-  readonly position: number | null;
 }
 
 /**
@@ -2625,7 +2626,7 @@ export async function addTitleToList(
       .onConflictDoNothing({ target: [listMembership.listId, listMembership.titleId] })
       .returning({ position: listMembership.position });
 
-    return { added: created.length > 0, position: created[0]?.position ?? null };
+    return { added: created.length > 0 };
   });
 }
 

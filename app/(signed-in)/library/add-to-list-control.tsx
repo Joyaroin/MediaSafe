@@ -10,8 +10,9 @@ import {
   type CreateListAndAddOutcome,
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
+import { ListNameForm } from "@/app/(signed-in)/lists/list-name-form";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
-import { LIST_NAME_MAX_LENGTH, type ListSummary } from "@/db/access";
+import type { ListSummary } from "@/db/access";
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
@@ -156,9 +157,14 @@ export function AddToListControl({
           Add &ldquo;{titleName}&rdquo; to a list
         </h2>
 
-        <NewListForm
-          titleId={titleId}
-          titleName={titleName}
+        <ListNameForm
+          fieldId="add-to-list-new-name"
+          fieldClassName="flex-1"
+          inputClassName="w-full"
+          formClassName="mt-4"
+          pendingLabel="Adding"
+          toastTitle={() => titleName}
+          submit={(name) => createAndAdd(name, titleId)}
           onCreated={(list) => {
             setPhase((current) =>
               current?.kind === "loaded"
@@ -252,98 +258,6 @@ function ListPickerRow({
         </button>
       )}
     </li>
-  );
-}
-
-/** The new-list name field, folded into the picker — `create-list-form.tsx`'s own shape,
- *  minus the standalone submit-and-wait: this one also adds the title in the same write
- *  (`createListAndAddTitleAction`), so `onCreated` only fires once both have landed. */
-function NewListForm({
-  titleId,
-  titleName,
-  onCreated,
-}: {
-  readonly titleId: string;
-  readonly titleName: string;
-  readonly onCreated: (list: ListSummary) => void;
-}) {
-  const [name, setName] = useState("");
-  const [duplicate, setDuplicate] = useState(false);
-  const [inFlight, setInFlight] = useState(false);
-  const raised = useRef<WriteFailureHandle | null>(null);
-
-  const trimmed = name.trim();
-  const disabled = inFlight || trimmed.length === 0;
-
-  async function attempt(nextName: string): Promise<void> {
-    setInFlight(true);
-    setDuplicate(false);
-
-    const outcome = await createAndAdd(nextName, titleId);
-
-    setInFlight(false);
-
-    if (outcome.ok) {
-      raised.current?.resolve();
-      raised.current = null;
-      setName("");
-      onCreated(outcome.list);
-      return;
-    }
-
-    if (outcome.reason === "duplicate") {
-      setDuplicate(true);
-      return;
-    }
-
-    if (raised.current?.standing()) return;
-    raised.current = writeFailures.raise({
-      title: titleName,
-      reference: outcome.reference,
-      retry: () => void attempt(nextName),
-    });
-  }
-
-  function submit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    if (disabled) return;
-    void attempt(trimmed);
-  }
-
-  return (
-    <form onSubmit={submit} className="mt-4 flex flex-wrap items-start gap-3">
-      <div className="flex-1">
-        <label htmlFor="add-to-list-new-name" className="sr-only">
-          New list name
-        </label>
-        <div className="border border-hair px-3 py-2 focus-within:border-2 focus-within:border-text">
-          <input
-            id="add-to-list-new-name"
-            type="text"
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setDuplicate(false);
-            }}
-            maxLength={LIST_NAME_MAX_LENGTH}
-            disabled={inFlight}
-            placeholder="Name a new list"
-            autoComplete="off"
-            className="w-full bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
-          />
-        </div>
-
-        {duplicate ? (
-          <p role="alert" className="mt-2 text-item text-accent">
-            You already have a list called &ldquo;{trimmed}&rdquo;.
-          </p>
-        ) : null}
-      </div>
-
-      <button type="submit" disabled={disabled} className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}>
-        {inFlight ? "Adding" : "New list"}
-      </button>
-    </form>
   );
 }
 
