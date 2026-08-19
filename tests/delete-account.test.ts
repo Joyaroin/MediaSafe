@@ -315,6 +315,52 @@ describe("deleting the account", () => {
     });
   });
 
+  /**
+   * *No outbound call to Google is made* — the acceptance criterion that was, until this
+   * test, asserted only in prose.
+   *
+   * It guards a decision rather than a mechanism, which is why it is worth a test at all:
+   * issue #125 **rejected** revoking the OAuth grant programmatically, on the grounds that
+   * an outbound call which can fail in the middle of an irreversible operation leaves a
+   * half-deleted account, and that a half-failed deletion is worse than the honest sentence
+   * the page prints instead. Nothing in the type system stops a later edit from adding that
+   * call back; this does.
+   *
+   * The assertion is scoped to Google's hosts rather than to *any* `fetch`, deliberately. A
+   * blanket *no fetch at all* would be a test about the Neon driver's transport — it speaks
+   * over a WebSocket here and could reasonably use `fetch` in another mode — and it would
+   * fail for a reason that has nothing to do with what this is protecting.
+   */
+  it("makes no outbound call to Google", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      await seedEntry(tx, reader, show, { rating: 5, watches: 2 });
+
+      const reached: string[] = [];
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (...args: Parameters<typeof fetch>) => {
+        const [input] = args;
+        reached.push(
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url,
+        );
+        return realFetch(...args);
+      };
+
+      try {
+        await deleteAccount(reader, tx);
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+
+      expect(reached.filter((url) => /google|googleapis|oauth2/i.test(url))).toEqual([]);
+    });
+  });
+
   it("destroys exactly the numbers the page stated", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
