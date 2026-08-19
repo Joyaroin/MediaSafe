@@ -57,7 +57,7 @@ describe("what the auth configuration commits to", () => {
         type: "string",
         required: true,
         defaultValue: TIMEZONE_FALLBACK,
-        input: false,
+        input: true,
       });
     });
 
@@ -73,10 +73,35 @@ describe("what the auth configuration commits to", () => {
       expect(columns.timezone.default).toBe(TIMEZONE_FALLBACK);
     });
 
-    it("is not something a client may set", () => {
-      // `input: false`. The zone comes from the cookie the sign-in control wrote, through
-      // the create hook — never from a request body, where anyone could put anything.
-      expect(authOptions.user.additionalFields.timezone.input).toBe(false);
+    it("is something a client may set, through the update path issue #126 adds", () => {
+      // `input: true`. Was `false` from build step 1: nothing was meant to set this
+      // field but the create hook until now. `timezone-control.tsx` is the caller.
+      expect(authOptions.user.additionalFields.timezone.input).toBe(true);
+    });
+
+    describe("its validator", () => {
+      // The field is reachable from a request body now, so an unrecognised zone must be
+      // refused here rather than merely trusted — the same posture `signupTimezoneFrom`
+      // already takes with the signup cookie.
+      function validate(value: unknown) {
+        return authOptions.user.additionalFields.timezone.validator.input[
+          "~standard"
+        ].validate(value);
+      }
+
+      it("accepts a zone this runtime recognises", () => {
+        expect(validate("Europe/London")).toEqual({ value: "Europe/London" });
+      });
+
+      it("rejects a string that is not an IANA zone", () => {
+        const result = validate("Not/A_Zone");
+        expect(result).toHaveProperty("issues");
+      });
+
+      it("rejects a non-string value", () => {
+        const result = validate(42);
+        expect(result).toHaveProperty("issues");
+      });
     });
   });
 
