@@ -166,6 +166,55 @@ describe("what the unowned route does not import", () => {
   });
 });
 
+describe("the one control the page carries", () => {
+  /**
+   * *It carries one **Add to library*** is the ticket's only criterion about something
+   * being present rather than absent, and it is checked at the source rather than in a
+   * render for the boundary `tests/programme-note.test.ts` names: the control imports
+   * `titles/actions.ts`, which imports `tmdb/catalogue.ts`, which is `server-only` and
+   * throws on import outside Next's own build. `catalogue-result.tsx` — the same shape on
+   * the search screen — carries no render test either.
+   *
+   * **One**, not *at least one*: the count is the assertion. A second add offered
+   * somewhere further down the page would be two ways into a library from a page whose
+   * whole premise is that there is one.
+   */
+  const pageSource = () =>
+    routeSources().find(({ file }) => file.endsWith("[tmdbId]/page.tsx"));
+
+  it("renders exactly one AddToLibraryControl, on the page itself", () => {
+    const page = pageSource();
+    expect(page).toBeDefined();
+
+    const rendered = page?.source.match(/<AddToLibraryControl\b/g) ?? [];
+    expect(rendered).toHaveLength(1);
+
+    // And nothing else in the route renders one — the control lives on the page, not
+    // inside the episode list or the live facts.
+    const everywhere = routeSources().flatMap(
+      ({ source }) => source.match(/<AddToLibraryControl\b/g) ?? [],
+    );
+    expect(everywhere).toHaveLength(1);
+  });
+
+  it("hands it the title, so the lost-write toast can name what was lost", () => {
+    // `AGENTS.md`: the toast composes its own sentences from a title and takes no message,
+    // precisely so there is no parameter an exception could arrive in.
+    expect(pageSource()?.source).toMatch(/titleName=\{detail\.name\}/);
+  });
+
+  it("labels it in full, and says so to a screen reader too", () => {
+    const control = routeSources().find(({ file }) =>
+      file.endsWith("add-to-library-control.tsx"),
+    );
+
+    expect(control?.source).toContain("Add to library");
+    // Search's row can afford the one-word *Add* because the row is the context. A page
+    // about one title has no row, so the visible label carries it.
+    expect(control?.source).not.toMatch(/>\s*Add\s*</);
+  });
+});
+
 describe("where a list row goes", () => {
   it("links an unowned row to the unowned page and an owned one to the library entry", () => {
     const row = readFileSync(

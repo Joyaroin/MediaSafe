@@ -226,6 +226,18 @@ export interface CatalogueKey {
  * segment that is not a number must not be read as the number it happens to start with.
  * `Number(null)` and `Number("")` are both `0`, which `<= 0` rejects.
  *
+ * ── It accepts both spellings of the id, and that is a deliberate widening ────────────
+ *
+ * A TMDB id reaches this application as a URL segment (`"1399"`) and as an action's
+ * argument (`1399`), and both are the same catalogue key, so this converts rather than
+ * insisting on one. **That is a real change to `search/actions.ts`**, which is worth
+ * saying rather than filing under refactoring: its inlined `Number.isInteger(tmdbId)`
+ * threw for the string `"550"` and this does not. Nothing is loosened about what reaches
+ * the database — every value that gets past here is the same positive integer it would
+ * have had to be before — and the alternative was either a second predicate for the
+ * string case or leaving three copies of one check, both of which cost more than the
+ * spelling this now tolerates.
+ *
  * It throws rather than returning a null key: every caller is inside something that
  * already turns a throw into the right treatment — a Server Action's `catch` and its
  * reference id, or the route's own `error.tsx` — and a key that could be absent would put
