@@ -2672,6 +2672,157 @@ function kindFrom(value: string): TitleKind {
 }
 
 /**
+ * One row of an unowned title's episode list — issue #148.
+ *
+ * `EpisodeDetail` above carries `watched` and `upNext`; this carries neither, and the
+ * absence is the type doing the ticket's work rather than a convention to remember. A
+ * surface handed one of these cannot draw a mark, a rewatch or an *Up next* chip, because
+ * there is no field on it that could say so — which is the whole of *nothing tells you
+ * something false about a show you have never watched*.
+ */
+export interface UnownedEpisodeDetail {
+  readonly id: string;
+  /** 0 = specials, grouped here as they are everywhere else. */
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  /** `null` where TMDB has not named it. Never falls back to a bare number. */
+  readonly name: string | null;
+}
+
+/**
+ * Title detail's borrowed half, and only that — issue #148.
+ *
+ * Every field here is a fact about the world (`CONTEXT.md`): it lives on `title` or
+ * `episode`, which are global and unowned (ADR-0001), so the same answer is true for
+ * every reader. `TitleDetailRow`'s other five fields — `libraryEntryId`, `state`,
+ * `rating`, and an episode's `watched` and `upNext` — are all *somebody's*, and this
+ * shape has no somebody to attribute them to.
+ */
+export interface UnownedTitleDetailRow {
+  /** What `addTitleToList` keys a membership on, so the unowned page can offer *Add to
+   *  list* the way the owned one already does (issue #147). */
+  readonly titleId: string;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly runtimeMins: number | null;
+  /** Empty for a film, and for a show TMDB has no episode data for. */
+  readonly episodes: readonly UnownedEpisodeDetail[];
+}
+
+/**
+ * One title, for a reader who does not own it — issue #148, and a second read beside
+ * `getTitleDetail` rather than a relaxation of it.
+ *
+ * ── Why this is not `getTitleDetail` with the owner made optional ─────────────────────
+ *
+ * That was the alternative and it is the shape to avoid. `getTitleDetail` is scoped by
+ * `ownedBy(userId, libraryEntry)` combined with an entry id, and it throws when the pair
+ * matches nothing — a tampered id, a foreign one and a deleted one are the same case, and
+ * all three are a boundary. Making that join optional would mean the read's `where` no
+ * longer had to mention an owner to return a row, and the failure mode of that is not a
+ * wrong screen: it is one account's library entry answering another account's request,
+ * out of a query that still reads as scoped. So ownership stays mandatory where it is,
+ * and the unowned case is a different function, with a different key and a different
+ * return type.
+ *
+ * ── Keyed by `(kind, tmdbId)`, which is what makes it unownable ───────────────────────
+ *
+ * `title_kind_tmdb_id_key` is that pair — TMDB numbers films and shows separately, so the
+ * id alone is not unique (`db/tables.ts`). What matters more than the choice of key is
+ * what the signature does not have: no user id, and no argument that could name one. The
+ * isolation model (this module's own docblock) is one filtered column, and a read with no
+ * owned table in it has nothing to filter and nothing to leak. `title` and `episode` were
+ * always like this; `libraryCatalogueKeys` is the only reason either has ever been asked
+ * a per-account question, and that question is really about `library_entry`.
+ *
+ * ── A missing title throws ────────────────────────────────────────────────────────────
+ *
+ * The treatment `getTitleDetail` and `getListDetail` give a row that is not there, for
+ * the reason they give it: there is nothing for this surface to degrade to. The route
+ * into the page is a list row, which cannot exist without the `title` row it names, so a
+ * miss here is a hand-typed id or a mirror that has lost a row — neither of which is an
+ * empty state, and both of which are honestly a page that did not load.
+ */
+export async function getUnownedTitleDetail(
+  kind: TitleKind,
+  tmdbId: number,
+  executor: Executor = getDb(),
+): Promise<UnownedTitleDetailRow> {
+  const [row] = await executor
+    .select({
+      titleId: title.id,
+      kind: title.kind,
+      tmdbId: title.tmdbId,
+      name: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
+    })
+    .from(title)
+    .where(and(eq(title.kind, kind), eq(title.tmdbId, tmdbId)));
+
+  if (!row) {
+    throw new Error(`No ${kind} with TMDB id ${tmdbId} is mirrored.`);
+  }
+
+  const episodeRows = await executor
+    .select({
+      id: episode.id,
+      seasonNo: episode.seasonNo,
+      episodeNo: episode.episodeNo,
+      name: episode.name,
+    })
+    .from(episode)
+    .where(eq(episode.titleId, row.titleId))
+    .orderBy(episode.seasonNo, episode.episodeNo);
+
+  return { ...row, kind: kindFrom(row.kind), episodes: episodeRows };
+}
+
+/**
+ * This account's own entry for one title, or `null` — issue #148.
+ *
+ * ── Null here is a state, not a failure ───────────────────────────────────────────────
+ *
+ * `SPEC.md` §3.2's distinction: a query that succeeded and found nothing means *you have
+ * not added this title*, which is the entire premise of the page this feeds. A failure
+ * still throws, from the driver, with no `catch` in the way.
+ *
+ * ── The two things it decides ─────────────────────────────────────────────────────────
+ *
+ * It is what the unowned route asks before rendering — an account that does own the title
+ * is sent to its own copy of it, so *there are not two kinds of show* survives a URL
+ * typed by hand — and it is how that page's *Add to library* finds the entry it has just
+ * created, to send the reader on to. `addTitleToLibrary` reports whether it created one
+ * and not which one, deliberately: its `onConflictDoNothing` returns no row on the
+ * conflict, and reading the id back here is more honest than making that write's return
+ * value depend on a second query it does not otherwise need.
+ *
+ * `ownedBy` is the whole of the isolation. Without it this reads *anybody's* entry for
+ * the title and the page offers a stranger's copy; with it, a title only somebody else
+ * has added answers `null`, which is the true answer.
+ */
+export async function libraryEntryIdForTitle(
+  userId: UserId,
+  kind: TitleKind,
+  tmdbId: number,
+  executor: Executor = getDb(),
+): Promise<string | null> {
+  const [row] = await executor
+    .select({ id: libraryEntry.id })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .where(
+      and(ownedBy(userId, libraryEntry), eq(title.kind, kind), eq(title.tmdbId, tmdbId)),
+    );
+
+  return row?.id ?? null;
+}
+
+/**
  * A list's own facts, and the one number the delete confirmation needs — issue #146.
  *
  * `titleCount` is read from `list_membership` rather than carried on `list` itself: there

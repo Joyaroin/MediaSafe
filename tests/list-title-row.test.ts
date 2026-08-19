@@ -14,8 +14,21 @@ import type { ListDetailTitleRow } from "@/db/access";
  * `removeTitleFromLibrary` docblock — a list holds a title, not a library entry, so a
  * removal cannot leave a third state behind). There is nothing in `ListDetailTitleRow` that
  * distinguishes those two histories, so one render path has to be correct for both, and
- * this file locks that path down: unlinked when `libraryEntryId` is `null`, linked to this
- * account's own entry when it is not.
+ * this file locks that path down.
+ *
+ * ── What issue #148 changed under it ──────────────────────────────────────────────────
+ *
+ * Untracked used to mean **unlinked**, and this file asserted that. It was the right
+ * assertion for a world with no page for a title nobody owns: #151 shipped days before
+ * #148, and `list-title-row.tsx`'s own docblock named the `libraryEntryId === null` branch
+ * as the one line that would change when it did.
+ *
+ * It has. Untracked now means **linked to `titles/[kind]/[tmdbId]`** — the same borrowed
+ * facts with no owned fact on them and one *Add to library*. Every row is a link; which
+ * page it links to is the ownership question, and that is what this file locks down now.
+ * The property #151 actually cares about is untouched: a row for a title this account does
+ * not own must never carry that account's entry id, and a removed title's row is
+ * indistinguishable from a never-added one.
  */
 
 function titleRow(overrides: Partial<ListDetailTitleRow> = {}): ListDetailTitleRow {
@@ -36,11 +49,23 @@ const render = (row: ListDetailTitleRow) =>
   renderToStaticMarkup(createElement("ul", null, createElement(ListTitleRow, { title: row })));
 
 describe("a list row for a title this account does not own", () => {
-  it("renders untracked — the borrowed facts, and nothing to press", () => {
-    const markup = render(titleRow({ libraryEntryId: null, name: "Somebody Else's Pick" }));
+  it("renders the borrowed facts, and links to the title's own unowned page", () => {
+    const markup = render(
+      titleRow({ libraryEntryId: null, kind: "film", tmdbId: 27205, name: "Somebody Else's Pick" }),
+    );
 
-    expect(markup).not.toMatch(/<a[ >]/);
+    // Keyed by `(kind, tmdbId)`, because that is what a page with no owner can be keyed
+    // by — `db/access.ts`'s `getUnownedTitleDetail` carries why.
+    expect(markup).toContain('href="/titles/film/27205"');
     expect(markup).toContain("Somebody Else&#x27;s Pick");
+  });
+
+  it("never carries a library entry id, whoever else owns the title", () => {
+    // Issue #151's property, and the one that survives #148 unchanged: a removed title's
+    // row and a never-added title's row are the same row, and neither points at an entry.
+    const markup = render(titleRow({ libraryEntryId: null }));
+
+    expect(markup).not.toContain("/library/");
   });
 });
 

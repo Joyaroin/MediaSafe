@@ -16,14 +16,21 @@ import type { ListDetailTitleRow } from "@/db/access";
  * assumed to match the array index (which it always will, but a reader cannot see an
  * array index).
  *
- * ── Linked only when this account owns it ─────────────────────────────────────────────
+ * ── Every row is a link; which page it links to is the ownership question ─────────────
  *
- * A list holds anything in the catalogue (issue #133), and there is no title-detail page
- * yet for a title nobody owns — issue #148 is still open. So a row for a title this
- * account has not added renders the same borrowed facts with nothing to press; once #148
- * ships, the `libraryEntryId === null` branch is the one line that changes.
+ * A list holds anything in the catalogue (issue #133), so a row is a title this account
+ * has added or one it has not, and issue #148 gives the second case a page of its own.
+ * An owned row links to `library/[entryId]` — your copy, with your progress on it. An
+ * unowned row links to `titles/[kind]/[tmdbId]`, which is the same borrowed facts with no
+ * owned fact anywhere on it and one *Add to library*. Two destinations rather than two
+ * kinds of row: what differs is the key each page is keyed by, and that difference is the
+ * whole of how the read stays scoped (`db/access.ts`'s `getUnownedTitleDetail`).
  *
- * This is a plain `Link` to `library/[entryId]`, not `SelectableEntry`
+ * Through #147 this branch rendered a row with nothing to press, because the destination
+ * did not exist yet. It exists now, and a listed title you have not started is one tap
+ * from being one you have.
+ *
+ * Both are a plain `Link`, not `SelectableEntry`
  * (`library/selectable-entry.tsx`): that component reads `useLibrarySelection()`, whose
  * provider only wraps `library-surface.tsx` — the desktop pane exists on `/library` and
  * nowhere else. A list has no pane of its own, so every row here is a real navigation on
@@ -51,16 +58,14 @@ export function ListTitleRow({ title }: { readonly title: ListDetailTitleRow }) 
     </>
   );
 
-  if (title.libraryEntryId === null) {
-    return (
-      <li className="flex items-center gap-4 border-b border-hair py-3">{content}</li>
-    );
-  }
-
   return (
     <li className="border-b border-hair">
       <Link
-        href={`/library/${title.libraryEntryId}`}
+        href={
+          title.libraryEntryId === null
+            ? `/titles/${title.kind}/${title.tmdbId}`
+            : `/library/${title.libraryEntryId}`
+        }
         className="flex items-center gap-4 py-3 transition-colors duration-150 hover:bg-raised"
       >
         {content}

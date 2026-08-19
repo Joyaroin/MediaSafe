@@ -4,6 +4,7 @@ import { addTitleToLibrary, libraryCatalogueKeys } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { searchCatalogue, titleMirror } from "@/tmdb/catalogue";
 import {
+  catalogueKeyFrom,
   catalogueKeyOf,
   type CatalogueResult,
   type TitleKind,
@@ -116,15 +117,14 @@ export async function addToLibraryAction(
      * out: reported to Sentry, and answered with a reference id. A Server Action's
      * arguments are whatever the caller sent, and `kind` reaches `UNIQUE (kind, tmdb_id)`
      * and a `CHECK` constraint.
+     *
+     * The predicate itself is `tmdb/mirror.ts`'s, shared with the other two doors a
+     * catalogue key arrives through (issue #148's add, and its route's own segments) —
+     * this check was the first of the three and was copied to make the others.
      */
-    if (kind !== "film" && kind !== "show") {
-      throw new Error(`Add asked for kind ${JSON.stringify(kind)}.`);
-    }
-    if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
-      throw new Error(`Add asked for TMDB id ${JSON.stringify(tmdbId)}.`);
-    }
+    const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibrary(userId, await titleMirror(kind, tmdbId));
+    await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId));
     return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search-add" }) };

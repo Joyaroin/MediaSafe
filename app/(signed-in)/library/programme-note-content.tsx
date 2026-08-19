@@ -7,6 +7,7 @@ import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { RatingControl } from "./rating-control";
 import { RemoveControl } from "./remove-control";
 import { STATE_LABELS } from "./library-state";
+import { titleMetaLine } from "./title-meta-line";
 
 /**
  * One title, read properly — the content the desktop pane and the phone route both show,
@@ -74,7 +75,7 @@ export function ProgrammeNoteContent({
   onRated: (libraryEntryId: string, rating: number) => void;
 }) {
   const state = STATE_LABELS[detail.state];
-  const meta = metaLine(detail);
+  const meta = titleMetaLine(detail);
 
   return (
     <div className="px-6 py-5">
@@ -138,18 +139,4 @@ export function ProgrammeNoteContent({
       <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
     </div>
   );
-}
-
-/**
- * The year, and for a film its runtime — never a network, which `library-entry-cell.tsx`
- * already explains the absence of: `title` mirrors no network column (ADR-0001), so a
- * line drawing one would be inventing a fact this application does not have.
- */
-function metaLine(detail: TitleDetailRow): string | null {
-  const parts: string[] = [];
-  if (detail.releaseYear !== null) parts.push(String(detail.releaseYear));
-  if (detail.kind === "film" && detail.runtimeMins !== null) {
-    parts.push(`${detail.runtimeMins} min`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
 }
