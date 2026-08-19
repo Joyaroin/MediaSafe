@@ -85,10 +85,10 @@ export function ReorderableTitleList({
       (one) => rowElements.current.get(one.titleId)?.getBoundingClientRect().height ?? fallbackHeight,
     );
     const tops: number[] = [];
-    let position = 0;
+    let pixelsDown = 0;
     for (const height of heights) {
-      tops.push(position);
-      position += height;
+      tops.push(pixelsDown);
+      pixelsDown += height;
     }
     const draggedCenter = tops[startIndex] + translateY + heights[startIndex] / 2;
 

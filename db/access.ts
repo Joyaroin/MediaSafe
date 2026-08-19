@@ -2767,6 +2767,11 @@ export async function getListDetail(
  * argument, so `1-count` is checked here rather than trusted from the drag that produced
  * it.
  *
+ * Three statements rather than the one round trip `rateTitle` and `deleteList` manage —
+ * the shift below has to know every row's current position before it can decide which
+ * ones move, and that is not a fact an `UPDATE ... RETURNING` on the moved row alone can
+ * answer.
+ *
  * ── Shift the range between, not the whole list ────────────────────────────────────────
  *
  * A drag can move a row past any number of others, not only its neighbour, so this is not
