@@ -82,9 +82,9 @@ export async function runNightlySweep(
     }
   }
 
-  reportToSentry(candidates.length, refreshed, failures);
-
-  return { candidates: candidates.length, refreshed, failures };
+  const outcome: NightlySweepOutcome = { candidates: candidates.length, refreshed, failures };
+  reportToSentry(outcome);
+  return outcome;
 }
 
 /**
@@ -95,11 +95,7 @@ export async function runNightlySweep(
  * checks it: that guard exists so a reader is never shown an id that resolves to nothing,
  * and nothing here is ever shown to a reader. With no DSN the SDK already drops the event.
  */
-function reportToSentry(
-  candidateCount: number,
-  refreshed: number,
-  failures: readonly SweepFailure[],
-): void {
+function reportToSentry({ candidates, refreshed, failures }: NightlySweepOutcome): void {
   for (const failure of failures) {
     Sentry.captureException(failure.error, {
       tags: {
@@ -113,7 +109,7 @@ function reportToSentry(
   }
 
   Sentry.captureMessage(
-    `Nightly sweep: ${refreshed} of ${candidateCount} refreshed, ${failures.length} skipped`,
+    `Nightly sweep: ${refreshed} of ${candidates} refreshed, ${failures.length} skipped`,
     { level: failures.length > 0 ? "warning" : "info", tags: { surface: "nightly-sweep" } },
   );
 }

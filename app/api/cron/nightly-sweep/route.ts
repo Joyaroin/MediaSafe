@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { titleMirror } from "@/tmdb/catalogue";
 
+import { unauthorized } from "./authorize";
 import { runNightlySweep } from "./run-sweep";
 
 /**
@@ -33,17 +34,6 @@ import { runNightlySweep } from "./run-sweep";
  * everybody at once, so a sweep acting for nobody in particular is the correct shape, not
  * a corner this route cuts. It takes no user id and never calls `lib/session.ts`.
  */
-
-/**
- * Rejects anything without the bearer secret Vercel's cron sends. `!configured` also
- * rejects — loud rather than "works accidentally" if `CRON_SECRET` is ever unset in an
- * environment this route is reachable from, matching the "un-sessioned, not
- * unauthenticated" claim above: no secret configured means no request can pass.
- */
-function unauthorized(request: NextRequest): boolean {
-  const configured = process.env.CRON_SECRET;
-  return !configured || request.headers.get("authorization") !== `Bearer ${configured}`;
-}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   if (unauthorized(request)) {
