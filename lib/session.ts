@@ -96,6 +96,39 @@ export async function requireImportOfferAnswered(): Promise<boolean> {
 }
 
 /**
+ * The display name for Settings' Profile section — `SPEC.md` §7, issue #123. Reads
+ * `session.user.name` straight off the session Better Auth already resolved, the same
+ * shape `requireImportOfferAnswered` takes for `importOfferAnsweredAt` above.
+ *
+ * Redirects on no session, matching every other `require*` export here. Settings' page
+ * calls this alongside `requireUserId()`, the same two-query trade
+ * `app/(signed-in)/library/page.tsx` already makes calling `requireUserId()` and
+ * `requireImportOfferAnswered()` together.
+ */
+export async function requireDisplayName(): Promise<string> {
+  const session = await currentSession();
+
+  if (!session) redirect("/sign-in");
+
+  return session.user.name;
+}
+
+/**
+ * The display name for the masthead, or `null` with no session.
+ *
+ * Never redirects — the masthead is not the gate (`app/(signed-in)/layout.tsx`'s
+ * docblock explains why), and pairing this with a redirect would put a session check
+ * back into the layout tree by the back door. In practice this only returns `null` when
+ * a page under `(signed-in)/` has itself forgotten to call `requireUserId()`; rendering
+ * nothing in the masthead for that case is strictly better than throwing in the middle
+ * of the signed-in shell.
+ */
+export async function currentDisplayName(): Promise<string | null> {
+  const session = await currentSession();
+  return session?.user.name ?? null;
+}
+
+/**
  * Whether this request already carries a signed-in session.
  *
  * Exactly one caller, and there should never be a second: the sign-in route, which has
