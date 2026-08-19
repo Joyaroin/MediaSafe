@@ -592,6 +592,12 @@ document will ever find, which is the drift this section exists to stop.
   *Build-time consequence:* ten cells at the prototype's `0.875rem` horizontal padding is ~360px
   inside a 420px panel with `1.5rem` gutters — it fits, but only just, and `10` is two digits.
   Tightening the cell padding is a build-time call; changing the treatment is not.
+  **Settled by #113, which built the control.** `DESIGN.md`'s Rating Scale section now says ten and
+  carries the reason, so this entry is history rather than a live instruction. The build-time call
+  went to `flex-1` on every cell rather than a smaller padding: fixed padding fits the desktop panel
+  and overflows the phone route, and makes the two-digit cell wider than the other nine. **The
+  prototype still draws five and was left alone** — it is a record of what was built in #12, and the
+  two documents above are where the answer lives. Nothing renders it.
 - **The sort select offered the wrong orders**: *Recently watched · Title A–Z · Year*. Three,
   including the one #22 cut on evidence, and missing *closest to finishing* and
   *recently added*. Flagged on PR #26 and merged anyway. **Corrected in this branch**

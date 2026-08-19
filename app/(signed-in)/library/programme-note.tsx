@@ -106,6 +106,18 @@ export function ProgrammeNotePane() {
                     : prev,
                 )
               }
+              onRated={(libraryEntryId: string, rating: number) =>
+                setPhase((prev) =>
+                  // The same guard, for the same reason — and it is the rating control's
+                  // rollback that depends on it: that control reads its previous value
+                  // back out of `detail.rating`, so patching this pane from a write that
+                  // belongs to a title the reader has already left would give the title
+                  // now on screen somebody else's number to roll back to.
+                  prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
+                    ? { kind: "loaded", detail: { ...prev.detail, rating } }
+                    : prev,
+                )
+              }
             />
           ) : null}
         </div>

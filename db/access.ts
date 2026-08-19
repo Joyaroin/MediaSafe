@@ -1001,6 +1001,57 @@ export async function unabandonTitle(
 }
 
 /**
+ * Your rating of one title — issue #113, and the last column in ADR-0001's model that had
+ * no writer at all.
+ *
+ * ── One rating per title, and no history of it ────────────────────────────────────────
+ *
+ * An `UPDATE` of one column, never an insert, which is the whole of `SPEC.md` §7's *held
+ * on the library entry, overwritten on change, one per title and never one per watch*:
+ * choosing a second value leaves no trace of the first, and a rewatch writes a `watch`
+ * row this column knows nothing about. There is deliberately no rating on `watch` for
+ * this to have to reconcile against, and so nothing here to ask *which* watch.
+ *
+ * ── The range is checked here as well as in Postgres, and both are load-bearing ───────
+ *
+ * `library_entry_rating_check` is the guarantee; this is the *error*. A Server Action is
+ * a POST endpoint anyone can call with any arguments, and a check violation from the
+ * driver would still reach the toast as a lost write — correctly, but only after this
+ * function had passed on a value it could see was wrong. Rejecting it here says so
+ * plainly and never opens a statement to find out.
+ *
+ * ── Authorization, and why a missing row throws ───────────────────────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` combined with the entry id, the same shape
+ * `abandonTitle` above uses and for the same reason: a tampered or stale id updates
+ * nothing, `RETURNING` comes back empty, and that is a throw rather than a silent no-op.
+ * From here an id naming no row and an id naming somebody else's row are the same case,
+ * and both are a write that did not happen.
+ */
+export async function rateTitle(
+  userId: UserId,
+  libraryEntryId: string,
+  rating: number,
+  executor: Executor = getDb(),
+): Promise<void> {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+    throw new Error(`A rating is a whole number 1-10; got ${rating}.`);
+  }
+
+  const [row] = await executor
+    .update(libraryEntry)
+    .set({ rating })
+    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)))
+    .returning({ id: libraryEntry.id });
+
+  if (!row) {
+    throw new Error(
+      `Library entry ${libraryEntryId} was not found in this account's library.`,
+    );
+  }
+}
+
+/**
  * Records that the first-run **Bring your library in** offer has been answered — by
  * choosing to import or by declining, either one (issue #75, completing the column
  * issue #70 declared and deliberately left unwritten).
@@ -1674,6 +1725,14 @@ export interface TitleDetailRow {
   /** Films only; `null` for shows. */
   readonly runtimeMins: number | null;
   readonly state: LibraryState;
+  /**
+   * Your rating, `null` until you have given one — issue #113. It is on this row and on
+   * no other read in this file, which is most of what makes *nothing reads a rating in
+   * v1* (`SPEC.md` §7) structural rather than remembered: `LibraryEntryRow` does not
+   * carry it, so the tile could not display one even by accident, and neither the chips
+   * nor the sort can work on a column their query never selects.
+   */
+  readonly rating: number | null;
   /** Empty for a film, and for a show TMDB has no episode data for — the two read
    *  identically here; `programme-note-episodes.tsx` is what tells them apart, from
    *  `kind`. */
@@ -1738,6 +1797,7 @@ export async function getTitleDetail(
       posterPath: title.posterPath,
       runtimeMins: title.runtimeMins,
       state: libraryEntryState.state,
+      rating: libraryEntry.rating,
     })
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -1797,6 +1857,7 @@ export async function getTitleDetail(
     posterPath: row.posterPath,
     runtimeMins: row.runtimeMins,
     state: stateFrom(row.state),
+    rating: row.rating,
     episodes: episodeRows.map((one) => ({
       id: one.id,
       seasonNo: one.seasonNo,
