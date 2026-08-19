@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MediaSafe — The Catalogue Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#0A0A0B; --panel:#111113; --raised:#17171A; --hair:#242429;
+  --text:#F4F4F2; --dim:#8C8C8A; --accent:#FFB020; --accent-ink:#0A0A0B;
+  --glass:rgba(10,10,11,.62);
+}
+:root[data-theme="light"]{
+  --ground:#F6F5F3; --panel:#FFFFFF; --raised:#FFFFFF; --hair:#E4E3DF;
+  --text:#16161A; --dim:#6E6E6B; --accent:#A85D06; --accent-ink:#FFFFFF;
+  --glass:rgba(246,245,243,.68);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.disp{font-family:"Archivo Narrow",system-ui;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.lab{font-family:"Archivo Narrow",system-ui;font-weight:600;text-transform:uppercase;letter-spacing:.10em;font-size:11px;color:var(--dim)}
+.page{padding:22px;background:#000;min-height:100vh}
+.bar{display:flex;gap:14px;align-items:center;margin-bottom:18px;color:#9a9a98;font-size:13px;flex-wrap:wrap}
+.bar b{color:#fff;font-weight:600}
+.btn{background:#1b1b1e;color:#e8e8e6;border:1px solid #2c2c31;border-radius:7px;padding:6px 11px;font:inherit;font-size:12px;cursor:pointer}
+.btn:hover{background:#26262b}
+.stage{display:flex;gap:22px;align-items:flex-start;min-width:1560px}
+.cap{color:#7a7a78;font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px;font-family:"Archivo Narrow",system-ui;font-weight:600}
+.app{background:var(--ground);color:var(--text);border-radius:12px;overflow:hidden;position:relative}
+.glass{background:var(--glass);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5)}
+.poster{aspect-ratio:2/3;width:100%;object-fit:cover;border-radius:7px;display:block;background:var(--raised)}
+.tile{border:0;background:none;padding:0;cursor:pointer;text-align:left;color:inherit;font:inherit;transition:filter .16s}
+.tile:hover{filter:brightness(1.16)}
+.tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.tname{font-size:12.5px;margin-top:7px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tsub{font-size:11px;color:var(--dim);margin-top:2px}
+
+/* ---------- desktop: sidebar | main | note ---------- */
+.d{flex:1;min-width:0}
+.dwrap{display:grid;grid-template-columns:196px 1fr 336px;min-height:700px}
+.side{border-right:1px solid var(--hair);padding:18px 0;display:flex;flex-direction:column}
+.side .mark{padding:0 18px 22px;font-size:16px}
+.side nav{display:flex;flex-direction:column}
+.side a{display:flex;align-items:center;gap:11px;padding:9px 18px;color:var(--dim);text-decoration:none;font-family:"Archivo Narrow",system-ui;font-weight:600;text-transform:uppercase;letter-spacing:.09em;font-size:12px;cursor:pointer;border-left:2px solid transparent}
+.side a .ic{font-size:14px;width:16px;text-align:center;letter-spacing:0}
+.side a:hover{color:var(--text)}
+.side a.on{color:var(--text);border-left-color:var(--text)}   /* no accent here — accent means live action */
+.side .rule{height:1px;background:var(--hair);margin:14px 18px}
+.side .who{margin-top:auto;padding:0 18px;font-size:10px;letter-spacing:.12em;color:var(--dim)}
+.dmain{min-width:0;overflow:hidden;padding-bottom:26px}
+.ph{padding:20px 20px 4px}
+.ph h1{font-size:26px;line-height:1}
+.ph .sub{font-size:11.5px;color:var(--dim);margin-top:4px}
+.rails{padding:12px 0 6px}
+.rail{margin-bottom:18px;position:relative}
+.railhead{display:flex;align-items:baseline;gap:10px;padding:0 20px 9px}
+.railhead .n{font-size:11px;color:var(--dim)}
+.track{display:flex;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 20px 2px;scrollbar-width:none}
+.track::-webkit-scrollbar{display:none}
+.track>*{flex:0 0 104px;scroll-snap-align:start}
+.arw{position:absolute;top:52%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);background:var(--glass);backdrop-filter:blur(14px);color:var(--text);display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .16s;z-index:3;font-size:14px}
+.rail:hover .arw{opacity:1}
+.arw.l{left:8px}.arw.r{right:8px}
+.bill{padding:14px 20px 26px}
+.chips{display:flex;gap:1px;background:var(--hair);border-radius:7px;overflow:hidden;width:max-content;margin-bottom:12px}
+.chips button{border:0;background:var(--ground);color:var(--dim);font:inherit;font-size:11.5px;padding:6px 11px;cursor:pointer}
+.chips button.on{background:var(--text);color:var(--ground)}
+.tools{display:flex;gap:9px;margin-bottom:15px}
+.tools input,.tools select{background:transparent;border:1px solid var(--hair);border-radius:7px;color:var(--text);font:inherit;font-size:12px;padding:6px 9px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.note{border-left:1px solid var(--hair);padding:18px;overflow:auto;background:var(--panel)}
+.note .np{width:118px;border-radius:8px;margin-bottom:13px}
+.note h2{font-size:23px;line-height:1.05;margin-bottom:5px}
+.eplist{margin-top:15px;border-top:1px solid var(--hair)}
+.ep{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--hair);position:relative;overflow:hidden}
+.ep .no{font-size:10.5px;color:var(--dim);width:30px;flex:none;letter-spacing:.08em}
+.ep .nm{font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ep .act{border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:5px;font:inherit;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;cursor:pointer;flex:none}
+.ep .act:hover{background:var(--accent);color:var(--accent-ink)}
+.ep .done{font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;flex:none}
+.ep.watched .nm{color:var(--dim)}
+.sweep{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--accent);opacity:.16;transform:scaleX(0);transform-origin:left;pointer-events:none}
+.ep.marking .sweep{animation:sw 200ms cubic-bezier(.16,1,.3,1) forwards}
+@keyframes sw{0%{transform:scaleX(0);opacity:.30}100%{transform:scaleX(1);opacity:0}}
+
+/* ---------- phone ---------- */
+.p{flex:none;width:392px}
+.phone{border-radius:34px;overflow:hidden;border:9px solid #17171a;box-shadow:0 20px 60px rgba(0,0,0,.6);height:812px;display:flex;flex-direction:column;background:var(--ground)}
+.pmast{position:sticky;top:0;z-index:4;padding:13px 16px;border-bottom:1px solid var(--hair);display:flex;align-items:center}
+.pbody{flex:1;overflow-y:auto;padding-bottom:12px}
+.pgroup{padding:16px 16px 4px}
+.pghead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px}
+.more{font-size:11px;color:var(--dim);text-decoration:none;letter-spacing:.06em}
+.prow{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.ptabs{display:flex;border-top:1px solid var(--hair);padding:8px 0 10px}
+.ptabs div{flex:1;text-align:center;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-family:"Archivo Narrow",system-ui;font-weight:600}
+.ptabs div.on{color:var(--text)}
+.ptabs .ic{display:block;font-size:15px;margin-bottom:3px;letter-spacing:0}
+.annot{color:#6f6f6d;font-size:11px;margin-top:9px;line-height:1.5}
+</style>
+
+<div class="page">
+  <div class="bar">
+    <b>MediaSafe — The Catalogue Wall</b>
+    <span>prototype · real library, real artwork</span>
+    <button class="btn" onclick="theme()">◐ light / dark</button>
+    <button class="btn" onclick="emptyCB()">toggle COMING BACK empty</button>
+    <span id="hint" style="color:var(--accent)"></span>
+  </div>
+
+  <div class="stage">
+    <div class="d">
+      <div class="cap">Desktop — sidebar tabs · Up next is its own page · Library is just the library</div>
+      <div class="app">
+        <div class="dwrap">
+          <div class="side glass">
+            <div class="disp mark">MediaSafe</div>
+            <nav>
+              <a class="on" data-tab="upnext" onclick="tab('upnext')"><span class="ic">▦</span>Up next</a>
+              <a data-tab="library" onclick="tab('library')"><span class="ic">▤</span>Library</a>
+              <a data-tab="search" onclick="tab('search')"><span class="ic">⌕</span>Search</a>
+            </nav>
+            <div class="rule"></div>
+            <nav><a data-tab="settings" onclick="tab('settings')"><span class="ic">⚙</span>Settings</a></nav>
+            <div class="who lab">ADHAM</div>
+          </div>
+
+          <div class="dmain" id="dmain"></div>
+          <aside class="note" id="note"></aside>
+        </div>
+      </div>
+      <div class="annot">Click <b>Library</b> in the sidebar — the rails go away and the grid gets the whole page back.</div>
+    </div>
+
+    <div class="p">
+      <div class="cap">Phone — five vertical groups, no hero, tabs at the foot</div>
+      <div class="phone">
+        <div class="pmast glass"><span class="disp" style="font-size:14px">MediaSafe</span><span class="lab" style="margin-left:auto">ADHAM</span></div>
+        <div class="pbody" id="pbody"></div>
+        <div class="ptabs glass">
+          <div class="on"><span class="ic">▦</span>Up next</div>
+          <div><span class="ic">⌕</span>Search</div>
+          <div><span class="ic">▤</span>Library</div>
+        </div>
+      </div>
+      <div class="annot">No marking on this surface — open a title to mark it. The deliberate reversal of step&nbsp;5.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"ongoing": [{"tmdb_id": 250505, "name": "Agatha Christie's Seven Dials", "poster": "/3uRQi9HDEAGSadoKee1UHoFCaU9.jpg", "year": "2026", "inProduction": false, "seasons": 1, "episodes": 3, "lastWatched": "2026-08-13"}, {"tmdb_id": 87940, "name": "Hudson & Rex", "poster": "/l5N985pVvDC41QwEprORSoGz3Q5.jpg", "year": "2019", "inProduction": true, "seasons": 8, "episodes": 122, "lastWatched": "2026-07-30"}, {"tmdb_id": 61662, "name": "Schitt's Creek", "poster": "/iRfSzrPS5VYWQv7KVSEg2BZZL6C.jpg", "year": "2015", "inProduction": false, "seasons": 6, "episodes": 79, "lastWatched": "2026-07-30"}, {"tmdb_id": 45790, "name": "JoJo's Bizarre Adventure", "poster": "/ogAWwbh3frWtiTyyXrZaVFtqCgp.jpg", "year": "2012", "inProduction": true, "seasons": 6, "episodes": 202, "lastWatched": "2026-07-27"}, {"tmdb_id": 314402, "name": "Crazy Love, Moo-Moo!", "poster": "/bpj6cELj5j3SzkMoncQCYDY19Ve.jpg", "year": "2026", "inProduction": false, "seasons": 1, "episodes": 10, "lastWatched": "2026-07-24"}, {"tmdb_id": 236300, "name": "Love Sea", "poster": "/nV6AWBI0aCN41rx6vFdwaAmmoPl.jpg", "year": "2024", "inProduction": false, "seasons": 1, "episodes": 10, "lastWatched": "2026-07-24"}, {"tmdb_id": 231300, "name": "Love In Translation", "poster": "/jEFUM1qzHtLhnIr4dluEjmFjZ7o.jpg", "year": "2023", "inProduction": false, "seasons": 1, "episodes": 8, "lastWatched": "2026-07-24"}, {"tmdb_id": 220951, "name": "Unintentional Love Story", "poster": "/7sA7TplHI0zi20VKCzVSLObCVvM.jpg", "year": "2023", "inProduction": false, "seasons": 1, "episodes": 10, "lastWatched": "2026-07-24"}], "oldFriends": [{"tmdb_id": 61374, "name": "Tokyo Ghoul", "poster": "/1m4RlC9BTCbyY549TOdVQ5NRPcR.jpg", "year": "2014", "inProduction": false, "seasons": 4, "episodes": 48, "lastWatched": "2025-11-17"}, {"tmdb_id": 80564, "name": "Banana Fish", "poster": "/d2TW5Rtd0uCasHlQygsDfWCROl2.jpg", "year": "2018", "inProduction": false, "seasons": 1, "episodes": 24, "lastWatched": "2025-10-23"}, {"tmdb_id": 194766, "name": "The Summer I Turned Pretty", "poster": "/xBIz53wYWsKfFpN0TaizVAjKJ0z.jpg", "year": "2022", "inProduction": false, "seasons": 3, "episodes": 26, "lastWatched": "2025-10-21"}, {"tmdb_id": 255859, "name": "Wayward", "poster": "/t6bk8g9DsITWZXwnw9jrA9RDdCB.jpg", "year": "2025", "inProduction": false, "seasons": 1, "episodes": 8, "lastWatched": "2025-10-03"}, {"tmdb_id": 255752, "name": "Haunted Hotel", "poster": "/4arTlVw8oceZDOhGv9GFrgGztUq.jpg", "year": "2025", "inProduction": true, "seasons": 1, "episodes": 10, "lastWatched": "2025-09-24"}, {"tmdb_id": 119051, "name": "Wednesday", "poster": "/9PFonBhy4cQy7Jz20NpMygczOkv.jpg", "year": "2022", "inProduction": true, "seasons": 3, "episodes": 16, "lastWatched": "2025-09-08"}], "watchlist": [{"tmdb_id": 1411, "name": "Person of Interest", "poster": "/f8aIvYk5h7Z8EP3dinCmVgQFYow.jpg", "year": "2011", "inProduction": false, "seasons": 5, "episodes": 103, "lastWatched": null}, {"tmdb_id": 1419, "name": "Castle", "poster": "/diXBeMzvfJb2iJg3G0kCUaMCzEc.jpg", "year": "2009", "inProduction": false, "seasons": 8, "episodes": 173, "lastWatched": null}, {"tmdb_id": 2808, "name": "Totally Spies!", "poster": "/w4JZDCrWxDhO5wKUeTvVHSzaTDk.jpg", "year": "2002", "inProduction": true, "seasons": 8, "episodes": 208, "lastWatched": null}, {"tmdb_id": 59427, "name": "Marvel's Avengers", "poster": "/aVYPq7FSvsdNQOXVIFnndXJPCXn.jpg", "year": "2013", "inProduction": false, "seasons": 5, "episodes": 126, "lastWatched": null}, {"tmdb_id": 63181, "name": "Marvel's Guardians of the Galaxy", "poster": "/oXwe3wVhdvvxiixL9UJf6PgBybZ.jpg", "year": "2015", "inProduction": false, "seasons": 3, "episodes": 77, "lastWatched": null}, {"tmdb_id": 86752, "name": "Wu Assassins", "poster": "/nhWgmdLveoJNw1GZBkb62aIzyNr.jpg", "year": "2019", "inProduction": false, "seasons": 1, "episodes": 10, "lastWatched": null}], "abandoned": [{"tmdb_id": 95, "name": "Buffy the Vampire Slayer", "poster": "/y7fVZkyheCEQHDUEHwNmYENGfT2.jpg", "year": "1997", "inProduction": false, "seasons": 7, "episodes": 144, "lastWatched": null}, {"tmdb_id": 346, "name": "American Dragon: Jake Long", "poster": "/sAgoJOdvuMa3DD0JDpos9bdaF9S.jpg", "year": "2005", "inProduction": false, "seasons": 2, "episodes": 55, "lastWatched": null}, {"tmdb_id": 1400, "name": "Seinfeld", "poster": "/aCw8ONfyz3AhngVQa1E2Ss4KSUQ.jpg", "year": "1989", "inProduction": false, "seasons": 9, "episodes": 180, "lastWatched": null}, {"tmdb_id": 1403, "name": "Marvel's Agents of S.H.I.E.L.D.", "poster": "/gHUCCMy1vvj58tzE3dZqeC9SXus.jpg", "year": "2013", "inProduction": false, "seasons": 7, "episodes": 136, "lastWatched": null}, {"tmdb_id": 1405, "name": "Dexter", "poster": "/q8dWfc4JwQuv3HayIZeO84jAXED.jpg", "year": "2006", "inProduction": false, "seasons": 8, "episodes": 96, "lastWatched": null}, {"tmdb_id": 1408, "name": "House", "poster": "/3Cz7ySOQJmqiuTdrc6CY0r65yDI.jpg", "year": "2004", "inProduction": false, "seasons": 8, "episodes": 176, "lastWatched": null}], "comingBack": [{"tmdb_id": 258742, "name": "All's Fair", "poster": "/akJ3gusmlRGvKoFzLgJxsIBL4W4.jpg", "year": "2025", "inProduction": true, "seasons": 1, "episodes": 9, "lastWatched": "2025-11-22"}, {"tmdb_id": 107113, "name": "Only Murders in the Building", "poster": "/1yjFVQZuW8aofZ5Cgol8iImsVFp.jpg", "year": "2021", "inProduction": true, "seasons": 5, "episodes": 50, "lastWatched": "2025-11-02"}]};
+const IMG = p => "https://image.tmdb.org/t/p/w342" + p;
+let cbEmpty = false, current = "upnext";
+
+const RAILS_DESKTOP = [
+  ["ONGOING","ongoing","watching · your 12 most recent"],
+  ["COMING BACK","comingBack","caught up · an episode is dated"],
+  ["OLD FRIENDS","oldFriends","watching · everything else"],
+];
+const RAILS_PHONE = [...RAILS_DESKTOP,
+  ["WATCHLIST","watchlist","never started"],
+  ["ABANDONED","abandoned","you gave up"],
+];
+
+function tile(t){
+  const b=document.createElement("button");
+  b.className="tile";
+  b.innerHTML=`<img class="poster" src="${IMG(t.poster)}" alt="">
+    <div class="tname">${t.name}</div><div class="tsub">${t.year||""}</div>`;
+  b.onclick=()=>open_(t,b);
+  return b;
+}
+
+function upnextPage(){
+  const host=document.getElementById("dmain");
+  host.innerHTML=`<div class="ph"><h1 class="disp">Up next</h1><div class="sub">What you can watch tonight</div></div><div class="rails" id="rails"></div>`;
+  const rails=document.getElementById("rails");
+  for(const [label,key,sub] of RAILS_DESKTOP){
+    const items=(key==="comingBack"&&cbEmpty)?[]:DATA[key];
+    if(!items||!items.length) continue;                 // EMPTY RAIL IS ABSENT
+    const r=document.createElement("div"); r.className="rail";
+    r.innerHTML=`<div class="railhead"><span class="disp" style="font-size:14px">${label}</span><span class="n">${sub}</span></div>
+      <button class="arw l">‹</button><button class="arw r">›</button>`;
+    const tr=document.createElement("div"); tr.className="track";
+    items.forEach(t=>tr.appendChild(tile(t)));
+    r.appendChild(tr);
+    r.querySelector(".arw.l").onclick=()=>tr.scrollBy({left:-345,behavior:"smooth"});
+    r.querySelector(".arw.r").onclick=()=>tr.scrollBy({left:345,behavior:"smooth"});
+    rails.appendChild(r);
+  }
+}
+function libraryPage(){
+  const host=document.getElementById("dmain");
+  host.innerHTML=`<div class="ph"><h1 class="disp">The library</h1><div class="sub">462 titles</div></div>
+    <div class="bill">
+      <div class="chips"><button class="on">All</button><button>Watching</button><button>Caught up</button><button>Finished</button><button>Watchlist</button><button>Abandoned</button></div>
+      <div class="tools"><input placeholder="Filter your library"><select><option>Title A–Z</option><option>Closest to finishing</option><option>Recently added</option><option>Release year</option></select></div>
+      <div class="grid" id="grid"></div>
+    </div>`;
+  const g=document.getElementById("grid");
+  [...DATA.ongoing,...DATA.oldFriends,...DATA.watchlist,...DATA.abandoned,...DATA.comingBack]
+    .slice(0,25).forEach(t=>g.appendChild(tile(t)));
+}
+function tab(which){
+  current=which;
+  document.querySelectorAll(".side a").forEach(a=>a.classList.toggle("on",a.dataset.tab===which));
+  which==="library" ? libraryPage() : upnextPage();
+}
+function phone(){
+  const host=document.getElementById("pbody"); host.innerHTML="";
+  for(const [label,key] of RAILS_PHONE){
+    const items=(key==="comingBack"&&cbEmpty)?[]:DATA[key];
+    if(!items||!items.length) continue;
+    const g=document.createElement("div"); g.className="pgroup";
+    g.innerHTML=`<div class="pghead"><span class="disp" style="font-size:15px">${label}</span><a class="more" href="#">more ›</a></div>`;
+    const row=document.createElement("div"); row.className="prow";
+    items.slice(0,3).forEach(t=>row.appendChild(tile(t)));
+    g.appendChild(row); host.appendChild(g);
+  }
+}
+function open_(t, src){
+  const paint=()=>{
+    const names=["Cold Open","The Bicameral Mind","Hands","Woe","Chikhai Bardo","In Perpetuity","Trojan's Horse","The You You Are"];
+    const eps=names.map((nm,i)=>({no:`S1 E${i+1}`,nm,watched:i<4}));
+    document.getElementById("note").innerHTML=`<img class="poster np" id="npimg" src="${IMG(t.poster)}" alt="">
+      <h2 class="disp">${t.name}</h2>
+      <div class="tsub">${t.year} · ${t.episodes} episodes · ${t.inProduction?"in production":"ended"}</div>
+      <div class="eplist">${eps.map(e=>`
+        <div class="ep ${e.watched?"watched":""}"><span class="sweep"></span>
+          <span class="no">${e.no}</span><span class="nm">${e.nm}</span>
+          ${e.watched?'<span class="done">Watched</span>':'<button class="act" onclick="mark(this)">Strike it</button>'}
+        </div>`).join("")}</div>`;
+    document.getElementById("npimg").style.viewTransitionName="hero";
+  };
+  const img=src.querySelector("img");
+  if(document.startViewTransition){
+    img.style.viewTransitionName="hero";
+    document.startViewTransition(paint).finished.finally(()=>{img.style.viewTransitionName="";});
+  } else paint();
+}
+function mark(btn){
+  const row=btn.closest(".ep");
+  const h=row.getBoundingClientRect().height;
+  row.classList.add("marking");
+  setTimeout(()=>{
+    row.classList.remove("marking"); row.classList.add("watched");
+    btn.outerHTML='<span class="done">Watched</span>';
+    const h2=row.getBoundingClientRect().height;
+    document.getElementById("hint").textContent=`row height before ${h.toFixed(1)}px · after ${h2.toFixed(1)}px — ${h===h2?"identical ✓":"MOVED ✗"}`;
+  },200);
+}
+function theme(){const r=document.documentElement;r.dataset.theme=r.dataset.theme==="dark"?"light":"dark";}
+function emptyCB(){cbEmpty=!cbEmpty;tab(current);phone();}
+tab("upnext"); phone();
+open_(DATA.ongoing[1], document.querySelector(".tile"));
+</script>
