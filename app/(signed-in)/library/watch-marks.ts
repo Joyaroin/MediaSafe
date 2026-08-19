@@ -309,11 +309,35 @@ export function createWatchMarks({
 
     const outcome = await record(subject, sourceKey);
 
+    // ── An attempt only ever speaks for the write it named ────────────────────────────
+    //
+    // Two routes back to one write can be pressed in quick succession — after a failure
+    // the toast's *Try again* and both surfaces' controls are live at the same time — and
+    // then two requests carry this one key. The key is cleared *nowhere* but the success
+    // below, so finding it moved on means this attempt's own write has already landed.
+    //
+    // Without this the second answer would be read as news. A failure arriving after the
+    // write succeeded would put a struck episode back to unwatched and raise a toast whose
+    // *Try again* mints a fresh key — nothing being outstanding by then — and that is a
+    // second row against an episode that already has one. The phantom rewatch, through the
+    // one door left open.
+    if (one.key !== sourceKey) return;
+
     if (outcome.ok) {
       // The write landed — including a retry that landed after a failure, which is the
       // only thing besides the reader that ever takes this toast down.
       one.key = null;
-      apply(one, { pending: false });
+      // Read off the outcome, not off what the press optimistically set: a *concurrent*
+      // attempt's failure can have rolled the appearance back while this one was still on
+      // the wire, and inheriting that would leave an episode reading unwatched with a
+      // landed write behind it. The phase is the exception — it is the animation's, and
+      // only an appearance that was actually put back has a strike left to play.
+      apply(one, {
+        watched: true,
+        undoable: true,
+        phase: one.view.phase === "unwatched" ? "marking" : one.view.phase,
+        pending: false,
+      });
       settleToast(one, "watch");
       // The surface that pressed is the one that hears back. Nothing else on screen has a
       // use for it: `FilmRow` patches its title's state, and it is the only caller that

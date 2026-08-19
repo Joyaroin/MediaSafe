@@ -257,6 +257,57 @@ describe("a lost write, across surfaces", () => {
     expect(note.view()).toBe(row.view());
   });
 
+  it("ignores an attempt that answers after the write it named has landed", async () => {
+    const { marks, failures, recorded, answerRecord, surface } = harness();
+    const row = surface(EPISODE);
+
+    // The state that opens this: a lost write leaves the key outstanding, the episode
+    // back to unwatched, and every route back to that write live at the same time — both
+    // surfaces' controls and the toast's *Try again*.
+    const lost = marks.mark(EPISODE, NAMING);
+    answerRecord[0]({ ok: false, reference: "ref-1" });
+    await lost;
+
+    // Two of those routes, pressed in quick succession. Both carry the one key.
+    const fromTheToast = marks.mark(EPISODE, NAMING);
+    const fromTheRow = marks.mark(EPISODE, NAMING);
+    expect(recorded).toEqual(["key-1", "key-1", "key-1"]);
+
+    answerRecord[1]({ ok: true });
+    await fromTheToast;
+
+    // The duplicate now fails, after the write it named has already landed. Reading that
+    // as news would put a struck episode back to unwatched and raise a toast whose *Try
+    // again* mints a fresh key — a second row against an episode that already has one.
+    answerRecord[2]({ ok: false, reference: "ref-2" });
+    await fromTheRow;
+
+    expect(row.view()).toMatchObject({ watched: true, pending: false });
+    expect(failures.get()).toHaveLength(0);
+    expect(new Set(recorded).size).toBe(1);
+  });
+
+  it("still reports the failure when the duplicate is the one that answers first", async () => {
+    const { marks, failures, answerRecord, surface } = harness();
+    const row = surface(EPISODE);
+
+    const first = marks.mark(EPISODE, NAMING);
+    const second = marks.mark(EPISODE, NAMING);
+
+    // Nothing has landed yet, so this answer is the only news there is — the guard above
+    // must not swallow a genuine loss just because two requests were in flight.
+    answerRecord[0]({ ok: false, reference: "ref-1" });
+    await first;
+    expect(failures.get()).toHaveLength(1);
+    expect(row.view()).toEqual(UNWATCHED);
+
+    // And the one still on the wire settles it when it lands.
+    answerRecord[1]({ ok: true });
+    await second;
+    expect(failures.get()).toHaveLength(0);
+    expect(row.view()).toMatchObject({ watched: true, pending: false });
+  });
+
   it("does not let a landed mark take down a lost undo's toast", async () => {
     const { marks, failures, answerRecord, answerRemove, surface } = harness();
     surface(EPISODE, WATCHED);
