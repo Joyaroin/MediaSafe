@@ -8,6 +8,7 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
+import type { IrreversibleWriteFailure } from "@/errors/irreversible-failure";
 import { IN_FLIGHT, NOT_YET_ARMED, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
@@ -50,21 +51,12 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  * accent arriving *is* a live state — which is the job `DESIGN.md` gives it.
  */
 /**
- * The two ways this can fail, which are **not the same fact** and must not print the same
- * sentence.
- *
- * `refused` is the server's own answer: it ran, the delete did not happen, and the account
- * is provably intact — a `DELETE` commits or rolls back whole, so there is no partial state
- * to hedge about. That is the failure issue #125 names, and it says so plainly.
- *
- * `unknown` is the call never coming back — a dropped connection, a server that went away
- * mid-request. The account may be gone and it may not, and **the one thing that must not be
- * printed here is `refused`'s sentence**, because on the branch where the delete did land
- * *your library is all still here* is a lie told about an irreversible operation. So this
- * says what is true — that MediaSafe does not know — and then asks the server, which is the
- * only thing that does.
+ * The distinction moved to `errors/irreversible-failure.ts` when issue #142's remove became
+ * the second form to need it; that file carries the argument, including why *what settles an
+ * `unknown`* is each form's own and not shared. Here it is the server that is asked, because
+ * being signed out is the answer and the reader cannot see it for themselves.
  */
-type Failure = { readonly kind: "refused" | "unknown"; readonly reference: string | null };
+type Failure = IrreversibleWriteFailure;
 
 export function DeleteAccountForm() {
   const router = useRouter();

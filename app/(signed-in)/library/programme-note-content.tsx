@@ -4,6 +4,7 @@ import { AbandonControl } from "./abandon-control";
 import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { RatingControl } from "./rating-control";
+import { RemoveControl } from "./remove-control";
 import { STATE_LABELS } from "./library-state";
 
 /**
@@ -39,6 +40,21 @@ import { STATE_LABELS } from "./library-state";
  * The rating is on title detail and nowhere else — `SPEC.md` §7 — which is why this
  * component is the only one in the repository that imports `RatingControl`, and why the
  * grid's read does not carry a rating for a tile to accidentally draw.
+ *
+ * ── `RemoveControl`, which reports nothing at all ───────────────────────────────────
+ *
+ * Issue #142's *Remove from library*, and the one control on this component that takes no
+ * callback: it is a link to `library/[entryId]/remove`, so a press leaves this surface
+ * rather than changing anything on it. There is no landed write for it to patch, because
+ * there is no write here to land — which is also why it needs no entry-id guard of the kind
+ * `AbandonControl`'s docblock explains.
+ *
+ * It is rendered **last, below the abandon control**, and the ordering is the ticket's
+ * rather than an aesthetic choice: the two must sit near each other and must not read as
+ * the same thing. `remove-control.tsx` carries how that difference is drawn, in shape and
+ * in copy. The reason it belongs on this shared component rather than on the phone route is
+ * that the desktop pane is title detail too — a title removable on one device and permanent
+ * on the other would be the same feature having two answers.
  *
  * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
  * this component, outside this component's own scroll, which is a layout decision
@@ -97,6 +113,8 @@ export function ProgrammeNoteContent({
         abandoned={detail.state === "abandoned"}
         onChanged={onStateChange}
       />
+
+      <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
     </div>
   );
 }

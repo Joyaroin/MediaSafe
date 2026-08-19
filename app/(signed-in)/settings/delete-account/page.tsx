@@ -1,3 +1,4 @@
+import { DestroyedFigure } from "@/app/destroyed-figure";
 import { accountFootprint } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
@@ -78,9 +79,9 @@ export default async function DeleteAccountPage() {
           without a breakpoint deciding it.
         */}
         <dl className="mt-6 flex flex-wrap gap-x-16 gap-y-8">
-          <Destroyed label="Titles" count={footprint.titles} />
-          <Destroyed label="Watches" count={footprint.watches} />
-          <Destroyed label="Ratings" count={footprint.ratings} />
+          <DestroyedFigure label="Titles" count={footprint.titles} />
+          <DestroyedFigure label="Watches" count={footprint.watches} />
+          <DestroyedFigure label="Ratings" count={footprint.ratings} />
         </dl>
 
         <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-dim">
@@ -130,24 +131,5 @@ export default async function DeleteAccountPage() {
         <BackToSettings />
       </section>
     </main>
-  );
-}
-
-/**
- * One figure and its label.
- *
- * `data-numeric` turns on `tabular-nums` (`app/globals.css`) and `en-GB` grouping is
- * passed explicitly rather than left to the server's locale: 18,715 read as 18715 is a
- * number a reader has to count digits on, and a number that changes shape depending on
- * which machine rendered it is worse than either.
- */
-function Destroyed({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex flex-col-reverse">
-      <dt className="code-line mt-2 text-dim">{label}</dt>
-      <dd className="bill-title text-bill-lg text-text" data-numeric>
-        {count.toLocaleString("en-GB")}
-      </dd>
-    </div>
   );
 }
