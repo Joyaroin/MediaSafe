@@ -1,4 +1,19 @@
-import { and, asc, eq, exists, inArray, isNull, notInArray, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 import { user } from "@/auth-schema";
@@ -2737,4 +2752,93 @@ export async function getListDetail(
     name: row.name,
     titles: titleRows.map((one) => ({ ...one, kind: kindFrom(one.kind) })),
   };
+}
+
+/**
+ * Move one title to a new position in a list, shifting whatever is between — issue #149.
+ *
+ * ── The read that both authorizes and bounds the write ────────────────────────────────
+ *
+ * One `SELECT`, scoped by `ownedBy(userId, listMembership)` and `listId`, does two jobs
+ * `getListDetail` also splits across two separate concerns: it is the ownership check —
+ * a tampered or foreign list id finds no rows for `titleId` to match, and this throws the
+ * same way `deleteList` and `rateTitle` do — and it is where `newPosition`'s valid range
+ * comes from. A Server Action is a POST endpoint anyone with a session can call with any
+ * argument, so `1-count` is checked here rather than trusted from the drag that produced
+ * it.
+ *
+ * ── Shift the range between, not the whole list ────────────────────────────────────────
+ *
+ * A drag can move a row past any number of others, not only its neighbour, so this is not
+ * literally always *two rows swap* — but it is the same mechanism ADR-0001 built the
+ * deferred constraint for: every row strictly between the old and new position shifts by
+ * one to close the gap, and the moved row lands on `newPosition` last. Positions stay
+ * `1..count`, contiguous, exactly the invariant `addTitleToList`'s `coalesce(max(...), 0)
+ * + 1` already depends on for the next append.
+ *
+ * ── Why the shift and the move can share one transaction without colliding ────────────
+ *
+ * `list_membership_list_id_position_key` is `DEFERRABLE INITIALLY DEFERRED`
+ * (`db/tables.ts`) precisely so this is possible: shifting a range of rows onto positions
+ * a still-unmoved row occupies is a uniqueness violation at every intermediate statement,
+ * and would abort immediately under an ordinary constraint. Deferred, Postgres checks only
+ * once, at commit, by which point every row — including the one that moved — holds a
+ * position no other row in the list holds.
+ */
+export async function reorderListMembership(
+  userId: UserId,
+  listId: string,
+  titleId: string,
+  newPosition: number,
+  executor: Executor = getDb(),
+): Promise<void> {
+  await executor.transaction(async (tx) => {
+    const rows = await tx
+      .select({ titleId: listMembership.titleId, position: listMembership.position })
+      .from(listMembership)
+      .where(and(ownedBy(userId, listMembership), eq(listMembership.listId, listId)))
+      .orderBy(asc(listMembership.position));
+
+    const current = rows.find((row) => row.titleId === titleId);
+    if (!current) {
+      throw new Error(`Title ${titleId} was not found in this account's list ${listId}.`);
+    }
+
+    const count = rows.length;
+    if (!Number.isInteger(newPosition) || newPosition < 1 || newPosition > count) {
+      throw new Error(`A list position is a whole number 1-${count}; got ${newPosition}.`);
+    }
+
+    const oldPosition = current.position;
+    if (newPosition === oldPosition) return;
+
+    if (newPosition > oldPosition) {
+      await tx
+        .update(listMembership)
+        .set({ position: sql`${listMembership.position} - 1` })
+        .where(
+          and(
+            eq(listMembership.listId, listId),
+            gt(listMembership.position, oldPosition),
+            lte(listMembership.position, newPosition),
+          ),
+        );
+    } else {
+      await tx
+        .update(listMembership)
+        .set({ position: sql`${listMembership.position} + 1` })
+        .where(
+          and(
+            eq(listMembership.listId, listId),
+            gte(listMembership.position, newPosition),
+            lt(listMembership.position, oldPosition),
+          ),
+        );
+    }
+
+    await tx
+      .update(listMembership)
+      .set({ position: newPosition })
+      .where(and(eq(listMembership.listId, listId), eq(listMembership.titleId, titleId)));
+  });
 }

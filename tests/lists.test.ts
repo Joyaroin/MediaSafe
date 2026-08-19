@@ -10,6 +10,7 @@ import {
   getListDetail,
   listLists,
   ownedBy,
+  reorderListMembership,
   type UserId,
 } from "@/db/access";
 import type { Transaction } from "@/db/client";
@@ -444,6 +445,143 @@ describe("reading a list's titles in order", () => {
       await expect(
         getListDetail(reader, "00000000-0000-0000-0000-000000000000", tx),
       ).rejects.toThrow();
+    });
+  });
+});
+
+describe("reordering a list by dragging", () => {
+  async function seedOrdered(
+    tx: Transaction,
+    reader: UserId,
+    count: number,
+  ): Promise<{ listId: string; titleIds: string[] }> {
+    const { list: target } = unwrap(await createList(reader, "Ordered", tx));
+    const titleIds: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const show = await seedShow(tx);
+      await addTitleToList(reader, target.id, show, tx);
+      titleIds.push(show);
+    }
+    return { listId: target.id, titleIds };
+  }
+
+  async function positionsOf(tx: Transaction, listId: string) {
+    const rows = await tx
+      .select({ titleId: listMembership.titleId, position: listMembership.position })
+      .from(listMembership)
+      .where(eq(listMembership.listId, listId))
+      .orderBy(asc(listMembership.position));
+    return rows;
+  }
+
+  it("swaps two adjacent rows inside one transaction — the assertion the deferrable unique exists for", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedOrdered(tx, reader, 3);
+
+      await reorderListMembership(reader, listId, titleIds[0], 2, tx);
+
+      expect(await positionsOf(tx, listId)).toEqual([
+        { titleId: titleIds[1], position: 1 },
+        { titleId: titleIds[0], position: 2 },
+        { titleId: titleIds[2], position: 3 },
+      ]);
+    });
+  });
+
+  it("moves a row later, shifting everything between it back by one", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedOrdered(tx, reader, 5);
+
+      await reorderListMembership(reader, listId, titleIds[0], 4, tx);
+
+      expect(await positionsOf(tx, listId)).toEqual([
+        { titleId: titleIds[1], position: 1 },
+        { titleId: titleIds[2], position: 2 },
+        { titleId: titleIds[3], position: 3 },
+        { titleId: titleIds[0], position: 4 },
+        { titleId: titleIds[4], position: 5 },
+      ]);
+    });
+  });
+
+  it("moves a row earlier, shifting everything between it forward by one", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedOrdered(tx, reader, 5);
+
+      await reorderListMembership(reader, listId, titleIds[4], 2, tx);
+
+      expect(await positionsOf(tx, listId)).toEqual([
+        { titleId: titleIds[0], position: 1 },
+        { titleId: titleIds[4], position: 2 },
+        { titleId: titleIds[1], position: 3 },
+        { titleId: titleIds[2], position: 4 },
+        { titleId: titleIds[3], position: 5 },
+      ]);
+    });
+  });
+
+  it("leaves positions untouched when the target is the row's own position", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedOrdered(tx, reader, 3);
+
+      await reorderListMembership(reader, listId, titleIds[1], 2, tx);
+
+      expect(await positionsOf(tx, listId)).toEqual([
+        { titleId: titleIds[0], position: 1 },
+        { titleId: titleIds[1], position: 2 },
+        { titleId: titleIds[2], position: 3 },
+      ]);
+    });
+  });
+
+  it("keeps positions contiguous, 1..count, after a reorder", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedOrdered(tx, reader, 6);
+
+      await reorderListMembership(reader, listId, titleIds[5], 1, tx);
+
+      const rows = await positionsOf(tx, listId);
+      expect(rows.map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+  });
+
+  it("refuses to reorder another account's list", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const { listId, titleIds } = await seedOrdered(tx, other, 2);
+
+      await expect(reorderListMembership(reader, listId, titleIds[0], 2, tx)).rejects.toThrow();
+
+      expect(await positionsOf(tx, listId)).toEqual([
+        { titleId: titleIds[0], position: 1 },
+        { titleId: titleIds[1], position: 2 },
+      ]);
+    });
+  });
+
+  it("throws on a title that is not a member of the list", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId } = await seedOrdered(tx, reader, 2);
+      const stray = await seedShow(tx);
+
+      await expect(reorderListMembership(reader, listId, stray, 1, tx)).rejects.toThrow();
+    });
+  });
+
+  it("throws on a position below 1 or past the list's count", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedOrdered(tx, reader, 3);
+
+      await expect(reorderListMembership(reader, listId, titleIds[0], 0, tx)).rejects.toThrow();
+      await expect(reorderListMembership(reader, listId, titleIds[0], 4, tx)).rejects.toThrow();
     });
   });
 });

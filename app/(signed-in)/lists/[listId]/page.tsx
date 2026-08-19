@@ -4,7 +4,7 @@ import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getListDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { EmptyListDetail } from "./empty-list-detail";
-import { ListTitleRow } from "./list-title-row";
+import { ReorderableTitleList } from "./reorderable-title-list";
 
 /**
  * One list's contents, in order — issue #147. `lists/page.tsx`'s own row said *"nothing
@@ -45,11 +45,7 @@ export default async function ListDetailPage({
       {detail.titles.length === 0 ? (
         <EmptyListDetail />
       ) : (
-        <ul className="px-6">
-          {detail.titles.map((title) => (
-            <ListTitleRow key={title.titleId} title={title} />
-          ))}
-        </ul>
+        <ReorderableTitleList listId={detail.id} initialTitles={detail.titles} />
       )}
 
       {detail.titles.length === 0 ? null : (
