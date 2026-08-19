@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { LibraryIcon, SearchIcon, SettingsIcon, UpNextIcon } from "./nav-icons";
+import { isCurrentRoute } from "./nav-route";
 
 /**
  * The sidebar's four destinations, and the one thing about them that needs the browser —
@@ -14,18 +15,22 @@ import { LibraryIcon, SearchIcon, SettingsIcon, UpNextIcon } from "./nav-icons";
  *
  * Every other "current" treatment in the build before this ticket was full inversion —
  * a solid `text`-coloured block with `ground`-coloured type, on the masthead's nav cells,
- * the phone tab bar, the selected filter chip. This one is neither that nor `accent`
- * (vermilion/amber): full-strength `text` label against `dim` siblings, plus a `2px`
- * left rule in `text` when current, taken directly from `.impeccable/mocks/catalogue-wall.html`'s
- * `.side a.on` rule — *no accent here — accent means live action*. Issue #134 reserved
- * `accent` for recording a watch; a sidebar that borrowed it for "you are here" would
- * spend the one colour in the application on the one thing it was reserved against.
+ * the phone tab bar, the selected filter chip — and `DESIGN.md`'s Navigation section still
+ * says so for the desktop cells this sidebar replaces. This one is neither that nor
+ * `accent` (vermilion/amber): full-strength `text` label against `dim` siblings, plus a
+ * `2px` left rule in `text` when current, taken directly from
+ * `.impeccable/mocks/catalogue-wall.html`'s `.side a.on` rule — *no accent here — accent
+ * means live action*. Issue #134 reserved `accent` for recording a watch; a sidebar that
+ * borrowed it for "you are here" would spend the one colour in the application on the one
+ * thing it was reserved against. `SPEC.md` §10.3 carries this as a recorded divergence
+ * from `DESIGN.md` rather than leaving the deviation argued only here.
  *
- * ── `startsWith`, not equality ────────────────────────────────────────────────────────
+ * ── `isCurrentRoute`, not equality ───────────────────────────────────────────────────
  *
- * The same boundary `tab-bar.tsx` uses and for the same reason: *Library* and *Search*
- * carry pushed and replaced routes under them, and a reader three screens into either is
- * still in that section. *Settings* gets the same treatment for `/settings/delete-account`.
+ * `nav-route.ts`'s one function, shared with `tab-bar.tsx` rather than each file keeping
+ * its own copy of the same `startsWith` check: *Library* and *Search* carry pushed and
+ * replaced routes under them, and a reader three screens into either is still in that
+ * section. *Settings* gets the same treatment for `/settings/delete-account`.
  */
 const PRIMARY = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
@@ -41,7 +46,7 @@ const NOT_CURRENT =
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isCurrent = (href: string) => isCurrentRoute(pathname, href);
 
   return (
     <>

@@ -671,6 +671,19 @@ document will ever find, which is the drift this section exists to stop.
   would have left a phone with no way to reach either screen. **Closed by #102**: the tab bar and
   the landing redirect (phone on Up next, desktop on Library) now exist, and the cells go behind
   `lg:` in the same diff that builds the bar, exactly as this bullet said would happen.
+- **`DESIGN.md`'s Navigation section no longer describes the desktop.** *"Desktop: full-height cells
+  on the masthead's hairline… Two items only: Library and Search"* — [#136](https://github.com/Joyaroin/MediaSafe/issues/136)
+  deletes the desktop masthead those cells lived on and replaces it with `app/sidebar.tsx`, a
+  four-destination rail (Up next, Library, Search, Settings). The same section's *"Active is
+  inverted (bone ground, ink text)"* is also overturned there, on purpose and not by omission: the
+  sidebar's current tab is a `2px` left rule plus full-strength `text` against `dim` siblings —
+  taken from the approved mock at `.impeccable/mocks/catalogue-wall.html`'s `.side a.on` rule
+  (*"no accent here — accent means live action"*) — because inversion is a block treatment built
+  for a row of cells, and the reserved `accent` is precisely what a naive port of it to a rail would
+  have reached for. `DESIGN.md`'s Layout section's `top: 57px` sticky offset for the programme note
+  is stale for the same reason: nothing sits above that column on desktop any more, and the pane is
+  `top: 0` now (`programme-note.tsx`). The Phone section of Navigation is unaffected — the phone
+  still reaches Settings through the masthead's icon, not through a fourth tab.
 
 ### 10.4 `PRODUCT.md` — historical, and stale in eight places
 

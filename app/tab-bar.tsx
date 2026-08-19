@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { LibraryIcon, SearchIcon, UpNextIcon } from "./nav-icons";
+import { isCurrentRoute } from "./nav-route";
 
 /**
  * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet.
@@ -28,10 +29,11 @@ import { LibraryIcon, SearchIcon, UpNextIcon } from "./nav-icons";
  * ── Why this is a client component ───────────────────────────────────────────────────
  *
  * Only for `usePathname`, the same reason `sidebar-nav.tsx` is one — the desktop
- * counterpart issue #136 built. `startsWith`, not equality, for *Search* and *Library* for
- * the same reason given there: both are about to carry pushed routes under them (title
- * detail, catalogue results), and a reader three screens deep is still in that section.
- * *Up next* has no routes under it, but the pattern costs nothing to apply uniformly.
+ * counterpart issue #136 built. `isCurrentRoute` (`nav-route.ts`) is shared between the
+ * two rather than kept as two copies of the same `startsWith` check: *Search* and
+ * *Library* are about to carry pushed routes under them (title detail, catalogue
+ * results), and a reader three screens deep is still in that section. *Up next* has no
+ * routes under it, but the pattern costs nothing to apply uniformly.
  *
  * ── `divide-x divide-hair`, not borders between cells ────────────────────────────────
  *
@@ -82,7 +84,7 @@ export function TabBar() {
       className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 divide-x divide-hair border-t-2 border-hair bg-ground/95 backdrop-blur-[2px] lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
-        const current = pathname === href || pathname.startsWith(`${href}/`);
+        const current = isCurrentRoute(pathname, href);
 
         return (
           <Link
