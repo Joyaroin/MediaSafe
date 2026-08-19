@@ -344,7 +344,7 @@ CREATE TABLE library_entry (
 
   UNIQUE (user_id, title_id),
   UNIQUE (id, user_id),               -- was the FK target for list_membership; unused since
-                                      -- amendment 7, and still standing — #150 drops that
+                                      -- amendment 7, and still standing — #150 dropped that
                                       -- table's column, not this table's constraint
   UNIQUE (id, user_id, title_id)      -- FK target for watch
 );
@@ -379,10 +379,11 @@ CREATE TABLE list (
 
 -- Amendment 7. Membership is a link from a list to a *title*, so a list can hold
 -- anything in the catalogue; ownership is enforced on the list and on the user.
+-- `library_entry_id` was expand-contract's leftover here, nullable and unread since
+-- amendment 7 — #150 dropped it.
 CREATE TABLE list_membership (
   list_id          uuid NOT NULL,
   title_id         uuid NOT NULL REFERENCES title(id),
-  library_entry_id uuid,              -- expand-contract's leftover; unread, dropped by #150
   user_id          text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   position         integer NOT NULL,
 
