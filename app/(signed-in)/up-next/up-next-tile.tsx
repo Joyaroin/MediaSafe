@@ -22,7 +22,7 @@ import type { UpNextEntry } from "@/db/access";
  *
  * `select()` from `library-selection.tsx` and nothing else — not `SelectableEntry`, which
  * branches on the viewport to push `/library/{id}` on a phone. The rails are desktop-only
- * (`up-next-rails.tsx` renders nothing below `lg`), so there is no phone click for that
+ * (`page.tsx` renders nothing of them below `lg`), so there is no phone click for that
  * branch to serve, and reaching for it would put a route push behind a button that can
  * never be pressed at a width where it applies. **Comparing two candidates costs nothing**
  * is the property: the page never routes, so it never loses its place.

@@ -781,6 +781,49 @@ describe("listUpNextRails — what each rail contains", () => {
     });
   });
 
+  it("fills ONGOING from the rest of the cascade when there are not twelve dated watches", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // Two dated watches and twelve undated ones. *The twelve most recently watched* is
+      // the head of §7's order, and that order does not stop after rank 0 — so the rail is
+      // full rather than two long, and what fills it is the air-date fallback group in its
+      // own order. A library with no dated watch at all still gets a full ONGOING, which is
+      // the same choice held consistently.
+      await seedWatching(tx, reader, { name: "Dated recent", watchedAt: daysAgo(1) });
+      await seedWatching(tx, reader, { name: "Dated old", watchedAt: daysAgo(900) });
+      for (let days = 1; days <= 12; days += 1) {
+        await seedWatching(tx, reader, {
+          name: `Undated, aired ${days}`,
+          watchedAt: null,
+          nextAirDate: daysFromToday(-days),
+        });
+      }
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(rails.ongoing).toHaveLength(ONGOING_RAIL_SIZE);
+      expect(rails.ongoing.map((entry) => entry.titleName)).toEqual([
+        "Dated recent",
+        "Dated old",
+        "Undated, aired 1",
+        "Undated, aired 2",
+        "Undated, aired 3",
+        "Undated, aired 4",
+        "Undated, aired 5",
+        "Undated, aired 6",
+        "Undated, aired 7",
+        "Undated, aired 8",
+        "Undated, aired 9",
+        "Undated, aired 10",
+      ]);
+      expect(rails.oldFriends.map((entry) => entry.titleName)).toEqual([
+        "Undated, aired 11",
+        "Undated, aired 12",
+      ]);
+    });
+  });
+
   it("puts every watching title in exactly one of ONGOING and OLD FRIENDS", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");

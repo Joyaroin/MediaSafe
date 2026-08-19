@@ -52,11 +52,12 @@ import { LibrarySurface } from "./library-surface";
  * sorted library a link to that order rather than to whatever the default was when it was
  * clicked.
  *
- * ── Why `LibrarySurface` owns its own `<main>` ────────────────────────────────────────
+ * ── Why the populated branch owns its own `<main>` ────────────────────────────────────
  *
  * The populated case needs a two-column layout — the bill on the left, the programme note
- * on the right (`DESIGN.md`'s Never-Navigate-Away Rule) — so `LibrarySurface` renders that
- * `<main>` itself rather than this page wrapping one around it. The two branches are
+ * on the right (`DESIGN.md`'s Never-Navigate-Away Rule) — so `LibrarySurface` brings that
+ * `<main>` with it (through `programme-note-layout.tsx`, shared with the desktop Up next
+ * rails since #137) rather than this page wrapping one around it. The two branches are
  * mutually exclusive, so there is never a nested `<main>` on screen.
  */
 

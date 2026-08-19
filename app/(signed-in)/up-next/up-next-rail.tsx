@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { UpNextEntry } from "@/db/access";
 import { UpNextTile } from "./up-next-tile";
@@ -27,10 +27,11 @@ import { UpNextTile } from "./up-next-tile";
  *
  * *A mouse without a horizontal wheel must not be stuck.* A trackpad swipes a track like
  * this and a wheel mouse cannot, so the arrows are the affordance that makes the rail
- * reachable at all rather than a second way to do something already possible. They are
- * rendered only in the direction there is something to reach — both absent on a rail that
- * fits, which is why the scrollbar can be hidden without hiding the fact that there is
- * more.
+ * reachable at all rather than a second way to do something already possible. A rail that
+ * fits gets neither, which is why the scrollbar can be hidden without hiding the fact that
+ * there is more; a rail that scrolls gets both, and the one with nowhere left to go is
+ * `disabled` rather than removed — see the `reach` branch below for why that distinction is
+ * not cosmetic.
  *
  * They fade in on hover *and* on focus, which the prototype's `.rail:hover .arw` alone does
  * not: a button at `opacity: 0` is still in the tab order, and an invisible focused control
@@ -52,54 +53,93 @@ import { UpNextTile } from "./up-next-tile";
  * is the prototype's behaviour and it is the overhang that says the rail continues; what
  * the rule forbids is a rail that *stops* mid-poster.
  */
+/**
+ * Whether there is anything to reach in each direction, as one value read in one place.
+ *
+ * The one-pixel slack absorbs the fractional `scrollLeft` a snapped, zoomed or
+ * fractionally-scaled track produces, which would otherwise leave the forward arrow up
+ * forever at the end of every rail.
+ */
+interface Reach {
+  readonly back: boolean;
+  readonly forward: boolean;
+}
+
+/** A rail that fits: no arrow in either direction, and the resting state before the first
+ *  measurement, since a track with no overflow is the more common of the two. */
+const NEITHER_WAY: Reach = { back: false, forward: false };
+
+/**
+ * `"smooth"`, unless the reader has asked for less motion — in which case the rail still
+ * moves by exactly the same whole tiles, it just arrives there.
+ *
+ * `DESIGN.md`'s Motion rule as `app/globals.css` states it: *the event still happens, it
+ * just does not animate.* Every other motion in this build is a CSS animation, so the
+ * `@media (prefers-reduced-motion: reduce)` block there collapses it; a scroll asked for in
+ * JavaScript is the one that block cannot reach, because `behavior: "smooth"` overrides
+ * `scroll-behavior` rather than reading it. Hence the query here, checked at the moment of
+ * the press so a preference changed mid-session is honoured without a reload — the same
+ * timing `selectable-entry.tsx` uses for its own `matchMedia`.
+ */
+function scrollBehaviour(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+}
+
+function reachOf(track: HTMLElement): Reach {
+  const furthest = track.scrollWidth - track.clientWidth;
+  return {
+    back: track.scrollLeft > 1,
+    forward: track.scrollLeft < furthest - 1,
+  };
+}
+
 export function UpNextRail({
   label,
-  railId,
+  rule,
   entries,
 }: {
   /** Two words at most, needing no explanation and carrying no count. */
   label: string;
-  /** This rail's heading id, so its list can point `aria-labelledby` at it. */
-  railId: string;
+  /**
+   * The rail's own rule, dim and beside the label — the prototype's `.railhead .n`. Words
+   * only: `up-next-rails-surface.tsx` owns them, and it owns why none has a numeral.
+   */
+  rule: string;
   entries: readonly UpNextEntry[];
 }) {
+  /**
+   * The heading's id, minted rather than passed in. `library-grid.tsx` imports
+   * `LIBRARY_HEADING_ID` because there is exactly one library heading; there are three rails
+   * and a caller handing each one a string would be three literals restating three labels by
+   * hand, with nothing checking that they stay distinct.
+   */
+  const railId = useId();
   const trackRef = useRef<HTMLOListElement | null>(null);
-  const [reach, setReach] = useState({ back: false, forward: false });
+  const [reach, setReach] = useState(NEITHER_WAY);
 
   /**
-   * Which arrows there is somewhere to go with. Re-measured on scroll and on resize rather
-   * than computed once: a rail that fits at one width overflows at another, and the arrow
-   * that would still be on screen after the last tile is a control that does nothing.
-   *
-   * The one-pixel slack absorbs the fractional `scrollLeft` a snapped, zoomed or
-   * fractionally-scaled track produces, which would otherwise leave the forward arrow up
-   * forever at the end of every rail.
+   * Which arrows there is somewhere to go with. Measured on mount, on every scroll, and on
+   * resize — rather than computed once — because a rail that fits at one width overflows at
+   * another, and an arrow still on screen after the last tile is a control that does
+   * nothing.
    */
+  function measure() {
+    const track = trackRef.current;
+    if (track === null) return;
+    setReach(reachOf(track));
+  }
+
   useEffect(() => {
     const track = trackRef.current;
     if (track === null) return;
 
-    function measure() {
-      if (track === null) return;
-      const furthest = track.scrollWidth - track.clientWidth;
-      setReach({
-        back: track.scrollLeft > 1,
-        forward: track.scrollLeft < furthest - 1,
-      });
-    }
-
-    measure();
-    const observer = new ResizeObserver(measure);
+    setReach(reachOf(track));
+    const observer = new ResizeObserver(() => setReach(reachOf(track)));
     observer.observe(track);
     return () => observer.disconnect();
   }, [entries]);
-
-  function onScroll() {
-    const track = trackRef.current;
-    if (track === null) return;
-    const furthest = track.scrollWidth - track.clientWidth;
-    setReach({ back: track.scrollLeft > 1, forward: track.scrollLeft < furthest - 1 });
-  }
 
   /**
    * As many whole tiles as the track shows, in the direction asked for. The pitch is the
@@ -119,23 +159,36 @@ export function UpNextRail({
     if (pitch <= 0) return;
 
     const whole = Math.max(1, Math.floor(track.clientWidth / pitch));
-    track.scrollBy({ left: direction * whole * pitch, behavior: "smooth" });
+    track.scrollBy({
+      left: direction * whole * pitch,
+      behavior: scrollBehaviour(),
+    });
   }
 
   if (entries.length === 0) return null;
 
   return (
     <section className="group/rail relative pb-6">
-      {/* `text-bill-xs` is the ramp's own "compact row title" step — the prototype's
+      {/* `items-baseline`, so the dim rule sits on the label's baseline rather than its
+          box — the prototype's `.railhead` does the same, and the two type sizes are far
+          enough apart that anything else reads as a misalignment.
+
+          `text-bill-xs` is the ramp's own "compact row title" step — the prototype's
           railhead is condensed uppercase at a size between the wordmark's and a section
           head's, which is this one. */}
-      <h2 id={railId} className="bill-title px-6 pb-3 text-bill-xs text-text">
-        {label}
-      </h2>
+      <div className="flex items-baseline gap-3 px-6 pb-3">
+        <h2 id={railId} className="bill-title text-bill-xs text-text">
+          {label}
+        </h2>
+        {/* Inside the head but outside the `h2`: it is the rail's rule, not part of its
+            name, and a screen reader following `aria-labelledby` to the list below should
+            hear *Ongoing*, not the whole sentence. */}
+        <p className="code-line text-dim">{rule}</p>
+      </div>
 
       <ol
         ref={trackRef}
-        onScroll={onScroll}
+        onScroll={measure}
         aria-labelledby={railId}
         className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-6 px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
@@ -144,8 +197,26 @@ export function UpNextRail({
         ))}
       </ol>
 
-      {reach.back ? <RailArrow label={label} direction={-1} onPress={step} /> : null}
-      {reach.forward ? <RailArrow label={label} direction={1} onPress={step} /> : null}
+      {/* Both arrows, or neither — never one.
+
+          A rail that fits at this width has nothing to reach in either direction, and two
+          arrows over it would be dead chrome on a surface whose whole argument is that the
+          artwork is the design. But once a rail *does* scroll, the exhausted arrow stays
+          mounted and goes `disabled` rather than disappearing: unmounting it would drop
+          focus to `<body>` mid-interaction for the reader who pressed it, sending Tab back
+          to the top of the page — and this control exists for exactly that reader, since a
+          trackpad can swipe the track and a wheel mouse cannot. */}
+      {reach.back || reach.forward ? (
+        <>
+          <RailArrow label={label} back onPress={() => step(-1)} enabled={reach.back} />
+          <RailArrow
+            label={label}
+            back={false}
+            onPress={() => step(1)}
+            enabled={reach.forward}
+          />
+        </>
+      ) : null}
     </section>
   );
 }
@@ -163,23 +234,25 @@ export function UpNextRail({
  */
 function RailArrow({
   label,
-  direction,
+  back,
+  enabled,
   onPress,
 }: {
   label: string;
-  direction: -1 | 1;
-  onPress: (direction: -1 | 1) => void;
+  back: boolean;
+  /** `false` is *this rail has no further to go this way* — dimmed, and not pressable. */
+  enabled: boolean;
+  onPress: () => void;
 }) {
-  const back = direction === -1;
-
   return (
     <button
       type="button"
-      onClick={() => onPress(direction)}
+      onClick={onPress}
+      disabled={!enabled}
       /* Named for the rail it moves, because a page with three rails has six of these and
          "Scroll left" six times over is six controls a screen reader cannot tell apart. */
       aria-label={`${back ? "Earlier" : "Later"} in ${label}`}
-      className={`absolute top-[38%] grid size-8 -translate-y-1/2 place-items-center rounded-full border border-hair bg-ground/80 text-text opacity-0 backdrop-blur-[2px] transition-opacity duration-150 group-hover/rail:opacity-100 focus-visible:opacity-100 ${
+      className={`absolute top-[38%] grid size-8 -translate-y-1/2 place-items-center rounded-full border border-hair bg-ground/80 text-text opacity-0 backdrop-blur-[2px] transition-opacity duration-150 group-hover/rail:opacity-100 focus-visible:opacity-100 disabled:text-dim ${
         back ? "left-2" : "right-2"
       }`}
     >

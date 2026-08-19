@@ -10,12 +10,11 @@ import { createContext, useContext } from "react";
  * not about routing — there is no URL segment for "which entry is selected" on desktop,
  * on purpose, so this is plain React context rather than a search param or a route.
  *
- * **Two surfaces provide it, since issue #137.** `library-surface.tsx` for the bill, and
- * `up-next/up-next-panel-selection.tsx` for the desktop Up next rails, which swap the same
- * panel by the same rule. It stays here rather than moving somewhere neutral because the
- * pane it drives lives here too: the Up next page imports `ProgrammeNotePane` from this
- * folder, and a context in a third place would put the state further from the one component
- * that reads it.
+ * **Two surfaces are held to it, since issue #137** — the library bill and the desktop Up
+ * next rails, which swap the same panel by the same rule. Neither provides it directly:
+ * `programme-note-layout.tsx` owns the one `useState` and the pane together, so the state and
+ * its only reader cannot come apart. It stays in this folder for the same reason that layout
+ * does — the pane lives here.
  *
  * `null` is "nothing selected yet" — the pane's own resting state before a first click,
  * not an error and not the same as a failed read (`programme-note.tsx` keeps those
