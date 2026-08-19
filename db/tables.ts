@@ -302,13 +302,6 @@ export const listMembership = pgTable(
     titleId: uuid("title_id")
       .notNull()
       .references(() => title.id),
-    /**
-     * **Expand-contract's leftover, and nothing reads it.** `SPEC.md` §3.7 is
-     * forward-only, so the column the repoint stopped using is not dropped in the change
-     * that stopped using it. Issue #150 drops it; until then it is nullable and every
-     * write leaves it `NULL`.
-     */
-    libraryEntryId: uuid("library_entry_id"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

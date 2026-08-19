@@ -143,7 +143,7 @@ convenience call, not a constraint.)*
 That call paid off in a way it was not made for. §9 brought custom lists **into scope** on
 2026-08-19, and the tables were already there — so repointing `list_membership` from `library_entry`
 to `title` (ADR-0001 amendment 7) had **zero rows** to migrate. It is still expand-contract:
-`library_entry_id` is left behind, nullable, and dropped in its own later change.
+`library_entry_id` was left behind, nullable, until #150 dropped it in its own later change.
 
 ---
 

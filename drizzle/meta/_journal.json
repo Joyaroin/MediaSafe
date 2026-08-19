@@ -50,6 +50,13 @@
       "when": 1787168138374,
       "tag": "0006_list-membership-title",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787174996389,
+      "tag": "0007_list-membership-drop-library-entry-id",
+      "breakpoints": true
     }
   ]
 }
