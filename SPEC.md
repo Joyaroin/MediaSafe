@@ -143,7 +143,7 @@ convenience call, not a constraint.)*
 That call paid off in a way it was not made for. §9 brought custom lists **into scope** on
 2026-08-19, and the tables were already there — so repointing `list_membership` from `library_entry`
 to `title` (ADR-0001 amendment 7) had **zero rows** to migrate. It is still expand-contract:
-`library_entry_id` is left behind, nullable, and dropped in its own later change.
+`library_entry_id` was left behind, nullable, until #150 dropped it in its own later change.
 
 ---
 
@@ -212,22 +212,29 @@ fourth.
    split on viewport — desktop to Library, phone to Up next — which existed only because Up next was
    not yet a desktop destination; #136 deleted that redirect rather than rewiring it, which is also
    the one place in the build that read a viewport fact in JavaScript instead of Tailwind, now gone.
-2. **Up next's form and rank — interim, since [#136](https://github.com/Joyaroin/MediaSafe/issues/136).**
-   One shape on both devices for now: the whole screen, a deck, one dominant card, recording control
-   in the thumb arc. The row above the grid this bullet used to give desktop or its own smaller
-   secondary form — is gone, deleted along with the desktop TONIGHT row it described; rendering the
-   phone's own page wide is a deliberate placeholder, not a settled desktop design, and stands until a
-   later ticket gives Up next its own desktop layout (the "rails" `app/sidebar.tsx`'s docblock
-   gestures at without specifying).
+2. **Up next's form and rank — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137).**
+   The two devices genuinely diverge again, and no longer as a placeholder. Desktop: **three
+   horizontal rails** — *Ongoing*, *Coming back*, *Old friends* — beside the programme note, where
+   clicking a poster **swaps the panel** and never navigates, the same topology divergence 3 gives
+   title detail. It is the whole page now, not a secondary row above a grid: the row this bullet used
+   to describe went with the desktop TONIGHT row in #136, and the library page is just the library.
+   Phone: still the deck — the whole screen, one dominant card, recording control in the thumb arc —
+   and that half of this bullet is the interim one now, until
+   [#138](https://github.com/Joyaroin/MediaSafe/issues/138) replaces it with five vertical groups.
+   The rails' rules are in *Up next — the three rails* below.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
-4. **How Up next is bounded — interim, since [#136](https://github.com/Joyaroin/MediaSafe/issues/136).**
+4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137).**
    Phone: **no numeric cap** — a deck you work down never renders N at once, so its own form is the
-   bound. Desktop now shares that bound rather than the viewport-clipped row this bullet used to
-   describe, for the same reason as divergence 2 above: the row that was bounded by the viewport is
-   gone with it, and so is its one-click escape to Library's *Watching* chip — the chip itself is
-   untouched (§7's *Library — filter chips* below), only its old job of holding a TONIGHT row's
-   overflow. A future desktop-specific form is where a real bound returns.
+   bound. Desktop: **each rail is bounded by its own rule, and scrolls.** *Ongoing* is bounded by a
+   count — twelve, the one number on this surface, and a build-time constant nothing can change.
+   *Coming back* and *Old friends* are bounded by nothing but their membership, and reach the rest of
+   themselves by scrolling: horizontal, with **arrows**, and **snapping on whole posters** so a rail
+   never comes to rest part-way through one. This overturns what this bullet used to say twice over —
+   the *no scroll, no fade, no arrow* row bounded by the viewport went with the desktop TONIGHT row in
+   #136, and #137 replaces the placeholder that followed it. Its one-click escape to Library's
+   *Watching* chip is gone with it; the chip itself is untouched (§7's *Library — filter chips*
+   below), only its old job of holding a TONIGHT row's overflow.
 
 Everything else is one design at two densities: the tile and grid, search-and-add, the rating
 control, import, sign-in, settings and account deletion.
@@ -251,6 +258,40 @@ was wrong; see §10.5 for the correction and its source.
 
 **No sort control on Up next, on either device.** A sort dropdown on the phone's landing screen is
 admin chrome on the daily surface.
+
+**The ordering holds inside a rail.** [#137](https://github.com/Joyaroin/MediaSafe/issues/137) groups
+Up next into three rails and does not touch the order within any of them — the rule above is checked
+against all three and against the phone deck by the same assertions, in `tests/up-next.test.ts`.
+
+### Up next — the three rails
+
+Settled by [#137](https://github.com/Joyaroin/MediaSafe/issues/137), which is where divergences 2 and
+4 above point. Up next stops answering one question in one order and starts answering three:
+
+| Rail | Rule |
+|---|---|
+| **Ongoing** | *watching* ∩ the **12 most recently watched** |
+| **Coming back** | *caught up* ∧ the next episode's air date is in the future |
+| **Old friends** | *watching*, everything not in Ongoing |
+
+Measured: of 283 non-abandoned titles with a dated watch, **199 — 70% — are more than two years
+cold**, and Up next before this treated every one of them identically to something watched last night.
+
+Four things about it that are rules and not implementation:
+
+- **All of it comes from the existing views.** No column is added, no view is added, and no derived
+  state is stored — a rail is a grouping over `library_entry_state` and the ordering above, evaluated
+  on read like everything else in this model (ADR-0001).
+- **Twelve is a chosen number.** The measured signal was an empty 61–90 day gap, which suggests a
+  60-day threshold; a *count* was chosen because it is self-correcting — never empty after a quiet
+  month, never 199 long after a binge year. It is a **build-time constant**: not a stored setting, not
+  a user preference, and not a thing any surface can change. *The 12 most recently watched* means the
+  head of the ordering above **over the watching set**, not over the whole library's recency.
+- **An empty rail is absent** — no heading, no sentence, no zero, no reserved space. **A failed read
+  is not an empty rail**: it renders the read-failure treatment with a reference id (`AGENTS.md`),
+  because *you're all caught up* is a plausible lie and this is the one surface where a database that
+  is down would read as a life well managed.
+- **No counts, anywhere.** Not on a rail head, not on a tile, not on the page (§9).
 
 ### Library — sort
 

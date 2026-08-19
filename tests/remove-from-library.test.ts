@@ -1,4 +1,4 @@
-import { eq, isNotNull } from "drizzle-orm";
+import { asc, eq, isNotNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -501,6 +501,113 @@ describe("the lists a removed title was in", () => {
       expect(memberships[0].titleId).toBe(show.titleId);
       expect(memberships[0].position).toBe(1);
       expect(await tx.select().from(list).where(eq(list.id, owned.id))).toHaveLength(1);
+    });
+  });
+
+  /**
+   * *Removing a title touches no other title's list entries* — issue #151's own words. The
+   * `DELETE` in `removeTitleFromLibrary` is scoped to one `library_entry` row and cannot
+   * reach `list_membership` at all (it hangs off `title`, not `library_entry`), but that is
+   * a property of the schema and worth asserting at the boundary the acceptance criterion
+   * names: a second title's row, in the same list, at the position after the one removed.
+   */
+  it("leaves a different title's membership in the same list standing, at its own position", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const going = await seedShow(tx);
+      const staying = await seedShow(tx);
+      const entryId = await seedEntry(tx, reader, going, { watches: 1 });
+
+      const [owned] = await tx
+        .insert(list)
+        .values({ userId: reader, name: "Comfort shows" })
+        .returning({ id: list.id });
+      await tx
+        .insert(listMembership)
+        .values({ listId: owned.id, titleId: going.titleId, userId: reader, position: 1 });
+      await tx
+        .insert(listMembership)
+        .values({ listId: owned.id, titleId: staying.titleId, userId: reader, position: 2 });
+
+      await removeTitleFromLibrary(reader, entryId, tx);
+
+      const memberships = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, owned.id))
+        .orderBy(asc(listMembership.position));
+      expect(memberships).toMatchObject([
+        { titleId: going.titleId, position: 1 },
+        { titleId: staying.titleId, position: 2 },
+      ]);
+    });
+  });
+
+  /** The same title, in two lists this account made — a removal is one write, not a sweep
+   *  over every list that happens to hold the title. */
+  it("leaves this account's membership in a different list standing, at its own position", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const entryId = await seedEntry(tx, reader, show, { watches: 1 });
+
+      const [listA] = await tx
+        .insert(list)
+        .values({ userId: reader, name: "A" })
+        .returning({ id: list.id });
+      const [listB] = await tx
+        .insert(list)
+        .values({ userId: reader, name: "B" })
+        .returning({ id: list.id });
+      await tx
+        .insert(listMembership)
+        .values({ listId: listA.id, titleId: show.titleId, userId: reader, position: 1 });
+      await tx
+        .insert(listMembership)
+        .values({ listId: listB.id, titleId: show.titleId, userId: reader, position: 3 });
+
+      await removeTitleFromLibrary(reader, entryId, tx);
+
+      expect(
+        await tx.select().from(listMembership).where(eq(listMembership.listId, listA.id)),
+      ).toMatchObject([{ titleId: show.titleId, position: 1 }]);
+      expect(
+        await tx.select().from(listMembership).where(eq(listMembership.listId, listB.id)),
+      ).toMatchObject([{ titleId: show.titleId, position: 3 }]);
+    });
+  });
+
+  /** *No other account's* — the other half of issue #151's isolation criterion. Two
+   *  accounts each hold the same title in a list of their own; only the reader's copy of
+   *  the title leaves their library, and the other account's row is never scoped by a
+   *  removal that names a different `user_id`. */
+  it("leaves another account's list membership for the same title standing", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const shared = await seedShow(tx);
+      const mine = await seedEntry(tx, reader, shared, { watches: 1 });
+
+      const [ownList] = await tx
+        .insert(list)
+        .values({ userId: reader, name: "Mine" })
+        .returning({ id: list.id });
+      const [theirList] = await tx
+        .insert(list)
+        .values({ userId: other, name: "Theirs" })
+        .returning({ id: list.id });
+      await tx
+        .insert(listMembership)
+        .values({ listId: ownList.id, titleId: shared.titleId, userId: reader, position: 1 });
+      await tx
+        .insert(listMembership)
+        .values({ listId: theirList.id, titleId: shared.titleId, userId: other, position: 1 });
+
+      await removeTitleFromLibrary(reader, mine, tx);
+
+      expect(
+        await tx.select().from(listMembership).where(eq(listMembership.listId, theirList.id)),
+      ).toMatchObject([{ titleId: shared.titleId, userId: other, position: 1 }]);
     });
   });
 });

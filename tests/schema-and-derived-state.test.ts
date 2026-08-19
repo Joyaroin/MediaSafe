@@ -362,23 +362,6 @@ describe("the migration", () => {
   });
 
   /**
-   * Expand, not contract. `SPEC.md` §3.7 is forward-only and a column is not dropped in
-   * the change that stops using it, so `library_entry_id` stays here — nullable, unread —
-   * until #150 drops it. Nullable is what makes a membership writable at all now.
-   */
-  it("leaves the old library-entry column behind, nullable", async () => {
-    await inTransaction(async (tx) => {
-      const columns = await tx.execute<{ is_nullable: string }>(sql`
-        select is_nullable
-        from information_schema.columns
-        where table_name = 'list_membership' and column_name = 'library_entry_id'
-      `);
-
-      expect(columns.rows).toEqual([{ is_nullable: "YES" }]);
-    });
-  });
-
-  /**
    * `title_external_id_check`, both directions.
    *
    * The rule that an external id is `imdb:tt…` or `tvdb:…` is written twice — once as

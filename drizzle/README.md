@@ -16,6 +16,7 @@ One history, from one tool, in one order:
 | `0004_title-external-id.sql` | `title.external_id` — one external id per title (#114) |
 | `0005_title-reconciliation.sql` | `title_reconciliation`, the record of a repointed title (#116) |
 | `0006_list-membership-title.sql` | `list_membership` repoints from `library_entry` to `title` (#143) |
+| `0007_list-membership-drop-library-entry-id.sql` | Drops `list_membership.library_entry_id`, expand-contract's leftover from 0006 (#150) |
 
 **Name the file after what it brings.** drizzle-kit generates a random tag —
 `0005_noisy_maddog` — and the file is renamed, along with its `tag` in `meta/_journal.json`,
@@ -58,6 +59,15 @@ expand-contract *requires* — the column is not dropped in the change that stop
 **the last comment line before the statement**; squawk does not find it through prose
 above it. Turning the rule off globally would have been the wrong fix — it stays on for
 every other migration.
+
+### 0007 suppresses the rule the whole file exists to enforce
+
+`ban-drop-column` stays on for every migration but this one's actual job: `list_membership`
+carried `library_entry_id` nullable and unread since 0006, and #150 is the change that
+finally drops it. Suppressed inline, the same way, for the same reason —
+`-- squawk-ignore ban-drop-column` as the last comment line before the statement — with the
+grep that found nothing referencing the column recorded in the migration's own comment
+rather than trusted to memory.
 
 Two things bind everything that lands here:
 

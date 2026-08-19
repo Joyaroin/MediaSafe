@@ -13,8 +13,7 @@ import {
 } from "./library-filter-bar";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
-import { LibrarySelectionProvider } from "./library-selection";
-import { ProgrammeNotePane } from "./programme-note";
+import { ProgrammeNoteLayout } from "./programme-note-layout";
 
 /**
  * The populated library's whole shell: the heading bar's chips, filter field and sort
@@ -63,7 +62,6 @@ export function LibrarySurface({
 }) {
   const [chip, setChip] = useState<Chip>("all");
   const [filterText, setFilterText] = useState("");
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
   const visible = useMemo(() => {
     const needle = filterText.trim().toLowerCase();
@@ -80,24 +78,20 @@ export function LibrarySurface({
   }
 
   return (
-    <LibrarySelectionProvider value={{ selectedEntryId, select: setSelectedEntryId }}>
-      <main className="flex w-full flex-1 flex-col lg:flex-row">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <LibraryHeading>
-            <LibraryChips value={chip} onChange={setChip} />
-            <FilterField value={filterText} onChange={setFilterText} />
-            <SortSelect value={sort} />
-          </LibraryHeading>
+    <ProgrammeNoteLayout>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <LibraryHeading>
+          <LibraryChips value={chip} onChange={setChip} />
+          <FilterField value={filterText} onChange={setFilterText} />
+          <SortSelect value={sort} />
+        </LibraryHeading>
 
-          {visible.length === 0 ? (
-            <ZeroMatches onClear={clearFilter} />
-          ) : (
-            <LibraryGrid entries={visible} />
-          )}
-        </div>
-
-        <ProgrammeNotePane />
-      </main>
-    </LibrarySelectionProvider>
+        {visible.length === 0 ? (
+          <ZeroMatches onClear={clearFilter} />
+        ) : (
+          <LibraryGrid entries={visible} />
+        )}
+      </div>
+    </ProgrammeNoteLayout>
   );
 }
