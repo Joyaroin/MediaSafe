@@ -5,7 +5,7 @@ import { user } from "@/auth-schema";
 
 import { type Executor, getDb } from "./client";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
-import { episode, libraryEntry, title, titleReconciliation, watch } from "./tables";
+import { episode, libraryEntry, list, listMembership, title, titleReconciliation, watch } from "./tables";
 import {
   libraryEntryRemaining,
   libraryEntryState,
@@ -2290,4 +2290,122 @@ export async function getTitleDetail(
 function kindFrom(value: string): TitleKind {
   if (value === "film" || value === "show") return value;
   throw new Error(`title.kind was neither 'film' nor 'show': ${value}`);
+}
+
+/**
+ * A list's own facts, and the one number the delete confirmation needs — issue #146.
+ *
+ * `titleCount` is read from `list_membership` rather than carried on `list` itself: there
+ * is no stored count anywhere in this schema, so it is counted the same way
+ * `accountFootprint` counts a rating — at read time, off the rows that are the only truth
+ * about it.
+ */
+export interface ListSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly titleCount: number;
+  readonly createdAt: Date;
+}
+
+/**
+ * This account's lists, alphabetically — issue #146.
+ *
+ * Alphabetical rather than by creation order: nothing here asks for a ranking among lists
+ * themselves — ordering is `list_membership.position`, a title's place inside one list,
+ * not one list's place among the others — so the tie is broken the way a reader scanning
+ * for a list they made finds it fastest, by name.
+ *
+ * `left join`, not inner: a list with no memberships yet — every list, until the ticket
+ * that lets you add to one ships — must still appear, with `titleCount` at zero rather
+ * than the list vanishing from its own destination.
+ */
+export async function listLists(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<ListSummary[]> {
+  return executor
+    .select({
+      id: list.id,
+      name: list.name,
+      createdAt: list.createdAt,
+      titleCount: sql<number>`count(${listMembership.titleId})`.mapWith(Number),
+    })
+    .from(list)
+    .leftJoin(listMembership, eq(listMembership.listId, list.id))
+    .where(ownedBy(userId, list))
+    .groupBy(list.id)
+    .orderBy(asc(sql`lower(${list.name})`));
+}
+
+/**
+ * A list name's length, checked here for the same reason `rateTitle` checks its rating's
+ * range: a Server Action is a POST endpoint anyone with a session can call with any
+ * argument, and `NOT NULL` is the only constraint the column itself carries.
+ */
+export const LIST_NAME_MAX_LENGTH = 60;
+
+export type CreateListOutcome =
+  | { readonly ok: true; readonly list: ListSummary }
+  /** `list_user_id_name_key` — one account, one list of a given name. */
+  | { readonly ok: false; readonly reason: "duplicate" };
+
+/**
+ * Make a list, and name it — issue #146.
+ *
+ * ── The duplicate name is caught by the constraint, not pre-checked ─────────────────
+ *
+ * `onConflictDoNothing` targets `list_user_id_name_key` directly rather than this
+ * function running a `SELECT` first and hoping nothing else inserts between the two: two
+ * requests racing the same name would both pass a pre-check and one would still hit the
+ * constraint, so the constraint has to be the real answer regardless. Reading it off
+ * `RETURNING` coming back empty keeps that to one round trip either way.
+ */
+export async function createList(
+  userId: UserId,
+  name: string,
+  executor: Executor = getDb(),
+): Promise<CreateListOutcome> {
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || trimmed.length > LIST_NAME_MAX_LENGTH) {
+    throw new Error(
+      `A list name must be 1-${LIST_NAME_MAX_LENGTH} characters; got ${JSON.stringify(name)}.`,
+    );
+  }
+
+  const [row] = await executor
+    .insert(list)
+    .values({ userId, name: trimmed })
+    .onConflictDoNothing({ target: [list.userId, list.name] })
+    .returning({ id: list.id, name: list.name, createdAt: list.createdAt });
+
+  if (!row) return { ok: false, reason: "duplicate" };
+
+  return { ok: true, list: { ...row, titleCount: 0 } };
+}
+
+/**
+ * Delete a list — issue #146.
+ *
+ * ── Why there is nothing here about memberships ──────────────────────────────────────
+ *
+ * `list_membership_list_id_user_id_fk` cascades on `list`'s deletion (`db/tables.ts`), so
+ * the memberships go with the one statement below, the same way `deleteAccount` leans on
+ * Postgres for its cascades rather than a hand-written sequence. Nothing else references a
+ * list, so nothing else is at risk — the acceptance criterion this exists to meet is
+ * *removes its memberships and nothing else*, and "nothing else" is true because there is
+ * nothing else to reach.
+ */
+export async function deleteList(
+  userId: UserId,
+  listId: string,
+  executor: Executor = getDb(),
+): Promise<void> {
+  const [row] = await executor
+    .delete(list)
+    .where(and(ownedBy(userId, list), eq(list.id, listId)))
+    .returning({ id: list.id });
+
+  if (!row) {
+    throw new Error(`List ${listId} was not found in this account's lists.`);
+  }
 }

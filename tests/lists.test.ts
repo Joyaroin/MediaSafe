@@ -1,0 +1,262 @@
+import { eq } from "drizzle-orm";
+import { describe, expect, it } from "vitest";
+
+import {
+  asUserId,
+  createList,
+  deleteList,
+  listLists,
+  ownedBy,
+  type UserId,
+} from "@/db/access";
+import type { Transaction } from "@/db/client";
+import { libraryEntry, list, listMembership, title, user, watch } from "@/db/schema";
+import { inTransaction, setUpTestDatabase } from "./support/database";
+
+/**
+ * The Lists destination's lifecycle, against real Postgres — issue #146.
+ *
+ * `Adding titles, ordering and dragging are not in this ticket; they arrive next` — so
+ * every assertion below is about a list's own row and its membership rows as a whole,
+ * never about what one membership contains. Memberships are still seeded directly here,
+ * the same way `delete-account.test.ts`'s `seedList` does, because deleting a list's
+ * cascade onto `list_membership` is exactly what this ticket's acceptance criteria ask to
+ * be proven, even though nothing in the product can create a membership yet.
+ *
+ * No network: `createList`, `deleteList` and `listLists` take a user id the caller
+ * already resolved and the harness's own transaction, and reach nothing outside Postgres.
+ */
+
+setUpTestDatabase("mediasafe_lists_test");
+
+let counter = 0;
+const nextNumber = () => ++counter;
+
+async function seedUser(tx: Transaction, name: string): Promise<UserId> {
+  const id = `${name}-${nextNumber()}`;
+  await tx.insert(user).values({ id, name, email: `${id}@example.test` });
+  return asUserId(id);
+}
+
+/** A show, global and owned by nobody — the same shape `delete-account.test.ts` seeds. */
+async function seedShow(tx: Transaction): Promise<string> {
+  const number = nextNumber();
+  const [row] = await tx
+    .insert(title)
+    .values({
+      kind: "show",
+      tmdbId: number,
+      name: `Show ${number}`,
+      releaseYear: 2022,
+      inProduction: true,
+    })
+    .returning({ id: title.id });
+  return row.id;
+}
+
+async function seedMembership(
+  tx: Transaction,
+  listId: string,
+  userId: UserId,
+  titleId: string,
+  position: number,
+): Promise<void> {
+  await tx.insert(listMembership).values({ listId, titleId, userId, position });
+}
+
+describe("making a list", () => {
+  it("creates and names it", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      const outcome = await createList(reader, "Comfort shows", tx);
+
+      expect(outcome).toMatchObject({
+        ok: true,
+        list: { name: "Comfort shows", titleCount: 0 },
+      });
+    });
+  });
+
+  it("trims the name before storing and comparing it", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      const outcome = await createList(reader, "  Watch with Dad  ", tx);
+
+      expect(outcome).toMatchObject({ ok: true, list: { name: "Watch with Dad" } });
+    });
+  });
+
+  it("refuses a second list with the same name for the same account", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await createList(reader, "Rewatch", tx);
+
+      const outcome = await createList(reader, "Rewatch", tx);
+
+      expect(outcome).toEqual({ ok: false, reason: "duplicate" });
+
+      const rows = await tx.select().from(list).where(ownedBy(reader, list));
+      expect(rows).toHaveLength(1);
+    });
+  });
+
+  it("lets two different accounts each have a list with the same name", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+
+      const first = await createList(reader, "Rewatch", tx);
+      const second = await createList(other, "Rewatch", tx);
+
+      expect(first.ok).toBe(true);
+      expect(second.ok).toBe(true);
+    });
+  });
+
+  it("rejects an empty or all-whitespace name without writing a row", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      await expect(createList(reader, "   ", tx)).rejects.toThrow();
+
+      const rows = await tx.select().from(list).where(ownedBy(reader, list));
+      expect(rows).toHaveLength(0);
+    });
+  });
+});
+
+describe("reading the lists back", () => {
+  it("orders them alphabetically, case-insensitively", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await createList(reader, "Watchlist for Dad", tx);
+      await createList(reader, "abandoned but curious", tx);
+      await createList(reader, "Best of 2025", tx);
+
+      const names = (await listLists(reader, tx)).map((one) => one.name);
+
+      expect(names).toEqual(["abandoned but curious", "Best of 2025", "Watchlist for Dad"]);
+    });
+  });
+
+  it("counts each list's titles, and includes a list with none", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+
+      const { list: full } = unwrap(await createList(reader, "Full", tx));
+      const { list: empty } = unwrap(await createList(reader, "Empty", tx));
+      await seedMembership(tx, full.id, reader, showA, 1);
+      await seedMembership(tx, full.id, reader, showB, 2);
+
+      const rows = await listLists(reader, tx);
+
+      expect(rows.find((one) => one.id === full.id)?.titleCount).toBe(2);
+      expect(rows.find((one) => one.id === empty.id)?.titleCount).toBe(0);
+    });
+  });
+
+  it("never returns another account's lists", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      await createList(reader, "Mine", tx);
+      await createList(other, "Theirs", tx);
+
+      const rows = await listLists(reader, tx);
+
+      expect(rows.map((one) => one.name)).toEqual(["Mine"]);
+    });
+  });
+});
+
+describe("deleting a list", () => {
+  it("removes the list and its memberships, and nothing else", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Gone soon", tx));
+      await seedMembership(tx, target.id, reader, show, 1);
+      const [entry] = await tx
+        .insert(libraryEntry)
+        .values({ userId: reader, titleId: show })
+        .returning({ id: libraryEntry.id });
+      await tx.insert(watch).values({
+        userId: reader,
+        libraryEntryId: entry.id,
+        titleId: show,
+        watchedAt: new Date(),
+        source: "app",
+        sourceKey: `click-${nextNumber()}`,
+      });
+
+      await deleteList(reader, target.id, tx);
+
+      const lists = await tx.select().from(list).where(eq(list.id, target.id));
+      const memberships = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id));
+      const entries = await tx
+        .select()
+        .from(libraryEntry)
+        .where(eq(libraryEntry.id, entry.id));
+      const watches = await tx.select().from(watch).where(eq(watch.libraryEntryId, entry.id));
+      const titles = await tx.select().from(title).where(eq(title.id, show));
+
+      expect(lists).toHaveLength(0);
+      expect(memberships).toHaveLength(0);
+      // The library entry, its watch and the global title all survive — a list holds no
+      // history at all, and deleting one must not touch any of the three.
+      expect(entries).toHaveLength(1);
+      expect(watches).toHaveLength(1);
+      expect(titles).toHaveLength(1);
+    });
+  });
+
+  it("leaves every other list of the same account standing", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { list: doomed } = unwrap(await createList(reader, "Doomed", tx));
+      const { list: kept } = unwrap(await createList(reader, "Kept", tx));
+
+      await deleteList(reader, doomed.id, tx);
+
+      const names = (await listLists(reader, tx)).map((one) => one.name);
+      expect(names).toEqual([kept.name]);
+    });
+  });
+
+  it("refuses to delete another account's list", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const { list: theirs } = unwrap(await createList(other, "Theirs", tx));
+
+      await expect(deleteList(reader, theirs.id, tx)).rejects.toThrow();
+
+      const rows = await tx.select().from(list).where(eq(list.id, theirs.id));
+      expect(rows).toHaveLength(1);
+    });
+  });
+
+  it("throws on a list id that names no row", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      await expect(
+        deleteList(reader, "00000000-0000-0000-0000-000000000000", tx),
+      ).rejects.toThrow();
+    });
+  });
+});
+
+/** Narrows a `CreateListOutcome` to its success case, for tests that seed a list only to
+ *  act on it afterwards and have already asserted `createList` itself elsewhere. */
+function unwrap<T extends { ok: boolean }>(outcome: T): Extract<T, { ok: true }> {
+  if (!outcome.ok) throw new Error("Expected createList to succeed.");
+  return outcome as Extract<T, { ok: true }>;
+}

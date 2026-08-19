@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
- * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet.
- * `DESIGN.md`, Navigation: *three fixed tabs at the bottom on a `1px` gap over `rule`,
- * with a `rule-bold` top border. Each tab is a rectilinear icon over a label. Active is
- * inverted to bone/ink. Lands on Up next.*
+ * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
+ * and widened to four by issue #146. `DESIGN.md`, Navigation: *fixed tabs at the bottom
+ * on a `1px` gap over `rule`, with a `rule-bold` top border. Each tab is a rectilinear
+ * icon over a label. Active is inverted to bone/ink. Lands on Up next.*
  *
  * ── Why this is a client component ───────────────────────────────────────────────────
  *
@@ -42,6 +42,7 @@ const TABS = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
+  { href: "/lists", label: "Lists", Icon: ListsIcon },
 ] as const;
 
 /** `49px`: `py-2` (`16px`) plus a `16px` icon, a `4px` gap and an `11px` code line
@@ -59,7 +60,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-px border-t-2 border-rule-bold bg-rule lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-px border-t-2 border-rule-bold bg-rule lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = pathname === href || pathname.startsWith(`${href}/`);
@@ -117,6 +118,22 @@ function LibraryIcon({ className }: { className?: string }) {
       <rect x="13" y="2" width="9" height="9" fill="currentColor" />
       <rect x="2" y="13" width="9" height="9" fill="currentColor" />
       <rect x="13" y="13" width="9" height="9" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Three bulleted rows — a grouping made by hand, not the poster grid `LibraryIcon` draws
+ *  or the tapering search bars: a list is ranked rows, and this is that shape in miniature
+ *  (issue #146). */
+function ListsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <rect x="2" y="3" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="3" width="14" height="3" fill="currentColor" />
+      <rect x="2" y="10.5" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="10.5" width="14" height="3" fill="currentColor" />
+      <rect x="2" y="18" width="3" height="3" fill="currentColor" />
+      <rect x="8" y="18" width="14" height="3" fill="currentColor" />
     </svg>
   );
 }
