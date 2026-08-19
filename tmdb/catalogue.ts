@@ -20,6 +20,7 @@ import {
   showMirror,
   TmdbHttpError,
   type CatalogueResult,
+  type ExternalId,
   type TitleKind,
   type TitleMirror,
   type TmdbMoviePayload,
@@ -27,6 +28,7 @@ import {
   type TmdbSeasonPayload,
   type TmdbShowPayload,
 } from "./mirror";
+import { findRequestFor, type TmdbFindPayload } from "./reconcile";
 
 /**
  * The calls to TMDB. **Deliberately untested**, and this paragraph is the decision rather
@@ -205,6 +207,32 @@ async function inBatches<In, Out>(
     results.push(...(await Promise.all(items.slice(start, start + size).map(run))));
   }
   return results;
+}
+
+/**
+ * What a stored external id still resolves to on TMDB — the one lookup the nightly
+ * sweep's 404 path makes (issue #116).
+ *
+ * `/find/{external_id}?external_source=…` is the only endpoint TMDB has that answers *what
+ * is this title now*, because it publishes no successor id: a deleted or merged id returns
+ * 404, error code 6, and nothing else. Both halves of the request come out of the one
+ * stored column, through `findRequestFor`, so there is no call site that can pair an IMDb
+ * id with `tvdb_id`.
+ *
+ * **No `language` and no `page`.** Neither would change which ids come back, and the ids
+ * are the entire content of this response as far as MediaSafe is concerned —
+ * `tmdb/reconcile.ts` declines to even declare the names and dates TMDB sends alongside
+ * them.
+ *
+ * A 404 here is not special-cased, unlike the one on the title itself: `/find` answers 200
+ * with five empty lists for an external id it does not know, and that is the *nothing
+ * survives* case, which `reconcileByExternalId` reads off the body. A non-2xx from this
+ * endpoint is TMDB being unreachable, so it throws like every other call in this file and
+ * the title is retried on the next run.
+ */
+export async function findByExternalId(externalId: ExternalId): Promise<TmdbFindPayload> {
+  const { externalSource, id } = findRequestFor(externalId);
+  return get<TmdbFindPayload>(`/find/${id}`, { external_source: externalSource });
 }
 
 /** `/movie/{id}` or `/tv/{id}` — the one fork every endpoint below shares. */

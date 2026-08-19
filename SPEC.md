@@ -674,22 +674,51 @@ it was written.
 
 Named rather than hidden. **None of them blocks the v1 build.**
 
-### From the map's fog — all post-v1
+### From the map's fog — post-v1, bar the one this build closed
 
 1. **How Discovery and Recommendations actually work** — the mechanism, not the vocabulary. Both are
    post-v1 features and neither has a committed consumer; #22 recorded that Adham declined to name
    post-v1 recommendations as rating's reader, so *what a rating is for* stays genuinely unanswered.
 2. **Whether year in review is a screen or a once-a-year thing.** Its period and contents are settled
    — one calendar year in the user's own zone, dated watches only. What is left is presentation.
-3. **What the refresh does when borrowed identity changes upstream.** TMDB can delete a title, merge
-   two show ids, or remove an episode someone has watches for. ADR-0001 made the failure **loud
-   rather than silent** — the `watch → episode` foreign key is deliberately `NO ACTION`, so the
-   nightly refresh fails instead of deleting history — but nothing decides what happens next:
-   reconcile to the surviving id, tombstone the episode, or ask. Related and smaller: whether orphan
-   borrowed rows left by account deletion are ever reaped.
-   **This is the one fog item a v1 builder can actually hit** — it becomes reachable the moment step
-   6's cron runs. Until it is decided, a failing refresh is correct behaviour: it is loud, it loses
-   nothing, and it waits.
+3. ~~**What the refresh does when borrowed identity changes upstream.**~~ **Answered** —
+   [#116](https://github.com/Joyaroin/MediaSafe/issues/116), 2026-08-19, ADR-0001 amendment 6. It
+   was the one fog item a v1 builder could actually hit, and step 6's cron reached it. **One
+   sub-question is still open and is restated below as §11.7.**
+
+   The answer, in full:
+
+   **The lookup, and the only evidence there is.** TMDB publishes no successor id — a deleted or
+   merged id returns `404`, error code 6, and nothing else. So the title is looked up by the
+   external id #114 mirrors, through `/find/{id}?external_source=`, and that is the whole of the
+   evidence available:
+
+   - **exactly one surviving TMDB id** → the title is repointed at it and every watch is kept;
+   - **nothing, or more than one** → quarantine;
+   - **no external id stored yet** → quarantine, and **never a search**.
+
+   **Name-and-year search is rejected outright.** `title` and `episode` are global and unowned, so
+   a wrong match is not one person's problem — one wrong match is everyone's wrong match, and it
+   looks exactly like a correct one.
+
+   **A watch is never repointed, under any policy, ever.** Even a title that reconciles has its
+   episodes matched **by TMDB episode id only** — never by season and episode number, never by
+   name. An episode carrying watches that the survivor does not have quarantines the title. This is
+   ADR-0001's `NO ACTION` foreign key expressed as policy rather than as a database error.
+
+   **A quarantine writes nothing at all**, including `metadata_refreshed_at`, so the title is
+   retried on a later run rather than stamped as refreshed. It is reported to Sentry with its
+   reason, and one quarantine never stops the sweep.
+
+   **Every repoint is recorded** in `title_reconciliation` — old id, new id, the external id that
+   evidenced it, and when. Enough to see what happened and to reverse it by hand. It is **not an
+   admin surface** (§9 forbids one): nothing reads it, and it is a log Adham queries through the
+   database exactly as *"to see who signed up, Adham queries the database"* already establishes.
+   Nothing about any of this reaches a user-facing surface, notice or badge.
+
+   Tombstoning the episode and asking were both rejected. A tombstone is a state stored beside the
+   watches that already imply it, which §5 forbids; asking needs a surface §9 does not permit and a
+   reader who is not there at 3am.
 
 ### Left open by a closed ticket, on purpose
 
@@ -702,6 +731,17 @@ Named rather than hidden. **None of them blocks the v1 build.**
    this unverified on purpose. The WebSocket driver makes it possible; if the migrator does not do
    it, **the runner must open the transaction itself** — #17's halt-on-partial-failure is a
    requirement, not a hope. Confirm at step 1.
+
+### Left open by this build, on purpose
+
+7. **Whether orphan borrowed rows left by account deletion are ever reaped.** §11.3 raised this
+   alongside the reconciliation question and [#116](https://github.com/Joyaroin/MediaSafe/issues/116)
+   answered only the reconciliation half. It is **not reaped in v1**, and that is a decision rather
+   than an omission: `title` and `episode` are global and unowned, deleting an account cascades only
+   the owned four (ADR-0001), and a title nobody has in their library any more costs a row and
+   makes the next person who adds it free. A reaper would be the one thing in this database that
+   deletes borrowed rows, and the reconciliation path spends its whole length refusing to do that.
+   Revisit it when the row count is a number somebody has actually looked at.
 
 ### One conflict left for Adham
 
@@ -719,4 +759,6 @@ Named rather than hidden. **None of them blocks the v1 build.**
   `PRODUCT.md` — the four files a builder opens first.
 - **The map's *Not yet specified* section is not empty.** All three remaining entries are listed
   above as §11.1–3, every one of them post-v1, and one of them (§11.3) flagged as the only fog a v1
-  builder can reach.
+  builder can reach. **§11.3 is closed** — [#116](https://github.com/Joyaroin/MediaSafe/issues/116)
+  answered it during step 6, which is exactly when it said it would be reached; the half it did not
+  answer is §11.7.

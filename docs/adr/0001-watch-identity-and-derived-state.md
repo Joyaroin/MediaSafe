@@ -55,6 +55,31 @@ things around it are not.
    and no field moves across the dividing line. See *Borrowed* and *Metadata caching policy* below,
    both corrected in place.
 
+6. **What the refresh does when a title's TMDB id is gone, and a seventh table to record it** —
+   [#116](https://github.com/Joyaroin/MediaSafe/issues/116), 2026-08-19. This ADR made that failure
+   **loud rather than silent** — `watch → episode` is `NO ACTION`, so the nightly refresh fails
+   instead of deleting history — and deliberately did not say what happens next; `SPEC.md` §11.3
+   carried the question from the map. The answer, in one line: **the title is looked up by amendment
+   5's external id, repointed if exactly one id survives, and otherwise left exactly as it was
+   found.** Nothing, more than one, or no external id stored is a *quarantine* — write nothing, skip,
+   report — and there is no name-and-year search anywhere on the path, because `title` and `episode`
+   are global and one wrong match is everyone's wrong match.
+
+   **A watch is never repointed.** Even a title that reconciles has its episodes matched by
+   `tmdb_episode_id` only, never by season and episode number: this is the `NO ACTION` foreign key
+   above expressed as policy rather than as a database error, one level up from where the database
+   can enforce it. An episode carrying watches that the survivor does not have quarantines the title.
+
+   **`title_reconciliation` is the seventh table** — old id, new id, the external id that evidenced
+   it, and when. It is neither borrowed nor owned: TMDB does not publish it and a refresh cannot
+   reproduce it, and `title` is global so it belongs to no account. A row rather than a column on
+   `title`, because a title can vanish and be reconciled more than once and a column would keep only
+   the last time. Nothing reads it — it is a log queried by hand, not an admin surface (`SPEC.md`
+   §9). See *Borrowed* below, corrected in place.
+
+   The half this does **not** answer is the one §11.3 raised alongside: orphan borrowed rows left by
+   account deletion are **not reaped in v1**. `SPEC.md` §11.7 carries it.
+
 ## Context
 
 `CONTEXT.md` settled the *language*: a Watch is episode-grain and is the only thing MediaSafe
@@ -199,6 +224,36 @@ The row is keyed by `tmdb_episode_id`; season and episode **numbers are borrowed
 TMDB renumbers a season or inserts a special, the numbers update and every existing watch still
 points at the episode it always meant. Storing `(show, season_no, episode_no)` on the watch instead
 would silently repoint history.
+
+### Recorded — neither borrowed nor owned *(amendment 6)*
+
+```sql
+CREATE TABLE title_reconciliation (
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title_id             uuid NOT NULL REFERENCES title(id) ON DELETE CASCADE,
+  from_tmdb_id         integer NOT NULL,   -- the id that 404'd
+  to_tmdb_id           integer NOT NULL,   -- the one id the external id resolved to
+  evidence_external_id text NOT NULL       -- as it stood when the decision was made
+    CHECK (evidence_external_id ~ '^(imdb:tt[0-9]+|tvdb:[0-9]+)$'),
+  reconciled_at        timestamptz NOT NULL DEFAULT now(),
+
+  CHECK (from_tmdb_id <> to_tmdb_id)       -- a repoint to the id you had is not a repoint
+);
+```
+
+Its own section because it is **a third kind of row**. It is not borrowed — TMDB does not publish
+it and a refresh cannot reproduce it — and it is not owned, because `title` is global and a repoint
+happens to every account at once. It is a record of what this application did, which is why it has
+no `user_id` and takes no part in *Ownership is a column* above.
+
+`evidence_external_id` is `NOT NULL` where `title.external_id` is nullable, and that is the point of
+the column: **there is no such thing as an unevidenced reconciliation.** It is copied rather than
+joined because it is not the same fact — `title.external_id` is borrowed and every refresh
+overwrites it, including with `NULL`, and this is what it said at the moment the decision was made.
+
+No index, deliberately: this table gains a row only when TMDB deletes or merges a title somebody
+has in their library, and a library of ~472 titles will produce a handful in the life of the
+application.
 
 ### Owned — cascades to `user.id`
 

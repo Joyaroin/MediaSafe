@@ -27,7 +27,9 @@
  * MediaSafe's own six — `title`, `episode`, `library_entry`, `watch`, `list`,
  * `list_membership` — are build step 2, whole, in one migration, per SPEC.md §5 and
  * ADR-0001. They are declared by hand, in `db/tables.ts`; only Better Auth's tables come
- * through the generator.
+ * through the generator. `title_reconciliation` joins them there as a seventh at build
+ * step 6 (ADR-0001 amendment 6, issue #116) — the record of a title repointed at a
+ * different TMDB id, which is neither borrowed nor owned by an account.
  *
  * Alongside them, in `db/views.ts`, are the three derived-state views —
  * `library_entry_state`, `library_entry_progress` and `library_entry_up_next`. They are

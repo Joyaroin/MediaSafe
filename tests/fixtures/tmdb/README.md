@@ -45,12 +45,41 @@ Two branches no single capture can hold at once, so they are built inline in
 `tests/tmdb-mirror.test.ts` from `showPayload` rather than kept as files: a show TMDB has
 a TVDB id but no IMDb id for, and a show it has neither for.
 
+## The `/find` fixtures
+
+`find-tvdb-show.json`, `find-tvdb-ambiguous.json`, `find-none.json` and `find-imdb-film.json` back
+`tests/tmdb-reconcile.test.ts` — the decision one 404'd title reaches (issue #116). Like the
+live-facts files below, **these are hand-built to TMDB's documented response shape** for
+`/find/{external_id}?external_source=`, not live captures; no TMDB key is reachable from this
+environment. Replace them with live captures the same way.
+
+The four branches they hold, which is the whole decision:
+
+- **`find-tvdb-show.json`** — exactly one surviving show, so the title is repointed.
+- **`find-tvdb-ambiguous.json`** — two shows under one TVDB id, which is what an unresolved TMDB
+  duplicate looks like. Never a pick.
+- **`find-none.json`** — all five lists empty. The id is gone from TMDB and from the catalogue it
+  borrowed, and there is nothing to reconcile to.
+- **`find-imdb-film.json`** — the film half, read out of `movie_results`. Its TMDB id and IMDb id
+  match `movie-details.json` above, so the two fixtures describe one title.
+
+**Keep the results whole, and keep the lists that are not titles.** Two properties depend on it,
+and both are assertions in the test file rather than claims:
+
+- The kept `tv_results` entry carries `name`, `original_name`, `first_air_date`, `overview`,
+  `poster_path`, `popularity` and `vote_average`. **Name-and-year search is the one thing this path
+  may never do**, and `tmdb/reconcile.ts` declines to even *declare* those fields — a fixture with
+  them trimmed out could not show that the decision ignores what it was handed.
+- `find-tvdb-show.json` also carries a `person_results` entry and a `tv_episode_results` entry, each
+  with an id of its own. A person, an episode and a season are not titles, and a decision that
+  counted them would find three survivors where TMDB published one.
+
 ## The live-facts fixtures
 
 `movie-credits.json`, `tv-credits.json`, `movie-watch-providers.json` and
 `tv-watch-providers.json` back `tests/tmdb-live-facts.test.ts` — the mapping in
 `tmdb/live-facts.ts` for the fields ADR-0001 fetches live and never stores. Unlike the
-four above, **these are hand-built to TMDB's documented response shape** for
+four mirror captures at the top of this file, **these are hand-built to TMDB's documented response shape** for
 `/movie/{id}/credits`, `/tv/{id}/credits` and `/movie|tv/{id}/watch/providers`, not a live
 capture — no TMDB key is reachable from this environment. They deliberately carry the
 same awkward cases the mapping has to survive: a cast or crew member missing a name, an

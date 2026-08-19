@@ -5,12 +5,21 @@ SQL. Read the generated file before committing it — that is the point of gener
 rather than pushing a schema diff. Editing it by hand is expected; drizzle-kit hashes
 each file when it is *applied*, not when it is written.
 
-Two files, in one history, from one tool, in one order:
+One history, from one tool, in one order:
 
 | File | What it brings |
 | --- | --- |
 | `0000_better_auth_tables.sql` | Better Auth's five — `user`, `session`, `account`, `verification`, `rate_limit` (#42) |
 | `0001_mediasafe_tables_and_views.sql` | MediaSafe's six, and the three derived-state views (build step 2, #54) |
+| `0002_library-entry-remaining-view.sql` | `library_entry_remaining`, the fourth view (#57) |
+| `0003_user-import-offer-answered-at.sql` | `user.import_offer_answered_at` |
+| `0004_title-external-id.sql` | `title.external_id` — one external id per title (#114) |
+| `0005_title-reconciliation.sql` | `title_reconciliation`, the record of a repointed title (#116) |
+
+**Name the file after what it brings.** drizzle-kit generates a random tag —
+`0005_noisy_maddog` — and the file is renamed, along with its `tag` in `meta/_journal.json`,
+before it is committed. The journal is what the migrator reads; renaming one without the other
+is a migration that is never applied.
 
 ## The hand-edit in 0001, and why hand-edits are normal here
 

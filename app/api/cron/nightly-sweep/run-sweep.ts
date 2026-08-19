@@ -8,6 +8,9 @@ import {
   type SweepCandidate,
 } from "@/db/access";
 import { isUnresolvedTitle, type TitleKind, type TitleMirror } from "@/tmdb/mirror";
+import type { QuarantineReason } from "@/tmdb/reconcile";
+
+import { reconcileVanishedTitle, type FindByExternalId } from "./reconcile-title";
 
 /**
  * The nightly sweep itself (issue #115) — everything but the HTTP wrapper and the real
@@ -30,6 +33,33 @@ export interface SweepFailure {
 }
 
 /**
+ * One title whose TMDB id is gone and which MediaSafe declined to write anything about
+ * (issue #116, `tmdb/reconcile.ts`).
+ *
+ * **Not a `SweepFailure`, and the distinction is the ticket.** A failure is *MediaSafe
+ * could not do this* — TMDB timed out, the database was down — and it is an exception
+ * with a stack trace. A quarantine is *MediaSafe looked and declined to guess*: nothing
+ * is broken, nothing is retried differently, and there is no exception because nothing
+ * threw. Both are reported and both leave `metadata_refreshed_at` alone; only one of them
+ * means something is wrong.
+ */
+export interface SweepQuarantine {
+  readonly candidate: SweepCandidate;
+  readonly reason: QuarantineReason;
+}
+
+/**
+ * One title repointed at the id that survived (issue #116).
+ *
+ * The evidencing external id is not repeated here — it is `candidate.externalId`, and a
+ * repoint cannot happen without one. `title_reconciliation` is where it is written down.
+ */
+export interface SweepRepoint {
+  readonly candidate: SweepCandidate;
+  readonly toTmdbId: number;
+}
+
+/**
  * What one run did — the whole of what Sentry, and nothing else, ever hears (`SPEC.md`
  * §6: no badge, no "last refreshed" line, nothing in Settings).
  */
@@ -37,6 +67,10 @@ export interface NightlySweepOutcome {
   readonly candidates: number;
   readonly refreshed: number;
   readonly failures: readonly SweepFailure[];
+  /** Titles whose TMDB id is gone and which were repointed at the id that survived. */
+  readonly repointed: readonly SweepRepoint[];
+  /** Titles whose TMDB id is gone and which were left exactly as they were found. */
+  readonly quarantined: readonly SweepQuarantine[];
 }
 
 /**
@@ -58,9 +92,24 @@ export interface NightlySweepOutcome {
  * `executor` straight through, undefined by default, is what lets `tests/nightly-
  * sweep.test.ts` run a whole sweep inside one `inTransaction` and roll it back — every
  * write in `db/access.ts` takes the same shape, for the same reason.
+ *
+ * ── A 404 is a question, not a failure (issue #116) ──────────────────────────────────
+ *
+ * TMDB answering 404 for a title means the id is **gone** — deleted, or merged into
+ * another — and that is the one failure this loop does not simply record and move past.
+ * `reconcileVanishedTitle` asks the only question there is evidence for: what does this
+ * title's stored external id still resolve to. It answers with a repoint or a
+ * quarantine, and either way the run continues with the other titles.
+ *
+ * The reconciliation is inside the same `try`, so a `/find` that times out or a database
+ * that is down still lands in `failures` and is still retried tomorrow. **A 404 raised by
+ * the reconciliation itself is not re-reconciled**: `reconcileVanishedTitle` is called
+ * from the outer `catch` only, so the survivor 404ing too is an ordinary failure and
+ * there is no second attempt to recurse into.
  */
 export async function runNightlySweep(
   fetchMirror: FetchMirror,
+  findByExternalId: FindByExternalId,
   cap: number = NIGHTLY_SWEEP_CAP,
   executor?: Executor,
 ): Promise<NightlySweepOutcome> {
@@ -68,6 +117,8 @@ export async function runNightlySweep(
 
   let refreshed = 0;
   const failures: SweepFailure[] = [];
+  const repointed: SweepRepoint[] = [];
+  const quarantined: SweepQuarantine[] = [];
 
   for (const candidate of candidates) {
     try {
@@ -75,14 +126,46 @@ export async function runNightlySweep(
       await refreshTitleMirror(mirror, executor);
       refreshed++;
     } catch (error) {
-      // Not manufactured `[]` — a failure recorded here, never a result standing in for
-      // one. Nothing is silently dropped: `reportToSentry` below is what makes this run's
-      // failures visible at all, and it reads this array rather than a count.
-      failures.push({ candidate, error });
+      if (!isUnresolvedTitle(error)) {
+        // Not manufactured `[]` — a failure recorded here, never a result standing in for
+        // one. Nothing is silently dropped: `reportToSentry` below is what makes this
+        // run's failures visible at all, and it reads this array rather than a count.
+        failures.push({ candidate, error });
+        continue;
+      }
+
+      try {
+        const decision = await reconcileVanishedTitle(
+          candidate,
+          fetchMirror,
+          findByExternalId,
+          executor,
+        );
+        if (decision.outcome === "repoint") {
+          repointed.push({ candidate, toTmdbId: decision.toTmdbId });
+          // A repoint wrote the survivor's mirror in the same transaction, so this title
+          // *was* refreshed — counting it is what keeps the summary line honest about
+          // how many of the night's titles now carry fresh metadata.
+          refreshed++;
+        } else {
+          quarantined.push({ candidate, reason: decision.reason });
+        }
+      } catch (reconcileError) {
+        // The reconciliation itself could not be carried out — `/find` was unreachable,
+        // the survivor would not fetch, the write failed. An ordinary failure, retried on
+        // the next run, and never a partial write: `repointTitle` is one transaction.
+        failures.push({ candidate, error: reconcileError });
+      }
     }
   }
 
-  const outcome: NightlySweepOutcome = { candidates: candidates.length, refreshed, failures };
+  const outcome: NightlySweepOutcome = {
+    candidates: candidates.length,
+    refreshed,
+    failures,
+    repointed,
+    quarantined,
+  };
   reportToSentry(outcome);
   return outcome;
 }
@@ -94,8 +177,28 @@ export async function runNightlySweep(
  * silence. `Sentry.getClient()?.getDsn()` is not checked here the way `errors/reference.ts`
  * checks it: that guard exists so a reader is never shown an id that resolves to nothing,
  * and nothing here is ever shown to a reader. With no DSN the SDK already drops the event.
+ *
+ * ── Quarantines and repoints, and why Sentry hears about both (issue #116) ───────────
+ *
+ * **A quarantine is a message, not an exception.** Nothing threw, nothing is broken, and
+ * there is no stack to attach — a `captureException` here would put a manufactured error
+ * in front of whoever reads these, which is the same lie in the other direction as a
+ * `catch` returning `[]`. It is a warning because it is the state that persists: the
+ * title is skipped again every night until TMDB resolves the duplicate or the sweep fills
+ * the external id in.
+ *
+ * **A repoint is reported too, at `info`.** It is the successful outcome, and it is still
+ * the one write in this application that changes what a title *is* for every account at
+ * once, with nobody watching. `title_reconciliation` is the record you can reverse it
+ * from; this is the line that tells you to go and look.
  */
-function reportToSentry({ candidates, refreshed, failures }: NightlySweepOutcome): void {
+function reportToSentry({
+  candidates,
+  refreshed,
+  failures,
+  repointed,
+  quarantined,
+}: NightlySweepOutcome): void {
   for (const failure of failures) {
     Sentry.captureException(failure.error, {
       tags: {
@@ -108,8 +211,43 @@ function reportToSentry({ candidates, refreshed, failures }: NightlySweepOutcome
     });
   }
 
+  for (const { candidate, reason } of quarantined) {
+    Sentry.captureMessage(
+      `Nightly sweep: TMDB ${candidate.kind} ${candidate.tmdbId} is gone and was not reconciled (${reason})`,
+      {
+        level: "warning",
+        tags: {
+          surface: "nightly-sweep",
+          quarantine: reason,
+          titleId: candidate.id,
+          kind: candidate.kind,
+          tmdbId: String(candidate.tmdbId),
+        },
+      },
+    );
+  }
+
+  for (const { candidate, toTmdbId } of repointed) {
+    Sentry.captureMessage(
+      `Nightly sweep: TMDB ${candidate.kind} ${candidate.tmdbId} is gone; repointed to ${toTmdbId}`,
+      {
+        level: "info",
+        tags: {
+          surface: "nightly-sweep",
+          repoint: String(toTmdbId),
+          titleId: candidate.id,
+          kind: candidate.kind,
+          tmdbId: String(candidate.tmdbId),
+        },
+      },
+    );
+  }
+
   Sentry.captureMessage(
-    `Nightly sweep: ${refreshed} of ${candidates} refreshed, ${failures.length} skipped`,
-    { level: failures.length > 0 ? "warning" : "info", tags: { surface: "nightly-sweep" } },
+    `Nightly sweep: ${refreshed} of ${candidates} refreshed, ${failures.length} skipped, ${repointed.length} repointed, ${quarantined.length} quarantined`,
+    {
+      level: failures.length > 0 || quarantined.length > 0 ? "warning" : "info",
+      tags: { surface: "nightly-sweep" },
+    },
   );
 }

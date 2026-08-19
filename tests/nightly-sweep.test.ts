@@ -11,6 +11,7 @@ import type { Transaction } from "@/db/client";
 import { episode, title } from "@/db/schema";
 import type { TitleKind, TitleMirror } from "@/tmdb/mirror";
 import { runNightlySweep, type FetchMirror } from "@/app/api/cron/nightly-sweep/run-sweep";
+import type { FindByExternalId } from "@/app/api/cron/nightly-sweep/reconcile-title";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
@@ -67,7 +68,10 @@ async function seedTitle(tx: Transaction, seed: TitleSeed = {}): Promise<SweepCa
       metadataRefreshedAt: seed.metadataRefreshedAt ?? new Date(),
     })
     .returning({ id: title.id, kind: title.kind, tmdbId: title.tmdbId });
-  return { id: row.id, kind: row.kind as TitleKind, tmdbId: row.tmdbId };
+  // `external_id` is `null` on every title seeded here: nothing in this file reaches the
+  // 404 path, which is the only thing that reads it. `tests/title-reconciliation.test.ts`
+  // (#116) is where it is seeded and where that path is exercised.
+  return { id: row.id, kind: row.kind as TitleKind, tmdbId: row.tmdbId, externalId: null };
 }
 
 async function seedEpisode(tx: Transaction, titleId: string, airDate: string): Promise<void> {
@@ -259,6 +263,17 @@ describe("refreshTitleMirror", () => {
     }));
 });
 
+/**
+ * The `/find` lookup the 404 path makes — and a throw, because no test in this file
+ * reaches that path. Every failure seeded here is a `500` or an unreachable TMDB, which
+ * is *MediaSafe could not do this* and not *the id is gone*. The 404 path is issue #116's
+ * and lives in `tests/title-reconciliation.test.ts`; this stub is what makes a test that
+ * wandered into it fail by name rather than quietly reconciling against nothing.
+ */
+const neverLookedUp: FindByExternalId = () => {
+  throw new Error("findByExternalId must not be reached: no test here 404s");
+};
+
 describe("runNightlySweep", () => {
   it("keeps refreshing titles after one of them fails", () =>
     inTransaction(async (tx) => {
@@ -271,7 +286,7 @@ describe("runNightlySweep", () => {
         return mirrorFor(kind, tmdbId);
       };
 
-      const outcome = await runNightlySweep(fetchMirror, 10, tx);
+      const outcome = await runNightlySweep(fetchMirror, neverLookedUp, 10, tx);
 
       expect(outcome.candidates).toBe(3);
       expect(outcome.refreshed).toBe(2);
@@ -294,7 +309,7 @@ describe("runNightlySweep", () => {
         throw new Error("TMDB answered 500 for /tv/1");
       };
 
-      await runNightlySweep(fetchMirror, 10, tx);
+      await runNightlySweep(fetchMirror, neverLookedUp, 10, tx);
 
       const after = await metadataRefreshedAtOf(tx, broken.id);
       expect(after.getTime()).toBe(brokenRefreshedAt.getTime());
