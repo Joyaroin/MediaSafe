@@ -129,7 +129,8 @@ describe("the zone a new account is actually created with", () => {
     );
 
     // The whole point. If Better Auth ever stops honouring the hook's return value for
-    // an `input: false` field, this is the line that says so.
+    // this field — regardless of `input`, which issue #126 flips to `true` so Settings'
+    // control can reach it after signup — this is the line that says so.
     expect(stored).toBe("Europe/London");
   });
 
@@ -150,8 +151,12 @@ describe("the zone a new account is actually created with", () => {
 
   it("asked nobody anything to get there", () => {
     // The other half of the acceptance criterion — *without asking*. There is no
-    // endpoint, no prompt and no field: the zone is set by a hook on a request the
-    // reader never sees, and the only way to change it is build step 7's control.
-    expect(authOptions.user.additionalFields.timezone.input).toBe(false);
+    // endpoint, no prompt and no field at signup: every account above was created
+    // from a cookie header and nothing else, and the OAuth callback that creates it
+    // carries no body a reader could have filled in either way. `input` flipping to
+    // `true` (issue #126) is what lets *build step 7's control* — Settings, after
+    // signup — reach this field through `authClient.updateUser`; it does not open a
+    // second door at signup, because signup never reads a body for this field at all.
+    expect(authOptions.user.additionalFields.timezone.input).toBe(true);
   });
 });

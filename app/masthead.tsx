@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { currentDisplayName } from "@/lib/session";
 import { NavCells } from "./nav-cells";
 import { Wordmark } from "./press-mark";
 
@@ -17,15 +18,18 @@ import { Wordmark } from "./press-mark";
  * `backdrop-blur-[2px]`, `border-b border-rule`, and cells divided by `1px` borders
  * rather than by gaps.
  *
- * ── What it deliberately does not carry ──────────────────────────────────────────────
+ * ── The display name ─────────────────────────────────────────────────────────────────
  *
- * `SPEC.md` §9: *ship none of these, and **reserve no space for them** — no empty rails,
- * no placeholder tabs, no "coming soon".* One thing is therefore absent, because the
- * control that would set it does not exist:
+ * `DESIGN.md`'s Phone section: *it also carries the display name as an inert `code-line`
+ * on both devices — never an avatar, and never an entrance.* Settings' Profile section
+ * (issue #123) is the control that sets `user.name`; this is where it is read. `truncate`
+ * with a capped width is the guard against the acceptance criterion that a name at the
+ * full 24 characters must not break the masthead at any width — cut off with an ellipsis
+ * is not "broken", a header stretched wide or wrapped to a second line is.
  *
- *  - **No display name.** It is inert text set from `user.name`, and it belongs with the
- *    control that sets it — build step 7 (#28). Rendering it now would mean rendering a
- *    name nobody can change.
+ * `currentDisplayName()` returns `null` only when a page under `(signed-in)/` has itself
+ * forgotten to call `requireUserId()` — the masthead renders nothing in that case rather
+ * than an empty bordered cell, which `SPEC.md` §9 would otherwise call reserved space.
  *
  * ── The two nav cells, behind `lg:` ───────────────────────────────────────────────────
  *
@@ -46,7 +50,9 @@ import { Wordmark } from "./press-mark";
  * The label is hidden below `lg`, as the prototype has it — the icon carries it on a
  * phone, and `aria-label` carries it for anyone not looking at either.
  */
-export function Masthead() {
+export async function Masthead() {
+  const displayName = await currentDisplayName();
+
   return (
     <header className="sticky top-0 z-30 flex items-stretch justify-between border-b border-rule bg-ink/95 backdrop-blur-[2px]">
       <div className="flex items-stretch">
@@ -73,6 +79,17 @@ export function Masthead() {
       </div>
 
       <div className="flex items-stretch">
+        {displayName === null ? null : (
+          // Inert — a `span`, not a `Link` or a `button`. `DESIGN.md`, Phone: *never an
+          // entrance*. `truncate` plus the capped width keep a full 24-character name
+          // from ever stretching or wrapping this header, at any viewport.
+          <div className="flex min-w-0 items-center border-l border-rule px-4 lg:px-5">
+            <span className="code-line block max-w-[9rem] truncate text-stock-dim lg:max-w-[16rem]">
+              {displayName}
+            </span>
+          </div>
+        )}
+
         <Link
           href="/settings"
           aria-label="Settings"

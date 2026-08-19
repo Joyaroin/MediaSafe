@@ -1,16 +1,21 @@
 import Link from "next/link";
 
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { requireUserId } from "@/lib/session";
+import { requireDisplayName, requireTimezone, requireUserId } from "@/lib/session";
+import { DisplayNameControl } from "./display-name-control";
 import { SignOutButton } from "./sign-out-button";
+import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
+import { TimezoneControl } from "./timezone-control";
 
 /**
- * Settings, with **two of three sections genuinely finished**.
+ * Settings, with **all three sections now real**.
  *
- * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). This
- * ships Data and Account; Data ships with the one thing it names, *Import a library ›*
- * (issue #75), and Account ships with sign-out. Neither is a stub and neither is reserved
- * space: both are complete as far as their own build step goes.
+ * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). Profile
+ * carries the display name (issue #123) and, now, the timezone control (issue #126) that
+ * same table row named from the start. Data ships with *Import a library ›* (issue #75),
+ * and Account ships with sign-out, sign-out other devices (issue #124) and the way out
+ * altogether (issue #125). None of the three is a stub: each is complete as far as its own
+ * build step goes — and with #125 the whole of `SPEC.md` §7's table is on the page.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -35,13 +40,13 @@ import { SignOutButton } from "./sign-out-button";
  * a real one — the three counts, the word to type, the sentence about Google — is on the
  * page itself, where a reader who arrived by URL sees it too.
  *
- * ── What is not here ─────────────────────────────────────────────────────────────────
+ * ── There is no longer a *what is not here* ──────────────────────────────────────────
  *
- * *Sign out other devices* is the last third of the Account section, and it is the rest of
- * build step 7 (`SPEC.md` §8). Profile — the display name and the timezone control — is
- * step 7 too. Neither appears here as a heading with nothing under it: `SPEC.md` §9
- * forbids reserving the space, and a section that announces what it will one day contain
- * is exactly that.
+ * Every earlier version of this docblock carried one, and issue #125 is what empties it:
+ * *Delete account* was the remaining third of the Account section and the last thing
+ * `SPEC.md` §8's build step 7 names. Nothing here is a heading with nothing under it,
+ * which `SPEC.md` §9 forbids — not because the rule was obeyed carefully, but because
+ * there is nothing left to reserve space for.
  */
 
 /**
@@ -70,20 +75,36 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   /**
-   * The gate, and the only line on this page that decides anything. A reader with no
-   * session is sent to sign-in from here rather than shown an empty Settings — see
-   * `lib/session.ts` on why that is a redirect and not a thrown read failure.
+   * The gate, and a reader with no session is sent to sign-in from here rather than
+   * shown an empty Settings — see `lib/session.ts` on why that is a redirect and not a
+   * thrown read failure.
    *
-   * The id is deliberately not used yet. Nothing on this page reads a row: the display
-   * name is step 7 and the timezone control is step 7. Calling this anyway is what makes
-   * the route protected today, and `tests/route-manifest.test.ts` is what proves it stays
+   * The id itself is still unused: nothing on this page reads a database row, the
+   * display name and timezone included — `requireDisplayName()` and `requireTimezone()`
+   * below both read straight off the session Better Auth already resolved, the same
+   * shape `requireImportOfferAnswered()` takes elsewhere. Calling this is what makes the
+   * route protected today, and `tests/route-manifest.test.ts` is what proves it stays
    * that way.
    */
   await requireUserId();
+  const name = await requireDisplayName();
+  const timezone = await requireTimezone();
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
       <h1 className="bill-title text-bill-lg text-stock">Settings</h1>
+
+      <section aria-labelledby="profile-h" className="mt-12 border-t border-rule pt-6">
+        <h2 id="profile-h" className="code-line text-stock-dim">
+          Profile
+        </h2>
+
+        <div className="mt-6">
+          <DisplayNameControl name={name} />
+        </div>
+
+        <TimezoneControl timezone={timezone} />
+      </section>
 
       <section aria-labelledby="data-h" className="mt-12 border-t border-rule pt-6">
         <h2 id="data-h" className="code-line text-stock-dim">
@@ -117,6 +138,15 @@ export default async function SettingsPage() {
           <SignOutButton />
         </div>
 
+        <p className="mt-8 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+          Ends every other session signed in as you — a phone sold, lost or lent, or a
+          browser you signed into somewhere else. This device stays signed in.
+        </p>
+
+        <div className="mt-6">
+          <SignOutOtherDevicesButton />
+        </div>
+
         {/*
           The door out (issue #125). A link and not a control: `SPEC.md` §7 puts account
           deletion on **its own page, not a dialog**, so the thing that belongs in this
@@ -124,10 +154,10 @@ export default async function SettingsPage() {
           following it — the page states what would be, in real numbers, and refuses to do
           anything until the reader types the word.
 
-          Set apart from sign-out by its own rule rather than by colour. Vermilion here
-          would be the section shouting before the reader has asked it anything, and
-          `DESIGN.md` keeps `signal` for a live state or a recorded mark; the page it leads
-          to is where that ink belongs.
+          Set apart from the two sign-outs above by its own rule rather than by colour.
+          Vermilion here would be the section shouting before the reader has asked it
+          anything, and `DESIGN.md` keeps `signal` for a live state or a recorded mark; the
+          page it leads to is where that ink belongs.
         */}
         <div className="mt-8 border-t border-rule pt-6">
           <p className="max-w-[60ch] text-note leading-relaxed text-stock-dim">
