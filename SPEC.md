@@ -612,11 +612,12 @@ document will ever find, which is the drift this section exists to stop.
   sideways. Measured in #56, not inferred. The cell, the plate's measure and the type step are
   unchanged — **only the column count moves**, which is what §7 says is allowed to. Ladder:
   **1 · 2 at `≥640px` · 3 at `≥1280px` · 4 at `≥1536px`**.
-- **The masthead's two nav cells are rendered at every width, where `DESIGN.md` hides them below
-  `lg`.** They are hidden there because the phone reaches Library and Search through its tab bar,
-  and the tab bar needs *Up next*, which is build step 5. Until it exists, hiding the cells would
-  leave a phone with no way to reach either screen. **This is temporary**: the same diff that builds
-  the tab bar puts them behind `lg:`.
+- **The masthead's two nav cells were rendered at every width, where `DESIGN.md` hides them below
+  `lg`.** They were hidden there because the phone reached Library and Search through its tab bar,
+  and the tab bar needed *Up next*, which was build step 5. Until it existed, hiding the cells
+  would have left a phone with no way to reach either screen. **Closed by #102**: the tab bar and
+  the landing redirect (phone on Up next, desktop on Library) now exist, and the cells go behind
+  `lg:` in the same diff that builds the bar, exactly as this bullet said would happen.
 
 ### 10.4 `PRODUCT.md` — historical, and stale in eight places
 

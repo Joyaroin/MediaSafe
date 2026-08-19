@@ -20,20 +20,22 @@ import { Wordmark } from "./press-mark";
  * ── What it deliberately does not carry ──────────────────────────────────────────────
  *
  * `SPEC.md` §9: *ship none of these, and **reserve no space for them** — no empty rails,
- * no placeholder tabs, no "coming soon".* Two things are therefore absent, each because
- * the thing it would point at does not exist:
+ * no placeholder tabs, no "coming soon".* One thing is therefore absent, because the
+ * control that would set it does not exist:
  *
- *  - **No phone tab bar.** Its three tabs are Up next, Search and Library, and *Up next*
- *    is build step 5. Two of three is not a tab bar.
- *
- * That absence is why the two nav cells are **rendered at every width**, where `DESIGN.md`
- * hides them below `lg`. It hides them because the phone reaches those two through its tab
- * bar; until that bar exists, hiding them would leave a phone with no way to reach either
- * screen at all. They go behind `lg:` in the same diff that builds the tab bar, and
- * `SPEC.md` §10.3 records the deviation in the meantime.
  *  - **No display name.** It is inert text set from `user.name`, and it belongs with the
  *    control that sets it — build step 7 (#28). Rendering it now would mean rendering a
  *    name nobody can change.
+ *
+ * ── The two nav cells, behind `lg:` ───────────────────────────────────────────────────
+ *
+ * `DESIGN.md`'s Phone section hides *Library* and *Search* below `lg`, because the phone
+ * reaches both through its tab bar (`tab-bar.tsx`, issue #102). They used to render at
+ * every width instead — `SPEC.md` §10.3 recorded that as a temporary deviation, taken only
+ * because the tab bar did not exist yet and a phone with no tab bar and no nav cells could
+ * reach neither screen at all. The tab bar exists now, so that deviation is closed: the
+ * cells go behind `lg:` in this diff, the same one that built the bar, exactly as §10.3
+ * said would happen.
  *
  * ── The Settings entrance ────────────────────────────────────────────────────────────
  *
@@ -61,8 +63,13 @@ export function Masthead() {
             empty space because it looks like it works* — and issue #56 built the route
             *Library* points at. The inverted state arrived with it for the reason that
             note also gave: with one cell there was nothing to be current against.
-            `nav-cells.tsx` holds both, because knowing which is current needs the path. */}
-        <NavCells />
+            `nav-cells.tsx` holds both, because knowing which is current needs the path.
+
+            Hidden below `lg` — see the docblock above. The phone reaches both through
+            `tab-bar.tsx` instead. */}
+        <div className="hidden items-stretch lg:flex">
+          <NavCells />
+        </div>
       </div>
 
       <div className="flex items-stretch">

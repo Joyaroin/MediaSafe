@@ -1,7 +1,9 @@
 import { Masthead } from "../masthead";
+import { TabBar } from "../tab-bar";
 
 /**
- * The signed-in shell: the masthead, and the container everything else sits in.
+ * The signed-in shell: the masthead, the tab bar, and the container everything else sits
+ * in.
  *
  * `DESIGN.md`, Layout: *one centred column capped at `1800px`, running full-height as a
  * flex column* — the same wrapper the prototype opens with, and the reason the masthead's
@@ -18,14 +20,22 @@ import { Masthead } from "../masthead";
  * The route group `(signed-in)` adds no path segment. `/settings` is `/settings`; the
  * parentheses only say which routes wear this shell — which is why the sign-in route,
  * outside the group, has no masthead.
+ *
+ * ── The bottom padding belongs here, not to each page ────────────────────────────────
+ *
+ * `TabBar` is `position: fixed`, so it is not in flow and every phone page beneath it
+ * needs its height back as clearance or the bar covers the last real thing on the
+ * screen — every page in this group shares this shell, so this is the one place that
+ * clearance has to be written rather than one paste per page.
  */
 export default function SignedInLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[49px] lg:pb-0">
       <Masthead />
       {children}
+      <TabBar />
     </div>
   );
 }

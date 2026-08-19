@@ -5,10 +5,8 @@ import { UpNextHeading } from "./up-next-heading";
 import { UpNextSurface } from "./up-next-surface";
 
 /**
- * The phone's landing screen — issue #101, `SPEC.md` §8 step 5. Reachable at its own
- * route and not yet the landing screen or a tab: the tab bar and the redirect that make
- * it one are #102's, so this merges without touching `app/nav-cells.tsx` or the
- * masthead's temporary nav cells.
+ * The phone's landing screen — built at its own route by issue #101, made the landing
+ * screen and a tab by #102 (`app/tab-bar.tsx`, `app/page.tsx`).
  *
  * `listUpNext` is #98's one definition of what is next, read directly and unguarded —
  * the same shape `app/(signed-in)/library/page.tsx` and the phone title-detail route use.
