@@ -666,10 +666,28 @@ Rows are divided by hairlines.
 
 ### Rating Scale
 
-Five square cells, `1px` gaps over `rule`, `0.5rem 0.875rem` padding, tabular numerals, label
-typography. Unselected is `ink` + dim bone; the chosen value is solid `signal` with `ink` text
-(`aria-pressed="true"`); hover previews the same inversion. It appears in the programme note and
-nowhere else.
+**Ten** square cells, numbered 1–10, `1px` gaps over `rule`, `0.5rem` vertical padding, tabular
+numerals, label typography. Unselected is `ink` + dim bone; the chosen value is solid `signal` with
+`ink` text (`aria-pressed="true"`); hover previews the same inversion. It appears on title detail —
+the programme note on desktop, the phone route — and nowhere else.
+
+**This section said *five* until issue #113, and that was a defect rather than a decision.**
+ADR-0001 settled `CHECK (rating BETWEEN 1 AND 10)` and named *"a rating is a whole number 1–10"* as
+a binding consequence for the design tickets; #12 built five anyway, and no ticket ever chose a
+five-point scale. `SPEC.md` §10.3 records the divergence and rules for the schema. The prototype
+(`docs/design/prototypes/repertory-bill.html`) still draws five and is not the authority here.
+
+**The cells take their width from the row, not from a digit.** The prototype's `0.875rem` horizontal
+padding is the one thing ten cells could not keep: ten of them come to roughly 365px, which fits the
+420px panel's content and not the phone route's, and `10` is two digits, so under fixed padding the
+last cell would be visibly wider than the other nine. Every cell is `flex-1` instead — ten identical
+cells filling whatever width they are given, so the same markup fits both routes and `10` is no
+wider than `1`. `SPEC.md` §10.3 called tightening the padding a build-time call; this is that call,
+and the treatment is otherwise unchanged.
+
+Nothing reads a rating: there is no *Unrated* chip, no sort by rating, no rating on the tile, and no
+prompt anywhere asking for one. An unrated title renders ten unselected cells and says nothing else
+about it.
 
 ### States (empty, zero-match, read failure, write failure, offline)
 

@@ -3,6 +3,7 @@ import { Plate } from "@/app/plate";
 import { AbandonControl } from "./abandon-control";
 import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
+import { RatingControl } from "./rating-control";
 import { STATE_LABELS } from "./library-state";
 
 /**
@@ -26,17 +27,31 @@ import { STATE_LABELS } from "./library-state";
  * component is never remounted on a title switch, so a write still in flight when the
  * caller moves on to a different entry must not patch the one now on screen.
  *
+ * ── `onRated`, the second patch of the same kind ─────────────────────────────────────
+ *
+ * `RatingControl` (issue #113) reports a landed rating the way the two writes above
+ * report a landed state, and for the same reason: this component is handed its title, it
+ * does not own it, so the copy that has to change lives in the caller. It is a separate
+ * prop rather than a widening of `onStateChange` because a rating is not a state — the
+ * five states are derived and a rating is stored, and one callback carrying both would
+ * be the first place in this codebase to blur that.
+ *
+ * The rating is on title detail and nowhere else — `SPEC.md` §7 — which is why this
+ * component is the only one in the repository that imports `RatingControl`, and why the
+ * grid's read does not carry a rating for a tile to accidentally draw.
+ *
  * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
  * this component, outside this component's own scroll, which is a layout decision
- * belonging to the caller (`app/tmdb-attribution.tsx`'s own docblock says why). No rating
- * control either — build step 6, and issue #58 reserves no space for it.
+ * belonging to the caller (`app/tmdb-attribution.tsx`'s own docblock says why).
  */
 export function ProgrammeNoteContent({
   detail,
   onStateChange,
+  onRated,
 }: {
   detail: TitleDetailRow;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
+  onRated: (libraryEntryId: string, rating: number) => void;
 }) {
   const state = STATE_LABELS[detail.state];
   const meta = metaLine(detail);
@@ -56,6 +71,16 @@ export function ProgrammeNoteContent({
       <p className={`code-line mt-4 ${state.className}`}>{state.label}</p>
 
       <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} />
+
+      {/* Where the prototype puts it: below the borrowed facts, above the abandon row,
+          and identical for a film and a show — a rating is a fact about the title, and
+          nothing about it asks whether the title has episodes. */}
+      <RatingControl
+        libraryEntryId={detail.libraryEntryId}
+        titleName={detail.name}
+        rating={detail.rating}
+        onRated={onRated}
+      />
 
       <ProgrammeNoteEpisodes
         kind={detail.kind}
