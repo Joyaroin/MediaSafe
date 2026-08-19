@@ -1,4 +1,5 @@
-import { headers } from "next/headers";
+import { getCookies } from "better-auth/cookies";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { asUserId, type UserId } from "@/db/access";
@@ -7,11 +8,22 @@ import { asUserId, type UserId } from "@/db/access";
  * the one place a session becomes a user id, so it is the one place that needs the
  * instance to ask. `eslint.config.mjs` keeps `**\/lib/auth` restricted even inside `lib/`
  * so that this stays a line with a reason beside it rather than an open door.
+ *
+ * `authOptions` comes through the same door and for the same reason: it is the object the
+ * cookie name is derived from, and deriving it anywhere else would be a second copy of the
+ * secure-prefix rule. See `clearSessionCookie`.
  */
-import { getAuth } from "@/lib/auth";
+import { authOptions, getAuth } from "@/lib/auth";
 
 /**
- * The one boundary where a session becomes a user id.
+ * The one boundary where a session becomes a user id — **and the one place a session is
+ * ended by something other than Better Auth's own sign-out endpoint.**
+ *
+ * Those are one responsibility rather than two, and the second was added deliberately
+ * (issue #125, `clearSessionCookie`): a module that owns *is there a session, and whose* is
+ * the module that owns *there is no longer one*. Splitting them would put half the answer
+ * in a file that cannot see the other half, and the alternative home — `lib/session-cookie.ts`
+ * — is ruled out by that file's own reason for existing, which `clearSessionCookie` sets out.
  *
  * Everything downstream of here — every function in `db/access.ts`, every server action,
  * every route handler — takes the user id as an argument. This module is the only place
@@ -139,6 +151,79 @@ export async function requireTimezone(): Promise<string> {
 export async function currentDisplayName(): Promise<string | null> {
   const session = await currentSession();
   return session?.user.name ?? null;
+}
+
+/**
+ * Drop this browser's session cookie — the tidy-up after an account has been deleted, and
+ * the only caller is `app/(signed-in)/settings/delete-account/actions.ts` (issue #125).
+ *
+ * ── Why this is not a sign-out ───────────────────────────────────────────────────────
+ *
+ * Sign-out revokes: `authClient.signOut()` posts to Better Auth, which deletes the session
+ * row and clears the cookie. By the time this runs there is no row to delete — the account
+ * is gone and `session.user_id` cascaded with it — so the revocation has already happened,
+ * more completely than a sign-out could manage. What is left is a string in the browser
+ * pointing at nothing.
+ *
+ * That string is harmless: `lib/session.ts` queries the session table on every call, and a
+ * token whose row is gone resolves to nobody, so every protected page redirects to
+ * sign-in. Clearing it anyway is the difference between *signed out* and *signed out, and
+ * the browser has stopped claiming otherwise* — and on the one screen that promises to
+ * remove everything, leaving a live-looking credential behind would be the promise not
+ * quite meaning what it says.
+ *
+ * ── Why the deletion runs first and this second ──────────────────────────────────────
+ *
+ * The other order — sign out, then delete — was rejected. A delete that then failed would
+ * leave the reader signed out of an account that still exists, on a page whose *nothing was
+ * destroyed* message they can no longer act on. This way the irreversible statement goes
+ * first and this cannot fail in a way that matters: a cookie that outlives the account it
+ * named authenticates nothing.
+ *
+ * ── The name is derived, never written out ───────────────────────────────────────────
+ *
+ * `getCookies(authOptions).sessionToken.name` — Better Auth's own derivation, from the
+ * same options object the instance is built from, so it is `better-auth.session_token` on
+ * `localhost` and `__Secure-better-auth.session_token` over HTTPS without this file
+ * knowing that rule. `lib/session-cookie.ts` reads the cookie through Better Auth's reader
+ * for the same reason and is the wrong home for this: it exists so that `proxy.ts` can
+ * read a header without pulling `lib/auth.ts` and the Neon driver into the module graph of
+ * every request, and importing `authOptions` there would undo exactly that.
+ */
+export async function clearSessionCookie(): Promise<void> {
+  const { name, attributes } = getCookies(authOptions).sessionToken;
+
+  /**
+   * Expired with **its own attributes**, rather than `cookies().delete(name)`.
+   *
+   * That shorter spelling is a no-op in production, and silently. Expiring a cookie is
+   * setting it again with no lifetime, so the `Set-Cookie` that removes it has to match the
+   * one that created it — and `delete(name)` writes no `Secure`. Over HTTPS the cookie is
+   * `__Secure-better-auth.session_token`, and a browser **must reject** any `__Secure-`
+   * cookie set without `Secure` (RFC 6265bis, cookie name prefixes), so the header is
+   * discarded and the original cookie stays exactly where it was.
+   *
+   * This is invisible from localhost, which is the whole reason it is written out here:
+   * `getCookies` returns the unprefixed name and `secure: false` on `http://`, so the short
+   * version passes every local test and fails only on Vercel, where nothing would say so.
+   *
+   * Both headers were read off a real build with `BETTER_AUTH_URL` set to an `https` origin,
+   * rather than reasoned about:
+   *
+   *     delete(name)  → Set-Cookie: __Secure-…=; Path=/; Expires=Thu, 01 Jan 1970 …
+   *     this          → Set-Cookie: __Secure-…=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=lax
+   *
+   * The first is the one a browser throws away.
+   *
+   * `maxAge: 0` on the spread is what expires it; `path`, `sameSite`, `httpOnly` and
+   * `secure` come from Better Auth's own derivation, so there is no second copy of any of
+   * them here to drift.
+   */
+  (await cookies()).set(name, "", {
+    ...attributes,
+    sameSite: attributes.sameSite.toLowerCase() as "lax" | "strict" | "none",
+    maxAge: 0,
+  });
 }
 
 /**

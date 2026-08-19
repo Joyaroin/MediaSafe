@@ -1361,6 +1361,131 @@ export async function markImportOfferAnswered(
 }
 
 /**
+ * What deleting this account would destroy, in the three numbers the delete-account page
+ * states — issue #125.
+ *
+ * `titles` is library entries rather than rows of `title`: the catalogue is global and
+ * unowned, and none of it is going anywhere. What the reader loses is *their* relationship
+ * with those titles, which is one `library_entry` each. `ratings` is a subset of the same
+ * rows — a rating is a column on the entry, never a table of its own — so a rated title is
+ * counted in both, and that is the truth rather than a double count: the entry is
+ * destroyed and so is the rating on it.
+ */
+export interface AccountFootprint {
+  readonly titles: number;
+  readonly watches: number;
+  readonly ratings: number;
+}
+
+/**
+ * The three numbers, read in **one statement** — which is the point of the join rather
+ * than three round trips.
+ *
+ * Three separate queries would be three snapshots, so a watch recorded on another device
+ * between the first and the third would show as a title with no watch behind it. One
+ * statement is one snapshot, and on the one screen in the product whose numbers are the
+ * whole argument for pressing the button, the three have to have been true at the same
+ * instant.
+ *
+ * ── What the join does and does not widen ────────────────────────────────────────────
+ *
+ * A left join from `library_entry` to `watch` repeats an entry once per watch, so `titles`
+ * and `ratings` count distinct entry ids and `watches` counts the joined rows. `left`, not
+ * `inner`: a title in the library that has never been watched is still a title being
+ * destroyed, and an inner join would drop it from `titles` entirely.
+ *
+ * The scope is `ownedBy` on `library_entry` alone, and that is sufficient rather than
+ * incomplete. `watch`'s foreign key is composite — `(library_entry_id, user_id, title_id)`
+ * — so a watch row joined through an entry belongs to that entry's account by
+ * construction; there is no watch this join can reach that another account owns. That is
+ * asserted rather than assumed, in `tests/delete-account.test.ts`.
+ *
+ * ── A count that cannot be read is not a zero ────────────────────────────────────────
+ *
+ * There is no `try` here and there must never be one. `SPEC.md` §3.2 is the rule
+ * everywhere; on this page it is the difference between *you have nothing to lose* and
+ * *MediaSafe could not tell you what you are about to lose*. A failure throws, the page's
+ * boundary catches it, and the reader is shown a read failure with no confirmation field
+ * under it.
+ *
+ * ── What the numbers are, exactly ────────────────────────────────────────────────────
+ *
+ * True at page load, and not re-read at the press. A watch recorded on another device
+ * between arriving here and typing the word is destroyed along with everything else and
+ * was never counted, so the figure the reader saw can be one short of what went. This is
+ * accepted rather than overlooked: closing it means locking the account's rows for as long
+ * as somebody stares at the page, or re-counting and re-confirming after the reader has
+ * already decided — both of which buy an exactness the decision does not turn on, since
+ * *473 titles* and *472 titles* are the same decision. What must never drift is the shape
+ * of the answer — these three counts and the delete both scope by `user_id` and nothing
+ * else — and `tests/delete-account.test.ts` is what holds that.
+ */
+export async function accountFootprint(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<AccountFootprint> {
+  const [row] = await executor
+    .select({
+      titles: sql<number>`count(distinct ${libraryEntry.id})`.mapWith(Number),
+      ratings: sql<number>`count(distinct ${libraryEntry.id}) filter (where ${libraryEntry.rating} is not null)`.mapWith(
+        Number,
+      ),
+      watches: sql<number>`count(${watch.id})`.mapWith(Number),
+    })
+    .from(libraryEntry)
+    .leftJoin(watch, eq(watch.libraryEntryId, libraryEntry.id))
+    .where(ownedBy(userId, libraryEntry));
+
+  return { titles: row.titles, watches: row.watches, ratings: row.ratings };
+}
+
+/**
+ * Delete the account. One statement, and everything else is the schema's — issue #125.
+ *
+ * ── Why there is so little here ──────────────────────────────────────────────────────
+ *
+ * `library_entry`, `list`, `session` and `account` all carry
+ * `REFERENCES "user"(id) ON DELETE CASCADE`, and `watch` and `list_membership` cascade
+ * transitively through their composite keys to `library_entry` and `list` (ADR-0001,
+ * `db/tables.ts`). So the deletion is one `DELETE`, and the ordering, the atomicity and
+ * the completeness are Postgres's rather than a hand-written sequence's — which is the
+ * only version of this that cannot be got half-right. A list of deletes in application
+ * code is a list a seventh owned table gets left off.
+ *
+ * It needs no explicit transaction for the same reason: a single statement and the
+ * cascades it fires are one atomic unit already. `executor` is still the last argument, so
+ * the test harness can run it inside its rollback.
+ *
+ * ── What it deliberately leaves standing ─────────────────────────────────────────────
+ *
+ * `title` and `episode`. They are global and unowned — one row per TMDB id, shared across
+ * every account — and `library_entry.title_id` references `title` with **no** cascade, so
+ * this statement cannot reach them. A title nobody has in a library any more is left
+ * behind as an orphan, and that is v1's answer: `SPEC.md` §11.3 lists reaping them as
+ * open. The alternative, a cascade that emptied the catalogue when its last reader left,
+ * would silently empty every other account's library too.
+ *
+ * ── No outbound call ─────────────────────────────────────────────────────────────────
+ *
+ * Nothing here revokes the Google OAuth grant, and nothing should. An outbound call that
+ * can fail in the middle of an irreversible operation leaves a half-deleted account, and a
+ * half-failed deletion is worse than the honest sentence the page prints instead: MediaSafe
+ * stays listed in the reader's Google account until they remove it there.
+ *
+ * ── A deletion that fails ────────────────────────────────────────────────────────────
+ *
+ * It throws, and the account is intact — there is no partial state a `DELETE` can leave.
+ * The caller in `app/(signed-in)/settings/delete-account/actions.ts` is what turns that
+ * into a sentence saying so.
+ */
+export async function deleteAccount(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<void> {
+  await executor.delete(user).where(eq(user.id, userId));
+}
+
+/**
  * The user id `npm run db:seed` writes to (issue #74) — the CLI's own resolution
  * boundary, held to the same standard `lib/session.ts` is: a raw string becomes a
  * `UserId` in exactly one place, and only after this module has looked the row up

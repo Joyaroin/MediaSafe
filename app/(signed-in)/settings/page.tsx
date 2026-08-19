@@ -13,8 +13,9 @@ import { TimezoneControl } from "./timezone-control";
  * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). Profile
  * carries the display name (issue #123) and, now, the timezone control (issue #126) that
  * same table row named from the start. Data ships with *Import a library ›* (issue #75),
- * and Account ships with sign-out and sign-out other devices (issue #124). None of the
- * three is a stub: each is complete as far as its own build step goes.
+ * and Account ships with sign-out, sign-out other devices (issue #124) and the way out
+ * altogether (issue #125). None of the three is a stub: each is complete as far as its own
+ * build step goes — and with #125 the whole of `SPEC.md` §7's table is on the page.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -31,10 +32,21 @@ import { TimezoneControl } from "./timezone-control";
  * being answered would only make the door harder to find for exactly nobody's benefit. The
  * acceptance criterion is explicit — *works whether or not the offer was ever declined.*
  *
- * ── What is not here ─────────────────────────────────────────────────────────────────
+ * ── Account gained its door out, and it is a link ────────────────────────────────────
  *
- * *Delete account* is the remaining third of the Account section, its own page rather
- * than a dialog per `SPEC.md` §7, and it is still build step 7 (`SPEC.md` §8).
+ * *Delete account* (issue #125) is here as one link, because `SPEC.md` §7 puts it on **its
+ * own page, not a dialog** — a dialog is dismissed, a page is left. What Settings owes it
+ * is a way to be found, which is a sentence and a link; everything that makes the decision
+ * a real one — the three counts, the word to type, the sentence about Google — is on the
+ * page itself, where a reader who arrived by URL sees it too.
+ *
+ * ── There is no longer a *what is not here* ──────────────────────────────────────────
+ *
+ * Every earlier version of this docblock carried one, and issue #125 is what empties it:
+ * *Delete account* was the remaining third of the Account section and the last thing
+ * `SPEC.md` §8's build step 7 names. Nothing here is a heading with nothing under it,
+ * which `SPEC.md` §9 forbids — not because the rule was obeyed carefully, but because
+ * there is nothing left to reserve space for.
  */
 
 /**
@@ -133,6 +145,35 @@ export default async function SettingsPage() {
 
         <div className="mt-6">
           <SignOutOtherDevicesButton />
+        </div>
+
+        {/*
+          The door out (issue #125). A link and not a control: `SPEC.md` §7 puts account
+          deletion on **its own page, not a dialog**, so the thing that belongs in this
+          section is the way to that page and nothing else. Nothing is destroyed by
+          following it — the page states what would be, in real numbers, and refuses to do
+          anything until the reader types the word.
+
+          Set apart from the two sign-outs above by its own rule rather than by colour.
+          Vermilion here would be the section shouting before the reader has asked it
+          anything, and `DESIGN.md` keeps `signal` for a live state or a recorded mark; the
+          page it leads to is where that ink belongs.
+        */}
+        <div className="mt-8 border-t border-rule pt-6">
+          <p className="max-w-[60ch] text-note leading-relaxed text-stock-dim">
+            Deleting your account destroys your library, your watches and your ratings
+            permanently. The next page says how many of each, and nothing happens until you
+            confirm it there.
+          </p>
+
+          <p className="mt-6 text-item text-stock-dim">
+            <Link
+              href="/settings/delete-account"
+              className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
+            >
+              Delete account ›
+            </Link>
+          </p>
         </div>
       </section>
     </main>
