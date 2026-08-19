@@ -454,27 +454,24 @@ describe("removing the title", () => {
 });
 
 /**
- * The one decision in issue #133 this ticket does **not** deliver, pinned so that the day it
- * is delivered, it is delivered on purpose.
+ * *Removing a show from the library leaves its list entries standing* — issue #133, decided
+ * there and assertable here only since #143 repointed `list_membership` from `library_entry`
+ * to `title` (`drizzle/0006_list-membership-title.sql`).
  *
- * #133, *Removing a show leaves its list entries — decided here*: "a list entry survives the
- * library entry going. That is intended: a list is your own grouping, not a view of your
- * library, and one action must not silently edit a list you ordered by hand."
+ * #133's words: "a list entry survives the library entry going. That is intended: a list is
+ * your own grouping, not a view of your library, and one action must not silently edit a
+ * list you ordered by hand." Before the repoint the membership carried a cascading foreign
+ * key to `library_entry` and this `DELETE` would have taken it; now membership hangs off
+ * `title`, which this statement deliberately cannot reach, so the grouping survives without
+ * `removeTitleFromLibrary` knowing lists exist at all.
  *
- * Today it does not survive. `list_membership`'s composite foreign key points at
- * `library_entry` and cascades (`db/tables.ts`), so this `DELETE` takes the memberships with
- * it. The change that fixes it is the repoint of that key from `library_entry` to `title`,
- * which is an ADR-0001 amendment and belongs to the lists ticket rather than this one; the
- * table has zero rows in production, so nothing is lost meanwhile.
- *
- * **This test asserts the wrong behaviour on purpose.** It is a tripwire, not an
- * endorsement: it passes only while the cascade is still there, so the repoint cannot land
- * without this file failing and putting the decision in front of whoever lands it. Delete it
- * in the same change that repoints the key, and replace it with the assertion #133 actually
- * asks for — that the membership is still standing afterwards.
+ * That is the property worth testing rather than the mechanism: the entry it named is gone,
+ * the membership is still in place, and the list still holds it at the position the reader
+ * put it in. The removed title reads as untracked in the list, and *Add to library* is what
+ * puts it back.
  */
-describe("list memberships, until the repoint issue #133 decided", () => {
-  it("still go with the entry today — the tripwire for that change", async () => {
+describe("the lists a removed title was in", () => {
+  it("keeps its membership, its position, and the list itself", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       const show = await seedShow(tx);
@@ -486,18 +483,23 @@ describe("list memberships, until the repoint issue #133 decided", () => {
         .returning({ id: list.id });
       await tx
         .insert(listMembership)
-        .values({ listId: owned.id, libraryEntryId: entryId, userId: reader, position: 1 });
+        .values({ listId: owned.id, titleId: show.titleId, userId: reader, position: 1 });
 
       await removeTitleFromLibrary(reader, entryId, tx);
 
+      // The entry is gone…
       expect(
-        await tx
-          .select()
-          .from(listMembership)
-          .where(eq(listMembership.libraryEntryId, entryId)),
+        await tx.select().from(libraryEntry).where(eq(libraryEntry.id, entryId)),
       ).toEqual([]);
-      // The list itself is untouched either way — it is owned by the account, not by the
-      // entry, and nothing about removing one title deletes a grouping.
+
+      // …and the grouping the reader made by hand is not.
+      const memberships = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, owned.id));
+      expect(memberships).toHaveLength(1);
+      expect(memberships[0].titleId).toBe(show.titleId);
+      expect(memberships[0].position).toBe(1);
       expect(await tx.select().from(list).where(eq(list.id, owned.id))).toHaveLength(1);
     });
   });

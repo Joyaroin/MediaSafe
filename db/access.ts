@@ -1447,15 +1447,19 @@ export async function titleFootprint(
  * mirrored rows rather than re-fetching them, and mints a fresh entry with no watches
  * behind it, which is a watchlist title.
  *
- * ── What it takes that the ticket does not name ──────────────────────────────────────
+ * ── What it leaves standing that is easy to assume it takes ──────────────────────────
  *
- * `list_membership` also cascades from `library_entry` today, so a removed title leaves the
- * lists it was in. Issue #133 decides the opposite — a list is your own grouping and one
- * action must not silently edit it — and the change that delivers that is the repoint of
- * `list_membership` from `library_entry` to `title`, which belongs to the lists ticket and
- * not to this one. **The table has zero rows**, so nothing is lost in the meantime; this
- * paragraph exists so that the discrepancy is a known and dated one rather than a surprise
- * found later.
+ * **The lists the title was in.** `list_membership` hangs off `title` rather than
+ * `library_entry` since issue #143's repoint, so this statement cannot reach a membership
+ * any more than it can reach the catalogue — which is issue #133's decision, arrived at by
+ * the schema rather than by a clause here: *a list is your own grouping, not a view of your
+ * library, and one action must not silently edit a list you ordered by hand.* The entry in
+ * the list then reads as untracked, and adding the title again is what fills it back in.
+ *
+ * This is worth stating precisely because it is invisible in the statement below. Nothing
+ * here mentions lists, and the reason that is correct rather than an omission is the shape
+ * of the key; before the repoint the same one-line `DELETE` would silently have taken every
+ * membership with it.
  *
  * ── A missing entry and somebody else's entry are the same case ──────────────────────
  *
