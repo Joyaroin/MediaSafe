@@ -201,16 +201,30 @@ were written, and the ones a builder most often invents.
 `v1-surfaces.md` §5 records three. [#25](https://github.com/Joyaroin/MediaSafe/issues/25) added a
 fourth.
 
-1. **Navigation and landing.** Phone: three tabs (Up next, Search, Library), lands on **Up next**.
-   Desktop: two nav items (Library, Search), lands on **Library**; Up next is not a destination.
-2. **Up next's form and rank.** Phone: the whole screen, a deck, one dominant card, recording control
-   in the thumb arc. Desktop: a row above the grid, secondary to it.
+1. **Navigation and landing — overturned by [#136](https://github.com/Joyaroin/MediaSafe/issues/136).**
+   A sidebar on desktop, always visible: **Up next · Library · Search**, a rule, then **Settings** —
+   four destinations, not the two nav items this bullet used to name, and Up next is a destination
+   now rather than the one thing it explicitly was not. Phone: unchanged, three tabs (Up next,
+   Search, Library). **Both devices land on Up next.** The two used to diverge here because `/`
+   split on viewport — desktop to Library, phone to Up next — which existed only because Up next was
+   not yet a desktop destination; #136 deleted that redirect rather than rewiring it, which is also
+   the one place in the build that read a viewport fact in JavaScript instead of Tailwind, now gone.
+2. **Up next's form and rank — interim, since [#136](https://github.com/Joyaroin/MediaSafe/issues/136).**
+   One shape on both devices for now: the whole screen, a deck, one dominant card, recording control
+   in the thumb arc. The row above the grid this bullet used to give desktop or its own smaller
+   secondary form — is gone, deleted along with the desktop TONIGHT row it described; rendering the
+   phone's own page wide is a deliberate placeholder, not a settled desktop design, and stands until a
+   later ticket gives Up next its own desktop layout (the "rails" `app/sidebar.tsx`'s docblock
+   gestures at without specifying).
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
-4. **How Up next is bounded.** Phone: **no numeric cap** — a deck you work down never renders N at
-   once, so its own form is the bound. Desktop: **bounded by the viewport** — as many *whole* cards
-   as fit one row, no scroll, no fade, no arrow. The remainder lives one click below behind
-   Library's *Watching* chip.
+4. **How Up next is bounded — interim, since [#136](https://github.com/Joyaroin/MediaSafe/issues/136).**
+   Phone: **no numeric cap** — a deck you work down never renders N at once, so its own form is the
+   bound. Desktop now shares that bound rather than the viewport-clipped row this bullet used to
+   describe, for the same reason as divergence 2 above: the row that was bounded by the viewport is
+   gone with it, and so is its one-click escape to Library's *Watching* chip — the chip itself is
+   untouched (§7's *Library — filter chips* below), only its old job of holding a TONIGHT row's
+   overflow. A future desktop-specific form is where a real bound returns.
 
 Everything else is one design at two densities: the tile and grid, search-and-add, the rating
 control, import, sign-in, settings and account deletion.
@@ -302,10 +316,11 @@ Three sections ([#28](https://github.com/Joyaroin/MediaSafe/issues/28)). **The w
 | **Account** | **Sign out** · **Sign out other devices** · **Delete account** (its own page, not a dialog). |
 
 - **Settings introduces zero new columns.** `user.name` and `user.timezone` both already exist.
-- **The display name renders in the masthead on both devices**, as inert text — not an entrance. It
-  sets as a `code-line`: uppercase, `0.625rem`, reading as a printed credit line. **No avatar
-  anywhere** — a Google photo is borrowed art, and unplated it would be the highest-chroma element
-  in the app.
+- **The display name renders on both devices**, as inert text — not an entrance — in the phone
+  masthead and, since [#136](https://github.com/Joyaroin/MediaSafe/issues/136) gave desktop a
+  sidebar in the masthead's place, at the foot of that sidebar instead. It sets as a `code-line`:
+  uppercase, `0.625rem`, reading as a printed credit line. **No avatar anywhere** — a Google photo is
+  borrowed art, and unplated it would be the highest-chroma element in the app.
 - **The timezone never re-detects silently.** It moves only when you move it.
 - **Sign out other devices**, not "sign out everywhere": Adham chose to stay signed in on the current
   device, which makes the usual label a lie.
@@ -497,9 +512,9 @@ degrade with them.
 
 ### Step 7 — Settings and account deletion
 
-Profile, Data, Account. The display name in the masthead on both devices. The timezone control. Sign
-out other devices. The delete-account page — its own route, stating what is destroyed **in real
-numbers**, requiring a deliberate confirmation.
+Profile, Data, Account. The display name in the masthead on phone and, since #136, the sidebar on
+desktop. The timezone control. Sign out other devices. The delete-account page — its own route,
+stating what is destroyed **in real numbers**, requiring a deliberate confirmation.
 
 **Leaves**: v1.
 
@@ -522,9 +537,11 @@ What came in with them, and what did not:
 
 - **Their own destination on both devices**, not a rail on Up next — that stays below, because *what
   do I watch tonight* is a different question from *what did I group*. Where the destination sits is
-  [#132](https://github.com/Joyaroin/MediaSafe/issues/132)'s to say, and #133 defers to it: today the
-  desktop nav is two cells, Library and Search (`app/nav-cells.tsx`), and the phone has three tabs
-  (`app/tab-bar.tsx`), so any count of items is a count in a design that has not landed.
+  [#132](https://github.com/Joyaroin/MediaSafe/issues/132)'s to say, and #133 defers to it: as of
+  [#136](https://github.com/Joyaroin/MediaSafe/issues/136) the desktop nav is a sidebar with four
+  destinations, Up next, Library, Search and Settings (`app/sidebar.tsx`), and the phone still has
+  three tabs (`app/tab-bar.tsx`), so any count of items is still a count in a design Lists has not
+  landed in.
 - **A list holds anything in the catalogue**, not only what you own, and is **ordered by hand**. So
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your

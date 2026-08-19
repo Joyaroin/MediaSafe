@@ -15,14 +15,23 @@ import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
 import { LibrarySelectionProvider } from "./library-selection";
 import { ProgrammeNotePane } from "./programme-note";
-import { UpNextRow } from "./up-next-row";
 
 /**
- * The populated library's whole shell: TONIGHT above the bill (#100, `up-next-row.tsx`),
- * the heading bar's chips, filter field and sort select (#57, `library-filter-bar.tsx`),
- * the bill on the left, and the programme note on the right (#58, `DESIGN.md`'s
- * Never-Navigate-Away Rule). `library/page.tsx` still does the one server read and decides
- * whether the library is empty; this owns everything a reader can do once it is not.
+ * The populated library's whole shell: the heading bar's chips, filter field and sort
+ * select (#57, `library-filter-bar.tsx`), the bill on the left, and the programme note on
+ * the right (#58, `DESIGN.md`'s Never-Navigate-Away Rule). `library/page.tsx` still does
+ * the one server read and decides whether the library is empty; this owns everything a
+ * reader can do once it is not.
+ *
+ * ── TONIGHT lived here once — issue #136 moved it out ────────────────────────────────
+ *
+ * Issue #100 put a desktop-only *Up next* row (`up-next-row.tsx`) above the bill, because
+ * Up next was not a desktop destination of its own yet — `SPEC.md` §7 said so explicitly.
+ * #136 gave Up next a real desktop page (`sidebar.tsx`'s own destination, rendering
+ * `(signed-in)/up-next/page.tsx`) and, with it, deleted the row: a reader who wants what
+ * they are part-way through now has a page for it rather than a second, narrower copy of
+ * the same read squeezed above the library grid. This component and `SPEC.md` §7's own
+ * layout divergence 1 were amended in the same diff for the same reason.
  *
  * ── Two axes that narrow, one that selects, one that is a real navigation ────────────
  *
@@ -74,8 +83,6 @@ export function LibrarySurface({
     <LibrarySelectionProvider value={{ selectedEntryId, select: setSelectedEntryId }}>
       <main className="flex w-full flex-1 flex-col lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col">
-          <UpNextRow />
-
           <LibraryHeading>
             <LibraryChips value={chip} onChange={setChip} />
             <FilterField value={filterText} onChange={setFilterText} />

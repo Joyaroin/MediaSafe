@@ -3,26 +3,46 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { LibraryIcon, SearchIcon, UpNextIcon } from "./nav-icons";
+
 /**
  * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet.
  * `DESIGN.md`, Navigation: *three fixed tabs at the bottom on a `1px` gap over `hair`,
  * with a `hair` top border. Each tab is a rectilinear icon over a label. Active is
  * inverted to bone/ink. Lands on Up next.*
  *
+ * ── Frosted, since issue #136 ─────────────────────────────────────────────────────────
+ *
+ * That ticket's own acceptance criteria: *content passes under the chrome rather than
+ * stopping at it* — the same `bg-ground/95 backdrop-blur-[2px]` recipe `masthead.tsx`
+ * already carries, reused rather than re-tuned so the two pieces of fixed phone chrome
+ * read as one frosted family. The inactive cells gave up their opaque `bg-ground` for
+ * exactly this: an opaque cell over translucent siblings would leave two-thirds of the
+ * bar with nothing to see through it, which is what that ticket's Glass section calls
+ * *the glass having nothing to do*. `divide-x divide-hair` draws the same three
+ * hairlines the old `gap-px bg-hair` trick did, without needing an opaque ground to draw
+ * them against. The active cell keeps its solid `bg-text` inversion — `DESIGN.md`'s
+ * Elevation section still names inversion the strongest emphasis this system has, and
+ * issue #136 only asked the *chrome* to go translucent, not the current-tab treatment.
+ *
  * ── Why this is a client component ───────────────────────────────────────────────────
  *
- * Only for `usePathname`, the same reason `nav-cells.tsx` is one — the masthead's desktop
- * counterpart. `startsWith`, not equality, for *Search* and *Library* for the same reason
- * given there: both are about to carry pushed routes under them (title detail, catalogue
- * results), and a reader three screens deep is still in that section. *Up next* has no
- * routes under it, but the pattern costs nothing to apply uniformly.
+ * Only for `usePathname`, the same reason `sidebar-nav.tsx` is one — the desktop
+ * counterpart issue #136 built. `startsWith`, not equality, for *Search* and *Library* for
+ * the same reason given there: both are about to carry pushed routes under them (title
+ * detail, catalogue results), and a reader three screens deep is still in that section.
+ * *Up next* has no routes under it, but the pattern costs nothing to apply uniformly.
  *
- * ── `gap-px bg-hair`, not borders between cells ──────────────────────────────────────
+ * ── `divide-x divide-hair`, not borders between cells ────────────────────────────────
  *
- * `DESIGN.md`'s Hairline Rule: structure is drawn by a `1px` gap over a `hair`-coloured
- * ground, the same device `up-next-row.tsx`'s clipped grid uses. The container's own top
- * edge is the one place a `hair` border belongs — Elevation & Depth names *"the phone
- * tab bar's top edge"* as that rule's own worked example.
+ * `DESIGN.md`'s Hairline Rule: structure is drawn, not spaced. This used to draw its three
+ * dividers with a `1px` gap over a `hair`-coloured ground (`gap-px bg-hair`) the way the
+ * old desktop TONIGHT row's clipped grid did — that trick needs an opaque ground to show
+ * the gap against, which stopped being true the moment the container went translucent for
+ * issue #136. `divide-x divide-hair` draws the same three lines as borders instead, which
+ * cost nothing when the cell behind them is transparent. The container's own top edge is
+ * still the one place a `hair` border belongs — Elevation & Depth names *"the phone tab
+ * bar's top edge"* as that rule's own worked example.
  *
  * ── Fixed, and what that costs every screen beneath it ───────────────────────────────
  *
@@ -59,7 +79,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-px border-t-2 border-hair bg-hair lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 divide-x divide-hair border-t-2 border-hair bg-ground/95 backdrop-blur-[2px] lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = pathname === href || pathname.startsWith(`${href}/`);
@@ -72,7 +92,7 @@ export function TabBar() {
             className={
               current
                 ? "flex flex-col items-center justify-center gap-1 bg-text py-2 text-ground"
-                : "flex flex-col items-center justify-center gap-1 bg-ground py-2 text-dim"
+                : "flex flex-col items-center justify-center gap-1 py-2 text-dim"
             }
           >
             <Icon className="h-4 w-4" />
@@ -81,42 +101,5 @@ export function TabBar() {
         );
       })}
     </nav>
-  );
-}
-
-/** A play mark — the same triangle vocabulary as the sort select's caret
- *  (`library-filter-bar.tsx`), the one other polygon in the build. Continuing a title is
- *  what this tab is for. */
-function UpNextIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <polygon points="6,3 21,12 6,21" fill="currentColor" />
-    </svg>
-  );
-}
-
-/** The same tapering bars `search-surface.tsx` and `library-filter-bar.tsx` already draw
- *  next to their filter fields — *"the same rectilinear vocabulary as the press mark, a
- *  magnifier would be the only curve in the application."* Reused rather than
- *  re-invented, so the product has one search glyph, not two. */
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
-      <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
-      <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-/** A four-cell grid — the bill in miniature. */
-function LibraryIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="2" y="2" width="9" height="9" fill="currentColor" />
-      <rect x="13" y="2" width="9" height="9" fill="currentColor" />
-      <rect x="2" y="13" width="9" height="9" fill="currentColor" />
-      <rect x="13" y="13" width="9" height="9" fill="currentColor" />
-    </svg>
   );
 }

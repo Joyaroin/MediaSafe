@@ -2104,8 +2104,12 @@ function afterCursor(order: UpNextOrder, cursor: UpNextCursor): SQL {
 }
 
 /**
- * One fetch of Up next — **the one definition of what is next**, so the phone deck and
- * the desktop TONIGHT row cannot disagree about which titles are on it or in what order.
+ * One fetch of Up next — **the one definition of what is next**. Issue #136 gave both
+ * devices the same `/up-next` route reading it, closing the one caller this docblock used
+ * to name a second one for: the desktop TONIGHT row (`up-next-action.ts`, deleted with
+ * that ticket), which read the same function so it could never disagree with the phone
+ * deck about which titles were up next or in what order. One route, one read, so the
+ * property this function existed to guarantee now has nothing left to guarantee it against.
  *
  * `library_entry_up_next` has known *which episode* since build step 2. Which titles, in
  * what order, has never existed anywhere until here, and it exists here once: `upNextOrder`

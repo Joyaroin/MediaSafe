@@ -11,10 +11,16 @@ import { titleDetailAction } from "./title-detail-actions";
 
 /**
  * The programme note — the fixed panel `DESIGN.md` puts on the right of the desktop bill,
- * sticky below the masthead, with its own internal scroll. Issue #58, and the reason the
- * two-pane layout was chosen at all: comparing candidates costs no navigation, because
- * this never routes anywhere. Selecting a tile (`library-entry-cell.tsx`) only ever
- * changes `useLibrarySelection()`'s value; this component is what turns that into a read.
+ * sticky to the top of the viewport, with its own internal scroll. Issue #58, and the
+ * reason the two-pane layout was chosen at all: comparing candidates costs no navigation,
+ * because this never routes anywhere. Selecting a tile (`library-entry-cell.tsx`) only
+ * ever changes `useLibrarySelection()`'s value; this component is what turns that into a
+ * read.
+ *
+ * `top-0`/`max-h-screen`, not an offset kept in step with a masthead: issue #136 removed
+ * the desktop masthead this pane used to sit below (`sidebar.tsx` replaced it), so there
+ * is nothing above this column on desktop to leave room for — the `[420px]` `aside` below
+ * only ever renders past `lg`, which is exactly the width at which that is true.
  *
  * ── Four states, and why the reset is in render, not in an effect ────────────────────
  *
@@ -82,7 +88,7 @@ export function ProgrammeNotePane() {
       className="hidden w-[420px] shrink-0 border-l border-hair lg:block"
       aria-label="Programme note"
     >
-      <div className="sticky top-[57px] flex max-h-[calc(100vh-57px)] flex-col">
+      <div className="sticky top-0 flex max-h-screen flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto">
           {phase.kind === "idle" ? <NothingSelected /> : null}
           {phase.kind === "loading" ? <Loading /> : null}

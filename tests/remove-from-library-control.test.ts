@@ -113,13 +113,13 @@ describe("where the remove control appears", () => {
     expect(importers).toEqual(["app/(signed-in)/library/programme-note-content.tsx"]);
   });
 
-  it("puts no removal on the tile, the grid, or either up next surface", () => {
+  it("puts no removal on the tile, the grid, or the up next surface", () => {
+    // The desktop TONIGHT row (`up-next-grid.tsx`, `up-next-row.tsx`) named here until
+    // issue #136 deleted it — Up next has one surface left to check, not two.
     const browsing = [
       "app/(signed-in)/library/library-entry-cell.tsx",
       "app/(signed-in)/library/library-grid.tsx",
       "app/(signed-in)/library/selectable-entry.tsx",
-      "app/(signed-in)/library/up-next-grid.tsx",
-      "app/(signed-in)/library/up-next-row.tsx",
       "app/(signed-in)/up-next/up-next-dominant-card.tsx",
     ];
 

@@ -18,11 +18,14 @@ import { createWriteFailureStore } from "@/errors/write-failure";
  * ── Why this is where the coverage goes ──────────────────────────────────────────────
  *
  * The store is the whole of the write: the key, the rollback and the toast. `useWatchMark`
- * is a `useSyncExternalStore` binding over it and the four callers are markup, so a test
- * that rendered components would spend its weight on wiring and reach none of the
- * properties #103 is about. Everything below drives the store directly, with two
- * subscribers standing in for the desktop's two surfaces — the TONIGHT row above the bill
- * and the programme note beside it (`library-surface.tsx`).
+ * is a `useSyncExternalStore` binding over it and its callers are markup, so a test that
+ * rendered components would spend its weight on wiring and reach none of the properties
+ * #103 is about. Everything below drives the store directly, with two subscribers
+ * standing in for any two surfaces that end up showing the same episode at once — the
+ * desktop TONIGHT row and the programme note were the pair that motivated the fix, and
+ * issue #136 deleted the row, but the property under test was never about that specific
+ * pair: it is that *whichever* surfaces share an episode agree, which two bare
+ * subscribers prove without needing a real second caller mounted to stand for one.
  *
  * ── What "one row" means here ────────────────────────────────────────────────────────
  *
@@ -332,8 +335,8 @@ describe("a lost write, across surfaces", () => {
 describe("a surface arriving with its own server read", () => {
   it("lets the newer read win while nothing has written to the episode", () => {
     const { surface } = harness();
-    // The TONIGHT card seeds every episode unwatched — `listUpNext` only ever returns an
-    // unwatched next episode, so it has no watched state to seed with.
+    // An Up next surface seeds every episode unwatched — `listUpNext` only ever returns
+    // an unwatched next episode, so it has no watched state to seed with.
     const row = surface(EPISODE);
     // The programme note opens later, from a `getTitleDetail` that knows about a watch
     // this store never made — an import, one client-side navigation away via settings.

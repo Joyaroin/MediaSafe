@@ -216,12 +216,14 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * `watch-marks.ts`'s `mark` for why neither that nor one-per-press is correct once a watch
  * can be taken back.
  *
- * **The key is no longer this row's, and neither is the rest of the state** — issue #103.
- * It is held per *episode*, in `watch-marks.ts`, because on desktop the TONIGHT row
- * (`up-next-grid.tsx`) is on screen at the same time as this pane and can be showing the
- * same episode; two rows holding two optimistic states minted two keys against one
- * episode, which is two rows in the table. Nothing about this file's markup changed —
- * `useWatchMark` is still the one hook and still returns what it did.
+ * **The key is no longer this row's, and neither is the rest of the state** — issue #103,
+ * fixing the desktop TONIGHT row (`up-next-grid.tsx`, deleted by issue #136) once sitting
+ * on screen at the same time as this pane and able to show the same episode: two rows
+ * holding two optimistic states minted two keys against one episode, which is two rows in
+ * the table. It is held per *episode*, in `watch-marks.ts`, so that whichever surfaces
+ * happen to share one — not only the pair that motivated the fix — agree by construction.
+ * Nothing about this file's markup changed — `useWatchMark` is still the one hook and
+ * still returns what it did.
  *
  * ── The two controls a struck row offers, and the one it does not ────────────────────
  *

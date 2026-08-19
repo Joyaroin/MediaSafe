@@ -1,7 +1,4 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 
 /**
  * `/` — a redirect, and nothing else.
@@ -20,27 +17,18 @@ import { useRouter } from "next/navigation";
  * this" in a second place — the thing `lib/session.ts` exists to prevent — to save one
  * redirect that nobody sees.
  *
- * ── Why a client component now ───────────────────────────────────────────────────────
+ * ── One destination, since issue #136 ────────────────────────────────────────────────
  *
- * `SPEC.md` §7's landing divergence — phone on **Up next**, desktop on **Library** — is a
- * routing decision, and nothing server-side here knows which device asked: no session
- * cookie carries a viewport, and reading the `User-Agent` would answer a different
- * question (what the browser is) than the one `DESIGN.md`'s `lg:` breakpoint asks (how
- * wide the viewport is). `matchMedia` against that same `1024px` line, on mount, is the
- * one place in the build that reaches for a viewport fact in JavaScript rather than in
- * Tailwind — everywhere else the two rendered variants sit in one page and CSS picks
- * between them; here the two variants are different routes with different server reads,
- * and only one can be fetched.
- *
- * This never renders visible content — `router.replace` fires before the first paint a
- * reader would notice, over the `body`'s own ground, so there is nothing to flash.
+ * `SPEC.md` §7 used to split this on viewport — desktop to the Library, phone to Up
+ * next — because Up next was not a desktop destination yet. It is now (`sidebar.tsx`),
+ * and the spec's own user story asks for what a reader is part-way through to be the
+ * first thing they see, on either device. This used to be a client component for exactly
+ * one reason: `matchMedia` against the `1024px` breakpoint, on mount, to pick between the
+ * two routes — the one place in the build that reached for a viewport fact in JavaScript
+ * rather than in Tailwind. With one destination for both devices, that reach is gone
+ * along with the component that made it; this is a plain server redirect, resolved before
+ * anything is sent to the browser rather than after the first paint.
  */
 export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(window.matchMedia("(min-width: 1024px)").matches ? "/library" : "/up-next");
-  }, [router]);
-
-  return null;
+  redirect("/up-next");
 }
