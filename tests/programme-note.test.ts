@@ -72,7 +72,10 @@ describe("the episode list", () => {
     // A *Watched* code line stood in the trailing slot wherever there was no unwatch to
     // offer, which #145 makes unreachable; the control test below owns the other half, so
     // this one asserts only what it is about.
-    expect(markup).toContain('class="block truncate text-dim">Winter Is Coming<');
+    // Scoped to the name's own element, not just "text-dim" appearing anywhere on the row
+    // (the trailing Unwatch control and an unselected episode number are dim too) — and
+    // tolerant of the class list's own order, unlike pinning the literal attribute string.
+    expect(markup).toMatch(/class="[^"]*\btext-dim\b[^"]*">Winter Is Coming</);
     expect(markup).not.toContain("line-through");
     expect(markup).not.toContain(">Watched<");
   });
@@ -189,7 +192,9 @@ describe("the episode list", () => {
   it("dims a finished film's own name and says so, the same as a watched episode", () => {
     const markup = episodes([], "film", "finished");
 
-    expect(markup).toContain('<span class="text-dim">Game of Thrones</span>');
+    // Scoped to the title's own element for the same reason as the episode assertion
+    // above — "text-dim" alone would also match the trailing *Watched* code line.
+    expect(markup).toMatch(/class="[^"]*\btext-dim\b[^"]*">Game of Thrones</);
     expect(markup).not.toContain("line-through");
   });
 
