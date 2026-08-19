@@ -666,8 +666,10 @@ Rows are divided by hairlines.
 
 ### Rating Scale
 
-**Ten** square cells, numbered 1–10, `1px` gaps over `rule`, `0.5rem` vertical padding, tabular
-numerals, label typography. Unselected is `ink` + dim bone; the chosen value is solid `signal` with
+**Ten** cells, numbered 1–10, `1px` gaps over `rule`, `0.5rem` vertical and `0.25rem` horizontal
+padding, tabular numerals, label typography. *Square* here means what it has always meant on this
+bill — hard-cornered and blocky, no radius. It has never meant 1:1: the prototype's five cells
+measure about `36 × 27`, and ten cells hold the same proportion. Unselected is `ink` + dim bone; the chosen value is solid `signal` with
 `ink` text (`aria-pressed="true"`); hover previews the same inversion. It appears on title detail —
 the programme note on desktop, the phone route — and nowhere else.
 

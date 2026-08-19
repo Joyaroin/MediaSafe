@@ -70,6 +70,21 @@ export interface WriteFailureHandle {
   readonly id: string;
   /** The write landed, or the caller no longer needs the reader to see this. */
   resolve(): void;
+  /**
+   * Whether this failure is still on screen — issue #113.
+   *
+   * Every caller holds its handle in a ref and guards on it (`if (raised.current) return`)
+   * to keep AGENTS.md's **one toast per lost write, not one per attempt**. That guard has
+   * one blind spot, and it is the reader: `dismiss()` takes the toast off screen without
+   * telling the handle, so a ref still holding a dismissed handle suppresses the *next*
+   * lost write entirely — which is `SPEC.md` §3.3's *a lost write is never silent*, broken
+   * silently, by the reader's own tidying up.
+   *
+   * A caller asks before suppressing. `resolve()` cannot answer this on its own: resolving
+   * is what the caller does when the write lands, and the question here is whether the
+   * reader has already made the toast go away.
+   */
+  standing(): boolean;
 }
 
 export interface WriteFailureStore {
@@ -103,7 +118,11 @@ export function createWriteFailureStore(): WriteFailureStore {
       const id = `write-failure-${(counter += 1)}`;
       raised = [...raised, { ...lost, id }];
       for (const listener of listeners) listener();
-      return { id, resolve: () => remove(id) };
+      return {
+        id,
+        resolve: () => remove(id),
+        standing: () => raised.some((failure) => failure.id === id),
+      };
     },
 
     dismiss: remove,
