@@ -4,6 +4,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { requireDisplayName, requireUserId } from "@/lib/session";
 import { DisplayNameControl } from "./display-name-control";
 import { SignOutButton } from "./sign-out-button";
+import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
 
 /**
  * Settings, with **all three sections now real**.
@@ -12,8 +13,9 @@ import { SignOutButton } from "./sign-out-button";
  * arrives with issue #123, carrying the one thing built so far, the display name; the
  * timezone control that table row also names is a separate ticket (#123 blocks it) and
  * does not appear here as a heading over nothing — `SPEC.md` §9 forbids that. Data ships
- * with *Import a library ›* (issue #75), and Account ships with sign-out. None of the
- * three is a stub: each is complete as far as its own build step goes.
+ * with *Import a library ›* (issue #75), and Account ships with sign-out and sign-out
+ * other devices (issue #124). None of the three is a stub: each is complete as far as
+ * its own build step goes.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -32,10 +34,10 @@ import { SignOutButton } from "./sign-out-button";
  *
  * ── What is not here ─────────────────────────────────────────────────────────────────
  *
- * *Sign out other devices* and *Delete account* are the other two thirds of the Account
- * section and they remain build step 7 (`SPEC.md` §8). Profile's timezone control is the
- * same step and is not here either — issue #123 blocks it, and it drops into the section
- * this ticket creates rather than arriving with it.
+ * *Delete account* is the remaining third of the Account section, its own page rather
+ * than a dialog per `SPEC.md` §7, and it is still build step 7 (`SPEC.md` §8). Profile's
+ * timezone control is the same step and is not here either — issue #123 blocks it, and
+ * it drops into the section this ticket creates rather than arriving with it.
  */
 
 /**
@@ -121,6 +123,15 @@ export default async function SettingsPage() {
 
         <div className="mt-6">
           <SignOutButton />
+        </div>
+
+        <p className="mt-8 max-w-[60ch] text-note leading-relaxed text-stock-dim">
+          Ends every other session signed in as you — a phone sold, lost or lent, or a
+          browser you signed into somewhere else. This device stays signed in.
+        </p>
+
+        <div className="mt-6">
+          <SignOutOtherDevicesButton />
         </div>
       </section>
     </main>
