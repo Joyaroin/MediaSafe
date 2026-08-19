@@ -16,7 +16,7 @@ import {
   catalogueResults,
   filmMirror,
   seasonNumbers,
-  SHOW_APPEND_TO_RESPONSE,
+  SHOW_EXTERNAL_IDS_APPEND,
   showMirror,
   TmdbHttpError,
   type CatalogueResult,
@@ -175,10 +175,10 @@ export async function titleMirror(
   }
 
   // `append_to_response`, so the external id arrives in the request the show already
-  // costs. See `SHOW_APPEND_TO_RESPONSE` for why this is not the trade the three live
+  // costs. See `SHOW_EXTERNAL_IDS_APPEND` for why this is not the trade the three live
   // calls below refuse.
   const show = await get<TmdbShowPayload>(`/tv/${tmdbId}`, {
-    append_to_response: SHOW_APPEND_TO_RESPONSE,
+    append_to_response: SHOW_EXTERNAL_IDS_APPEND,
   });
   const seasons = await inBatches(seasonNumbers(show), SEASON_CONCURRENCY, (number) =>
     get<TmdbSeasonPayload>(`/tv/${tmdbId}/season/${number}`),

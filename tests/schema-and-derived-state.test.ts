@@ -5,6 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { asUserId, ownedBy, type UserId } from "@/db/access";
+import type { ExternalId } from "@/tmdb/mirror";
 import type { Transaction } from "@/db/client";
 import {
   episode,
@@ -318,6 +319,48 @@ describe("the migration", () => {
       expect(constraint.rows).toHaveLength(1);
       expect(constraint.rows[0].condeferrable).toBe(true);
       expect(constraint.rows[0].condeferred).toBe(true);
+    });
+  });
+
+  /**
+   * `title_external_id_check`, both directions.
+   *
+   * The rule that an external id is `imdb:tt…` or `tvdb:…` is written twice — once as
+   * `ExternalId` in `tmdb/mirror.ts`, once as this constraint — because TypeScript does
+   * not reach Postgres and Postgres does not typecheck. Two spellings of one rule can
+   * drift silently, and this is what stops them: the cast below is doing the job a future
+   * reader's mistake would do for real, and the database has to refuse it.
+   */
+  it("refuses an external id nothing could look a title up by", async () => {
+    await violates("title_external_id_check", () =>
+      inTransaction(async (tx) => {
+        await tx.insert(title).values({
+          kind: "show",
+          tmdbId: 999_001,
+          // A bare IMDb id with no source on it — the exact shape `externalIdFrom` will
+          // not mint and `ExternalId` will not accept, cast past the type on purpose.
+          // Nothing can hand this to `/find/{id}?external_source=`.
+          externalId: "tt0944947" as ExternalId,
+          name: "Game of Thrones",
+        });
+      }),
+    );
+  });
+
+  it("stores both spellings the mapping can mint", async () => {
+    await inTransaction(async (tx) => {
+      // The other direction: a constraint that rejected everything would pass the test
+      // above and break every add.
+      await tx.insert(title).values([
+        { kind: "show", tmdbId: 999_002, externalId: "imdb:tt0944947", name: "Show" },
+        { kind: "film", tmdbId: 999_003, externalId: "tvdb:121361", name: "Film" },
+      ]);
+
+      const rows = await tx
+        .select({ tmdbId: title.tmdbId, externalId: title.externalId })
+        .from(title)
+        .where(and(eq(title.kind, "show"), eq(title.tmdbId, 999_002)));
+      expect(rows[0].externalId).toBe("imdb:tt0944947");
     });
   });
 

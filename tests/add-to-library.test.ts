@@ -223,6 +223,29 @@ describe("addTitleToLibrary", () => {
       );
     }));
 
+  it("clears the external id when TMDB stops sending one", () =>
+    inTransaction(async (tx) => {
+      const adham = await seedUser(tx, "adham");
+      const other = await seedUser(tx, "other");
+      const mirror = showMirrorFixture();
+
+      await addTitleToLibrary(adham, mirror, tx);
+
+      // The other direction of the same rule, and the deliberate one: `external_id` is
+      // borrowed, so a refresh that no longer carries one *clears* it rather than keeping
+      // a handle TMDB has disowned. Pinned because it is the branch that loses something
+      // — the column's whole purpose is to survive TMDB forgetting this title — and a
+      // behaviour that costs that much should fail a test if it is ever changed by
+      // accident rather than on purpose.
+      await addTitleToLibrary(other, { ...mirror, externalId: null }, tx);
+
+      const [row] = await tx
+        .select()
+        .from(title)
+        .where(and(eq(title.kind, "show"), eq(title.tmdbId, mirror.tmdbId)));
+      expect(row.externalId).toBeNull();
+    }));
+
   it("keeps a film and a show that share a TMDB id apart", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");

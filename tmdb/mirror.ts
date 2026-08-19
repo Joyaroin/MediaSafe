@@ -50,6 +50,23 @@
 export type TitleKind = "film" | "show";
 
 /**
+ * `title.external_id` — the catalogue and the id, in one value: `imdb:tt0944947`,
+ * `tvdb:121361`.
+ *
+ * A union rather than a bare `string`, for the reason `TitleKind` is one: the column is
+ * `text` with a `CHECK` (`title_external_id_check`), and the type is the half of that pair
+ * TypeScript can hold. `externalIdFrom` is the only function that can mint one — every
+ * other spelling, including a raw `imdb_id` concatenated in by a later reader, fails to
+ * typecheck rather than reaching the database and failing there.
+ *
+ * The source is in the value because the only thing that will ever read this column hands
+ * it back to TMDB's `/find/{id}?external_source=`, which takes the source as a required
+ * parameter. Recovering it from the id's shape at read time would work and would be a
+ * convention; this is the same fact, checked.
+ */
+export type ExternalId = `imdb:tt${string}` | `tvdb:${number}`;
+
+/**
  * TMDB's payloads, declared as narrowly as this file reads them and as loosely as TMDB
  * actually sends them.
  *
@@ -104,23 +121,33 @@ export interface TmdbExternalIdsPayload {
 }
 
 /**
- * The `append_to_response` value a `/tv/{id}` request must carry for `showMirror` to have
- * an external id to mirror.
+ * The `append_to_response` a `/tv/{id}` request must carry for `showMirror` to have an
+ * external id to mirror.
  *
- * It lives here, beside the payload type it fills in, because **two fetchers make this
- * request** — `tmdb/catalogue.ts` and `scripts/db-seed.ts`, which carries its own thin
- * client because `catalogue.ts` is `server-only` and would throw under `tsx`. A show
- * fetched without it parses perfectly and mirrors a null external id, which is the failure
- * worth naming: it is silent, it looks exactly like a title TMDB has no external id for,
- * and the sweep would keep writing null for years. One exported constant is what makes
- * the two call sites visibly the same request.
+ * A show fetched without it parses perfectly and mirrors `null`, which is the failure
+ * worth naming: it is silent, it is indistinguishable from a show TMDB genuinely has no
+ * external id for, and — because the upsert overwrites this column like every other
+ * borrowed one — a *refresh* that forgets the append does not merely fail to fill the
+ * column in, it clears it. The constant lives here, beside the payload type it fills in,
+ * so that no call site has to remember the string.
+ *
+ * **Three call sites fetch `/tv/{id}` and hand it to `showMirror`; two of them need this
+ * and one does not.**
+ *
+ *  - `tmdb/catalogue.ts` — the search add and the import screen. Carries it.
+ *  - `scripts/db-seed.ts` — its own thin client, because `catalogue.ts` is `server-only`
+ *    and would throw under `tsx`. Carries it.
+ *  - `scripts/convert-tvtracker/resolve.ts` — reads `showMirror(...).episodes` and throws
+ *    the title away, so it writes no `title` row and has no external id to get wrong. It
+ *    is the one that may skip this, and only for exactly that reason: **the moment it
+ *    keeps anything but the episodes, it needs the append.**
  *
  * `append_to_response` rather than a second `/tv/{id}/external_ids` call, and this is not
  * the trade `tmdb/catalogue.ts` refuses for the live fields. That refusal buys *separate
  * failures* — a synopsis that renders while credits are 500ing — and an add has no such
  * granularity to buy: one failed season already fails the whole add.
  */
-export const SHOW_APPEND_TO_RESPONSE = "external_ids";
+export const SHOW_EXTERNAL_IDS_APPEND = "external_ids";
 
 export interface TmdbShowSeasonPayload {
   season_number?: number;
@@ -217,7 +244,7 @@ export interface TitleMirror {
    * carries one over from a previous mirror of the same title — a wrong external id is a
    * wrong id on a global row, and the thing that will read it repoints titles.
    */
-  readonly externalId: string | null;
+  readonly externalId: ExternalId | null;
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
@@ -267,6 +294,14 @@ export function integerFrom(value: number | null | undefined): number | null {
 const IMDB_TITLE_ID = /^tt\d+$/;
 
 /**
+ * A type predicate rather than a bare `.test()`, so that the `imdb:` half of `ExternalId`
+ * is reached by narrowing instead of by assertion. Nothing here is cast.
+ */
+function isImdbTitleId(value: string): value is `tt${string}` {
+  return IMDB_TITLE_ID.test(value);
+}
+
+/**
  * `title.external_id`: IMDb where TMDB has one, TVDB otherwise, `null` where it has
  * neither.
  *
@@ -280,9 +315,11 @@ const IMDB_TITLE_ID = /^tt\d+$/;
  * only. There is no preference to express for films: `/movie/{id}` carries an IMDb id or
  * nothing.
  */
-function externalIdFrom(ids: TmdbExternalIdsPayload | null | undefined): string | null {
+function externalIdFrom(
+  ids: TmdbExternalIdsPayload | null | undefined,
+): ExternalId | null {
   const imdbId = textFrom(ids?.imdb_id);
-  if (imdbId !== null && IMDB_TITLE_ID.test(imdbId)) return `imdb:${imdbId}`;
+  if (imdbId !== null && isImdbTitleId(imdbId)) return `imdb:${imdbId}`;
 
   const tvdbId = integerFrom(ids?.tvdb_id);
   if (tvdbId !== null && tvdbId > 0) return `tvdb:${tvdbId}`;

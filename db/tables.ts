@@ -87,8 +87,11 @@ export const title = pgTable(
     check("title_kind_check", sql`${t.kind} in ('film','show')`),
     /**
      * An external id MediaSafe cannot hand back to TMDB is not evidence, it is a string.
-     * `tmdb/mirror.ts` already declines to mirror anything that does not match; this is
-     * the same rule held by the database, on a row every account reads.
+     * `tmdb/mirror.ts` already declines to mirror anything that does not match, and its
+     * `ExternalId` union is the same rule in the type system; this is that rule held by
+     * the database, on a row every account reads. The pairing is `title.kind`'s exactly —
+     * a union in the mapping, a `CHECK` here — and `tests/schema-and-derived-state.test.ts`
+     * asserts the two halves still agree.
      */
     check(
       "title_external_id_check",
