@@ -10,6 +10,12 @@ import { createContext, useContext } from "react";
  * not about routing — there is no URL segment for "which entry is selected" on desktop,
  * on purpose, so this is plain React context rather than a search param or a route.
  *
+ * **Two surfaces are held to it, since issue #137** — the library bill and the desktop Up
+ * next rails, which swap the same panel by the same rule. Neither provides it directly:
+ * `programme-note-layout.tsx` owns the one `useState` and the pane together, so the state and
+ * its only reader cannot come apart. It stays in this folder for the same reason that layout
+ * does — the pane lives here.
+ *
  * `null` is "nothing selected yet" — the pane's own resting state before a first click,
  * not an error and not the same as a failed read (`programme-note.tsx` keeps those
  * separate the same way every other read on this screen does).
@@ -28,15 +34,17 @@ const LibrarySelectionContext = createContext<LibrarySelection | null>(null);
 export const LibrarySelectionProvider = LibrarySelectionContext.Provider;
 
 /**
- * `null` when there is no pane to select into — `library-entry-cell.tsx`'s only caller
- * outside the library route is nothing today, but the guard is what makes "used outside
- * `LibrarySurface`" a thrown sentence instead of a silent `undefined.select` a phone
- * click would otherwise hit.
+ * `null` when there is no pane to select into. The guard is what makes a tile rendered
+ * outside either provider a thrown sentence instead of a silent `undefined.select` the
+ * first click would hit — and it earned its keep the moment there was a second provider
+ * (#137), since a rail is a tile in a place `LibrarySurface` never wrapped.
  */
 export function useLibrarySelection(): LibrarySelection {
   const context = useContext(LibrarySelectionContext);
   if (context === null) {
-    throw new Error("useLibrarySelection was called outside LibrarySurface.");
+    throw new Error(
+      "useLibrarySelection was called outside a LibrarySelectionProvider.",
+    );
   }
   return context;
 }

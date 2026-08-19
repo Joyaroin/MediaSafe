@@ -7,8 +7,15 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * nothing imported yet, and a library that is entirely finished, watchlist or abandoned.
  * `docs/design/v1-surfaces.md` §6: *these read differently and must not share copy* —
  * with `empty-library.tsx`'s "The bill is blank", which is what this deliberately does
- * not say. This is reachable only because `listUpNext` succeeded and returned zero
- * entries; a failed read throws past this into `error.tsx`.
+ * not say. This is reachable only because a read succeeded and found nothing; a failed read
+ * throws past this into `error.tsx`.
+ *
+ * **Two branches reach it, and they are not the same question** (#137). The phone's is an
+ * empty deck: nothing is *watching*. The desktop's is all three rails empty: nothing is
+ * watching **and** nothing is dated to come back. A library that is entirely caught up with
+ * a season announced answers the first yes and the second no, which is why the two devices
+ * can honestly show different things — see `page.tsx`. What neither is, ever, is an empty
+ * rail standing in for a rail that failed to load.
  *
  * Framed as caught up, not as empty, the way the acceptance criteria ask for it: centred,
  * `text-bill-lg` in `text`, no border — the same shape `empty-library.tsx` uses and the

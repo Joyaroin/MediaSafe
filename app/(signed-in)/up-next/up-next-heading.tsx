@@ -1,8 +1,12 @@
 /**
- * The phone's landing heading — `DESIGN.md`: *TONIGHT is the first screen under [the
- * masthead]*. Shared by all three states (populated, empty, failed) the way
- * `library-heading.tsx` is shared by the library's three, so a failed read still reads as
- * *Up next, which did not load* rather than a bare error on a blank page.
+ * The landing heading — `DESIGN.md`: *TONIGHT is the first screen under [the masthead]*.
+ * Shared by all three states (populated, empty, failed) the way `library-heading.tsx` is
+ * shared by the library's three, so a failed read still reads as *Up next, which did not
+ * load* rather than a bare error on a blank page.
+ *
+ * Shared by both devices too, since #136 gave desktop this route and #137 gave it three
+ * rails under this same line — one heading over either form, so the page is recognisably one
+ * page at two densities even where what is beneath it diverges.
  *
  * `hair`, at the same weight as every other division: `DESIGN.md`'s Depth section named
  * this exact division — *the boundary between TONIGHT and the bill* — as one of the three
