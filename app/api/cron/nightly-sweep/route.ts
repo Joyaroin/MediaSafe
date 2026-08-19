@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { titleMirror } from "@/tmdb/catalogue";
+import { findByExternalId, titleMirror } from "@/tmdb/catalogue";
 
 import { unauthorized } from "./authorize";
 import { runNightlySweep } from "./run-sweep";
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const outcome = await runNightlySweep(titleMirror);
+  const outcome = await runNightlySweep(titleMirror, findByExternalId);
 
   /**
    * A body, not a page: nothing renders this, and `SPEC.md` §6 is explicit that no
@@ -51,5 +51,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     candidates: outcome.candidates,
     refreshed: outcome.refreshed,
     skipped: outcome.failures.length,
+    repointed: outcome.repointed.length,
+    quarantined: outcome.quarantined.length,
   });
 }

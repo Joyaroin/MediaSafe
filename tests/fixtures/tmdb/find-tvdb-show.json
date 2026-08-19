@@ -1,0 +1,56 @@
+{
+  "movie_results": [],
+  "person_results": [
+    {
+      "adult": false,
+      "id": 17419,
+      "name": "Bryan Cranston",
+      "original_name": "Bryan Cranston",
+      "media_type": "person",
+      "popularity": 22.531,
+      "gender": 2,
+      "known_for_department": "Acting",
+      "profile_path": "/7Jahy5LZX2Fo8fGJltMreAI49hC.jpg",
+      "known_for": []
+    }
+  ],
+  "tv_results": [
+    {
+      "adult": false,
+      "backdrop_path": "/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
+      "id": 1396,
+      "name": "Breaking Bad",
+      "original_language": "en",
+      "original_name": "Breaking Bad",
+      "overview": "Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer and given a prognosis of only two years left to live.",
+      "poster_path": "/ggFHVNu6YYI5L9pCfOacjizRGt.jpg",
+      "media_type": "tv",
+      "genre_ids": [18, 80],
+      "popularity": 355.166,
+      "first_air_date": "2008-01-20",
+      "vote_average": 8.879,
+      "vote_count": 12253,
+      "origin_country": ["US"]
+    }
+  ],
+  "tv_episode_results": [
+    {
+      "adult": false,
+      "id": 62085,
+      "name": "Pilot",
+      "overview": "Diagnosed with terminal lung cancer, chemistry teacher Walter White teams up with a former student to cook and sell crystal meth.",
+      "media_type": "tv_episode",
+      "vote_average": 8.2,
+      "vote_count": 216,
+      "air_date": "2008-01-20",
+      "episode_number": 1,
+      "episode_type": "standard",
+      "production_code": "",
+      "runtime": 58,
+      "season_number": 1,
+      "show_id": 1396,
+      "still_path": "/ydlY3iPfeOAvu8gVqrxPoMvzNCn.jpg"
+    }
+  ],
+  "tv_season_results": []
+}

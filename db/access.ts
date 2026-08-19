@@ -5,7 +5,7 @@ import { user } from "@/auth-schema";
 
 import { type Executor, getDb } from "./client";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
-import { episode, libraryEntry, title, watch } from "./tables";
+import { episode, libraryEntry, title, titleReconciliation, watch } from "./tables";
 import {
   libraryEntryRemaining,
   libraryEntryState,
@@ -29,6 +29,7 @@ export type { Executor };
 import {
   catalogueKeyOf,
   type CatalogueKey,
+  type ExternalId,
   type TitleKind,
   type TitleMirror,
 } from "@/tmdb/mirror";
@@ -335,6 +336,16 @@ export interface SweepCandidate {
   readonly id: string;
   readonly kind: TitleKind;
   readonly tmdbId: number;
+  /**
+   * The one handle on this title that survives TMDB forgetting its own id, and the only
+   * reason the sweep can do anything but fail when `tmdbId` 404s (issue #116).
+   *
+   * Selected here rather than fetched on the 404 path, because it costs nothing: the
+   * query already reads this row, and a second round trip on the failure path would be a
+   * second round trip taken at the worst moment. `null` on a title the sweep has not
+   * reached yet — which is a quarantine, never a search (`tmdb/reconcile.ts`).
+   */
+  readonly externalId: ExternalId | null;
 }
 
 /**
@@ -343,13 +354,24 @@ export interface SweepCandidate {
  */
 export const NIGHTLY_SWEEP_CAP = 200;
 
-/** `title.kind` is `text` with a `CHECK`; every row read here already passed it. */
+/**
+ * `title.kind` and `title.external_id` are both `text` with a `CHECK`
+ * (`title_kind_check`, `title_external_id_check`); every row read here already passed
+ * both, which is what these two casts stand on. `tests/schema-and-derived-state.test.ts`
+ * is where the constraints and the unions are held to still agree.
+ */
 function asSweepCandidate(row: {
   id: string;
   kind: string;
   tmdbId: number;
+  externalId: string | null;
 }): SweepCandidate {
-  return { id: row.id, kind: row.kind as TitleKind, tmdbId: row.tmdbId };
+  return {
+    id: row.id,
+    kind: row.kind as TitleKind,
+    tmdbId: row.tmdbId,
+    externalId: row.externalId as ExternalId | null,
+  };
 }
 
 /**
@@ -382,7 +404,12 @@ export async function titlesDueForRefresh(
   cap: number = NIGHTLY_SWEEP_CAP,
   executor: Executor = getDb(),
 ): Promise<SweepCandidate[]> {
-  const columns = { id: title.id, kind: title.kind, tmdbId: title.tmdbId };
+  const columns = {
+    id: title.id,
+    kind: title.kind,
+    tmdbId: title.tmdbId,
+    externalId: title.externalId,
+  };
 
   const airedSinceLastRefresh = exists(
     executor
@@ -449,6 +476,119 @@ export async function refreshTitleMirror(
   executor: Executor = getDb(),
 ): Promise<void> {
   await executor.transaction((tx) => mirrorTitle(tx, mirror));
+}
+
+/**
+ * Every TMDB episode id under this title that somebody has a watch on — the input to
+ * `reconcileEpisodes` (`tmdb/reconcile.ts`), and read only on the 404 path.
+ *
+ * ── Somebody's, not this caller's ────────────────────────────────────────────────────
+ *
+ * There is no user id here and there must not be. `title` and `episode` are global and
+ * unowned (ADR-0001), so a repoint happens to **every** account at once: an episode that
+ * one stranger has watched is an episode this title may not lose, exactly as if it were
+ * the reader's own. Scoping this to one account would make the decision correct for that
+ * account and wrong for everybody else — which is the shape of every mistake this path
+ * exists to prevent.
+ *
+ * `DISTINCT`, because an episode with three watches on it is one episode, and the caller
+ * asks *is it missing*, not *how many*.
+ *
+ * A film returns an empty array rather than needing a branch: its watches carry no
+ * `episode_id` at all (`db/tables.ts`), so there is nothing to join to and nothing to be
+ * missing.
+ */
+export async function watchedTmdbEpisodeIds(
+  titleId: string,
+  executor: Executor = getDb(),
+): Promise<number[]> {
+  const rows = await executor
+    .selectDistinct({ tmdbEpisodeId: episode.tmdbEpisodeId })
+    .from(episode)
+    .innerJoin(watch, eq(watch.episodeId, episode.id))
+    .where(eq(episode.titleId, titleId));
+
+  return rows.map((row) => row.tmdbEpisodeId);
+}
+
+/** What `repointTitle` was asked to do — `tmdb/reconcile.ts` reached the decision. */
+export interface RepointParams {
+  readonly titleId: string;
+  /** The id that 404'd. Checked, not trusted: see `repointTitle`'s note on the race. */
+  readonly fromTmdbId: number;
+  /** The survivor, and the mirror freshly fetched from it. */
+  readonly survivor: TitleMirror;
+  /** The external id that evidenced it, as it stood when the decision was made. */
+  readonly evidence: ExternalId;
+}
+
+/**
+ * Point one title at the TMDB id that survived, write the mirror fetched from it, and
+ * record that this happened — one transaction, or none of it (issue #116).
+ *
+ * ── The order of the two writes is the whole function ────────────────────────────────
+ *
+ * `mirrorTitle` upserts on `(kind, tmdb_id)`. Called first, with the survivor's id, it
+ * would find no conflict and **insert a second title row** — leaving the original row,
+ * every library entry on it and every watch under it pointing at an id TMDB has deleted,
+ * and the reader with a duplicate they cannot tell apart. So the `UPDATE` comes first and
+ * the upsert lands on the row that was just repointed. This ordering is not an
+ * optimisation and there is no version of this function that does not depend on it.
+ *
+ * ── Not a watch is touched, and that is structural rather than careful ───────────────
+ *
+ * `watch` is not written here, and neither is `episode.id`. Episodes are upserted on
+ * `tmdb_episode_id`, which is identity (ADR-0001) — so an episode the survivor still
+ * carries keeps the row id it always had, and every watch pointing at it still points at
+ * the episode it always meant. `reconcileEpisodes` is what guarantees the survivor still
+ * carries all of them; ADR-0001's `NO ACTION` foreign key is what would refuse the write
+ * if it somehow did not.
+ *
+ * ── `false`, not a throw, when the survivor is already a row of its own ──────────────
+ *
+ * A merge is precisely the case where the id that survived may already be in this
+ * database — somebody added the surviving entry directly, and `UNIQUE (kind, tmdb_id)`
+ * would reject the `UPDATE`. Merging the two rows is not on the table: it would mean
+ * moving watches from one title's episodes to another's, and **a watch is never
+ * repointed, under any policy, ever.** So this returns `false`, the caller quarantines it
+ * as `surviving-id-already-mirrored`, and the transaction rolls back having written
+ * nothing — including `metadata_refreshed_at`, so the title is retried rather than
+ * stamped.
+ *
+ * The `UPDATE`'s own `WHERE` still names `fromTmdbId`, and a `false` from a row that
+ * moved underneath us is the same answer for the same reason: this is a nightly job with
+ * one instance, but a write that assumes that is a write that is wrong the first time it
+ * is not true.
+ */
+export async function repointTitle(
+  { titleId, fromTmdbId, survivor, evidence }: RepointParams,
+  executor: Executor = getDb(),
+): Promise<boolean> {
+  return executor.transaction(async (tx) => {
+    const taken = await tx
+      .select({ id: title.id })
+      .from(title)
+      .where(and(eq(title.kind, survivor.kind), eq(title.tmdbId, survivor.tmdbId)));
+    if (taken.length > 0) return false;
+
+    const repointed = await tx
+      .update(title)
+      .set({ tmdbId: survivor.tmdbId })
+      .where(and(eq(title.id, titleId), eq(title.tmdbId, fromTmdbId)))
+      .returning({ id: title.id });
+    if (repointed.length === 0) return false;
+
+    await mirrorTitle(tx, survivor);
+
+    await tx.insert(titleReconciliation).values({
+      titleId,
+      fromTmdbId,
+      toTmdbId: survivor.tmdbId,
+      evidenceExternalId: evidence,
+    });
+
+    return true;
+  });
 }
 
 /** Whether the add created a library entry, or found one already there. */

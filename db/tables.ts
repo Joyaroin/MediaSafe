@@ -18,7 +18,9 @@ import {
 import { user } from "@/auth-schema";
 
 /**
- * MediaSafe's six tables, whole, in one migration (ADR-0001, SPEC.md §5).
+ * MediaSafe's tables. **Six of them, whole, in one migration** (ADR-0001, SPEC.md §5);
+ * `title_reconciliation` at the foot of this file is a seventh, added later by ADR-0001
+ * amendment 6 (issue #116) and carrying its own reasoning for why it is not one of the six.
  *
  * The ADR's `Schema` section is normative — "the source of truth is the Drizzle schema,
  * and these are the migrations it must generate" — so this file is that SQL, spelled in
@@ -300,5 +302,99 @@ export const listMembership = pgTable(
       name: "list_membership_library_entry_id_user_id_fk",
     }).onDelete("cascade"),
     unique("list_membership_list_id_position_key").on(t.listId, t.position),
+  ],
+);
+
+/**
+ * That one title was repointed at a different TMDB id, because the id it had was gone.
+ *
+ * **The seventh table, and the only one ADR-0001 did not specify** — added by amendment 6
+ * (issue #116). `SPEC.md` §11.3 asked what the nightly refresh does when a title's TMDB id
+ * vanishes; the answer is `tmdb/reconcile.ts`, and *"every reconciliation is recorded"* is
+ * the half of that answer a table has to hold. Old id, new id, the external id that
+ * evidenced it, and when — enough to see what happened and to reverse it by hand.
+ *
+ * ── Not an admin surface ─────────────────────────────────────────────────────────────
+ *
+ * `SPEC.md` §9 forbids one, and this is not it. Nothing reads this table: no screen, no
+ * badge, no notice, no query in `db/access.ts` outside the write below. It is a log Adham
+ * reads through the database, exactly as *"to see who signed up, Adham queries the
+ * database"* already establishes. The *reporting* half lives in Sentry, where the sweep's
+ * failures already go; this is the half you can `UPDATE` from.
+ *
+ * ── Borrowed or owned? Neither, and that is why it is its own table ──────────────────
+ *
+ * A reconciliation is not a fact about the world MediaSafe borrowed — TMDB does not
+ * publish it, and a refresh cannot reproduce it. Nor is it owned by an account: `title`
+ * is global, so a repoint happens to everybody at once and belongs to nobody. It is a
+ * record of **what this application did**, which is a third thing, and the reason it is a
+ * row rather than a column on `title`: a title can vanish and be reconciled more than
+ * once, and a column would keep only the last time and silently lose the chain.
+ *
+ * ── No `kind` column ─────────────────────────────────────────────────────────────────
+ *
+ * `from_tmdb_id` is ambiguous on its own — TMDB numbers films and shows separately — and
+ * the temptation is to denormalise `title.kind` beside it. It is not taken: `kind` is on
+ * the row `title_id` points at, that row cannot be missing while this one exists, and a
+ * denormalised copy would need a composite foreign key to be a *guarantee* rather than a
+ * copy that can drift (the standard this file holds `watch.user_id` and `watch.title_id`
+ * to). That key would mean a new `UNIQUE (id, kind)` on `title` that nothing else wants.
+ * One join answers it instead.
+ *
+ * ── No index ─────────────────────────────────────────────────────────────────────────
+ *
+ * Deliberate, and stated so it is not read as an omission. This table gains a row only
+ * when TMDB deletes or merges a title somebody has in their library; a library of ~472
+ * titles will produce a handful in the life of the application, and every index here
+ * would be a decision with no query behind it.
+ */
+export const titleReconciliation = pgTable(
+  "title_reconciliation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /**
+     * Cascades, like `episode` does. Nothing here outlives the title it describes: the
+     * only thing this row is *for* is repointing that row back, and with the row gone
+     * there is nothing to repoint.
+     */
+    titleId: uuid("title_id")
+      .notNull()
+      .references(() => title.id, { onDelete: "cascade" }),
+    /** The id that 404'd — what `title.tmdb_id` was, and what reversing this restores. */
+    fromTmdbId: integer("from_tmdb_id").notNull(),
+    /** The one surviving id the external id resolved to. */
+    toTmdbId: integer("to_tmdb_id").notNull(),
+    /**
+     * The external id that evidenced the repoint, in `title.external_id`'s own spelling
+     * and under the same `CHECK`.
+     *
+     * `NOT NULL`, where `title.external_id` is nullable, and that is the point of the
+     * column: **there is no such thing as an unevidenced reconciliation.** A title with
+     * no external id stored is quarantined and never reaches this table
+     * (`tmdb/reconcile.ts`), so a row here without one would be a record of a guess.
+     *
+     * Copied rather than joined, unlike `kind` above, because it is not the same fact as
+     * `title.external_id`: that column is borrowed and is overwritten by every refresh,
+     * including with `NULL`. This is what it said **at the moment the decision was made**,
+     * which is the only version of it that explains the decision.
+     */
+    evidenceExternalId: text("evidence_external_id").notNull(),
+    reconciledAt: timestamp("reconciled_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /** `title_external_id_check`'s twin. An id TMDB cannot be handed back is not evidence. */
+    check(
+      "title_reconciliation_evidence_external_id_check",
+      sql`${t.evidenceExternalId} ~ '^(imdb:tt[0-9]+|tvdb:[0-9]+)$'`,
+    ),
+    /**
+     * A repoint to the id you already had is not a repoint. `tmdb/reconcile.ts` excludes
+     * the 404'd id from the survivors it counts, and this is that rule held by the
+     * database — the pairing `title.kind` and `title.external_id` both already use.
+     */
+    check(
+      "title_reconciliation_from_to_check",
+      sql`${t.fromTmdbId} <> ${t.toTmdbId}`,
+    ),
   ],
 );
