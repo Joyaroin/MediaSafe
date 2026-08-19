@@ -35,12 +35,15 @@ mind. There is one per title and never one per watch.
 _Avoid_: score, stars, review, favourite
 
 **List**:
-A named group of library entries you curate by hand. Films and shows may sit in the same list.
+A named group of titles you curate by hand. Films and shows may sit in the same list, and so may
+titles you have never added to your library — a list is your own grouping, not a view of what you
+own.
 _Avoid_: collection, folder, tag, category
 
 **List membership**:
-The fact that one library entry belongs to one list. Yours, never derived from anything MediaSafe
-knows about the title.
+The fact that one **title** belongs to one list, at one position. Yours, never derived from anything
+MediaSafe knows about the title. It survives that title leaving your library, because one action
+must not silently edit a grouping you ordered by hand.
 _Avoid_: list item, list entry
 
 ## Watching

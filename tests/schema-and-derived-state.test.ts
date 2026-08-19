@@ -149,7 +149,12 @@ interface Film {
   entryId: string;
 }
 
-async function seedFilm(tx: Transaction, userId: UserId): Promise<Film> {
+/**
+ * A film in the catalogue and in nobody's library — the borrowed half of `seedFilm`, on
+ * its own. Since amendment 7 a list may hold one of these, so it is a fixture in its own
+ * right rather than only a step towards an entry.
+ */
+async function seedCatalogueFilm(tx: Transaction): Promise<string> {
   const [row] = await tx
     .insert(title)
     .values({
@@ -159,13 +164,18 @@ async function seedFilm(tx: Transaction, userId: UserId): Promise<Film> {
       runtimeMins: 104,
     })
     .returning({ id: title.id });
+  return row.id;
+}
+
+async function seedFilm(tx: Transaction, userId: UserId): Promise<Film> {
+  const titleId = await seedCatalogueFilm(tx);
 
   const [entry] = await tx
     .insert(libraryEntry)
-    .values({ userId, titleId: row.id })
+    .values({ userId, titleId })
     .returning({ id: libraryEntry.id });
 
-  return { userId, titleId: row.id, entryId: entry.id };
+  return { userId, titleId, entryId: entry.id };
 }
 
 /**
@@ -1085,23 +1095,6 @@ describe("progress and up next", () => {
 });
 
 describe("lists", () => {
-  /**
-   * A title in the catalogue and in nobody's library. Membership could not point at one
-   * of these before #143 — that is the whole of what the repoint bought.
-   */
-  async function seedCatalogueFilm(tx: Transaction): Promise<string> {
-    const [row] = await tx
-      .insert(title)
-      .values({
-        kind: "film",
-        tmdbId: nextNumber(),
-        name: `Film ${counter}`,
-        runtimeMins: 104,
-      })
-      .returning({ id: title.id });
-    return row.id;
-  }
-
   async function seedList(tx: Transaction, userId: UserId, titleIds: string[]) {
     const [row] = await tx
       .insert(list)

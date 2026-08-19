@@ -113,8 +113,10 @@ declare const userIdBrand: unique symbol;
  * Better Auth's `user.id` — `text`, not a uuid — and branded, so that it is not
  * interchangeable with the other strings this app is about to be full of.
  *
- * ADR-0001 gives `library_entry`, `watch`, `list` and `list_membership` a uuid `id` of
- * their own alongside `user_id`, and `watch` carries a `source_key`. Read into variables,
+ * ADR-0001 gives `library_entry`, `watch` and `list` a uuid `id` of their own alongside
+ * `user_id`, and `watch` carries a `source_key`. (`list_membership` never had one — its
+ * key is composite, `(list_id, title_id)` since amendment 7 — and this line said it did
+ * until #143 went looking.) Read into variables,
  * those are all `string`, and so is a user id — so `readWatches(entryId)` against a
  * signature expecting a user id compiles clean and scopes to nobody's rows, which is the
  * benign half of that mistake.

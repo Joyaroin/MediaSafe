@@ -297,7 +297,8 @@ CREATE TABLE library_entry (
 
   UNIQUE (user_id, title_id),
   UNIQUE (id, user_id),               -- was the FK target for list_membership; unused since
-                                      -- amendment 7, and dropped by #150 with the column
+                                      -- amendment 7, and still standing — #150 drops that
+                                      -- table's column, not this table's constraint
   UNIQUE (id, user_id, title_id)      -- FK target for watch
 );
 
@@ -350,9 +351,11 @@ watched in 2025"*, which is a ranking. The unique constraint is **deferrable** s
 commits as one transaction — which is one of the reasons the driver choice below matters, and which
 stopped being anticipatory when #133 brought lists into scope and specified the reorder.
 
-`title_id` is `NO ACTION`, like every other reference to `title`. A title is a fact about the world
-and nothing in this application deletes one; if something ever did, a list pointing at it should fail
-loudly rather than lose the entry.
+`title_id` is `NO ACTION`, like `library_entry.title_id` and unlike `episode` and
+`title_reconciliation`, which cascade. The split is the same one *Borrowed* draws: rows that only
+describe a title go with it, rows that record a **person's** relationship to it do not. A title is a
+fact about the world and nothing in this application deletes one; if something ever did, a list
+pointing at it should fail loudly rather than lose the entry.
 
 ### Indexes
 

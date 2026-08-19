@@ -176,7 +176,9 @@ export const libraryEntry = pgTable(
     check("library_entry_rating_check", sql`${t.rating} between 1 and 10`),
     unique("library_entry_user_id_title_id_key").on(t.userId, t.titleId),
     // Was the foreign-key target for `list_membership`, which repointed at `title` in
-    // #143. Nothing references it now; #150 drops it with the column it served.
+    // #143. Nothing references it now. Left standing deliberately: #150 scopes its drop
+    // to `list_membership`'s own column and constraints, and this one is on another
+    // table, so retiring it is a decision somebody still has to take.
     unique("library_entry_id_user_id_key").on(t.id, t.userId),
     // Foreign-key target for `watch`.
     unique("library_entry_id_user_id_title_id_key").on(t.id, t.userId, t.titleId),

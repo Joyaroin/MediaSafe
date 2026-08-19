@@ -520,9 +520,11 @@ something v1 does not have, and that judgement was wrong.
 
 What came in with them, and what did not:
 
-- **Their own destination on both devices** — a fifth sidebar item, a fourth phone tab. **Not a rail
-  on Up next**, which stays below: *what do I watch tonight* is a different question from *what did I
-  group*.
+- **Their own destination on both devices**, not a rail on Up next — that stays below, because *what
+  do I watch tonight* is a different question from *what did I group*. Where the destination sits is
+  [#132](https://github.com/Joyaroin/MediaSafe/issues/132)'s to say, and #133 defers to it: today the
+  desktop nav is two cells, Library and Search (`app/nav-cells.tsx`), and the phone has three tabs
+  (`app/tab-bar.tsx`), so any count of items is a count in a design that has not landed.
 - **A list holds anything in the catalogue**, not only what you own, and is **ordered by hand**. So
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your
