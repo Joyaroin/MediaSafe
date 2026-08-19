@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+
 /**
  * The way a title leaves your library — issue #142, and the only entry point to the
  * confirmation that removes it.
@@ -41,8 +43,14 @@ import Link from "next/link";
  *
  * *In shape.* `AbandonControl` is one row — a text button with its reassurance set opposite,
  * on the same baseline. This is a block: the link on its own line with the consequence
- * underneath it, at a wider gap above. Two different constructs, so the eye does not read a
- * pair of interchangeable rows.
+ * underneath it. Two different constructs, so the eye does not read a pair of
+ * interchangeable rows.
+ *
+ * The gap above is `PROGRAMME_NOTE_SECTION` and not a wider one written by hand. A first
+ * draft of this control widened it to `mt-10` to push the two apart, which is `2.5rem`
+ * against the `1.75rem` `DESIGN.md`'s Layout fixes for every block in this pane — buying a
+ * distinction the shape and the copy already carry, at the price of the one section rhythm
+ * on the surface. Distinctness is not a spacing problem here.
  *
  * *In copy.* The slot that holds *Watching it again clears it* on the abandon row holds
  * *Nothing brings them back* here. Same position in the sentence, opposite promise, and it
@@ -64,7 +72,7 @@ export function RemoveControl({
   readonly titleName: string;
 }) {
   return (
-    <div className="mt-10 border-t border-rule pt-5">
+    <div className={PROGRAMME_NOTE_SECTION}>
       <Link
         href={`/library/${libraryEntryId}/remove`}
         aria-label={`Remove ${titleName} from your library`}

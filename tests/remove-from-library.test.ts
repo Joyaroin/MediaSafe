@@ -14,6 +14,8 @@ import {
   episode,
   libraryEntry,
   libraryEntryState,
+  list,
+  listMembership,
   title,
   user,
   watch,
@@ -447,6 +449,56 @@ describe("removing the title", () => {
         .from(libraryEntryState)
         .where(eq(libraryEntryState.libraryEntryId, again.id));
       expect(state.state).toBe("watchlist");
+    });
+  });
+});
+
+/**
+ * The one decision in issue #133 this ticket does **not** deliver, pinned so that the day it
+ * is delivered, it is delivered on purpose.
+ *
+ * #133, *Removing a show leaves its list entries — decided here*: "a list entry survives the
+ * library entry going. That is intended: a list is your own grouping, not a view of your
+ * library, and one action must not silently edit a list you ordered by hand."
+ *
+ * Today it does not survive. `list_membership`'s composite foreign key points at
+ * `library_entry` and cascades (`db/tables.ts`), so this `DELETE` takes the memberships with
+ * it. The change that fixes it is the repoint of that key from `library_entry` to `title`,
+ * which is an ADR-0001 amendment and belongs to the lists ticket rather than this one; the
+ * table has zero rows in production, so nothing is lost meanwhile.
+ *
+ * **This test asserts the wrong behaviour on purpose.** It is a tripwire, not an
+ * endorsement: it passes only while the cascade is still there, so the repoint cannot land
+ * without this file failing and putting the decision in front of whoever lands it. Delete it
+ * in the same change that repoints the key, and replace it with the assertion #133 actually
+ * asks for — that the membership is still standing afterwards.
+ */
+describe("list memberships, until the repoint issue #133 decided", () => {
+  it("still go with the entry today — the tripwire for that change", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const entryId = await seedEntry(tx, reader, show, { watches: 1 });
+
+      const [owned] = await tx
+        .insert(list)
+        .values({ userId: reader, name: "Comfort shows" })
+        .returning({ id: list.id });
+      await tx
+        .insert(listMembership)
+        .values({ listId: owned.id, libraryEntryId: entryId, userId: reader, position: 1 });
+
+      await removeTitleFromLibrary(reader, entryId, tx);
+
+      expect(
+        await tx
+          .select()
+          .from(listMembership)
+          .where(eq(listMembership.libraryEntryId, entryId)),
+      ).toEqual([]);
+      // The list itself is untouched either way — it is owned by the account, not by the
+      // entry, and nothing about removing one title deletes a grouping.
+      expect(await tx.select().from(list).where(eq(list.id, owned.id))).toHaveLength(1);
     });
   });
 });

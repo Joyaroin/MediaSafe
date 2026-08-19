@@ -1,10 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
-
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
-import { BackToTitle, RemoveTitleHeading } from "./remove-frame";
+import { BackToLibrary, RemoveTitleHeading } from "./remove-frame";
 
 /**
  * The counts did not load — and so there is nothing on this page to confirm.
@@ -46,12 +44,6 @@ export default function RemoveTitleReadFailure({
   retry: () => void;
 }) {
   const reference = referenceForBoundary(error);
-  /**
-   * A dynamic segment can come back as a string, an array, or not at all — `BackToTitle`
-   * takes `undefined` and points at the library instead, which is where a reader whose read
-   * just failed can actually see whether the title is still there.
-   */
-  const entryId = useParams()?.entryId;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
@@ -61,7 +53,7 @@ export default function RemoveTitleReadFailure({
         <ReadFailure reference={reference} retry={retry} />
       </div>
 
-      <BackToTitle entryId={typeof entryId === "string" ? entryId : undefined} />
+      <BackToLibrary />
     </main>
   );
 }

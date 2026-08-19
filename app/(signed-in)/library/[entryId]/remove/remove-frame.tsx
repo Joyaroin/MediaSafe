@@ -31,26 +31,36 @@ export function RemoveTitleHeading() {
  * the exit equal weight to the removal would make the screen read as a choice between two
  * actions rather than as one action a reader has to take.
  *
- * `/library/{entryId}` is the target on both devices, and on desktop that is the route
- * rendering of title detail rather than the pane the reader pressed the control on. It is
- * the same content and an already-reachable route, so nothing is broken by it; the
- * alternative is a third copy of `selectable-entry.tsx`'s breakpoint constant — a value that
- * file already calls out as one silent duplicate too many — spent on a cancel path.
+ * ── Why the library, and not the title the reader came from ──────────────────────────
  *
- * `entryId` is optional because the failure boundary may not have one — `useParams()` can
- * answer `undefined` for a segment, and a link built from `undefined` would point at
- * `/library/undefined`. The library is the honest fallback: it is where the title is, and
- * on the branch where the read failed it is also the only surface that can say whether the
- * title is still there.
+ * `/library/{entryId}` was the first draft and is wrong on desktop: that route's own
+ * docblock calls it *title detail, on the phone — a route you push and pop*, and the desktop
+ * reader pressed the control on the pane, which never navigates. Backing out would have
+ * dropped them on a layout they otherwise never reach, on the one path whose whole point is
+ * that changing your mind costs nothing.
+ *
+ * `router.back()` would be exactly right on both — the pane leaves the URL at `/library`,
+ * the phone leaves it at the title — and is not used, because it answers nothing on a cold
+ * load of this URL and a way out that sometimes goes nowhere is worse on this page than on
+ * any other.
+ *
+ * So: `/library`, deterministic, correct on both devices, and the same place a *successful*
+ * removal lands (`remove-title-form.tsx`) — confirming and cancelling leave the reader in
+ * one place rather than two. The phone reader loses the title they were reading; their back
+ * press still has it.
+ *
+ * It takes no props, and that is the point: the failure boundary renders this too, and a
+ * target derived from the route's own segment would be one more thing for that render to
+ * get wrong on the day the read has already failed.
  */
-export function BackToTitle({ entryId }: { entryId?: string }) {
+export function BackToLibrary() {
   return (
     <p className="mt-8 text-item text-stock-dim">
       <Link
-        href={entryId === undefined ? "/library" : `/library/${entryId}`}
+        href="/library"
         className="underline decoration-rule-bold underline-offset-4 transition-colors duration-150 hover:text-stock"
       >
-        {entryId === undefined ? "‹ Back to your library" : "‹ Back to the title"}
+        ‹ Back to your library
       </Link>
     </p>
   );

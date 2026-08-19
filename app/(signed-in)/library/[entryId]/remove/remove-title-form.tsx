@@ -9,6 +9,7 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
+import type { IrreversibleWriteFailure } from "@/errors/irreversible-failure";
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
@@ -43,22 +44,16 @@ import { removeTitleAction, type RemoveTitleOutcome } from "./actions";
  */
 
 /**
- * The two ways this can fail, which are **not the same fact** and must not print the same
- * sentence — the distinction `delete-account-form.tsx` draws, for the same reason.
+ * `errors/irreversible-failure.ts` carries the distinction and why the two kinds must never
+ * print the same sentence. What is this form's own is what settles an `unknown`: the reader
+ * is sent to their library, because the title being there or not is the answer and looking
+ * is the only thing that gives it.
  *
- * `refused` is the server's own answer: it ran, the removal did not happen, and the entry is
- * provably intact — a `DELETE` commits or rolls back whole, so there is no partial state to
- * hedge about.
- *
- * `unknown` is the call never coming back. The title may be gone and it may not, and the one
- * thing that must not be printed is `refused`'s sentence, because on the branch where the
- * removal did land *your watches are all still here* is a lie told about an irreversible
- * operation. So this says what is true — that MediaSafe does not know — and sends the reader
- * to the surface that does. **It does not re-offer the button**: pressing it again would
- * either remove a title the reader has not been told is still there, or fail as `refused`
- * and print *nothing was destroyed* over a removal that had already happened.
+ * **The button is not re-offered on that branch.** Pressing it again would either remove a
+ * title the reader has not been told is still there, or fail as `refused` and print *nothing
+ * was destroyed* over a removal that had already happened.
  */
-type Failure = { readonly kind: "refused" | "unknown"; readonly reference: string | null };
+type Failure = IrreversibleWriteFailure;
 
 export function RemoveTitleForm({
   libraryEntryId,

@@ -1,6 +1,7 @@
+import { DestroyedFigure } from "@/app/destroyed-figure";
 import { titleFootprint } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import { BackToTitle, RemoveTitleHeading } from "./remove-frame";
+import { BackToLibrary, RemoveTitleHeading } from "./remove-frame";
 import { RemoveTitleForm } from "./remove-title-form";
 
 /**
@@ -32,6 +33,12 @@ import { RemoveTitleForm } from "./remove-title-form";
  * *Rating — 0* would be stating a score of zero, which is not a value the column can hold
  * (`CHECK (rating BETWEEN 1 AND 10)`), and *Rating — none* would be a figure whose whole
  * content is that there is no figure.
+ *
+ * It also carries its denominator, and that is not decoration. *Watches* is a quantity and
+ * a rating is a score, and an 8 set in the same slot directly beneath *118 Watches*, under a
+ * heading reading **What this destroys**, reads as eight things. `DestroyedFigure`'s `outOf`
+ * is what stops the one screen whose figures are the whole argument from stating one of them
+ * wrongly.
  *
  * ── A count that cannot be read is a read failure, never a zero ──────────────────────
  *
@@ -98,9 +105,9 @@ export default async function RemoveTitlePage({
           phone without a breakpoint deciding it.
         */}
         <dl className="mt-6 flex flex-wrap gap-x-16 gap-y-8">
-          <Destroyed label="Watches" count={footprint.watches} />
+          <DestroyedFigure label="Watches" count={footprint.watches} />
           {footprint.rating === null ? null : (
-            <Destroyed label="Your rating" count={footprint.rating} />
+            <DestroyedFigure label="Your rating" count={footprint.rating} outOf={10} />
           )}
         </dl>
 
@@ -119,7 +126,8 @@ export default async function RemoveTitlePage({
         <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-stock-dim">
           Giving up on a title is the other thing, and it is not this one. It keeps every
           watch and every rating, takes the title out of Up next, and undoes itself the
-          moment you watch the show again. It is on the title&rsquo;s own page, below.
+          moment you watch the show again. It is on the title&rsquo;s own page, where you
+          pressed Remove.
         </p>
       </section>
 
@@ -132,28 +140,9 @@ export default async function RemoveTitlePage({
           <RemoveTitleForm libraryEntryId={entryId} titleName={footprint.name} />
         </div>
 
-        <BackToTitle entryId={entryId} />
+        <BackToLibrary />
       </section>
     </main>
   );
 }
 
-/**
- * One figure and its label — the delete-account page's `Destroyed`, and deliberately the
- * same one: two screens stating what a destructive write will take should state it in the
- * same shape, and this is the second of them rather than a second design.
- *
- * `data-numeric` turns on `tabular-nums` (`app/globals.css`) and `en-GB` grouping is passed
- * explicitly rather than left to the server's locale, so that 18,715 does not read as 18715
- * and does not change shape depending on which machine rendered it.
- */
-function Destroyed({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex flex-col-reverse">
-      <dt className="code-line mt-2 text-stock-dim">{label}</dt>
-      <dd className="bill-title text-bill-lg text-stock" data-numeric>
-        {count.toLocaleString("en-GB")}
-      </dd>
-    </div>
-  );
-}
