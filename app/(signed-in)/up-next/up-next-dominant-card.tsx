@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import type { UpNextEntry } from "@/db/access";
-import { Plate } from "@/app/plate";
+import { Poster } from "@/app/poster";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { AbandonControl } from "../library/abandon-control";
 import { useWatchMark } from "../library/use-watch-mark";
@@ -74,7 +74,10 @@ export function UpNextDominantCard({ entry }: { entry: UpNextEntry }) {
   return (
     <article className="relative flex flex-col border-t border-hair">
       <Link href={`/library/${entry.libraryEntryId}`} className="flex flex-col">
-        <Plate posterPath={entry.posterPath} className="aspect-[5/4] w-full shrink-0" />
+        {/* Full phone width — before #135 this was a `5/4` plate cropping whatever
+            arrived; the `poster` utility's own `2/3` ratio derives the height from this
+            width instead, so the card is however tall a real poster at full width is. */}
+        <Poster posterPath={entry.posterPath} width={430} className="w-full shrink-0" />
 
         <div className="flex shrink-0 gap-4 px-4 py-4">
           <div className="relative min-w-0 flex-1">

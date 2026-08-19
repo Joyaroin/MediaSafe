@@ -1,5 +1,5 @@
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
-import { Plate } from "@/app/plate";
+import { Poster } from "@/app/poster";
 import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
 
@@ -11,7 +11,10 @@ import { SelectableEntry } from "./selectable-entry";
  * the title in condensed 900 at `2.15rem`, a dim code line, the state label, and a single
  * truncated line of what's next. Hover fills the cell with `raised`. No shadow, no
  * lift, no radius, no scale.* Every class below is that sentence, taken from the reference
- * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived.
+ * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived — except
+ * the plate itself, which #135 replaces with a poster: `78px` wide survives, the fixed
+ * `104px` height and the "no radius" do not (`app/poster.tsx`). `DESIGN.md` is rewritten
+ * from the built world in #144, not before.
  *
  * ── Where the button goes, since #58 ──────────────────────────────────────────────────
  *
@@ -21,20 +24,22 @@ import { SelectableEntry } from "./selectable-entry";
  * what #56's acceptance criteria specified and what #58 attached a handler to rather than
  * rewriting.
  *
- * ── Abandoned is the only modified plate ─────────────────────────────────────────────
+ * ── Abandoned is the only modified poster ────────────────────────────────────────────
  *
- * `DESIGN.md`, The Plate: *an abandoned title's plate drops to `opacity: .45` and its name
- * drops to dim bone; that pairing is the only place the plate is modified.* Both halves
- * are here and nowhere else — one without the other reads as a rendering fault rather
- * than as a state.
+ * An abandoned title's poster drops to `opacity: .45` and its name drops to dim bone;
+ * that pairing is the only place the poster is modified. Both halves are here and nowhere
+ * else — one without the other reads as a rendering fault rather than as a state.
  */
 
 /**
- * The plate's measure in the bill grid — `78×104px`, one of `DESIGN.md`'s five fixed
- * measures. It is a fixed number of pixels at every breakpoint: the column count is what
- * changes between a phone and a desktop, and nothing else is (`SPEC.md` §7).
+ * The poster's width in the bill grid — `78px`, one of `DESIGN.md`'s five fixed measures
+ * before #135 (the number survives; what filled it does not). It is fixed at every
+ * breakpoint: the column count is what changes between a phone and a desktop, and nothing
+ * else is (`SPEC.md` §7). Height is not set — the `poster` utility's `2/3` aspect ratio
+ * derives it from this width, so a real poster is never cropped to fit a fixed box.
  */
-const BILL_PLATE = "h-[104px] w-[78px] shrink-0";
+const BILL_POSTER_WIDTH = 78;
+const BILL_POSTER = "w-[78px] shrink-0";
 
 /**
  * The one line of what is next, for each of the five states this cell renders. The label
@@ -92,14 +97,15 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
         entryId={entry.libraryEntryId}
         className="flex w-full gap-4 p-4 text-left transition-colors duration-150 hover:bg-raised"
       >
-        <Plate
+        <Poster
           posterPath={entry.posterPath}
-          className={abandoned ? `${BILL_PLATE} opacity-45` : BILL_PLATE}
+          width={BILL_POSTER_WIDTH}
+          className={abandoned ? `${BILL_POSTER} opacity-45` : BILL_POSTER}
         />
 
         <div className="min-w-0 flex-1">
           {/*
-            `break-words` is not decoration. A title is one flex child beside a plate of
+            `break-words` is not decoration. A title is one flex child beside a poster of
             fixed width, and a long word — `ENGAGEMENT`, `Neighbourhood`, most of a German
             title — cannot wrap, so without this it pushes past the cell and the whole
             page gains a horizontal scrollbar at phone widths. Measured at 388px before it
@@ -121,7 +127,7 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
             ticket, not a line here.
 
             A title TMDB has not dated gets no line at all rather than a placeholder,
-            for the reason `app/plate.tsx` gives for artwork it does not have: a missing
+            for the reason `app/poster.tsx` gives for artwork it does not have: a missing
             borrowed fact is not an error and an apology is the wrong shape for it.
           */}
           {entry.releaseYear === null ? null : (

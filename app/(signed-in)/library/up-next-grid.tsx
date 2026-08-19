@@ -1,6 +1,6 @@
 "use client";
 
-import { Plate } from "@/app/plate";
+import { Poster } from "@/app/poster";
 import type { UpNextEntry } from "@/db/access";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { useWatchMark } from "./use-watch-mark";
@@ -65,14 +65,19 @@ function upNextEpisodeFullName(entry: UpNextEntry): string {
 }
 
 /**
- * `DESIGN.md`: *each card is a `69×92px` plate beside a `text-bill-sm` title, a truncated
- * episode name at `text-item`, a dim `S1 E2` code line, and a ghost Strike it button
- * pushed to the bottom with `mt-auto`. The strike rule and Watched stamp are positioned
- * inside the card's right-hand block.*
+ * Each card is a poster beside a `text-bill-sm` title, a truncated episode name at
+ * `text-item`, a dim `S1 E2` code line, and a ghost Strike it button pushed to the bottom
+ * with `mt-auto`. The strike rule and Watched stamp are positioned inside the card's
+ * right-hand block.
+ *
+ * The poster is `92px` tall, not wide — before #135 it was a fixed `69×92px` plate; the
+ * row's `max-h-[122px]` clip is the real constraint here, so height stays fixed and the
+ * `poster` utility's `2/3` ratio derives the (narrower) width from it, rather than the
+ * other way round.
  *
  * The title truncates alongside the episode name for the reason
  * `programme-note-episodes.tsx`'s `TRAILING` docblock gives generally: the card's height
- * is fixed by the plate and the clip above it, so a name that wraps is a name that grows
+ * is fixed by the poster and the clip above it, so a name that wraps is a name that grows
  * the row rather than a name that reads on one line.
  *
  * Marking here is the exact hook `EpisodeLine` drives — no second write, no second
@@ -98,7 +103,7 @@ function UpNextCard({ entry }: { entry: UpNextEntry }) {
 
   return (
     <li className="flex gap-3 bg-ground p-3">
-      <Plate posterPath={entry.posterPath} className="h-[92px] w-[69px] shrink-0" />
+      <Poster posterPath={entry.posterPath} width={61} className="h-[92px] shrink-0" />
 
       {/* `WatchStamp`'s own relative container — the card's right-hand block, offset to
           its trailing edge, the same role `programme-note-episodes.tsx`'s `<li>` plays

@@ -4,10 +4,10 @@
     "ignoreFiles": [],
     "ignoreValues": [
       {
-        "rule": "design-system-color",
-        "value": "#000",
-        "createdAt": "2026-08-17T06:30:32.718Z",
-        "reason": "Claude's call: not a palette colour. It is the multiply-blend ink of the plate's half-tone dot screen (radial-gradient at 3px, opacity .34), documented as part of the Plate component in DESIGN.md. Tokenising a screen ink would imply it is a surface colour, which it is not."
+        "rule": "design-system-radius",
+        "value": "7px",
+        "createdAt": "2026-08-19T20:15:11.058Z",
+        "reason": "Issue #135: poster radius taken from design/catalogue-wall.html's .poster{border-radius:7px}, the binding prototype. DESIGN.md's zero-radius rule is rewritten wholesale in #144, not before."
       }
     ]
   }
