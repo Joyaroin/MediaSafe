@@ -1,11 +1,12 @@
 import Link from "next/link";
 
 import type { UpNextEntry } from "@/db/access";
-import { Plate } from "@/app/plate";
+import { Poster } from "@/app/poster";
 
 /**
- * One row of the compact deck beneath the dominant entry — `DESIGN.md`'s Shapes section:
- * `42×56px` in the phone deck, one of the plate's five fixed measures.
+ * One row of the compact deck beneath the dominant entry — `42px` wide in the phone deck,
+ * one of `DESIGN.md`'s five fixed measures before #135 (the poster's own `2/3` ratio
+ * derives the height now, rather than a fixed `56px` box cropping it).
  *
  * A plain server component and a `Link`, not `SelectableEntry`: that wrapper's whole job
  * is choosing between a desktop select and a phone push, and this route has no desktop
@@ -17,7 +18,8 @@ import { Plate } from "@/app/plate";
  * *Not yet named*, matching `programme-note-episodes.tsx`'s own fallback, rather than
  * falling back to `S3 E4` in its place.
  */
-const DECK_PLATE = "h-14 w-[42px] shrink-0";
+const DECK_POSTER_WIDTH = 42;
+const DECK_POSTER = "w-[42px] shrink-0";
 
 export function UpNextDeckRow({ entry }: { entry: UpNextEntry }) {
   const episodeName = entry.episodeName ?? "Not yet named";
@@ -28,7 +30,7 @@ export function UpNextDeckRow({ entry }: { entry: UpNextEntry }) {
         href={`/library/${entry.libraryEntryId}`}
         className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-raised"
       >
-        <Plate posterPath={entry.posterPath} className={DECK_PLATE} />
+        <Poster posterPath={entry.posterPath} width={DECK_POSTER_WIDTH} className={DECK_POSTER} />
 
         <div className="min-w-0 flex-1">
           <p className="bill-title break-words text-bill-xs">{entry.titleName}</p>

@@ -1767,7 +1767,7 @@ export const UP_NEXT_PAGE_SIZE = 20;
  * it.
  *
  * There is no remainder here, and no count of anything. The remainder is a sort key
- * below, not a fact either card prints — `DESIGN.md`'s Up next card is a plate, a code
+ * below, not a fact either card prints — `DESIGN.md`'s Up next card is a poster, a code
  * line, a title, an episode name and a control, and the wireframe's "▓▓▓░ 12" meter did
  * not survive into it.
  */

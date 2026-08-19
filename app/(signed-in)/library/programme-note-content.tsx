@@ -1,5 +1,5 @@
 import type { LibraryState, TitleDetailRow } from "@/db/access";
-import { Plate } from "@/app/plate";
+import { Poster } from "@/app/poster";
 import { AbandonControl } from "./abandon-control";
 import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
@@ -43,6 +43,9 @@ import { STATE_LABELS } from "./library-state";
  * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
  * this component, outside this component's own scroll, which is a layout decision
  * belonging to the caller (`app/tmdb-attribution.tsx`'s own docblock says why).
+ *
+ * The poster's own docblock is `app/poster.tsx`; this component just supplies the width
+ * it renders it at.
  */
 export function ProgrammeNoteContent({
   detail,
@@ -58,7 +61,18 @@ export function ProgrammeNoteContent({
 
   return (
     <div className="px-6 py-5">
-      <Plate posterPath={detail.posterPath} className="aspect-[16/10] w-full" />
+      {/* Full pane width — before #135 this was a `16/10` plate cropping whatever
+          arrived. The `poster` utility's own `2/3` ratio derives the height from this
+          width instead; #141 owns repositioning this into a morph from the tile it was
+          opened from.
+
+          This component renders in two frames of different widths (this docblock's own
+          `onRated` section): the desktop pane is `programme-note.tsx`'s `w-[420px]` minus
+          this wrapper's `px-6` (`372px`), the phone route is the full viewport minus the
+          same padding. `382` covers a large phone (`430px` viewport) without measuring
+          either frame at render time — both land in TMDB's `w500` bucket regardless, so a
+          closer number would change nothing served, only how honest this one reads. */}
+      <Poster posterPath={detail.posterPath} width={382} className="w-full" />
 
       <h2 className="bill-title mt-5 text-bill-xl">{detail.name}</h2>
 
