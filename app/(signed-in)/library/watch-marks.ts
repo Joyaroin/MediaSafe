@@ -45,6 +45,18 @@ import {
  * programme note ─┘
  * ```
  *
+ * ── The TONIGHT card is gone; the unit of state is not ────────────────────────────────
+ *
+ * Issue #136 deleted the desktop TONIGHT row this section names — Up next moved to its
+ * own page, and the library surface it used to sit above no longer renders any per-episode
+ * mark beside the programme note's. Nothing here changed with it. The unit of state was
+ * never *this pairing specifically*; it was *the episode*, precisely so that whichever
+ * surfaces happen to show one at once — today, or after some future surface reintroduces
+ * a second one — agree by construction rather than by every caller remembering to check.
+ * Keying by component instance was the mistake #103 fixed; reverting to it because one of
+ * two callers left would be re-opening a bug for a component that is not there to trigger
+ * it yet, on the promise that nothing else ever will be.
+ *
  * ── The key names the write, not the press ───────────────────────────────────────────
  *
  * Unchanged from #89, and now true across surfaces rather than only across one row's two
@@ -487,10 +499,11 @@ export function createWatchMarks({
 
 /**
  * The app's one store, over the two Server Actions. A module-level instance rather than a
- * React context for a reason the toast store's own docblock only half covers: the surfaces
- * that share a mark sit in different branches of the tree — `up-next-row.tsx` above the
- * bill, `programme-note.tsx` beside it — so a provider wrapping both would have to be
- * mounted by a component with no other reason to know either of them exists.
+ * React context for a reason the toast store's own docblock only half covers: nothing
+ * guarantees the surfaces that end up sharing a mark sit in the same branch of the tree —
+ * `up-next-dominant-card.tsx` and `programme-note.tsx` are on different routes entirely —
+ * so a provider would have to be mounted above every caller by a component with no other
+ * reason to know any of them exists.
  */
 export const watchMarks = createWatchMarks({
   writer: {

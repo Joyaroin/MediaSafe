@@ -16,18 +16,20 @@ export type { WatchAppearance, WatchMarkPhase } from "./watch-marks";
  * ── What this is, after issue #103 ───────────────────────────────────────────────────
  *
  * It is the binding, and nothing else. The write, the idempotency key, the rollback and
- * the toast all live in `watch-marks.ts`, keyed by episode, because on desktop the
- * TONIGHT row and the programme note are on screen **at once** and can be showing the
- * same episode — and two component instances holding two optimistic states minted two
- * keys against one episode, which is two rows. That file's docblock is the reasoning;
- * this one holds no state of its own beyond the initial appearance its caller was
- * rendered with.
+ * the toast all live in `watch-marks.ts`, keyed by episode rather than by component
+ * instance — issue #103's fix for the desktop TONIGHT row and the programme note once
+ * being on screen **at once** and able to show the same episode, where two instances
+ * holding two optimistic states minted two keys against one episode. The row is gone
+ * (#136), and the keying stays: nothing about *an* episode-keyed store depends on which
+ * surfaces happen to share one right now, and `watch-marks.ts`'s own docblock is where
+ * that argument lives. This hook holds no state of its own beyond the initial appearance
+ * its caller was rendered with.
  *
  * **Still one hook, still one write.** #103 changes where the key is kept, not how many
- * implementations of the write there are: the four callers — `EpisodeLine` and `FilmRow`
- * (`programme-note-episodes.tsx`), `UpNextCard` (`up-next-grid.tsx`) and
- * `UpNextDominantCard` (`up-next/up-next-dominant-card.tsx`) — call this exactly as they
- * did, and get back exactly what they did.
+ * implementations of the write there are: the three remaining callers — `EpisodeLine` and
+ * `FilmRow` (`programme-note-episodes.tsx`) and `UpNextDominantCard`
+ * (`up-next/up-next-dominant-card.tsx`) — call this exactly as they did, and get back
+ * exactly what they did.
  *
  * `episodeId` is `null` for a film, exactly as `RecordWatchParams` already allows.
  * `episodeName` is left absent for a film for the same reason: `LostWrite.episode` is
@@ -94,8 +96,7 @@ export function useWatchMark({
   );
   // The server snapshot is the seed: nothing has been written yet, and there is no store
   // on the server to read one out of — `watch-marks.ts` is a client module for that
-  // reason. `tests/programme-note.test.ts` and `tests/up-next-grid.test.ts` render through
-  // this branch.
+  // reason. `tests/programme-note.test.ts` renders through this branch.
   const view = useSyncExternalStore(subscribe, read, () => initial);
 
   /**
