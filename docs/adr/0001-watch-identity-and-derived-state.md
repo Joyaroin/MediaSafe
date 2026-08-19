@@ -80,6 +80,35 @@ things around it are not.
    The half this does **not** answer is the one §11.3 raised alongside: orphan borrowed rows left by
    account deletion are **not reaped in v1**. `SPEC.md` §11.7 carries it.
 
+7. **`list_membership` points at `title`, not at `library_entry`** —
+   [#133](https://github.com/Joyaroin/MediaSafe/issues/133) decided it,
+   [#143](https://github.com/Joyaroin/MediaSafe/issues/143) built it, 2026-08-19. This ADR wrote
+   membership as a link from a list to a **library entry**, which reads as the obvious shape — a list
+   groups things in your library — and quietly encodes a claim nobody made: that a list can only hold
+   what you already own. **A list is your own grouping, not a view of your library.** *The ones I keep
+   meaning to start* is a list of titles you have never added, and the composite key to
+   `library_entry` made that row unrepresentable.
+
+   So membership points at `title`, which is global and unowned, and **ownership moves rather than
+   disappearing**. It is enforced on the *list*, which is owned: `(list_id, user_id)` still references
+   `list(id, user_id)`, so a row whose owner disagrees with its list's owner is unsatisfiable, and the
+   composite key to `library_entry` is replaced by a **direct one to `user.id`**, which is what
+   cascades a membership away with the account. Nothing about *Ownership is a column on every owned
+   row* below is relaxed — the column is still there and still held true by the database. Only the row
+   it agrees with changed.
+
+   The primary key becomes `(list_id, title_id)`: a title still appears in a list at most once.
+   **`UNIQUE (list_id, position) DEFERRABLE INITIALLY DEFERRED` is unchanged, and stops being
+   anticipatory** — it was written for a reorder nobody had built, and #133 builds one.
+
+   Two consequences worth stating because they are the point rather than the fallout. **Removing a
+   title from your library leaves its list entries standing**, which is intended: one action must not
+   silently edit a grouping you ordered by hand. And **the table had zero rows**, so this is
+   expand–contract at its cheapest — which does not make it something else. `SPEC.md` §3.7 is
+   forward-only, `library_entry_id` stays behind nullable and unread, and
+   [#150](https://github.com/Joyaroin/MediaSafe/issues/150) drops it in its own change. See *Owned*
+   below, corrected in place.
+
 ## Context
 
 `CONTEXT.md` settled the *language*: a Watch is episode-grain and is the only thing MediaSafe
@@ -267,7 +296,8 @@ CREATE TABLE library_entry (
   added_at     timestamptz NOT NULL DEFAULT now(),
 
   UNIQUE (user_id, title_id),
-  UNIQUE (id, user_id),               -- FK target for list_membership
+  UNIQUE (id, user_id),               -- was the FK target for list_membership; unused since
+                                      -- amendment 7, and dropped by #150 with the column
   UNIQUE (id, user_id, title_id)      -- FK target for watch
 );
 
@@ -299,24 +329,30 @@ CREATE TABLE list (
   UNIQUE (id, user_id)
 );
 
+-- Amendment 7. Membership is a link from a list to a *title*, so a list can hold
+-- anything in the catalogue; ownership is enforced on the list and on the user.
 CREATE TABLE list_membership (
   list_id          uuid NOT NULL,
-  library_entry_id uuid NOT NULL,
-  user_id          text NOT NULL,
+  title_id         uuid NOT NULL REFERENCES title(id),
+  library_entry_id uuid,              -- expand-contract's leftover; unread, dropped by #150
+  user_id          text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   position         integer NOT NULL,
 
-  PRIMARY KEY (list_id, library_entry_id),
+  PRIMARY KEY (list_id, title_id),
   FOREIGN KEY (list_id, user_id)
     REFERENCES list(id, user_id) ON DELETE CASCADE,
-  FOREIGN KEY (library_entry_id, user_id)
-    REFERENCES library_entry(id, user_id) ON DELETE CASCADE,
   UNIQUE (list_id, position) DEFERRABLE INITIALLY DEFERRED
 );
 ```
 
 `list_membership.position` exists because #7 kept List alive partly on the example *"best things I
 watched in 2025"*, which is a ranking. The unique constraint is **deferrable** so a whole reorder
-commits as one transaction — which is one of the reasons the driver choice below matters.
+commits as one transaction — which is one of the reasons the driver choice below matters, and which
+stopped being anticipatory when #133 brought lists into scope and specified the reorder.
+
+`title_id` is `NO ACTION`, like every other reference to `title`. A title is a fact about the world
+and nothing in this application deletes one; if something ever did, a list pointing at it should fail
+loudly rather than lose the entry.
 
 ### Indexes
 

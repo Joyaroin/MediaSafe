@@ -15,13 +15,14 @@ One history, from one tool, in one order:
 | `0003_user-import-offer-answered-at.sql` | `user.import_offer_answered_at` |
 | `0004_title-external-id.sql` | `title.external_id` — one external id per title (#114) |
 | `0005_title-reconciliation.sql` | `title_reconciliation`, the record of a repointed title (#116) |
+| `0006_list-membership-title.sql` | `list_membership` repoints from `library_entry` to `title` (#143) |
 
 **Name the file after what it brings.** drizzle-kit generates a random tag —
 `0005_noisy_maddog` — and the file is renamed, along with its `tag` in `meta/_journal.json`,
 before it is committed. The journal is what the migrator reads; renaming one without the other
 is a migration that is never applied.
 
-## The hand-edit in 0001, and why hand-edits are normal here
+## The hand-edits, and why hand-edits are normal here
 
 `UNIQUE (list_id, position)` on `list_membership` is **`DEFERRABLE INITIALLY DEFERRED`**,
 and drizzle-kit did not write that — Drizzle's `unique()` builder cannot express
@@ -38,6 +39,25 @@ the constraint and re-add it without the clause. Put it back by hand if that day
 The same reading applies to the views. drizzle-kit emits `CREATE VIEW` **in alphabetical
 order**, so `library_entry_up_next` can select from `library_entry_progress` only because
 *p* sorts before *u*. A fourth view is a reason to read the generated SQL, not to assume.
+
+### 0006 is the case for reading the generated file, made twice
+
+**drizzle-kit emitted the repoint in an order that cannot run.** It put
+`ADD CONSTRAINT … PRIMARY KEY ("list_id","title_id")` *above* the `ADD COLUMN "title_id"`
+it depends on. Nothing catches that except reading it: `npm run lint:sql` passes on it,
+because a statement referencing a column that does not exist yet is valid SQL, and the
+whole run is one transaction, so the failure would have been the deploy. The two
+statements are swapped in the committed file and a comment says so.
+
+**And one squawk rule is suppressed in the file rather than in `.squawk.toml`.**
+`ban-drop-not-null` fires on `library_entry_id` becoming nullable, and it is right in
+general: a column old code trusts to be present should not quietly stop being there.
+Here nothing has ever written a row to `list_membership`, and nullable is what
+expand-contract *requires* — the column is not dropped in the change that stops using it
+(#150 drops it). The suppression is `-- squawk-ignore ban-drop-not-null`, which must be
+**the last comment line before the statement**; squawk does not find it through prose
+above it. Turning the rule off globally would have been the wrong fix — it stays on for
+every other migration.
 
 Two things bind everything that lands here:
 

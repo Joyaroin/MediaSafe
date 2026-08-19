@@ -323,6 +323,52 @@ describe("the migration", () => {
   });
 
   /**
+   * The repoint (#143), asserted where it actually lives. `db/tables.ts` says the shape
+   * and the migration applies it, and neither is evidence about the database that is
+   * running — a regeneration that quietly re-derived the old composite key would leave
+   * both files looking right.
+   *
+   * **`library_entry` must appear nowhere in this list.** Ownership is enforced on the
+   * list, which is owned, plus a direct key to `user`; going through the library entry is
+   * the thing that gated membership on owning the title.
+   */
+  it("points membership at the title, and ownership straight at the user", async () => {
+    await inTransaction(async (tx) => {
+      const keys = await tx.execute<{ conname: string; referenced: string }>(sql`
+        select con.conname, target.relname as referenced
+        from pg_constraint con
+        join pg_class source on source.oid = con.conrelid
+        join pg_class target on target.oid = con.confrelid
+        where source.relname = 'list_membership' and con.contype = 'f'
+        order by con.conname
+      `);
+
+      expect(keys.rows).toEqual([
+        { conname: "list_membership_list_id_user_id_fk", referenced: "list" },
+        { conname: "list_membership_title_id_title_id_fk", referenced: "title" },
+        { conname: "list_membership_user_id_user_id_fk", referenced: "user" },
+      ]);
+    });
+  });
+
+  /**
+   * Expand, not contract. `SPEC.md` §3.7 is forward-only and a column is not dropped in
+   * the change that stops using it, so `library_entry_id` stays here — nullable, unread —
+   * until #150 drops it. Nullable is what makes a membership writable at all now.
+   */
+  it("leaves the old library-entry column behind, nullable", async () => {
+    await inTransaction(async (tx) => {
+      const columns = await tx.execute<{ is_nullable: string }>(sql`
+        select is_nullable
+        from information_schema.columns
+        where table_name = 'list_membership' and column_name = 'library_entry_id'
+      `);
+
+      expect(columns.rows).toEqual([{ is_nullable: "YES" }]);
+    });
+  });
+
+  /**
    * `title_external_id_check`, both directions.
    *
    * The rule that an external id is `imdb:tt…` or `tvdb:…` is written twice — once as
@@ -1039,16 +1085,33 @@ describe("progress and up next", () => {
 });
 
 describe("lists", () => {
-  async function seedList(tx: Transaction, userId: UserId, entries: string[]) {
+  /**
+   * A title in the catalogue and in nobody's library. Membership could not point at one
+   * of these before #143 — that is the whole of what the repoint bought.
+   */
+  async function seedCatalogueFilm(tx: Transaction): Promise<string> {
+    const [row] = await tx
+      .insert(title)
+      .values({
+        kind: "film",
+        tmdbId: nextNumber(),
+        name: `Film ${counter}`,
+        runtimeMins: 104,
+      })
+      .returning({ id: title.id });
+    return row.id;
+  }
+
+  async function seedList(tx: Transaction, userId: UserId, titleIds: string[]) {
     const [row] = await tx
       .insert(list)
       .values({ userId, name: `List ${nextNumber()}` })
       .returning({ id: list.id });
 
-    for (const [index, entryId] of entries.entries()) {
+    for (const [index, titleId] of titleIds.entries()) {
       await tx.insert(listMembership).values({
         listId: row.id,
-        libraryEntryId: entryId,
+        titleId,
         userId,
         position: index + 1,
       });
@@ -1056,22 +1119,46 @@ describe("lists", () => {
     return row.id;
   }
 
+  /**
+   * The repoint, stated as the one row it makes representable. A list is your own
+   * grouping, not a view of your library, so *"anything in the catalogue"* has to include
+   * things you have never added.
+   */
+  it("holds a title that is in nobody's library", async () => {
+    await inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "alice");
+      const unowned = await seedCatalogueFilm(tx);
+      const listId = await seedList(tx, userId, [unowned]);
+
+      const rows = await tx
+        .select({ titleId: listMembership.titleId })
+        .from(listMembership)
+        .where(eq(listMembership.listId, listId));
+
+      expect(rows).toEqual([{ titleId: unowned }]);
+      expect(
+        await tx.select().from(libraryEntry).where(eq(libraryEntry.titleId, unowned)),
+      ).toEqual([]);
+    });
+  });
+
   it("rejects a membership whose list belongs to another account", async () => {
     await violates("list_membership_list_id_user_id_fk", () =>
       inTransaction(async (tx) => {
         const alice = await seedUser(tx, "alice");
         const bob = await seedUser(tx, "bob");
-        const hers = await seedFilm(tx, alice);
+        const film = await seedCatalogueFilm(tx);
         const [his] = await tx
           .insert(list)
           .values({ userId: bob, name: `List ${nextNumber()}` })
           .returning({ id: list.id });
 
-        // Alice's entry, Alice's user id, Bob's list. The composite key is what makes a
-        // list that quietly holds another account's titles unrepresentable.
+        // Alice's user id, Bob's list. Ownership no longer travels through the library
+        // entry, so this composite key is the only thing making a list that quietly
+        // holds another account's rows unrepresentable.
         await tx.insert(listMembership).values({
           listId: his.id,
-          libraryEntryId: hers.entryId,
+          titleId: film,
           userId: alice,
           position: 1,
         });
@@ -1079,23 +1166,36 @@ describe("lists", () => {
     );
   });
 
-  it("rejects a membership whose entry belongs to another account", async () => {
-    await violates("list_membership_library_entry_id_user_id_fk", () =>
+  it("rejects a membership pointing at a title that does not exist", async () => {
+    await violates("list_membership_title_id_title_id_fk", () =>
       inTransaction(async (tx) => {
-        const alice = await seedUser(tx, "alice");
-        const bob = await seedUser(tx, "bob");
-        const his = await seedFilm(tx, bob);
-        const [hers] = await tx
+        const userId = await seedUser(tx, "alice");
+        const [row] = await tx
           .insert(list)
-          .values({ userId: alice, name: `List ${nextNumber()}` })
+          .values({ userId, name: `List ${nextNumber()}` })
           .returning({ id: list.id });
 
         await tx.insert(listMembership).values({
-          listId: hers.id,
-          libraryEntryId: his.entryId,
-          userId: alice,
+          listId: row.id,
+          titleId: "00000000-0000-0000-0000-000000000000",
+          userId,
           position: 1,
         });
+      }),
+    );
+  });
+
+  /** What the primary key says now that it is `(list_id, title_id)`. */
+  it("keeps a title in a list at most once", async () => {
+    await violates("list_membership_list_id_title_id_pk", () =>
+      inTransaction(async (tx) => {
+        const userId = await seedUser(tx, "alice");
+        const film = await seedCatalogueFilm(tx);
+        const listId = await seedList(tx, userId, [film]);
+
+        await tx
+          .insert(listMembership)
+          .values({ listId, titleId: film, userId, position: 2 });
       }),
     );
   });
@@ -1107,27 +1207,19 @@ describe("lists", () => {
   it("lets a whole reorder happen inside one transaction", async () => {
     await inTransaction(async (tx) => {
       const userId = await seedUser(tx, "alice");
-      const first = await seedFilm(tx, userId);
-      const second = await seedFilm(tx, userId);
-      const listId = await seedList(tx, userId, [first.entryId, second.entryId]);
+      const first = await seedCatalogueFilm(tx);
+      const second = await seedCatalogueFilm(tx);
+      const listId = await seedList(tx, userId, [first, second]);
 
       await tx
         .update(listMembership)
         .set({ position: 2 })
-        .where(
-          and(
-            eq(listMembership.listId, listId),
-            eq(listMembership.libraryEntryId, first.entryId),
-          ),
-        );
+        .where(and(eq(listMembership.listId, listId), eq(listMembership.titleId, first)));
       await tx
         .update(listMembership)
         .set({ position: 1 })
         .where(
-          and(
-            eq(listMembership.listId, listId),
-            eq(listMembership.libraryEntryId, second.entryId),
-          ),
+          and(eq(listMembership.listId, listId), eq(listMembership.titleId, second)),
         );
 
       // The harness rolls back rather than committing, so this is what forces the
@@ -1137,15 +1229,15 @@ describe("lists", () => {
 
       const rows = await tx
         .select({
-          libraryEntryId: listMembership.libraryEntryId,
+          titleId: listMembership.titleId,
           position: listMembership.position,
         })
         .from(listMembership)
         .where(eq(listMembership.listId, listId));
 
       expect(rows.sort((a, b) => a.position - b.position)).toEqual([
-        { libraryEntryId: second.entryId, position: 1 },
-        { libraryEntryId: first.entryId, position: 2 },
+        { titleId: second, position: 1 },
+        { titleId: first, position: 2 },
       ]);
     });
   });
@@ -1154,18 +1246,15 @@ describe("lists", () => {
     await violates("list_membership_list_id_position_key", () =>
       inTransaction(async (tx) => {
         const userId = await seedUser(tx, "alice");
-        const first = await seedFilm(tx, userId);
-        const second = await seedFilm(tx, userId);
-        const listId = await seedList(tx, userId, [first.entryId, second.entryId]);
+        const first = await seedCatalogueFilm(tx);
+        const second = await seedCatalogueFilm(tx);
+        const listId = await seedList(tx, userId, [first, second]);
 
         await tx
           .update(listMembership)
           .set({ position: 1 })
           .where(
-            and(
-              eq(listMembership.listId, listId),
-              eq(listMembership.libraryEntryId, second.entryId),
-            ),
+            and(eq(listMembership.listId, listId), eq(listMembership.titleId, second)),
           );
 
         // Deferred, not absent. The collision is caught here instead of at the update.

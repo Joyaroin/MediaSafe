@@ -26,8 +26,10 @@ import { user } from "@/auth-schema";
  * and these are the migrations it must generate" — so this file is that SQL, spelled in
  * Drizzle. Read the ADR for why; this file only says what.
  *
- * `list` and `list_membership` are here even though lists are not in v1. An empty table
- * costs nothing and one migration is cheaper than two.
+ * `list` and `list_membership` were built in step 2 while lists were still out of scope —
+ * an empty table costs nothing and one migration is cheaper than two. That bet paid: #133
+ * brought custom lists into scope (`SPEC.md` §9) and the tables were already there, with
+ * zero rows to migrate when membership repointed at `title` (amendment 7, #143).
  *
  * ── The two splits that shape everything below ───────────────────────────────────────
  *
@@ -173,7 +175,8 @@ export const libraryEntry = pgTable(
   (t) => [
     check("library_entry_rating_check", sql`${t.rating} between 1 and 10`),
     unique("library_entry_user_id_title_id_key").on(t.userId, t.titleId),
-    // Foreign-key target for `list_membership`.
+    // Was the foreign-key target for `list_membership`, which repointed at `title` in
+    // #143. Nothing references it now; #150 drops it with the column it served.
     unique("library_entry_id_user_id_key").on(t.id, t.userId),
     // Foreign-key target for `watch`.
     unique("library_entry_id_user_id_title_id_key").on(t.id, t.userId, t.titleId),
@@ -249,7 +252,7 @@ export const watch = pgTable(
   ],
 );
 
-/** A named group of library entries you curate by hand. Not in v1; specified, so built. */
+/** A named group of titles you curate by hand. */
 export const list = pgTable(
   "list",
   {
@@ -268,12 +271,21 @@ export const list = pgTable(
 );
 
 /**
- * That one library entry belongs to one list, at one position.
+ * That one **title** belongs to one list, at one position.
+ *
+ * **Not a library entry** — repointed by ADR-0001 amendment 7 (issue #143). A list may
+ * hold anything in the catalogue, so membership cannot be gated on owning the title, and
+ * a title leaving your library does not edit a grouping you ordered by hand.
+ *
+ * That moves ownership rather than dropping it. It is enforced twice, and both keys are
+ * doing separate work: `(list_id, user_id)` makes a row whose owner disagrees with its
+ * list's owner unsatisfiable, and the direct key to `user.id` is what cascades the row
+ * away with the account. Neither goes through `library_entry` any more.
  *
  * `position` exists because a list is a ranking — "best things I watched in 2025".
  * `UNIQUE (list_id, position)` must therefore be **`DEFERRABLE INITIALLY DEFERRED`**, so
  * a whole reorder commits as one transaction instead of colliding with itself halfway
- * through.
+ * through — now load-bearing rather than anticipatory, because reordering is being built.
  *
  * **Drizzle cannot express that, and drizzle-kit did not emit it** — verified by reading
  * the generated SQL before committing it. The clause is hand-written into
@@ -285,21 +297,27 @@ export const listMembership = pgTable(
   "list_membership",
   {
     listId: uuid("list_id").notNull(),
-    libraryEntryId: uuid("library_entry_id").notNull(),
-    userId: text("user_id").notNull(),
+    titleId: uuid("title_id")
+      .notNull()
+      .references(() => title.id),
+    /**
+     * **Expand-contract's leftover, and nothing reads it.** `SPEC.md` §3.7 is
+     * forward-only, so the column the repoint stopped using is not dropped in the change
+     * that stopped using it. Issue #150 drops it; until then it is nullable and every
+     * write leaves it `NULL`.
+     */
+    libraryEntryId: uuid("library_entry_id"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
   },
   (t) => [
-    primaryKey({ columns: [t.listId, t.libraryEntryId] }),
+    primaryKey({ columns: [t.listId, t.titleId] }),
     foreignKey({
       columns: [t.listId, t.userId],
       foreignColumns: [list.id, list.userId],
       name: "list_membership_list_id_user_id_fk",
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [t.libraryEntryId, t.userId],
-      foreignColumns: [libraryEntry.id, libraryEntry.userId],
-      name: "list_membership_library_entry_id_user_id_fk",
     }).onDelete("cascade"),
     unique("list_membership_list_id_position_key").on(t.listId, t.position),
   ],

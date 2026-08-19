@@ -1444,10 +1444,12 @@ export async function accountFootprint(
  *
  * ── Why there is so little here ──────────────────────────────────────────────────────
  *
- * `library_entry`, `list`, `session` and `account` all carry
- * `REFERENCES "user"(id) ON DELETE CASCADE`, and `watch` and `list_membership` cascade
- * transitively through their composite keys to `library_entry` and `list` (ADR-0001,
- * `db/tables.ts`). So the deletion is one `DELETE`, and the ordering, the atomicity and
+ * `library_entry`, `list`, `list_membership`, `session` and `account` all carry
+ * `REFERENCES "user"(id) ON DELETE CASCADE`, and `watch` cascades transitively through
+ * its composite key to `library_entry` (ADR-0001, `db/tables.ts`). `list_membership`
+ * gained its direct key with amendment 7, when it stopped reaching `user` through
+ * `library_entry`; it also still cascades through `list`, and either route alone would
+ * take it. So the deletion is one `DELETE`, and the ordering, the atomicity and
  * the completeness are Postgres's rather than a hand-written sequence's — which is the
  * only version of this that cannot be got half-right. A list of deletes in application
  * code is a list a seventh owned table gets left off.

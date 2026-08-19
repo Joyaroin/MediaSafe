@@ -136,9 +136,14 @@ breaks:
   nowhere; it is written down here.)
 
 **Build the schema whole in one migration**, including `list` and `list_membership`, even though
-lists are not in v1. The ADR specifies them, an empty table costs nothing, and one migration is
-cheaper than two. *(Expand-contract would make adding them later safe — this is a convenience call,
-not a constraint.)*
+lists were out of scope when it was written. The ADR specifies them, an empty table costs nothing, and
+one migration is cheaper than two. *(Expand-contract would make adding them later safe — this is a
+convenience call, not a constraint.)*
+
+That call paid off in a way it was not made for. §9 brought custom lists **into scope** on
+2026-08-19, and the tables were already there — so repointing `list_membership` from `library_entry`
+to `title` (ADR-0001 amendment 7) had **zero rows** to migrate. It is still expand-contract:
+`library_entry_id` is left behind, nullable, and dropped in its own later change.
 
 ---
 
@@ -505,15 +510,38 @@ numbers**, requiring a deliberate confirmation.
 Ship none of these, and **reserve no space for them** — no empty rails, no placeholder tabs, no
 "coming soon".
 
+**One thing has left this section: custom lists**, brought into scope by
+[#133](https://github.com/Joyaroin/MediaSafe/issues/133) on 2026-08-19. They were the first entry
+under *Specced, but later* on the reasoning that the five states were organisation enough to ship
+with. They are not: the states are **derived**, so they are not yours to choose, and a library of 462
+titles has no way to say *comfort shows*, *watch with Dad*, or *the ones I keep meaning to start*.
+Lists were the only line in this section excluded for being unimportant rather than for needing
+something v1 does not have, and that judgement was wrong.
+
+What came in with them, and what did not:
+
+- **Their own destination on both devices** — a fifth sidebar item, a fourth phone tab. **Not a rail
+  on Up next**, which stays below: *what do I watch tonight* is a different question from *what did I
+  group*.
+- **A list holds anything in the catalogue**, not only what you own, and is **ordered by hand**. So
+  `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
+  [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your
+  lists standing.
+- **Still out**, named because a list is where each would look natural: sharing a list, list covers,
+  smart or rule-based lists, and nested lists.
+
+The rule above is unchanged by that. Nothing reserves space for what has not shipped — a Lists tab
+appears when there is a Lists page behind it.
+
 ### Specced, but later
 
-Custom lists · home rails other than Up next (Watchlist, Upcoming, Lists) · discovery by genre ·
-recommendations · upcoming air dates · watch providers · stats · day streak · year in review.
+Home rails other than Up next (Watchlist, Upcoming, Lists) · discovery by genre · recommendations ·
+upcoming air dates · watch providers · stats · day streak · year in review.
 
 Year in review cannot be v1 by definition — it needs a year of data. Real episode names are not
 separately scheduled; they are a property of every episode surface and ship with it.
 
-*(The schema carries `list`/`list_membership` and a streak index anyway — §5.)*
+*(The schema carries a streak index anyway — §5.)*
 
 ### Out of scope entirely
 
