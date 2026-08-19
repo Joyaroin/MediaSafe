@@ -9,8 +9,8 @@ import {
 } from "@/errors/write-failure";
 import {
   recordWatchAction,
-  undoWatchAction,
-  type UndoActionOutcome,
+  unwatchAction,
+  type UnwatchActionOutcome,
   type WatchActionOutcome,
 } from "./watch-action";
 
@@ -102,7 +102,7 @@ export interface WatchAppearance {
   /** Struck, in the reader's eye. Flips before the server has answered. */
   readonly watched: boolean;
   /** Whether there is an app watch to take back — `db/access.ts`'s `EpisodeDetail`. */
-  readonly undoable: boolean;
+  readonly unwatchable: boolean;
   readonly phase: WatchMarkPhase;
 }
 
@@ -147,7 +147,7 @@ export interface WatchWriter {
   remove(params: {
     readonly libraryEntryId: string;
     readonly episodeId: string | null;
-  }): Promise<UndoActionOutcome>;
+  }): Promise<UnwatchActionOutcome>;
 }
 
 export interface WatchMarks {
@@ -170,7 +170,7 @@ export interface WatchMarks {
     onRecorded?: () => void,
   ): Promise<void>;
   /** Take one watch back — issue #89. */
-  undo(subject: WatchSubject, naming: WatchNaming): Promise<void>;
+  unwatch(subject: WatchSubject, naming: WatchNaming): Promise<void>;
   /** The strike animation ended, on whichever surface got there first. */
   settle(subject: WatchSubject): void;
 }
@@ -178,7 +178,7 @@ export interface WatchMarks {
 /** What a mark starts as when a write reaches an episode no surface is showing. */
 const UNSEEN: WatchMarkView = {
   watched: false,
-  undoable: false,
+  unwatchable: false,
   phase: "unwatched",
   pending: false,
 };
@@ -203,11 +203,11 @@ interface Mark {
    * longer needs to see this*, and a landed write only says that about a lost one of the
    * same kind. A mark that lands after a lost mark genuinely settles it — the episode is
    * watched, which is what the reader was trying to say. A **rewatch that lands after a
-   * lost undo settles nothing**: the undo is still lost, and there is now one more watch
-   * than the reader asked for. Resolving there would take the only notice of it off the
-   * screen, which is `SPEC.md` §3.3 broken by a write that succeeded.
+   * lost unwatch settles nothing**: the unwatch is still lost, and there is now one more
+   * watch than the reader asked for. Resolving there would take the only notice of it off
+   * the screen, which is `SPEC.md` §3.3 broken by a write that succeeded.
    */
-  raised: { kind: "watch" | "undo"; handle: WriteFailureHandle } | null;
+  raised: { kind: "watch" | "unwatch"; handle: WriteFailureHandle } | null;
   /**
    * Whether this store has ever written to this episode. Not the same question as
    * *is something outstanding* — a write that landed leaves nothing outstanding and is
@@ -218,13 +218,13 @@ interface Mark {
 }
 
 function appearanceOf(view: WatchMarkView): WatchAppearance {
-  return { watched: view.watched, undoable: view.undoable, phase: view.phase };
+  return { watched: view.watched, unwatchable: view.unwatchable, phase: view.phase };
 }
 
 function sameView(one: WatchMarkView, other: WatchMarkView): boolean {
   return (
     one.watched === other.watched &&
-    one.undoable === other.undoable &&
+    one.unwatchable === other.unwatchable &&
     one.phase === other.phase &&
     one.pending === other.pending
   );
@@ -274,7 +274,7 @@ export function createWatchMarks({
   }
 
   /** Take the toast down only if it was raised by a lost write of this same kind. */
-  function settleToast(one: Mark, kind: "watch" | "undo"): void {
+  function settleToast(one: Mark, kind: "watch" | "unwatch"): void {
     if (one.raised?.kind !== kind) return;
     one.raised.handle.resolve();
     one.raised = null;
@@ -305,7 +305,7 @@ export function createWatchMarks({
     const sourceKey = one.key;
 
     holdRestore(one);
-    apply(one, { watched: true, undoable: true, phase: "marking", pending: true });
+    apply(one, { watched: true, unwatchable: true, phase: "marking", pending: true });
 
     const outcome = await record(subject, sourceKey);
 
@@ -334,7 +334,7 @@ export function createWatchMarks({
       // only an appearance that was actually put back has a strike left to play.
       apply(one, {
         watched: true,
-        undoable: true,
+        unwatchable: true,
         phase: one.view.phase === "unwatched" ? "marking" : one.view.phase,
         pending: false,
       });
@@ -375,10 +375,10 @@ export function createWatchMarks({
    * rewatch, gone, with nothing on any screen to say so. That is precisely the silent
    * history edit #89 exists to prevent, so the toast is raised without a `retry`
    * (`errors/write-failure.ts` allows exactly this: *absent when there is nothing
-   * sensible to retry*) and the episode goes back to being struck. Pressing undo again is
-   * then a deliberate act against a row the reader can see.
+   * sensible to retry*) and the episode goes back to being struck. Pressing unwatch again
+   * is then a deliberate act against a row the reader can see.
    */
-  async function undo(subject: WatchSubject, naming: WatchNaming): Promise<void> {
+  async function unwatch(subject: WatchSubject, naming: WatchNaming): Promise<void> {
     const one = ensure(subject, UNSEEN);
     one.written = true;
 
@@ -386,7 +386,7 @@ export function createWatchMarks({
     // The optimistic guess is *unwatched*, because it is right for every episode with one
     // app watch and nothing underneath — which is nearly all of them. Where it is wrong,
     // the outcome below says so and it is corrected rather than left standing.
-    apply(one, { watched: false, undoable: false, phase: "unwatched", pending: true });
+    apply(one, { watched: false, unwatchable: false, phase: "unwatched", pending: true });
 
     const outcome = await removeWatch(subject);
 
@@ -396,11 +396,11 @@ export function createWatchMarks({
       // `marking` — nothing was recorded here, so nothing is stamped.
       apply(one, {
         watched: outcome.watched,
-        undoable: outcome.undoable,
+        unwatchable: outcome.unwatchable,
         phase: outcome.watched ? "settled" : "unwatched",
         pending: false,
       });
-      settleToast(one, "undo");
+      settleToast(one, "unwatch");
       return;
     }
 
@@ -409,7 +409,7 @@ export function createWatchMarks({
     if (one.raised) return;
 
     one.raised = {
-      kind: "undo",
+      kind: "unwatch",
       handle: failures.raise({
         title: naming.title,
         episode: naming.episode,
@@ -434,11 +434,11 @@ export function createWatchMarks({
   }
 
   /** The same wrapper as `record` above, around the delete. */
-  async function removeWatch(subject: WatchSubject): Promise<UndoActionOutcome> {
+  async function removeWatch(subject: WatchSubject): Promise<UnwatchActionOutcome> {
     try {
       return await writer.remove(subject);
     } catch (error) {
-      return { ok: false, reference: referenceFor(error, { surface: "undo-watch" }) };
+      return { ok: false, reference: referenceFor(error, { surface: "unwatch" }) };
     }
   }
 
@@ -466,7 +466,7 @@ export function createWatchMarks({
     },
 
     mark,
-    undo,
+    unwatch,
 
     settle(subject) {
       const one = marks.get(idOf(subject));
@@ -489,6 +489,6 @@ export function createWatchMarks({
 export const watchMarks = createWatchMarks({
   writer: {
     record: (params) => recordWatchAction(params),
-    remove: (params) => undoWatchAction(params),
+    remove: (params) => unwatchAction(params),
   },
 });

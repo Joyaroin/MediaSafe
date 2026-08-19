@@ -35,7 +35,7 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     episodeNo: 1,
     name: "Winter Is Coming",
     watched: false,
-    undoable: false,
+    unwatchable: false,
     upNext: false,
     ...overrides,
   };
@@ -105,7 +105,7 @@ describe("the episode list", () => {
   });
 
   it("offers a watched episode a rewatch control that is not the one that struck it", () => {
-    const markup = episodes([episode({ watched: true, undoable: true })]);
+    const markup = episodes([episode({ watched: true, unwatchable: true })]);
 
     expect(markup).toContain("Rewatch");
     // The whole rule, at the only place it can be checked without a browser: the gesture
@@ -114,31 +114,31 @@ describe("the episode list", () => {
     expect(markup).not.toContain("Strike it");
   });
 
-  it("offers undo on a watched episode the application recorded", () => {
-    const markup = episodes([episode({ watched: true, undoable: true })]);
+  it("offers unwatch on a watched episode the application recorded", () => {
+    const markup = episodes([episode({ watched: true, unwatchable: true })]);
 
-    expect(markup).toContain("Undo");
+    expect(markup).toContain("Unwatch");
   });
 
-  it("offers no undo on an episode whose only watch is imported", () => {
-    const markup = episodes([episode({ watched: true, undoable: false })]);
+  it("offers no unwatch on an episode whose only watch is imported", () => {
+    const markup = episodes([episode({ watched: true, unwatchable: false })]);
 
     // Struck and readable as watched, and there is no control that could remove it —
     // 19,391 imported watches are not editable from the application (issue #89).
     expect(markup).toContain("line-through");
     expect(markup).toContain("Watched");
-    expect(markup).not.toContain("Undo");
+    expect(markup).not.toContain("Unwatch");
   });
 
   it("offers neither control on an unwatched episode", () => {
-    const markup = episodes([episode({ watched: false, undoable: false })]);
+    const markup = episodes([episode({ watched: false, unwatchable: false })]);
 
     expect(markup).not.toContain("Rewatch");
-    expect(markup).not.toContain("Undo");
+    expect(markup).not.toContain("Unwatch");
   });
 
   it("displays no rewatch count anywhere", () => {
-    const markup = episodes([episode({ watched: true, undoable: true })]);
+    const markup = episodes([episode({ watched: true, unwatchable: true })]);
 
     /**
      * `CONTEXT.md`, *Rewatch*: a rewatch is *never a number kept on a title*. A weaker
@@ -151,7 +151,7 @@ describe("the episode list", () => {
       .split("\n")
       .filter((one) => one.length > 0);
 
-    expect(visible).toEqual(["Season 1", "E1", "Winter Is Coming", "Rewatch", "Undo"]);
+    expect(visible).toEqual(["Season 1", "E1", "Winter Is Coming", "Rewatch", "Unwatch"]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {
