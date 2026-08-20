@@ -64,12 +64,13 @@ export function UpNextGroups({
        one sheet serves the whole tab, so opening a second title while the first is up
        replaces what is in the sheet instead of stacking a second one over it. */
     <TitleSheetProvider>
-      <div className="pb-6">
-        <HomeGroup
-          label="Ongoing"
-          href="/up-next/ongoing"
-          entries={rails.ongoing}
-        />
+      {/* Turn 9: *five groups → 104px tab-bar clearance*. `(signed-in)/layout.tsx`
+          already reserves the bar's own height for every screen in the group, so what
+          this adds is the remainder — written as the subtraction rather than as the
+          `29px` it currently evaluates to, so the clearance stays 104px if the bar is
+          ever redrawn. */}
+      <div className="pb-[calc(104px-var(--tab-bar-height))]">
+        <HomeGroup label="Ongoing" href="/up-next/ongoing" entries={rails.ongoing} />
         <HomeGroup
           label="Coming back"
           href="/up-next/coming-back"
@@ -80,15 +81,15 @@ export function UpNextGroups({
           href="/up-next/old-friends"
           entries={rails.oldFriends}
         />
-        <HomeGroup
-          label="Watchlist"
-          href="/up-next/watchlist"
-          entries={watchlist}
-        />
+        <HomeGroup label="Watchlist" href="/up-next/watchlist" entries={watchlist} />
+        {/* The only place `abandoned` is passed. It is the group rather than the tile
+            that knows, because these five arrays are five separate reads and only this
+            one is entirely abandoned titles — `home-group.tsx` has the longer reason. */}
         <HomeGroup
           label="Abandoned"
           href="/up-next/abandoned"
           entries={abandoned}
+          abandoned
         />
       </div>
     </TitleSheetProvider>

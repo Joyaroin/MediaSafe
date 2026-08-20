@@ -82,8 +82,14 @@ export function LibrarySurface({
       <div className="flex min-w-0 flex-1 flex-col">
         <LibraryHeading>
           <LibraryChips value={chip} onChange={setChip} />
-          <FilterField value={filterText} onChange={setFilterText} />
-          <SortSelect value={sort} />
+
+          {/* The filter field and the sort control share one row under the chips — turn
+              9's shape, and the reason `LibraryHeading` is a column now. The field takes
+              the width (`flex-1`) and the sort control sits at its end. */}
+          <div className="mt-3 flex items-center gap-2.5">
+            <FilterField value={filterText} onChange={setFilterText} />
+            <SortSelect value={sort} />
+          </div>
         </LibraryHeading>
 
         {visible.length === 0 ? (

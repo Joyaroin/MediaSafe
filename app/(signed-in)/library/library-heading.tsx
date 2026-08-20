@@ -7,10 +7,15 @@
  * bar underneath it. `children` is that row's remainder: empty when there is nothing to
  * filter, `LibraryBar`'s chips/field/select when there is.
  *
- * The heading is `text-bill-sm`, which is the step `DESIGN.md`'s type table names for *The
- * library* by name. It is smaller than the Search screen's `text-bill-lg`, and that is the
- * right way round: Search is a page you read, and this is a section head over the thing
- * you actually came to look at.
+ * ── Turn 9 makes it a screen title, and levels it with the other three ───────────────
+ *
+ * This used to be `text-bill-sm` — deliberately *smaller* than Search's `text-bill-lg`,
+ * on the argument that *Search is a page you read and this is a section head over the
+ * thing you came to look at*. The linen redesign overrules that: all four phone tabs get
+ * the same 34px `screen-title`, because on a phone they are four peer destinations
+ * reached by four peer tabs, and a heading that is smaller on one of them reads as that
+ * screen being a level deeper than it is. The hairline under the row goes with it, for
+ * the same reason the masthead's and Up next's did.
  *
  * It is shared by three callers — the populated screen, the genuinely empty one, and the
  * failure boundary — so that a failed read is visibly *the library, which did not load*
@@ -25,8 +30,14 @@ export const LIBRARY_HEADING_ID = "library-heading";
 
 export function LibraryHeading({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-hair px-6 py-4">
-      <h1 id={LIBRARY_HEADING_ID} className="bill-title text-bill-sm text-text">
+    // A column, not a wrapping row. The controls used to sit *beside* the heading and
+    // wrap under it on a narrow screen; turn 9 stacks them deliberately — the title, then
+    // the chips, then the filter row — because a 34px title with a 32px chip on its
+    // baseline is two different registers fighting for the same line. `gap-y` is not
+    // uniform between them (`home-group.tsx` has the same shape), so the children space
+    // themselves rather than being spaced from here.
+    <div className="flex flex-col px-[22px] pt-5">
+      <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-ink">
         The library
       </h1>
 

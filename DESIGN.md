@@ -38,6 +38,42 @@ ADR-0001 binds the schema. This file outranks any prototype.
 
 ---
 
+## 0. Amended by the linen redesign — read this before anything below
+
+`design_handoff_phone_linen`, turn 9, redraws the four phone tabs — Up next, Search, The
+library, Lists — and **reverses several rules stated as absolutes below**. Everything in
+sections 1–12 was written for the Catalogue Wall's light palette, where `--raised` was
+white and sat *above* a bone ground. Turn 9 puts `--raised` **below** the ground
+(`#eeede7` on `#f9f7f0`), and most of what changed follows from that one inversion: a card
+no longer needs a line around it to read as a card.
+
+The stylesheet is still the single declaration site and still wins (see above). This
+section exists so a reader does not take a superseded absolute below as current.
+
+| Stated below | Now | Where |
+| --- | --- | --- |
+| §2's light palette | Replaced by the linen values, plus a new `--ink` for headings. Dark is untouched. | `app/globals.css` |
+| The accent is reserved for recording a watch | The accent marks **what is live, and the one primary action of a screen** — one per screen, never two. `Add`, `New list` and the Up next group labels are now vermilion; the selected tab deliberately is **not**. | `app/globals.css` |
+| The Hairline Rule — *structure is drawn, not spaced*; library cells divided by `1px` borders, no radius, no gaps | Library cells, search results and list rows are `--raised` cards on gaps, at `16–18px` radii. Still no shadow anywhere: the `--raised`/`--ground` tone step is the only lift. | `library-grid.tsx`, `catalogue-result.tsx`, `list-row.tsx` |
+| §5 — the phone masthead on a `1px` rule, contents in bordered cells; chrome at `95%`/`2px` blur | No borders at all on the masthead. Both pieces of chrome frost at `78%` under a `22px` blur. | `masthead.tsx`, `tab-bar.tsx` |
+| Navigation — *active is inverted to bone/ink*, cells divided by hairlines | No inverted cell and no dividers. Active is icon and label in `--ink`, inactive `--dim`; the travelling `layoutId` block went with the inversion it animated. The library chips keep theirs. | `tab-bar.tsx` |
+| §4's type ramp as the whole case of sizes | The bill ramp still sets every surface turn 9 did not draw. The four phone tabs use a second, `px`-based register declared beside it, plus a `label-line` utility for the uppercase 11px label register. | `app/globals.css` |
+| The library heading is a step *below* Search's | All four phone tabs share one 34px `screen-title`, and none of the four carries a hairline under it. | the four `*-heading.tsx` |
+| §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | Cards, fields, chips and pills carry 9–22px radii, and the poster's radius is a `--poster-radius` variable with three per-surface values (`14`/`10`/`9`) over a `7px` default. There is still **no radius scale** — these are per-surface measures, not a ramp. | `app/globals.css`, the four screens |
+| *A pill would be the first radius in the application* | Two pills: `Add` (17px) and `New list` (22px). | `catalogue-result.tsx`, `create-list-form.tsx` |
+| The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. | `home-group.tsx` and the four screens |
+| §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 10; §10 now carries the corrected figure and the `grep` that settles it. | `app/globals.css` |
+
+Two things below are **not** superseded, and were checked rather than assumed:
+
+- **Empty, zero-match and failed stay structurally separate**, with the same heading step
+  for zero-match and failure and different colour and border between them (§9,
+  `SPEC.md` §3). Turn 9 restyles those states to the token set and merges none of them.
+- **No shadows, and no second hairline weight.** The redesign removes lines; it does not
+  replace them with elevation.
+
+---
+
 ## 1. The prototype is now historical reference
 
 `design/catalogue-wall.html` **is no longer the contract.** It was, from #132 until this
@@ -992,8 +1028,14 @@ leaves pending only the facts it genuinely did not have.
 
 The previous file's real value was partly in naming what it had **no** token for, so that
 the next ticket would not add one and call it an oversight fix. The same list, for the world
-that shipped. `app/globals.css` is **25 `@theme` declarations and 6 `@utility` rules**, and
+that shipped. `app/globals.css` is **33 `@theme` declarations and 10 `@utility` rules**, and
 that is the whole of the system.
+
+(It was 25 and 6 before the linen redesign. The eight new declarations are `--color-ink`
+and the seven-step phone register; the four new rules are `screen-title`, `label-line`,
+`field-well` and `frosted`. This number has now been wrong three times — §11's own closing
+note records the previous two — which is the standing argument for counting it from the
+file rather than reading it here. `grep -c '^@utility' app/globals.css` is the check.)
 
 **There is no spacing scale.** No `--space-*`, no `--gutter`, no rhythm unit. Spacing is
 Tailwind's own default steps at the call site. A named scale would be a fifth thing to keep

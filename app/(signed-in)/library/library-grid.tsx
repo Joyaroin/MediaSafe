@@ -48,12 +48,22 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * only thing that changes between devices*. The phone reaches this through its own tab,
  * which is build step 5's.)
  *
- * ── Structure is drawn, not spaced ───────────────────────────────────────────────────
+ * ── Structure was drawn, not spaced. Turn 9 spaces it ────────────────────────────────
  *
- * `DESIGN.md`'s Hairline Rule: cells are divided by `1px` `hair` borders on their bottom
- * and right edges — not by gaps, not by cards. There is no `gap` on this grid, and no
- * shadow — the poster's own `7px` radius (#135) is the one exception to zero radius in
- * this application, and it is the poster's alone, not the cell's.
+ * `DESIGN.md`'s Hairline Rule had cells divided by `1px` `hair` borders on their bottom
+ * and right edges — not by gaps, not by cards, no `gap` on this grid and no radius on a
+ * cell. The linen redesign reverses that here: the cells are `--raised` cards at an
+ * `18px` radius with a `10px` gap between them, and the hairlines are gone.
+ *
+ * The reversal is what the new palette buys. Under #134's light values `--raised` was
+ * `#ffffff` against a `#f6f5f3` ground — a card would have been a white box on off-white,
+ * which is why that world drew its structure in lines and needed the Hairline Rule to say
+ * so. Turn 9 puts `--raised` *below* the ground (`#eeede7` on `#f9f7f0`), so a card is a
+ * well pressed into the sheet and reads as a distinct object with no line around it and
+ * no shadow under it. Same information, same measure, one fewer device drawing it.
+ *
+ * There is still **no shadow anywhere** — the handoff is explicit that the tone
+ * difference between `--raised` and `--ground` is the only lift in the design.
  *
  * ── 472 of these ─────────────────────────────────────────────────────────────────────
  *
@@ -96,7 +106,15 @@ export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }
       // in: there is one library heading, and a prop would let a caller point the list at
       // something else without anything noticing.
       aria-labelledby={LIBRARY_HEADING_ID}
-      className="stagger-rise grid grid-cols-1 bg-ground sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      // `px-[14px]` and not the page's `22px`: the cell's own `14px` padding is inside
+      // the card, so a `14px` list gutter is what puts the card's *edge* on 22px. Turn
+      // 9's rule for every list that carries cards, and the reason the search results
+      // and the list rows carry the same number.
+      // No `lg:` gutter override: `SPEC.md` §7 allows the column count to be the only
+      // thing that differs between devices, and `tests/library-surface.test.ts` enforces
+      // it by rejecting any breakpoint prefix here that is not `grid-cols`. The `14px`
+      // gutter is the measure at every width.
+      className="stagger-rise mt-5 grid grid-cols-1 gap-2.5 px-[14px] pb-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       {entries.map((entry, index) => (
         <LibraryEntryCell

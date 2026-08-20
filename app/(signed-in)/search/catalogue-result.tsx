@@ -94,17 +94,22 @@ export function CatalogueResultRow({
   }
 
   return (
-    <li className="flex items-center gap-4 py-4">
+    <li className="flex items-center gap-3.5 rounded-2xl bg-raised px-3.5 py-3">
+      {/* `52` is what this row now renders at, down from `78` — `Poster`'s contract is
+          the real CSS width, and both land in the same `w92` bucket, so the honest number
+          costs nothing on the wire. */}
       <Poster
         posterPath={result.posterPath}
-        width={78}
-        className="w-[78px] shrink-0"
+        width={52}
+        className="w-[52px] shrink-0 [--poster-radius:9px]"
         aboveFold={aboveFold}
       />
 
       <div className="min-w-0 flex-1">
-        <h2 className="bill-title text-bill-md text-text">{result.name}</h2>
-        <p className="code-line mt-2 text-dim" data-numeric>
+        <h2 className="text-card font-semibold leading-tight tracking-[-0.012em] text-ink">
+          {result.name}
+        </h2>
+        <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
           {/* The year and the kind, and nothing else. A synopsis here would be both the
               dense row `SPEC.md` §3.4 forbids and a field ADR-0001 forbids storing. */}
           {result.releaseYear === null ? "Year unknown" : result.releaseYear}
@@ -119,12 +124,34 @@ export function CatalogueResultRow({
          * reader can reach and cannot use is an invitation withdrawn, and this is a
          * statement of fact about their library.
          */
-        <p className="code-line shrink-0 text-dim">In your library</p>
+        <p className="shrink-0 text-meta text-dim">In your library</p>
       ) : (
         /**
-         * The chip treatment from `DESIGN.md`, inverted on hover — **not** vermilion.
-         * Vermilion is reserved for recording a watch, and adding a title to a library is
-         * not the daily gesture that reservation exists to protect.
+         * A vermilion pill — `34px` tall at a `17px` radius, `--accent` filled with an
+         * `--accent-ink` label.
+         *
+         * **This reverses what this file used to say**, which was that the treatment is
+         * *not vermilion, because vermilion is reserved for recording a watch and adding
+         * a title is not the daily gesture that reservation exists to protect.* The
+         * linen redesign restates the reservation rather than dropping it: the accent
+         * marks what is live **and the one primary action of a screen**, one per screen
+         * and never two (`globals.css` holds the rule in full). Adding is the only
+         * action on this screen and the only reason a reader is on it, and on a ground
+         * this warm a bordered ghost button beside a filled card no longer reads as a
+         * button at all.
+         *
+         * ── The pill is 34px and the target is 44px ──────────────────────────────────
+         *
+         * The handoff asks for both — a `34px` pill, and *every tap target ≥44px* — so
+         * the button is `h-11` and the pill is a `span` drawn inside it. The button has
+         * no ground of its own, so the extra five pixels above and below are invisible
+         * and tappable, which is the whole point.
+         *
+         * They cannot be the same box. An earlier draft set `h-[34px]` on the button and
+         * claimed in this docblock that the row's padding made up the difference; it does
+         * not — a `button`'s hit area is its own border box and nothing its parent adds
+         * reaches it. That comment asserted a target the code did not have, on the one
+         * control on this screen a reader has to hit.
          */
         <button
           type="button"
@@ -135,9 +162,11 @@ export function CatalogueResultRow({
            * accessible name carries the title the visible label leaves to the layout.
            */
           aria-label={`Add ${result.name} to your library`}
-          className="code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground"
+          className="pressable flex h-11 shrink-0 items-center"
         >
-          Add
+          <span className="flex h-[34px] items-center rounded-[17px] bg-accent px-4 text-item font-semibold text-accent-ink">
+            Add
+          </span>
         </button>
       )}
     </li>

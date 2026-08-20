@@ -76,12 +76,20 @@ describe("the track scrolls and snaps", () => {
   });
 
   it("aligns the snap to the page gutter rather than the padding box", () => {
-    expect(source).toMatch(/scroll-pl-4/);
-    expect(source).toMatch(/px-4/);
+    // Asserted against the `<ol>`'s own class list rather than the whole file. Both
+    // classes are named in this component's prose too, so a file-wide `toMatch` passed
+    // on the docblock alone — it stayed green through the linen redesign moving the
+    // gutter from `16px` to `22px`, which is exactly the change it existed to catch.
+    const track = source.match(/<ol className="([^"]*)"/)?.[1];
+    expect(track).toBeDefined();
+    expect(track).toContain("scroll-pl-[22px]");
+    expect(track).toContain("px-[22px]");
   });
 
   it("fixes the tile's width, because a track has no cells to derive one from", () => {
-    expect(source).toMatch(/w-\[104px\]/);
+    // `116px` since the linen redesign — the wider gutter and gap need a wider tile to
+    // leave the same partial third poster showing at the fold (`home-group.tsx`).
+    expect(source).toMatch(/w-\[116px\]/);
     // Without this, flex compresses a long group's tiles instead of overflowing.
     expect(source).toMatch(/shrink-0/);
   });

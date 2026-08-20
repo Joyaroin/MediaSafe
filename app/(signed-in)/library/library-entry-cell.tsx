@@ -6,15 +6,23 @@ import { SelectableEntry } from "./selectable-entry";
 /**
  * One programme entry — the bill's grid cell, and the only thing 472 of them are made of.
  *
- * `DESIGN.md`, Components: *a full-width button, not a card. Ground `ground`, hairline right
- * and bottom borders, `1rem` padding, `1rem` gap. Left: the plate at `78×104px`. Right:
- * the title in lightly-condensed 700 at `1.45rem`, a dim code line, the state label, and a single
- * truncated line of what's next. Hover fills the cell with `raised`. No shadow, no
- * lift, no radius, no scale.* Every class below is that sentence, taken from the reference
- * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived — except
- * the plate itself, which #135 replaces with a poster: `78px` wide survives, the fixed
- * `104px` height and the "no radius" do not (`app/poster.tsx`). `DESIGN.md` is rewritten
- * from the built world in #144, not before.
+ * ── What it was, and what turn 9 made it ─────────────────────────────────────────────
+ *
+ * `DESIGN.md`, Components, described this cell as *a full-width button, **not a card**.
+ * Ground `ground`, hairline right and bottom borders, `1rem` padding, `1rem` gap. Left:
+ * the plate at `78×104px` … Hover fills the cell with `raised`. No shadow, no lift, no
+ * radius, no scale.* Almost none of that sentence survives, and this docblock quoted it
+ * as current for one commit after it stopped being true.
+ *
+ * What it is now: **a card**. `--raised` ground at an `18px` radius, `14px` padding and
+ * gap, a `66px` poster at a `10px` radius, and no borders at all — `library-grid.tsx`
+ * spaces the cells rather than ruling them apart. There is no hover fill, because the
+ * cell is already the raised surface the hover used to reach for; `pressable` is the
+ * acknowledgement instead. Still **no shadow and no lift**: the `--raised`/`--ground`
+ * tone step is the only depth in the redesign.
+ *
+ * The plate went to a poster in #135 (`app/poster.tsx`); `DESIGN.md` was rewritten from
+ * the built world in #144, and its section 0 now records this reversal among the rest.
  *
  * ── Where the button goes, since #58 ──────────────────────────────────────────────────
  *
@@ -26,20 +34,27 @@ import { SelectableEntry } from "./selectable-entry";
  *
  * ── Abandoned is the only modified poster ────────────────────────────────────────────
  *
- * An abandoned title's poster drops to `opacity: .45` and its name drops to dim bone;
- * that pairing is the only place the poster is modified. Both halves are here and nowhere
- * else — one without the other reads as a rendering fault rather than as a state.
+ * An abandoned title's poster drops to `opacity: .55` and its name drops to `--dim`; that
+ * pairing is the only place the poster is modified. Both halves are here and nowhere else
+ * — one without the other reads as a rendering fault rather than as a state.
+ *
+ * `.55` since turn 9, up from `.45`, and the same number `group-tile.tsx` now uses on the
+ * Up next Abandoned group — the handoff names this cell as the surface that already dims
+ * a poster and asks that the two not be left different by accident.
  */
 
 /**
- * The poster's width in the bill grid — `78px`, one of `DESIGN.md`'s five fixed measures
- * before #135 (the number survives; what filled it does not). It is fixed at every
+ * The poster's width in the bill grid — `66px` since turn 9, down from the `78px` that
+ * was one of `DESIGN.md`'s five fixed measures before #135. It is fixed at every
  * breakpoint: the column count is what changes between a phone and a desktop, and nothing
  * else is (`SPEC.md` §7). Height is not set — the `poster` utility's `2/3` aspect ratio
  * derives it from this width, so a real poster is never cropped to fit a fixed box.
+ *
+ * `66` and `78` land in the same `w92` CDN bucket, so the smaller measure changes what is
+ * drawn and not what is fetched (`app/poster.tsx`).
  */
-const BILL_POSTER_WIDTH = 78;
-const BILL_POSTER = "w-[78px] shrink-0";
+const BILL_POSTER_WIDTH = 66;
+const BILL_POSTER = "w-[66px] shrink-0 [--poster-radius:10px]";
 
 /**
  * The one line of what is next, for each of the five states this cell renders. The label
@@ -100,15 +115,22 @@ export function LibraryEntryCell({
   const nextLine = NEXT_LINES[entry.state];
 
   return (
-    <li className="border-b border-r border-hair bg-ground">
+    <li className="overflow-hidden rounded-[18px] bg-raised">
       <SelectableEntry
         entryId={entry.libraryEntryId}
-        className="flex w-full gap-4 p-4 text-left transition-colors duration-150 hover:bg-raised"
+        className="pressable flex w-full gap-3.5 p-3.5 text-left"
       >
+        {/* `.55`, not the `.45` this used to carry. The handoff sets abandoned tiles at
+            `.55` on the Up next groups and then names this cell as the one place that
+            already dims a poster, with the instruction not to leave the two different by
+            accident. Both are `.55` now: the linen ground is lighter than the bone one
+            this number was chosen against, so the same title reads as further gone at the
+            same opacity, and `.55` is the redesign's value for the state on both
+            surfaces. */}
         <Poster
           posterPath={entry.posterPath}
           width={BILL_POSTER_WIDTH}
-          className={abandoned ? `${BILL_POSTER} opacity-45` : BILL_POSTER}
+          className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
           aboveFold={aboveFold}
         />
 
@@ -121,7 +143,7 @@ export function LibraryEntryCell({
             was added: 552px of content in a 388px viewport.
           */}
           <p
-            className={`bill-title break-words text-bill-md ${abandoned ? "text-dim" : "text-text"}`}
+            className={`break-words text-row font-semibold leading-tight tracking-[-0.014em] ${abandoned ? "text-dim" : "text-ink"}`}
           >
             {entry.name}
           </p>
@@ -140,12 +162,12 @@ export function LibraryEntryCell({
             borrowed fact is not an error and an apology is the wrong shape for it.
           */}
           {entry.releaseYear === null ? null : (
-            <p className="code-line mt-2 text-dim" data-numeric>
+            <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
               {entry.releaseYear}
             </p>
           )}
 
-          <p className={`code-line mt-3 ${state.className}`}>{state.label}</p>
+          <p className={`label-line mt-2.5 ${state.className}`}>{state.label}</p>
 
           {/*
             One line, and it truncates rather than wrapping: two cells whose titles are
@@ -153,7 +175,7 @@ export function LibraryEntryCell({
             name that wraps would add a third variation to a grid whose whole job is to
             read as one printed sheet.
           */}
-          <p className="mt-1 truncate text-item text-dim">
+          <p className="mt-1 truncate text-item leading-[1.3] text-dim">
             {nextLine(entry)}
           </p>
         </div>
