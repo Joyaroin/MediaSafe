@@ -1,8 +1,10 @@
 "use server";
 
 import {
+  markWatchedThrough,
   recordWatch,
   unwatch,
+  type MarkWatchedThroughParams,
   type RecordWatchParams,
   type UnwatchParams,
 } from "@/db/access";
@@ -75,5 +77,47 @@ export async function unwatchAction(
     return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unwatch" }) };
+  }
+}
+
+/**
+ * *Watched up to here* — issue #196, over `db/access.ts`'s `markWatchedThrough`. The
+ * third thin wrapper in this file, for the two reasons the first one gives: a Server
+ * Action is a POST endpoint anyone can call with any arguments, so `requireUserId` here
+ * is the check; and catching here is what lets the toast report a reference id rather
+ * than losing the exception as it crosses to the browser.
+ *
+ * ── Nothing comes back but `ok`, and this is the write where that is a decision ──────
+ *
+ * `markWatchedThrough` returns how many rows it wrote, and that number does not travel.
+ * It is the same ruling `UnwatchOutcome`'s `removed` gets and for a sharper reason: the
+ * reader has *already been shown a count* and agreed to it, in the confirmation, before
+ * this was called. A second number arriving afterwards could only either agree with it —
+ * saying nothing — or disagree with it, and a surface told after the fact that it wrote
+ * fifty-nine of the sixty-two it promised has nowhere honest to put that. What the reader
+ * needs is a screen that matches the table, and every covered row reading watched is that
+ * screen whichever of them this particular press was the one to write.
+ *
+ * The set is **not** sent either. `MarkWatchedThroughParams` takes the episode that was
+ * pressed and derives the rest server-side, so there is no list here for a tampered
+ * request to widen.
+ */
+export type MarkWatchedThroughActionOutcome =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reference: string | null };
+
+export async function markWatchedThroughAction(
+  params: MarkWatchedThroughParams,
+): Promise<MarkWatchedThroughActionOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    await markWatchedThrough(userId, params);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      reference: referenceFor(error, { surface: "mark-watched-through" }),
+    };
   }
 }

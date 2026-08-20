@@ -1211,6 +1211,214 @@ export async function unwatch(
 }
 
 /**
+ * One press of *watched up to here*, and everything about it that is the caller's to
+ * decide — issue #196.
+ *
+ * ── One key for the press, and one derived per row ───────────────────────────────────
+ *
+ * `sourceKey` is minted **in the browser**, once per press, on exactly the rule
+ * `RecordWatchParams` states and for exactly the reason it gives: a server-minted key is
+ * a new key per request, which is what turns a retry into history. What is different here
+ * is that one press writes many rows and `UNIQUE (user_id, source, source_key)` allows
+ * each key once — so this function derives a per-row key from the press's own,
+ * `{sourceKey}:{episodeId}`.
+ *
+ * That derivation is deterministic, which is the whole of why it is not the thing
+ * `RecordWatchParams` forbids. The same press retried derives the same keys and writes
+ * the same rows, so `ON CONFLICT DO NOTHING` catches a second attempt exactly as it
+ * catches a second click. A server-minted key would be different on every attempt, and
+ * this has no code path that could produce one.
+ *
+ * `throughEpisodeId` is the episode the reader actually pressed, and the whole set is
+ * derived from it here rather than sent. A list of ids from the browser is a list this
+ * function would have to re-authorize row by row, and a stale one — a page open while a
+ * refresh added episodes — would write a set that does not match what the reader saw. The
+ * ordering that decides *earlier* lives in `episode`, so the answer is taken from there.
+ */
+export interface MarkWatchedThroughParams {
+  readonly libraryEntryId: string;
+  /** The episode the reader pressed on. Never `null` — a film has no episode list, and
+   *  `programme-note-episodes.tsx` never draws this control on one. */
+  readonly throughEpisodeId: string;
+  readonly sourceKey: string;
+}
+
+/**
+ * How many rows this press actually wrote.
+ *
+ * It is genuinely not knowable in advance from the browser — the reader's screen may be
+ * older than the table — which is the same test `UnwatchOutcome`'s `removed` passes and
+ * the reason that one exists. And like `removed`, it **stays off the wire**
+ * (`watch-action.ts` returns only `ok`): a count on a surface is `DESIGN.md` §11's
+ * permanent exclusion, and the confirmation the reader was already shown is drawn from
+ * the episodes in front of them rather than from an answer that arrives after the write.
+ */
+export interface MarkWatchedThroughOutcome {
+  readonly recorded: number;
+}
+
+/**
+ * Record a show up to the episode the reader had reached — issue #196, and the migration
+ * case `SPEC.md`'s import does not cover: a reader arriving with no export to bring.
+ *
+ * ── What "earlier" means, and where the answer comes from ────────────────────────────
+ *
+ * The show's own `(season_no, episode_no)` order, which is the order every other rule in
+ * this application is stated in (`db/views.ts`'s progress, up next and remaining all read
+ * it). So *earlier* crosses a season boundary: pressing S2E1 covers the whole of season
+ * one as well.
+ *
+ * ── Above season zero only ───────────────────────────────────────────────────────────
+ *
+ * `db/views.ts` excludes specials from every derived state, so a watch of one cannot move
+ * a title anywhere. Writing them would therefore add rows that change no answer, while
+ * holding a show back from `library_entry_state`'s *finished* branch — every `season_no >
+ * 0` episode watched — over episodes the reader never counted. Excluding them is what
+ * makes an ended show read **finished** and one still in production read **caught up**
+ * with neither special-cased.
+ *
+ * A special's own mark is untouched in both directions: one the reader struck by hand
+ * stays struck, and one they never touched stays unstruck.
+ *
+ * ── Already-recorded episodes are skipped, not re-written ────────────────────────────
+ *
+ * A second `watch` row against an episode is a **rewatch** (`CONTEXT.md`, ADR-0001), and
+ * a backfill has no business claiming the reader watched something twice. So the covered
+ * set is filtered against this entry's existing watches before anything is inserted.
+ *
+ * That is a different guarantee from the conflict clause below, which is about one press
+ * arriving twice. Both are needed: the filter is what stops a *first* press duplicating
+ * history it can see, and the derived key is what stops a *second* attempt at the same
+ * press duplicating what it wrote.
+ *
+ * ── Timestamped now ──────────────────────────────────────────────────────────────────
+ *
+ * `watched_at` is `now()` — the transaction's own instant, so a press is one moment in
+ * the record — and **not** the null an import writes for the same situation. Issue #196
+ * makes that divergence deliberately and records the consequence: the rails order on the
+ * most recent watch per title (`listUpNextRails`), so a show backfilled today rises above
+ * titles genuinely watched last week until something newer lands.
+ *
+ * ── `abandoned_at` is not cleared, which is where this parts company with `recordWatch` ─
+ *
+ * `recordWatch` clears it, because `CONTEXT.md` says watching something again clears it
+ * and ADR-0001 pins that clear to a watch insert. This write is the other kind: it is
+ * backfill, and `applyImportChunk` — the only other backfill in the application — does
+ * not clear it either, on the stated grounds that a re-run import may add watches to an
+ * abandoned title without giving it back.
+ *
+ * Recording that you *had* watched a show up to some point is a statement about the past.
+ * Deciding you have not given up on it is `unabandonTitle`, which is a control the reader
+ * presses on purpose. **The consequence is stated rather than hidden**: an abandoned show
+ * marked through still reads *abandoned* afterwards, because `library_entry_state` tests
+ * `abandoned_at` first and outranks every derived answer.
+ *
+ * ── Two reads and one insert, in one transaction ─────────────────────────────────────
+ *
+ * All-or-nothing is the ticket's own requirement, and it is what makes the failure
+ * legible: one lost write, one toast, and a reader who reloads finds the show exactly as
+ * they left it rather than half-recorded. Passing an executor that is already a
+ * transaction nests as a savepoint, exactly as `recordWatch` and `applyImportChunk`
+ * already rely on.
+ *
+ * The two reads are separate queries rather than one correlated statement, for the reason
+ * `getTitleDetail`'s own docblock sets out at length: `episode` and `watch` both carry an
+ * `id` and Drizzle does not table-qualify inside a `sql` fragment, so a correlated
+ * `EXISTS` over these two tables resolves to the wrong column silently and is always
+ * false. Two queries and a `Set` sidestep the footgun rather than working around it.
+ *
+ * ── Authorization ────────────────────────────────────────────────────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` with the entry id, and a miss throws — the same
+ * treatment `recordWatch` and `getTitleDetail` give a tampered or stale id. The episode
+ * is then resolved **through the entry's own title** rather than by its id alone, so an
+ * episode of some other show cannot be used to reach across into this entry: `episode` is
+ * global (ADR-0001), and an id from anywhere in the catalogue is a value anyone can send.
+ */
+export async function markWatchedThrough(
+  userId: UserId,
+  params: MarkWatchedThroughParams,
+  executor: Executor = getDb(),
+): Promise<MarkWatchedThroughOutcome> {
+  return executor.transaction(async (tx) => {
+    const [entry] = await tx
+      .select({ titleId: libraryEntry.titleId })
+      .from(libraryEntry)
+      .where(
+        and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)),
+      );
+
+    if (!entry) {
+      throw new Error(
+        `Library entry ${params.libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    // Every episode of this title, in the show's own order — the same `orderBy`
+    // `getTitleDetail` reads, so this and the surface that drew the control agree about
+    // what "earlier" means rather than each deciding it.
+    const episodes = await tx
+      .select({
+        id: episode.id,
+        seasonNo: episode.seasonNo,
+        episodeNo: episode.episodeNo,
+      })
+      .from(episode)
+      .where(eq(episode.titleId, entry.titleId))
+      .orderBy(episode.seasonNo, episode.episodeNo);
+
+    const through = episodes.find((one) => one.id === params.throughEpisodeId);
+    if (!through) {
+      throw new Error(
+        `Episode ${params.throughEpisodeId} is not an episode of library entry ${params.libraryEntryId}'s title.`,
+      );
+    }
+
+    const watchedRows = await tx
+      .select({ episodeId: watch.episodeId })
+      .from(watch)
+      .where(eq(watch.libraryEntryId, params.libraryEntryId));
+    const alreadyWatched = new Set(
+      watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
+    );
+
+    const covered = episodes.filter(
+      (one) =>
+        one.seasonNo > 0 &&
+        // Lexicographic over the pair, exactly as `library_entry_up_next`'s own row
+        // comparison is: at or before this episode of this season, or anywhere in an
+        // earlier one. A special is excluded by the test above rather than by ordering —
+        // season 0 sorts first, so pressing one covers nothing at all.
+        (one.seasonNo < through.seasonNo ||
+          (one.seasonNo === through.seasonNo && one.episodeNo <= through.episodeNo)) &&
+        !alreadyWatched.has(one.id),
+    );
+
+    if (covered.length === 0) return { recorded: 0 };
+
+    const written = await tx
+      .insert(watch)
+      .values(
+        covered.map((one) => ({
+          userId,
+          libraryEntryId: params.libraryEntryId,
+          titleId: entry.titleId,
+          episodeId: one.id,
+          // The transaction's own instant, so the whole press is one moment in the
+          // record rather than sixty-two of them microseconds apart.
+          watchedAt: sql`now()`,
+          source: APP_WATCH_SOURCE,
+          sourceKey: `${params.sourceKey}:${one.id}`,
+        })),
+      )
+      .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
+      .returning({ id: watch.id });
+
+    return { recorded: written.length };
+  });
+}
+
+/**
  * Give up on a title — issue #87, and the only hand-set state in the model
  * (`CONTEXT.md`, *Abandoned*).
  *

@@ -35,3 +35,29 @@ export function groupBySeason<T extends { readonly seasonNo: number }>(
 export function seasonHeading(seasonNo: number): string {
   return seasonNo === 0 ? "Specials" : `Season ${seasonNo}`;
 }
+
+/**
+ * An episode named the way it is spoken — `CONTEXT.md`: an episode is never referred to
+ * by number alone. The season word comes from `seasonHeading` above, the same function
+ * that writes the heading the episode is grouped under, so `Specials` is `Specials` in
+ * both places. `null` is TMDB not having named it yet, and is not a licence to print the
+ * number a second time in its place.
+ *
+ * It sits beside `seasonHeading` rather than in the component that draws the row, and
+ * issue #196 is what made that worth doing: the *watched up to here* control carries no
+ * text at all, so its accessible label is the only thing that says which episode it acts
+ * through — and a second copy of this is how the label and the row it sits on would come
+ * to name the same episode two different ways.
+ *
+ * Structurally typed on the three fields it reads, so `UnownedEpisodeDetail` satisfies it
+ * as well as `EpisodeDetail` — the borrowed list has the same rule and no owned fact to
+ * offer this function even if it wanted one.
+ */
+export function episodeFullName(episode: {
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  readonly name: string | null;
+}): string {
+  const name = episode.name === null ? "Not yet named" : episode.name;
+  return `${seasonHeading(episode.seasonNo)}, Episode ${episode.episodeNo} — ${name}`;
+}

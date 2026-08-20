@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import type { EpisodeDetail, LibraryState } from "@/db/access";
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
@@ -9,8 +11,11 @@ import {
   EPISODE_ROW,
   SEASON_LIST,
 } from "./episode-line";
+import { coveredThrough, markThroughLabel } from "./mark-through";
+import { MarkThroughDialog } from "./mark-through-dialog";
+import { MarkThroughIcon } from "./mark-through-icon";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
-import { groupBySeason, seasonHeading } from "./season-grouping";
+import { episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
 import { useWatchMark } from "./use-watch-mark";
 import { RECORDING_CONTROL, WATCHED_NAME, WatchSweep } from "./watch-mark-motion";
 
@@ -81,6 +86,48 @@ export function ProgrammeNoteEpisodes({
     );
   }
 
+  return <SeasonList episodes={episodes} libraryEntryId={libraryEntryId} titleName={titleName} />;
+}
+
+/**
+ * The seasons, and the one piece of state that belongs to the list rather than to a row —
+ * issue #196's confirmation.
+ *
+ * ── Why the dialog is here and not on the row ────────────────────────────────────────
+ *
+ * A season of a long-running show is twenty-odd rows and a whole show is sixty-odd. One
+ * `<dialog>` per row would put sixty-two of them in the document to have at most one open,
+ * and the reader can only be confirming one press at a time — so *which episode is being
+ * confirmed* is a fact about the list. `MarkThroughDialog` mounts when there is one and
+ * unmounts when there is not, which is also what gives it a stable `aria-labelledby` id
+ * without minting one per row.
+ *
+ * ── Why the set is worked out here too ───────────────────────────────────────────────
+ *
+ * `coveredThrough` needs the **whole title's** episodes to answer either question — is
+ * there anything unwatched before this row, and what would a press write — and a row has
+ * only itself. Passing the answer down keeps `EpisodeLine` a row: it draws a control when
+ * it is handed a set and does not when it is handed `null`, and the rule lives in one
+ * tested module (`mark-through.ts`) rather than in the markup.
+ *
+ * It is computed over `episodes` — the flat, ordered list — and not over the season it is
+ * grouped into, because *earlier* crosses a season boundary: pressing the first episode of
+ * season two covers the whole of season one.
+ */
+function SeasonList({
+  episodes,
+  libraryEntryId,
+  titleName,
+}: {
+  episodes: readonly EpisodeDetail[];
+  libraryEntryId: string;
+  titleName: string;
+}) {
+  const [confirming, setConfirming] = useState<{
+    readonly through: EpisodeDetail;
+    readonly covered: readonly EpisodeDetail[];
+  } | null>(null);
+
   return (
     <>
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
@@ -91,23 +138,27 @@ export function ProgrammeNoteEpisodes({
               <EpisodeLine
                 key={one.id}
                 episode={one}
+                covered={coveredThrough(episodes, one)}
                 libraryEntryId={libraryEntryId}
                 titleName={titleName}
+                onMarkThrough={setConfirming}
               />
             ))}
           </ol>
         </div>
       ))}
+
+      {confirming === null ? null : (
+        <MarkThroughDialog
+          libraryEntryId={libraryEntryId}
+          titleName={titleName}
+          through={confirming.through}
+          covered={confirming.covered}
+          onClosed={() => setConfirming(null)}
+        />
+      )}
     </>
   );
-}
-
-/** `CONTEXT.md`: an episode is never referred to by number alone. The season word comes
- *  from `seasonHeading`, the same function that writes the heading this episode is
- *  grouped under above — `Specials`, not `Season 0`. */
-function episodeFullName(episode: EpisodeDetail): string {
-  const name = episode.name === null ? "Not yet named" : episode.name;
-  return `${seasonHeading(episode.seasonNo)}, Episode ${episode.episodeNo} — ${name}`;
 }
 
 /**
@@ -288,12 +339,21 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  */
 function EpisodeLine({
   episode,
+  covered,
   libraryEntryId,
   titleName,
+  onMarkThrough,
 }: {
   episode: EpisodeDetail;
+  /** What a press of *watched up to here* would record, or `null` where the control must
+   *  not be drawn on this row at all — `mark-through.ts` owns that rule (issue #196). */
+  covered: readonly EpisodeDetail[] | null;
   libraryEntryId: string;
   titleName: string;
+  onMarkThrough: (confirming: {
+    readonly through: EpisodeDetail;
+    readonly covered: readonly EpisodeDetail[];
+  }) => void;
 }) {
   const fullName = episodeFullName(episode);
   const { watched, phase, pending, attempt, unwatch, settle } = useWatchMark({
@@ -335,15 +395,34 @@ function EpisodeLine({
       </span>
 
       <span className={TRAILING}>
+        {/* The label first, then the controls — it is a fact about the row rather than
+            something to press, and issue #196's control arriving between the two would
+            put a button between a label and the state it labels. Lifted out of the
+            unwatched branch it used to sit inside, which changes nothing about when it
+            renders: an up-next episode is by definition unwatched, and `!watched` is
+            restated here so a still-optimistic mark takes it off the row at once. */}
+        {episode.upNext && !watched ? (
+          <span className="code-line text-accent">Up next</span>
+        ) : null}
+
+        {/* Left of whatever the row's own state offers, so the daily gesture keeps the
+            outside edge under the thumb. It sits outside the branch below because it is
+            offered on **both** sides of it: a watched row with a gap behind it is exactly
+            the row this control is for. */}
+        {covered === null ? null : (
+          <MarkThroughButton
+            label={markThroughLabel(episode)}
+            onClick={() => onMarkThrough({ through: episode, covered })}
+            disabled={pending}
+          />
+        )}
+
         {!watched ? (
-          <>
-            {episode.upNext ? <span className="code-line text-accent">Up next</span> : null}
-            <MarkWatchedButton
-              label={`Mark ${fullName} watched`}
-              onClick={attempt}
-              disabled={pending}
-            />
-          </>
+          <MarkWatchedButton
+            label={`Mark ${fullName} watched`}
+            onClick={attempt}
+            disabled={pending}
+          />
         ) : phase === "marking" ? (
           <span className="code-line text-dim">Watched</span>
         ) : (
@@ -472,6 +551,95 @@ function MarkWatchedButton({
       className={`${RECORDING_CONTROL} ${IN_FLIGHT}`}
     >
       Strike it
+    </button>
+  );
+}
+
+/**
+ * *Watched up to here* — issue #196, and the only control in the application whose whole
+ * text is its accessible label.
+ *
+ * ── Why a glyph, and what the row bought with it ─────────────────────────────────────
+ *
+ * The row is a fixed measure (`TRAILING` above), and its widest *unwatched* state was
+ * already *Up next* beside *Strike it*. Re-measured in a real Chromium tab against the
+ * compiled CSS (`getBoundingClientRect`, with Archivo loaded), the way `TRAILING` and
+ * `episode-line.ts` both record their own numbers — the slot's contents, at a `420px`
+ * pane and again at `375px`, both figures identical because the slot is fixed and the
+ * name takes the rest:
+ *
+ * | Trailing slot state | Width, of `160px` | Row height |
+ * |---|---|---|
+ * | *Strike it* | `63.7px` | `44px` |
+ * | *Up next* · *Strike it* | `118.3px` | `44px` |
+ * | *Watched* (mid-sweep) | `49.1px` | `44px` |
+ * | this · *Strike it* | `101.7px` | `44px` |
+ * | ***Up next* · this · *Strike it*** | **`156.3px`** | `44px` |
+ * | *Rewatch* · *Unwatch* | `177.9px` — **over** | `51.2px` |
+ * | this · *Rewatch* · *Unwatch* | `215.9px` — **over** | `50.2px` |
+ *
+ * The fifth row is the widest state this control can put a row into on its own: an
+ * up-next episode with a gap behind it, landing `3.7px` inside the slot at `44px` tall.
+ * Across every state above it the episode name is **exactly as wide as it was** — `152px`
+ * at a `420px` pane, `107px` at `375px` — which is the whole reason this is an icon:
+ * *Watched up to here* as words is far past the slot, and the only thing left to pay for
+ * them with is the name.
+ *
+ * ── The last two rows are not this control's doing, and they are a live bug ──────────
+ *
+ * They are measured here because this file is where the row's numbers live, and leaving
+ * them out would make the table read as though the row still fits. It does not. Issue
+ * #195 took *Rewatch* and *Unwatch* from underlined text to `GHOST_RECOVERY`, whose
+ * `px-4 py-2` and border are far wider and taller than the text they replaced, and it did
+ * not re-measure the slot they sit in — `DESIGN.md` §6's *re-measure if you touch the
+ * row*, and the property `episode-line.ts` records being measured into existence twice.
+ *
+ * The consequence is on `main` with or without this ticket: a settled watched row is
+ * `177.9px` of a `160px` slot and **`51.2px` tall against every other state's `44px`**, so
+ * the row grows the moment a mark settles and takes every row under it with it. This
+ * control adds to the overflow in that one state and causes none of it; the fix belongs
+ * to the slot, which is #195's measurement to redo rather than this ticket's to
+ * unilaterally re-cut, and it is filed rather than fixed here.
+ *
+ * A stated cost: the control's own box is `26px` square, not the `44px` a thumb wants.
+ * That is the register the row already uses — *Strike it*'s box is `26.2px` — so the two
+ * sit as a pair, and a bigger one here would be a control that shouts over the daily
+ * gesture in a slot that has no room for it either.
+ *
+ * ── Why it is dim and not accent ─────────────────────────────────────────────────────
+ *
+ * It records watches, so `app/globals.css`'s *Live* role would have it in the accent. It
+ * is not, at rest, for the reason issue #89 gives *Rewatch* and *Unwatch*: **nothing on
+ * this row may compete with the daily gesture.** *Strike it* is the bordered accent ghost
+ * button and is the thing a reader presses every evening; this is pressed once, when a
+ * show arrives, and then never again on that title. A hairline border and dim ink says
+ * *pressable* without saying *press me*.
+ *
+ * It takes the accent on hover, because by then the reader has asked what it is and the
+ * honest answer is that it records watches.
+ */
+function MarkThroughButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  /** The row's own write being on the wire disables this too — they touch the same
+   *  episode, and `watch-marks.ts` is where that overlap is reasoned about. */
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`shrink-0 border border-hair p-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent ${IN_FLIGHT}`}
+    >
+      {/* `block`, so the svg does not sit on a text baseline and add descender space to a
+          row whose height is measured. */}
+      <MarkThroughIcon className="block h-4 w-4" />
     </button>
   );
 }
