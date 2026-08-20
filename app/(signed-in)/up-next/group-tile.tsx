@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
+import { groupPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 
 /**
  * One tile on the phone's five vertical groups (issue #138) — a poster, a name and a
@@ -55,7 +56,7 @@ export function GroupTile({ entry }: { entry: GroupTileEntry }) {
   return (
     <li>
       <Link href={`/library/${entry.libraryEntryId}`} className="group block w-full text-left">
-        <ViewTransition name={`group-poster-${entry.libraryEntryId}`}>
+        <ViewTransition name={groupPosterTransitionName(entry.libraryEntryId)}>
           <Poster
             posterPath={entry.posterPath}
             width={POSTER_CDN_WIDTH}

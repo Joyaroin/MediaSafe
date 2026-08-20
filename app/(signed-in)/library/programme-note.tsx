@@ -7,6 +7,7 @@ import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
+import { railPosterTransitionName } from "./poster-transition-name";
 import { ProgrammeNoteContent } from "./programme-note-content";
 import { titleDetailAction } from "./title-detail-actions";
 
@@ -112,7 +113,7 @@ export function ProgrammeNotePane() {
           {phase.kind === "loading" && selectedEntryId !== null ? (
             <Loading
               posterPath={selectedPosterPath}
-              transitionName={`rail-poster-${selectedEntryId}`}
+              transitionName={railPosterTransitionName(selectedEntryId)}
             />
           ) : null}
           {phase.kind === "failed" ? (
@@ -123,7 +124,7 @@ export function ProgrammeNotePane() {
           {phase.kind === "loaded" ? (
             <ProgrammeNoteContent
               detail={phase.detail}
-              posterTransitionName={`rail-poster-${phase.detail.libraryEntryId}`}
+              posterTransitionName={railPosterTransitionName(phase.detail.libraryEntryId)}
               onStateChange={(libraryEntryId: string, state: LibraryState) =>
                 setPhase((prev) =>
                   // A write started against the entry this pane had selected when it was

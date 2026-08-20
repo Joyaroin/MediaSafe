@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { TitleDetailRow } from "@/db/access";
+import { groupPosterTransitionName } from "../poster-transition-name";
 import { ProgrammeNoteContent } from "../programme-note-content";
 
 /**
@@ -31,7 +32,7 @@ export function TitleDetailView({ detail }: { detail: TitleDetailRow }) {
   return (
     <ProgrammeNoteContent
       detail={current}
-      posterTransitionName={`group-poster-${current.libraryEntryId}`}
+      posterTransitionName={groupPosterTransitionName(current.libraryEntryId)}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))
       }
