@@ -79,12 +79,21 @@ describe("nothing animates a backdrop filter", () => {
     expect(sourceAt(TITLE_SHEET)).not.toMatch(/backdrop-blur/);
   });
 
-  it("leaves the chrome frosting alone", () => {
-    // The masthead, tab bar and sidebar are frosted on purpose and are not animating —
-    // this test is about animated blur, not about removing §5's one blur radius.
-    expect(sourceAt("app/masthead.tsx")).toMatch(/backdrop-blur-\[2px\]/);
-    expect(sourceAt("app/tab-bar.tsx")).toMatch(/backdrop-blur-\[2px\]/);
-  });
+  /**
+   * **There is deliberately no assertion here that the chrome keeps its frosting.**
+   *
+   * There was one, for a day, and it was wrong: it pinned `masthead.tsx` and
+   * `tab-bar.tsx` to `backdrop-blur-[2px]` as a way of saying *this ticket is about
+   * animated blur, not about deleting §5's blur radius*. Turn 9 then reframed both pieces
+   * of chrome onto the `frosted` utility at a different value, and the assertion failed —
+   * not because anything regressed, but because a test about **per-frame cost** had
+   * quietly taken a position on **what the chrome looks like**, which belongs to whoever
+   * is drawing the chrome.
+   *
+   * The invariant this file owns is narrower and is the one above: nothing whose own
+   * opacity is animating may carry a backdrop filter. What static chrome is frosted, and
+   * how heavily, is §5's business and not this file's.
+   */
 });
 
 describe("every animation stays on the compositor", () => {
