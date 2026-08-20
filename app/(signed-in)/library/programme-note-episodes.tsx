@@ -561,27 +561,45 @@ function MarkWatchedButton({
  *
  * ── Why a glyph, and what the row bought with it ─────────────────────────────────────
  *
- * The row is a fixed measure (`TRAILING` above), and its widest state was already *Up
- * next* beside *Strike it*. Re-measured in a real Chromium tab against the compiled CSS
- * (`getBoundingClientRect`, with Archivo loaded), the way `TRAILING` and `episode-line.ts`
- * both record their own numbers — the slot's contents, at a `420px` pane and again at
- * `375px`, both figures identical because the slot is fixed and the name takes the rest:
+ * The row is a fixed measure (`TRAILING` above), and its widest *unwatched* state was
+ * already *Up next* beside *Strike it*. Re-measured in a real Chromium tab against the
+ * compiled CSS (`getBoundingClientRect`, with Archivo loaded), the way `TRAILING` and
+ * `episode-line.ts` both record their own numbers — the slot's contents, at a `420px`
+ * pane and again at `375px`, both figures identical because the slot is fixed and the
+ * name takes the rest:
  *
- * | Trailing slot state | Width, of `160px` |
- * |---|---|
- * | *Strike it* | `63.7px` |
- * | *Up next* · *Strike it* | `118.3px` |
- * | this · *Strike it* | `99.7px` |
- * | *Rewatch* · *Unwatch* | `109.9px` |
- * | this · *Rewatch* · *Unwatch* | `147.9px` |
- * | ***Up next* · this · *Strike it*** | **`156.3px`** |
+ * | Trailing slot state | Width, of `160px` | Row height |
+ * |---|---|---|
+ * | *Strike it* | `63.7px` | `44px` |
+ * | *Up next* · *Strike it* | `118.3px` | `44px` |
+ * | *Watched* (mid-sweep) | `49.1px` | `44px` |
+ * | this · *Strike it* | `101.7px` | `44px` |
+ * | ***Up next* · this · *Strike it*** | **`156.3px`** | `44px` |
+ * | *Rewatch* · *Unwatch* | `177.9px` — **over** | `51.2px` |
+ * | this · *Rewatch* · *Unwatch* | `215.9px` — **over** | `50.2px` |
  *
- * The last row is the widest state the row can now reach — an up-next episode with a gap
- * behind it — and it lands `3.7px` inside the slot. So **the episode name is exactly as
- * wide as it was**: `152px` at a `420px` pane and `107px` at `375px`, unchanged in all
- * six states, and the `<li>` came back `44px` tall in every one of them. Nothing gave way
- * to make room, which is the whole reason this is an icon: *Watched up to here* as words
- * is far past the slot, and the only thing left to pay it with is the episode name.
+ * The fifth row is the widest state this control can put a row into on its own: an
+ * up-next episode with a gap behind it, landing `3.7px` inside the slot at `44px` tall.
+ * Across every state above it the episode name is **exactly as wide as it was** — `152px`
+ * at a `420px` pane, `107px` at `375px` — which is the whole reason this is an icon:
+ * *Watched up to here* as words is far past the slot, and the only thing left to pay for
+ * them with is the name.
+ *
+ * ── The last two rows are not this control's doing, and they are a live bug ──────────
+ *
+ * They are measured here because this file is where the row's numbers live, and leaving
+ * them out would make the table read as though the row still fits. It does not. Issue
+ * #195 took *Rewatch* and *Unwatch* from underlined text to `GHOST_RECOVERY`, whose
+ * `px-4 py-2` and border are far wider and taller than the text they replaced, and it did
+ * not re-measure the slot they sit in — `DESIGN.md` §6's *re-measure if you touch the
+ * row*, and the property `episode-line.ts` records being measured into existence twice.
+ *
+ * The consequence is on `main` with or without this ticket: a settled watched row is
+ * `177.9px` of a `160px` slot and **`51.2px` tall against every other state's `44px`**, so
+ * the row grows the moment a mark settles and takes every row under it with it. This
+ * control adds to the overflow in that one state and causes none of it; the fix belongs
+ * to the slot, which is #195's measurement to redo rather than this ticket's to
+ * unilaterally re-cut, and it is filed rather than fixed here.
  *
  * A stated cost: the control's own box is `26px` square, not the `44px` a thumb wants.
  * That is the register the row already uses — *Strike it*'s box is `26.2px` — so the two

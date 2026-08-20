@@ -95,8 +95,8 @@ export function markThroughLabel(through: EpisodeDetail): string {
  * pointing the other way (issue #196), and the size of the write is what makes a mistaken
  * tap catchable while it can still be stopped. `DESIGN.md` §11's *no counts* rules out a
  * numeral standing in for a size on a rail head or a tile; it has never covered the
- * confirmations, where `remove-title-form.tsx` and `delete-list-dialog.tsx` both already
- * count what is about to happen.
+ * confirmations, where `library/[entryId]/remove/page.tsx` counts the watches a removal
+ * destroys and `lists/delete-list-dialog.tsx` counts the titles a list holds.
  */
 export function markThroughCount(covered: readonly EpisodeDetail[]): string {
   return covered.length === 1 ? "1 episode" : `${covered.length} episodes`;

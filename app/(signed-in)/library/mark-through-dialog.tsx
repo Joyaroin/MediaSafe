@@ -16,9 +16,10 @@ import { watchMarks } from "./watch-marks";
  * Every other recording control in this application writes on the press, because every
  * other one writes **one row** and the row it writes is the row under the thumb. This one
  * can write sixty-two, and nothing on screen would say so until they were all struck. So
- * this is removal's footprint instinct pointing the other way (`remove-title-form.tsx`
- * counts what a removal destroys): the number is what makes the size of the action
- * visible while it can still be stopped.
+ * this is removal's footprint instinct pointing the other way — `library/[entryId]/remove/page.tsx`
+ * draws the watches a removal destroys as a counted figure, on the grounds that *118
+ * watches is a different decision from none*: the number is what makes the size of the
+ * action visible while it can still be stopped.
  *
  * The number is drawn from the episodes in front of the reader (`mark-through.ts`), not
  * asked for over the wire. A round trip in front of a confirmation is a spinner where a
@@ -116,10 +117,15 @@ export function MarkThroughDialog({
           Record {count}
         </button>
 
+        {/* `GHOST_RECOVERY`, not the dim underlined text this was written as: issue #195
+            landed while this was in flight and took the underline off all fourteen of the
+            app's text affordances, `delete-list-dialog.tsx`'s own Cancel included. This is
+            the fifteenth and follows it rather than reopening the question —
+            `tests/underline-audit.test.ts` is the check that made sure it did. */}
         <button
           type="button"
           onClick={() => ref.current?.close()}
-          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
+          className={GHOST_RECOVERY}
         >
           Cancel
         </button>
