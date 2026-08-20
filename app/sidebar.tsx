@@ -1,4 +1,5 @@
 import { currentDisplayName } from "@/lib/session";
+import { DisplayNameCell } from "./display-name-cell";
 import { SidebarNav } from "./sidebar-nav";
 import { Wordmark } from "./press-mark";
 
@@ -54,10 +55,17 @@ export async function Sidebar() {
           section states the rule this rail is held to as well: *never an avatar, and
           never an entrance.* `truncate` is the guard against the acceptance criterion
           that a name at the full 24 characters must not stretch or wrap this rail — the
-          rail's own fixed `196px` width already bounds it without a second `max-w-*`. */}
+          rail's own fixed `196px` width already bounds it without a second `max-w-*`.
+
+          The name goes through `DisplayNameCell` for the reason `masthead.tsx` states at
+          length (issue #179): this rail is in the layout, the client Router Cache keeps
+          layouts across navigations, and a name saved in Settings therefore has no route
+          back here without re-rendering the whole page. */}
       {displayName === null ? null : (
         <div className="mt-auto min-w-0 border-t border-hair px-4 py-4">
-          <span className="code-line block truncate text-dim">{displayName}</span>
+          <span className="code-line block truncate text-dim">
+            <DisplayNameCell name={displayName} />
+          </span>
         </div>
       )}
     </aside>

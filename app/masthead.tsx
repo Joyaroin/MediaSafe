@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { currentDisplayName } from "@/lib/session";
+import { DisplayNameCell } from "./display-name-cell";
 import { SettingsIcon } from "./nav-icons";
 import { Wordmark } from "./press-mark";
 
@@ -41,6 +42,14 @@ import { Wordmark } from "./press-mark";
  * forgotten to call `requireUserId()` — the masthead renders nothing in that case rather
  * than an empty bordered cell, which `SPEC.md` §9 would otherwise call reserved space.
  *
+ * The name itself goes through `DisplayNameCell` (issue #179) rather than straight into
+ * the span. This component sits in `(signed-in)/layout.tsx`, and a layout is kept and
+ * reused by the client Router Cache across navigations, so a name changed in Settings has
+ * no route back here on its own — which is why the control used to call `router.refresh()`
+ * and re-render the whole page to move one string. The cell reads the store that control
+ * now publishes to instead. Whether there *is* a name is still decided here, on the
+ * server; the cell only answers whether it has since changed.
+ *
  * ── The Settings entrance ────────────────────────────────────────────────────────────
  *
  * A `Link`, not a button. #11 rejected an avatar menu and #28 kept it rejected, so this
@@ -64,7 +73,7 @@ export async function Masthead() {
           // from ever stretching or wrapping this header.
           <div className="flex min-w-0 items-center border-l border-hair px-4">
             <span className="code-line block max-w-[9rem] truncate text-dim">
-              {displayName}
+              <DisplayNameCell name={displayName} />
             </span>
           </div>
         )}
