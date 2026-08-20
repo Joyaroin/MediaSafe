@@ -280,8 +280,12 @@ function NoResults({ query }: { query: string }) {
 function Results({ results }: { results: readonly MarkedResult[] }) {
   return (
     <ol className="divide-y divide-hair border-y border-hair">
-      {results.map((result) => (
-        <CatalogueResultRow key={catalogueKeyOf(result)} result={result} />
+      {results.map((result, index) => (
+        <CatalogueResultRow
+          key={catalogueKeyOf(result)}
+          result={result}
+          aboveFold={index === 0}
+        />
       ))}
     </ol>
   );

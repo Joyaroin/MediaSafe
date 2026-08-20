@@ -64,7 +64,15 @@ const TILE_WIDTH = 132;
 const TILE = "w-[132px]";
 const POSTER_CLASS = "w-full transition duration-150 group-hover:brightness-110";
 
-export function UpNextTile({ entry }: { entry: UpNextEntry }) {
+export function UpNextTile({
+  entry,
+  aboveFold = false,
+}: {
+  entry: UpNextEntry;
+  /** This tile is in its rail's first visible run — `up-next-rail.tsx`'s to say
+   *  (`app/poster.tsx`). */
+  aboveFold?: boolean;
+}) {
   const { selectedEntryId, select } = useLibrarySelection();
   const selected = entry.libraryEntryId === selectedEntryId;
 
@@ -83,10 +91,16 @@ export function UpNextTile({ entry }: { entry: UpNextEntry }) {
             posterPath={entry.posterPath}
             width={TILE_WIDTH}
             className={`${POSTER_CLASS} ring-2 ring-text`}
+            aboveFold={aboveFold}
           />
         ) : (
           <ViewTransition name={railPosterTransitionName(entry.libraryEntryId)}>
-            <Poster posterPath={entry.posterPath} width={TILE_WIDTH} className={POSTER_CLASS} />
+            <Poster
+              posterPath={entry.posterPath}
+              width={TILE_WIDTH}
+              className={POSTER_CLASS}
+              aboveFold={aboveFold}
+            />
           </ViewTransition>
         )}
 

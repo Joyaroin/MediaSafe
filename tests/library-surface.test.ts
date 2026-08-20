@@ -238,7 +238,11 @@ describe("the grid", () => {
     // The Hairline Rule is about the space *between* cells, so the assertion is on the
     // grid's own class list and not on the markup: the `gap-4` inside a cell is the
     // poster-to-title measure `DESIGN.md` asks for, and would fail a blanket search.
-    const [, gridClasses] = grid.match(/^<ol[^>]*class="([^"]*)"/) ?? [];
+    //
+    // `<ol` is not necessarily the markup's first tag: React hoists a `<link
+    // rel="preload">` ahead of it for the grid's own above-the-fold posters (issue #178),
+    // so the match allows anything before the `<ol` rather than anchoring to the start.
+    const [, gridClasses] = grid.match(/<ol[^>]*class="([^"]*)"/) ?? [];
     expect(gridClasses).toBeDefined();
     expect(gridClasses).not.toMatch(/gap/);
   });

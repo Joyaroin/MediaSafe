@@ -80,6 +80,15 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * exactly as before. It adds no *further* client boundary; it is already inside the one
  * #57 opened.
  */
+/**
+ * The widest this grid's own `grid-cols-*` breakpoints get (`2xl:grid-cols-4` above) — the
+ * upper bound on how many entries can share a first row at any width this grid renders at.
+ * Marking exactly this many `aboveFold` covers every breakpoint's real first row without
+ * measuring one at render time; a narrower breakpoint just marks a couple of rows eager
+ * rather than one, never the whole 472-entry library (`app/poster.tsx`).
+ */
+const FIRST_ROW = 4;
+
 export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }) {
   return (
     <ol
@@ -89,8 +98,12 @@ export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }
       aria-labelledby={LIBRARY_HEADING_ID}
       className="stagger-rise grid grid-cols-1 bg-ground sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
-      {entries.map((entry) => (
-        <LibraryEntryCell key={entry.libraryEntryId} entry={entry} />
+      {entries.map((entry, index) => (
+        <LibraryEntryCell
+          key={entry.libraryEntryId}
+          entry={entry}
+          aboveFold={index < FIRST_ROW}
+        />
       ))}
     </ol>
   );

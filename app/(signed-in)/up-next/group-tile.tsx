@@ -55,6 +55,7 @@ export interface GroupTileEntry {
 export function GroupTile({
   entry,
   className,
+  aboveFold = false,
 }: {
   entry: GroupTileEntry;
   /**
@@ -65,6 +66,9 @@ export function GroupTile({
    * the same reason.
    */
   className?: string;
+  /** This tile is in its group's first visible row or run — `home-group.tsx` and
+   *  `group-screen.tsx` each know their own (`app/poster.tsx`). */
+  aboveFold?: boolean;
 }) {
   return (
     <li className={className}>
@@ -77,6 +81,7 @@ export function GroupTile({
             posterPath={entry.posterPath}
             width={POSTER_CDN_WIDTH}
             className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110"
+            aboveFold={aboveFold}
           />
         </ViewTransition>
 

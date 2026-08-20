@@ -60,4 +60,22 @@ describe("the poster", () => {
     expect(markup).toContain('alt=""');
     expect(markup).toContain('aria-hidden="true"');
   });
+
+  it("defaults to lazy, so an existing call site that never passes aboveFold is unchanged", () => {
+    const markup = render({ posterPath: "/x.jpg", width: 154, className: "" });
+
+    expect(markup).toContain('loading="lazy"');
+    expect(markup).not.toContain("fetchPriority");
+  });
+
+  it("an above-the-fold poster loads eagerly at high priority; a below-the-fold one stays lazy", () => {
+    const eager = render({ posterPath: "/x.jpg", width: 154, className: "", aboveFold: true });
+    const lazy = render({ posterPath: "/x.jpg", width: 154, className: "", aboveFold: false });
+
+    expect(eager).toContain('loading="eager"');
+    expect(eager).toContain('fetchPriority="high"');
+    expect(lazy).toContain('loading="lazy"');
+    expect(lazy).not.toContain("fetchPriority");
+    expect(eager).not.toBe(lazy);
+  });
 });
