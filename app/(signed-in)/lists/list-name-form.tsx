@@ -43,7 +43,7 @@ export function ListNameForm({
   inputClassName,
   formClassName = "",
   pendingLabel,
-  submitClassName = `${GHOST_RECOVERY} ${IN_FLIGHT}`,
+  submitClassName = GHOST_RECOVERY,
   toastTitle,
   submit,
   onCreated,
@@ -63,13 +63,19 @@ export function ListNameForm({
   readonly formClassName?: string;
   readonly pendingLabel: string;
   /**
-   * The submit button's treatment.
+   * The submit button's **treatment only**. `IN_FLIGHT` is appended below rather than
+   * being part of this string, so a caller cannot lose the disabled-while-working
+   * behaviour by supplying its own look — which is exactly what the first version of this
+   * prop did: it defaulted to `` `${GHOST_RECOVERY} ${IN_FLIGHT}` ``, so
+   * `create-list-form.tsx`'s pill silently dropped `IN_FLIGHT` and had to hand-roll the
+   * same two `disabled:` classes to get it back. Two copies of one behaviour, one of them
+   * invisible from here.
    *
-   * Defaults to the ghost recovery treatment every caller used before the linen
-   * redesign, and defaulted rather than required for the same reason `Wordmark`'s name
-   * register is: turn 9 redrew the Lists screen and did not redraw title detail's *Add
-   * to list* dialog, so the caller it never touched keeps exactly what it had without
-   * being edited to say so. `create-list-form.tsx` passes turn 9's vermilion pill.
+   * Defaults to the ghost treatment every caller used before the linen redesign, and
+   * defaulted rather than required for the same reason `Wordmark`'s name register is:
+   * turn 9 redrew the Lists screen and did not redraw title detail's *Add to list*
+   * dialog, so the caller it never touched keeps exactly what it had without being
+   * edited to say so.
    */
   readonly submitClassName?: string;
   readonly toastTitle: (attemptedName: string) => string;
@@ -131,7 +137,7 @@ export function ListNameForm({
             hairline inset as a shadow rather than drawn as a border — `search-surface.tsx`
             has the reason, which is that a `2px` focus border would move the contents of a
             fixed-height field by a pixel and an inset shadow costs no layout. */}
-        <div className="flex h-11 items-center rounded-xl bg-raised px-3.5 shadow-[inset_0_0_0_1px_var(--color-hair)] focus-within:shadow-[inset_0_0_0_2px_var(--color-ink)]">
+        <div className="field-well flex h-11 items-center px-3.5">
           <input
             id={fieldId}
             type="text"
@@ -156,7 +162,10 @@ export function ListNameForm({
         ) : null}
       </div>
 
-      <button type="submit" disabled={disabled} className={submitClassName}>
+      {/* `IN_FLIGHT` here and not in `submitClassName`'s default — the dim and the
+          wait-cursor are behaviour every treatment needs, so no caller gets the chance
+          to leave them out. */}
+      <button type="submit" disabled={disabled} className={`${submitClassName} ${IN_FLIGHT}`}>
         {inFlight ? pendingLabel : "New list"}
       </button>
     </form>

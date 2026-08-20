@@ -6,15 +6,23 @@ import { SelectableEntry } from "./selectable-entry";
 /**
  * One programme entry — the bill's grid cell, and the only thing 472 of them are made of.
  *
- * `DESIGN.md`, Components: *a full-width button, not a card. Ground `ground`, hairline right
- * and bottom borders, `1rem` padding, `1rem` gap. Left: the plate at `78×104px`. Right:
- * the title in lightly-condensed 700 at `1.45rem`, a dim code line, the state label, and a single
- * truncated line of what's next. Hover fills the cell with `raised`. No shadow, no
- * lift, no radius, no scale.* Every class below is that sentence, taken from the reference
- * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived — except
- * the plate itself, which #135 replaces with a poster: `78px` wide survives, the fixed
- * `104px` height and the "no radius" do not (`app/poster.tsx`). `DESIGN.md` is rewritten
- * from the built world in #144, not before.
+ * ── What it was, and what turn 9 made it ─────────────────────────────────────────────
+ *
+ * `DESIGN.md`, Components, described this cell as *a full-width button, **not a card**.
+ * Ground `ground`, hairline right and bottom borders, `1rem` padding, `1rem` gap. Left:
+ * the plate at `78×104px` … Hover fills the cell with `raised`. No shadow, no lift, no
+ * radius, no scale.* Almost none of that sentence survives, and this docblock quoted it
+ * as current for one commit after it stopped being true.
+ *
+ * What it is now: **a card**. `--raised` ground at an `18px` radius, `14px` padding and
+ * gap, a `66px` poster at a `10px` radius, and no borders at all — `library-grid.tsx`
+ * spaces the cells rather than ruling them apart. There is no hover fill, because the
+ * cell is already the raised surface the hover used to reach for; `pressable` is the
+ * acknowledgement instead. Still **no shadow and no lift**: the `--raised`/`--ground`
+ * tone step is the only depth in the redesign.
+ *
+ * The plate went to a poster in #135 (`app/poster.tsx`); `DESIGN.md` was rewritten from
+ * the built world in #144, and its section 0 now records this reversal among the rest.
  *
  * ── Where the button goes, since #58 ──────────────────────────────────────────────────
  *
@@ -26,9 +34,13 @@ import { SelectableEntry } from "./selectable-entry";
  *
  * ── Abandoned is the only modified poster ────────────────────────────────────────────
  *
- * An abandoned title's poster drops to `opacity: .45` and its name drops to dim bone;
- * that pairing is the only place the poster is modified. Both halves are here and nowhere
- * else — one without the other reads as a rendering fault rather than as a state.
+ * An abandoned title's poster drops to `opacity: .55` and its name drops to `--dim`; that
+ * pairing is the only place the poster is modified. Both halves are here and nowhere else
+ * — one without the other reads as a rendering fault rather than as a state.
+ *
+ * `.55` since turn 9, up from `.45`, and the same number `group-tile.tsx` now uses on the
+ * Up next Abandoned group — the handoff names this cell as the surface that already dims
+ * a poster and asks that the two not be left different by accident.
  */
 
 /**

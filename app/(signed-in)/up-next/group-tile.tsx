@@ -56,7 +56,7 @@ export function GroupTile({
   entry,
   className,
   aboveFold = false,
-  dimmed = false,
+  abandoned = false,
 }: {
   entry: GroupTileEntry;
   /**
@@ -72,7 +72,9 @@ export function GroupTile({
   aboveFold?: boolean;
   /**
    * This tile is an abandoned title. Only the phone home's Abandoned group passes it,
-   * and it passes it for every tile at once (`home-group.tsx`).
+   * and it passes it for every tile at once (`home-group.tsx`). Named for the state
+   * rather than for the dim it produces, so this and `library-entry-cell.tsx` are visibly
+   * one fact rendered twice.
    *
    * **The poster dims and the name does not**, which is deliberately *half* of
    * `library-entry-cell.tsx`'s pairing — that cell dims the poster and drops the name to
@@ -83,7 +85,7 @@ export function GroupTile({
    * would be the only signal — an unexplained grey title in a group whose own heading is
    * the explanation. The heading does that work on this surface.
    */
-  dimmed?: boolean;
+  abandoned?: boolean;
 }) {
   return (
     <li className={className}>
@@ -97,18 +99,27 @@ export function GroupTile({
               by this class list (`globals.css`, the `poster` utility).
 
               The inset ring is turn 9's `box-shadow:inset 0 0 0 1px var(--hair)` on the
-              tile's well. The handoff also calls for the well itself to be filled in
-              `--hair`, which would put the ring on its own colour and make it invisible;
-              the prototype fills it a shade lighter instead. `poster` keeps its existing
-              `--raised` fill here — the handoff's own fidelity note says the wells are a
-              prototype device and that real TMDB artwork fills these rectangles
-              unchanged, so the fill is only ever seen by a title with no artwork, and
-              against `--raised` the ring is visible as drawn. */}
+              tile's well.
+
+              **The fill is knowingly not the handoff's.** Its token table says the well is
+              `--hair`, which would put the ring on its own colour and make it invisible.
+              The board disagrees with its own table — `.linen .well` is `#e4e2d6`, a step
+              lighter than `--hair` (`#d5d2c3`) — and this keeps `poster`'s existing
+              `--raised` (`#eeede7`), which is a further step lighter again. So this is
+              not the board's colour either, and the difference is real rather than
+              rounded away.
+
+              It is the right trade because of what the pixels are: the handoff's own
+              fidelity note says the wells are a prototype device and that real TMDB
+              artwork fills these rectangles unchanged, so this fill is seen only by a
+              title with no artwork at all. Against `--raised` the ring reads as drawn,
+              and giving the `poster` utility a second fill for one surface would change
+              the artwork-less well on every other surface in the app. */}
           <Poster
             posterPath={entry.posterPath}
             width={POSTER_CDN_WIDTH}
             className={`w-full [--poster-radius:14px] shadow-[inset_0_0_0_1px_var(--color-hair)] transition duration-[var(--dur-fast)] group-hover:brightness-110 ${
-              dimmed ? "opacity-55" : ""
+              abandoned ? "opacity-55" : ""
             }`}
             aboveFold={aboveFold}
           />

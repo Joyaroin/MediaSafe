@@ -71,7 +71,7 @@ export async function Masthead() {
   const displayName = await currentDisplayName();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-[color-mix(in_srgb,var(--ground)_78%,transparent)] px-[22px] pt-[18px] pb-1 backdrop-blur-[22px] lg:hidden">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 frosted px-[22px] pt-[18px] pb-1 lg:hidden">
       {/* The mark at 15px, its bar in the accent, and the wordmark as the label register
           in `--dim` — turn 9's own head row. */}
       <div className="flex min-w-0 items-center text-dim">

@@ -88,7 +88,7 @@ export function HomeGroup({
   label,
   href,
   entries,
-  dimmed = false,
+  abandoned = false,
 }: {
   /** Two words at most, needing no explanation — `design/catalogue-wall.html`'s own
    *  group labels, in Title Case. Turn 9 sets them in the label register, which
@@ -99,7 +99,11 @@ export function HomeGroup({
   href: string;
   entries: readonly GroupTileEntry[];
   /**
-   * Every tile in this group is an abandoned title, so every one of them is dimmed.
+   * Every title in this group is abandoned.
+   *
+   * Named for the state and not for what the state looks like — `dimmed` would make the
+   * dim here and the dim in `library-entry-cell.tsx` two coincidences rather than one
+   * fact rendered twice, and it would go stale the moment the treatment changed.
    *
    * A property of the *group*, not of the tile, and only because of how this screen is
    * built: `up-next-groups.tsx` reads the five states as five separate arrays, so the
@@ -108,7 +112,7 @@ export function HomeGroup({
    * `LibraryStateGroupEntry` already satisfy and neither carries `state`; widening it to
    * add one would make four groups pass a column they know the answer to statically.
    */
-  dimmed?: boolean;
+  abandoned?: boolean;
 }) {
   if (entries.length === 0) return null;
 
@@ -121,8 +125,16 @@ export function HomeGroup({
           from the bill's condensed cut to the label register, and `more ›` becomes a
           plain `More` at the body step. The chevron went with the underline — a link
           already reading as the one warm thing in the row does not also need an arrow
-          pointing at itself. This and the group label are the screen's single accent
-          spend, which is the rule `globals.css` now states. */}
+          pointing at itself.
+
+          This head is Up next's whole accent role — *the way through this screen*, in
+          `globals.css`'s terms — and it repeats once per group, which is five times over
+          on a full screen. That is five instances of one role and not five spends; the
+          rule is stated as roles rather than as a count precisely so that a repeating
+          structure does not read as a violation. What would violate it is a *second*
+          accent role appearing here — a vermilion tile, badge or control alongside these
+          heads. There is none, and there is no recording control on this surface at all
+          (`up-next-groups.tsx`). */}
       <div className="flex items-center justify-between gap-3 px-[22px] pb-3">
         <h2 className="label-line text-accent">{label}</h2>
         <Link
@@ -140,7 +152,7 @@ export function HomeGroup({
             entry={entry}
             className={TILE}
             aboveFold={index < FIRST_RUN}
-            dimmed={dimmed}
+            abandoned={abandoned}
           />
         ))}
       </ol>

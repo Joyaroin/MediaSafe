@@ -78,7 +78,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-hair bg-[color-mix(in_srgb,var(--ground)_78%,transparent)] pt-2 pb-[22px] backdrop-blur-[22px] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-hair frosted pt-2 pb-[22px] lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = isCurrentRoute(pathname, href);

@@ -143,7 +143,7 @@ export function FilterField({
     // `40px` here against the search field's `44px` — the handoff sets this one shorter
     // on purpose, because it sits in a row of controls rather than being the screen's
     // single field.
-    <label className="flex h-10 flex-1 items-center gap-2.5 rounded-xl bg-raised px-3.5 shadow-[inset_0_0_0_1px_var(--color-hair)] focus-within:shadow-[inset_0_0_0_2px_var(--color-ink)]">
+    <label className="field-well flex h-10 flex-1 items-center gap-2.5 px-3.5">
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
         <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
         <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
@@ -203,7 +203,7 @@ export function SortSelect({ value }: { value: LibrarySort }) {
         value={value}
         onChange={(event) => onChange(event.target.value as LibrarySort)}
         aria-label="Sort the library"
-        className="h-10 appearance-none rounded-xl bg-raised pr-8 pl-3 text-item text-dim shadow-[inset_0_0_0_1px_var(--color-hair)] focus:shadow-[inset_0_0_0_2px_var(--color-ink)] focus:outline-none"
+        className="field-well h-10 appearance-none pr-8 pl-3 text-item text-dim focus:outline-none"
       >
         {LIBRARY_SORTS.map((sort) => (
           <option key={sort.value} value={sort.value}>

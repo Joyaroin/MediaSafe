@@ -39,9 +39,12 @@ import { ListNameForm } from "./list-name-form";
  * shape from that constant — `44px` at a `22px` radius against `0.5rem 1rem` and no
  * radius at all — and bending the shared string into this would restyle the toast's *Try
  * again* and `Bring your library in` on surfaces the handoff never drew.
+ *
+ * The treatment only: `ListNameForm` appends `IN_FLIGHT` itself, so the disabled dim and
+ * the wait-cursor are not this string's to remember.
  */
 const NEW_LIST_PILL =
-  "flex h-11 shrink-0 items-center rounded-[22px] bg-accent px-[18px] text-item font-semibold text-accent-ink transition-[filter] duration-200 hover:brightness-95 disabled:cursor-wait disabled:brightness-75";
+  "flex h-11 shrink-0 items-center rounded-[22px] bg-accent px-[18px] text-item font-semibold text-accent-ink transition-[filter] duration-200 hover:brightness-95";
 
 export function CreateListForm({
   onCreated,

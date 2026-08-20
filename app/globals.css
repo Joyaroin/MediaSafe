@@ -29,16 +29,31 @@
    strikes the mark with it. The rule as written had five standing exceptions and no
    sentence covering them.
 
-   The redesign settles it as one rule that describes what is actually drawn:
+   The redesign settles it as one rule that describes what is actually drawn. It is stated
+   as **roles**, not as a count of elements, because a count is what the old rule got
+   wrong — and what the first draft of this one got wrong too, by saying *"one primary
+   action per screen, never two"* directly above an Up next that draws five group labels
+   and five `More` links in it.
 
-     **The accent marks what is live, and the one primary action of a screen. Nothing
-     else.**
+     **The accent carries exactly three roles, and a screen may show only one of them:**
 
-   *Live* is the old reservation kept whole — recording a watch, and the Watching state
-   wherever it is named. *The one primary action* is what turn 9 adds, and it is one per
-   screen and never two: **Add** on a search row, **New list** on Lists, the group label
-   and its **More** on Up next. A screen with two vermilion controls has spent the colour,
-   which is the failure this rule exists to prevent.
+     1. **Live** — recording a watch, and the **Watching** state wherever it is named
+        (`library-state.ts`, and the Watching chip even unselected).
+     2. **The way through this screen** — its primary action or its section heads,
+        whichever the screen has. **Add** on a search row, **New list** on Lists, the
+        group label and its **More** on Up next. A screen has one such role, and it may
+        repeat as often as the structure does: five group heads are five instances of one
+        role, not five spends. Two *different* accent roles on one screen is the failure
+        this rule exists to prevent.
+     3. **A named exception**, of which there are exactly two, both older than the
+        redesign and both kept: the sort caret (`library-filter-bar.tsx`) — the one place
+        the accent marks an affordance rather than a state — and the duplicate-name
+        message (`list-name-form.tsx`), which is the one error rendered inline rather
+        than through `errors/`.
+
+   The exceptions are listed because the rule this replaces was written as an absolute
+   with five undocumented exceptions standing against it, and an absolute that everyone
+   knows is not one has stopped being a rule.
 
    Two things it is still not, and both were decided against on purpose:
 
@@ -196,8 +211,19 @@
   --text-label: 11px; /* the label register — see `label-line` */
   --text-tab: 10px; /* tab bar labels, and nothing else    */
 
-  /* A bill has no rounded corners and no drop shadows. Depth is surface
-     layering and hairlines. These are zeroed deliberately, not skipped. */
+  /* The bill had no rounded corners and no drop shadows — depth was surface layering and
+     hairlines, and this was zeroed deliberately rather than skipped.
+
+     **Half of that is now false.** The linen redesign rounds every card, field, chip and
+     pill it draws (9–22px, per surface, at the call site). What survives untouched is the
+     other half: there are still **no drop shadows anywhere** in the application, and the
+     tone step between `--raised` and `--ground` is the only lift there is.
+
+     The token stays because the bill's own surfaces — the programme note, Settings,
+     sign-in — are not redrawn and are still square. There is deliberately no radius
+     *scale* to go with the redesign's values: they are per-surface measures from one
+     handoff, not a ramp, and inventing `--radius-sm/md/lg` for seven one-off numbers
+     would be the fifth thing to keep in step that `DESIGN.md` §10 argues against. */
   --radius-none: 0px;
 
   --tracking-code: 0.005em;
@@ -286,7 +312,7 @@
   }
 }
 
-/* ── The six `@utility` rules ──────────────────────────────────────────────────────
+/* ── The ten `@utility` rules ──────────────────────────────────────────────────────
    What a token cannot carry: a bundle of declarations that must always travel
    together. A title that arrives without its width axis is not a smaller title, it is
    a different typeface.                                                              */
@@ -334,6 +360,36 @@
   text-transform: uppercase;
   font-size: var(--text-label);
   line-height: 1.35;
+}
+
+/* The redesign's field, and the redesign's chrome — two more bundles that must travel
+   together, extracted for exactly the reason this section opens with.
+
+   `field-well` was pasted at four call sites (`search-surface.tsx`, `list-name-form.tsx`,
+   and `library-filter-bar.tsx` twice) and `frosted` at two (`masthead.tsx`,
+   `tab-bar.tsx`) before they were named. Height is *not* included in either: the search
+   and list fields are `44px` and the library's filter row is `40px`, so the one measure
+   that genuinely differs between call sites stays at the call site.
+
+   The ring is an inset `box-shadow` rather than a `border` on purpose. A border occupies
+   layout, so thickening it to `2px` on focus moves the field's contents by a pixel, and
+   at a fixed height that shows. A shadow is drawn inside the box and costs no space. */
+@utility field-well {
+  border-radius: 12px;
+  background: var(--color-raised);
+  box-shadow: inset 0 0 0 1px var(--color-hair);
+
+  &:focus-within {
+    box-shadow: inset 0 0 0 2px var(--color-ink);
+  }
+}
+
+/* The phone's two pieces of fixed chrome, at turn 9's own recipe — `78%` of the ground
+   under a `22px` blur, against the near-opaque `95%`/`2px` issue #136 gave them. One
+   utility so they cannot drift into two frostings. */
+@utility frosted {
+  background: color-mix(in srgb, var(--color-ground) 78%, transparent);
+  backdrop-filter: blur(22px);
 }
 
 @utility code-line {

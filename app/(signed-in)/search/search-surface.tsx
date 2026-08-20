@@ -208,7 +208,7 @@ function SearchField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex h-11 items-center gap-2.5 rounded-xl bg-raised px-3.5 shadow-[inset_0_0_0_1px_var(--color-hair)] focus-within:shadow-[inset_0_0_0_2px_var(--color-ink)]">
+    <label className="field-well flex h-11 items-center gap-2.5 px-3.5">
       {/* The filter field's bars, in the same rectilinear vocabulary as the press mark. A
           magnifier would be the only curve in the application. */}
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
@@ -257,9 +257,14 @@ function NotYetTyped() {
 function InFlight() {
   return (
     // `status`, not `alert`: it is progress, and it must not interrupt anyone mid-word.
-    // The label register rather than `code-line`: this is a state label, which is what
-    // that register is for (`globals.css`).
-    <p role="status" className="label-line text-dim">
+    //
+    // `code-line`, deliberately **not** the redesign's `label-line`. This is a sentence,
+    // and `label-line` uppercases what it sets — the label register is for *group labels
+    // and state labels*, two or three words that are a category. SEARCHING THE CATALOGUE
+    // is the app raising its voice to say it is busy. The handoff asks the four
+    // non-result states to be *restyled to the token set only*, and a case change is not
+    // that.
+    <p role="status" className="code-line text-dim">
       Searching the catalogue
     </p>
   );

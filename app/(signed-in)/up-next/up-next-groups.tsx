@@ -58,20 +58,23 @@ export function UpNextGroups({
   }
 
   return (
-    <div className="pb-6">
+    // Turn 9: *five groups → 104px tab-bar clearance*. `(signed-in)/layout.tsx` already
+    // reserves the bar's own height for every screen in the group, so what this adds is
+    // the remainder — written as the subtraction rather than as the `29px` it currently
+    // evaluates to, so the clearance stays 104px if the bar is ever redrawn.
+    <div className="pb-[calc(104px-var(--tab-bar-height))]">
       <HomeGroup label="Ongoing" href="/up-next/ongoing" entries={rails.ongoing} />
       <HomeGroup label="Coming back" href="/up-next/coming-back" entries={rails.comingBack} />
       <HomeGroup label="Old friends" href="/up-next/old-friends" entries={rails.oldFriends} />
       <HomeGroup label="Watchlist" href="/up-next/watchlist" entries={watchlist} />
-      {/* The one group whose tiles are dimmed, and the only place `dimmed` is passed.
-          It is the group rather than the tile that knows, because these five arrays are
-          five separate reads and only this one is entirely abandoned titles —
-          `home-group.tsx` has the longer reason. */}
+      {/* The only place `abandoned` is passed. It is the group rather than the tile that
+          knows, because these five arrays are five separate reads and only this one is
+          entirely abandoned titles — `home-group.tsx` has the longer reason. */}
       <HomeGroup
         label="Abandoned"
         href="/up-next/abandoned"
         entries={abandoned}
-        dimmed
+        abandoned
       />
     </div>
   );

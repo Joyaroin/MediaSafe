@@ -140,8 +140,18 @@ export function CatalogueResultRow({
          * this warm a bordered ghost button beside a filled card no longer reads as a
          * button at all.
          *
-         * The `44px` hit target the pill's `34px` does not itself give is `py-1` plus the
-         * row's own padding — the tappable area runs the full height of the card.
+         * ── The pill is 34px and the target is 44px ──────────────────────────────────
+         *
+         * The handoff asks for both — a `34px` pill, and *every tap target ≥44px* — so
+         * the button is `h-11` and the pill is a `span` drawn inside it. The button has
+         * no ground of its own, so the extra five pixels above and below are invisible
+         * and tappable, which is the whole point.
+         *
+         * They cannot be the same box. An earlier draft set `h-[34px]` on the button and
+         * claimed in this docblock that the row's padding made up the difference; it does
+         * not — a `button`'s hit area is its own border box and nothing its parent adds
+         * reaches it. That comment asserted a target the code did not have, on the one
+         * control on this screen a reader has to hit.
          */
         <button
           type="button"
@@ -152,9 +162,11 @@ export function CatalogueResultRow({
            * accessible name carries the title the visible label leaves to the layout.
            */
           aria-label={`Add ${result.name} to your library`}
-          className="pressable flex h-[34px] shrink-0 items-center rounded-[17px] bg-accent px-4 text-item font-semibold text-accent-ink"
+          className="pressable flex h-11 shrink-0 items-center"
         >
-          Add
+          <span className="flex h-[34px] items-center rounded-[17px] bg-accent px-4 text-item font-semibold text-accent-ink">
+            Add
+          </span>
         </button>
       )}
     </li>
