@@ -712,7 +712,7 @@ All five speak in plain sentences. The only technical string a reader ever sees 
 
 ### Motion
 
-Motion exists in exactly one place, and it is the authored moment of the whole product: **marking a
+Motion exists in two places. The first, and the authored moment of the whole product: **marking a
 watch is a material event, not a state toggle.** The episode name is struck through by a `2px`
 vermilion rule that scales in from the left over `420ms`, and an off-register *Watched* stamp lands
 over the row — `rotate(-9deg)`, scaling from `1.5` to `1` with opacity over `280–380ms`. Both use
@@ -722,9 +722,19 @@ The row's bounding rect is **identical before and after** — measured, not assu
 absolutely positioned over the name and the stamp is absolutely positioned in the block, so nothing
 reflows: nothing moves under the thumb, and no card vanishes from the list.
 
+The second, added by [#141](https://github.com/Joyaroin/MediaSafe/issues/141): **a poster carries
+you to what it becomes.** Selecting a tile — the phone's route push into title detail, the
+desktop's panel swap into the programme note — morphs that poster into the destination's own poster,
+via the browser's native View Transitions API through React's `<ViewTransition>` component. No
+easing or duration is authored for it: the browser's own default cross-fade-and-resize is what
+plays, and no CSS customises it on top. Selecting a different tile mid-view (desktop only) morphs
+the panel's poster into the newly-selected tile's on the way out, and the newly-selected tile's into
+the panel's on the way in — two morphs, one for each name, in the same commit.
+
 Everything else is a `150ms` colour transition on hover and a `200ms` brightness change on press.
-Under `prefers-reduced-motion: reduce`, the strike and stamp collapse to `1ms` — the event still
-happens, it just does not animate.
+Under `prefers-reduced-motion: reduce`, the strike and stamp collapse to `1ms`, and the poster morph
+collapses to the instant swap the browser itself falls back to without View Transitions support —
+in both cases the event still happens, it just does not animate.
 
 ### Named Rules
 

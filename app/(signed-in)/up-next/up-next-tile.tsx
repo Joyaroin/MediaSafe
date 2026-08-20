@@ -4,6 +4,7 @@ import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
+import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import type { UpNextEntry } from "@/db/access";
 
 /**
@@ -61,6 +62,7 @@ import type { UpNextEntry } from "@/db/access";
  */
 const TILE_WIDTH = 132;
 const TILE = "w-[132px]";
+const POSTER_CLASS = "w-full transition duration-150 group-hover:brightness-110";
 
 export function UpNextTile({ entry }: { entry: UpNextEntry }) {
   const { selectedEntryId, select } = useLibrarySelection();
@@ -80,15 +82,11 @@ export function UpNextTile({ entry }: { entry: UpNextEntry }) {
           <Poster
             posterPath={entry.posterPath}
             width={TILE_WIDTH}
-            className="w-full transition duration-150 group-hover:brightness-110 ring-2 ring-text"
+            className={`${POSTER_CLASS} ring-2 ring-text`}
           />
         ) : (
-          <ViewTransition name={`rail-poster-${entry.libraryEntryId}`}>
-            <Poster
-              posterPath={entry.posterPath}
-              width={TILE_WIDTH}
-              className="w-full transition duration-150 group-hover:brightness-110"
-            />
+          <ViewTransition name={railPosterTransitionName(entry.libraryEntryId)}>
+            <Poster posterPath={entry.posterPath} width={TILE_WIDTH} className={POSTER_CLASS} />
           </ViewTransition>
         )}
 
