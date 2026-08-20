@@ -115,12 +115,18 @@ describe("where the remove control appears", () => {
 
   it("puts no removal on the tile, the grid, or the up next surface", () => {
     // The desktop TONIGHT row (`up-next-grid.tsx`, `up-next-row.tsx`) named here until
-    // issue #136 deleted it — Up next has one surface left to check, not two.
+    // issue #136 deleted it, and the phone home's dominant card
+    // (`up-next-dominant-card.tsx`) until issue #138 deleted that too. Up next's browsing
+    // surfaces are now the desktop rail's tile and the phone's five groups, so those are
+    // what this checks — the list follows the surfaces that exist, which is the whole
+    // point of reading them off disk rather than remembering them.
     const browsing = [
       "app/(signed-in)/library/library-entry-cell.tsx",
       "app/(signed-in)/library/library-grid.tsx",
       "app/(signed-in)/library/selectable-entry.tsx",
-      "app/(signed-in)/up-next/up-next-dominant-card.tsx",
+      "app/(signed-in)/up-next/up-next-tile.tsx",
+      "app/(signed-in)/up-next/group-tile.tsx",
+      "app/(signed-in)/up-next/home-group.tsx",
     ];
 
     for (const file of browsing) {

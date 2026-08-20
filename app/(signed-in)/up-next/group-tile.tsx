@@ -52,10 +52,26 @@ export interface GroupTileEntry {
   readonly posterPath: string | null;
 }
 
-export function GroupTile({ entry }: { entry: GroupTileEntry }) {
+export function GroupTile({
+  entry,
+  className,
+}: {
+  entry: GroupTileEntry;
+  /**
+   * The `<li>`'s own measure, when the caller's layout needs one. `group-screen.tsx` is a
+   * grid and passes nothing — the cell decides. `home-group.tsx` is a flex track (#171)
+   * and passes a fixed width, `shrink-0` and `snap-start`, because a track has no cells to
+   * derive a width from. The split is `up-next-tile.tsx`'s, which fixes its own width for
+   * the same reason.
+   */
+  className?: string;
+}) {
   return (
-    <li>
-      <Link href={`/library/${entry.libraryEntryId}`} className="pressable group block w-full text-left">
+    <li className={className}>
+      <Link
+        href={`/library/${entry.libraryEntryId}`}
+        className="pressable group block w-full text-left"
+      >
         <ViewTransition name={groupPosterTransitionName(entry.libraryEntryId)}>
           <Poster
             posterPath={entry.posterPath}
