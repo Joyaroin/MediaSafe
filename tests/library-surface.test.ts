@@ -331,3 +331,43 @@ describe("the filter field", () => {
     expect(field).not.toContain('type="search"');
   });
 });
+
+/**
+ * Issue #197's *phone only*, from the one side a node harness can see.
+ *
+ * Everything the selection does is `tests/bulk-selection.test.ts`'s. This is the other
+ * half of that split — the acceptance criterion *selection is unavailable on the desktop;
+ * the programme note pane behaves exactly as before* — and it is checked here because it
+ * is a claim about **markup**: a cell with no selection provider above it must render as
+ * though this ticket had not happened.
+ *
+ * `cell()` above wraps in `LibrarySelectionProvider` and nothing else, which is precisely
+ * the desktop's tree, so this asserts on the same render the rest of the file uses.
+ */
+describe("a library cell with no selection provider above it", () => {
+  const plain = cell();
+
+  it("carries none of the hold gesture's own attributes", () => {
+    expect(plain).not.toContain("data-holding");
+    expect(plain).not.toContain("data-landed");
+    expect(plain).not.toContain("aria-pressed");
+  });
+
+  it("shows no check badge and no accent ring", () => {
+    // The badge is the only thing in a cell drawn in `bg-accent`; the state line's
+    // **Watching** label is `text-accent`, so this is the specific one.
+    expect(plain).not.toContain("bg-accent");
+    expect(plain).not.toContain("inset_0_0_0_2px");
+  });
+
+  it("still lets a reader select the title's text and long-press its poster", () => {
+    // Both are the browser's own answers to a press, given up only where the hold has
+    // claimed the gesture (`selectable-entry.tsx`).
+    expect(plain).not.toContain("select-none");
+    expect(plain).not.toContain("touch-callout");
+  });
+
+  it("keeps the plain press acknowledgement it has had since #56", () => {
+    expect(plain).toContain("pressable");
+  });
+});
