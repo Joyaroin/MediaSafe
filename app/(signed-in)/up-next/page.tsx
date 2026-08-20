@@ -4,7 +4,7 @@ import { requireUserId } from "@/lib/session";
 import { UpNextGroups } from "./up-next-groups";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextRailsSurface } from "./up-next-rails-surface";
-import { TabTransition } from "../tab-transition";
+import { NavTransition } from "../nav-transition";
 
 /**
  * Up next — the surface both devices land on, and the one this app is opened to look at.
@@ -76,7 +76,7 @@ export default async function UpNextPage() {
   ]);
 
   return (
-    <TabTransition>
+    <NavTransition>
       {/* The Library page's own two-pane shell — the rails swap the panel beside them,
           and nothing on this page ever navigates. */}
       <ProgrammeNoteLayout>
@@ -94,6 +94,6 @@ export default async function UpNextPage() {
           </div>
         </div>
       </ProgrammeNoteLayout>
-    </TabTransition>
+    </NavTransition>
   );
 }

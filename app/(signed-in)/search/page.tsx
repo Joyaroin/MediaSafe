@@ -1,6 +1,6 @@
 import { requireUserId } from "@/lib/session";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
-import { TabTransition } from "../tab-transition";
+import { NavTransition } from "../nav-transition";
 import { SearchSurface } from "./search-surface";
 
 /**
@@ -47,7 +47,7 @@ export default async function SearchPage() {
   await requireUserId();
 
   return (
-    <TabTransition>
+    <NavTransition>
       {/* `px-[22px]` is turn 9's page gutter, at every width:
           `docs/design/v1-surfaces.md` §5 keeps search *identical on both devices*, so
           there is no `lg:` gutter to add. The results list inside `SearchSurface` carries
@@ -66,6 +66,6 @@ export default async function SearchPage() {
 
         <TmdbAttribution className="mt-12 pt-3" />
       </main>
-    </TabTransition>
+    </NavTransition>
   );
 }
