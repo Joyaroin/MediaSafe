@@ -1,5 +1,7 @@
 "use client";
 
+import { ViewTransition } from "react";
+
 import { Poster } from "@/app/poster";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
 import type { UpNextEntry } from "@/db/access";
@@ -33,6 +35,18 @@ import type { UpNextEntry } from "@/db/access";
  * `text` around the poster and hover is brightness alone. `aria-current="true"` rather than
  * `"page"`, the same distinction `selectable-entry.tsx` draws and for the same reason: the
  * URL does not change, so the browser is not "on" this entry.
+ *
+ * ── The transition name lives here only while the tile owns it ───────────────────────
+ *
+ * Issue #141's morph pairs this poster with the pane's by giving both the same
+ * `view-transition-name` (`rail-poster-{id}`, `programme-note.tsx`'s half of this). A
+ * name can only ever mark one on-screen element at a time, so once this entry is
+ * selected the tile drops it — the pane is the one showing that poster now — and picks
+ * it back up the moment something else is selected, ready to be the next morph's start.
+ * Without the drop, the instant a second tile is picked the pane would be mounting a
+ * second `rail-poster-{id}` for the *first* tile's id while this one is still sitting on
+ * screen holding the original, and the browser skips a transition it finds duplicated
+ * rather than guessing which one wins.
  */
 
 /**
@@ -58,17 +72,25 @@ export function UpNextTile({ entry }: { entry: UpNextEntry }) {
     <li className={`${TILE} shrink-0 snap-start`}>
       <button
         type="button"
-        onClick={() => select(entry.libraryEntryId)}
+        onClick={() => select(entry.libraryEntryId, entry.posterPath)}
         aria-current={selected ? "true" : undefined}
         className="group block w-full text-left"
       >
-        <Poster
-          posterPath={entry.posterPath}
-          width={TILE_WIDTH}
-          className={`w-full transition duration-150 group-hover:brightness-110 ${
-            selected ? "ring-2 ring-text" : ""
-          }`}
-        />
+        {selected ? (
+          <Poster
+            posterPath={entry.posterPath}
+            width={TILE_WIDTH}
+            className="w-full transition duration-150 group-hover:brightness-110 ring-2 ring-text"
+          />
+        ) : (
+          <ViewTransition name={`rail-poster-${entry.libraryEntryId}`}>
+            <Poster
+              posterPath={entry.posterPath}
+              width={TILE_WIDTH}
+              className="w-full transition duration-150 group-hover:brightness-110"
+            />
+          </ViewTransition>
+        )}
 
         <p className="mt-2 line-clamp-2 text-item leading-snug text-text">
           {entry.titleName}

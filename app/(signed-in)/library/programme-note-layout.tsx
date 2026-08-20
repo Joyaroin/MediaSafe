@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 
 import { LibrarySelectionProvider } from "./library-selection";
 import { ProgrammeNotePane } from "./programme-note";
@@ -27,12 +27,30 @@ import { ProgrammeNotePane } from "./programme-note";
  * A caller passes the left-hand column as `children` and nothing else. It stays in the
  * `library/` folder because the pane it wraps does, and moving either would put the state
  * further from the one component that reads it.
+ *
+ * `select` wraps the state write in `startTransition` — issue #141's whole reason for
+ * being here rather than staying the plain `setSelectedEntryId` it was before: a regular
+ * `setState` never activates a `<ViewTransition>`, only a Transition does
+ * (`programme-note.tsx`'s docblock has the rest of the morph).
  */
 export function ProgrammeNoteLayout({ children }: { children: React.ReactNode }) {
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{
+    entryId: string;
+    posterPath: string | null;
+  } | null>(null);
+
+  function select(entryId: string, posterPath: string | null = null) {
+    startTransition(() => setSelection({ entryId, posterPath }));
+  }
 
   return (
-    <LibrarySelectionProvider value={{ selectedEntryId, select: setSelectedEntryId }}>
+    <LibrarySelectionProvider
+      value={{
+        selectedEntryId: selection?.entryId ?? null,
+        selectedPosterPath: selection?.posterPath ?? null,
+        select,
+      }}
+    >
       <main className="flex w-full flex-1 flex-col lg:flex-row">
         {children}
         <ProgrammeNotePane />
