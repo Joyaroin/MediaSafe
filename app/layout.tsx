@@ -2,10 +2,37 @@ import type { Metadata } from "next";
 
 import { OfflineBanner } from "@/errors/offline-banner";
 import { WriteFailureToasts } from "@/errors/write-failure-toast";
+import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from "@/lib/theme";
 
 import { archivo } from "./fonts";
 import { MotionProvider } from "./motion-provider";
 import "./globals.css";
+
+/**
+ * The theme override, applied before the first paint.
+ *
+ * The palette a reader has pinned lives in `localStorage` (`lib/theme.ts` says why it is
+ * not on `user`), which the server cannot read while rendering. So the server always
+ * sends the *system* markup, and this puts the attribute on `<html>` before the browser
+ * paints anything — a blocking, inline `<script>` in `<head>`, which is the one place
+ * that guarantee exists.
+ *
+ * **A `useEffect` cannot do this job.** Effects run after hydration, which is after paint:
+ * a reader who has chosen Light on a device set to dark would get a black screen for a
+ * few hundred milliseconds and then a white one, on every single navigation that isn't a
+ * client-side push. The flash *is* the bug, and moving the same code into React is what
+ * causes it.
+ *
+ * Built by interpolating the two constants rather than retyping them, so `lib/theme.ts`
+ * stays the single source for both the key and the attribute — the drift this avoids
+ * would be silent, and its symptom would be a theme that simply stops surviving reloads.
+ *
+ * The `try`/`catch` is not `AGENTS.md`'s forbidden shape: falling back to the system
+ * palette when `localStorage` throws is the correct and complete answer, not an empty
+ * result standing in for a failed read. `lib/theme.ts`'s `readThemeChoice()` makes the
+ * same argument at length.
+ */
+const THEME_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(t==="light"||t==="dark")document.documentElement.setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},t)}catch(e){}`;
 
 // The one piece of user-facing copy in this change. Taken verbatim from SPEC.md §2
 // rather than paraphrased — CONTEXT.md is binding on every string on screen.
@@ -32,6 +59,9 @@ export default function RootLayout({
   return (
     <html lang="en-GB" className={archivo.variable}>
       <head>
+        {/* First in `<head>`, before the stylesheet and before anything paints — see
+            `THEME_SCRIPT` above for why this cannot be a React effect. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {/*
           Every poster on every populated surface is an `image.tmdb.org` URL
           (`app/poster.tsx`), and none of them is discoverable until the RSC payload has

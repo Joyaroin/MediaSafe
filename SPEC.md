@@ -649,14 +649,37 @@ Beyond this product's destination, and returning only as a fresh decision:
 - **Export.** No user-facing export screen, ever. Durability is infrastructure, not a button. The
   asymmetry is deliberate and was put to Adham explicitly: with no export, the only file MediaSafe
   can read is one `tvtracker` wrote.
-- **A theme picker.** No in-product control over the palette, at any width, ever.
+- ~~**A theme picker.** No in-product control over the palette, at any width, ever.~~
   **Amended by [#134](https://github.com/Joyaroin/MediaSafe/issues/134), recorded by
-  [#144](https://github.com/Joyaroin/MediaSafe/issues/144).** This line used to read *"a theme
-  picker, light mode, or an alternate palette — one committed world"*, and two thirds of it is no
-  longer true: the Catalogue Wall ships **both** a light and a dark palette, and the system setting
-  decides between them (`app/globals.css`, `DESIGN.md` §2). The ban on a **picker** survives
-  untouched — it was never a ban on the system being asked. The one-committed-world rule that used
-  to justify it does not survive.
+  [#144](https://github.com/Joyaroin/MediaSafe/issues/144), and now reversed outright.** This line
+  first read *"a theme picker, light mode, or an alternate palette — one committed world"*. #134
+  deleted two thirds of it — the Catalogue Wall ships **both** palettes and the system setting
+  decides between them — and kept the ban on a **picker**, on the grounds that *"it was never a ban
+  on the system being asked"*.
+
+  **That last third is now gone too, and it went on evidence rather than on taste.** The linen
+  redesign recoloured the light palette only and left dark deliberately untouched, which made the
+  gap visible for the first time: a reader whose device is in dark mode cannot see the light world
+  at all without leaving the product and changing an OS setting. *The system setting decides* is
+  the right **default** and stays the default; it is a bad **only** option, because it makes one of
+  two shipped palettes unreachable from inside the product that ships it.
+
+  What replaces the ban is narrower than what #134 struck down, and the difference is the reason
+  this is not simply the old rule coming back:
+
+  - The control offers **System, Light and Dark — three states, not two.** *System* is the default
+    and the state a reader who never touches it stays in for ever, so the system is still asked
+    unless someone explicitly answers otherwise.
+  - It is a **device preference, not an account one.** It is stored in `localStorage`, never on
+    `user`, because `app/globals.css` already argues that *the phone at 11pm and the desktop in
+    daylight are both real scenes* — one account genuinely wants different answers on different
+    devices, and a column on `user` would force one.
+  - It selects between **the two palettes that exist**. There is still no third palette, no accent
+    picker, no per-surface override, and no user-supplied colour. Those remain out of scope, and
+    this bullet is not a licence for them.
+
+  One committed world was the original argument and it did not survive #134. What survived until
+  now was the habit.
 - **An admin surface**, a users list, or any bulk-edit affordance — no multi-select, no select-all,
   no batch state change.
 - **A guest mode**, a read cache, a local store, a service worker, or an offline queue.
