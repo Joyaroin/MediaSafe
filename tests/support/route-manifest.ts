@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
@@ -49,6 +49,36 @@ interface FunctionsConfigManifest {
 }
 
 /**
+ * Every App Router entry the build produced, from `.next/app-path-routes-manifest.json`,
+ * keyed by the **source path it was compiled from** and valued with the URL it serves.
+ *
+ * That key is the only reason this file is read at all. `routes-manifest.json` gives the
+ * URL and nothing else, and the loading-boundary audit has to get from a URL back to the
+ * directory that owns it — `/library` is `app/(signed-in)/library`, and no amount of
+ * string-munging on the URL would have found the route group.
+ *
+ * Route handlers are in here too, under a `/route` suffix rather than `/page`; see
+ * `pageRoutes` for why they are dropped rather than checked.
+ */
+type AppPathRoutesManifest = Record<string, string>;
+
+/**
+ * What the build prerendered, from `.next/prerender-manifest.json`.
+ *
+ * This is how *dynamic* stops being a word in a source file and becomes something read out
+ * of the build. `export const dynamic = "force-dynamic"` is a claim; a route absent from
+ * both of these maps is the build having acted on it. Reading it this way also means a
+ * route that becomes dynamic for some reason nobody wrote down — a cookie read that crept
+ * into a shared helper — is a route the audit starts asking about on its own.
+ */
+interface PrerenderManifest {
+  /** Fully prerendered paths, keyed by URL. */
+  routes: Record<string, unknown>;
+  /** Prerendered dynamic-segment paths (ISR fallbacks), keyed by route pattern. */
+  dynamicRoutes: Record<string, unknown>;
+}
+
+/**
  * The two lists the audit compares. Kept as its own type so the failure cases in
  * `tests/route-manifest.test.ts` can build one by hand, with no build behind it.
  */
@@ -70,8 +100,28 @@ export interface RoutingAssumptions {
   rewriteCount: number;
 }
 
+/**
+ * One page in the build: the URL it serves, the app-directory segment it was compiled
+ * from, and whether the build left it to be rendered on demand.
+ *
+ * Its own type, kept minimal for the same reason `RouteCoverageInput` is: the failure cases
+ * in `tests/route-manifest.test.ts` build these by hand, with no build behind them, and a
+ * fixture that has to carry fields the audit never reads is a fixture that stops being read
+ * as one.
+ */
+export interface PageRoute {
+  /** The URL pattern, as `routes-manifest.json` writes it — `/library/[entryId]`. */
+  route: string;
+  /** The path under `app/` that owns it — `(signed-in)/library/[entryId]`. */
+  segment: string;
+  /** Rendered on demand, rather than prerendered at build time. */
+  dynamic: boolean;
+}
+
 export interface BuildArtifacts extends RouteCoverageInput {
   assumptions: RoutingAssumptions;
+  /** Every page in the build. Route handlers are not here — see `pageRoutes`. */
+  pages: PageRoute[];
 }
 
 function readManifest<T>(repositoryRoot: string, relativePath: string): T {
@@ -97,12 +147,52 @@ function readManifest<T>(repositoryRoot: string, relativePath: string): T {
   return JSON.parse(contents) as T;
 }
 
+/**
+ * The build's pages, each with the segment it came from and whether it renders on demand.
+ *
+ * ── Why route handlers are dropped rather than exempted ──────────────────────────────
+ *
+ * `/api/auth/[...all]` and `/api/cron/nightly-sweep` are `route.ts` files. They render no
+ * UI, so *pending* is not a state they can be in and a `loading.tsx` beside one would never
+ * be mounted by anything. Dropping them here rather than naming them in the audit's
+ * exemption list is the difference between a category the check does not apply to and a
+ * decision somebody made about a surface — and the exemption list is only worth reading if
+ * everything in it is the second kind.
+ *
+ * The `/page` and `/route` suffixes are the manifest's own, so this is reading the build's
+ * classification rather than guessing from the URL.
+ */
+function pageRoutes(
+  appPaths: AppPathRoutesManifest,
+  prerendered: ReadonlySet<string>,
+): PageRoute[] {
+  const PAGE_SUFFIX = "/page";
+
+  return Object.entries(appPaths)
+    .filter(([sourcePath]) => sourcePath.endsWith(PAGE_SUFFIX))
+    .map(([sourcePath, route]) => ({
+      route,
+      // `/(signed-in)/library/page` → `(signed-in)/library`, and `/page` → `""`, which is
+      // `app/` itself and is where `app/page.tsx` lives.
+      segment: sourcePath.slice(1, -PAGE_SUFFIX.length),
+      dynamic: !prerendered.has(route),
+    }));
+}
+
 /** Both manifests, read from one build. */
 export function readBuildArtifacts(repositoryRoot: string): BuildArtifacts {
   const routes = readManifest<RoutesManifest>(repositoryRoot, "routes-manifest.json");
   const functions = readManifest<FunctionsConfigManifest>(
     repositoryRoot,
     path.join("server", "functions-config-manifest.json"),
+  );
+  const appPaths = readManifest<AppPathRoutesManifest>(
+    repositoryRoot,
+    "app-path-routes-manifest.json",
+  );
+  const prerender = readManifest<PrerenderManifest>(
+    repositoryRoot,
+    "prerender-manifest.json",
   );
 
   const matchers = functions.functions?.["/_middleware"]?.matchers;
@@ -120,6 +210,10 @@ export function readBuildArtifacts(repositoryRoot: string): BuildArtifacts {
       ...routes.dynamicRoutes.map((route) => route.page),
     ],
     matcher: matchers.map((matcher) => matcher.originalSource),
+    pages: pageRoutes(
+      appPaths,
+      new Set([...Object.keys(prerender.routes), ...Object.keys(prerender.dynamicRoutes)]),
+    ),
     assumptions: {
       basePath: routes.basePath,
       rewriteCount:
@@ -213,5 +307,112 @@ export function auditRouteProtection(
     unprotected,
     notActuallyExempt,
     stale: exempt.filter((route) => !routes.includes(route)),
+  };
+}
+
+/**
+ * ── The loading-boundary audit (issue #180) ──────────────────────────────────────────
+ *
+ * Same shape as everything above: an impure reader, then a pure function over what it
+ * returned. The reasoning for the audit itself is in `tests/route-manifest.test.ts`, beside
+ * the exemption lists it reads; what follows is only how it is computed.
+ */
+
+/**
+ * Next's own name for a segment's loading boundary, in every extension it will load one
+ * from. This repository writes `.tsx` and only `.tsx`, and the wider pattern is here so
+ * that a file added as `loading.js` is found rather than reported as a missing boundary —
+ * a false failure being the one thing worse than a false pass in a check nobody remembers.
+ */
+const LOADING_BOUNDARY = /^loading\.(?:tsx|ts|jsx|js|mjs)$/;
+
+/**
+ * Whether a segment has a loading boundary of its own, read off the source tree.
+ *
+ * **This is the one input the build could not supply**, and that was established by
+ * looking. No manifest names a boundary; a `loading.tsx` is a server component, so it is
+ * folded into its page's chunk under a hashed Turbopack name with nothing stable to match
+ * on — unlike `error.tsx`, which survives as a named chunk only because it is a client
+ * component, which is an implementation detail and not something to build a check on.
+ *
+ * So the split is: the build says which routes exist, which of them are dynamic and which
+ * segment each was compiled from, and this answers the one remaining question against the
+ * directory that build named. The predicate is returned rather than called so that the
+ * audit stays a pure function and the failure cases can hand it a set of segments written
+ * out by hand.
+ *
+ * A segment the build named and the source tree does not have throws rather than answering
+ * `false`, for `readManifest`'s reason one function up: the two have gone out of step, and
+ * a check that quietly reports *no boundary here* for a directory it could not find is
+ * reporting on nothing.
+ */
+export function loadingBoundaryReader(
+  repositoryRoot: string,
+): (segment: string) => boolean {
+  return (segment) => {
+    const directory = path.join(repositoryRoot, "app", segment);
+
+    if (!existsSync(directory)) {
+      throw new Error(
+        `The build says a page was compiled from app/${segment}, and there is no such ` +
+          "directory. The build and the source tree are not the same tree — rebuild with " +
+          "`npm run build` before reading anything into this check's result.",
+      );
+    }
+
+    return readdirSync(directory).some((entry) => LOADING_BOUNDARY.test(entry));
+  };
+}
+
+export interface LoadingAudit {
+  /** Dynamic pages with no boundary of their own, and nothing naming them exempt. */
+  unbounded: string[];
+  /** Named as exempt, but converted since — the list outliving the work it described. */
+  notActuallyExempt: string[];
+  /** Names in the exempt list that are no longer a dynamic page in the build. */
+  stale: string[];
+}
+
+/**
+ * Every dynamic page must have a loading boundary on its own segment unless it is named
+ * exempt, and every named exemption must be a dynamic page that really has no boundary.
+ *
+ * The three failure lists are the proxy audit's three, kept apart for its reason: they are
+ * three different mistakes — a surface converted by nobody, a list that says something
+ * untrue, and a name left behind after the route it described was deleted.
+ *
+ * **Prerendered pages are not asked anything.** A page the build resolved before anything
+ * reached the browser cannot keep a reader waiting, so it is neither reported as unbounded
+ * nor something an exemption should have to be written for — naming one goes stale instead,
+ * which is how a route that stops being dynamic gets noticed.
+ *
+ * `hasBoundary` is asked about the segment's **own** file and nothing above it. Next would
+ * inherit a parent's boundary down the tree; this deliberately does not, because an
+ * inherited boundary draws the parent surface's heading over the child's page. See the
+ * commentary in `tests/route-manifest.test.ts`.
+ */
+export function auditLoadingBoundaries(
+  pages: readonly PageRoute[],
+  hasBoundary: (segment: string) => boolean,
+  exempt: readonly string[],
+): LoadingAudit {
+  const dynamicPages = pages.filter((page) => page.dynamic);
+  const unbounded: string[] = [];
+  const notActuallyExempt: string[] = [];
+
+  for (const page of dynamicPages) {
+    const bounded = hasBoundary(page.segment);
+    const named = exempt.includes(page.route);
+
+    if (!bounded && !named) unbounded.push(page.route);
+    if (bounded && named) notActuallyExempt.push(page.route);
+  }
+
+  return {
+    unbounded,
+    notActuallyExempt,
+    stale: exempt.filter(
+      (route) => !dynamicPages.some((page) => page.route === route),
+    ),
   };
 }

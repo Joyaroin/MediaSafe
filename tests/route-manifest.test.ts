@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { config } from "@/proxy";
 import {
+  auditLoadingBoundaries,
   auditRouteProtection,
+  loadingBoundaryReader,
   matcherRunsOn,
   probeUrlFor,
   readBuildArtifacts,
@@ -188,5 +190,253 @@ describe("the check fails when the gate is widened", () => {
    */
   it("refuses to guess at a route shape it does not understand", () => {
     expect(() => probeUrlFor("/library/@panel/detail")).toThrow(/route syntax/);
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ * **The second audit — issue #180.** Every dynamic surface has a loading boundary.
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ *
+ * It lives in this file, on this file's machinery, because it is the same kind of check
+ * asking about the same list: *here is everything the build produced, and here is the thing
+ * every one of them must have.* The proxy audit's three failure lists, its named exemptions
+ * with a reason each, and its hand-built proof that it can fail are all reproduced below
+ * rather than reinvented, so that the two read as one habit and neither can be understood
+ * without teaching the other.
+ *
+ * **It arrives with the first real use of it rather than after the rollout.** #180 converts
+ * one surface; everything still unconverted is named below with a reason, and ticket 5
+ * ([#181](https://github.com/Joyaroin/MediaSafe/issues/181)) empties `NOT_YET_CONVERTED`.
+ * The enforcement existing first is what makes that ticket a deletion rather than a survey.
+ *
+ * ── What it reads, and the one thing the build could not tell it ─────────────────────
+ *
+ * The routes and which of them are dynamic come out of `next build`, exactly as above.
+ * **Whether a segment has a boundary does not**, and that was established by looking rather
+ * than assumed: no manifest names one, and the compiled `loading.tsx` is folded into its
+ * page's server chunk under a hashed Turbopack name with nothing stable to match on. So the
+ * build names the routes and the segment each was compiled from, and the source tree answers
+ * whether the file is there — see `loadingBoundaryReader`, which is the impure edge of this
+ * check in the same way `readBuildArtifacts` is the impure edge of the one above.
+ *
+ * ── Own segment, never inherited ─────────────────────────────────────────────────────
+ *
+ * A `loading.tsx` wraps its segment *and every segment below it*, so `/library/[entryId]`
+ * would count as covered by the grid's boundary if this asked about effective coverage. It
+ * asks about the segment's own file instead, for the reason `DESIGN.md` §9 gives when it
+ * refuses to wrap the Up next rails: **one surface, one pending decision, and it is the
+ * route's.** An inherited boundary is another surface's decision applied to this one, and it
+ * shows on the glass — the library's own heading printed over a title's page. Counting it as
+ * conversion would be the check passing for a surface nobody converted.
+ */
+
+/**
+ * **Routes that await nothing the reader can see.** No boundary, and the absence is a
+ * decision rather than an oversight — `DESIGN.md` §9 names the shapes and the test:
+ * **the session read is not content.** Every one of these awaits `requireUserId()`, so
+ * *does it await something* exempts nothing and is the wrong question; what matters is
+ * whether anything **on the glass** is still unresolved.
+ *
+ * These four never move to the list below. A boundary added to any of them fails this check
+ * as `notActuallyExempt`, which is the intended reading: the decision was contradicted.
+ */
+const NO_PENDING_STATE = [
+  /**
+   * §9's first shape, *nothing but the session*, by name. `/import` reads no data at all —
+   * the whole screen is its own state, and there is nothing for a dim line to stand in for.
+   */
+  "/import",
+  /**
+   * §9's second shape, *a read that decides which screen, not what is on one*, by name.
+   * `requireImportOfferAnswered()` resolves to a redirect or to a static page, and a
+   * boundary would flash a pending line for a surface the reader may never be sent to.
+   */
+  "/welcome",
+  /**
+   * §9's second shape again. `isSignedIn()` decides between a redirect to `/` and a form
+   * that is a literal in the source; `searchParams` is not a read. **§9 does not name this
+   * route** — it lists `/welcome` — so this entry is that rule applied rather than quoted,
+   * and it is written out here so a reader can disagree with the application instead of
+   * having to notice it happened.
+   */
+  "/sign-in",
+  /**
+   * §9's first shape. The page awaits only the session; the catalogue query belongs to
+   * `search-surface.tsx`, a client component running its own four-phase union through a
+   * server action. That region's pending state is radius 3 and is already built — a route
+   * boundary here would draw a second one for a read the route does not make.
+   */
+  "/search",
+] as const;
+
+/**
+ * **Not yet converted**, and this is the array
+ * [#181](https://github.com/Joyaroin/MediaSafe/issues/181) empties.
+ *
+ * Every route here genuinely waits on data the reader came to see, so every one of them is
+ * a surface that today leaves the previous screen frozen on the glass until its queries
+ * resolve. They are named individually rather than as a prefix for the reason issue #43
+ * gives for the proxy list: a line in a pull request with a name on it, rather than a
+ * pattern nobody looks at. The reason on each is what it reads.
+ */
+const NOT_YET_CONVERTED = [
+  /** `listLists` — the reader's own lists. */
+  "/lists",
+  /** `getListDetail` — and the `<h1>` is `{detail.name}`, so §9's back-link shape applies. */
+  "/lists/[listId]",
+  /** `requireDisplayName` and `requireTimezone`, both shown on the glass. */
+  "/settings",
+  /** `accountFootprint` — the counts the confirmation is about. */
+  "/settings/delete-account",
+  /** `getUnownedTitleDetail`, behind a redirect check. §9's back-link shape again. */
+  "/titles/[kind]/[tmdbId]",
+  /** `listUpNextRails`, the watchlist and the abandoned set, in one `Promise.all`. */
+  "/up-next",
+  /** `listAbandoned` — one of the five phone group screens. */
+  "/up-next/abandoned",
+  /** The phone group screen for titles waiting on a new season. */
+  "/up-next/coming-back",
+  /** The phone group screen for the second slice of `watching`. */
+  "/up-next/old-friends",
+  /** The phone group screen for the first slice of `watching`. */
+  "/up-next/ongoing",
+  /** `listWatchlist` — the fifth phone group screen. */
+  "/up-next/watchlist",
+] as const;
+
+/** The two lists are one exemption list to the audit, and two to a reader. */
+const EXEMPT_FROM_BOUNDARY = [...NO_PENDING_STATE, ...NOT_YET_CONVERTED];
+
+describe("every dynamic surface has a loading boundary", () => {
+  const built = readBuildArtifacts(process.cwd());
+  const hasBoundary = loadingBoundaryReader(process.cwd());
+
+  it("covers every dynamic page in the build except the ones named above", () => {
+    const audit = auditLoadingBoundaries(built.pages, hasBoundary, EXEMPT_FROM_BOUNDARY);
+
+    // Three separate assertions rather than one on the whole object, so a failure names
+    // which of the three mistakes was made — matching the proxy audit directly above.
+    expect(audit.unbounded).toEqual([]);
+    expect(audit.notActuallyExempt).toEqual([]);
+    expect(audit.stale).toEqual([]);
+  });
+
+  /**
+   * The converted surface, asserted positively.
+   *
+   * Every assertion above is a `toEqual([])`, and an empty list is also what a check that
+   * has stopped looking returns. This is the one that would fail if `built.pages` came back
+   * empty, if the segment paths stopped matching the source tree, or if the boundary reader
+   * started answering `false` for everything — three ways for the audit to pass while
+   * proving nothing.
+   */
+  it("finds the boundary on each of the library's own three segments", () => {
+    expect(hasBoundary("(signed-in)/library")).toBe(true);
+    expect(hasBoundary("(signed-in)/library/[entryId]")).toBe(true);
+    expect(hasBoundary("(signed-in)/library/[entryId]/remove")).toBe(true);
+  });
+
+  /** And negatively, on a segment this ticket deliberately did not convert. */
+  it("does not find one where nothing has been converted yet", () => {
+    expect(hasBoundary("(signed-in)/up-next")).toBe(false);
+  });
+
+  /**
+   * The build still has dynamic pages in it, which is the premise the whole audit rests on.
+   * Asserted as a floor rather than a count: `DESIGN.md` §9 refuses to write a route count
+   * down for the reason §12 gives — *a number duplicated into a file with no reason to know
+   * it is wrong by default* — and a test that has to be edited every time a route is added
+   * is that defect with a different filename.
+   */
+  it("is looking at a build that has dynamic pages in it", () => {
+    expect(built.pages.filter((page) => page.dynamic).length).toBeGreaterThan(
+      EXEMPT_FROM_BOUNDARY.length,
+    );
+  });
+});
+
+/**
+ * **This check can fail too**, and for the reason the proxy audit's own failure suite gives:
+ * a test that has only ever been green is a test nobody has seen work. Same machinery, same
+ * posture — hand-built inputs with no build behind them, so the evidence is permanent rather
+ * than something proved once by hand and then deleted.
+ */
+describe("the boundary check fails when a surface is left waiting", () => {
+  /** A page in the build, as the audit wants one, with no build behind it. */
+  const page = (route: string, segment: string, dynamic = true) => ({
+    route,
+    segment,
+    dynamic,
+  });
+
+  /** A boundary reader over a hand-written set of segments. */
+  const boundariesOn =
+    (...segments: string[]) =>
+    (segment: string) =>
+      segments.includes(segment);
+
+  it("reports a dynamic route that nobody gave a boundary or a reason", () => {
+    const audit = auditLoadingBoundaries(
+      [page("/library", "library"), page("/reports", "reports")],
+      boundariesOn("library"),
+      ["/import"],
+    );
+
+    expect(audit.unbounded).toEqual(["/reports"]);
+  });
+
+  /**
+   * **The stale exemption the acceptance criteria ask for**: a route named as exempt that
+   * has a boundary now. It is how `NOT_YET_CONVERTED` shrinks — #181 converting a surface
+   * fails this check until the name comes out of the list, so the list cannot quietly
+   * outlive the work it describes.
+   */
+  it("reports an exemption for a route that has since been converted", () => {
+    const audit = auditLoadingBoundaries(
+      [page("/up-next", "(signed-in)/up-next")],
+      boundariesOn("(signed-in)/up-next"),
+      ["/up-next"],
+    );
+
+    expect(audit.notActuallyExempt).toEqual(["/up-next"]);
+  });
+
+  it("reports an exemption left behind by a deleted route", () => {
+    const audit = auditLoadingBoundaries(
+      [page("/library", "library")],
+      boundariesOn("library"),
+      ["/lists"],
+    );
+
+    expect(audit.stale).toEqual(["/lists"]);
+  });
+
+  /**
+   * A prerendered page never waits, so it is not this check's business and is not something
+   * an exemption should have to be written for. Both halves are asserted: it is not
+   * reported as unbounded, and naming it exempt goes stale rather than passing quietly.
+   */
+  it("asks nothing of a page the build prerendered", () => {
+    const pages = [page("/", "", false)];
+
+    expect(auditLoadingBoundaries(pages, boundariesOn(), []).unbounded).toEqual([]);
+    expect(auditLoadingBoundaries(pages, boundariesOn(), ["/"]).stale).toEqual(["/"]);
+  });
+
+  /**
+   * **Inheritance is not conversion.** The audit asks about the segment's own file, so a
+   * child of a converted segment is still reported — which is the whole reason
+   * `/library/[entryId]` and `/library/[entryId]/remove` got boundaries of their own in
+   * #180 rather than being left to the grid's.
+   */
+  it("does not let a child route inherit its parent's boundary", () => {
+    const audit = auditLoadingBoundaries(
+      [page("/library", "library"), page("/library/[entryId]", "library/[entryId]")],
+      boundariesOn("library"),
+      [],
+    );
+
+    expect(audit.unbounded).toEqual(["/library/[entryId]"]);
   });
 });

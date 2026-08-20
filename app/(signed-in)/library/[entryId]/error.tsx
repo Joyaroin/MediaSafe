@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
-
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
+import { BackToLibraryBar } from "./back-to-library-bar";
 
 /**
  * Title detail did not load, on the phone route. `app/(signed-in)/library/error.tsx`
@@ -26,14 +25,7 @@ export default function TitleDetailReadFailure({
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="border-b border-hair px-6 py-4">
-        <Link
-          href="/library"
-          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-        >
-          ‹ Library
-        </Link>
-      </div>
+      <BackToLibraryBar />
 
       <div className="px-6 py-5">
         <ReadFailure reference={reference} retry={retry} />

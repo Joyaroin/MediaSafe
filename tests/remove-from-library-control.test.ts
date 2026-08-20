@@ -146,6 +146,11 @@ describe("where the remove control appears", () => {
     expect(routes).toEqual([
       "app/(signed-in)/library/[entryId]/remove/actions.ts",
       "app/(signed-in)/library/[entryId]/remove/error.tsx",
+      // Issue #180's pending boundary. It belongs on this list for the reason the list
+      // exists — it is a render of this route, and the thing worth knowing about it is the
+      // same thing worth knowing about `error.tsx`: there is no form on it. That half is
+      // asserted in `tests/library-pending.test.ts`, beside the other two states.
+      "app/(signed-in)/library/[entryId]/remove/loading.tsx",
       "app/(signed-in)/library/[entryId]/remove/page.tsx",
       "app/(signed-in)/library/[entryId]/remove/remove-frame.tsx",
       "app/(signed-in)/library/[entryId]/remove/remove-title-form.tsx",
