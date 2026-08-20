@@ -193,12 +193,27 @@ export function TitleSheetProvider({
             animate="in"
             exit="out"
           >
-            {/* Ground only — it fades, it does not spring. */}
+            {/*
+              Ground only — it fades, it does not spring.
+
+              **No frosting, and that is a §5 decision rather than an omission.** A
+              backdrop filter repaints everything behind it on every frame it is composited
+              over moving content, and this is the worst possible case for it: the full
+              viewport, with its own opacity animating, so the blur is recomputed at every
+              step of the open and the close. That cost scales with the refresh rate — a
+              120Hz screen pays it twice as often as the 60Hz one this was written on.
+
+              §5 also draws the line this sits on the wrong side of: *glass is chrome only*,
+              and a scrim is not chrome. The masthead, tab bar and sidebar are frosted
+              because type scrolls underneath them and must grey rather than vanish; nothing
+              scrolls under a modal scrim. Fading a flat ground is compositor-only work and
+              free at any frame rate.
+            */}
             <motion.button
               type="button"
               aria-label="Close"
               onClick={close}
-              className="absolute inset-0 h-full w-full cursor-default bg-ground/70 backdrop-blur-[2px]"
+              className="absolute inset-0 h-full w-full cursor-default bg-ground/70"
               variants={{ out: { opacity: 0 }, in: { opacity: 1 } }}
               transition={exit}
             />
