@@ -100,11 +100,14 @@ export function DeleteListDialog({
           {inFlight ? "Deleting" : "Delete list"}
         </button>
 
+        {/* Issue #195: was dim underlined text, now the same GHOST_RECOVERY the confirm
+            button above already wears — the underline was the only thing marking this as
+            a control at all, and dropping it without a border would drop the control. */}
         <button
           type="button"
           onClick={() => ref.current?.close()}
           disabled={inFlight}
-          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
+          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
         >
           Cancel
         </button>

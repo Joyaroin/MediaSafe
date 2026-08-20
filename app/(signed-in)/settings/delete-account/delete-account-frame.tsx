@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+
 /**
  * The two pieces the page and its failure boundary both render — issue #125.
  *
@@ -11,9 +13,8 @@ import Link from "next/link";
  *
  * Neither of these is a new treatment. The heading is `bill-title` at `text-bill-lg`, the
  * step `DESIGN.md`'s type table gives full-surface headlines and the same one `/settings`
- * uses. The link is the quiet underline `errors/reference-line.tsx` already sets — `1px`
- * `hair` decoration at a `4px` offset, brightening to `text` on hover — rather than a
- * second ghost button competing with the delete for the reader's eye.
+ * uses. Issue #195 moved the link off the quiet underline `errors/reference-line.tsx` set —
+ * it is `GHOST_RECOVERY` now, the register the whole underline conversion reuses.
  */
 
 export function DeleteAccountHeading() {
@@ -29,13 +30,10 @@ export function DeleteAccountHeading() {
  */
 export function BackToSettings() {
   return (
-    <p className="mt-8 text-item text-dim">
-      <Link
-        href="/settings"
-        className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
-      >
+    <div className="mt-8">
+      <Link href="/settings" className={GHOST_RECOVERY}>
         ‹ Back to Settings
       </Link>
-    </p>
+    </div>
   );
 }

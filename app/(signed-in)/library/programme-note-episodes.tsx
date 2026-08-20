@@ -1,7 +1,7 @@
 "use client";
 
 import type { EpisodeDetail, LibraryState } from "@/db/access";
-import { IN_FLIGHT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import {
   EPISODE_NAME_CELL,
@@ -242,13 +242,19 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * phantom rewatch is invisible by inspection next to the 1,156 real ones already in the
  * database.
  *
- * The distinction is carried in the chrome as well as the words. *Strike it* is the
- * bordered ghost button `DESIGN.md`'s Buttons section specifies; both of these are
- * underlined text controls with no border and no fill, which is that section's treatment
- * for a control that must not compete with the daily gesture. *Rewatch* stays **accent**,
- * because it records a watch and the accent is what recording a watch looks like;
- * *Unwatch* is dim and never accent, exactly as the abandon control is and for the same
- * stated reason.
+ * The distinction used to be carried in the chrome as well as the words — *Strike it* was
+ * the bordered ghost button, and both of these were underlined text with no border and no
+ * fill, a control that must not compete with the daily gesture. Issue #195 removed that
+ * distinction: every one of the fourteen underlined controls in the app, this pair
+ * included, now takes `GHOST_RECOVERY` — the same bordered outline `DESIGN.md` §10's
+ * Buttons subsection specifies, spent knowingly rather than by accident (§10 and §12 both
+ * record it). What still separates the two is only the words. *Rewatch* stays **accent**
+ * for the reason it always did — it records a watch, and the accent is what recording a
+ * watch looks like — and it needed no override to keep it, since it already painted accent
+ * before this ticket touched it. *Unwatch* is the one that changed: it used to be dim and
+ * never accent, exactly as the abandon control was, and now takes the same `GHOST_RECOVERY`
+ * as everything else in the batch — a knowing accent spend `remove-control.tsx` and
+ * `abandon-control.tsx`'s own docblocks name too.
  *
  * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
  * for the length of the sweep, and the controls arrive with `settled`. A control that
@@ -342,12 +348,17 @@ function EpisodeLine({
           <span className="code-line text-dim">Watched</span>
         ) : (
           <>
+            {/* Issue #195: both rows lose their underline for the same GHOST_RECOVERY
+                treatment the rest of this batch takes. Rewatch already painted accent —
+                it re-records a watch, which is what the accent is for — so this is no
+                widening for that one; Unwatch was dim and moves onto the accent register
+                knowingly, the same call the abandon and remove controls make below. */}
             <button
               type="button"
               onClick={() => void attempt()}
               disabled={pending}
               aria-label={`Watch ${fullName} again`}
-              className={`code-line text-accent underline decoration-accent underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
+              className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
             >
               Rewatch
             </button>
@@ -357,7 +368,7 @@ function EpisodeLine({
               onClick={() => void unwatch()}
               disabled={pending}
               aria-label={`Unwatch ${fullName}`}
-              className={`code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
+              className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
             >
               Unwatch
             </button>
