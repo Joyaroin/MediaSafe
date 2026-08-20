@@ -2297,8 +2297,21 @@ export async function listUpNextRails(
 ): Promise<UpNextRails> {
   const read = upNextRead(userId, executor);
 
-  const watching = await read.rows(WATCHING, null);
-  const comingBack = await read.rows(COMING_BACK, null);
+  /**
+   * Two independent reads, overlapped rather than stacked: neither takes the other's
+   * rows. `Promise.all` rejects on the first rejection, so a failure still reaches the
+   * caller's boundary exactly as it did in series.
+   *
+   * On the pool this checks out two connections instead of reusing one, which on a cold
+   * process is two WebSocket handshakes rather than one. It is still the shorter wall
+   * clock — the handshakes overlap too — and it is a trade of connection count for
+   * latency, made knowingly. Passed a transaction, node-postgres queues both on that one
+   * connection, so this is correct there and merely no faster.
+   */
+  const [watching, comingBack] = await Promise.all([
+    read.rows(WATCHING, null),
+    read.rows(COMING_BACK, null),
+  ]);
 
   return {
     ongoing: watching.slice(0, ONGOING_RAIL_SIZE).map(upNextEntry),

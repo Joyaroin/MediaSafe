@@ -57,9 +57,22 @@ export const dynamic = "force-dynamic";
 export default async function UpNextPage() {
   const userId = await requireUserId();
 
-  const rails = await listUpNextRails(userId);
-  const watchlist = await listWatchlist(userId);
-  const abandoned = await listAbandoned(userId);
+  /**
+   * Concurrent, not sequential. None of the three reads takes any part of another's
+   * result, so awaiting them one after another bought nothing and cost two extra round
+   * trips to Neon in front of the first byte of this page — on a driver where a round
+   * trip is a WebSocket message and not a local socket write.
+   *
+   * `Promise.all` rejects on the first rejection, which is the behaviour this page's
+   * error discipline already asks for: any one of the three failing throws into
+   * `error.tsx` exactly as it did when they ran in series. Nothing here catches, and the
+   * unguarded reads above the `AGENTS.md` rule protects are still unguarded.
+   */
+  const [rails, watchlist, abandoned] = await Promise.all([
+    listUpNextRails(userId),
+    listWatchlist(userId),
+    listAbandoned(userId),
+  ]);
 
   return (
     /* The Library page's own two-pane shell — the rails swap the panel beside them, and
