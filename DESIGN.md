@@ -497,6 +497,8 @@ reads as a count whether it is meant as one or not.
 
 ### The rules a rail obeys
 
+- **A rail is never *pending* on its own either**, and gets no loading boundary of its own —
+  §9 settles that, and settles it against a written request, so read it there before adding one.
 - **An empty rail is absent** — no heading over nothing, no sentence, no zero, no reserved
   space. **Every** rail empty is a different fact, answered once by `UpNextRailsSurface` in
   `UpNextEmpty`'s own voice, because *you're caught up* is a sentence and not three
@@ -673,9 +675,12 @@ duplicated rather than guessing which one wins.
 opens on the first pair — a read that fails throws, an empty state is reachable only from a
 query that succeeded and found nothing, and `tvtracker` collapsed them for its entire life.
 Pending is the third, it arrived without a treatment, and the absence has a cost on screen:
-**eighteen routes are `force-dynamic` and not one of them has a loading boundary**, so tapping
-a tab leaves the previous screen frozen and fully interactive-looking until every query on the
-new one has resolved.
+**every `force-dynamic` route in the application renders nothing while it waits**, because not
+one of them has a loading boundary. Tapping a tab leaves the previous screen frozen and fully
+interactive-looking until every query on the new one has resolved. (No count is given here on
+purpose. §12 closed a defect of exactly that shape — *a number duplicated into a file with no
+reason to know it is wrong by default* — and a route count is the most movable number in the
+repository.)
 
 **Most of the answer was already built and was never written down here.** The programme note
 and the three live fact sections both draw a pending state, both draw the same one, and no
@@ -699,7 +704,7 @@ region than the whole screen the reader is currently staring at.
 
 | Blast radius | Treatment | Where it lives |
 |---|---|---|
-| **A whole surface is pending** | The surface's own heading, and one `code-line` in `dim` where the content will be | `loading.tsx` at the page's own segment |
+| **A whole surface is pending** | The surface's own heading, and one `code-line` in `dim` where the content will be | `loading.tsx` at the page's own segment — **not built yet**, and the one row here that is a decision rather than a description |
 | **One region is pending, beside rendered content** | The region's own head alone, in its settled form, marked `role="status"` | a `Suspense` boundary, or the region's own phase state |
 | **A pane is swapping** | Everything the caller already holds — the poster — and the same one dim line | `programme-note.tsx`'s four-phase union |
 
@@ -717,9 +722,11 @@ failure has four of each.
   (`docs/design/v1-surfaces.md` §6), not an event worth interrupting anyone for. `status`
   carries an implicit `aria-live="polite"`, which announces at the reader's next pause rather
   than cutting across what they are doing.
-- **`dim`, never the accent.** §3 rations `--accent` to four settled roles and pending is none
-  of them: not a watch being recorded, not the brand mark, not a failure, and not a surface's
-  primary action. **The accent never appears in a pending state.**
+- **`dim`, never the accent.** §3 rations `--accent` to a closed set of meanings — the sweep it
+  is reserved for, plus the settled roles the build paints beyond it — and **pending is not on
+  that list and is not being added to it.** It is not a watch being recorded, not the brand
+  mark, not a failure, and not a surface's primary action. **The accent never appears in a
+  pending state.**
 - **One line, and no second one.** No prose, no reassurance, no estimate, and no *this is
   taking longer than usual*.
 - **The word is *Reading***, wherever the region has no name of its own to use instead. It is
@@ -759,8 +766,7 @@ precisely the reading this section exists to foreclose.
 4. **A pill would be the first radius in the application.** §4 closes that list at two: the
    poster's `7px` and the rail arrows' circle.
 
-**And there is no token for one** — no `--skeleton-*`, no shimmer keyframe, no placeholder
-utility. §10 is where that belongs and it is listed there.
+**And there is no token for one.** §10 is where that belongs, and it is listed there.
 
 ### Radius 1 — a whole surface is pending
 
@@ -778,31 +784,61 @@ load rather than a bare error on a blank page."* `up-next-heading.tsx` says the 
 own three. **Pending is the fourth caller of a component that was built to be shared by exactly
 this kind of set**, and the sentence it makes true is *the library, which is still reading*.
 
+**Where the heading is itself the answer, it is pending too — and the build already says what
+takes its place.** `/lists/[listId]` and `/titles/[kind]/[tmdbId]` set their `<h1>` from the
+read (`{detail.name}`), so there is no heading to render early: the name is exactly what is
+being waited for. Their `error.tsx` files already answer this, and answer it the same way for
+the same reason — they render the segment's **back link** (`‹ Lists`) in the heading bar and
+**no `<h1>` at all**, because a name that failed to load cannot be printed. Pending is the
+identical case, so *"the page's own heading component"* reads, precisely: **whatever the
+segment's `error.tsx` renders above the failure.** For a list or a title that is the back link;
+for the library and Up next it is the full heading. The formula does not change — *what
+`error.tsx` renders, less the failure* — and it already covers both shapes.
+
 - **The boundary belongs to the page's own segment, never to the shell.**
   `(signed-in)/layout.tsx` holds the masthead, the sidebar and the tab bar; a boundary above
   them would take the navigation down with the surface, and a reader who cannot leave a slow
-  screen is worse off than one watching a frozen one. The placement argument is
-  `library/error.tsx`'s, unchanged.
+  screen is worse off than one watching a frozen one. The blast-radius half of that is
+  `library/error.tsx`'s own argument — *the root boundary would replace the whole page* — and
+  the navigation half is new here, because a failure the reader can read at leisure and a wait
+  they may want to abandon are not the same pressure.
 - **The content arrives with the entrance it already has.** `stagger-rise` is on the library
   grid and on every rail track, so the instant pending ends is the instant the list rises in —
   one transition, not a swap followed by an animation.
-- **A route with nothing to await gets no boundary**, and that absence is a decision rather
-  than an oversight. The criterion is the read, not the route: a segment that renders without
-  waiting on anything has nothing to say it is waiting for, and a boundary there would flash a
-  dim line onto a screen that was never pending. `app/page.tsx` is the worked example — a
-  plain server redirect to `/up-next`, resolved before anything reaches the browser.
+- **A route that awaits nothing the reader can see gets no boundary**, and that absence is a
+  decision rather than an oversight. **The session read is not content.** Every `force-dynamic`
+  page awaits `requireUserId()`, so "does it await something" exempts nothing and is the wrong
+  test; the reader is not waiting to see the session, they are waiting to see the surface. The
+  test is whether anything **on the glass** is still unresolved. Three shapes fail it and none
+  of them takes a boundary:
+  - **Nothing but the session.** `/import` awaits `requireUserId()` and reads no data at all —
+    the whole screen is its own state, and there is nothing for a dim line to stand in for.
+  - **A read that decides *which* screen, not what is on one.** `/welcome`'s
+    `requireImportOfferAnswered()` resolves to a redirect or to a static page. A boundary would
+    flash a pending line for a surface the reader may never be sent to.
+  - **No read at all.** `app/page.tsx`, a plain server redirect to `/up-next`, resolved before
+    anything reaches the browser.
 
 ### Radius 2 — one region is pending, beside rendered content
 
 **The region's head renders at once, in its settled form, and nothing is reserved beneath it.**
+
+**There is no `Suspense` boundary anywhere in `app/` today, and this radius does not ask for
+one to be added.** Stated plainly because the count is what an implementation ticket needs: the
+correct number of new `Suspense` boundaries is **zero**. Every site this radius actually has is
+a client component fetching through a server action and owning its own phase state, which is
+why the treatment below is phrased in terms of what a region *renders* rather than what wraps
+it. `Suspense` is the mechanism to reach for **if** a future surface grows a region with its
+own server read — not a thing to retrofit onto the three that exist.
 
 This one is already built three times over, in `live-title-facts.tsx`, and the build is the
 rule. `LiveFactSection` renders `<p className="code-line text-dim">{heading}</p>` in **all
 three** of its phases — loading, failed and loaded — adding only `role="status"` while it
 waits. The head is identical in every phase, so it never moves; only what sits under it
 changes. The mirrored half of the page, `ProgrammeNoteContent`, is at full strength beside it
-the whole time, which is the point `docs/design/v1-surfaces.md` §7 was making: *one failed
-fetch must never take the screen* — and neither may one slow one.
+the whole time: three independent fetches, three independent failures, and **none of them may
+touch the other two or the page around them.** That is already the rule for a failed fetch, and
+it is the same rule for a slow one.
 
 **The region does not reserve its content's height.** A region that holds a box open is
 claiming to know how large its answer is, and none of these do: a synopsis is one paragraph or
@@ -851,6 +887,14 @@ one read into three, two problems have to be solved and not one:
   nothing for the length of the read, and has to be withdrawn again on every rail that resolves
   empty. A rail head is `bill-title` at full-strength `text`, which reads as an assertion in a
   way a `dim` `code-line` does not — it is not the register to say *waiting* in.
+
+**And wrapping all three rails in one `Suspense` is not a way around this.** It is a real
+option and it is refused on its own terms: since the three resolve together, one boundary
+around the set is the route's boundary drawn a few lines lower, with the same content pending
+and the same treatment on screen. It buys exactly one thing — the page renders its own
+`UpNextHeading` instead of `loading.tsx` rendering it — and pays for it with a second place
+where the surface's pending state is decided. **One surface, one pending decision, and it is
+the route's.**
 
 **Radius 2's site is a region with its own read**, and that is the test — not a region that
 merely looks separable on the glass. The three live fact sections have three independent
@@ -1053,6 +1097,13 @@ it out of both), so nothing has caught it. It should be deleted.
   off-by-one, corrected by #144 and updated again here.)
 - `masthead.tsx` still cites `docs/design/prototypes/repertory-bill.html` for measures the
   Catalogue Wall now sets.
+- **`live-title-facts.tsx` quotes a sentence `docs/design/v1-surfaces.md` does not contain.**
+  Its docblock attributes *"one failed fetch must never take the screen, and the mirrored half
+  of the page works even when TMDB is down"* to that file's §7. The string is nowhere in it,
+  and §7 is *Constraints, and the decisions a builder must not invent*. The **behaviour** the
+  quote describes is real and is what the component does — only the citation is invented, which
+  is the more dangerous half: it reads as binding provenance. Found while writing §9, which
+  nearly promoted the quotation into this file.
 - `db/access.ts`'s `listUpNextRails` rule table calls the up next episode *"the next
   episode"*. `CONTEXT.md` lists **next episode** among the three terms *Up next* must avoid,
   alongside *continue watching* and *resume*. It is a docblock and not a string on screen,
