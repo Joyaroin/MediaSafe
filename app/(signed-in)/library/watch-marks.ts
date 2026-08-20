@@ -501,9 +501,10 @@ export function createWatchMarks({
  * The app's one store, over the two Server Actions. A module-level instance rather than a
  * React context for a reason the toast store's own docblock only half covers: nothing
  * guarantees the surfaces that end up sharing a mark sit in the same branch of the tree —
- * `up-next-dominant-card.tsx` and `programme-note.tsx` are on different routes entirely —
- * so a provider would have to be mounted above every caller by a component with no other
- * reason to know any of them exists.
+ * the desktop pane and the phone's pushed title-detail route were on different routes
+ * entirely when this store was built, and #138 retired the surface that made that concrete
+ * (`up-next-dominant-card.tsx`) — so a provider would have to be mounted above every
+ * caller by a component with no other reason to know any of them exists.
  */
 export const watchMarks = createWatchMarks({
   writer: {

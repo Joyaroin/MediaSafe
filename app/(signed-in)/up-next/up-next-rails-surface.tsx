@@ -46,9 +46,9 @@ import { UpNextRail } from "./up-next-rail";
  *
  * ── Hidden below `lg` ─────────────────────────────────────────────────────────────────
  *
- * `page.tsx` gates this, not this file — the phone's five vertical groups are issue #138's,
- * and until they land the phone keeps the deck it already had. A rail read as a single
- * cramped column is not a smaller rail, it is a different surface.
+ * `page.tsx` gates this, not this file — the phone renders its own five vertical groups
+ * instead (`up-next-groups.tsx`, issue #138). A rail read as a single cramped column is
+ * not a smaller rail, it is a different surface.
  */
 export function UpNextRailsSurface({ rails }: { rails: UpNextRails }) {
   if (

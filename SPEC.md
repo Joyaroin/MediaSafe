@@ -111,7 +111,11 @@ The three that most often get built wrong:
 - **Filter** is your library; **Search** is the catalogue. Not interchangeable in any label, field,
   tab or nav item.
 - **An episode is never referred to by number alone.** "Hands", with `S1 E2` as a separate dim label.
-  No surface may degrade to `S3 E4` — including the compact phone deck and the desktop Up next row.
+  No surface may degrade to `S3 E4` — the programme note's own episode rows are where this is closest
+  to being broken today. Neither the desktop's three Up next rails nor the phone's five vertical
+  groups ([#138](https://github.com/Joyaroin/MediaSafe/issues/138)) reach an episode at all — a tile
+  on either is a poster, a name and a year — so there is nothing on that surface the rule could be
+  broken by.
 
 ---
 
@@ -212,29 +216,36 @@ fourth.
    split on viewport — desktop to Library, phone to Up next — which existed only because Up next was
    not yet a desktop destination; #136 deleted that redirect rather than rewiring it, which is also
    the one place in the build that read a viewport fact in JavaScript instead of Tailwind, now gone.
-2. **Up next's form and rank — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137).**
+2. **Up next's form and rank — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
+   and for phone by [#138](https://github.com/Joyaroin/MediaSafe/issues/138).**
    The two devices genuinely diverge again, and no longer as a placeholder. Desktop: **three
    horizontal rails** — *Ongoing*, *Coming back*, *Old friends* — beside the programme note, where
    clicking a poster **swaps the panel** and never navigates, the same topology divergence 3 gives
    title detail. It is the whole page now, not a secondary row above a grid: the row this bullet used
    to describe went with the desktop TONIGHT row in #136, and the library page is just the library.
-   Phone: still the deck — the whole screen, one dominant card, recording control in the thumb arc —
-   and that half of this bullet is the interim one now, until
-   [#138](https://github.com/Joyaroin/MediaSafe/issues/138) replaces it with five vertical groups.
-   The rails' rules are in *Up next — the three rails* below.
+   Phone: **five vertical groups**, stacked — the same three rules as the desktop's three rails, then
+   **Watchlist** and **Abandoned**, the two states the desktop reaches only through Library's own
+   chips. A few titles each, with `more ›` into that group's own screen. #138 **replaces** the deck
+   this bullet used to describe — one dominant card, recording control in the thumb arc — and with it
+   the recording control the phone landing screen carried: **there is no recording control on Up next
+   at all now, on either device.** To mark an episode, open the title. The rails' and the groups'
+   shared rules are in *Up next — the three rails* below.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
-4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137).**
-   Phone: **no numeric cap** — a deck you work down never renders N at once, so its own form is the
-   bound. Desktop: **each rail is bounded by its own rule, and scrolls.** *Ongoing* is bounded by a
-   count — twelve, the one number on this surface, and a build-time constant nothing can change.
-   *Coming back* and *Old friends* are bounded by nothing but their membership, and reach the rest of
-   themselves by scrolling: horizontal, with **arrows**, and **snapping on whole posters** so a rail
-   never comes to rest part-way through one. This overturns what this bullet used to say twice over —
-   the *no scroll, no fade, no arrow* row bounded by the viewport went with the desktop TONIGHT row in
-   #136, and #137 replaces the placeholder that followed it. Its one-click escape to Library's
-   *Watching* chip is gone with it; the chip itself is untouched (§7's *Library — filter chips*
-   below), only its old job of holding a TONIGHT row's overflow.
+4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
+   and for phone by [#138](https://github.com/Joyaroin/MediaSafe/issues/138).**
+   Phone: **no numeric cap on a group's screen**, the same *a surface you work down never renders N at
+   once* rule the deck this bullet used to describe already held — a group's home preview, though, is
+   a few titles and no more, with the whole of it one `more ›` away. Desktop: **each rail is bounded by
+   its own rule, and scrolls.** *Ongoing* is bounded by a count — twelve, the one number on this
+   surface, and a build-time constant nothing can change. *Coming back* and *Old friends* are bounded
+   by nothing but their membership, and reach the rest of themselves by scrolling: horizontal, with
+   **arrows**, and **snapping on whole posters** so a rail never comes to rest part-way through one.
+   This overturns what this bullet used to say twice over — the *no scroll, no fade, no arrow* row
+   bounded by the viewport went with the desktop TONIGHT row in #136, and #137 replaces the placeholder
+   that followed it. Its one-click escape to Library's *Watching* chip is gone with it; the chip itself
+   is untouched (§7's *Library — filter chips* below), only its old job of holding a TONIGHT row's
+   overflow.
 
 Everything else is one design at two densities: the tile and grid, search-and-add, the rating
 control, import, sign-in, settings and account deletion.
@@ -261,7 +272,9 @@ admin chrome on the daily surface.
 
 **The ordering holds inside a rail.** [#137](https://github.com/Joyaroin/MediaSafe/issues/137) groups
 Up next into three rails and does not touch the order within any of them — the rule above is checked
-against all three and against the phone deck by the same assertions, in `tests/up-next.test.ts`.
+against all three by the same assertions, in `tests/up-next.test.ts`. The phone's own first three
+groups ([#138](https://github.com/Joyaroin/MediaSafe/issues/138)) read the identical rails, so there
+is nothing for a phone-specific assertion to check that the desktop's does not already.
 
 ### Up next — the three rails
 
@@ -339,10 +352,12 @@ was offered and declined. `rating smallint CHECK (rating BETWEEN 1 AND 10)` stay
 
 ### Abandonment
 
-The **only** hand-set state in the model. It appears in exactly two places: the phone's dominant Up
-next card and the programme note (so titles outside the deck can still be abandoned). It is the
-quietest control on either surface — dim, underlined, unfilled — and **never vermilion**, because
-vermilion is reserved for recording a watch.
+The **only** hand-set state in the model. It appears in exactly one place — the programme note —
+since [#138](https://github.com/Joyaroin/MediaSafe/issues/138) retired the phone's dominant Up next
+card the control used to appear a second time on: there is no recording or abandon control anywhere
+on Up next now, on either device, and giving up on a title is reached the same way marking one
+watched is — by opening it. It is the quietest control on the note — dim, underlined, unfilled — and
+**never vermilion**, because vermilion is reserved for recording a watch.
 
 `abandoned_at` is cleared **only** by the application write path, in the same transaction as the
 watch insert. **Import never clears it, and sets it only when it creates the library entry, never on
@@ -530,8 +545,14 @@ before and after**; nothing reflows, nothing vanishes under the thumb.
 
 ### Step 5 — Up next
 
-The phone deck, landing screen, one dominant card, recording control in the thumb arc, abandon row,
-and no numeric cap. The desktop TONIGHT row, viewport-bounded to whole cards. #25's ordering rule.
+The landing screen on both devices, and #25's ordering rule underneath every form it has taken.
+Built here as the phone deck — one dominant card, recording control in the thumb arc, no numeric
+cap — and the desktop TONIGHT row, viewport-bounded to whole cards; both are superseded now. The
+desktop TONIGHT row went with #136's sidebar, replaced by #137's three horizontal rails. The phone
+deck's own **contract is replaced by [#138](https://github.com/Joyaroin/MediaSafe/issues/138)**:
+five vertical groups — the same three rules the desktop rails read, plus Watchlist and Abandoned —
+and no recording control anywhere on the surface at all; to mark an episode or give up on a title,
+you open it.
 
 **Leaves**: the daily scene at one tap from a cold open. **This is the cutover gate** — not step 3.
 Cutting over before Up next exists regresses the highest-frequency scene against the app being
@@ -603,8 +624,12 @@ appears when there is a Lists page behind it.
 
 ### Specced, but later
 
-Home rails other than Up next (Watchlist, Upcoming, Lists) · discovery by genre · recommendations ·
+Desktop rails other than Up next's three (Upcoming) · discovery by genre · recommendations ·
 upcoming air dates · watch providers · stats · day streak · year in review.
+
+**Watchlist left this list too, by [#138](https://github.com/Joyaroin/MediaSafe/issues/138)** —
+the phone's fourth of five vertical groups, Abandoned its fifth. Neither is a desktop rail: the
+desktop still reaches both only through Library's own chips (*Library — filter chips*, above).
 
 Year in review cannot be v1 by definition — it needs a year of data. Real episode names are not
 separately scheduled; they are a property of every episode surface and ship with it.
@@ -836,8 +861,12 @@ Named rather than hidden. **None of them blocks the v1 build.**
 4. **The Up next fetch page size.** #25 dissolved the cap question into a fetch question —
    *paginate* — and did not pick a number. A build-time call. **Made, at twenty**
    ([#98](https://github.com/Joyaroin/MediaSafe/issues/98)): `UP_NEXT_PAGE_SIZE` in
-   `db/access.ts`. It is a *fetch* size and not a cap — the phone deck still has no numeric
-   bound, and the count is never returned to a surface that could render it.
+   `db/access.ts`. It was a *fetch* size and not a cap — the phone deck it paginated had no
+   numeric bound, and the count was never returned to a surface that could render it. Moot
+   since [#138](https://github.com/Joyaroin/MediaSafe/issues/138): the deck and its paging are
+   both gone, and neither `UP_NEXT_PAGE_SIZE` nor a cursor exists in `db/access.ts` any more —
+   a group's own screen reads its whole membership in one unbounded fetch instead (*Up next —
+   the three rails*, above).
 5. **Whether Drizzle's `migrate()` wraps each migration file in a transaction.** ADR-0001 flagged
    this unverified on purpose. The WebSocket driver makes it possible; if the migrator does not do
    it, **the runner must open the transaction itself** — #17's halt-on-partial-failure is a
@@ -857,10 +886,12 @@ Named rather than hidden. **None of them blocks the v1 build.**
 ### One conflict left for Adham
 
 6. **The Up next bound, as he answered it twice.** Asked during #12 he chose a tight bound of ~10;
-   #25 then decided there is **no product cap**, because the deck's own form is the bound. #12 left
-   this open for him rather than silently resolving it, and this spec follows #25 as the later,
-   closed, argued decision — `DESIGN.md` says so structurally (*"Don't put a numeric cap on the phone
-   deck, or a 'showing 10 of 62' line"*). **If he wants the ~10 back, it reopens #25, not the build.**
+   #25 then decided there is **no product cap**, because a surface you work down never renders N at
+   once — the deck's own form was the bound then, and a group's own screen is now
+   ([#138](https://github.com/Joyaroin/MediaSafe/issues/138)). #12 left this open for him rather than
+   silently resolving it, and this spec follows #25 as the later, closed, argued decision —
+   `DESIGN.md` says so structurally (*"Don't put a numeric cap on the phone deck, or a 'showing 10 of
+   62' line"*). **If he wants the ~10 back, it reopens #25, not the build.**
 
 ---
 

@@ -10,12 +10,13 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * not say. This is reachable only because a read succeeded and found nothing; a failed read
  * throws past this into `error.tsx`.
  *
- * **Two branches reach it, and they are not the same question** (#137). The phone's is an
- * empty deck: nothing is *watching*. The desktop's is all three rails empty: nothing is
- * watching **and** nothing is dated to come back. A library that is entirely caught up with
- * a season announced answers the first yes and the second no, which is why the two devices
- * can honestly show different things — see `page.tsx`. What neither is, ever, is an empty
- * rail standing in for a rail that failed to load.
+ * **Two branches reach it, and they are not the same question.** The desktop's is all
+ * three rails empty: nothing is watching and nothing is dated to come back (#137). The
+ * phone's, since #138, is all five groups empty: the same two, plus nothing on the
+ * watchlist and nothing abandoned. A library that is entirely caught up with a season
+ * announced answers the desktop's question no and the phone's the same way, which is why
+ * the two devices can still honestly show different things — see `page.tsx`. What neither
+ * is, ever, is an empty group or rail standing in for one that failed to load.
  *
  * Framed as caught up, not as empty, the way the acceptance criteria ask for it: centred,
  * `text-bill-lg` in `text`, no border — the same shape `empty-library.tsx` uses and the
