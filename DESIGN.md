@@ -1169,7 +1169,16 @@ rails, no placeholder tabs, no "coming soon".
   *what do I watch tonight* is a different question from *what did I group*.
 - **No theme picker**, no in-product light/dark control, and no alternate palette. The
   system setting decides (§2).
-- **No multi-select, no select-all, no bulk edit** on any surface.
+- **No multi-select, no select-all, no bulk edit** on any surface. **Amended by #194.**
+  That parent ships two ways to act on more than one thing, so the line no longer describes
+  the build and is not left standing as though it did. What survives it is narrower and is
+  the part that was actually load-bearing: **no bulk write happens without the reader being
+  shown its size first, and none of them is a sweep over a surface.** #196's *watched up to
+  here* is one press on one episode row that names its own count in a confirmation before
+  writing; #197–#199's selection is entered deliberately by a hold and shows what it holds.
+  The thing this exclusion was written against — a select-all that edits a library in one
+  unreviewable gesture — is still excluded, and #194's *no bulk remove* keeps removal's
+  per-title footprint for the same reason.
 - **No recording control on the phone home** (§7).
 
 ---

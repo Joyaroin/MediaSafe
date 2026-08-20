@@ -14,10 +14,10 @@
  * application and this is not the control that earns the exception.
  *
  * It carries no title and no label of its own. The button that holds it is what is
- * labelled — `mark-through.ts`'s `markThroughLabel` — so a screen reader is told what the
+ * labelled — `mark-up-to.ts`'s `markUpToLabel` — so a screen reader is told what the
  * control *does* rather than what the picture is of.
  */
-export function MarkThroughIcon({ className }: { className?: string }) {
+export function MarkUpToIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <polygon points="4,2 20,2 12,13" fill="currentColor" />
