@@ -2,6 +2,7 @@ import type { LibraryEntryRow, LibraryState } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
+import { SelectionCheckBadge } from "./selection-check-badge";
 
 /**
  * One programme entry — the bill's grid cell, and the only thing 472 of them are made of.
@@ -117,22 +118,36 @@ export function LibraryEntryCell({
   return (
     <li className="overflow-hidden rounded-[18px] bg-raised">
       <SelectableEntry
-        entryId={entry.libraryEntryId}
+        title={{
+          libraryEntryId: entry.libraryEntryId,
+          titleId: entry.titleId,
+          name: entry.name,
+        }}
         className="pressable flex w-full gap-3.5 p-3.5 text-left"
       >
-        {/* `.55`, not the `.45` this used to carry. The handoff sets abandoned tiles at
-            `.55` on the Up next groups and then names this cell as the one place that
-            already dims a poster, with the instruction not to leave the two different by
-            accident. Both are `.55` now: the linen ground is lighter than the bone one
-            this number was chosen against, so the same title reads as further gone at the
-            same opacity, and `.55` is the redesign's value for the state on both
-            surfaces. */}
-        <Poster
-          posterPath={entry.posterPath}
-          width={BILL_POSTER_WIDTH}
-          className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
-          aboveFold={aboveFold}
-        />
+        {/* `relative` and nothing else: the check badge (#197) hangs off the poster's own
+            corner rather than the cell's, because *on the poster* is where the ticket puts
+            it and because the cell's corner is 14px of padding away from anything. The
+            wrapper takes `shrink-0` so the poster keeps its fixed width inside the flex
+            row exactly as it did when it was the flex child itself. */}
+        <div className="relative shrink-0">
+          {/* `.55`, not the `.45` this used to carry. The handoff sets abandoned tiles at
+              `.55` on the Up next groups and then names this cell as the one place that
+              already dims a poster, with the instruction not to leave the two different by
+              accident. Both are `.55` now: the linen ground is lighter than the bone one
+              this number was chosen against, so the same title reads as further gone at
+              the same opacity, and `.55` is the redesign's value for the state on both
+              surfaces. */}
+          <Poster
+            posterPath={entry.posterPath}
+            width={BILL_POSTER_WIDTH}
+            className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
+            aboveFold={aboveFold}
+          />
+
+          {/* Renders nothing at all outside a selection provider — the desktop, always. */}
+          <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
+        </div>
 
         <div className="min-w-0 flex-1">
           {/*

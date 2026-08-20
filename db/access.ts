@@ -3107,6 +3107,117 @@ export async function addTitleToList(
 }
 
 /**
+ * How many memberships a bulk add created. A count rather than `AddToListOutcome`'s
+ * boolean, because the two answers a caller wants from a set are not the same as the two
+ * it wants from one title: *did the whole set land* is what the transaction below promises
+ * outright, and *how many of them were not already there* is the only thing left to report.
+ */
+export interface AddTitlesToListOutcome {
+  readonly added: number;
+}
+
+/**
+ * Put several titles in one list, at sequential positions, as one write — issue #197.
+ *
+ * ── Why this is not `addTitleToList` in a loop ───────────────────────────────────────
+ *
+ * Because a loop cannot promise the thing the ticket is built on: *the whole set lands
+ * with sequential positions or none of it does.* `addTitleToList` computes its own next
+ * position per call, so six sequential calls are six transactions — four can commit and
+ * two can fail, and the reader is left to work out which — and six parallel ones race
+ * `UNIQUE (list_id, position)` against each other. One transaction makes partial success
+ * structurally impossible, which is what lets `bulk-selection.ts` raise **one** toast for
+ * a lost add rather than one per title.
+ *
+ * ── Already-in-the-list titles are read, not conflicted away ─────────────────────────
+ *
+ * `addTitleToList` leans on `onConflictDoNothing` against `list_membership`'s primary key,
+ * which is exactly right for one row: nothing is written and there is no position to
+ * account for. It is wrong for a set. Handing Postgres six rows at `next … next + 5` and
+ * letting two of them conflict away would leave two **holes** in the position sequence,
+ * and contiguity is an invariant here — `reorderListMembership`'s own docblock names it
+ * (*`1..count`, contiguous, exactly the invariant `addTitleToList`'s `coalesce(max(...),
+ * 0) + 1` maintains*).
+ *
+ * So the titles already in the list are read first, inside the same transaction, and only
+ * the rest are given positions. That is also the plainest reading of the acceptance
+ * criterion *titles already in the chosen list are not duplicated*: they are not written
+ * at all, rather than written and swallowed.
+ *
+ * The insert deliberately carries **no** `onConflictDoNothing` after that. Having just
+ * read which rows are missing, a conflict can only mean a concurrent writer took one of
+ * these positions or memberships — and the honest answer to that is the whole transaction
+ * rolling back and the reader being told, not a silent hole in the sequence.
+ *
+ * ── Ownership, enforced by the foreign key ───────────────────────────────────────────
+ *
+ * As `addTitleToList`: `list_membership_list_id_user_id_fk` is `(list_id, user_id)` against
+ * `list(id, user_id)`, so a `listId` naming somebody else's list has no row to satisfy and
+ * the insert throws. The read above it is scoped by `ownedBy` for a reason that is not
+ * decoration — an unscoped read of a foreign list would find *its* memberships, decide
+ * every title was already there, and return `{ added: 0 }` without ever reaching the
+ * insert that would have rejected the request.
+ */
+export async function addTitlesToList(
+  userId: UserId,
+  listId: string,
+  titleIds: readonly string[],
+  executor: Executor = getDb(),
+): Promise<AddTitlesToListOutcome> {
+  // No transaction and no round trip for a set with nothing in it. `bulk-selection.ts`
+  // guards this too; an empty `VALUES` list is not a thing to send and find out about.
+  if (titleIds.length === 0) return { added: 0 };
+
+  return executor.transaction(async (tx) => {
+    const present = await tx
+      .select({ titleId: listMembership.titleId })
+      .from(listMembership)
+      .where(
+        and(
+          ownedBy(userId, listMembership),
+          eq(listMembership.listId, listId),
+          inArray(listMembership.titleId, [...titleIds]),
+        ),
+      );
+
+    // Seeded with what the list already holds, then added to as the request is walked —
+    // so a caller that named the same title twice writes it once, exactly as if the
+    // second mention had been in the list all along.
+    const seen = new Set(present.map((row) => row.titleId));
+    const missing = titleIds.filter((titleId) => {
+      if (seen.has(titleId)) return false;
+      seen.add(titleId);
+      return true;
+    });
+
+    if (missing.length === 0) return { added: 0 };
+
+    const [{ next }] = await tx
+      .select({
+        next: sql<number>`coalesce(max(${listMembership.position}), 0) + 1`.mapWith(Number),
+      })
+      .from(listMembership)
+      .where(and(ownedBy(userId, listMembership), eq(listMembership.listId, listId)));
+
+    await tx.insert(listMembership).values(
+      missing.map((titleId, index) => ({
+        listId,
+        titleId,
+        userId,
+        position: next + index,
+      })),
+    );
+
+    // `missing.length`, and not a count read back off the insert. There is no
+    // `onConflictDoNothing` above, so this statement either writes every row or throws and
+    // takes the transaction with it — the two numbers are equal by construction, and
+    // asking Postgres to send the rows back to prove it is a payload for a fact the shape
+    // of the statement already guarantees.
+    return { added: missing.length };
+  });
+}
+
+/**
  * Make a list and add one title to it, as one write — issue #147's *creating a new list
  * is available in the same action, so the first list is not a separate errand.*
  *

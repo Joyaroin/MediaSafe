@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { PHONE_BAR } from "@/app/phone-bar";
+
 /**
  * Moving between the four phone tabs.
  *
@@ -164,8 +166,12 @@ describe("both directions are drawn, and only on the phone", () => {
     // phone change.
     const sidebar = readFileSync("app/sidebar-nav.tsx", "utf8");
     expect(sidebar).not.toContain("transitionTypes");
-    // Both surfaces that do attach them are phone-only.
-    expect(TAB_BAR).toContain("lg:hidden");
+    // Both surfaces that do attach them are phone-only. The masthead still says so in its
+    // own markup; the tab bar's `lg:hidden` moved into `PHONE_BAR` when issue #197 gave
+    // the Library's selection bar the same recipe, so that half is checked through the
+    // constant rather than by searching a file for a literal no longer written in it.
+    expect(TAB_BAR).toContain("PHONE_BAR");
+    expect(PHONE_BAR).toContain("lg:hidden");
     expect(MASTHEAD).toContain("lg:hidden");
   });
 });

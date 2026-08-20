@@ -2,6 +2,7 @@
 
 import {
   addTitleToList,
+  addTitlesToList,
   createList,
   createListAndAddTitle,
   deleteList,
@@ -96,6 +97,34 @@ export async function addTitleToListAction(
 
   try {
     const outcome = await addTitleToList(userId, listId, titleId);
+    return { ok: true, added: outcome.added };
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
+  }
+}
+
+/**
+ * Whether the whole bulk add landed — issue #197. `added` counts the memberships actually
+ * created, which is smaller than the set whenever the list already held some of it; the
+ * bar treats any `ok` as success, because *the list now says what I asked it to say* is
+ * the only question the reader was asking (the same reading `addTitleToListAction`'s own
+ * `added` already gets from the single-title dialog).
+ *
+ * There is no partial variant, and there is deliberately nowhere for one to go:
+ * `addTitlesToList` is one transaction, so `ok: false` means **nothing** was written.
+ */
+export type AddTitlesToListActionOutcome =
+  | { readonly ok: true; readonly added: number }
+  | { readonly ok: false; readonly reference: string | null };
+
+export async function addTitlesToListAction(
+  listId: string,
+  titleIds: readonly string[],
+): Promise<AddTitlesToListActionOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    const outcome = await addTitlesToList(userId, listId, titleIds);
     return { ok: true, added: outcome.added };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };

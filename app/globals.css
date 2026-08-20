@@ -652,6 +652,106 @@
   }
 }
 
+/* ── Hold to select — issue #197 ────────────────────────────────────────────────────
+   Two states a library cell can be in that `pressable` has no vocabulary for, and the
+   ticket asks for both: *the held cell scales under the press, then springs into its
+   selected state.*
+
+   `data-holding` is the press itself, and its `500ms` is `selectable-entry.tsx`'s
+   `HOLD_MS` — the compression finishes at the exact moment the hold lands, so the cell is
+   at its smallest when it pops. `linear` and not an ease, because this one is a *timer
+   made visible* rather than a movement: an ease-out would spend the first half of the
+   gesture looking finished.
+
+   `data-landed` is the arrival. `app/motion.ts` reserves visible overshoot for exactly
+   this and would ordinarily supply the spring, but not here: this rule is on a library
+   cell and there are 472 of them on the one screen that renders the whole library —
+   `library-grid.tsx`'s own trade — so it is authored as a keyframe for the same reason
+   `pressable` and `stagger-rise` are. `1.035` is the overshoot; the press it is coming out
+   of is `0.95`, so the whole gesture travels 8.5% and reads as one movement rather than
+   two.
+
+   Unlayered on purpose. `pressable` is a `@utility` and therefore in the `utilities`
+   cascade layer, and the same cell carries both — a layered `.pressable:active` cannot
+   win against these however specific it is, which is what stops a finger still resting on
+   a landed cell from flattening the overshoot back to `0.97`.
+
+   Qualified by `.pressable` rather than left as bare `[data-holding]` selectors, which
+   would have claimed those two attribute names for every element in the application. The
+   cell that carries them already carries `pressable`, so the qualifier costs nothing and
+   the rules say who they are for. */
+@keyframes select-land {
+  0% {
+    transform: scale(0.95);
+  }
+  55% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.pressable[data-holding="true"] {
+  transform: scale(0.95);
+  transition: transform 500ms linear;
+}
+
+.pressable[data-landed="true"] {
+  animation: select-land var(--dur-base) var(--ease-out-quart);
+}
+
+/* The check badge arriving on a selected poster (`selection-check-badge.tsx`). A slightly
+   deeper overshoot than the cell's, because it is 22px across and starting from nothing —
+   the same movement at the cell's `1.035` would be invisible at this size. It has no exit:
+   a CSS animation cannot outlive its element, and `app/motion.ts` already holds that
+   nothing can catch a thing that is already leaving. */
+@keyframes badge-arrive {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.badge-arrive {
+  animation: badge-arrive var(--dur-base) var(--ease-out-quart);
+}
+
+/* The event still happens; it stops moving through space. `motion-provider.tsx` does this
+   globally for anything Motion drives, and these two are CSS, so they say it themselves. */
+@media (prefers-reduced-motion: reduce) {
+  .pressable[data-holding="true"] {
+    transform: none;
+    transition: none;
+  }
+  .pressable[data-landed="true"],
+  .badge-arrive {
+    animation: none;
+  }
+}
+
+/* ── The bar that replaces the tab bar while selecting — issue #197 ─────────────────
+   `selection-action-bar.tsx` puts `data-selecting` on the document element for as long as
+   the mode is open, and this is the whole of what it buys: the four destinations leave.
+
+   `display: none` and not a `z-index` the action bar outranks. The two look identical and
+   only one of them is true — a covered tab bar is still four `Link`s in the accessibility
+   tree, reachable by a screen reader's own navigation, which is a set of controls the
+   ticket calls irrelevant mid-selection sitting invisibly live under the reader's thumb.
+   The action bar takes the same `75px` this leaves behind (`--tab-bar-height`, which
+   `(signed-in)/layout.tsx` still clears), so nothing below moves. */
+:root[data-selecting] .phone-tab-bar {
+  display: none;
+}
+
 /* ── The poster morph, now authored ─────────────────────────────────────────────────
    Issue #141 shipped the morph on the browser's own defaults: no duration and no easing
    were declared, so the shared poster moved on the UA's stock curve — around 250ms of
