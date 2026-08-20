@@ -11,6 +11,8 @@ import {
   SortSelect,
   ZeroMatches,
 } from "./library-filter-bar";
+import { BulkSelectionProvider } from "./bulk-selection-provider";
+import { useIsSelecting } from "./bulk-selection-context";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
 import { ProgrammeNoteLayout } from "./programme-note-layout";
@@ -60,6 +62,54 @@ export function LibrarySurface({
   entries: readonly LibraryEntryRow[];
   sort: LibrarySort;
 }) {
+  return (
+    <ProgrammeNoteLayout>
+      {/* Above every cell in the grid, and above the action bar it renders itself — issue
+          #197. Inside `ProgrammeNoteLayout` rather than around it, because the bill is the
+          only thing a selection is about; the programme note beside it keeps the click it
+          has always had, and there is no provider over it to take one. */}
+      <BulkSelectionProvider>
+        <LibraryColumn entries={entries} sort={sort} />
+      </BulkSelectionProvider>
+    </ProgrammeNoteLayout>
+  );
+}
+
+/**
+ * The bill's own column: the filter bar, and the grid or its zero-matches state.
+ *
+ * Split out of `LibrarySurface` by #197 for one reason — it has to read the selection, and
+ * a component cannot read a context it provides. The state and the markup are unchanged.
+ *
+ * ── The filter bar is hidden while selecting ─────────────────────────────────────────
+ *
+ * The ticket's reason, which is about correctness rather than clutter: *the Library's
+ * filter bar is hidden for the duration, which makes it impossible to end up acting on
+ * titles no longer on screen.* A chip pressed mid-selection would narrow `visible` under
+ * the reader's hand and leave selected titles filed that they can no longer see — and the
+ * store deliberately does not drop a title because the grid stopped showing it, since a
+ * selection that silently shrinks is worse than one that cannot be narrowed.
+ *
+ * The **heading stays**, and only the controls under it go. `LibraryGrid` points
+ * `aria-labelledby` at `LIBRARY_HEADING_ID`, and the empty library and the failure
+ * boundary already render this heading childless, so a selection is a third caller of a
+ * shape that exists rather than a fourth arrangement of the bar.
+ *
+ * `chip` and `filterText` live in this component rather than in the bar, so the filter
+ * they describe survives the controls being taken away: the reader comes back after *Done*
+ * to the grid they left, not to one that quietly reset itself while they were choosing.
+ */
+function LibraryColumn({
+  entries,
+  sort,
+}: {
+  entries: readonly LibraryEntryRow[];
+  sort: LibrarySort;
+}) {
+  // The boolean and not the snapshot: this component renders the whole grid under it, and
+  // subscribing to every change would re-render all 472 cells on every tap
+  // (`bulk-selection-context.ts`). It re-renders when the mode opens and when it closes.
+  const selecting = useIsSelecting();
   const [chip, setChip] = useState<Chip>("all");
   const [filterText, setFilterText] = useState("");
 
@@ -78,26 +128,28 @@ export function LibrarySurface({
   }
 
   return (
-    <ProgrammeNoteLayout>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <LibraryHeading>
-          <LibraryChips value={chip} onChange={setChip} />
+    <div className="flex min-w-0 flex-1 flex-col">
+      <LibraryHeading>
+        {selecting ? null : (
+          <>
+            <LibraryChips value={chip} onChange={setChip} />
 
-          {/* The filter field and the sort control share one row under the chips — turn
-              9's shape, and the reason `LibraryHeading` is a column now. The field takes
-              the width (`flex-1`) and the sort control sits at its end. */}
-          <div className="mt-3 flex items-center gap-2.5">
-            <FilterField value={filterText} onChange={setFilterText} />
-            <SortSelect value={sort} />
-          </div>
-        </LibraryHeading>
-
-        {visible.length === 0 ? (
-          <ZeroMatches onClear={clearFilter} />
-        ) : (
-          <LibraryGrid entries={visible} />
+            {/* The filter field and the sort control share one row under the chips — turn
+                9's shape, and the reason `LibraryHeading` is a column now. The field takes
+                the width (`flex-1`) and the sort control sits at its end. */}
+            <div className="mt-3 flex items-center gap-2.5">
+              <FilterField value={filterText} onChange={setFilterText} />
+              <SortSelect value={sort} />
+            </div>
+          </>
         )}
-      </div>
-    </ProgrammeNoteLayout>
+      </LibraryHeading>
+
+      {visible.length === 0 ? (
+        <ZeroMatches onClear={clearFilter} />
+      ) : (
+        <LibraryGrid entries={visible} />
+      )}
+    </div>
   );
 }

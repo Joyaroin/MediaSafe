@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addTitleToList,
+  addTitlesToList,
   asUserId,
   createList,
   createListAndAddTitle,
@@ -338,6 +339,169 @@ describe("adding a title to a list", () => {
         .select()
         .from(listMembership)
         .where(eq(listMembership.listId, theirs.id));
+      expect(rows).toHaveLength(0);
+    });
+  });
+});
+
+/**
+ * Issue #197's write: the whole held selection lands, or none of it does.
+ *
+ * `tests/bulk-selection.test.ts` proves the browser only ever asks for **one** write.
+ * These prove what that one write does when it gets to Postgres — the half that no fake
+ * can answer for, because the properties are the primary key, the position uniqueness and
+ * the transaction itself (`SPEC.md` §6: a mock of a constraint tests the mock).
+ */
+describe("adding several titles to a list at once", () => {
+  it("lands the whole set at sequential positions, in the order it was given", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+      const showC = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Filed", tx));
+
+      const outcome = await addTitlesToList(reader, target.id, [showA, showB, showC], tx);
+
+      expect(outcome).toEqual({ added: 3 });
+      const rows = await tx
+        .select({ titleId: listMembership.titleId, position: listMembership.position })
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id))
+        .orderBy(asc(listMembership.position));
+      expect(rows).toEqual([
+        { titleId: showA, position: 1 },
+        { titleId: showB, position: 2 },
+        { titleId: showC, position: 3 },
+      ]);
+    });
+  });
+
+  it("appends after what the list already holds, without shuffling it", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const alreadyThere = await seedShow(tx);
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Filed", tx));
+      await addTitleToList(reader, target.id, alreadyThere, tx);
+
+      await addTitlesToList(reader, target.id, [showA, showB], tx);
+
+      const rows = await tx
+        .select({ titleId: listMembership.titleId, position: listMembership.position })
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id))
+        .orderBy(asc(listMembership.position));
+      expect(rows).toEqual([
+        { titleId: alreadyThere, position: 1 },
+        { titleId: showA, position: 2 },
+        { titleId: showB, position: 3 },
+      ]);
+    });
+  });
+
+  it("does not duplicate a title already in the list, and leaves no hole where it would have gone", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+      const showC = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Filed", tx));
+      await addTitleToList(reader, target.id, showB, tx);
+
+      const outcome = await addTitlesToList(reader, target.id, [showA, showB, showC], tx);
+
+      // Two written, not three — and the positions run 1, 2, 3 with nothing skipped over
+      // the title that was already a member. `reorderListMembership` depends on that
+      // contiguity, so a hole here would be a bug two tickets away.
+      expect(outcome).toEqual({ added: 2 });
+      const rows = await tx
+        .select({ titleId: listMembership.titleId, position: listMembership.position })
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id))
+        .orderBy(asc(listMembership.position));
+      expect(rows).toEqual([
+        { titleId: showB, position: 1 },
+        { titleId: showA, position: 2 },
+        { titleId: showC, position: 3 },
+      ]);
+    });
+  });
+
+  it("writes a title named twice in the same set exactly once", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Filed", tx));
+
+      const outcome = await addTitlesToList(reader, target.id, [show, show], tx);
+
+      expect(outcome).toEqual({ added: 1 });
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id));
+      expect(rows).toHaveLength(1);
+    });
+  });
+
+  it("writes nothing at all when one title in the set cannot be written", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const showA = await seedShow(tx);
+      const showB = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Filed", tx));
+
+      // A title id that names nothing — `list_membership.title_id` references `title`, so
+      // this is rejected the moment the insert reaches Postgres. The property under test
+      // is what happens to the other two: nothing.
+      const missing = "00000000-0000-0000-0000-000000000000";
+      await expect(
+        addTitlesToList(reader, target.id, [showA, missing, showB], tx),
+      ).rejects.toThrow();
+
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id));
+      expect(rows).toHaveLength(0);
+    });
+  });
+
+  it("refuses to add to another account's list, and reads none of its memberships on the way", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const show = await seedShow(tx);
+      const { list: theirs } = unwrap(await createList(other, "Theirs", tx));
+      await addTitleToList(other, theirs.id, show, tx);
+
+      // The title is already in *their* list. An unscoped read of the memberships would
+      // find it, decide there was nothing to write, and answer `{ added: 0 }` — a request
+      // against somebody else's list reported as a success.
+      await expect(addTitlesToList(reader, theirs.id, [show], tx)).rejects.toThrow();
+
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, theirs.id));
+      expect(rows).toHaveLength(1);
+      expect(rows[0].userId).toBe(other);
+    });
+  });
+
+  it("writes nothing and asks Postgres nothing for an empty set", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { list: target } = unwrap(await createList(reader, "Filed", tx));
+
+      expect(await addTitlesToList(reader, target.id, [], tx)).toEqual({ added: 0 });
+
+      const rows = await tx
+        .select()
+        .from(listMembership)
+        .where(eq(listMembership.listId, target.id));
       expect(rows).toHaveLength(0);
     });
   });
