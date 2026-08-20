@@ -1,6 +1,7 @@
 import { listLists } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { ListsSurface } from "./lists-surface";
+import { TabTransition } from "../tab-transition";
 
 /**
  * The Lists destination — issue #146. Its own route on both devices: a nav cell on the
@@ -37,5 +38,9 @@ export default async function ListsPage() {
   const userId = await requireUserId();
   const lists = await listLists(userId);
 
-  return <ListsSurface initial={lists} />;
+  return (
+    <TabTransition>
+      <ListsSurface initial={lists} />
+    </TabTransition>
+  );
 }
