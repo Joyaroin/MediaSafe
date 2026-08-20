@@ -907,8 +907,10 @@ Named rather than hidden. **None of them blocks the v1 build.**
    once — the deck's own form was the bound then, and a group's own screen is now
    ([#138](https://github.com/Joyaroin/MediaSafe/issues/138)). #12 left this open for him rather than
    silently resolving it, and this spec follows #25 as the later, closed, argued decision —
-   `DESIGN.md` says so structurally (*"Don't put a numeric cap on the phone deck, or a 'showing 10 of
-   62' line"*). **If he wants the ~10 back, it reopens #25, not the build.**
+   `DESIGN.md` says so structurally, in the permanent exclusions: no counts, *"not on a rail head,
+   not on a tile, not on the page"*, and no *"and 175 more"*. (It used to say it as a Don't about
+   the phone deck and a *"showing 10 of 62"* line; #138 retired the deck and #144 rewrote the file,
+   but the rule is unchanged.) **If he wants the ~10 back, it reopens #25, not the build.**
 
 ---
 

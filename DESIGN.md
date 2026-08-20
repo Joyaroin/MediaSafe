@@ -124,49 +124,61 @@ Consequences that are already load-bearing in the build:
   glyph. No artwork is not an error, and a "no image" icon would be the only apology in a
   world that has none.
 
-### The accent means recording a watch
+### The accent is rationed, and recording a watch is what it is reserved for
 
-`--accent` is **reserved for recording a watch**, and that reservation is the reason the
-rest of the world is as quiet as it is.
+`--accent` is the **one** chromatic token, and the rest of the world is as quiet as it is
+because it is spent carefully. #134 narrowed it to **recording a watch**, and that is the
+meaning to design towards: the sweep is the accent in motion (§6), and *Rewatch* keeps it
+because it records a watch.
 
-It does **not** mean focus. It does not mean selection. It does not mean navigation state,
-the current page, hover, or "this thing is interactive". Each of those had the accent at
-some point before #134 and each of them lost it deliberately:
+**Read the next part carefully, because the build is broader than that sentence.** This
+file describes what shipped, not what #134 intended, and what shipped paints the accent in
+four settled roles beyond the sweep. They are listed here so nobody re-derives them by
+copying whichever call site they happened to open:
+
+| Role | Where | Standing |
+|---|---|---|
+| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`) | the reserved meaning |
+| **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
+| **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
+| **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
+| **The live edge of the record** | the *up next* episode's code badge and its *Up next* label (`programme-note-episodes.tsx`); the chosen rating cell (`rating-control.tsx`); the *Watching* state label and chip | **contested — see §11** |
+
+**`SOLID_RECOVERY` is misnamed for what it now does.** It began as *the one primary
+**recovery** action*, and it is still called that in `errors/recovery-buttons.ts`, but the
+shipped call sites scope it to **the one primary action on a surface, failure or not** —
+sign-in has no failure in sight and neither does the import picker. The rule to hold is
+*at most one solid-accent action per surface*; the module name is history.
+
+That system is not a licence. `create-list-form.tsx` and `delete-list-dialog.tsx` both
+reach for solid accent, reason about it, and **decline** — an everyday control and a
+reversible deletion are neither the surface's primary action nor an irreversible moment.
+Copy that reasoning, not the solid.
+
+#### What the accent does not mean
+
+It does **not** mean focus, hover, navigation state, or the current page. Each of those had
+it before #134 and each lost it deliberately:
 
 | Instead of the accent | The build uses |
 |---|---|
 | Focus ring | `2px` solid `text`, offset `2px` |
+| Focus on a text field | `focus-within:border-2 border-text` — the same brightness, at the second weight (§4) |
 | Text selection | `text`/`ground` inversion |
 | Caret | `text` |
 | A **selected** rail tile | `ring-2` in `text` around the poster (`up-next-tile.tsx`) |
 | Hover on a tile | brightness alone |
 | The **current** sidebar destination | full-strength `text` against `dim` siblings, plus a rule (`sidebar-nav.tsx`) |
 
-`sidebar-nav.tsx` states the rule for the surface most likely to want it back: *no accent
-here — accent means live action.* A navigation rail that paints the current page in the
-accent has spent the one colour that means *this was marked* on a fact the reader could
-already see.
+`sidebar-nav.tsx` states it for the surface most likely to want it back: *no accent here —
+accent means live action.* A navigation rail that paints the current page in the accent has
+spent the one colour that means *this was marked* on a fact the reader could already see.
 
-**Two standing exceptions**, both deliberate and neither a state:
-
-1. **The press mark.** The wordmark is a hairline square with a struck accent bar
-   (`press-mark.tsx`), and `app/icon.svg` names itself as one of the two places the accent
-   lives. It is the brand mark, not a UI state, and it does not vary.
-2. **The failure and recovery treatment** (`errors/`). Accent is the colour of a failure
-   and of the one way out of it: `GHOST_RECOVERY` (accent border, accent text, inverting on
-   hover) for ordinary recovery actions, and `SOLID_RECOVERY` (solid accent on
-   `accent-ink`) for **the one primary recovery action on a surface** and nowhere else.
-   `delete-account-form.tsx` widens solid accent once more, by name, to the single
-   irreversible authored moment in the product.
-
-That second exception is a system, not a licence. `create-list-form.tsx` and
-`delete-list-dialog.tsx` both reach for it, reason about it, and **decline** — an everyday
-control and a reversible deletion are neither a recovery nor an irreversible moment, so both
-stay at the ghost treatment every other secondary action uses. Copy that reasoning, not the
-solid.
-
-Surfaces that still paint the accent for a *third* meaning are in §11. They are outstanding
-work, not precedent.
+**Selection is the sharp edge of this.** The rule above says the accent is not selection,
+and `up-next-tile.tsx` obeys it — but `rating-control.tsx` paints the chosen cell
+`bg-accent text-accent-ink`, which is selection in the accent. Both are shipped. §11 is
+where that is argued, and until it is settled **the tile is the precedent to copy, not the
+rating scale.**
 
 ---
 
@@ -181,10 +193,24 @@ The world has exactly three devices for separating things, and they are used in 
 2. **Space.**
 3. **A `1px` `hair` rule**, when two things genuinely abut and neither of the above will do.
 
-Every division in the build is drawn at `1px`, in one colour. There is no second hairline
-colour and no heavier rule for a "more important" division — the previous world had `rule`
-and `rule-bold` and both collapsed into the single `hair`. If a division needs to read as
-more important than another, that is a job for the type either side of it.
+**There is one hairline colour.** The previous world had `rule` and `rule-bold` and both
+collapsed into the single `hair`; a division that needs to read as more important than
+another is a job for the type either side of it, not for a second grey.
+
+**There are two weights, and the second is rationed.** Ordinary division is `1px` — every
+`border-hair` in the build, every `divide-hair`, the sidebar's right edge, the masthead's
+bottom edge. `2px` is not a heavier hairline but a different statement, and it appears in
+exactly three roles:
+
+| `2px` | Where | Saying |
+|---|---|---|
+| `border-t-2 border-hair` | the phone tab bar's top edge (`tab-bar.tsx`) | the outer edge of the chrome, against content that scrolls under it |
+| `focus-within:border-2 border-text` | the six text fields | this field has focus (see §3) |
+| `border-2 border-accent` | the write-failure toast, and the two dialog frames | the failure and authored-moment treatment (§3) |
+
+A `2px` rule in any other role is a bug. What there is **not** is a `border-hair` at `2px`
+used to make one ordinary division outrank another — the tab bar's is the single `2px`
+hairline in the build and it is an outer edge, not a division between two pieces of content.
 
 ### The type ramp is closed
 
@@ -283,6 +309,11 @@ work at the edges.
 ## 6. The sweep
 
 Recording a watch on an episode row is one motion, and it is the only place the accent moves.
+
+The block below is **quoted from `app/globals.css`, not declared here** — it is the one
+place this file reproduces a declaration, because the timing, the easing and the two
+keyframe stops are the rule and paraphrasing them would lose it. If it ever disagrees with
+the stylesheet, the stylesheet is right and this quotation is stale.
 
 ```css
 @utility watch-sweep {
@@ -484,8 +515,14 @@ once a group fits would make the link's presence a count in disguise.
 
 ### The poster
 
-462 pieces of real artwork, shown as themselves: **full colour, at TMDB's own `2/3` ratio,
-uncropped.** One layer, one `@utility`, no children and no pseudo-elements.
+Real artwork, shown as itself: **full colour, at TMDB's own `2/3` ratio, uncropped.** One
+layer, one `@utility`, no children and no pseudo-elements.
+
+**Size surfaces for 472, assert against 462** — `SPEC.md` §8 settles the two denominators
+and they are not typos: 472 is every title row in `tvtracker`'s dump and is the capacity
+figure this file sizes against; 462 is Adham's own account once the second account's ten
+are removed, and is what the seed contains. `app/poster.tsx`'s docblock says 462 because it
+is describing the committed library.
 
 - **A plain `<img>`, deliberately.** ADR-0001 keeps artwork on TMDB's CDN with no blobs
   stored; `next/image` would put Vercel's metered optimiser between the two, and 462 titles
@@ -603,21 +640,43 @@ Read off the build, flagged on #144's pull request rather than written up as rul
 are defects to close, not precedent to copy.** Nothing below should be cited as
 justification in a new diff.
 
-### The accent's third meaning survives on four pre-#134 surfaces
+### The accent means more than one thing, and one ticket has to settle which
 
-§3 is the rule. These surfaces still paint the accent for *"live"*, quoting a sentence from
-the retired DESIGN.md — *"the accent always means live"* — that no longer exists anywhere:
+This is the largest disagreement between #134's stated rule and the shipped build, and §3
+documents the build rather than the rule. Seven surfaces paint the accent for something
+other than recording a watch, the brand mark, a failure, or a surface's primary action.
+**None of them is a typo** — each was reasoned at its call site — but together they mean
+the product has no single answer to *what does amber mean?*
 
-- `library-state.ts` — the **Watching** state label is `text-accent`, the only one of the
-  five that is coloured.
-- `library-filter-bar.tsx` — the **Watching** chip's text is accent-coloured even when
-  unselected, named in its own docblock as "the one exception".
-- `library-filter-bar.tsx` and `settings/timezone-control.tsx` — both **select carets** are
-  `text-accent`.
+Painting a **state**, which reads as the retired rule *"the accent always means live"*:
 
-Each cites a section of a file that this rewrite deleted. They need a ticket that either
-re-narrows them to `text` or states *watching* as a third deliberate meaning of the accent —
-but not both, and not silently.
+- `library-state.ts` — the **Watching** state label, the only one of the five that is
+  coloured.
+- `library-filter-bar.tsx` — the **Watching** chip, accent-coloured even when unselected
+  and named in its own docblock as "the one exception".
+- `programme-note-episodes.tsx` — the ***up next*** episode's code badge (solid accent) and
+  its *Up next* label. Arguably the strongest case for a second meaning: *up next* is the
+  live edge of the record, and this is the one place it is marked.
+
+Painting a **selection**, which §3's own table says the accent does not do:
+
+- `rating-control.tsx` — the chosen rating cell is `bg-accent text-accent-ink`, and every
+  unchosen cell hovers to it.
+
+Painting **chrome on a surface that is not a failure**:
+
+- `lists/delete-list-dialog.tsx` and `library/add-to-list-control.tsx` — `border-2
+  border-accent` framing a dialog. The same frame the write-failure toast uses, on two
+  dialogs that are neither a failure nor irreversible. (Both files reason carefully about
+  the *button* treatment and decline solid accent — then take the accent frame anyway.)
+- `library-filter-bar.tsx` and `settings/timezone-control.tsx` — both **select carets**.
+
+One ticket should decide between three coherent answers — narrow everything back to
+recording a watch; or state *the live edge of the record* as a second meaning and re-narrow
+only selection and the dialog frames; or accept the accent as "the one colour, spent on
+whatever is most alive on this surface" and say so. **What must not happen is each call site
+answering separately**, which is how it got here. Until then §3's table is the map, and the
+right precedent to copy is `up-next-tile.tsx`'s, not `rating-control.tsx`'s.
 
 ### `app/tab-bar.tsx.bak` is committed, and contains merge-conflict markers
 
@@ -627,11 +686,13 @@ it out of both), so nothing has caught it. It should be deleted.
 
 ### Stale references left by the rewrite's own blockers
 
-- `sidebar.tsx` cites `.impeccable/mocks/catalogue-wall.html` as the approved mock. **That
-  path does not exist** in the repository — the tracked prototype is
-  `design/catalogue-wall.html`.
+- `sidebar.tsx` **and `sidebar-nav.tsx`** both cite `.impeccable/mocks/catalogue-wall.html`
+  as the approved mock. **That path does not exist** in the repository — the tracked
+  prototype is `design/catalogue-wall.html`.
 - `errors/recovery-buttons.ts` fixes `app/globals.css`'s contents at *"twenty-one `@theme`
-  declarations and three `@utility` rules"*. It is **20 and 4**.
+  declarations and three `@utility` rules"*. It is **20 and 4**. (`app/globals.css`'s own
+  section heading had the same off-by-one and is corrected by this ticket, since it sits in
+  the file this one had to read line by line.)
 - `masthead.tsx` still cites `docs/design/prototypes/repertory-bill.html` for measures the
   Catalogue Wall now sets.
 - `db/access.ts`'s `listUpNextRails` rule table calls the up next episode *"the next
