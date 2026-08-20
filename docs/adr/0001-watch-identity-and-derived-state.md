@@ -155,6 +155,28 @@ things around it that are not are listed here, newest last.
    The cost, stated plainly because the product does not state it: restoring an imported watch means
    running a command on a laptop, not pressing a button, and **there is no undo**. What justifies one
    press with no dialog is that it is one episode.
+9. **A backfill written by the reader does not clear `abandoned_at`** —
+   [#196](https://github.com/Joyaroin/MediaSafe/issues/196), 2026-08-20. *Abandonment* below pins the
+   clear to a watch **insert**, and `markWatchedUpTo` inserts watches — so on the letter of it, and on
+   `CONTEXT.md`'s *watching the title again clears it*, one press of *watched up to here* would give a
+   title back. It does not, and this records that rather than leaving it argued only in a docblock.
+
+   **The rule is refined, not overturned: the clear follows a watch of something you are watching
+   *now*, not a watch you are writing down about the past.** `recordWatch` is the evening's gesture —
+   you pressed it because you just watched the episode, so you have plainly not given up. This write
+   is the other kind: a reader recording a show they finished years ago, which says nothing about
+   whether they have given up on it, and may well be recording exactly the seasons they watched
+   *before* they did. `applyImportChunk` already takes the same side for the same reason, and
+   amendment 2's "import sets `abandoned_at`" is that position stated from the other end.
+
+   The distinction is **the writer's intent, not the `source` column** — this write is `source =
+   'app'` like any other, and nothing branches on that. Giving a title back stays a deliberate act:
+   `unabandonTitle`, which is a control the reader presses.
+
+   **The consequence, stated rather than hidden**: an abandoned show marked up to its last episode
+   still reads *abandoned* afterwards, because `library_entry_state` tests `abandoned_at` first and
+   outranks every derived answer. A reader who wants it to read *finished* presses the abandon
+   control to take it back, and the marks they just wrote are all still there.
 
 ## Context
 

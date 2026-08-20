@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 
 import type { EpisodeDetail } from "@/db/access";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { markThroughCount } from "./mark-through";
+import { markUpToCount } from "./mark-up-to";
 import { episodeFullName } from "./season-grouping";
 import { watchMarks } from "./watch-marks";
 
@@ -21,7 +21,7 @@ import { watchMarks } from "./watch-marks";
  * watches is a different decision from none*: the number is what makes the size of the
  * action visible while it can still be stopped.
  *
- * The number is drawn from the episodes in front of the reader (`mark-through.ts`), not
+ * The number is drawn from the episodes in front of the reader (`mark-up-to.ts`), not
  * asked for over the wire. A round trip in front of a confirmation is a spinner where a
  * number should be, and the reader is agreeing to what they can see.
  *
@@ -42,7 +42,7 @@ import { watchMarks } from "./watch-marks";
  * `DeleteListDialog` holds itself open until its write answers, because a deleted list
  * disappears out from under the reader and there is nothing left to look at if it fails.
  * The opposite is true here: the rows strike **immediately** (`watch-marks.ts`'s
- * `markThrough` is optimistic, as every watch write in this application is), so the
+ * `markUpTo` is optimistic, as every watch write in this application is), so the
  * result of the press is the thing behind the dialog. Holding the dialog open over it
  * would hide the only feedback there is. A lost write raises the toast, once, exactly as
  * it does for a single mark.
@@ -50,7 +50,7 @@ import { watchMarks } from "./watch-marks";
  * That is also why there is no in-flight state and no disabled confirm here: the control
  * is gone from the screen before the request has been answered.
  */
-export function MarkThroughDialog({
+export function MarkUpToDialog({
   libraryEntryId,
   titleName,
   through,
@@ -60,7 +60,7 @@ export function MarkThroughDialog({
   readonly libraryEntryId: string;
   readonly titleName: string;
   readonly through: EpisodeDetail;
-  /** What this press would record — never empty, per `coveredThrough`. */
+  /** What this press would record — never empty, per `coveredUpTo`. */
   readonly covered: readonly EpisodeDetail[];
   readonly onClosed: () => void;
 }) {
@@ -75,13 +75,13 @@ export function MarkThroughDialog({
   }, []);
 
   const fullName = episodeFullName(through);
-  const count = markThroughCount(covered);
+  const count = markUpToCount(covered);
 
   function confirm(): void {
     // Closed first, then written: the strike behind this dialog is the feedback, and it
     // is already happening by the time the request leaves.
     ref.current?.close();
-    void watchMarks.markThrough(
+    void watchMarks.markUpTo(
       { libraryEntryId, episodeId: through.id },
       covered.map((one) => ({ libraryEntryId, episodeId: one.id })),
       // What the toast says if this is lost. `LostWrite.episode` names *the affected
@@ -96,10 +96,10 @@ export function MarkThroughDialog({
     <dialog
       ref={ref}
       onClose={onClosed}
-      aria-labelledby="mark-through-h"
+      aria-labelledby="mark-up-to-h"
       className="border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
     >
-      <h2 id="mark-through-h" className="bill-title text-bill-sm text-text">
+      <h2 id="mark-up-to-h" className="bill-title text-bill-sm text-text">
         Watched up to here?
       </h2>
 

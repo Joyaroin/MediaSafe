@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   asUserId,
-  markWatchedThrough,
+  markWatchedUpTo,
   ownedBy,
   recordWatch,
   type UserId,
@@ -20,7 +20,7 @@ import {
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * `markWatchedThrough`, against real Postgres — issue #196.
+ * `markWatchedUpTo`, against real Postgres — issue #196.
  *
  * ── Why this write earns a test where a single mark would not ────────────────────────
  *
@@ -195,17 +195,17 @@ const TWO_SEASONS: readonly EpisodeSpec[] = [
   { seasonNo: 2, episodeNo: 3 },
 ];
 
-describe("markWatchedThrough", () => {
+describe("markWatchedUpTo", () => {
   it("records the episode pressed and every earlier one, and nothing after it", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
 
-      const outcome = await markWatchedThrough(
+      const outcome = await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["2-1"],
+          upToEpisodeId: episodeIds["2-1"],
           sourceKey: nextKey(),
         },
         tx,
@@ -234,11 +234,11 @@ describe("markWatchedThrough", () => {
         tx,
       );
 
-      await markWatchedThrough(
+      await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["2-3"],
+          upToEpisodeId: episodeIds["2-3"],
           sourceKey: nextKey(),
         },
         tx,
@@ -264,11 +264,11 @@ describe("markWatchedThrough", () => {
         inProduction: false,
       });
 
-      await markWatchedThrough(
+      await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["2-3"],
+          upToEpisodeId: episodeIds["2-3"],
           sourceKey: nextKey(),
         },
         tx,
@@ -293,11 +293,11 @@ describe("markWatchedThrough", () => {
         { inProduction: true },
       );
 
-      await markWatchedThrough(
+      await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["1-2"],
+          upToEpisodeId: episodeIds["1-2"],
           sourceKey: nextKey(),
         },
         tx,
@@ -317,11 +317,11 @@ describe("markWatchedThrough", () => {
         tx,
       );
 
-      const outcome = await markWatchedThrough(
+      const outcome = await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["1-3"],
+          upToEpisodeId: episodeIds["1-3"],
           sourceKey: nextKey(),
         },
         tx,
@@ -340,14 +340,14 @@ describe("markWatchedThrough", () => {
       const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
       const key = nextKey();
 
-      const first = await markWatchedThrough(
+      const first = await markWatchedUpTo(
         userId,
-        { libraryEntryId: entryId, throughEpisodeId: episodeIds["1-3"], sourceKey: key },
+        { libraryEntryId: entryId, upToEpisodeId: episodeIds["1-3"], sourceKey: key },
         tx,
       );
-      const retried = await markWatchedThrough(
+      const retried = await markWatchedUpTo(
         userId,
-        { libraryEntryId: entryId, throughEpisodeId: episodeIds["1-3"], sourceKey: key },
+        { libraryEntryId: entryId, upToEpisodeId: episodeIds["1-3"], sourceKey: key },
         tx,
       );
 
@@ -361,11 +361,11 @@ describe("markWatchedThrough", () => {
       const userId = await seedUser(tx, "adham");
       const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
 
-      await markWatchedThrough(
+      await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["1-3"],
+          upToEpisodeId: episodeIds["1-3"],
           sourceKey: nextKey(),
         },
         tx,
@@ -390,11 +390,11 @@ describe("markWatchedThrough", () => {
         inProduction: false,
       });
 
-      await markWatchedThrough(
+      await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["2-3"],
+          upToEpisodeId: episodeIds["2-3"],
           sourceKey: nextKey(),
         },
         tx,
@@ -447,11 +447,11 @@ describe("markWatchedThrough", () => {
       `);
 
       await expect(
-        markWatchedThrough(
+        markWatchedUpTo(
           userId,
           {
             libraryEntryId: entryId,
-            throughEpisodeId: episodeIds["2-3"],
+            upToEpisodeId: episodeIds["2-3"],
             sourceKey: nextKey(),
           },
           tx,
@@ -472,11 +472,11 @@ describe("markWatchedThrough", () => {
       const { entryId, episodeIds } = await seedShow(tx, owner, TWO_SEASONS);
 
       await expect(
-        markWatchedThrough(
+        markWatchedUpTo(
           stranger,
           {
             libraryEntryId: entryId,
-            throughEpisodeId: episodeIds["1-3"],
+            upToEpisodeId: episodeIds["1-3"],
             sourceKey: nextKey(),
           },
           tx,
@@ -493,11 +493,11 @@ describe("markWatchedThrough", () => {
       const other = await seedShow(tx, userId, TWO_SEASONS);
 
       await expect(
-        markWatchedThrough(
+        markWatchedUpTo(
           userId,
           {
             libraryEntryId: mine.entryId,
-            throughEpisodeId: other.episodeIds["1-3"],
+            upToEpisodeId: other.episodeIds["1-3"],
             sourceKey: nextKey(),
           },
           tx,
@@ -512,11 +512,11 @@ describe("markWatchedThrough", () => {
       const userId = await seedUser(tx, "adham");
       const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
 
-      const outcome = await markWatchedThrough(
+      const outcome = await markWatchedUpTo(
         userId,
         {
           libraryEntryId: entryId,
-          throughEpisodeId: episodeIds["0-1"],
+          upToEpisodeId: episodeIds["0-1"],
           sourceKey: nextKey(),
         },
         tx,
@@ -528,18 +528,18 @@ describe("markWatchedThrough", () => {
       expect(await watchedEpisodes(tx, userId, entryId)).toEqual([]);
     }));
 
-  it("refuses a film, which has no episode to mark through", () =>
+  it("refuses a film, which has no episode to mark up to", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId } = await seedFilm(tx, userId);
       const show = await seedShow(tx, userId, TWO_SEASONS);
 
       await expect(
-        markWatchedThrough(
+        markWatchedUpTo(
           userId,
           {
             libraryEntryId: entryId,
-            throughEpisodeId: show.episodeIds["1-3"],
+            upToEpisodeId: show.episodeIds["1-3"],
             sourceKey: nextKey(),
           },
           tx,

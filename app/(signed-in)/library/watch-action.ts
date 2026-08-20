@@ -1,10 +1,10 @@
 "use server";
 
 import {
-  markWatchedThrough,
+  markWatchedUpTo,
   recordWatch,
   unwatch,
-  type MarkWatchedThroughParams,
+  type MarkWatchedUpToParams,
   type RecordWatchParams,
   type UnwatchParams,
 } from "@/db/access";
@@ -81,7 +81,7 @@ export async function unwatchAction(
 }
 
 /**
- * *Watched up to here* — issue #196, over `db/access.ts`'s `markWatchedThrough`. The
+ * *Watched up to here* — issue #196, over `db/access.ts`'s `markWatchedUpTo`. The
  * third thin wrapper in this file, for the two reasons the first one gives: a Server
  * Action is a POST endpoint anyone can call with any arguments, so `requireUserId` here
  * is the check; and catching here is what lets the toast report a reference id rather
@@ -89,7 +89,7 @@ export async function unwatchAction(
  *
  * ── Nothing comes back but `ok`, and this is the write where that is a decision ──────
  *
- * `markWatchedThrough` returns how many rows it wrote, and that number does not travel.
+ * `markWatchedUpTo` returns how many rows it wrote, and that number does not travel.
  * It is the same ruling `UnwatchOutcome`'s `removed` gets and for a sharper reason: the
  * reader has *already been shown a count* and agreed to it, in the confirmation, before
  * this was called. A second number arriving afterwards could only either agree with it —
@@ -98,26 +98,26 @@ export async function unwatchAction(
  * needs is a screen that matches the table, and every covered row reading watched is that
  * screen whichever of them this particular press was the one to write.
  *
- * The set is **not** sent either. `MarkWatchedThroughParams` takes the episode that was
+ * The set is **not** sent either. `MarkWatchedUpToParams` takes the episode that was
  * pressed and derives the rest server-side, so there is no list here for a tampered
  * request to widen.
  */
-export type MarkWatchedThroughActionOutcome =
+export type MarkWatchedUpToActionOutcome =
   | { readonly ok: true }
   | { readonly ok: false; readonly reference: string | null };
 
-export async function markWatchedThroughAction(
-  params: MarkWatchedThroughParams,
-): Promise<MarkWatchedThroughActionOutcome> {
+export async function markWatchedUpToAction(
+  params: MarkWatchedUpToParams,
+): Promise<MarkWatchedUpToActionOutcome> {
   const userId = await requireUserId();
 
   try {
-    await markWatchedThrough(userId, params);
+    await markWatchedUpTo(userId, params);
     return { ok: true };
   } catch (error) {
     return {
       ok: false,
-      reference: referenceFor(error, { surface: "mark-watched-through" }),
+      reference: referenceFor(error, { surface: "mark-watched-up-to" }),
     };
   }
 }

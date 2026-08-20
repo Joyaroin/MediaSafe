@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
-  MarkWatchedThroughActionOutcome,
+  MarkWatchedUpToActionOutcome,
   UnwatchActionOutcome,
   WatchActionOutcome,
 } from "@/app/(signed-in)/library/watch-action";
@@ -66,13 +66,13 @@ function harness() {
   const answerRecord: Array<(outcome: WatchActionOutcome) => void> = [];
   const answerRemove: Array<(outcome: UnwatchActionOutcome) => void> = [];
   /** Every *watched up to here* press the writer was handed — issue #196. */
-  const through: Array<{
+  const upTo: Array<{
     readonly libraryEntryId: string;
-    readonly throughEpisodeId: string;
+    readonly upToEpisodeId: string;
     readonly sourceKey: string;
   }> = [];
-  const answerThrough: Array<
-    (outcome: MarkWatchedThroughActionOutcome) => void
+  const answerUpTo: Array<
+    (outcome: MarkWatchedUpToActionOutcome) => void
   > = [];
   let minted = 0;
 
@@ -86,9 +86,9 @@ function harness() {
       remove() {
         return new Promise((resolve) => answerRemove.push(resolve));
       },
-      recordThrough(params) {
-        through.push(params);
-        return new Promise((resolve) => answerThrough.push(resolve));
+      recordUpTo(params) {
+        upTo.push(params);
+        return new Promise((resolve) => answerUpTo.push(resolve));
       },
     },
     failures,
@@ -119,8 +119,8 @@ function harness() {
     recorded,
     answerRecord,
     answerRemove,
-    through,
-    answerThrough,
+    upTo,
+    answerUpTo,
     surface,
   };
 }
@@ -489,27 +489,27 @@ const THROUGH_NAMING = {
 
 describe("marking watched up to an episode", () => {
   it("sends the episode pressed and one key, and never the set", async () => {
-    const { marks, through, answerThrough } = harness();
+    const { marks, upTo, answerUpTo } = harness();
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: true });
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: true });
     await press;
 
-    expect(through).toEqual([
+    expect(upTo).toEqual([
       {
         libraryEntryId: "entry-1",
-        throughEpisodeId: "episode-3",
+        upToEpisodeId: "episode-3",
         sourceKey: "key-1",
       },
     ]);
   });
 
   it("settles every covered row without a sweep playing on any of them", async () => {
-    const { marks, answerThrough, surface } = harness();
+    const { marks, answerUpTo, surface } = harness();
     const rows = COVERED.map((subject) => surface(subject));
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: true });
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: true });
     await press;
 
     for (const row of rows) {
@@ -521,28 +521,28 @@ describe("marking watched up to an episode", () => {
   });
 
   it("strikes the rows before the server has answered, and puts them all back if it fails", async () => {
-    const { marks, failures, answerThrough, surface } = harness();
+    const { marks, failures, answerUpTo, surface } = harness();
     const rows = COVERED.map((subject) => surface(subject));
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
 
     // Optimistic, and already settled: the reader sees the show recorded at once.
     expect(rows.map((row) => row.view()?.watched)).toEqual([true, true, true]);
 
-    answerThrough[0]({ ok: false, reference: "ref-1" });
+    answerUpTo[0]({ ok: false, reference: "ref-1" });
     await press;
 
     // Nothing behind, nothing on screen — the write is one transaction, so a half-struck
-    // season would be a lie about the table (`markWatchedThrough`).
+    // season would be a lie about the table (`markWatchedUpTo`).
     for (const row of rows) expect(row.view()).toEqual(UNWATCHED);
     expect(onlyToast(failures)).toMatchObject({ title: "Better Call Saul" });
   });
 
   it("raises exactly one toast for the press, not one per episode", async () => {
-    const { marks, failures, answerThrough } = harness();
+    const { marks, failures, answerUpTo } = harness();
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: false, reference: "ref-1" });
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: false, reference: "ref-1" });
     await press;
 
     // `onlyToast` asserts the count itself; the episode line is what makes the one toast
@@ -552,14 +552,14 @@ describe("marking watched up to an episode", () => {
   });
 
   it("retries the same press rather than starting a second one", async () => {
-    const { marks, failures, through, answerThrough } = harness();
+    const { marks, failures, upTo, answerUpTo } = harness();
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: false, reference: "ref-1" });
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: false, reference: "ref-1" });
     await press;
 
     onlyToast(failures)?.retry?.();
-    answerThrough[1]({ ok: true });
+    answerUpTo[1]({ ok: true });
     // The retry is a fresh promise inside the toast's closure; a turn of the loop is what
     // lets it finish before the assertions below read the result.
     await Promise.resolve();
@@ -567,35 +567,35 @@ describe("marking watched up to an episode", () => {
 
     // Two requests, one key — the same guarantee a per-episode retry has, and the reason
     // a lost press cannot become a second set of rows.
-    expect(through.map((one) => one.sourceKey)).toEqual(["key-1", "key-1"]);
+    expect(upTo.map((one) => one.sourceKey)).toEqual(["key-1", "key-1"]);
     expect(failures.get()).toHaveLength(0);
   });
 
   it("mints a new key for a deliberate second press, once the first has landed", async () => {
-    const { marks, through, answerThrough } = harness();
+    const { marks, upTo, answerUpTo } = harness();
 
-    const first = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: true });
+    const first = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: true });
     await first;
 
-    const second = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[1]({ ok: true });
+    const second = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[1]({ ok: true });
     await second;
 
-    expect(through.map((one) => one.sourceKey)).toEqual(["key-1", "key-2"]);
+    expect(upTo.map((one) => one.sourceKey)).toEqual(["key-1", "key-2"]);
   });
 
   it("leaves a row busy whose own write is still on the wire", async () => {
-    const { marks, answerRecord, answerThrough, surface } = harness();
+    const { marks, answerRecord, answerUpTo, surface } = harness();
     const own = COVERED[0];
     const row = surface(own);
 
     // The reader struck one episode, then pressed through a later one before the first
     // came back — two writes, one of them covering the other's episode.
     const single = marks.mark(own, NAMING);
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
 
-    answerThrough[0]({ ok: true });
+    answerUpTo[0]({ ok: true });
     await press;
 
     // The bulk answer must not re-enable this row's control: its own write has not been
@@ -610,7 +610,7 @@ describe("marking watched up to an episode", () => {
   });
 
   it("hands a row back after a press, even where its own earlier mark was lost", async () => {
-    const { marks, answerRecord, answerThrough, surface } = harness();
+    const { marks, answerRecord, answerUpTo, surface } = harness();
     const own = COVERED[0];
     const row = surface(own);
 
@@ -620,8 +620,8 @@ describe("marking watched up to an episode", () => {
     answerRecord[0]({ ok: false, reference: "ref-1" });
     await lost;
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: true });
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: true });
     await press;
 
     // Nothing is on the wire, so nothing is busy. Reading the surviving key as *in
@@ -631,7 +631,7 @@ describe("marking watched up to an episode", () => {
   });
 
   it("does not un-strike a row whose own write landed, when the press is lost", async () => {
-    const { marks, answerRecord, answerThrough, surface } = harness();
+    const { marks, answerRecord, answerUpTo, surface } = harness();
     const own = COVERED[0];
     const row = surface(own);
 
@@ -639,8 +639,8 @@ describe("marking watched up to an episode", () => {
     answerRecord[0]({ ok: true });
     await single;
 
-    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
-    answerThrough[0]({ ok: false, reference: "ref-1" });
+    const press = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: false, reference: "ref-1" });
     await press;
 
     // What a failure puts back is the appearance as of the press — and as of this press

@@ -11,13 +11,19 @@ import {
   EPISODE_ROW,
   SEASON_LIST,
 } from "./episode-line";
-import { coveredThrough, markThroughLabel } from "./mark-through";
-import { MarkThroughDialog } from "./mark-through-dialog";
-import { MarkThroughIcon } from "./mark-through-icon";
+import { coveredUpTo, markUpToLabel } from "./mark-up-to";
+import { MarkUpToDialog } from "./mark-up-to-dialog";
+import { MarkUpToIcon } from "./mark-up-to-icon";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
+import { useLiveEpisodes } from "./use-live-episodes";
 import { useWatchMark } from "./use-watch-mark";
-import { RECORDING_CONTROL, WATCHED_NAME, WatchSweep } from "./watch-mark-motion";
+import {
+  QUIET_RECORDING_CONTROL,
+  RECORDING_CONTROL,
+  WATCHED_NAME,
+  WatchSweep,
+} from "./watch-mark-motion";
 
 /**
  * The season/episode list — the row that carries the product's most important rule
@@ -98,21 +104,30 @@ export function ProgrammeNoteEpisodes({
  * A season of a long-running show is twenty-odd rows and a whole show is sixty-odd. One
  * `<dialog>` per row would put sixty-two of them in the document to have at most one open,
  * and the reader can only be confirming one press at a time — so *which episode is being
- * confirmed* is a fact about the list. `MarkThroughDialog` mounts when there is one and
+ * confirmed* is a fact about the list. `MarkUpToDialog` mounts when there is one and
  * unmounts when there is not, which is also what gives it a stable `aria-labelledby` id
  * without minting one per row.
  *
  * ── Why the set is worked out here too ───────────────────────────────────────────────
  *
- * `coveredThrough` needs the **whole title's** episodes to answer either question — is
+ * `coveredUpTo` needs the **whole title's** episodes to answer either question — is
  * there anything unwatched before this row, and what would a press write — and a row has
  * only itself. Passing the answer down keeps `EpisodeLine` a row: it draws a control when
  * it is handed a set and does not when it is handed `null`, and the rule lives in one
- * tested module (`mark-through.ts`) rather than in the markup.
+ * tested module (`mark-up-to.ts`) rather than in the markup.
  *
- * It is computed over `episodes` — the flat, ordered list — and not over the season it is
+ * It is computed over the whole flat, ordered list and not over the season the row is
  * grouped into, because *earlier* crosses a season boundary: pressing the first episode of
  * season two covers the whole of season one.
+ *
+ * ── Over the live list, not the one the server rendered ─────────────────────────────
+ *
+ * `useLiveEpisodes` is what makes that list current. Nothing in this application reloads
+ * on a landed write, so without it a press left every control standing over episodes that
+ * now carried a watch — and the second press offered a count that would have written
+ * nothing. `mark-up-to.ts`'s `withLiveWatched` carries the full account; what matters here
+ * is that the rows are grouped from the same live list the control's visibility is decided
+ * from, so the two can never be answering about different states of the show.
  */
 function SeasonList({
   episodes,
@@ -128,9 +143,11 @@ function SeasonList({
     readonly covered: readonly EpisodeDetail[];
   } | null>(null);
 
+  const live = useLiveEpisodes(libraryEntryId, episodes);
+
   return (
     <>
-      {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
+      {groupBySeason(live).map(([seasonNo, inSeason]) => (
         <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
           <p className="code-line text-dim">{seasonHeading(seasonNo)}</p>
           <ol className={SEASON_LIST}>
@@ -138,10 +155,10 @@ function SeasonList({
               <EpisodeLine
                 key={one.id}
                 episode={one}
-                covered={coveredThrough(episodes, one)}
+                covered={coveredUpTo(live, one)}
                 libraryEntryId={libraryEntryId}
                 titleName={titleName}
-                onMarkThrough={setConfirming}
+                onMarkUpTo={setConfirming}
               />
             ))}
           </ol>
@@ -149,7 +166,7 @@ function SeasonList({
       ))}
 
       {confirming === null ? null : (
-        <MarkThroughDialog
+        <MarkUpToDialog
           libraryEntryId={libraryEntryId}
           titleName={titleName}
           through={confirming.through}
@@ -342,15 +359,15 @@ function EpisodeLine({
   covered,
   libraryEntryId,
   titleName,
-  onMarkThrough,
+  onMarkUpTo,
 }: {
   episode: EpisodeDetail;
   /** What a press of *watched up to here* would record, or `null` where the control must
-   *  not be drawn on this row at all — `mark-through.ts` owns that rule (issue #196). */
+   *  not be drawn on this row at all — `mark-up-to.ts` owns that rule (issue #196). */
   covered: readonly EpisodeDetail[] | null;
   libraryEntryId: string;
   titleName: string;
-  onMarkThrough: (confirming: {
+  onMarkUpTo: (confirming: {
     readonly through: EpisodeDetail;
     readonly covered: readonly EpisodeDetail[];
   }) => void;
@@ -410,9 +427,9 @@ function EpisodeLine({
             offered on **both** sides of it: a watched row with a gap behind it is exactly
             the row this control is for. */}
         {covered === null ? null : (
-          <MarkThroughButton
-            label={markThroughLabel(episode)}
-            onClick={() => onMarkThrough({ through: episode, covered })}
+          <MarkUpToButton
+            label={markUpToLabel(episode)}
+            onClick={() => onMarkUpTo({ through: episode, covered })}
             disabled={pending}
           />
         )}
@@ -608,17 +625,13 @@ function MarkWatchedButton({
  *
  * ── Why it is dim and not accent ─────────────────────────────────────────────────────
  *
- * It records watches, so `app/globals.css`'s *Live* role would have it in the accent. It
- * is not, at rest, for the reason issue #89 gives *Rewatch* and *Unwatch*: **nothing on
- * this row may compete with the daily gesture.** *Strike it* is the bordered accent ghost
- * button and is the thing a reader presses every evening; this is pressed once, when a
- * show arrives, and then never again on that title. A hairline border and dim ink says
- * *pressable* without saying *press me*.
- *
- * It takes the accent on hover, because by then the reader has asked what it is and the
- * honest answer is that it records watches.
+ * `QUIET_RECORDING_CONTROL` (`watch-mark-motion.tsx`) carries that argument, beside the
+ * `RECORDING_CONTROL` it must not compete with — one module owning both is what stops the
+ * pair drifting, and `DESIGN.md` §10 is the rule that says so. It was written inline here
+ * until the two-axis review of #196 pointed out that it had become the second unnamed copy
+ * of a hairline register the build already had.
  */
-function MarkThroughButton({
+function MarkUpToButton({
   label,
   onClick,
   disabled,
@@ -635,11 +648,11 @@ function MarkThroughButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`shrink-0 border border-hair p-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent ${IN_FLIGHT}`}
+      className={`${QUIET_RECORDING_CONTROL} ${IN_FLIGHT}`}
     >
       {/* `block`, so the svg does not sit on a text baseline and add descender space to a
           row whose height is measured. */}
-      <MarkThroughIcon className="block h-4 w-4" />
+      <MarkUpToIcon className="block h-4 w-4" />
     </button>
   );
 }

@@ -213,13 +213,13 @@ describe("the episode list", () => {
  *
  * What is asserted here is only what a **render** can answer: whether the control is on a
  * given row, and what it tells a screen reader it does. Which episodes one press would
- * write is `tests/mark-through.test.ts`, and what the write actually does to the table is
- * `tests/mark-watched-through.test.ts`; a rendered row shows a control rather than the
+ * write is `tests/mark-up-to.test.ts`, and what the write actually does to the table is
+ * `tests/mark-watched-up-to.test.ts`; a rendered row shows a control rather than the
  * eleven episodes behind it, so asserting the set from here would be asserting it through
  * the wrong window.
  *
  * The control is found by its accessible label rather than by a class or a glyph. The
- * label is the only text it has (`mark-through.ts`), so it is also the only thing a test
+ * label is the only text it has (`mark-up-to.ts`), so it is also the only thing a test
  * could look for that a reader would notice going missing.
  */
 const MARK_THROUGH = "Mark everything up to and including";

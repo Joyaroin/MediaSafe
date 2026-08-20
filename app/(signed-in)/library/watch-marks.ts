@@ -8,10 +8,10 @@ import {
   type WriteFailureStore,
 } from "@/errors/write-failure";
 import {
-  markWatchedThroughAction,
+  markWatchedUpToAction,
   recordWatchAction,
   unwatchAction,
-  type MarkWatchedThroughActionOutcome,
+  type MarkWatchedUpToActionOutcome,
   type UnwatchActionOutcome,
   type WatchActionOutcome,
 } from "./watch-action";
@@ -165,14 +165,14 @@ export interface WatchWriter {
   }): Promise<UnwatchActionOutcome>;
   /**
    * *Watched up to here* — issue #196. One press, one key, one transaction, and the set
-   * derived server-side from the episode named here: `markWatchedThroughAction`'s own
+   * derived server-side from the episode named here: `markWatchedUpToAction`'s own
    * docblock says why the browser does not send a list of ids.
    */
-  recordThrough(params: {
+  recordUpTo(params: {
     readonly libraryEntryId: string;
-    readonly throughEpisodeId: string;
+    readonly upToEpisodeId: string;
     readonly sourceKey: string;
-  }): Promise<MarkWatchedThroughActionOutcome>;
+  }): Promise<MarkWatchedUpToActionOutcome>;
 }
 
 export interface WatchMarks {
@@ -200,13 +200,13 @@ export interface WatchMarks {
    * Record everything up to and including one episode — issue #196.
    *
    * `covered` is what the row that pressed worked out is about to be written
-   * (`mark-through.ts`), and is what this marks on screen; `through` is the only thing
+   * (`mark-up-to.ts`), and is what this marks on screen; `through` is the only thing
    * that travels, and the server derives the set again from it. The two can disagree if
    * the reader's page is older than the table, and the disagreement is harmless in the
    * one direction it can go: every covered episode carries a watch once this lands,
    * whichever press was the one to write it.
    */
-  markThrough(
+  markUpTo(
     through: WatchSubject,
     covered: readonly WatchSubject[],
     naming: WatchNaming,
@@ -305,11 +305,11 @@ export function createWatchMarks({
   /**
    * The outstanding *watched up to here* press against each episode it was pressed on —
    * issue #196, and a second map rather than two more fields on `Mark` because the press
-   * is not a fact about the episode it names. `markThrough`'s docblock carries the
+   * is not a fact about the episode it names. `markUpTo`'s docblock carries the
    * argument; the shape is the two fields a `Mark` holds for its own write, minus the
    * appearance, which the covered episodes hold individually.
    */
-  const throughWrites = new Map<
+  const upToWrites = new Map<
     string,
     { key: string | null; raised: WriteFailureHandle | null }
   >();
@@ -513,7 +513,7 @@ export function createWatchMarks({
    * is. It is **not** kept on any episode's `Mark`, because it is not any episode's: the
    * pressed row may not even be in the set (a gap behind a watched row is the case), and
    * an episode carrying two writes' keys in one field is two writes that would take each
-   * other's toast down. `throughWrites` is that separate home, keyed by the episode
+   * other's toast down. `upToWrites` is that separate home, keyed by the episode
    * pressed.
    *
    * ── Rows arrive settled, and nothing sweeps ──────────────────────────────────────
@@ -526,18 +526,29 @@ export function createWatchMarks({
    * ── One toast for the press, not one per episode ─────────────────────────────────
    *
    * The write is one transaction and either lands whole or leaves nothing behind
-   * (`markWatchedThrough`), so there is exactly one thing that can be lost and exactly
+   * (`markWatchedUpTo`), so there is exactly one thing that can be lost and exactly
    * one thing to say about it. `raise()` is called once, here, and the per-episode marks
    * are rolled back without raising any of their own.
    */
-  async function markThrough(
+  async function markUpTo(
     through: WatchSubject,
     covered: readonly WatchSubject[],
     naming: WatchNaming,
   ): Promise<void> {
+    // Before anything is marked, not after. A film has no episode list and so no control
+    // (`programme-note-episodes.tsx`), which makes this a caller bug rather than a lost
+    // write — but a throw raised *after* the optimistic marks were applied would leave a
+    // dozen rows struck with nothing behind them, no rollback and no toast, which is
+    // `SPEC.md` §3.3's *a lost write is never silent* broken by the one path that is
+    // supposed to be impossible. Refusing first costs nothing and cannot lie.
+    const upToEpisodeId = through.episodeId;
+    if (upToEpisodeId === null) {
+      throw new Error("markUpTo was given a film, which has no episode to mark up to.");
+    }
+
     const id = idOf(through);
-    const write = throughWrites.get(id) ?? { key: null, raised: null };
-    throughWrites.set(id, write);
+    const write = upToWrites.get(id) ?? { key: null, raised: null };
+    upToWrites.set(id, write);
 
     write.key ??= mintKey();
     const sourceKey = write.key;
@@ -551,7 +562,11 @@ export function createWatchMarks({
       apply(one, { watched: true, phase: "settled", pending: true });
     }
 
-    const outcome = await recordThrough(through, sourceKey);
+    const outcome = await recordUpTo(
+      through.libraryEntryId,
+      upToEpisodeId,
+      sourceKey,
+    );
 
     // The same guard `mark` states at length: an attempt only ever speaks for the write
     // it named, so an answer arriving after the key has moved on is not news.
@@ -581,7 +596,7 @@ export function createWatchMarks({
       episode: naming.episode,
       reference: outcome.reference,
       // The same key, so *Try again* is a retry of this press rather than a second one.
-      retry: () => void markThrough(through, covered, naming),
+      retry: () => void markUpTo(through, covered, naming),
     });
   }
 
@@ -623,27 +638,23 @@ export function createWatchMarks({
   }
 
   /** The same wrapper again, around the press through an episode. */
-  async function recordThrough(
-    through: WatchSubject,
+  async function recordUpTo(
+    libraryEntryId: string,
+    /** Never `null`: `markUpTo` refuses a film before it marks anything, and passing the
+     *  narrowed id rather than the subject is what leaves no null here to fudge. */
+    upToEpisodeId: string,
     sourceKey: string,
-  ): Promise<MarkWatchedThroughActionOutcome> {
-    // A film has no episode list and so no control (`programme-note-episodes.tsx`);
-    // reaching here with none is a caller bug rather than a lost write, and it says so
-    // rather than posting a request the server would refuse.
-    if (through.episodeId === null) {
-      throw new Error("markThrough was given a film, which has no episode to mark through.");
-    }
-
+  ): Promise<MarkWatchedUpToActionOutcome> {
     try {
-      return await writer.recordThrough({
-        libraryEntryId: through.libraryEntryId,
-        throughEpisodeId: through.episodeId,
+      return await writer.recordUpTo({
+        libraryEntryId,
+        upToEpisodeId,
         sourceKey,
       });
     } catch (error) {
       return {
         ok: false,
-        reference: referenceFor(error, { surface: "mark-watched-through" }),
+        reference: referenceFor(error, { surface: "mark-watched-up-to" }),
       };
     }
   }
@@ -673,7 +684,7 @@ export function createWatchMarks({
 
     mark,
     unwatch,
-    markThrough,
+    markUpTo,
 
     settle(subject) {
       const one = marks.get(idOf(subject));
@@ -699,6 +710,6 @@ export const watchMarks = createWatchMarks({
   writer: {
     record: (params) => recordWatchAction(params),
     remove: (params) => unwatchAction(params),
-    recordThrough: (params) => markWatchedThroughAction(params),
+    recordUpTo: (params) => markWatchedUpToAction(params),
   },
 });

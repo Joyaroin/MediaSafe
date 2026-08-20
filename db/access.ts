@@ -1229,17 +1229,17 @@ export async function unwatch(
  * catches a second click. A server-minted key would be different on every attempt, and
  * this has no code path that could produce one.
  *
- * `throughEpisodeId` is the episode the reader actually pressed, and the whole set is
+ * `upToEpisodeId` is the episode the reader actually pressed, and the whole set is
  * derived from it here rather than sent. A list of ids from the browser is a list this
  * function would have to re-authorize row by row, and a stale one — a page open while a
  * refresh added episodes — would write a set that does not match what the reader saw. The
  * ordering that decides *earlier* lives in `episode`, so the answer is taken from there.
  */
-export interface MarkWatchedThroughParams {
+export interface MarkWatchedUpToParams {
   readonly libraryEntryId: string;
   /** The episode the reader pressed on. Never `null` — a film has no episode list, and
    *  `programme-note-episodes.tsx` never draws this control on one. */
-  readonly throughEpisodeId: string;
+  readonly upToEpisodeId: string;
   readonly sourceKey: string;
 }
 
@@ -1253,7 +1253,7 @@ export interface MarkWatchedThroughParams {
  * permanent exclusion, and the confirmation the reader was already shown is drawn from
  * the episodes in front of them rather than from an answer that arrives after the write.
  */
-export interface MarkWatchedThroughOutcome {
+export interface MarkWatchedUpToOutcome {
   readonly recorded: number;
 }
 
@@ -1310,8 +1310,13 @@ export interface MarkWatchedThroughOutcome {
  * Recording that you *had* watched a show up to some point is a statement about the past.
  * Deciding you have not given up on it is `unabandonTitle`, which is a control the reader
  * presses on purpose. **The consequence is stated rather than hidden**: an abandoned show
- * marked through still reads *abandoned* afterwards, because `library_entry_state` tests
- * `abandoned_at` first and outranks every derived answer.
+ * marked up to its last episode still reads *abandoned* afterwards, because
+ * `library_entry_state` tests `abandoned_at` first and outranks every derived answer.
+ *
+ * **This is a divergence from a written rule and is recorded as one** — ADR-0001
+ * amendment 9, added because the two-axis review of #196 was right that a docblock is not
+ * where a departure from `CONTEXT.md` gets to live. That amendment is the argument; this
+ * paragraph is the pointer to it.
  *
  * ── Two reads and one insert, in one transaction ─────────────────────────────────────
  *
@@ -1335,11 +1340,11 @@ export interface MarkWatchedThroughOutcome {
  * episode of some other show cannot be used to reach across into this entry: `episode` is
  * global (ADR-0001), and an id from anywhere in the catalogue is a value anyone can send.
  */
-export async function markWatchedThrough(
+export async function markWatchedUpTo(
   userId: UserId,
-  params: MarkWatchedThroughParams,
+  params: MarkWatchedUpToParams,
   executor: Executor = getDb(),
-): Promise<MarkWatchedThroughOutcome> {
+): Promise<MarkWatchedUpToOutcome> {
   return executor.transaction(async (tx) => {
     const [entry] = await tx
       .select({ titleId: libraryEntry.titleId })
@@ -1367,10 +1372,10 @@ export async function markWatchedThrough(
       .where(eq(episode.titleId, entry.titleId))
       .orderBy(episode.seasonNo, episode.episodeNo);
 
-    const through = episodes.find((one) => one.id === params.throughEpisodeId);
+    const through = episodes.find((one) => one.id === params.upToEpisodeId);
     if (!through) {
       throw new Error(
-        `Episode ${params.throughEpisodeId} is not an episode of library entry ${params.libraryEntryId}'s title.`,
+        `Episode ${params.upToEpisodeId} is not an episode of library entry ${params.libraryEntryId}'s title.`,
       );
     }
 
