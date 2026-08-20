@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { SelectableTitle } from "./bulk-selection";
-import { useBulkSelection, useBulkSelectionView, useIsSelected } from "./bulk-selection-context";
+import { useBulkSelection, useIsSelected, useIsSelecting } from "./bulk-selection-context";
 import { useLibrarySelection } from "./library-selection";
 
 /**
@@ -98,17 +98,38 @@ const HOLD_SLOP_PX = 10;
 const HOLDABLE = "select-none [-webkit-touch-callout:none]";
 
 /**
- * `DESIGN.md`'s accent, drawn as an inset ring rather than a border — `globals.css`'s
- * `field-well` has the reasoning and it is the same here: a `2px` border occupies layout,
- * so adding one would move a selected cell's contents by two pixels against its
- * neighbours' and make the grid twitch on every tap. An inset shadow costs no space.
+ * The ring on a selected cell — **`--ink`, and not the accent the ticket asked for.**
  *
- * It is clipped to the card's `18px` radius by the `li`'s own `overflow-hidden`
- * (`library-entry-cell.tsx`), so the ring follows the corner without restating the radius.
- * The one shadow in an app whose docblocks say there are none is not a lift — there is no
- * blur and no offset; it is a line that had to be drawn inside the box.
+ * Issue #197 says *an accent border and a check badge*. `app/globals.css`'s accent block
+ * refuses it in as many words — *"Not focus, selection or the caret … they use brightness
+ * and border weight off `--text`, so a colour spent on focus state is not a colour that
+ * also means 'this was marked'"* — and the collision it is guarding against is not
+ * hypothetical here. Role 1 is *the **Watching** state wherever it is named*, and
+ * `library-entry-cell.tsx` paints that label in the accent **inside this very cell**. An
+ * accent ring around an accent label is *two different accent roles on one screen*, which
+ * the rule names as the exact failure it exists to prevent — and on the phone the two would
+ * be two centimetres apart.
+ *
+ * So the ring and the badge are drawn in `--ink`, which is the alternative the rule itself
+ * prescribes. Nothing else about the treatment changes: it is still a `2px` ring and a
+ * check badge, still the loudest thing in the cell.
+ *
+ * ── An `outline`, not a border and not a shadow ──────────────────────────────────────
+ *
+ * A `2px` border occupies layout, so adding one would move a selected cell's contents by
+ * two pixels against its neighbours' and make the grid twitch on every tap — `field-well`'s
+ * reasoning, and it holds here too. Its answer is an inset `box-shadow`, and that is the
+ * one thing this cannot borrow: `DESIGN.md` (*"There are no drop shadows at all — not on a
+ * tile, not on a dialog, not on the chrome — and adding one is not a fix"*) and
+ * `tests/library-surface.test.ts`'s *still casts no shadow* are both absolutes about
+ * tiles, and a selected tile is a tile.
+ *
+ * `outline` costs no layout either and is not a shadow, so the invariant stays literally
+ * true. The negative offset draws it inside the border box, where the `li`'s own
+ * `overflow-hidden` clips it to the card's `18px` radius — so the ring follows the corner
+ * without this restating the radius.
  */
-const SELECTED = "shadow-[inset_0_0_0_2px_var(--color-accent)]";
+const SELECTED = "outline-2 -outline-offset-2 outline-ink";
 
 export function SelectableEntry({
   title,
@@ -123,7 +144,10 @@ export function SelectableEntry({
   const router = useRouter();
   const { selectedEntryId, select } = useLibrarySelection();
   const bulk = useBulkSelection();
-  const bulkView = useBulkSelectionView();
+  // Two booleans rather than the whole snapshot: a cell only ever asks *is the mode open*
+  // and *am I in it*, and both are compared by value, so a tap re-renders the cell whose
+  // badge changed instead of all 472 of them (`bulk-selection-context.ts`).
+  const selecting = useIsSelecting();
   const selected = useIsSelected(title.libraryEntryId);
 
   const [holding, setHolding] = useState(false);
@@ -132,8 +156,6 @@ export function SelectableEntry({
   const origin = useRef<{ x: number; y: number } | null>(null);
   /** The hold landed and the browser's own click has not been swallowed yet. */
   const swallowClick = useRef(false);
-
-  const selecting = bulkView?.selecting ?? false;
 
   function cancelHold(): void {
     if (timer.current !== null) {
@@ -151,6 +173,12 @@ export function SelectableEntry({
 
   function onPointerDown(event: React.PointerEvent<HTMLButtonElement>): void {
     if (bulk === null) return;
+    // Cleared here as well as on `animationend`, and the reason is
+    // `prefers-reduced-motion`: `globals.css` sets `animation: none` there, so no
+    // `animationend` is ever fired and the attribute set by the last hold would stay on
+    // this cell for the life of the mount. Invisible while the reader's setting holds —
+    // and a stray pop on the next hold the moment they turn it off.
+    setLanded(false);
     swallowClick.current = false;
     origin.current = { x: event.clientX, y: event.clientY };
     setHolding(true);

@@ -30,7 +30,7 @@ import {
  * `library-entry-cell.tsx` — and `library/loading.tsx` behind it — from transitively
  * importing the database.
  *
- * ── The three readers, and why they are hooks rather than raw context ────────────────
+ * ── The four readers, and why they are hooks rather than raw context ─────────────────
  *
  * Every reader of an external store has to go through `useSyncExternalStore`, and every
  * one of them has the same awkwardness to handle: the store may not be there, and a hook
@@ -66,6 +66,25 @@ export function useBulkSelectionView(): BulkSelectionView | null {
     NOTHING_SELECTED,
   );
   return selection === null ? null : view;
+}
+
+/**
+ * Whether the mode is open — a **boolean**, and that is the whole point.
+ *
+ * Every cell needs this (a tap toggles rather than navigates) and so does the column above
+ * them (the filter bar goes). Reading it off `useBulkSelectionView` instead would hand
+ * both the whole snapshot, which `apply()` replaces on **every** change — so one tap would
+ * re-render all 472 cells and the grid around them, which is precisely the cost
+ * `useIsSelected` below exists to avoid. A boolean is compared by value, so a tap
+ * re-renders the two cells whose badges changed and nothing else.
+ */
+export function useIsSelecting(): boolean {
+  const selection = useContext(BulkSelectionContext);
+  return useSyncExternalStore(
+    selection?.subscribe ?? NOTHING_SUBSCRIBED,
+    () => selection?.read().selecting ?? false,
+    () => false,
+  );
 }
 
 /**

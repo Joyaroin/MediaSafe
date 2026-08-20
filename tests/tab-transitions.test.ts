@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { PHONE_BAR } from "@/app/phone-bar";
+
 /**
  * Moving between the four phone tabs.
  *
@@ -137,7 +139,11 @@ describe("both directions are drawn, and only on the phone", () => {
     // desktop starts sliding too and this stops being a phone change.
     const sidebar = readFileSync("app/sidebar-nav.tsx", "utf8");
     expect(sidebar).not.toContain("transitionTypes");
-    // And the bar that does attach them is phone-only.
-    expect(TAB_BAR).toContain("lg:hidden");
+    // And the bar that does attach them is phone-only. `lg:hidden` moved into
+    // `PHONE_BAR` when issue #197 gave the selection bar the same recipe, so the property
+    // is checked through the constant rather than by searching this file for a literal
+    // that is no longer written in it.
+    expect(TAB_BAR).toContain("PHONE_BAR");
+    expect(PHONE_BAR).toContain("lg:hidden");
   });
 });

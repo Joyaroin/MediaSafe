@@ -353,11 +353,19 @@ describe("a library cell with no selection provider above it", () => {
     expect(plain).not.toContain("aria-pressed");
   });
 
-  it("shows no check badge and no accent ring", () => {
-    // The badge is the only thing in a cell drawn in `bg-accent`; the state line's
-    // **Watching** label is `text-accent`, so this is the specific one.
+  it("shows no check badge and no selection ring", () => {
+    // `bg-ink` is the badge's fill and nothing else in a cell uses it — the title is
+    // `text-ink`, which this does not match.
+    expect(plain).not.toContain("bg-ink");
+    expect(plain).not.toContain("outline-ink");
+  });
+
+  it("still keeps the accent for Watching alone", () => {
+    // `globals.css`: the accent's role 1 is the **Watching** state wherever it is named,
+    // and a screen may show only one role. #197 draws selection in `--ink` precisely so
+    // this stays the only accent in the cell — see `selectable-entry.tsx`'s `SELECTED`.
+    expect(plain).toContain("text-accent");
     expect(plain).not.toContain("bg-accent");
-    expect(plain).not.toContain("inset_0_0_0_2px");
   });
 
   it("still lets a reader select the title's text and long-press its poster", () => {

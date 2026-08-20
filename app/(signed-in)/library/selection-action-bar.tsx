@@ -7,6 +7,7 @@ import {
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
+import { PHONE_BAR } from "@/app/phone-bar";
 import type { ListSummary } from "@/db/access";
 import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
@@ -122,7 +123,11 @@ export function SelectionActionBar() {
           // Not `Primary` — that name belongs to the tab bar, and while this is on screen
           // the tab bar is gone rather than renamed.
           aria-label="Selected titles"
-          className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-hair frosted px-[22px] pt-2 pb-[22px] lg:hidden"
+          // `PHONE_BAR` is the tab bar's own recipe, shared rather than restated
+          // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
+          // treatment and the space the layout reserves* a fact about one string instead
+          // of a claim about two. The row inside it is this bar's own.
+          className={`${PHONE_BAR} flex items-center gap-3 px-[22px]`}
         >
           {/* Polite, not assertive: the count changes on every tap and this is the
               reader's own running total, not news about something that went wrong. */}

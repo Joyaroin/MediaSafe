@@ -47,11 +47,15 @@ export function SelectionCheckBadge({ libraryEntryId }: { libraryEntryId: string
   return (
     <span
       // Sits on the poster's top-right corner, half over the artwork and half over the
-      // card — the ticket's *a check badge on the poster*. `bg-accent` is the one place in
-      // this app the accent means *selected* rather than *watched*, and it can be: nothing
-      // in this grid records a watch (`tab-bar.tsx`'s own note on the reservation), and the
-      // Watching label it shares a cell with is a word rather than a filled shape.
-      className="badge-arrive pointer-events-none absolute -top-1.5 -right-1.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-accent-ink"
+      // card — the ticket's *a check badge on the poster*.
+      //
+      // `bg-ink`, not `bg-accent`. The ticket asks for the accent and `app/globals.css`
+      // refuses it for selection; `selectable-entry.tsx`'s `SELECTED` has the argument in
+      // full, and the short version is that this cell already paints **Watching** in the
+      // accent a couple of centimetres below. Ink against a poster is if anything the
+      // louder mark — it is the darkest value in the palette, and it lands on artwork
+      // rather than on the linen everything else here sits on.
+      className="badge-arrive pointer-events-none absolute -top-1.5 -right-1.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-ink text-ground"
     >
       {/* Drawn rather than typed: a `✓` is a font's opinion and this one has to read at
           12px against vermilion at every weight the variable face resolves to. */}

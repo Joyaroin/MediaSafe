@@ -12,7 +12,7 @@ import {
   ZeroMatches,
 } from "./library-filter-bar";
 import { BulkSelectionProvider } from "./bulk-selection-provider";
-import { useBulkSelectionView } from "./bulk-selection-context";
+import { useIsSelecting } from "./bulk-selection-context";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
 import { ProgrammeNoteLayout } from "./programme-note-layout";
@@ -106,7 +106,10 @@ function LibraryColumn({
   entries: readonly LibraryEntryRow[];
   sort: LibrarySort;
 }) {
-  const selection = useBulkSelectionView();
+  // The boolean and not the snapshot: this component renders the whole grid under it, and
+  // subscribing to every change would re-render all 472 cells on every tap
+  // (`bulk-selection-context.ts`). It re-renders when the mode opens and when it closes.
+  const selecting = useIsSelecting();
   const [chip, setChip] = useState<Chip>("all");
   const [filterText, setFilterText] = useState("");
 
@@ -127,7 +130,7 @@ function LibraryColumn({
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <LibraryHeading>
-        {selection?.selecting ? null : (
+        {selecting ? null : (
           <>
             <LibraryChips value={chip} onChange={setChip} />
 

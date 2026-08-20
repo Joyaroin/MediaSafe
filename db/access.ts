@@ -2991,19 +2991,21 @@ export async function addTitlesToList(
       .from(listMembership)
       .where(and(ownedBy(userId, listMembership), eq(listMembership.listId, listId)));
 
-    const created = await tx
-      .insert(listMembership)
-      .values(
-        missing.map((titleId, index) => ({
-          listId,
-          titleId,
-          userId,
-          position: next + index,
-        })),
-      )
-      .returning({ position: listMembership.position });
+    await tx.insert(listMembership).values(
+      missing.map((titleId, index) => ({
+        listId,
+        titleId,
+        userId,
+        position: next + index,
+      })),
+    );
 
-    return { added: created.length };
+    // `missing.length`, and not a count read back off the insert. There is no
+    // `onConflictDoNothing` above, so this statement either writes every row or throws and
+    // takes the transaction with it — the two numbers are equal by construction, and
+    // asking Postgres to send the rows back to prove it is a payload for a fact the shape
+    // of the statement already guarantees.
+    return { added: missing.length };
   });
 }
 

@@ -674,7 +674,12 @@
    Unlayered on purpose. `pressable` is a `@utility` and therefore in the `utilities`
    cascade layer, and the same cell carries both — a layered `.pressable:active` cannot
    win against these however specific it is, which is what stops a finger still resting on
-   a landed cell from flattening the overshoot back to `0.97`. */
+   a landed cell from flattening the overshoot back to `0.97`.
+
+   Qualified by `.pressable` rather than left as bare `[data-holding]` selectors, which
+   would have claimed those two attribute names for every element in the application. The
+   cell that carries them already carries `pressable`, so the qualifier costs nothing and
+   the rules say who they are for. */
 @keyframes select-land {
   0% {
     transform: scale(0.95);
@@ -687,12 +692,12 @@
   }
 }
 
-[data-holding="true"] {
+.pressable[data-holding="true"] {
   transform: scale(0.95);
   transition: transform 500ms linear;
 }
 
-[data-landed="true"] {
+.pressable[data-landed="true"] {
   animation: select-land var(--dur-base) var(--ease-out-quart);
 }
 
@@ -723,11 +728,11 @@
 /* The event still happens; it stops moving through space. `motion-provider.tsx` does this
    globally for anything Motion drives, and these two are CSS, so they say it themselves. */
 @media (prefers-reduced-motion: reduce) {
-  [data-holding="true"] {
+  .pressable[data-holding="true"] {
     transform: none;
     transition: none;
   }
-  [data-landed="true"],
+  .pressable[data-landed="true"],
   .badge-arrive {
     animation: none;
   }

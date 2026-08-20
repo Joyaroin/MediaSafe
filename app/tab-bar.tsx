@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { LibraryIcon, ListsIcon, SearchIcon, UpNextIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
+import { PHONE_BAR } from "./phone-bar";
 
 /**
  * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
@@ -110,7 +111,11 @@ export function TabBar() {
       // `app/globals.css` takes this bar out of the layout by while the Library is in
       // selection mode (issue #197), and the reason that rule can be written without any
       // state reaching this component from a grid three routes down.
-      className="phone-tab-bar fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-hair frosted pt-2 pb-[22px] lg:hidden"
+      //
+      // `PHONE_BAR` is the frosting, the hairline and the four numbers that add up to
+      // `--tab-bar-height`, shared with the bar that replaces this one (`app/phone-bar.ts`).
+      // The four-column grid is this bar's own and stays here.
+      className={`phone-tab-bar ${PHONE_BAR} grid grid-cols-4`}
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = isCurrentRoute(pathname, href);
