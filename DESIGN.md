@@ -674,13 +674,21 @@ duplicated rather than guessing which one wins.
 **Empty, failed and pending are three things, and this file settles all three.** `AGENTS.md`
 opens on the first pair — a read that fails throws, an empty state is reachable only from a
 query that succeeded and found nothing, and `tvtracker` collapsed them for its entire life.
-Pending is the third, it arrived without a treatment, and the absence has a cost on screen:
-**every `force-dynamic` route in the application renders nothing while it waits**, because not
-one of them has a loading boundary. Tapping a tab leaves the previous screen frozen and fully
-interactive-looking until every query on the new one has resolved. (No count is given here on
-purpose. §12 closed a defect of exactly that shape — *a number duplicated into a file with no
-reason to know it is wrong by default* — and a route count is the most movable number in the
-repository.)
+Pending is the third, it arrived without a treatment, and the absence had a cost on screen:
+**every `force-dynamic` route in the application rendered nothing while it waited**, because
+not one of them had a loading boundary. Tapping a tab left the previous screen frozen and
+fully interactive-looking until every query on the new one had resolved. (No count is given
+here on purpose. §12 closed a defect of exactly that shape — *a number duplicated into a file
+with no reason to know it is wrong by default* — and a route count is the most movable number
+in the repository.)
+
+**The library is converted and the rest are not yet, and which is which is not recorded
+here.** Issue #180 built radius 1 on `/library` and its two child routes and brought the
+enforcement with it: `tests/route-manifest.test.ts` runs a second audit over `next build`'s
+own output, so every dynamic route still without a boundary is named in that file's
+exemption list with a reason, and adding one to a named route fails the check until the name
+comes out. That list is the live answer to *what is left*; a copy of it in this file would be
+the movable number again, one paragraph up from the note saying not to write one down.
 
 **Most of the answer was already built and was never written down here.** The programme note
 and the three live fact sections both draw a pending state, both draw the same one, and no
@@ -704,7 +712,7 @@ region than the whole screen the reader is currently staring at.
 
 | Blast radius | Treatment | Where it lives |
 |---|---|---|
-| **A whole surface is pending** | The surface's own heading, and one `code-line` in `dim` where the content will be | `loading.tsx` at the page's own segment — **not built yet**, and the one row here that is a decision rather than a description |
+| **A whole surface is pending** | The surface's own heading, and one `code-line` in `dim` where the content will be | `loading.tsx` at the page's own segment — the one row here that was a decision rather than a description, and now `app/pending-line.tsx` at three placements under `/library` |
 | **One region is pending, beside rendered content** | The region's own head alone, in its settled form, marked `role="status"` | a `Suspense` boundary, or the region's own phase state |
 | **A pane is swapping** | Everything the caller already holds — the poster — and the same one dim line | `programme-note.tsx`'s four-phase union |
 
@@ -813,11 +821,22 @@ for the library and Up next it is the full heading. The formula does not change 
   of them takes a boundary:
   - **Nothing but the session.** `/import` awaits `requireUserId()` and reads no data at all —
     the whole screen is its own state, and there is nothing for a dim line to stand in for.
+    **`/search` is the same shape**, found when #180 walked every dynamic route to write the
+    audit's exemption list: the page awaits only the session, and the catalogue query belongs
+    to `search-surface.tsx`'s own four-phase union — radius 3, already built. A route boundary
+    there would draw a second pending state for a read the route does not make.
   - **A read that decides *which* screen, not what is on one.** `/welcome`'s
     `requireImportOfferAnswered()` resolves to a redirect or to a static page. A boundary would
-    flash a pending line for a surface the reader may never be sent to.
+    flash a pending line for a surface the reader may never be sent to. **`/sign-in` is the
+    same shape** — `isSignedIn()` resolves to a redirect or to a form that is a literal in the
+    source, and `searchParams` is not a read.
   - **No read at all.** `app/page.tsx`, a plain server redirect to `/up-next`, resolved before
     anything reaches the browser.
+
+  The four routes are named in `tests/route-manifest.test.ts` as `NO_PENDING_STATE`, kept as
+  its own list beside the not-yet-converted one so that a decision and a backlog are not one
+  array. Giving any of them a boundary fails the audit rather than passing quietly, which is
+  what makes this paragraph enforced rather than remembered.
 
 ### Radius 2 — one region is pending, beside rendered content
 

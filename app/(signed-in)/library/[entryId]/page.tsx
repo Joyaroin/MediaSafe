@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getTitleDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
+import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
 /**
@@ -34,14 +33,7 @@ export default async function TitleDetailPage({
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="border-b border-hair px-6 py-4">
-        <Link
-          href="/library"
-          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-        >
-          ‹ Library
-        </Link>
-      </div>
+      <BackToLibraryBar />
 
       <TitleDetailView detail={detail} />
 
