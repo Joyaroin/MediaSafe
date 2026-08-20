@@ -1,8 +1,10 @@
 "use client";
 
+import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { smooth } from "./motion";
 import { LibraryIcon, ListsIcon, SearchIcon, UpNextIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 
@@ -67,14 +69,19 @@ const TABS = [
   { href: "/lists", label: "Lists", Icon: ListsIcon },
 ] as const;
 
-/** `49px`: `py-2` (`16px`) plus a `16px` icon, a `4px` gap and an `11px` code line
- *  (`0.625rem` at its own `1.1` line-height), plus the `2px` `hair` top border —
- *  `16 + 16 + 4 + 11 + 2 = 49`, and measured against the rendered bar to confirm it,
+/** `54px`: `py-2` (`16px`) plus a `16px` icon, a `4px` gap and a `16px` code line
+ *  (`0.75rem` at its own `1.35` line-height), plus the `2px` `hair` top border —
+ *  `16 + 16 + 4 + 16 + 2 = 54`, and measured against the rendered bar to confirm it,
  *  not taken on faith. Hand-summed here because two other files
  *  (`(signed-in)/layout.tsx`, `errors/write-failure-toast.tsx`) have to reserve or match
  *  it exactly, and a Tailwind arbitrary value repeated three times with no shared source
- *  is the kind of number that drifts the moment one of the three changes. */
-export const TAB_BAR_HEIGHT_PX = 49;
+ *  is the kind of number that drifts the moment one of the three changes.
+ *
+ *  It rose from `49px` when the code line lost its caps and went from `0.625rem`/`1.1`
+ *  to `0.75rem`/`1.35`. That is precisely the drift the paragraph above predicts, and
+ *  the constant is why it cost one edit rather than three: both dependent files read
+ *  this number and neither needed touching. */
+export const TAB_BAR_HEIGHT_PX = 54;
 
 export function TabBar() {
   const pathname = usePathname();
@@ -94,12 +101,28 @@ export function TabBar() {
             aria-current={current ? "page" : undefined}
             className={
               current
-                ? "flex flex-col items-center justify-center gap-1 bg-text py-2 text-ground"
-                : "flex flex-col items-center justify-center gap-1 py-2 text-dim"
+                ? "relative flex flex-col items-center justify-center gap-1 py-2 text-ground"
+                : "relative flex flex-col items-center justify-center gap-1 py-2 text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
             }
           >
-            <Icon className="h-4 w-4" />
-            <span className="code-line">{label}</span>
+            {/* The inversion used to be `bg-text` on the active cell, which meant it
+                appeared in the new cell and disappeared from the old one in the same
+                frame — the reader's eye had to re-find the selection rather than being
+                carried to it. As a `layoutId` it is one element that Motion moves
+                between cells, so the block travels the width of a tab.
+
+                It sits *under* the contents (`inset-0`, with `z-10` on the icon and
+                label) rather than wrapping them, because a shared-layout element cannot
+                also be the flex parent of the thing it animates past. */}
+            {current ? (
+              <motion.span
+                layoutId="tab-bar-active"
+                className="absolute inset-0 bg-text"
+                transition={smooth}
+              />
+            ) : null}
+            <Icon className="relative z-10 h-4 w-4" />
+            <span className="code-line relative z-10">{label}</span>
           </Link>
         );
       })}

@@ -8,7 +8,7 @@ import { SelectableEntry } from "./selectable-entry";
  *
  * `DESIGN.md`, Components: *a full-width button, not a card. Ground `ground`, hairline right
  * and bottom borders, `1rem` padding, `1rem` gap. Left: the plate at `78×104px`. Right:
- * the title in condensed 900 at `2.15rem`, a dim code line, the state label, and a single
+ * the title in lightly-condensed 700 at `1.45rem`, a dim code line, the state label, and a single
  * truncated line of what's next. Hover fills the cell with `raised`. No shadow, no
  * lift, no radius, no scale.* Every class below is that sentence, taken from the reference
  * build (`docs/design/prototypes/repertory-bill.html:344`) rather than re-derived — except

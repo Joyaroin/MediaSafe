@@ -78,28 +78,61 @@
      Five display steps and three text steps. Nine sizes total, and
      nothing off-ramp: a bill is set from a case of known sizes, and
      an arbitrary rem value is the tell that no case exists. The ninth
-     is the code line's 0.625rem, baked into its utility because the
+     is the code line's `0.75rem`, baked into its utility because the
      code line is one size everywhere.
 
      Each token declares a font size and NOTHING else — there is no
      paired `--text-*--line-height`. That separation is what lets one
-     size serve both a condensed caps title and a plain running line. */
-  --text-bill-xl: 3.6rem; /* the programme note's title          */
-  --text-bill-lg: 2.6rem; /* phone hero, full-surface headlines  */
-  --text-bill-md: 2.15rem; /* a bill entry, inline headlines      */
-  --text-bill-sm: 1.6rem; /* section heads, row titles, toast    */
-  --text-bill-xs: 1.15rem; /* wordmark, compact row titles        */
-  --text-note: 0.92rem; /* synopsis and running prose          */
-  --text-item: 0.85rem; /* episode names, metadata, fields     */
-  --text-fine: 0.7rem; /* attribution and legal notices       */
+     size serve both a name and a plain running line.
+
+     Re-cut in this change: the five display steps came down by about a
+     third, and the three text steps went up slightly. The old ramp was
+     drawn for condensed 900 caps, where a name is a graphic element and
+     wants to be enormous. Set in sentence case at `wdth 85 / wght 700`
+     the same size stops reading as a poster and starts reading as a
+     shout, so the case change and the re-cut are one decision, not two. */
+  --text-bill-xl: 2.4rem; /* the programme note's title          */
+  --text-bill-lg: 1.9rem; /* phone hero, full-surface headlines  */
+  --text-bill-md: 1.45rem; /* a bill entry, inline headlines      */
+  --text-bill-sm: 1.2rem; /* section heads, row titles, toast    */
+  --text-bill-xs: 1rem; /* wordmark, compact row titles        */
+  --text-note: 0.95rem; /* synopsis and running prose          */
+  --text-item: 0.875rem; /* episode names, metadata, fields     */
+  --text-fine: 0.75rem; /* attribution and legal notices       */
 
   /* A bill has no rounded corners and no drop shadows. Depth is surface
      layering and hairlines. These are zeroed deliberately, not skipped. */
   --radius-none: 0px;
 
-  --tracking-code: 0.16em;
+  --tracking-code: 0.005em;
 
+  /* ── Motion ─────────────────────────────────────────────────────
+     The philosophy in one line: a moving thing has mass, and you can
+     catch it mid-flight. That splits the vocabulary in two, and the
+     split is why a spring preset is not listed here.
+
+     Anything a finger or a cursor can interrupt — a sheet being
+     dragged, a tile being pressed, a panel that can be dismissed
+     before it finishes arriving — is a **spring**, and springs live in
+     `app/motion.ts`. A CSS transition cannot be redirected once it is
+     running: reverse it halfway and it restarts from a standstill at
+     the new target, which is exactly the glassiness this change exists
+     to remove. A spring carries its current velocity into the new
+     target instead, so the thing under the finger never stops.
+
+     Everything declarative — a colour, a fade, a reveal nothing can
+     catch — stays a CSS transition and reads its timing from here.
+
+     Exits run at `--dur-fast` against entrances at `--dur-base` or
+     slower. Arriving is where the character lives; leaving is where
+     impatience does. */
   --ease-press: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --dur-fast: 140ms; /* immediate feedback, and every exit          */
+  --dur-base: 220ms; /* routine state change                        */
+  --dur-slow: 380ms; /* layout, overlay, cross-surface continuity   */
 }
 
 @layer base {
@@ -164,20 +197,106 @@
 
 @utility bill-title {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 62, "wght" 900;
-  text-transform: uppercase;
-  letter-spacing: -0.005em;
-  line-height: 0.86;
+  font-variation-settings: "wdth" 85, "wght" 700;
+  letter-spacing: -0.015em;
+  line-height: 1.05;
 }
 
 @utility code-line {
   font-variation-settings: "wdth" 100, "wght" 600;
-  text-transform: uppercase;
   letter-spacing: var(--tracking-code);
   /* Baked in, not read from the ramp: the code line is one size everywhere, which is
-     why 0.625rem is the one step of the nine that is not a token. */
-  font-size: 0.625rem;
-  line-height: 1.1;
+     why this is the one step of the nine that is not a token. It rose from 0.625rem
+     when the caps came off: a capital at 10px carries the x-height of a lowercase at
+     ~13px, so keeping the old size through the case change would have quietly cut the
+     label register's legibility by a third. */
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+/* ── The staggered entrance — a list that arrives as a list ──────────────────────────
+   Applied to the container; every direct child inherits the run. Kept in CSS rather
+   than given to Motion on purpose, and the rule is the one `app/motion.ts` states: a
+   spring buys interruptibility, and nothing can catch a grid that is appearing. A
+   declarative, uncatchable reveal is exactly what a keyframe is for, and doing it here
+   costs no client boundary — `library-entry-cell.tsx` and the rail tiles stay server
+   components.
+
+   `backwards` is load-bearing. Without it every child paints at its final opacity for
+   the length of its own delay and then snaps back to 0 to start animating, which reads
+   as a flash rather than a stagger.
+
+   The delay is capped at the tenth child, and everything past it starts together. A
+   library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
+   arriving; the cap keeps the whole run under 300ms at any length, which is the point
+   where stagger still reads as rhythm instead of as the page being slow. */
+@utility stagger-rise {
+  & > * {
+    animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+  }
+  & > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  & > *:nth-child(2) {
+    animation-delay: 30ms;
+  }
+  & > *:nth-child(3) {
+    animation-delay: 60ms;
+  }
+  & > *:nth-child(4) {
+    animation-delay: 90ms;
+  }
+  & > *:nth-child(5) {
+    animation-delay: 120ms;
+  }
+  & > *:nth-child(6) {
+    animation-delay: 150ms;
+  }
+  & > *:nth-child(7) {
+    animation-delay: 180ms;
+  }
+  & > *:nth-child(8) {
+    animation-delay: 210ms;
+  }
+  & > *:nth-child(9) {
+    animation-delay: 240ms;
+  }
+  & > *:nth-child(n + 10) {
+    animation-delay: 270ms;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    /* 8px, not 24. A short rise reads as the row settling onto the sheet; a long one
+       reads as the row flying in from somewhere it never was. */
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The same rule the sweep and the poster morph already follow: the content still
+   arrives, it just stops travelling to get here. Opacity is kept — it is what makes the
+   arrival legible at all — and only the movement is dropped. */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-rise > * {
+    animation-duration: 1ms;
+    animation-delay: 0ms !important;
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: none;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 /* The poster (#135) — what replaces the plate. Full-colour TMDB artwork at its own
@@ -238,6 +357,69 @@
   .watch-sweep {
     animation-duration: 1ms;
   }
+}
+
+/* ── Press ──────────────────────────────────────────────────────────────────────────
+   The acknowledgement every tappable surface owes a finger. Scale only, and only
+   downward: colour is not available for this, because in this world colour means *this
+   was marked*, and a control that tints under the thumb is claiming to have recorded
+   something it has not.
+
+   `0.97` and not `0.9`. The gesture is a confirmation that the tap landed, not an
+   animation to watch; a deep press on a poster-sized tile turns the whole grid into a
+   trampoline. `--dur-fast` in, and the release rides the same curve back.
+
+   CSS rather than Motion for the same reason the stagger is: a press has no state a
+   finger can catch it in mid-flight, and keeping it here leaves every tile a server
+   component. */
+@utility pressable {
+  transition:
+    transform var(--dur-fast) var(--ease-out-quart),
+    filter var(--dur-fast) var(--ease-out-quart);
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable {
+    transition: none;
+  }
+  .pressable:active {
+    transform: none;
+  }
+}
+
+/* ── The poster morph, now authored ─────────────────────────────────────────────────
+   Issue #141 shipped the morph on the browser's own defaults: no duration and no easing
+   were declared, so the shared poster moved on the UA's stock curve — around 250ms of
+   near-linear ease. That is the single largest piece of "missing animation" in the app,
+   because it is the one moment where something genuinely travels across the screen and
+   it was the one moment nobody had timed.
+
+   `::view-transition-group` is what moves and resizes the shared poster, so it gets the
+   long confident arrival: `--dur-slow` on `--ease-press`, an exponential ease-out that
+   covers most of the distance immediately and then settles. That asymmetry is what makes
+   a morph read as a thing with mass being carried rather than a box being tweened.
+
+   The root cross-fade underneath it is deliberately *shorter* than the morph. The poster
+   is the subject and should be the last thing to settle; the page it is travelling over
+   has no business competing for that attention, and a full-length fade on the whole
+   document is what makes a view transition feel like a slideshow.
+
+   `--ease-press` is unchanged from the value #88 chose for the watch strike. Reusing it
+   rather than picking a second curve is deliberate: one arrival curve across the app is
+   what makes two unrelated surfaces feel like the same hand made them. */
+::view-transition-group(*) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-press);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur-base);
+  animation-timing-function: var(--ease-out-quart);
 }
 
 /* Issue #141's poster morph, collapsed rather than removed: `::view-transition-group`

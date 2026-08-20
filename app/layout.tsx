@@ -4,6 +4,7 @@ import { OfflineBanner } from "@/errors/offline-banner";
 import { WriteFailureToasts } from "@/errors/write-failure-toast";
 
 import { archivo } from "./fonts";
+import { MotionProvider } from "./motion-provider";
 import "./globals.css";
 
 // The one piece of user-facing copy in this change. Taken verbatim from SPEC.md §2
@@ -35,7 +36,10 @@ export default function RootLayout({
             banner is at the very top of the page. When the masthead arrives it goes
             below this, not above it. */}
         <OfflineBanner />
-        {children}
+        {/* Wraps `children` and not `<body>`'s whole contents: the offline banner and the
+            write-failure toast are already mounted, and moving them inside would change
+            nothing about how they animate while adding a client boundary above them. */}
+        <MotionProvider>{children}</MotionProvider>
         <WriteFailureToasts />
       </body>
     </html>

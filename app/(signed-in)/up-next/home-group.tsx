@@ -32,7 +32,8 @@ export function HomeGroup({
   entries,
 }: {
   /** Two words at most, needing no explanation — `design/catalogue-wall.html`'s own
-   *  group labels, in Title Case (`bill-title` renders it uppercase). */
+   *  group labels, in Title Case, which is now also how they render — `bill-title`
+   *  stopped uppercasing when the type came down. */
   label: string;
   /** That group's own screen, holding the whole of it. */
   href: string;

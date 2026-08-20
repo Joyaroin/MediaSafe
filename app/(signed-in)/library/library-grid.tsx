@@ -87,7 +87,7 @@ export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }
       // in: there is one library heading, and a prop would let a caller point the list at
       // something else without anything noticing.
       aria-labelledby={LIBRARY_HEADING_ID}
-      className="grid grid-cols-1 bg-ground sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      className="stagger-rise grid grid-cols-1 bg-ground sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
     >
       {entries.map((entry) => (
         <LibraryEntryCell key={entry.libraryEntryId} entry={entry} />
