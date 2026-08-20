@@ -589,6 +589,39 @@ disguise.
 > reversal, put to Adham twice with the cost named both times and chosen both times. To mark
 > an episode, open the title. **Do not helpfully re-add one.**
 
+### Opening a title does not leave Up next
+
+Tapping a tile on the phone's Up next tab **raises a sheet over the tab**. It does not
+navigate.
+
+Until this, a group tile was a `Link` to `/library/{entryId}` — a Library surface, under
+the Library's path, carrying a `‹ Library` bar back to a grid the reader had not asked for.
+Reached from Up next that is a one-way door: the reader taps a show and the way back leads
+somewhere else, with their scroll position in five horizontal tracks gone. The desktop has
+never had this problem, because #137's answer there is a pane that swaps while nothing
+navigates. The sheet is that same answer in the shape a phone has room for.
+
+- **It is the programme note, in a sheet.** The content is `ProgrammeNoteContent` — the
+  identical component the desktop pane and the title-detail route both render — so the
+  recording controls the note above sends the reader to the title *for* are here, one tap
+  from the tab, without costing them their place. The home still has no control of its own;
+  that reversal stands.
+- **The motion is `sheet`, and this is its first caller.** It sat in `app/motion.ts`
+  unused from #132 — *"slower and heavier: a sheet has more mass than a chip"* — and this
+  is the surface it was written for. The panel springs in on `sheet` and leaves on `exit`,
+  because §6's rule holds here too: nothing can catch a thing that is already leaving. The
+  backdrop only fades; a backdrop that springs draws the eye to the ground rather than to
+  the thing arriving on it.
+- **Pending is the note's own four-phase machine** (§9, radius 3), reused rather than
+  re-derived. The `loading` frame draws the poster, the name and the year the tile already
+  handed over, so the morph has a destination the instant it starts.
+- **The route is not deleted.** `/library/{entryId}` is still correct for the Library's own
+  grid and for a deep link, and the group screens at `/up-next/{group}` still use it — they
+  have no sheet. A tile decides which it is by whether a sheet is above it in the tree, not
+  by a media query: the five groups only ever render inside `lg:hidden`, so *is there a
+  sheet* and *is this the phone* are already the same question. #136 deleted this build's
+  only `matchMedia` branch and nothing here reintroduces one.
+
 ---
 
 ## 8. The poster, and the morph
@@ -621,8 +654,8 @@ is describing the committed library.
 ### The morph
 
 Selecting a tile morphs its poster into the one on the surface that opens — the desktop
-panel, or the phone's title-detail route. It is the browser's native View Transitions API,
-reached through React's `<ViewTransition>`.
+panel, the phone's title sheet, or the phone's title-detail route. It is the browser's
+native View Transitions API, reached through React's `<ViewTransition>`.
 
 **The morph is authored, and this reverses what this file said one ticket ago.** The
 previous wording made the browser default *the rule rather than an omission* — the motion
@@ -656,13 +689,22 @@ the panel's on the way in — one for each name, in the same commit. The name-dr
 what keeps those two from colliding.
 
 **Two name families, on purpose**: `rail-poster-{id}` for the desktop pane and
-`group-poster-{id}` for the phone route. The desktop pane and the phone route can both be
+`group-poster-{id}` for the phone. The desktop pane and the phone route can both be
 showing the same title at once — a reader on desktop with the phone route open in another
 tab — and a name shared across them would pair the wrong two elements.
 
+**The phone's sheet shares `group-poster-{id}` with the phone route** rather than opening
+a third family, because the two are never on screen together: the sheet lives on
+`/up-next` and the route is `/library/{id}`. What *is* on screen together is the sheet and
+the tile that opened it, which is why the name-drop below applies to the sheet as much as
+to the rail.
+
 **A name can only mark one on-screen element at a time.** The rail tile therefore *drops*
 its name once selected (the pane is the one showing that poster now) and picks it back up
-the moment something else is selected, ready to be the next morph's start. Without the drop,
+the moment something else is selected, ready to be the next morph's start. **A group tile
+drops its name the same way while the phone's sheet holds it** — and unlike the route,
+which replaced the page and took the tile with it, the sheet sits *over* a tile that is
+still mounted, so without the drop there is no morph at all. Without the drop,
 picking a second tile would mount a second `rail-poster-{id}` for the *first* tile's id
 while the original was still on screen, and the browser skips a transition it finds
 duplicated rather than guessing which one wins.
