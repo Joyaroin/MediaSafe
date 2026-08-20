@@ -174,8 +174,10 @@ export function UpNextRail({
           enough apart that anything else reads as a misalignment.
 
           `text-bill-xs` is the ramp's own "compact row title" step — the prototype's
-          railhead is condensed uppercase at a size between the wordmark's and a section
-          head's, which is this one. */}
+          railhead sits at a size between the wordmark's and a section head's, which is
+          this one. The prototype sets its `.disp` in caps and this no longer does: the
+          sentence-case direction is a later decision than `catalogue-wall.html`, and it
+          overrides the prototype on case while leaving the size relationship intact. */}
       <div className="flex items-baseline gap-3 px-6 pb-3">
         <h2 id={railId} className="bill-title text-bill-xs text-text">
           {label}
@@ -190,7 +192,7 @@ export function UpNextRail({
         ref={trackRef}
         onScroll={measure}
         aria-labelledby={railId}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-6 px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="stagger-rise flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-6 px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {entries.map((entry) => (
           <UpNextTile key={entry.libraryEntryId} entry={entry} />

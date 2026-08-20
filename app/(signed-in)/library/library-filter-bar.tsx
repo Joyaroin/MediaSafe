@@ -1,7 +1,9 @@
 "use client";
 
+import { motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { snappy } from "@/app/motion";
 import { LIBRARY_STATES, type LibraryState } from "@/db/access";
 import {
   DEFAULT_LIBRARY_SORT,
@@ -52,12 +54,28 @@ const CHIPS: { value: Chip; label: string }[] = [
  * table, because there is exactly one exception to name and a table would give it the same
  * shape as five identical rows.
  */
+/* The selected chip's inverted ground is drawn by `<ChipGround />` below rather than by a
+   `bg-text` class, so every chip here is transparent-grounded and the same size whether it
+   is selected or not. The inversion is one element that slides between them. */
 function chipClassName(value: Chip, selected: boolean): string {
-  if (selected) return "bg-text px-3 py-1.5 text-ground code-line";
+  if (selected) return "relative px-3 py-1.5 text-ground code-line";
   if (value === "watching") {
-    return "bg-ground px-3 py-1.5 text-accent code-line transition-colors hover:bg-raised";
+    return "relative bg-ground px-3 py-1.5 text-accent code-line transition-colors duration-[var(--dur-fast)] hover:bg-raised";
   }
-  return "bg-ground px-3 py-1.5 text-dim code-line transition-colors hover:bg-raised hover:text-text";
+  return "relative bg-ground px-3 py-1.5 text-dim code-line transition-colors duration-[var(--dur-fast)] hover:bg-raised hover:text-text";
+}
+
+/** The travelling inversion. `snappy` and not `smooth`: a chip is pressed directly, and a
+ *  trace of overshoot is what makes a direct manipulation feel answered rather than
+ *  merely processed. */
+function ChipGround() {
+  return (
+    <motion.span
+      layoutId="library-chip-selected"
+      className="absolute inset-0 bg-text"
+      transition={snappy}
+    />
+  );
 }
 
 export function LibraryChips({
@@ -81,7 +99,8 @@ export function LibraryChips({
           onClick={() => onChange(chip.value)}
           className={chipClassName(chip.value, chip.value === value)}
         >
-          {chip.label}
+          {chip.value === value ? <ChipGround /> : null}
+          <span className="relative z-10">{chip.label}</span>
         </button>
       ))}
     </div>

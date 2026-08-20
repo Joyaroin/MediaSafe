@@ -68,12 +68,15 @@ export function GroupTile({
 }) {
   return (
     <li className={className}>
-      <Link href={`/library/${entry.libraryEntryId}`} className="group block w-full text-left">
+      <Link
+        href={`/library/${entry.libraryEntryId}`}
+        className="pressable group block w-full text-left"
+      >
         <ViewTransition name={groupPosterTransitionName(entry.libraryEntryId)}>
           <Poster
             posterPath={entry.posterPath}
             width={POSTER_CDN_WIDTH}
-            className="w-full transition duration-150 group-hover:brightness-110"
+            className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110"
           />
         </ViewTransition>
 

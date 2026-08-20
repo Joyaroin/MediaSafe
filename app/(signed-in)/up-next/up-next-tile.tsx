@@ -13,9 +13,9 @@ import type { UpNextEntry } from "@/db/access";
  * `design/catalogue-wall.html`'s `.tile`, which is binding on appearance: a poster in full
  * colour at its own ratio, the title beneath it in plain body text over two lines at most,
  * and the year under that. **Not the display face**: the prototype's `.tname` carries no
- * `.disp` class, so the condensed uppercase this codebase reaches for by default belongs to
- * the rail's heading and not to the titles under it — the artwork is the loudest thing on
- * the rail, and a wall of shouting names would compete with it.
+ * `.disp` class, so the display face this codebase reaches for by default belongs to the
+ * rail's heading and not to the titles under it — the artwork is the loudest thing on the
+ * rail, and a wall of shouting names would compete with it.
  *
  * **No count, no badge, no state label, no episode name.** §9, and issue #137 restates it
  * for this surface specifically. The library is not a backlog to feel bad about, and every
@@ -76,7 +76,7 @@ export function UpNextTile({ entry }: { entry: UpNextEntry }) {
         type="button"
         onClick={() => select(entry.libraryEntryId, entry.posterPath)}
         aria-current={selected ? "true" : undefined}
-        className="group block w-full text-left"
+        className="pressable group block w-full text-left"
       >
         {selected ? (
           <Poster

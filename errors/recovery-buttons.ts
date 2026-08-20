@@ -10,9 +10,16 @@
  *
  * These are class strings and not components on purpose. `app/globals.css` says there is
  * no component library in this repository yet and that the omission is deliberate; it also
- * fixes its own contents at twenty-one `@theme` declarations and three `@utility` rules,
- * so a fourth utility is not the home for this either. Naming the treatment is the
+ * fixes its own contents at a counted number of `@theme` declarations and `@utility`
+ * rules, so a further utility is not the home for this either. Naming the treatment is the
  * smallest thing that stops the drift without deciding either of those questions.
+ *
+ * The count used to be quoted here — *"twenty-one `@theme` declarations and three
+ * `@utility` rules"* — and was wrong twice over: `DESIGN.md` §11 caught it reading 21/3
+ * against an actual 20/4, and the motion work then moved it again to 25/6. A number
+ * duplicated into a file that has no reason to know it is a number that is wrong by
+ * default; `DESIGN.md` §9 and the stylesheet's own heading are the two places that state
+ * it, and they are enough.
  *
  * When the library surfaces arrive and *Clear the filter* and *Bring your library in* need
  * these too, they move somewhere less specific than `errors/`. They are not errors-only;
