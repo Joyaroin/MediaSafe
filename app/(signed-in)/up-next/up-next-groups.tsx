@@ -1,5 +1,6 @@
 import type { LibraryStateGroupEntry, UpNextRails } from "@/db/access";
 import { HomeGroup } from "./home-group";
+import { TitleSheetProvider } from "./title-sheet";
 import { UpNextEmpty } from "./up-next-empty";
 
 /**
@@ -58,24 +59,39 @@ export function UpNextGroups({
   }
 
   return (
-    // Turn 9: *five groups → 104px tab-bar clearance*. `(signed-in)/layout.tsx` already
-    // reserves the bar's own height for every screen in the group, so what this adds is
-    // the remainder — written as the subtraction rather than as the `29px` it currently
-    // evaluates to, so the clearance stays 104px if the bar is ever redrawn.
-    <div className="pb-[calc(104px-var(--tab-bar-height))]">
-      <HomeGroup label="Ongoing" href="/up-next/ongoing" entries={rails.ongoing} />
-      <HomeGroup label="Coming back" href="/up-next/coming-back" entries={rails.comingBack} />
-      <HomeGroup label="Old friends" href="/up-next/old-friends" entries={rails.oldFriends} />
-      <HomeGroup label="Watchlist" href="/up-next/watchlist" entries={watchlist} />
-      {/* The only place `abandoned` is passed. It is the group rather than the tile that
-          knows, because these five arrays are five separate reads and only this one is
-          entirely abandoned titles — `home-group.tsx` has the longer reason. */}
-      <HomeGroup
-        label="Abandoned"
-        href="/up-next/abandoned"
-        entries={abandoned}
-        abandoned
-      />
-    </div>
+    /* Every tile below opens over this surface rather than navigating into the Library.
+       The provider is here, wrapping all five groups, rather than inside `HomeGroup`:
+       one sheet serves the whole tab, so opening a second title while the first is up
+       replaces what is in the sheet instead of stacking a second one over it. */
+    <TitleSheetProvider>
+      {/* Turn 9: *five groups → 104px tab-bar clearance*. `(signed-in)/layout.tsx`
+          already reserves the bar's own height for every screen in the group, so what
+          this adds is the remainder — written as the subtraction rather than as the
+          `29px` it currently evaluates to, so the clearance stays 104px if the bar is
+          ever redrawn. */}
+      <div className="pb-[calc(104px-var(--tab-bar-height))]">
+        <HomeGroup label="Ongoing" href="/up-next/ongoing" entries={rails.ongoing} />
+        <HomeGroup
+          label="Coming back"
+          href="/up-next/coming-back"
+          entries={rails.comingBack}
+        />
+        <HomeGroup
+          label="Old friends"
+          href="/up-next/old-friends"
+          entries={rails.oldFriends}
+        />
+        <HomeGroup label="Watchlist" href="/up-next/watchlist" entries={watchlist} />
+        {/* The only place `abandoned` is passed. It is the group rather than the tile
+            that knows, because these five arrays are five separate reads and only this
+            one is entirely abandoned titles — `home-group.tsx` has the longer reason. */}
+        <HomeGroup
+          label="Abandoned"
+          href="/up-next/abandoned"
+          entries={abandoned}
+          abandoned
+        />
+      </div>
+    </TitleSheetProvider>
   );
 }
