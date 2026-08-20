@@ -1,5 +1,6 @@
 import type { LibraryStateGroupEntry, UpNextRails } from "@/db/access";
 import { HomeGroup } from "./home-group";
+import { TitleSheetProvider } from "./title-sheet";
 import { UpNextEmpty } from "./up-next-empty";
 
 /**
@@ -58,12 +59,38 @@ export function UpNextGroups({
   }
 
   return (
-    <div className="pb-6">
-      <HomeGroup label="Ongoing" href="/up-next/ongoing" entries={rails.ongoing} />
-      <HomeGroup label="Coming back" href="/up-next/coming-back" entries={rails.comingBack} />
-      <HomeGroup label="Old friends" href="/up-next/old-friends" entries={rails.oldFriends} />
-      <HomeGroup label="Watchlist" href="/up-next/watchlist" entries={watchlist} />
-      <HomeGroup label="Abandoned" href="/up-next/abandoned" entries={abandoned} />
-    </div>
+    /* Every tile below opens over this surface rather than navigating into the Library.
+       The provider is here, wrapping all five groups, rather than inside `HomeGroup`:
+       one sheet serves the whole tab, so opening a second title while the first is up
+       replaces what is in the sheet instead of stacking a second one over it. */
+    <TitleSheetProvider>
+      <div className="pb-6">
+        <HomeGroup
+          label="Ongoing"
+          href="/up-next/ongoing"
+          entries={rails.ongoing}
+        />
+        <HomeGroup
+          label="Coming back"
+          href="/up-next/coming-back"
+          entries={rails.comingBack}
+        />
+        <HomeGroup
+          label="Old friends"
+          href="/up-next/old-friends"
+          entries={rails.oldFriends}
+        />
+        <HomeGroup
+          label="Watchlist"
+          href="/up-next/watchlist"
+          entries={watchlist}
+        />
+        <HomeGroup
+          label="Abandoned"
+          href="/up-next/abandoned"
+          entries={abandoned}
+        />
+      </div>
+    </TitleSheetProvider>
   );
 }
