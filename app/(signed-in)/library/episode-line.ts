@@ -21,8 +21,35 @@
  * The row. `programme-note-episodes.tsx` adds `relative` to this — its sweep is absolutely
  * positioned inside the row and must not take up flow space — and the unowned row, having
  * no sweep, does not.
+ *
+ * ── `py-2`, and why it is not `py-2.5` any more ──────────────────────────────────────
+ *
+ * The sentence-case type re-cut grew `code-line` from `0.625rem`/`1.1` to `0.75rem`/`1.35`
+ * — a bigger step than it looks, because taking the caps off a label costs about a third
+ * of its x-height and the size had to rise to pay that back. `RECORDING_CONTROL` is a
+ * `code-line` inside a border with `py-1`, so its box went `20.9px` → `26.2px`, and at
+ * `py-2.5` that pushed the unwatched row to `46.2px` while the settled row still sat on
+ * `min-h-11`'s `44px`.
+ *
+ * **That is the row shrinking under the thumb as the mark lands** — the exact thing
+ * `min-h-11` was measured into existence to prevent. `DESIGN.md` §6 says *re-measure if
+ * you touch the row*, and this is what the re-measure found.
+ *
+ * Taking `2px` off each side is the fix that costs nothing visible: `min-h-11` still
+ * dominates (`26.2 + 16 = 42.2` is under `44`), so the row renders at the same `44px` it
+ * always did, with the same control at the same size. Raising the floor to `min-h-12`
+ * would also have worked and was rejected — it makes every row in a long season 9% taller
+ * to solve a problem the padding can absorb.
+ *
+ * Re-measured in Chromium against the compiled CSS, all four states — unwatched, up-next,
+ * marking, settled — at both pane widths:
+ *
+ * | Pane | `py-2.5` (before) | `py-2` (now) |
+ * |---|---|---|
+ * | `420px` | `46.2 / 46.2 / 44 / 44` — resizes 2.2px | `44 / 44 / 44 / 44` — stable |
+ * | `375px` | `46.2 / 46.2 / 44 / 44` — resizes 2.2px | `44 / 44 / 44 / 44` — stable |
  */
-export const EPISODE_ROW = "flex min-h-11 items-center gap-3 py-2.5";
+export const EPISODE_ROW = "flex min-h-11 items-center gap-3 py-2";
 
 /**
  * The `E1` label: dim, fixed-width, tabular. The owned row swaps this for an accent chip

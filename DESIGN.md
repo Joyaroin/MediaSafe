@@ -189,7 +189,7 @@ dividers doing work that spacing should be doing.
 
 The world has exactly three devices for separating things, and they are used in this order:
 
-1. **Scale and weight** — a condensed 900-weight title against plain body text.
+1. **Scale and weight** — a lightly-condensed 700-weight title against plain body text.
 2. **Space.**
 3. **A `1px` `hair` rule**, when two things genuinely abut and neither of the above will do.
 
@@ -219,17 +219,24 @@ tokens and one baked-in ninth.
 
 | Token | Size | What it sets |
 |---|---|---|
-| `--text-bill-xl` | `3.6rem` | the programme note's title |
-| `--text-bill-lg` | `2.6rem` | phone hero, full-surface headlines |
-| `--text-bill-md` | `2.15rem` | a bill entry, inline headlines |
-| `--text-bill-sm` | `1.6rem` | section heads, row titles, toast |
-| `--text-bill-xs` | `1.15rem` | wordmark, compact row titles |
-| `--text-note` | `0.92rem` | synopsis and running prose |
-| `--text-item` | `0.85rem` | episode names, metadata, fields |
-| `--text-fine` | `0.7rem` | attribution and legal notices |
+| `--text-bill-xl` | `2.4rem` | the programme note's title |
+| `--text-bill-lg` | `1.9rem` | phone hero, full-surface headlines |
+| `--text-bill-md` | `1.45rem` | a bill entry, inline headlines |
+| `--text-bill-sm` | `1.2rem` | section heads, row titles, toast |
+| `--text-bill-xs` | `1rem` | wordmark, compact row titles |
+| `--text-note` | `0.95rem` | synopsis and running prose |
+| `--text-item` | `0.875rem` | episode names, metadata, fields |
+| `--text-fine` | `0.75rem` | attribution and legal notices |
 
-The ninth is `code-line`'s `0.625rem`, baked into the utility rather than tokenised
+The ninth is `code-line`'s `0.75rem`, baked into the utility rather than tokenised
 **because the code line is one size everywhere** — it has no ramp to sit on.
+
+**The ramp was re-cut when the caps came off.** The five display steps came down by about
+a third and the three text steps rose slightly. That is one decision and not two: the
+earlier ramp was drawn for condensed 900 caps, where a name is a graphic element and wants
+to be enormous. The same sizes set in sentence case at `wdth 85 / wght 700` stop reading as
+a poster and start reading as a shout, so changing the case without re-cutting the ramp
+would have been a half-measure. The closure is the deliverable, not the specific numbers.
 
 **Nothing off-ramp.** An arbitrary `rem` value in a class list is the tell that no case
 exists. Each token declares a font size and **nothing else** — there is no paired
@@ -242,11 +249,27 @@ The `wdth` axis is load-bearing, not decorative. A title that arrives without it
 smaller title, it is a different typeface — which is why each role is an `@utility` that
 travels as a bundle rather than a set of classes a call site can half-apply.
 
-- **`bill-title`** — `wdth 62`, `wght 900`, uppercase, `letter-spacing: -0.005em`,
-  `line-height: 0.86`. Names, headings, rail heads.
-- **`code-line`** — `wdth 100`, `wght 600`, uppercase, `letter-spacing: 0.16em`
-  (`--tracking-code`), `0.625rem`, `line-height: 1.1`. Metadata, labels, the display name,
+- **`bill-title`** — `wdth 85`, `wght 700`, sentence case, `letter-spacing: -0.015em`,
+  `line-height: 1.05`. Names, headings, rail heads.
+- **`code-line`** — `wdth 100`, `wght 600`, sentence case, `letter-spacing: 0.005em`
+  (`--tracking-code`), `0.75rem`, `line-height: 1.35`. Metadata, labels, the display name,
   episode codes.
+
+**Neither role is uppercase any more, and that is the largest single change to how this
+world reads.** Both were: `bill-title` at `wdth 62 / wght 900` and `code-line` at `0.16em`
+tracking, which between them set **118 elements in caps** across the build. Counted, that
+is what "too much" meant. The registers still differ by width, weight, size and colour —
+the distinction survives; only the shouting is gone.
+
+Two consequences worth carrying:
+
+- **`code-line` had to grow**, `0.625rem` → `0.75rem`. A capital at 10px carries the
+  x-height of a lowercase at roughly 13px, so holding the size through the case change
+  would have cut the label register's legibility by about a third while appearing to change
+  nothing. Every baked-in size is load-bearing in both directions.
+- **No call site changed.** The caps were `text-transform`, never literal strings, so the
+  source already carried correct sentence case throughout. If a surface ever reads as
+  SHOUTING again it is a literal, and the literal is the bug.
 
 **Body text is not a display face.** A rail tile's title is plain body text over at most two
 lines, and the year under it plainer still — deliberately *not* `bill-title`, because the
@@ -353,7 +376,7 @@ text either side renders on its own, so left alone the row shrinks the moment th
 goes — under a thumb that is still resting on it.
 
 **`min-h-11` (`2.75rem`) is the fix**, and it is sized to the row's own tallest natural
-content (name line + `py-2.5`), not to the control's padding box. The first attempt,
+content (name line + the row's vertical padding), not to the control's padding box. The first attempt,
 `min-h-[1.375rem]`, was sized to the button alone and still let the row settle about
 `0.6px` shorter — Tailwind's preflight `box-sizing` means `min-height` competes with the
 taller of the row's two states, not with the control.
@@ -376,7 +399,29 @@ harnesses, not a regression.
 (`TRAILING`) and the name's `truncate`. Without the second, a long name wraps and takes the
 row's height with it. `FilmRow` reuses the same `li` shape for the same reason.
 
-**Re-measure if you touch the row.** It did not pass the first time.
+### The type re-cut broke this, and the re-measure caught it
+
+Recorded because it is the worked example of why the instruction below exists.
+
+Taking the caps off `code-line` grew it `0.625rem`/`1.1` → `0.75rem`/`1.35`. That is not a
+cosmetic step: `RECORDING_CONTROL` is a `code-line` inside a border with `py-1`, so its box
+went `20.9px` → `26.2px`. At the row's then-`py-2.5`, the unwatched row became `46.2px`
+while the settled row still sat on `min-h-11`'s `44px` — **a 2.2px shrink under the thumb
+at the moment the mark lands**, which is precisely the failure this whole section exists to
+prevent. Nothing about the diff looked like a layout change.
+
+The fix is `py-2.5` → `py-2` on `EPISODE_ROW`. `min-h-11` still dominates
+(`26.2 + 16 = 42.2` is under `44`), so the row renders at the same `44px`, with the same
+control at the same size, and the table above stays true. Raising the floor to `min-h-12`
+was measured too and also works — rejected because it makes every row in a long season 9%
+taller to solve something the padding absorbs for free.
+
+Re-measured in Chromium against the compiled CSS, over all four states (unwatched,
+up-next, marking, settled) at both pane widths: `44 / 44 / 44 / 44` at `420px` and at
+`375px`. Before the padding change, the same run gave `46.2 / 46.2 / 44 / 44`.
+
+**Re-measure if you touch the row.** It did not pass the first time, and it did not pass
+the second time either.
 
 ### Reduced motion costs the animation and never the event
 
@@ -394,6 +439,14 @@ The same rule holds everywhere motion exists:
   is the one motion the CSS media query cannot reach, because `behavior: "smooth"` in
   JavaScript overrides `scroll-behavior` rather than reading it — so `up-next-rail.tsx`
   checks the query itself at the moment of the scroll.
+
+- **Everything Motion animates** is covered once, by `<MotionConfig reducedMotion="user">`
+  in the root layout, which drops transform and layout animation while leaving opacity and
+  colour intact. It is set there rather than per component precisely so that a new
+  animation cannot ship without a reduced-motion path: there is no call site to forget.
+- **The staggered entrance** keeps its opacity fade and drops its `8px` rise, and every
+  child's delay collapses to zero. The list still arrives; it stops travelling to get here.
+- **The press** stops scaling and keeps its colour change.
 
 **The event always happens. Only the animation is negotiable.**
 
@@ -569,11 +622,31 @@ Selecting a tile morphs its poster into the one on the surface that opens — th
 panel, or the phone's title-detail route. It is the browser's native View Transitions API,
 reached through React's `<ViewTransition>`.
 
-**Nothing about the morph is authored.** No easing, no duration, no CSS customising
-`::view-transition-*` beyond the reduced-motion collapse in §6. The browser's own default
-cross-fade-and-resize is what plays, and that is the rule rather than an omission: the
-motion belongs to the poster travelling, not to a curve someone picked. There is no
-duration token for it because there is no duration.
+**The morph is authored, and this reverses what this file said one ticket ago.** The
+previous wording made the browser default *the rule rather than an omission* — the motion
+belonging to the poster travelling, not to a curve someone picked. Adham asked for the
+opposite: motion throughout the app, on Apple's philosophy. That is an owner's decision
+about the product, and it outranks a rule this file wrote while describing a build that had
+not been asked the question yet. Recorded as a reversal rather than quietly overwritten, so
+the next reader can see it was decided and not drifted into.
+
+What is authored, and why each half differs:
+
+```css
+::view-transition-group(*)                    { animation-duration: var(--dur-slow);  animation-timing-function: var(--ease-press); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out-quart); }
+```
+
+- **The group is what moves and resizes the shared poster**, so it gets the long confident
+  arrival — `--dur-slow` on `--ease-press`, an exponential ease-out that covers most of the
+  distance immediately and then settles. That asymmetry is what makes a morph read as a
+  thing with mass being carried rather than a box being tweened.
+- **The root cross-fade underneath is deliberately shorter than the morph.** The poster is
+  the subject and should be the last thing to settle; a full-length fade on the whole
+  document is what makes a view transition feel like a slideshow.
+- **`--ease-press` is not a second curve.** It is the value #88 chose for the watch strike,
+  reused rather than re-picked — one arrival curve across the app is what makes two
+  unrelated surfaces feel like the same hand made them.
 
 **Selecting a different tile mid-view is two morphs, not one** (desktop only): the panel's
 poster morphs into the newly-selected tile's on the way out, and that tile's morphs into
@@ -598,7 +671,7 @@ duplicated rather than guessing which one wins.
 
 The previous file's real value was partly in naming what it had **no** token for, so that
 the next ticket would not add one and call it an oversight fix. The same list, for the world
-that shipped. `app/globals.css` is **20 `@theme` declarations and 4 `@utility` rules**, and
+that shipped. `app/globals.css` is **25 `@theme` declarations and 6 `@utility` rules**, and
 that is the whole of the system.
 
 **There is no spacing scale.** No `--space-*`, no `--gutter`, no rhythm unit. Spacing is
@@ -637,9 +710,35 @@ not drift, it is a **named class string** in the module that owns it — `GHOST_
 `SOLID_RECOVERY`, `DISABLED_DIM`, `IN_FLIGHT`, `STATE_LABELS`, `episode-line.ts`'s four
 strings — not a component and not a fifth `@utility`.
 
-**There is no motion system.** One easing curve (`--ease-press`), one duration that matters
-(`200ms`), and a small number of `duration-150` colour transitions. There is no motion
-scale, no stagger, no spring, and no shared transition token.
+**There is a motion system, and there did not use to be.** This entry previously read
+*there is no motion system … no motion scale, no stagger, no spring, and no shared
+transition token* — an accurate description of a build whose entire vocabulary was one
+easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
+the app; all four of those absences are now present on purpose. What governs it:
+
+- **Three duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
+  (`380ms`) — and three easings: `--ease-press` (unchanged, the arrival curve),
+  `--ease-out-quart`, `--ease-in-out-soft`.
+- **Exits run at `--dur-fast` against entrances at `--dur-base` or slower.** Arriving is
+  where the character lives; leaving is where impatience does.
+- **The dividing rule is interruptibility, and it decides the implementation**, not taste.
+  Anything a finger or cursor can catch mid-flight is a **spring**, authored in
+  `app/motion.ts`. Anything it cannot — a colour, a list entrance, a press — stays a CSS
+  transition or keyframe and reads its timing from the tokens above. A CSS transition
+  cannot be redirected once running: reverse it halfway and it restarts from a standstill
+  at the new target, which is the exact glassiness the springs exist to remove.
+- **The springs are transcribed, not invented.** SwiftUI describes a spring as a *response*
+  and a *damping fraction*; Motion accepts the same perceptual pair as `duration` and
+  `bounce`, where `bounce ≈ 1 - dampingFraction`. `smooth` / `snappy` / `bouncy` carry
+  `.smooth` / `.snappy` / `.bouncy`'s own values. Winding them past the platform's is how
+  motion stops reading as physics and starts reading as a cartoon.
+- **Stagger is capped at the tenth child.** A 472-title library at 30ms a row would take
+  fourteen seconds to finish arriving; the cap holds any list under 300ms, which is where
+  stagger still reads as rhythm rather than as the page being slow.
+
+**`motion` (framer-motion) is a dependency now**, chosen by Adham over a CSS-only
+approximation because interruptible spring physics is the load-bearing half of the brief
+and CSS cannot express it. It is the only runtime dependency this world's look rests on.
 
 **There is no icon set.** The handful that exist are hand-drawn rectilinear SVGs sharing one
 vocabulary with the press mark — *a magnifier would be the only curve in the application.*
@@ -726,10 +825,13 @@ it out of both), so nothing has caught it. It should be deleted.
 - `sidebar.tsx` **and `sidebar-nav.tsx`** both cite `.impeccable/mocks/catalogue-wall.html`
   as the approved mock. **That path does not exist** in the repository — the tracked
   prototype is `design/catalogue-wall.html`.
-- `errors/recovery-buttons.ts` fixes `app/globals.css`'s contents at *"twenty-one `@theme`
-  declarations and three `@utility` rules"*. It is **20 and 4**. (`app/globals.css`'s own
-  section heading had the same off-by-one and is corrected by this ticket, since it sits in
-  the file this one had to read line by line.)
+- ~~`errors/recovery-buttons.ts` fixes `app/globals.css`'s contents at *"twenty-one
+  `@theme` declarations and three `@utility` rules"*.~~ **Closed by the motion work.** It
+  read 21/3 against an actual 20/4, and the motion tokens and utilities then moved the
+  truth again to **25 and 6** — a number duplicated into a file with no reason to know it
+  is wrong by default. The quotation is gone; §9 and the stylesheet's own heading are the
+  two places that state the count now. (`app/globals.css`'s heading had the same
+  off-by-one, corrected by #144 and updated again here.)
 - `masthead.tsx` still cites `docs/design/prototypes/repertory-bill.html` for measures the
   Catalogue Wall now sets.
 - `db/access.ts`'s `listUpNextRails` rule table calls the up next episode *"the next

@@ -192,7 +192,7 @@
   }
 }
 
-/* ── The four `@utility` rules ─────────────────────────────────────────────────────
+/* ── The six `@utility` rules ──────────────────────────────────────────────────────
    What a token cannot carry: a bundle of declarations that must always travel
    together. A title that arrives without its width axis is not a smaller title, it is
    a different typeface.                                                              */
