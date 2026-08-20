@@ -490,20 +490,45 @@ away in the panel it opens.
 - **Clicking a rail tile swaps the panel; it is never a navigation.** The page never routes,
   so it never loses its place, so comparing two candidates costs nothing.
 
-### The phone is not rails
+### The phone has five groups, and they scroll
 
-The phone renders **five vertical groups** instead (#138): **Ongoing · Coming back · Old
-friends · Watchlist · Abandoned** — the same three rules the desktop rails read, plus the
-two states the desktop reaches through Library's own chips and the phone does not carry on
-this screen.
+The phone renders **five groups** rather than three rails (#138): **Ongoing · Coming back ·
+Old friends · Watchlist · Abandoned** — the same three rules the desktop rails read, plus
+the two states the desktop reaches through Library's own chips and the phone does not carry
+on this screen.
 
 Each group is a label, an unconditional `more ›` into a screen holding the whole of it, and
-**a static three-up grid** (`grid-cols-3`, `slice(0, 3)`) — *not* a scrolling track. A rail
-read as a single cramped column is not a smaller rail, it is a different surface.
+**a horizontally scrolling, snapping track of the whole group** (#171). The mechanics are
+the desktop rail's, reused rather than re-derived — `snap-x snap-mandatory` on the track,
+`snap-start` on the tile, `scroll-pl-4` against the track's own `px-4`, and the scrollbar
+hidden. The track carries the page gutter instead of the section so that it can bleed to
+the viewport edges, which is what lets the trailing poster be cut by the edge.
 
-`more ›` appears whenever the group is non-empty, **even when the group has three or fewer
-entries** and the screen behind it would show exactly what is already visible. Hiding it
-once a group fits would make the link's presence a count in disguise.
+**The two differences from a desktop rail, and both are reasoned:**
+
+- **No arrows.** The desktop's exist because a mouse without a horizontal wheel cannot reach
+  the track at all. A thumb can, so an arrow here would be decoration — and the group stays
+  a server component, because with nothing to measure there is nothing to hydrate.
+- **The tile is `104px`, not `132px`** — `design/catalogue-wall.html`'s own `.track > *`
+  measure, and within a pixel or two of what the three-up grid this replaced already
+  rendered at phone widths.
+
+**No cap**, exactly as *Old friends* has none: the group renders everything it is handed.
+The reads behind it already return full lists and were only ever sliced for display, so
+nothing extra is queried, and `loading="lazy"` keeps a long group's artwork off the wire.
+
+> **This reverses part of #138, and the reversal is the point.** #138 built a static
+> three-up grid from the prototype's `.prow`, and the build matched its mock. #171 changed
+> it because browsing a group should not require leaving the screen you are browsing from.
+> It is the first change made against this file rather than against
+> `design/catalogue-wall.html`, which §1 retired as the contract — so the prototype's
+> `.prow` is no longer an argument for anything here.
+
+`more ›` appears whenever the group is non-empty, **even when the group fits without
+scrolling**. Its job narrows rather than disappearing: the screen behind it is a vertical
+grid, a better shape for scanning a large group than one horizontal run, and it is still the
+only route there. Hiding it once a group fits would make the link's presence a count in
+disguise.
 
 > **⚠️ There is no recording control anywhere on the phone home.** This is #138's stated
 > reversal, put to Adham twice with the cost named both times and chosen both times. To mark
