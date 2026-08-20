@@ -541,7 +541,19 @@ is describing the committed library.
 ### The morph
 
 Selecting a tile morphs its poster into the one on the surface that opens — the desktop
-panel, or the phone's title-detail route.
+panel, or the phone's title-detail route. It is the browser's native View Transitions API,
+reached through React's `<ViewTransition>`.
+
+**Nothing about the morph is authored.** No easing, no duration, no CSS customising
+`::view-transition-*` beyond the reduced-motion collapse in §6. The browser's own default
+cross-fade-and-resize is what plays, and that is the rule rather than an omission: the
+motion belongs to the poster travelling, not to a curve someone picked. There is no
+duration token for it because there is no duration.
+
+**Selecting a different tile mid-view is two morphs, not one** (desktop only): the panel's
+poster morphs into the newly-selected tile's on the way out, and that tile's morphs into
+the panel's on the way in — one for each name, in the same commit. The name-drop below is
+what keeps those two from colliding.
 
 **Two name families, on purpose**: `rail-poster-{id}` for the desktop pane and
 `group-poster-{id}` for the phone route. The desktop pane and the phone route can both be

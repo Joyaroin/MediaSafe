@@ -777,6 +777,12 @@ document will ever find, which is the drift this section exists to stop.
   `top: 0` now (`programme-note.tsx`). The Phone section of Navigation is unaffected by any of
   this — the phone's fourth tab is Lists (#146), and it still reaches Settings through the
   masthead's icon rather than a fifth one.
+- **`DESIGN.md`'s Motion section claimed motion exists in exactly one place.** [#141](https://github.com/Joyaroin/MediaSafe/issues/141)
+  adds a second: the poster that carries a reader from a tile into title detail, on both the
+  phone's route push and the desktop's panel swap, morphed via React's `<ViewTransition>`
+  component over the browser's native View Transitions API — no animation library, no authored
+  easing or duration. **Corrected in this branch** — `DESIGN.md`'s Motion section now describes
+  both moments.
 
 ### 10.4 `PRODUCT.md` — historical, and stale in eight places
 
