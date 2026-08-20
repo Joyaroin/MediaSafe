@@ -32,14 +32,17 @@ import { SelectableEntry } from "./selectable-entry";
  */
 
 /**
- * The poster's width in the bill grid — `78px`, one of `DESIGN.md`'s five fixed measures
- * before #135 (the number survives; what filled it does not). It is fixed at every
+ * The poster's width in the bill grid — `66px` since turn 9, down from the `78px` that
+ * was one of `DESIGN.md`'s five fixed measures before #135. It is fixed at every
  * breakpoint: the column count is what changes between a phone and a desktop, and nothing
  * else is (`SPEC.md` §7). Height is not set — the `poster` utility's `2/3` aspect ratio
  * derives it from this width, so a real poster is never cropped to fit a fixed box.
+ *
+ * `66` and `78` land in the same `w92` CDN bucket, so the smaller measure changes what is
+ * drawn and not what is fetched (`app/poster.tsx`).
  */
-const BILL_POSTER_WIDTH = 78;
-const BILL_POSTER = "w-[78px] shrink-0";
+const BILL_POSTER_WIDTH = 66;
+const BILL_POSTER = "w-[66px] shrink-0 [--poster-radius:10px]";
 
 /**
  * The one line of what is next, for each of the five states this cell renders. The label
@@ -100,15 +103,22 @@ export function LibraryEntryCell({
   const nextLine = NEXT_LINES[entry.state];
 
   return (
-    <li className="border-b border-r border-hair bg-ground">
+    <li className="overflow-hidden rounded-[18px] bg-raised">
       <SelectableEntry
         entryId={entry.libraryEntryId}
-        className="flex w-full gap-4 p-4 text-left transition-colors duration-150 hover:bg-raised"
+        className="pressable flex w-full gap-3.5 p-3.5 text-left"
       >
+        {/* `.55`, not the `.45` this used to carry. The handoff sets abandoned tiles at
+            `.55` on the Up next groups and then names this cell as the one place that
+            already dims a poster, with the instruction not to leave the two different by
+            accident. Both are `.55` now: the linen ground is lighter than the bone one
+            this number was chosen against, so the same title reads as further gone at the
+            same opacity, and `.55` is the redesign's value for the state on both
+            surfaces. */}
         <Poster
           posterPath={entry.posterPath}
           width={BILL_POSTER_WIDTH}
-          className={abandoned ? `${BILL_POSTER} opacity-45` : BILL_POSTER}
+          className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
           aboveFold={aboveFold}
         />
 
@@ -121,7 +131,7 @@ export function LibraryEntryCell({
             was added: 552px of content in a 388px viewport.
           */}
           <p
-            className={`bill-title break-words text-bill-md ${abandoned ? "text-dim" : "text-text"}`}
+            className={`break-words text-row font-semibold leading-tight tracking-[-0.014em] ${abandoned ? "text-dim" : "text-ink"}`}
           >
             {entry.name}
           </p>
@@ -140,12 +150,12 @@ export function LibraryEntryCell({
             borrowed fact is not an error and an apology is the wrong shape for it.
           */}
           {entry.releaseYear === null ? null : (
-            <p className="code-line mt-2 text-dim" data-numeric>
+            <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
               {entry.releaseYear}
             </p>
           )}
 
-          <p className={`code-line mt-3 ${state.className}`}>{state.label}</p>
+          <p className={`label-line mt-2.5 ${state.className}`}>{state.label}</p>
 
           {/*
             One line, and it truncates rather than wrapping: two cells whose titles are
@@ -153,7 +163,7 @@ export function LibraryEntryCell({
             name that wraps would add a third variation to a grid whose whole job is to
             read as one printed sheet.
           */}
-          <p className="mt-1 truncate text-item text-dim">
+          <p className="mt-1 truncate text-item leading-[1.3] text-dim">
             {nextLine(entry)}
           </p>
         </div>

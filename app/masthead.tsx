@@ -6,15 +6,25 @@ import { SettingsIcon } from "./nav-icons";
 import { Wordmark } from "./press-mark";
 
 /**
- * The masthead — phone-only since issue #136. `DESIGN.md`, Layout:
+ * The masthead — phone-only since issue #136, redrawn by the linen redesign's turn 9.
  *
- * > A sticky masthead on a `1px` rule … Ground is `ground` at 95% opacity with a `2px`
- * > backdrop blur, so type scrolling underneath greys rather than disappears.
+ * ── What turn 9 took away ─────────────────────────────────────────────────────────────
  *
- * The measurements are load-bearing and are taken from the prototype
- * (`docs/design/prototypes/repertory-bill.html`) rather than re-derived: `bg-ground/95`,
- * `backdrop-blur-[2px]`, `border-b border-hair`, and cells divided by `1px` borders
- * rather than by gaps.
+ * `DESIGN.md`'s Layout section drew this as *a sticky masthead on a `1px` rule … ground
+ * at 95% opacity with a `2px` backdrop blur*, with its contents in bordered cells divided
+ * by `1px` rules. Turn 9 removes **all three** borders — the cell dividers, the bottom
+ * hairline, and the bordered cells themselves — and lets 22px gutters and the type carry
+ * the structure instead. On a ground this warm the rules were the loudest thing in the
+ * chrome, and a header with four hairlines in it competes with the screen title an inch
+ * below it.
+ *
+ * The frosting is turn 9's own recipe — `78%` of the ground under a `22px` blur — shared
+ * with `tab-bar.tsx` so the two pieces of fixed phone chrome still read as one family.
+ * That is the arrangement issue #136 made, at the redesign's values rather than at #136's
+ * nearly-opaque `95%`/`2px`.
+ *
+ * The press mark keeps its accent bar (`press-mark.tsx`), which is the one vermilion on
+ * this strip; the wordmark beside it is the label register in `--dim`.
  *
  * ── `lg:hidden`, since issue #136 ─────────────────────────────────────────────────────
  *
@@ -61,29 +71,35 @@ export async function Masthead() {
   const displayName = await currentDisplayName();
 
   return (
-    <header className="sticky top-0 z-30 flex items-stretch justify-between border-b border-hair bg-ground/95 backdrop-blur-[2px] lg:hidden">
-      <div className="border-r border-hair px-4 py-3">
-        <Wordmark markClassName="h-5 w-5" />
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-[color-mix(in_srgb,var(--ground)_78%,transparent)] px-[22px] pt-[18px] pb-1 backdrop-blur-[22px] lg:hidden">
+      {/* The mark at 15px, its bar in the accent, and the wordmark as the label register
+          in `--dim` — turn 9's own head row. */}
+      <div className="flex min-w-0 items-center text-dim">
+        <Wordmark markClassName="h-[15px] w-[15px]" nameClassName="label-line" />
       </div>
 
-      <div className="flex items-stretch">
+      <div className="flex items-center gap-1.5 text-dim">
         {displayName === null ? null : (
           // Inert — a `span`, not a `Link` or a `button`. `DESIGN.md`, Phone: *never an
           // entrance*. `truncate` plus the capped width keep a full 24-character name
-          // from ever stretching or wrapping this header.
-          <div className="flex min-w-0 items-center border-l border-hair px-4">
-            <span className="code-line block max-w-[9rem] truncate text-dim">
-              <DisplayNameCell name={displayName} />
-            </span>
-          </div>
+          // from ever stretching or wrapping this header. Turn 9 sets it at the metadata
+          // step in sentence case, not the label register: it is a name, and a name in
+          // `.12em` caps reads as a category.
+          <span className="block max-w-[9rem] truncate text-meta text-dim">
+            <DisplayNameCell name={displayName} />
+          </span>
         )}
 
+        {/* `-mr-[11px]` pulls the 44px hit square's own padding back out to the 22px
+            gutter, so the glyph lands on the gutter while the target stays 44px wide —
+            the handoff's *every tap target ≥44px* without a header 11px wider than the
+            screen title it sits over. */}
         <Link
           href="/settings"
           aria-label="Settings"
-          className="flex items-center gap-2 border-l border-hair px-4 text-dim transition-colors hover:bg-raised hover:text-text"
+          className="-mr-[11px] flex h-11 w-11 items-center justify-center text-dim transition-colors hover:text-ink"
         >
-          <SettingsIcon className="h-4 w-4" />
+          <SettingsIcon className="h-[17px] w-[17px]" />
         </Link>
       </div>
     </header>

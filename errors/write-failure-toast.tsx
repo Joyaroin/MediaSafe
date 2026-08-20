@@ -52,11 +52,15 @@ export function WriteFailureToasts() {
       // corner of the viewport even when it holds one short toast, and it must not swallow
       // clicks on whatever is underneath it.
       //
-      // `bottom-[49px]` lifts this above the tab bar — `tab-bar.tsx`'s
-      // `TAB_BAR_HEIGHT_PX`, kept in step by hand because a Tailwind utility class and an
-      // exported number cannot share one literal. Issue #102 built the bar this was
-      // written to wait for; this is that lift.
-      className="pointer-events-none fixed inset-x-0 bottom-[49px] z-40 flex flex-col gap-px lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[420px]"
+      // `--tab-bar-height` (`globals.css`) lifts this above the tab bar. It used to be a
+      // hand-kept `bottom-[49px]` against a `TAB_BAR_HEIGHT_PX` export that said `54`,
+      // because — as the comment here then said — "a Tailwind utility class and an
+      // exported number cannot share one literal". True, and the conclusion was the wrong
+      // way round: the fix is to put the number somewhere a class *can* read rather than
+      // to copy it by hand and hope. Both copies had already drifted five pixels by the
+      // time the linen redesign found them. Issue #102 built the bar this was written to
+      // wait for; this is that lift.
+      className="pointer-events-none fixed inset-x-0 bottom-[var(--tab-bar-height)] z-40 flex flex-col gap-px lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[420px]"
     >
       {failures.map((failure) => (
         <WriteFailureToast key={failure.id} failure={failure} />

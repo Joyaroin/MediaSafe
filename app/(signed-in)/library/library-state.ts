@@ -10,12 +10,18 @@ import type { LibraryState } from "@/db/access";
  * the programme note has no "next line" in the same sense, it has the season/episode list
  * itself.
  *
- * *Watching* is the only one in `accent` and *Caught up* the only one at full-strength
- * `text` — the other three are metadata, so they are dim.
+ * *Watching* is the only one in `accent` and *Caught up* the only one at full strength —
+ * the other three are metadata, so they are dim.
+ *
+ * *Caught up* moves from `text-text` to `text-ink` in the linen redesign. It is the same
+ * decision it always was — *this one is at full strength* — resolved against a palette
+ * where `--text` is a mid-tone body colour rather than the near-black it used to be, so
+ * full strength is now `--ink`. The label sits on `--raised` inside a card, where `--text`
+ * would have been indistinguishable from the dim three beside it.
  */
 export const STATE_LABELS: Record<LibraryState, { label: string; className: string }> = {
   watching: { label: "Watching", className: "text-accent" },
-  caught_up: { label: "Caught up", className: "text-text" },
+  caught_up: { label: "Caught up", className: "text-ink" },
   finished: { label: "Finished", className: "text-dim" },
   watchlist: { label: "Watchlist", className: "text-dim" },
   abandoned: { label: "Abandoned", className: "text-dim" },

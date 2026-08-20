@@ -63,7 +63,16 @@ export function UpNextGroups({
       <HomeGroup label="Coming back" href="/up-next/coming-back" entries={rails.comingBack} />
       <HomeGroup label="Old friends" href="/up-next/old-friends" entries={rails.oldFriends} />
       <HomeGroup label="Watchlist" href="/up-next/watchlist" entries={watchlist} />
-      <HomeGroup label="Abandoned" href="/up-next/abandoned" entries={abandoned} />
+      {/* The one group whose tiles are dimmed, and the only place `dimmed` is passed.
+          It is the group rather than the tile that knows, because these five arrays are
+          five separate reads and only this one is entirely abandoned titles —
+          `home-group.tsx` has the longer reason. */}
+      <HomeGroup
+        label="Abandoned"
+        href="/up-next/abandoned"
+        entries={abandoned}
+        dimmed
+      />
     </div>
   );
 }

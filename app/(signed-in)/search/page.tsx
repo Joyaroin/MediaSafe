@@ -46,14 +46,18 @@ export default async function SearchPage() {
   await requireUserId();
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-text">Search</h1>
+    // `px-[22px]` is turn 9's page gutter, at every width: `docs/design/v1-surfaces.md`
+    // §5 keeps search *identical on both devices*, so there is no `lg:` gutter to add.
+    // The results list inside `SearchSurface` carries its own `14px` instead, so that a
+    // card's edge sits inside the text gutter rather than on it.
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-[22px] pt-5 pb-12 lg:pb-16">
+      <h1 className="screen-title text-screen text-ink">Search</h1>
 
-      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
+      <p className="mt-4 max-w-[62ch] text-item leading-relaxed text-dim">
         The catalogue of everything there is. Your own library is somewhere else.
       </p>
 
-      <div className="mt-8 flex-1">
+      <div className="mt-4 flex-1">
         <SearchSurface />
       </div>
 

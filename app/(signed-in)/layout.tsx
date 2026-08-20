@@ -34,12 +34,19 @@ import { TabBar } from "../tab-bar";
  * screen — every page in this group shares this shell, so this is the one place that
  * clearance has to be written rather than one paste per page. `lg:pb-0` because the tab
  * bar itself is `lg:hidden` and there is nothing to clear on desktop.
+ *
+ * The height is read from `--tab-bar-height` (`globals.css`) rather than pasted. It used
+ * to be a literal `pb-[49px]` against a `TAB_BAR_HEIGHT_PX` export that said `54` and
+ * that nothing ever imported — the bar had grown by five pixels and this padding never
+ * heard about it, so the last row of every phone screen sat five pixels under the
+ * chrome. A custom property is the one form a Tailwind class can actually read, which is
+ * what makes the shared source shared.
  */
 export default function SignedInLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[49px] lg:flex-row lg:pb-0">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[var(--tab-bar-height)] lg:flex-row lg:pb-0">
       <Masthead />
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>

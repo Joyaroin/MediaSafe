@@ -9,13 +9,25 @@
  * placeholder destinations). Written once so those two cannot drift into two wordmarks.
  *
  * The mark's size is the caller's, because the masthead sets it smaller than the sign-in
- * page does — everything else about the pairing is fixed here.
+ * page does — and since the linen redesign the name's register is the caller's too, for
+ * the same reason and no more: turn 9 sets the phone masthead's wordmark in the label
+ * register, and it did not redraw the sign-in surface, which keeps the bill's own cut.
+ * Defaulted rather than required so that the caller turn 9 never touched did not have to
+ * be edited to stay exactly as it was.
  */
-export function Wordmark({ markClassName }: { markClassName: string }) {
+export function Wordmark({
+  markClassName,
+  nameClassName = "bill-title text-bill-xs leading-none",
+}: {
+  markClassName: string;
+  /** The name's type register. Defaults to the bill's — `masthead.tsx` passes turn 9's
+   *  label register instead. */
+  nameClassName?: string;
+}) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-3">
       <PressMark className={`${markClassName} shrink-0`} />
-      <span className="bill-title text-bill-xs leading-none">MediaSafe</span>
+      <span className={nameClassName}>MediaSafe</span>
     </div>
   );
 }

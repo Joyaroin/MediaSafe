@@ -49,7 +49,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  * section separates empty from failed by alignment, heading step, colour and border, and
  * every one of those is a utility class — there is no other artefact to assert against
  * short of rendering to a browser and comparing pixels. The assertions are written against
- * what `DESIGN.md` names (`text-accent`, `border-accent`, `text-center`, `opacity-45`) and
+ * what `DESIGN.md` names (`text-accent`, `border-accent`, `text-center`, `opacity-55`) and
  * not against whole class strings, so restyling that keeps the treatment keeps these
  * passing.
  *
@@ -167,12 +167,16 @@ describe("the library entry cell", () => {
   it("dims an abandoned entry's poster and its name together", () => {
     const abandoned = cell({ state: "abandoned" });
 
-    expect(abandoned).toContain("opacity-45");
+    // `.55` since the linen redesign, up from `.45`. The handoff dims the Up next
+    // groups' abandoned tiles at `.55` and names this cell as the other surface that
+    // already dims a poster, with the instruction not to leave the two different by
+    // accident — `group-tile.tsx` carries the same number.
+    expect(abandoned).toContain("opacity-55");
     expect(abandoned).toContain("text-dim");
     expect(abandoned).toContain("Abandoned");
 
     // And leaves both alone otherwise — the poster is modified in exactly one place.
-    expect(cell()).not.toContain("opacity-45");
+    expect(cell()).not.toContain("opacity-55");
   });
 
   it("names every state in CONTEXT.md's words", () => {
@@ -201,15 +205,21 @@ describe("the library entry cell", () => {
     expect(cell()).toContain("2022");
   });
 
-  it("is a full-width button with no shadow, radius, lift or scale", () => {
+  it("is a full-width button on a raised card, and still casts no shadow", () => {
     const one = cell();
 
     expect(one).toContain("<button");
     expect(one).toContain("w-full");
-    // The poster inside carries a `7px` radius of its own (#135), via the `poster`
-    // `@utility` rather than a `rounded-*` class, so it does not trip this assertion —
-    // the button and every Tailwind class on this cell are still flat.
-    expect(one).not.toMatch(/rounded|shadow|scale-|translate-y/);
+
+    // The cell is a card since the linen redesign — an `18px` radius on a `--raised`
+    // ground, where it used to be a flat `--ground` cell divided from its neighbours by
+    // hairlines. `DESIGN.md`'s *no shadow, no lift, no radius, no scale* loses the last
+    // two clauses and keeps the first two, which is the half that still matters: the
+    // redesign's only lift is the tone step between `--raised` and `--ground`, and a
+    // shadow anywhere would be the thing the handoff rules out by name.
+    expect(one).toContain("rounded-[18px]");
+    expect(one).toContain("bg-raised");
+    expect(one).not.toMatch(/shadow|translate-y/);
   });
 });
 
@@ -232,19 +242,21 @@ describe("the grid", () => {
     expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols)/);
   });
 
-  it("draws its structure with hairlines rather than gaps", () => {
-    expect(grid).toContain("border-b border-r border-hair");
-
-    // The Hairline Rule is about the space *between* cells, so the assertion is on the
-    // grid's own class list and not on the markup: the `gap-4` inside a cell is the
-    // poster-to-title measure `DESIGN.md` asks for, and would fail a blanket search.
+  it("spaces its cells as cards rather than dividing them with hairlines", () => {
+    // The reverse of what this asserted before the linen redesign, and deliberately so.
+    // Turn 9 replaces the hairline-divided grid with `--raised` cards on a `10px` gap;
+    // `library-grid.tsx` has the reason it became possible, which is that `--raised` now
+    // sits *below* the ground rather than above it, so a card needs no line to be a card.
     //
     // `<ol` is not necessarily the markup's first tag: React hoists a `<link
     // rel="preload">` ahead of it for the grid's own above-the-fold posters (issue #178),
     // so the match allows anything before the `<ol` rather than anchoring to the start.
     const [, gridClasses] = grid.match(/<ol[^>]*class="([^"]*)"/) ?? [];
     expect(gridClasses).toBeDefined();
-    expect(gridClasses).not.toMatch(/gap/);
+    expect(gridClasses).toContain("gap-2.5");
+
+    // The dividing borders are gone from the cells entirely — not merely overridden.
+    expect(grid).not.toContain("border-b border-r border-hair");
   });
 });
 
@@ -279,13 +291,17 @@ describe("the filter chips", () => {
     ]);
   });
 
-  it("inverts the selected chip to a text-coloured ground with ground-coloured text", () => {
+  it("fills the selected chip with ink and sets its label in the ground colour", () => {
     const markup = chips("finished");
     const finishedButton = chipButton(markup, "Finished");
 
     expect(finishedButton).toContain('aria-pressed="true"');
-    expect(finishedButton).toContain("bg-text");
+    // `bg-ink` since the linen redesign, where `--text` became a mid-tone body colour
+    // and full strength moved to `--ink` (`app/globals.css`). The travelling
+    // `layoutId` ground is unchanged in mechanism; it is a `16px`-radius pill now.
+    expect(finishedButton).toContain("bg-ink");
     expect(finishedButton).toContain("text-ground");
+    expect(finishedButton).toContain("rounded-2xl");
   });
 
   it("keeps the Watching chip vermilion even unselected, and every other chip dim", () => {

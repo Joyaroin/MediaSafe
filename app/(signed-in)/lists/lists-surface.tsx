@@ -67,14 +67,17 @@ export function ListsSurface({ initial }: { readonly initial: readonly ListSumma
     <main className="flex w-full flex-1 flex-col">
       <ListsHeading />
 
-      <div className="px-6 py-6">
+      <div className="px-[22px] pt-[18px]">
         <CreateListForm onCreated={onCreated} />
       </div>
 
       {lists.length === 0 ? (
         <EmptyLists />
       ) : (
-        <ul>
+        // Cards on an `8px` gap at the `14px` list gutter — the same treatment the
+        // search results and the library grid carry, so the three lists on this app
+        // read as one device rather than three.
+        <ul className="flex flex-col gap-2 px-[14px] pt-6 pb-6">
           {lists.map((list) => (
             <ListRow key={list.id} list={list} onDeleted={onDeleted} />
           ))}

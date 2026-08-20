@@ -20,28 +20,89 @@
    the browser's own surfaces (selection, scrollbars, caret, focus ring) are painted from
    the same tokens in both.
 
-   The accent is reserved for recording a watch. Focus, selection and the caret used to
-   be painted from it; they now use brightness and border weight instead, off `--text`,
-   so that a colour spent on focus state is not a colour that also means "this was
-   marked".
+   ── What the accent is for, restated by the linen redesign ─────────────────────────
+
+   This block used to say *the accent is reserved for recording a watch*, full stop. That
+   was already narrower than the code: `library-state.ts` paints the **Watching** label in
+   it, `library-filter-bar.tsx` paints the Watching chip and the sort caret in it,
+   `list-name-form.tsx` paints the duplicate-name message in it, and `press-mark.tsx`
+   strikes the mark with it. The rule as written had five standing exceptions and no
+   sentence covering them.
+
+   The redesign settles it as one rule that describes what is actually drawn:
+
+     **The accent marks what is live, and the one primary action of a screen. Nothing
+     else.**
+
+   *Live* is the old reservation kept whole — recording a watch, and the Watching state
+   wherever it is named. *The one primary action* is what turn 9 adds, and it is one per
+   screen and never two: **Add** on a search row, **New list** on Lists, the group label
+   and its **More** on Up next. A screen with two vermilion controls has spent the colour,
+   which is the failure this rule exists to prevent.
+
+   Two things it is still not, and both were decided against on purpose:
+
+   - **Not the selected tab.** The handoff draws the active tab in the accent and then
+     names the alternative itself — *if that reservation must hold, use `--ink` instead;
+     the design still reads correctly* — and `--ink` is what `tab-bar.tsx` uses. The tab
+     bar is the only chrome on all four screens, so an accent there is the one spend that
+     is never off-screen, and a Watching label two centimetres above a permanently
+     vermilion tab is a signal competing with wallpaper. Turn 9's own closing note
+     ("vermilion only for Watching, not the tabs") is the same conclusion.
+   - **Not focus, selection or the caret.** Unchanged from #134: they use brightness and
+     border weight off `--text`, so a colour spent on focus state is not a colour that
+     also means "this was marked".
    ═══════════════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Light — the desktop in daylight. Values taken from `design/catalogue-wall.html`'s
-     `:root[data-theme="light"]`, unchanged. */
-  --ground: #f6f5f3;
-  --raised: #ffffff;
-  --hair: #e4e3df;
-  --text: #16161a;
-  --dim: #6e6e6b;
-  --accent: #a85d06;
-  --accent-ink: #ffffff;
+  /* Light — the desktop in daylight, and since the linen redesign the phone in daylight
+     too. The Catalogue Wall's bone/white/near-black light palette is replaced here by
+     `design_handoff_phone_linen`'s turn 9: a linen ground, a warmer raised step that is
+     *darker* than the ground rather than lighter, and a vermilion accent in place of the
+     ochre. The tone relationship inverting is the point — `--raised` at `#eeede7` sits
+     below `#f9f7f0`, so a card reads as a well pressed into the sheet rather than a
+     panel floating above it, which is what lets the whole redesign carry no shadows at
+     all. */
+  --ground: #f9f7f0;
+  --raised: #eeede7;
+  --hair: #d5d2c3;
+  --text: #59584e;
+  --dim: #8a887c;
+  --accent: #a52516;
+  --accent-ink: #f9f7f0;
+  /* Derived, and the one token the handoff adds rather than replaces. `--text` at
+     `#59584e` on `--raised` is ~5:1 — correct for a metadata line and thin for a 34px
+     heading, so headings, title names and filled-field text get their own darker step
+     rather than the body colour being darkened for everyone. */
+  --ink: #3d3c35;
+
+  /* ── The phone tab bar's height, and why it is declared here ──────────────────────
+     `44px` cell + `8px` top padding + `22px` bottom padding + the `1px` `hair` top
+     border. `tab-bar.tsx` draws exactly those four numbers and this is their sum.
+
+     It lives in CSS rather than in `tab-bar.tsx` because three files need it and only
+     one of them is in a position to import anything: the bar itself draws it, and
+     `(signed-in)/layout.tsx` and `errors/write-failure-toast.tsx` each have to reserve
+     it inside a Tailwind class, which cannot read a TypeScript constant. That is
+     precisely how the `TAB_BAR_HEIGHT_PX` this replaces failed — it was exported,
+     imported by nothing, and left at `54` while both dependents sat at `49`, so the
+     "one shared source" its own docblock promised was a number nothing consulted. A
+     custom property is the one form all three can actually read. */
+  --tab-bar-height: 75px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     /* Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s
-       `:root`, unchanged. */
+       `:root`, unchanged: the linen redesign is a light-palette change and says so.
+
+       `--ink` is the exception, and it is not a redesign of anything. The token is
+       declared on `:root` above, so without a value here it would keep `#3d3c35` in
+       dark too and paint every heading near-black on a near-black ground. In dark
+       `--text` is already the brightest neutral on the sheet, so there is no darker-
+       than-body step to give a heading and `--ink` is `--text` — the same colour, so
+       that `text-ink` means *full strength for a heading* in both schemes rather than
+       meaning nothing in one of them. */
     --ground: #0a0a0b;
     --raised: #17171a;
     --hair: #242429;
@@ -49,6 +110,7 @@
     --dim: #8c8c8a;
     --accent: #ffb020;
     --accent-ink: #0a0a0b;
+    --ink: #f4f4f2;
   }
 }
 
@@ -66,6 +128,9 @@
   --color-hair: var(--hair);
   --color-text: var(--text);
   --color-dim: var(--dim);
+  /* Headings, title names and filled-field text — one step darker than `--text` in
+     light, identical to it in dark. See `:root` above for why it exists at all. */
+  --color-ink: var(--ink);
   /* The one reserved accent: recording a watch, and nothing else. */
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
@@ -101,6 +166,35 @@
   --text-note: 0.95rem; /* synopsis and running prose          */
   --text-item: 0.875rem; /* episode names, metadata, fields     */
   --text-fine: 0.75rem; /* attribution and legal notices       */
+
+  /* ── The linen register ─────────────────────────────────────────
+     The redesign's own scale, one token per row of the handoff's type
+     table. It sits *beside* the bill ramp above rather than replacing
+     it: the bill ramp still sets the programme note, the sign-in
+     surface, Settings and every other surface turn 9 did not draw, and
+     re-cutting it to hit these seven sizes would restyle all of them
+     to serve four screens.
+
+     They are declared in `px` and not `rem`, which is the one place
+     this file's own no-arbitrary-values rule needed a decision rather
+     than an application. The handoff calls the scale final and gives
+     it in px; the geometry it has to line up with — a 44px field, a
+     32px chip, a 66px poster — is in px for the hit-target reasons
+     that make 44 the number it is. A 34px title beside a 44px hit
+     target that both shift when a reader changes their browser's base
+     size is a layout nobody drew, so the register is pinned the way
+     the measures it sits inside already are.
+
+     The two steps the bill ramp already holds exactly are not
+     re-declared: body at 14px is `--text-item`, and there is no eighth
+     token here for it. */
+  --text-screen: 34px; /* the four screen titles              */
+  --text-row: 17px; /* library cell title                  */
+  --text-card: 16px; /* search result and list row title    */
+  --text-tile: 15px; /* Up next tile name, filled fields    */
+  --text-meta: 13px; /* year, count, meta line, quiet links */
+  --text-label: 11px; /* the label register — see `label-line` */
+  --text-tab: 10px; /* tab bar labels, and nothing else    */
 
   /* A bill has no rounded corners and no drop shadows. Depth is surface
      layering and hairlines. These are zeroed deliberately, not skipped. */
@@ -202,6 +296,44 @@
   font-variation-settings: "wdth" 85, "wght" 700;
   letter-spacing: -0.015em;
   line-height: 1.05;
+}
+
+/* ── The linen redesign's two bundles ───────────────────────────────────────────────
+   Same argument as `bill-title` above: a screen title that arrives without its tracking
+   is not a smaller title, and a label that arrives without its caps and its `.12em` is
+   not a quieter label — it is a 11px sentence nobody can read.
+
+   `screen-title` is **not** `bill-title` at a bigger step. `bill-title` is `wdth 85`,
+   the lightly-condensed cut the bill's names are set in; turn 9's titles are normal
+   width, one notch tighter in tracking and a shade looser in leading. Two utilities
+   rather than a variant because the two never appear on the same surface — the four
+   phone screen titles are these, everything the bill still sets is that. */
+@utility screen-title {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 100, "wght" 700;
+  letter-spacing: -0.022em;
+  line-height: 1.1;
+}
+
+/* The label register — group labels, state labels, the wordmark's own line. Uppercase
+   at 11px with `.12em` letting it breathe.
+
+   It is a second register beside `code-line` rather than a re-cut of it, and the split
+   is scope, not taste: `code-line` is on ~30 surfaces including every desktop one, and
+   the handoff redraws four phone screens. Turning `code-line` uppercase to serve them
+   would put caps on the programme note, Settings and the sign-in surface, which turn 9
+   never drew and which lost their caps deliberately in #134.
+
+   The handoff offers `IBM Plex Mono` for the prototype's monospaced look and makes it
+   optional; Archivo at `wdth 100 / wght 500` is the other branch it names, and it is the
+   one taken — a second family loaded for one 11px register is a real download and a real
+   layout shift for a difference that survives at most three words. */
+@utility label-line {
+  font-variation-settings: "wdth" 100, "wght" 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: var(--text-label);
+  line-height: 1.35;
 }
 
 @utility code-line {
@@ -315,7 +447,18 @@
   overflow: hidden;
   background: var(--color-raised);
   aspect-ratio: 2 / 3;
-  border-radius: 7px;
+  /* Read through a custom property rather than set outright, because turn 9 gives the
+     poster a different radius on each of the three surfaces that render one — `14px` on
+     an Up next tile, `10px` in a library cell, `9px` on a search row — and a call site
+     cannot reliably win against this with a `rounded-*` class: both are utilities, so
+     which one applies is decided by the order Tailwind emits them in, not by the order
+     they appear in the `class` attribute. A variable the call site sets is the one form
+     that has no ordering question in it.
+
+     `7px` stays the default, so every surface that renders a poster and was not redrawn
+     by the handoff — the programme note's hero, the desktop rails, title detail — keeps
+     exactly what it had. */
+  border-radius: var(--poster-radius, 7px);
 }
 
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────

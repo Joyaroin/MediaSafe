@@ -185,6 +185,16 @@ async function search(query: string): Promise<SearchOutcome> {
  * brightness and border weight — *the input's own outline is suppressed in favour of the
  * border shift.*
  *
+ * ── Turn 9's field ───────────────────────────────────────────────────────────────────
+ *
+ * A filled well rather than a bordered row: `44px` tall, `12px` radius, `--raised` fill
+ * with the hairline moved inside as a `1px` inset ring. The ring is a `box-shadow` and
+ * not a `border` for one reason that matters here — a `border` occupies layout, so
+ * thickening it to `2px` on focus would move the field's contents by a pixel, and at a
+ * fixed `44px` height that shows. The shadow is drawn inside the box and costs no space,
+ * which is what lets the focus state stay the documented *border to `--ink` at `2px`, no
+ * outline* without the text jumping.
+ *
  * The same treatment as the library's filter field, and **not the same copy** — this one
  * says *search* and searches the catalogue, that one says *filter* and narrows your own
  * library. `CONTEXT.md` gives each word one meaning and `SPEC.md` §4 lists confusing them
@@ -198,7 +208,7 @@ function SearchField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 border border-hair px-3 py-2 focus-within:border-2 focus-within:border-text">
+    <label className="flex h-11 items-center gap-2.5 rounded-xl bg-raised px-3.5 shadow-[inset_0_0_0_1px_var(--color-hair)] focus-within:shadow-[inset_0_0_0_2px_var(--color-ink)]">
       {/* The filter field's bars, in the same rectilinear vocabulary as the press mark. A
           magnifier would be the only curve in the application. */}
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
@@ -221,7 +231,7 @@ function SearchField({
         // The label's own text is the placeholder, which a placeholder may not be on its
         // own — this is the accessible name, and it stays whatever the field says.
         aria-label="Search the catalogue"
-        className="w-full bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
+        className="w-full bg-transparent text-tile text-ink placeholder:text-dim focus:outline-none"
       />
     </label>
   );
@@ -236,7 +246,7 @@ function SearchField({
  */
 function NotYetTyped() {
   return (
-    <p className="max-w-[60ch] text-note leading-relaxed text-dim">
+    <p className="max-w-[60ch] text-item leading-relaxed text-dim">
       Type the name of a film or a show. What you find here is the catalogue — everything
       that exists, not what you already keep — and adding one puts it in your library.
     </p>
@@ -247,7 +257,9 @@ function NotYetTyped() {
 function InFlight() {
   return (
     // `status`, not `alert`: it is progress, and it must not interrupt anyone mid-word.
-    <p role="status" className="code-line text-dim">
+    // The label register rather than `code-line`: this is a state label, which is what
+    // that register is for (`globals.css`).
+    <p role="status" className="label-line text-dim">
       Searching the catalogue
     </p>
   );
@@ -267,9 +279,14 @@ function InFlight() {
  */
 function NoResults({ query }: { query: string }) {
   return (
+    // Still centred, still `--ink` rather than the accent, and still not the failure's
+    // shape — the redesign restyles this state and does not merge it with any other.
     <section className="mx-auto max-w-[60ch] py-10 text-center">
-      <h2 className="bill-title text-bill-md text-text">Nothing by that name</h2>
-      <p className="mt-4 text-note leading-relaxed text-dim">
+      {/* `text-bill-md`, unchanged — the same step the read-failure headline takes, so
+          the two states stay distinguishable by colour and border rather than by size.
+          Only the colour moves, `--text` to `--ink`. */}
+      <h2 className="bill-title text-bill-md text-ink">Nothing by that name</h2>
+      <p className="mt-4 text-item leading-relaxed text-dim">
         The catalogue has no film or show matching “{query}”. Try fewer words, or the name
         it was released under.
       </p>
@@ -279,7 +296,11 @@ function NoResults({ query }: { query: string }) {
 
 function Results({ results }: { results: readonly MarkedResult[] }) {
   return (
-    <ol className="divide-y divide-hair border-y border-hair">
+    // Cards with `8px` between them, not hairline-divided rows inside a bordered block.
+    // `-mx-2` pulls the list out to a `14px` gutter against the page's own `22px`, so a
+    // card's *edge* lands on 22px rather than its padding box — turn 9's rule for every
+    // list that carries cards.
+    <ol className="-mx-2 flex flex-col gap-2">
       {results.map((result, index) => (
         <CatalogueResultRow
           key={catalogueKeyOf(result)}

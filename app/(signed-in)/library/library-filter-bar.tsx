@@ -54,25 +54,37 @@ const CHIPS: { value: Chip; label: string }[] = [
  * table, because there is exactly one exception to name and a table would give it the same
  * shape as five identical rows.
  */
-/* The selected chip's inverted ground is drawn by `<ChipGround />` below rather than by a
-   `bg-text` class, so every chip here is transparent-grounded and the same size whether it
-   is selected or not. The inversion is one element that slides between them. */
+/* The selected chip's ground is drawn by `<ChipGround />` below rather than by a
+   `bg-ink` class, so every chip here is transparent-grounded and the same size whether it
+   is selected or not. The fill is one element that slides between them.
+
+   Turn 9 makes the chip a `32px` pill at a `16px` radius, and changes what unselected
+   looks like: it used to be the page ground hovering to `--raised`, which worked when
+   `--raised` was white and the ground was bone. In the linen palette `--raised` is
+   *darker* than the ground, so an unselected chip is a filled well and a selected one is
+   a darker fill still — the row reads as a set of objects rather than as labels that grow
+   a background on hover. */
 function chipClassName(value: Chip, selected: boolean): string {
-  if (selected) return "relative px-3 py-1.5 text-ground code-line";
+  const base =
+    "relative flex h-8 shrink-0 items-center rounded-2xl px-3.5 text-meta font-medium";
+  if (selected) return `${base} text-ground`;
   if (value === "watching") {
-    return "relative bg-ground px-3 py-1.5 text-accent code-line transition-colors duration-[var(--dur-fast)] hover:bg-raised";
+    // The one exception, and it survives the redesign intact: Watching keeps its accent
+    // label even unselected, because the accent always means live.
+    return `${base} bg-raised text-accent transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
   }
-  return "relative bg-ground px-3 py-1.5 text-dim code-line transition-colors duration-[var(--dur-fast)] hover:bg-raised hover:text-text";
+  return `${base} bg-raised text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink`;
 }
 
-/** The travelling inversion. `snappy` and not `smooth`: a chip is pressed directly, and a
+/** The travelling fill. `snappy` and not `smooth`: a chip is pressed directly, and a
  *  trace of overshoot is what makes a direct manipulation feel answered rather than
- *  merely processed. */
+ *  merely processed. It travels as a `16px`-radius pill since turn 9 — the shape moved,
+ *  the shared-layout element did not. */
 function ChipGround() {
   return (
     <motion.span
       layoutId="library-chip-selected"
-      className="absolute inset-0 bg-text"
+      className="absolute inset-0 rounded-2xl bg-ink"
       transition={snappy}
     />
   );
@@ -86,8 +98,12 @@ export function LibraryChips({
   onChange: (chip: Chip) => void;
 }) {
   return (
+    // Scrolls rather than wraps. Six chips do not fit a 390px screen and turn 9 does not
+    // ask them to: the row runs off the edge and is swiped, the same device the Up next
+    // tracks use. `-mx-[22px] px-[22px]` lets it bleed to the viewport edges while the
+    // first chip still starts on the page gutter.
     <div
-      className="flex flex-wrap items-center gap-px bg-hair"
+      className="-mx-[22px] mt-4 flex items-center gap-2 overflow-x-auto px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="group"
       aria-label="Filter by where a title stands"
     >
@@ -122,8 +138,13 @@ export function FilterField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="ml-auto flex items-center gap-2 border border-hair px-3 py-1.5 focus-within:border-2 focus-within:border-text">
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-dim" aria-hidden="true">
+    // `flex-1`, not `ml-auto`: turn 9 gives this field the width of the row and puts the
+    // sort control beside it, where it used to be pushed to the right of a wrapping bar.
+    // `40px` here against the search field's `44px` — the handoff sets this one shorter
+    // on purpose, because it sits in a row of controls rather than being the screen's
+    // single field.
+    <label className="flex h-10 flex-1 items-center gap-2.5 rounded-xl bg-raised px-3.5 shadow-[inset_0_0_0_1px_var(--color-hair)] focus-within:shadow-[inset_0_0_0_2px_var(--color-ink)]">
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
         <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
         <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
         <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
@@ -138,7 +159,7 @@ export function FilterField({
         placeholder="Filter your library"
         autoComplete="off"
         aria-label="Filter your library"
-        className="w-52 bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
+        className="w-full min-w-0 bg-transparent text-item text-ink placeholder:text-dim focus:outline-none"
       />
     </label>
   );
@@ -172,30 +193,34 @@ export function SortSelect({ value }: { value: LibrarySort }) {
   }
 
   return (
-    <label className="flex items-center gap-2">
-      <span className="code-line text-dim">Sort</span>
-      <span className="relative inline-flex items-center">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value as LibrarySort)}
-          aria-label="Sort the library"
-          className="appearance-none border border-hair bg-ground py-1.5 pl-3 pr-9 text-item text-text focus:border-2 focus:border-text focus:outline-none"
-        >
-          {LIBRARY_SORTS.map((sort) => (
-            <option key={sort.value} value={sort.value}>
-              {sort.label}
-            </option>
-          ))}
-        </select>
-        <svg
-          viewBox="0 0 12 8"
-          className="pointer-events-none absolute right-3 h-2 w-3 text-accent"
-          aria-hidden="true"
-        >
-          <polygon points="0,0 12,0 6,8" fill="currentColor" />
-        </svg>
-      </span>
-    </label>
+    // The visible `Sort` word is gone: turn 9 draws this as the *value* plus the caret,
+    // which is what a native platform control looks like and what the mock shows. The
+    // word survives where it was doing the real work — `aria-label` on the `select`,
+    // which is what a screen reader announces and which never carried the visible text
+    // anyway.
+    <span className="relative inline-flex shrink-0 items-center">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as LibrarySort)}
+        aria-label="Sort the library"
+        className="h-10 appearance-none rounded-xl bg-raised pr-8 pl-3 text-item text-dim shadow-[inset_0_0_0_1px_var(--color-hair)] focus:shadow-[inset_0_0_0_2px_var(--color-ink)] focus:outline-none"
+      >
+        {LIBRARY_SORTS.map((sort) => (
+          <option key={sort.value} value={sort.value}>
+            {sort.label}
+          </option>
+        ))}
+      </select>
+      {/* The solid vermilion triangle survives the redesign unchanged — turn 9 keeps it,
+          and it is the one place the accent marks an affordance rather than a state. */}
+      <svg
+        viewBox="0 0 12 8"
+        className="pointer-events-none absolute right-3 h-1.5 w-[9px] text-accent"
+        aria-hidden="true"
+      >
+        <polygon points="0,0 12,0 6,8" fill="currentColor" />
+      </svg>
+    </span>
   );
 }
 
@@ -211,10 +236,16 @@ export function SortSelect({ value }: { value: LibrarySort }) {
  */
 export function ZeroMatches({ onClear }: { onClear: () => void }) {
   return (
-    <section className="border-t border-hair px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-md text-text">Nothing under that filter</h2>
+    <section className="px-6 py-16 text-center">
+      {/* The type step is deliberately untouched. `text-bill-md` is the step this shares
+          with the read-failure headline, and sharing it is the point — the two are told
+          apart by colour and by the failure's accent rule, never by size
+          (`errors/failure-treatment.ts`, and `tests/library-surface.test.ts` asserts it).
+          The handoff asks these states to be restyled *to the token set only*, so the
+          colour moves to `--ink` and the size stays where the relationship needs it. */}
+      <h2 className="bill-title text-bill-md text-ink">Nothing under that filter</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-note text-dim">
+      <p className="mx-auto mt-3 max-w-[60ch] text-item text-dim">
         Your library still holds everything it did. Clear the filter to see it again.
       </p>
 
