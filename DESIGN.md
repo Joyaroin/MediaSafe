@@ -1,794 +1,649 @@
----
-name: MediaSafe
-description: A season's programme printed in two spot inks — a personal film and TV record that reads as a repertory bill, not a storefront.
-colors:
-  ink: "#0E0D0B"
-  ink-raised: "#16140F"
-  stock: "#E8E2D4"
-  stock-dim: "#A29B8B"
-  rule: "#2A2621"
-  rule-bold: "#453E33"
-  spot: "#2740C8"
-  signal: "#E85A38"
-typography:
-  display:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "3.6rem"
-    fontWeight: 900
-    lineHeight: 0.86
-    letterSpacing: "-0.005em"
-    fontVariation: "'wdth' 62, 'wght' 900"
-  headline:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "2.6rem"
-    fontWeight: 900
-    lineHeight: 0.86
-    letterSpacing: "-0.005em"
-    fontVariation: "'wdth' 62, 'wght' 900"
-  title:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "2.15rem"
-    fontWeight: 900
-    lineHeight: 0.86
-    letterSpacing: "-0.005em"
-    fontVariation: "'wdth' 62, 'wght' 900"
-  section:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.6rem"
-    fontWeight: 900
-    lineHeight: 0.86
-    letterSpacing: "-0.005em"
-    fontVariation: "'wdth' 62, 'wght' 900"
-  subhead:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.15rem"
-    fontWeight: 900
-    lineHeight: 0.86
-    letterSpacing: "-0.005em"
-    fontVariation: "'wdth' 62, 'wght' 900"
-  body:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.92rem"
-    fontWeight: 400
-    lineHeight: 1.625
-    letterSpacing: "normal"
-    fontVariation: "'wdth' 100"
-  body-small:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.85rem"
-    fontWeight: 400
-    lineHeight: "normal"
-    letterSpacing: "normal"
-    fontVariation: "'wdth' 100"
-  fine:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.7rem"
-    fontWeight: 400
-    lineHeight: 1.375
-    letterSpacing: "normal"
-    fontVariation: "'wdth' 100"
-  label:
-    fontFamily: "Archivo, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.625rem"
-    fontWeight: 600
-    lineHeight: 1.1
-    letterSpacing: "0.16em"
-    fontVariation: "'wdth' 100, 'wght' 600"
-rounded:
-  none: "0px"
-spacing:
-  hairline: "1px"
-  tight: "0.75rem"
-  entry: "1rem"
-  gutter: "1.5rem"
-  section: "1.75rem"
-components:
-  plate:
-    backgroundColor: "{colors.spot}"
-    rounded: "{rounded.none}"
-    width: "78px"
-    height: "104px"
-  entry:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.stock}"
-    rounded: "{rounded.none}"
-    padding: "1rem"
-  entry-hover:
-    backgroundColor: "{colors.ink-raised}"
-  record-bar:
-    backgroundColor: "{colors.signal}"
-    textColor: "{colors.ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "1.25rem 1rem"
-  strike-button:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.signal}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "0.25rem 0.625rem"
-  strike-button-hover:
-    backgroundColor: "{colors.signal}"
-    textColor: "{colors.ink}"
-  abandon-control:
-    backgroundColor: "transparent"
-    textColor: "{colors.stock-dim}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "0"
-  abandon-control-hover:
-    textColor: "{colors.stock}"
-  chip-filter:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.stock-dim}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "0.375rem 0.75rem"
-  chip-filter-selected:
-    backgroundColor: "{colors.stock}"
-    textColor: "{colors.ink}"
-  chip-filter-watching:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.signal}"
-  nav-item:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.stock-dim}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "0 1.25rem"
-  nav-item-active:
-    backgroundColor: "{colors.stock}"
-    textColor: "{colors.ink}"
-  input-filter:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.stock}"
-    typography: "{typography.body-small}"
-    rounded: "{rounded.none}"
-    padding: "0.375rem 0.75rem"
-    width: "13rem"
-  stamp-watched:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.signal}"
-    typography: "{typography.label}"
-    rounded: "{rounded.none}"
-    padding: "0.25rem 0.5rem"
-  programme-note:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.stock}"
-    rounded: "{rounded.none}"
-    padding: "1.25rem 1.5rem"
-    width: "420px"
-  up-next-row:
-    backgroundColor: "{colors.rule}"
-    rounded: "{rounded.none}"
-    padding: "0.75rem"
-    height: "122px"
-  toast-failure:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.stock}"
-    rounded: "{rounded.none}"
-    padding: "1rem"
-    width: "420px"
----
-
-# Design System: MediaSafe
-
-Extracted from the shipped reference build at `docs/design/prototypes/repertory-bill.html`
-(Tailwind v4 browser build; one `@theme` block, one `@layer base` block, three `@utility` rules, and
-one plain-CSS block for the duotone plate and the strike/stamp). Every value below is the value that
-build actually renders.
-
-## The Tailwind token mapping
-
-The `@theme` block **is** this design system's source of truth — **twenty-one declarations, no more**.
-Tailwind v4 generates utilities from the namespace prefix, so `--color-ink` produces `bg-ink`,
-`text-ink`, `border-ink` and the rest automatically, and `--text-bill-md` produces `text-bill-md`.
-The frontmatter above carries the same colour and type values in portable form; the tables below are
-the implementation mapping.
-
-### Colour (8)
-
-| `@theme` variable | Value | Generated utilities | How the build actually uses it |
-| --- | --- | --- | --- |
-| `--color-ink` | `#0E0D0B` | `bg-ink` `text-ink` `border-ink` `divide-ink` `decoration-ink` … | Page and panel ground; ink type on every inverted block; scrollbar track. Used with an opacity modifier as `bg-ink/95` on the masthead. |
-| `--color-ink-raised` | `#16140F` | `bg-ink-raised` `text-ink-raised` … | `hover:bg-ink-raised` and the scaffolding panel's `bg-ink-raised/80` only. This is the entire elevation vocabulary. |
-| `--color-stock` | `#E8E2D4` | `bg-stock` `text-stock` … | All display type and full-strength body type; the *Caught up* state label; ground of the selected nav item, the selected filter chip, and the active phone tab. |
-| `--color-stock-dim` | `#A29B8B` | `text-stock-dim` `bg-stock-dim` … | Metadata, code lines, synopsis, secondary state labels, inactive nav/chip/tab text, the abandon control, scrollbar thumb on hover. The single most-used colour class in the build. |
-| `--color-rule` | `#2A2621` | `border-rule` `divide-rule` `bg-rule` | The `1px` hairline; also as `bg-rule` under `gap-px` groups so the gaps themselves read as rules. |
-| `--color-rule-bold` | `#453E33` | `border-rule-bold` `bg-rule-bold` `decoration-rule-bold` | Structural division, field borders, the abandon control's underline, the scrollbar thumb, the toast's *Dismiss* border. |
-| `--color-spot` | `#2740C8` | `bg-spot` `text-spot` `border-spot` … | Consumed **only** through `var(--color-spot)` inside the `plate` utility. **No `*-spot` class appears anywhere in the build** — the ink is structurally unreachable except via the plate. |
-| `--color-signal` | `#E85A38` | `bg-signal` `text-signal` `border-signal` `decoration-signal` | Live state, the recording control, the strike and stamp, focus ring, caret, selection, the selected rating, and every failure surface. |
-
-### Type ramp (8)
-
-Every ramp token declares a **font size and nothing else** — there is no paired
-`--text-*--line-height`, so `text-bill-md` sets `font-size` alone and leading comes from the
-`bill-title` utility (`0.86`) or from an explicit `leading-*` class. That separation is what lets one
-size serve both a condensed caps title and a plain running line.
-
-| `@theme` variable | Value | Generated | Where the build actually sets it |
-| --- | --- | --- | --- |
-| `--text-bill-xl` | `3.6rem` | `text-bill-xl` | The programme note's title. One use — the single largest thing on a desktop screen. |
-| `--text-bill-lg` | `2.6rem` | `text-bill-lg` | The phone's `TONIGHT` heading, the phone hero title, the empty-library headline. |
-| `--text-bill-md` | `2.15rem` | `text-bill-md` | Every one of the twelve bill entry titles, plus the zero-match and read-failure headlines. |
-| `--text-bill-sm` | `1.6rem` | `text-bill-sm` | Desktop section heads (`Tonight` via `lg:text-bill-sm`, `The library`), the five Up next row titles, the write-failure toast heading. |
-| `--text-bill-xs` | `1.15rem` | `text-bill-xs` | The wordmark, the four compact phone deck titles, and the phone hero's episode name. |
-| `--text-note` | `0.92rem` | `text-note` | The synopsis (`68ch`) and the running prose of the zero-match (`60ch`), empty-library (`62ch`) and read-failure (`62ch`) states. |
-| `--text-item` | `0.85rem` | `text-item` | Episode names, the "what's next" line under an entry, the strip's episode names, toast copy, the filter field and sort select. |
-| `--text-fine` | `0.7rem` | `text-fine` | One use: the TMDB attribution line. Legal and attribution copy only. |
-
-### Form and motion (5)
-
-| `@theme` variable | Value | Generated | How the build actually uses it |
-| --- | --- | --- | --- |
-| `--font-display` | `"Archivo", ui-sans-serif, system-ui, sans-serif` | `font-display` | Referenced as `var(--font-display)` inside the `bill-title` utility. The `font-display` class is never written. |
-| `--font-text` | `"Archivo", ui-sans-serif, system-ui, sans-serif` | `font-text` | Set once on `body` in `@layer base`. Same family as display — the two roles differ by width axis, not family. |
-| `--radius-none` | `0px` | `rounded-none` | A statement of intent that restates Tailwind's built-in. **No `rounded-*` class appears anywhere in the build**; zero radius is achieved by never applying one. |
-| `--tracking-code` | `0.16em` | `tracking-code` | Referenced as `var(--tracking-code)` inside the `code-line` utility. |
-| `--ease-press` | `cubic-bezier(0.16, 1, 0.3, 1)` | `ease-press` | Referenced as `var(--ease-press)` in the plain-CSS strike and stamp transitions. |
-
-### The three `@utility` rules
-
-These carry what a token cannot — a bundle of declarations that must always travel together.
-
-| `@utility` | Declarations | Purpose |
-| --- | --- | --- |
-| `bill-title` | `font-family: var(--font-display)`; `font-variation-settings: "wdth" 62, "wght" 900`; `text-transform: uppercase`; `letter-spacing: -0.005em`; `line-height: 0.86` | Every title, at every size. Size is applied separately from the ramp (`text-bill-md`, `text-bill-lg`, …). |
-| `code-line` | `font-variation-settings: "wdth" 100, "wght" 600`; `text-transform: uppercase`; `letter-spacing: var(--tracking-code)`; `font-size: 0.625rem`; `line-height: 1.1` | Every code line. Size is **baked in** — the code line is one size everywhere, which is why `0.625rem` is the one ramp step that is not a token. |
-| `plate` | `position: relative`; `isolation: isolate`; `overflow: hidden`; `background: var(--color-spot)` | The duotone container. Its artwork filter and half-tone screen live in plain CSS (`.plate > .art`, `.plate::after`), because a `@utility` cannot reach a child or a pseudo-element. |
-
-### What is deliberately absent
-
-- **No spacing token.** The build uses Tailwind's default `0.25rem` step throughout.
-- **No shadow, elevation, or second-palette token**, because neither exists in this system.
-- **No line-height token.** Leading is either the `bill-title` `0.86`, the `code-line` `1.1`, or an
-  explicit `leading-*` class; everything else inherits `normal`.
-
-### Raw hex outside the theme
-
-Four kinds of literal hex appear in the markup, and each is deliberate:
-
-1. **Synthetic placeholder artwork** — the inline SVG stand-ins for TMDB posters. Content, not palette.
-2. **`#000`** in the plate's half-tone dot screen. This is *screen ink* under `mix-blend-mode: multiply`,
-   not a surface colour, and is a recorded detector exception in `.impeccable/config.json`.
-3. **The TMDB brand mark** (`#0d253f`, `#01b4e4`) — a third party's colours, which are not ours to token.
-4. **`#E85A38` in the press mark's struck bar** (line 164). The one place a palette value is repeated
-   as a literal rather than read from `--color-signal`, because it sits inside an inline SVG `fill`.
-   If the vermilion ever moves, this is the second place to change.
-
-## Overview
-
-**Creative North Star: "The Repertory Bill"**
-
-MediaSafe is a season's programme, not a storefront. A repertory cinema prints one bill for the
-season: everything playing, in one ink, at one measure, with the house's own typography doing the
-work that a distributor's poster would otherwise do. The artwork serves the bill; it does not
-merchandise the title. This is the deliberate refusal of the thing every tracker ships — a rail of
-full-colour posters floating on near-black, where the interface is a shop window and the user is a
-shopper. Here the interface is a printed record of what one person is watching, and the record is
-the point. That is what the name promises, and the surface has to look like it means it.
-
-The stock is a warm ink-black (`ink`, `#0E0D0B`) — never blue-black, never neutral `#000`. The type is
-bone (`stock`, `#E8E2D4`) — never pure white. Two spot inks are laid over that: **ultramarine**
-(`spot`, `#2740C8`) as a solid field, and **vermilion** (`signal`, `#E85A38`) as the one live signal.
-Structure is hairline rules and inverted blocks, never boxes; there is no border radius and no shadow
-anywhere in the system, and neither is an oversight. Depth comes from ink density and rules alone.
-The whole page is one committed world with no theme picker: there is no light mode, no alternate
-palette, no accent chooser. `color-scheme: dark` is declared and the browser's own surfaces —
-selection, scrollbars, caret, focus ring — are painted from the same eight colours.
-
-The density is closer to a printed programme than to an app: titles are set very large and very
-tight (condensed 900 weight, `line-height: 0.86`), metadata is set very small and very wide
-(`0.625rem` at `0.16em` tracking), and there is almost nothing in between. That gap is the
-composition — a name you read across the room and a code line you read up close, with no middle
-register competing for attention. It is also the answer to the product's hardest constraint: this
-must never feel like a spreadsheet, and a table of same-sized rows is exactly what a spreadsheet is.
-
-**Key Characteristics:**
-
-- Warm ink-black stock and bone type; no pure black, no pure white.
-- Two spot inks with fixed jobs: ultramarine is the only plate ink, vermilion is the only live signal.
-- One typeface (Archivo variable) at two widths — condensed 900 caps for names, normal-width 600 caps for code lines.
-- A **closed type ramp**: nine sizes, eight of them `@theme` tokens, and no arbitrary size anywhere.
-- Zero border radius and zero shadows, system-wide.
-- Every borrowed poster is a duotone half-tone plate cropped to one fixed measure.
-- Hairline rules (`1px`, `#2A2621`) and 1px gaps over a rule-coloured ground are the only dividers.
-- One committed world: no theme picker, no light mode, no second palette.
-
-## Colors
-
-Eight colours, printed like a two-ink job: a stock, a type colour with one dimmed step, two rule
-weights, and two spot inks that never trade jobs.
-
-### Primary
-
-- **Ultramarine** (`spot`, `#2740C8`): the plate ink, and *only* the plate ink. It is the field
-  colour behind every piece of borrowed artwork — the thing that makes a wall of clashing TMDB
-  posters read as one printed sheet. It never sets type, never fills a button, never appears as an
-  accent or a hover, and never marks state. **This is enforced structurally, not by memory**: the
-  variable is consumed once, inside the `plate` utility, and no `bg-spot` / `text-spot` /
-  `border-spot` class exists anywhere in the build.
-- **Vermilion** (`signal`, `#E85A38`): the live signal, with a fixed and short list of jobs — the
-  *Watching* state label (and the *Watching* chip's text, even unselected); the up-next episode
-  marker in the programme note; the recording control (*"Strike it — mark watched"*) and the strip's
-  *Strike it* buttons; the strike line, the *Watched* stamp, and the `line-through` on a watched
-  episode; the selected rating cell; the focus ring (`outline: 2px solid`, `outline-offset: 2px`),
-  the caret, and text selection; the sort select's arrow glyph; and the press mark's struck bar. It
-  also carries **failure** — the offline banner, the read-error panel and the write-failure toast are
-  bordered and headed in it, because a failure is the other kind of live event. It is never a plate,
-  never a decorative accent, never a hover colour on a neutral surface, and **never the abandon
-  control**.
-
-### Neutral
-
-- **Ink** (`ink`, `#0E0D0B`): the stock. Page ground, every panel ground, the scrollbar track. Warm,
-  not blue — the warmth is what stops it reading as a generic dark-mode app.
-- **Raised Ink** (`ink-raised`, `#16140F`): the one step up from the stock. It is the *entire* hover
-  vocabulary for neutral surfaces (grid entries, nav items, chips, the settings button) and it is the
-  only way this system indicates elevation at all.
-- **Bone** (`stock`, `#E8E2D4`): all display type, all body type at full strength, the *Caught up*
-  state label, and the inverted ground for the selected nav item, the selected filter chip and the
-  active phone tab.
-- **Dim Bone** (`stock-dim`, `#A29B8B`): metadata, code lines, synopsis, secondary state labels,
-  unselected nav and chip text, the abandon control, and the scrollbar thumb on hover. This is where
-  most of the page's text actually lives.
-- **Rule** (`rule`, `#2A2621`): the hairline. Every `1px` divider between entries, between episode
-  lines, under the masthead.
-- **Bold Rule** (`rule-bold`, `#453E33`): the structural rule — the division between TONIGHT and the
-  bill, the left edge of the programme note, the top edge of the phone tab bar, the border of input
-  and select fields, and the abandon control's underline. It is also the scrollbar thumb.
-
-### Named Rules
-
-**The Two Inks Rule.** Ultramarine is a field; vermilion is an event. Neither may do the other's job.
-If a new surface needs a third colour, it needs a different composition instead.
-
-**The One Live State Rule.** Vermilion on a title means exactly one thing: you are in the middle of
-it. *Watching* is vermilion; *Caught up* is bone; *Finished*, *Watchlist* and *Abandoned* are dim
-bone. The state hierarchy is written in ink weight, and it never inverts.
-
-**The Contrast Floor Rule.** Every text pair on the page passes WCAG AA, and the floor is **5.50:1**
-— vermilion on ink, and ink on vermilion. Measured on the live page: bone on ink **15.04:1**, dim
-bone on ink **7.03:1**, bone over the ultramarine plate **6.13:1**. The vermilion was lightened to
-`#E85A38` specifically to clear the 4.5:1 floor; a darker, more "printerly" vermilion failed it and
-was rejected. Do not darken it back.
-
-## Typography
-
-**Display Font:** Archivo (variable, `wdth 62..125`, `wght 100..900`), falling back to
-`ui-sans-serif, system-ui, sans-serif`
-**Body Font:** Archivo — the same family, at `wdth 100`
-**Label Font:** Archivo — the same family, at `wdth 100`, `wght 600`
-
-**Character:** One grotesk doing two jobs at two widths. Compressed to `wdth 62` at weight 900 it is
-a poster face: heavy, tight, unapologetically loud at large sizes. At `wdth 100` weight 600 with
-`0.16em` tracking and `0.625rem` size it becomes the small print of a programme — the spaced,
-all-caps code line that carries every year, network, season and state. There is no third voice and
-no second family.
-
-### The ramp is closed, and that is the point
-
-**Nine sizes exist and nothing may sit off them.** A bill is set from a case of known sizes; an
-arbitrary rem value is the tell that no case exists. An earlier build drifted to **seventeen** ad-hoc
-`text-[Xrem]` values before this was caught — which is exactly how a "design system" decays into a
-description of whatever got typed. All seventeen are gone.
-
-**Verified against the shipped file: there is no `text-[…]` class anywhere in the build.** Eight
-sizes are `@theme` tokens, so writing an off-ramp size would mean inventing a class that does not
-exist; the ninth is baked into `code-line`, so the code line cannot be resized at a call site at all.
-Closure is the deliverable here, not the specific numbers.
-
-| Step | Token | Value | Class | Used for |
-|---|---|---|---|---|
-| Display | `--text-bill-xl` | `3.6rem` | `text-bill-xl` | The programme note's title |
-| Headline | `--text-bill-lg` | `2.6rem` | `text-bill-lg` | Phone `TONIGHT` heading, phone hero title, empty-library headline |
-| Title | `--text-bill-md` | `2.15rem` | `text-bill-md` | A bill entry's title; the zero-match and read-failure headlines |
-| Section | `--text-bill-sm` | `1.6rem` | `text-bill-sm` | Desktop section heads, Up next row titles, toast heading |
-| Subhead | `--text-bill-xs` | `1.15rem` | `text-bill-xs` | Wordmark, compact phone deck titles, phone hero episode name |
-| Body | `--text-note` | `0.92rem` | `text-note` | Synopsis and running prose |
-| Body Small | `--text-item` | `0.85rem` | `text-item` | Episode names, entry metadata lines, toast copy, form fields |
-| Fine | `--text-fine` | `0.7rem` | `text-fine` | The TMDB attribution, and legal copy generally |
-| Label | *(in `code-line`)* | `0.625rem` | — | The spaced all-caps code line, set inside the utility |
-
-Six of the nine carry the `bill-title` treatment (condensed 900 caps at `0.86`). The two exceptions
-worth knowing: `text-bill-xs` also sets the phone hero's **episode name** at `font-medium` /
-`leading-tight` without `bill-title` — the only ramp step that plays both roles — and `text-note` /
-`text-item` are always plain running text.
-
-### Hierarchy
-
-- **Display** (`wdth 62 / wght 900`, `3.6rem`, `0.86`, uppercase): the title in the programme note.
-- **Headline** (`wdth 62 / wght 900`, `2.6rem`, `0.86`, uppercase): the phone's `TONIGHT` heading and
-  the dominant entry's title — the two things that must be legible with half your attention while
-  credits roll.
-- **Title** (`wdth 62 / wght 900`, `2.15rem`, `0.86`, uppercase): the title in a grid entry. It is
-  deliberately larger than a card of this size would normally carry; the name is the entry.
-- **Section** (`wdth 62 / wght 900`, `1.6rem`, `0.86`, uppercase): desktop section heads
-  (`Tonight`, `The library`), row titles in the Up next row, the write-failure toast heading.
-- **Subhead** (`wdth 62 / wght 900`, `1.15rem`, `0.86`, uppercase): the wordmark and the compact phone
-  deck titles.
-- **Body** (`wdth 100 / 400`, `0.92rem`): the synopsis in the programme note at `leading-relaxed`
-  (`1.625`), capped at `68ch`; the explanatory copy in the zero-match, empty and read-failure states,
-  capped at `60–62ch`.
-- **Body Small** (`wdth 100 / 400`, `0.85rem`): the one-line "what's next" under a grid entry,
-  episode names in the programme note, the strip's episode names, toast copy (`leading-snug`), and
-  field text. Leading is inherited unless a `leading-*` class says otherwise.
-- **Fine** (`wdth 100 / 400`, `0.7rem`, `leading-snug`): the TMDB attribution.
-- **Label** (`wdth 100 / 600`, `0.625rem`, `0.16em`, uppercase): every code line — years, networks,
-  season and episode numbers, state names, nav items, button text, chip text, the TONIGHT strap, the
-  abandon control.
-
-### Named Rules
-
-**The Closed Ramp Rule.** Nine sizes, no tenth. Any size must come from the ramp; an arbitrary
-`text-[Xrem]` is a defect, not a tweak. If a new surface seems to need a size in between, it needs a
-different composition — or the ramp changes deliberately, in the `@theme` block, for everything.
-
-**The Two Widths Rule.** One family, two widths, no third register. If a piece of text is not a name
-(condensed 900 caps) it is a code line (normal-width 600 caps at `0.625rem`/`0.16em`) or it is body
-copy. Adding an in-between voice is how this world turns back into a generic app.
-
-**The Named Episode Rule.** An episode is always its name. "Hands", not "S1 E2". The number is a
-separate, dim code-line label set beside the name — never a replacement for it. No surface may
-degrade to a bare number, including the compact phone deck and the desktop Up next row.
-
-**The Tabular Numeral Rule.** Anything carrying a number — years, networks, season/episode labels,
-the rating scale, reference ids — gets `font-variant-numeric: tabular-nums` (applied via the
-`[data-numeric]` attribute). Numbers in a bill line up.
-
-## Layout
-
-**Container.** One centred column capped at `1800px`, running full-height as a flex column.
-
-**Desktop** (`≥1024px`) is a two-panel reading surface, and it never navigates away from the season:
-
-- A sticky masthead on a `1px` rule: press mark and wordmark in a bordered cell, then two nav items
-  (*Library*, *Search*) as full-height inverted cells, with *Settings* pinned right. Ground is
-  `ink` at 95% opacity with a `2px` backdrop blur, so type scrolling underneath greys rather than
-  disappears.
-- **TONIGHT — the Up next row.** An auto-fill grid of `minmax(292px, 1fr)` columns separated by `1px`
-  gaps over a `rule`-coloured ground, clipped to exactly one row (`max-height: 122px`,
-  `overflow: hidden`). **It is bounded by the viewport, not a scroller**: it shows as many *whole*
-  entries as fit and never a partial card, so there is nothing to re-tune between a laptop and an
-  ultrawide, and Library's *Watching* chip holds the remainder one click below
-  ([#25](https://github.com/Joyaroin/MediaSafe/issues/25)). There is no horizontal scroll, no fade,
-  no arrow affordance — the row simply ends. Secondary to the grid beneath it.
-- **The bill**: a filter bar (state chips, a filter-by-typing field, a sort select), then a grid of
-  programme entries — 2 columns by default, **3 at `≥1280px`**, **4 at `≥1536px`**. Cells are divided
-  by `border-b`/`border-r` hairlines, not gaps.
-- **The programme note**: a fixed `420px` panel on the right, sticky below the masthead
-  (`top: 57px`, `max-height: calc(100vh - 57px)`), with its own internal scroll. Selecting an entry
-  *replaces* this panel's contents; it is never a route change. The TMDB attribution is pinned to
-  the foot of the panel as a non-scrolling row, so the required notice is on screen whenever
-  borrowed data is.
-
-**Phone** (`<1024px`) is a different layout, not a squeezed one:
-
-- **The masthead is present at every width**, not desktop-only. Same sticky `ink/95` cell on its
-  `1px` rule, carrying press mark and wordmark; the *Library* / *Search* nav cells and the *Settings*
-  label are hidden below `lg`, because the phone reaches those through its tab bar and its own
-  header control. It also carries the **display name** as an inert `code-line` on both devices
-  ([#28](https://github.com/Joyaroin/MediaSafe/issues/28)) — never an avatar, and never an entrance.
-- TONIGHT is the first screen under it: one dominant entry with a `5:4` plate at full width, the title
-  block beneath it, then a quiet abandon row, and the recording control pinned to the foot of that
-  block in the thumb arc.
-- Beneath it, the remaining up-next entries as a compact deck. **The deck has no numeric cap** — its
-  own form is the bound, because a deck you work down never renders N at once
-  ([#25](https://github.com/Joyaroin/MediaSafe/issues/25)). It closes with a dim code line:
-  *"A deck you work down — more load as you go"*. Do not reinstate a "showing 10 of N" cap; the
-  sentence is the contract.
-- Three fixed tabs at the bottom (`Up next`, `Search`, `Library`), landing on *Up next*.
-- The bill's grid is not rendered at all on phone — the phone is for marking, not browsing.
-
-**Rhythm.** Tailwind's default `0.25rem` step. In practice the page uses four sizes and almost
-nothing else: `1px` (hairline gaps), `0.75rem` (compact deck padding, chip padding, strip card
-padding), `1rem` (entry padding, phone gutter), `1.5rem` (desktop gutter), `1.75rem` (the gap between
-blocks inside the programme note).
-
-### Named Rules
-
-**The Hairline Rule.** Structure is drawn, not spaced. Regions are separated by a `1px` `rule`
-border, or by a `1px` gap over a `rule`-coloured ground (`gap-px` on a `bg-rule` container) — never
-by whitespace alone, and never by a card with an outline and a radius.
-
-**The Never-Navigate-Away Rule.** On desktop, inspecting a candidate replaces the programme note's
-contents and leaves the bill exactly where it was. Nothing about browsing your season should cost
-you your place in it.
-
-**The Whole-Entry Rule.** A bounded row shows complete entries or nothing. The Up next row's
-`max-height: 122px` is a hand-set number keyed to the strip card's `92px` plate plus its `0.75rem`
-padding (`116px` of content, `6px` of slack). **If that card's content grows, the number must be
-re-derived** — a row that clips a card in half is the failure this bound exists to prevent.
-
-## Elevation & Depth
-
-**There are no shadows in this system.** Not a subtle one, not an ambient one — `box-shadow` does not
-appear anywhere in the build, and that is a decision, not an omission. A bill is printed on a flat
-sheet; nothing on it floats.
-
-Depth is carried by three things instead:
-
-1. **Ink density.** The only "raised" surface is `ink-raised` (`#16140F`), one step up from the
-   stock, used for hover on neutral surfaces. That single step is the entire elevation scale.
-2. **Rules.** `rule` (`#2A2621`) for hairline division, `rule-bold` (`#453E33`) for structural
-   division — the boundary between TONIGHT and the bill, the programme note's left edge, the phone
-   tab bar's top edge.
-3. **Inversion.** The strongest emphasis available is a solid bone block with ink type (the selected
-   nav item, the selected filter chip, the active phone tab) or a solid vermilion block with ink type
-   (the recording control, the selected rating, the up-next episode marker). Inversion replaces
-   elevation.
-
-Overlays are the one exception to flatness, and they still do not use shadow: the write-failure toast
-and the offline banner sit on solid `ink` inside a `2px` vermilion border, and the masthead uses
-`ink/95` with a `2px` backdrop blur.
-
-### Named Rules
-
-**The Flat Stock Rule.** No `box-shadow`, ever. If a surface needs to separate from what is behind
-it, give it a border, a solid ground, or one step of ink density — in that order.
-
-## Shapes
-
-**Radius is zero, everywhere.** `--radius-none: 0px` is declared in the theme as a statement of
-intent, and no `rounded-*` utility appears anywhere in the build. Every corner in this system — plate,
-button, chip, field, toast, tab, stamp — is square. This is the single most load-bearing form
-decision; a `4px` radius anywhere would read as a different product.
-
-**Borders** are `1px` (`rule`) for division and `2px` (`signal`) for a live edge — the recording
-control's top edge, the *Watched* stamp, the toast, the offline banner, the read-error panel. Field
-borders are `1px` `rule-bold`, shifting to `signal` on focus. Nothing has an outline-plus-fill
-"card" treatment.
-
-**The plate** is the recurring silhouette: a rectangle of `spot` ink at one of five fixed measures —
-`78×104px` in the bill grid, `69×92px` in the desktop Up next row, `42×56px` in the phone deck, and
-full-bleed at `5:4` (phone hero) and `16:10` (programme-note head). Artwork is `object-fit: cover`
-inside it, so a poster is **cropped to the measure rather than shown at its own ratio**.
-
-**Icons** are drawn from solid rectangles and plain polygons — no rounded joins, no stroke caps, no
-icon library. The press mark is a `22×22` hairline square (`2px` stroke) with a solid vermilion bar
-struck through its middle: the whole product in 24 pixels.
-
-### Named Rules
-
-**The Square Corner Rule.** Zero radius on every element, without exception.
-
-**The One Measure Rule.** Borrowed artwork is normalised to the programme's column, not the other way
-round. Whatever aspect ratio TMDB returns, the plate crops it to the fixed measure for that surface.
-
-## Components
-
-### The Plate (signature component)
-
-The device that makes a wall of borrowed posters look like one printed sheet. TMDB artwork arrives in
-inconsistent ratios and clashing colour; the plate forces all of it into one ink at one measure.
-Three layers, in order:
-
-- **Container:** `background: var(--color-spot)`, `position: relative`, `isolation: isolate`,
-  `overflow: hidden`, fixed width and height per surface.
-- **Artwork:** `object-fit: cover`, `filter: grayscale(1) contrast(1.12)`,
-  `mix-blend-mode: luminosity`, `opacity: .95`. The artwork contributes only its luminosity; the
-  hue is the plate's.
-- **Half-tone screen:** an `::after` overlay, `radial-gradient(circle at 50% 50%, #000 0.9px,
-  transparent 1.05px)` on a `3px × 3px` grid, `mix-blend-mode: multiply`, `opacity: .34`. That `#000`
-  is screen ink, not a palette colour — see the detector exception above.
-
-A dark poster renders as a near-black plate and a bright one as a pale ultramarine one — the value
-range of the original survives, only the colour does not. An *Abandoned* title's plate drops to
-`opacity: .45` and its name drops to dim bone; that pairing is the only place the plate is modified.
-
-### Programme Entry (the bill's grid cell)
-
-A full-width button, not a card. Ground `ink`, hairline right and bottom borders, `1rem` padding,
-`1rem` gap. Left: the plate at `78×104px`. Right: the title in condensed 900 at `2.15rem`
-(`text-bill-md`), a dim code line (`2022 · FX`), the state label, and a single truncated line of
-what's next (*"Next — Hands"*, *"Nothing to watch now"*, *"Not started"*). Hover fills the cell with
-`ink-raised`; the current entry carries `aria-current`. No shadow, no lift, no radius, no scale.
-
-### Up Next Row (desktop)
-
-An auto-fill grid, not a scroller. Cards are `minmax(292px, 1fr)` on `1px` gaps over `bg-rule`,
-`0.75rem` padding, ground `ink`, and the whole row is capped at `max-height: 122px` with
-`overflow: hidden` so exactly one row of whole cards renders. Each card is a `69×92px` plate beside
-a `text-bill-sm` title, a truncated episode name at `text-item`, a dim `S1 E2` code line, and a ghost
-*Strike it* button pushed to the bottom with `mt-auto`. The strike rule and *Watched* stamp are
-positioned inside the card's right-hand block.
-
-### Buttons
-
-- **Shape:** square (`0px` radius), every variant.
-- **Recording control (phone):** solid `signal` ground, `ink` text and icon, full width, `1.25rem`
-  vertical padding, `2px` `signal` top border, label typography. Pressed state is
-  `filter: brightness(0.9)` over `200ms`. It is pinned to the foot of the first screen, in the thumb
-  arc — it may never sit up in the reading zone.
-- **Strike button (desktop Up next row):** ghost — `1px` `signal` border, `signal` text on `ink`,
-  `0.25rem 0.625rem` padding. Hover inverts to solid `signal` with `ink` text.
-- **Recovery buttons** (*Try again*, *Clear the filter*): the same ghost treatment at
-  `0.5rem 1rem`. The one primary recovery action (*Bring your library in*, *Try again* in the toast)
-  is solid `signal` with `ink` text.
-- **Abandon control:** see below — deliberately not a button shape at all.
-- **Focus:** `outline: 2px solid var(--color-signal)` at `outline-offset: 2px`, globally, on
-  `:focus-visible`. There is no second focus treatment.
-
-### Abandon Control
-
-The one hand-set state in the entire model ([#7](https://github.com/Joyaroin/MediaSafe/issues/7)),
-and after [#25](https://github.com/Joyaroin/MediaSafe/issues/25) the mechanism that keeps the deck
-from drifting back toward everything you ever added. A hairline-topped row carrying a **dim
-underlined text button** — *"Give up on this"* — with the reassurance *"Watching it again clears it"*
-set as a dim code line opposite. `text-stock-dim`, `underline`, `decoration-rule-bold`,
-`underline-offset-4`, hovering to `text-stock`. No border, no fill, no icon.
-
-**It is deliberately the quietest control on either surface, and it is never vermilion.** Vermilion
-is reserved for recording a watch; giving up on something is not the daily gesture and must never
-compete visually with the one that is. It appears in exactly two places — the phone's dominant Up
-next entry, and the programme note (so titles outside the deck can still be abandoned) — and nowhere
-else. Every other state in the model is derived; this is the only one a person sets by hand.
-
-### Chips (library filters)
-
-- **Style:** a single group with `1px` gaps over a `rule` ground, so the chips read as one printed
-  block of cells rather than six floating pills. `0.375rem 0.75rem` padding, label typography.
-- **State:** selected inverts to bone ground with ink text (`aria-pressed="true"`). Unselected is
-  `ink` with dim bone text, hovering to `ink-raised` with bone text. The *Watching* chip is the one
-  exception: its text is vermilion even when unselected, because vermilion always means live.
-- **Vocabulary:** the chips are exactly *All*, *Watching*, *Caught up*, *Finished*, *Watchlist*,
-  *Abandoned*. These are the five states of a title plus *All* — do not rename, reorder into a
-  different taxonomy, or add a sixth state.
-
-### Inputs / Fields
-
-- **Filter field:** a `1px` `rule-bold` bordered row with a bar icon, `13rem` wide, transparent
-  ground, bone text at `text-item`, dim bone placeholder reading *"Filter your library"*. Focus moves
-  the border to `signal` via `focus-within`; the input's own outline is suppressed in favour of the
-  border shift. Caret is `signal`.
-- **Sort select:** the same bordered treatment at `text-item`, with the native arrow removed and
-  replaced by a solid vermilion triangle (`polygon 0,0 12,0 6,8`, `0.5rem × 0.75rem`) — the one place
-  vermilion marks an affordance rather than a state.
-- **Copy discipline:** "Filter" narrows your own library; "Search" means the catalogue. The two words
-  are not interchangeable and must not be swapped in any field, tab, or nav item.
-
-### Navigation
-
-- **Desktop:** full-height cells on the masthead's hairline, separated by `1px` borders, label
-  typography. Active is inverted (bone ground, ink text, `aria-current="page"`); inactive is dim bone
-  hovering to `ink-raised` + bone. Three items: *Library*, *Search*, *Lists* (issue #146).
-- **Phone:** four fixed tabs at the bottom on a `1px` gap over `rule`, with a `rule-bold` top
-  border. Each tab is a rectilinear icon over a label. Active is inverted to bone/ink. Lands on
-  *Up next*.
-
-### Episode Line (programme note)
-
-The row that carries the product's most important rule. `E1` as a dim, fixed-width (`2.25rem`)
-tabular code line; the episode **name** at `text-item` as the actual content; a trailing state code
-line. Watched episodes are `line-through decoration-signal decoration-2` in dim bone. The up-next
-episode inverts its number into a solid vermilion chip and carries a vermilion *Up next* label.
-Rows are divided by hairlines.
-
-### Rating Scale
-
-**Ten** cells, numbered 1–10, `1px` gaps over `rule`, `0.5rem` vertical and `0.25rem` horizontal
-padding, tabular numerals, label typography. *Square* here means what it has always meant on this
-bill — hard-cornered and blocky, no radius. It has never meant 1:1: the prototype's five cells
-measure about `36 × 27`, and ten cells hold the same proportion. Unselected is `ink` + dim bone; the chosen value is solid `signal` with
-`ink` text (`aria-pressed="true"`); hover previews the same inversion. It appears on title detail —
-the programme note on desktop, the phone route — and nowhere else.
-
-**This section said *five* until issue #113, and that was a defect rather than a decision.**
-ADR-0001 settled `CHECK (rating BETWEEN 1 AND 10)` and named *"a rating is a whole number 1–10"* as
-a binding consequence for the design tickets; #12 built five anyway, and no ticket ever chose a
-five-point scale. `SPEC.md` §10.3 records the divergence and rules for the schema. The prototype
-(`docs/design/prototypes/repertory-bill.html`) still draws five and is not the authority here.
-
-**The cells take their width from the row, not from a digit.** The prototype's `0.875rem` horizontal
-padding is the one thing ten cells could not keep: ten of them come to roughly 365px, which fits the
-420px panel's content and not the phone route's, and `10` is two digits, so under fixed padding the
-last cell would be visibly wider than the other nine. Every cell is `flex-1` instead — ten identical
-cells filling whatever width they are given, so the same markup fits both routes and `10` is no
-wider than `1`. `SPEC.md` §10.3 called tightening the padding a build-time call; this is that call,
-and the treatment is otherwise unchanged.
-
-Nothing reads a rating: there is no *Unrated* chip, no sort by rating, no rating on the tile, and no
-prompt anywhere asking for one. An unrated title renders ten unselected cells and says nothing else
-about it.
-
-### States (empty, zero-match, read failure, write failure, offline)
-
-Five distinct treatments, and the distinctions are structural, not cosmetic:
-
-- **Zero matches** (a filter matched nothing): centred, heading at `text-bill-md`, body at
-  `text-note` capped at `60ch`, ghost *Clear the filter* button. Reassures that the library is intact.
-- **Empty library** (genuinely nothing stored): the same shape with the heading at `text-bill-lg` and
-  a solid `signal` *Bring your library in* button. Reachable only by declining the import.
-- **Read failure:** inline, left-aligned, `2px` `signal` top border, heading at `text-bill-md` in
-  `signal`, a ghost *Try again*, and a dim tabular reference id. It replaces the grid and can never
-  be mistaken for empty.
-- **Write failure:** a persistent toast on solid `ink` inside a `2px` `signal` border —
-  `420px` bottom-right on desktop, full-bleed above the tab bar on phone. Heading at `text-bill-sm`
-  in `signal`, the affected title and episode named in full, a solid *Try again*, a ghost *Dismiss*,
-  and a copyable reference id. It does not auto-dismiss.
-- **Offline:** a sticky full-width `signal` banner with `ink` label type at the very top of the page.
-
-All five speak in plain sentences. The only technical string a reader ever sees is the reference id.
-
-### Motion
-
-Motion exists in exactly one place, and it is the authored moment of the whole product: **marking a
-watch is a material event, not a state toggle.** The episode name is struck through by a `2px`
-vermilion rule that scales in from the left over `420ms`, and an off-register *Watched* stamp lands
-over the row — `rotate(-9deg)`, scaling from `1.5` to `1` with opacity over `280–380ms`. Both use
-`cubic-bezier(0.16, 1, 0.3, 1)` (`--ease-press`).
-
-The row's bounding rect is **identical before and after** — measured, not assumed. The strike is
-absolutely positioned over the name and the stamp is absolutely positioned in the block, so nothing
-reflows: nothing moves under the thumb, and no card vanishes from the list.
-
-Everything else is a `150ms` colour transition on hover and a `200ms` brightness change on press.
-Under `prefers-reduced-motion: reduce`, the strike and stamp collapse to `1ms` — the event still
-happens, it just does not animate.
-
-### Named Rules
-
-**The Material Event Rule.** Recording a watch strikes and stamps; it never turns a control blue,
-slides a switch, or removes the row from under the finger. The mark must look like something that
-happened to a printed sheet, and the row it happened to must not move.
-
-## Do's and Don'ts
-
-### Do:
-
-- **Do** keep ultramarine (`#2740C8`) as a field ink only — it is the plate, and nothing else. Keep
-  it reachable only through the `plate` utility, so the rule stays structural.
-- **Do** keep vermilion (`#E85A38`) for live state, the recording control, the strike and stamp,
-  focus, selection, and failure. Its scarcity is what makes it legible.
-- **Do** take every size from the closed ramp. Nine sizes, eight tokens, zero `text-[…]` classes.
-- **Do** put every borrowed image through the plate: grayscale + `contrast(1.12)`,
-  `mix-blend-mode: luminosity` over `spot`, plus the `3px` half-tone screen at `.34`.
-- **Do** crop artwork to the surface's fixed measure. The programme normalises everything to the
-  column.
-- **Do** set names in condensed Archivo (`wdth 62`, `wght 900`, `line-height: 0.86`) and everything
-  administrative in the `0.625rem` / `0.16em` code line. Those are the two registers.
-- **Do** name episodes. "Hands", with `S1 E2` as a separate dim label beside it.
-- **Do** use the exact state vocabulary: **Watchlist, Watching, Caught up, Finished, Abandoned**.
-- **Do** keep the abandon control quiet — dim, underlined, unfilled, and never vermilion.
-- **Do** divide with `1px` rules or `1px` gaps over a `rule` ground.
-- **Do** invert to bone-on-ink or vermilion-on-ink when something needs to be the strongest thing on
-  screen.
-- **Do** apply `[data-numeric]` (tabular figures) to anything containing a number.
-- **Do** pin the TMDB attribution to the foot of whatever pane shows borrowed data, out of the
-  scroll.
-- **Do** keep the recording control in the thumb arc on phone, at the foot of the first screen.
-
-### Don't:
-
-- **Don't** add a border radius. Anywhere. `0px` is the form language.
-- **Don't** add a `box-shadow`, a glow, a gradient scrim, or a lift-on-hover. Hover is
-  `ink → ink-raised` and nothing more.
-- **Don't** write an arbitrary `text-[Xrem]`. That is how this build got to seventeen sizes; the ramp
-  is closed and the closure is the point.
-- **Don't** show a poster in its own colours, at its own aspect ratio, or in a horizontally scrolling
-  full-colour rail. That is the exact thing this world refuses.
-- **Don't** turn the desktop Up next row into a scroller, or let it render a partial card. It is
-  bounded by the viewport; the remainder lives behind the *Watching* chip.
-- **Don't** put a numeric cap on the phone deck, or a "showing 10 of 62" line. The deck's own form is
-  the bound: *"A deck you work down — more load as you go"*.
-- **Don't** use vermilion as a plate, an accent, a decorative hover, a brand flourish, or the abandon
-  control, and don't darken it — `#E85A38` is the value that clears the 4.5:1 contrast floor.
-- **Don't** use ultramarine for type, buttons, state, or emphasis, and don't introduce a `*-spot`
-  utility class.
-- **Don't** introduce a third font, a third width, or a middle type size between the condensed name
-  and the `0.625rem` code line.
-- **Don't** build a theme picker, a light mode, or an alternate palette. This is one committed world.
-- **Don't** use pure `#000` or pure `#FFF`. The stock is warm and the type is bone. (The `#000` in the
-  plate's dot screen is screen ink under `multiply`, and is the one recorded exception.)
-- **Don't** move, reorder, or remove a row when a watch is marked — strike and stamp in place.
-- **Don't** render dense tables, inline form fields, bulk-edit affordances, or admin chrome on an
-  everyday surface.
-- **Don't** show a bare `S3 E4` anywhere in place of an episode name.
-- **Don't** conflate *Filter* (your library) with *Search* (the catalogue) in any label.
-- **Don't** navigate away from the bill to inspect a candidate on desktop — replace the programme
-  note's contents.
+# DESIGN.md — the Catalogue Wall
+
+**The visual world of MediaSafe, written from the build that shipped.**
+
+This file was replaced wholesale by
+[#144](https://github.com/Joyaroin/MediaSafe/issues/144), after the last of
+[#134](https://github.com/Joyaroin/MediaSafe/issues/134),
+[#135](https://github.com/Joyaroin/MediaSafe/issues/135),
+[#136](https://github.com/Joyaroin/MediaSafe/issues/136),
+[#137](https://github.com/Joyaroin/MediaSafe/issues/137),
+[#138](https://github.com/Joyaroin/MediaSafe/issues/138),
+[#139](https://github.com/Joyaroin/MediaSafe/issues/139) and
+[#141](https://github.com/Joyaroin/MediaSafe/issues/141) merged. **Nothing of the previous
+world survives here.** The bone/ink/vermilion letterpress world, the Two Inks Rule, the
+duotone plate, the one-committed-world rule, the strike-and-stamp and the token names that
+carried them are gone — not deprecated, not amended around. If you are looking for them,
+they are in this file's git history and nowhere else.
+
+**Every rule below was read off the shipped code and the built app**, not off the tickets
+that asked for it. Where a ticket's prose and the build disagreed, the build was written
+down. Where the two disagreed in a way that looked like a defect rather than a decision, it
+is named as such in *§11 — Outstanding, and not licence*, and was raised on the pull
+request instead of being promoted into a rule.
+
+## How to read this file
+
+`app/globals.css` is the **single declaration site** for the world's tokens. This document
+explains and constrains them; it does not re-declare them. When the two disagree, the
+stylesheet is what ships and this file is the bug.
+
+For the same reason this file carries **no YAML frontmatter**. The previous version encoded
+the whole palette and type ramp a second time in machine-readable form, which is exactly the
+duplicate-that-drifts this codebase refuses everywhere else. There is one copy of the
+palette and it is in `app/globals.css`.
+
+**Precedence.** `SPEC.md` outranks this file, `CONTEXT.md` binds the words on screen, and
+ADR-0001 binds the schema. This file outranks any prototype.
 
 ---
 
-*The fixed "PROTOTYPE ONLY — STATES" panel in the bottom corner of the reference build is scaffolding
-for exposing hidden states. It is not a component and has no place in the product.*
+## 1. The prototype is now historical reference
+
+`design/catalogue-wall.html` **is no longer the contract.** It was, from #132 until this
+file merged, and it is why most of the measures below exist. From here it is a *record of
+what was approved*, in the same standing as `docs/design/prototypes/repertory-bill.html`,
+which recorded the world before it.
+
+- **This file is the live contract.** A disagreement between it and the prototype is
+  settled here, not there.
+- The prototype is **not** updated to match the build, and the build is **not** corrected
+  towards the prototype. Neither file chases the other.
+- Where a measure below says *"the prototype's own number, taken rather than re-derived"*,
+  that is a statement about where the number came from, not an invitation to go back and
+  re-read it.
+
+---
+
+## 2. The palette
+
+Seven colour tokens, declared once as plain custom properties on `:root`, with a single
+`prefers-color-scheme: dark` override. `@theme` then points Tailwind's generated utilities
+at those properties rather than at fixed hex — that indirection is the whole mechanism, and
+it is what lets one declared token resolve differently per system setting with **no theme
+class, no second copy of the palette and no picker.**
+
+| Token | Utility | Light — the desktop in daylight | Dark — the phone at 11pm |
+|---|---|---|---|
+| `--ground` | `bg-ground` | `#f6f5f3` | `#0a0a0b` |
+| `--raised` | `bg-raised` | `#ffffff` | `#17171a` |
+| `--hair` | `border-hair` | `#e4e3df` | `#242429` |
+| `--text` | `text-text` | `#16161a` | `#f4f4f2` |
+| `--dim` | `text-dim` | `#6e6e6b` | `#8c8c8a` |
+| `--accent` | `text-accent` | `#a85d06` | `#ffb020` |
+| `--accent-ink` | `text-accent-ink` | `#ffffff` | `#0a0a0b` |
+
+### The system setting decides, and there is no picker
+
+`html { color-scheme: light dark; }` — the setting follows the operating system and nothing
+in the product can override it.
+
+**Neither theme is "the" theme.** The phone at 11pm and the desktop in daylight are both
+real scenes, which is why `color-scheme` is not pinned to dark and why both columns above
+are first-class rather than one being a derivation of the other.
+
+**There is still no theme picker, and never will be.** That prohibition survives from
+`SPEC.md` §9 intact. What did *not* survive is the one-committed-world rule that used to
+justify it: the ban on a picker was never a ban on the system being asked.
+
+### The browser's own surfaces are painted too
+
+Selection, the caret, the scrollbars and the focus ring are all drawn from these tokens in
+both themes, in `@layer base`. They are part of the world, not the browser's business:
+
+- `::selection` is `text` ground with `ground`-coloured text — the inversion, at full
+  strength.
+- Scrollbars are a `hair` thumb on a `ground` track, `10px`, `scrollbar-width: thin`,
+  hovering to `dim`.
+- `:focus-visible` is `2px solid var(--color-text)` at `2px` offset.
+- `input { caret-color: var(--color-text); }`.
+
+Each of these used to be painted in the accent. They are painted in brightness now, for
+§3's reason.
+
+---
+
+## 3. Artwork is the only colour
+
+**Every surface in this world is neutral. The posters supply all of the chroma.** A
+coloured element that is not a poster is a bug.
+
+This is the load-bearing rule of the Catalogue Wall and the one that most repays being
+stated plainly: the six neutral tokens above have no hue to speak of, the accent is
+rationed to a single meaning, and everything else that is coloured on screen is a piece of
+borrowed TMDB artwork rendered as itself. A wall of real posters is loud enough. Anything
+the interface adds competes with it.
+
+Consequences that are already load-bearing in the build:
+
+- **No grayscale, no duotone, no half-tone screen, no ground ink** standing in for a
+  poster's own colour. The plate did all four and the plate is gone (#135).
+- **No decorative colour anywhere** — no coloured category, no coloured chart, no
+  per-genre tint. There is no token for one and adding one is not an oversight fix.
+- A title with **no artwork** gets `poster`'s own `raised` rectangle and *no* placeholder
+  glyph. No artwork is not an error, and a "no image" icon would be the only apology in a
+  world that has none.
+
+### The accent means recording a watch
+
+`--accent` is **reserved for recording a watch**, and that reservation is the reason the
+rest of the world is as quiet as it is.
+
+It does **not** mean focus. It does not mean selection. It does not mean navigation state,
+the current page, hover, or "this thing is interactive". Each of those had the accent at
+some point before #134 and each of them lost it deliberately:
+
+| Instead of the accent | The build uses |
+|---|---|
+| Focus ring | `2px` solid `text`, offset `2px` |
+| Text selection | `text`/`ground` inversion |
+| Caret | `text` |
+| A **selected** rail tile | `ring-2` in `text` around the poster (`up-next-tile.tsx`) |
+| Hover on a tile | brightness alone |
+| The **current** sidebar destination | full-strength `text` against `dim` siblings, plus a rule (`sidebar-nav.tsx`) |
+
+`sidebar-nav.tsx` states the rule for the surface most likely to want it back: *no accent
+here — accent means live action.* A navigation rail that paints the current page in the
+accent has spent the one colour that means *this was marked* on a fact the reader could
+already see.
+
+**Two standing exceptions**, both deliberate and neither a state:
+
+1. **The press mark.** The wordmark is a hairline square with a struck accent bar
+   (`press-mark.tsx`), and `app/icon.svg` names itself as one of the two places the accent
+   lives. It is the brand mark, not a UI state, and it does not vary.
+2. **The failure and recovery treatment** (`errors/`). Accent is the colour of a failure
+   and of the one way out of it: `GHOST_RECOVERY` (accent border, accent text, inverting on
+   hover) for ordinary recovery actions, and `SOLID_RECOVERY` (solid accent on
+   `accent-ink`) for **the one primary recovery action on a surface** and nowhere else.
+   `delete-account-form.tsx` widens solid accent once more, by name, to the single
+   irreversible authored moment in the product.
+
+That second exception is a system, not a licence. `create-list-form.tsx` and
+`delete-list-dialog.tsx` both reach for it, reason about it, and **decline** — an everyday
+control and a reversible deletion are neither a recovery nor an irreversible moment, so both
+stay at the ghost treatment every other secondary action uses. Copy that reasoning, not the
+solid.
+
+Surfaces that still paint the accent for a *third* meaning are in §11. They are outstanding
+work, not precedent.
+
+---
+
+## 4. Hierarchy comes from scale and weight
+
+**Not from boxes.** There are no cards with borders, no panels with shadows, and no
+dividers doing work that spacing should be doing.
+
+The world has exactly three devices for separating things, and they are used in this order:
+
+1. **Scale and weight** — a condensed 900-weight title against plain body text.
+2. **Space.**
+3. **A `1px` `hair` rule**, when two things genuinely abut and neither of the above will do.
+
+Every division in the build is drawn at `1px`, in one colour. There is no second hairline
+colour and no heavier rule for a "more important" division — the previous world had `rule`
+and `rule-bold` and both collapsed into the single `hair`. If a division needs to read as
+more important than another, that is a job for the type either side of it.
+
+### The type ramp is closed
+
+One typeface — **Archivo**, self-hosted through `next/font` — at two widths. Eight size
+tokens and one baked-in ninth.
+
+| Token | Size | What it sets |
+|---|---|---|
+| `--text-bill-xl` | `3.6rem` | the programme note's title |
+| `--text-bill-lg` | `2.6rem` | phone hero, full-surface headlines |
+| `--text-bill-md` | `2.15rem` | a bill entry, inline headlines |
+| `--text-bill-sm` | `1.6rem` | section heads, row titles, toast |
+| `--text-bill-xs` | `1.15rem` | wordmark, compact row titles |
+| `--text-note` | `0.92rem` | synopsis and running prose |
+| `--text-item` | `0.85rem` | episode names, metadata, fields |
+| `--text-fine` | `0.7rem` | attribution and legal notices |
+
+The ninth is `code-line`'s `0.625rem`, baked into the utility rather than tokenised
+**because the code line is one size everywhere** — it has no ramp to sit on.
+
+**Nothing off-ramp.** An arbitrary `rem` value in a class list is the tell that no case
+exists. Each token declares a font size and **nothing else** — there is no paired
+`--text-*--line-height`, and that separation is what lets one size serve both a condensed
+caps title and a plain running line.
+
+### The two width roles
+
+The `wdth` axis is load-bearing, not decorative. A title that arrives without it is not a
+smaller title, it is a different typeface — which is why each role is an `@utility` that
+travels as a bundle rather than a set of classes a call site can half-apply.
+
+- **`bill-title`** — `wdth 62`, `wght 900`, uppercase, `letter-spacing: -0.005em`,
+  `line-height: 0.86`. Names, headings, rail heads.
+- **`code-line`** — `wdth 100`, `wght 600`, uppercase, `letter-spacing: 0.16em`
+  (`--tracking-code`), `0.625rem`, `line-height: 1.1`. Metadata, labels, the display name,
+  episode codes.
+
+**Body text is not a display face.** A rail tile's title is plain body text over at most two
+lines, and the year under it plainer still — deliberately *not* `bill-title`, because the
+artwork is the loudest thing on a rail and a wall of shouting names would compete with it.
+The condensed uppercase belongs to the rail's heading, not to the titles under it.
+
+### Corners
+
+`--radius-none: 0px` is declared, and it is zeroed deliberately rather than skipped: **this
+world is square.** Two things in the entire build are not, and both come from the prototype:
+
+- **The poster**, at `border-radius: 7px` — soft enough to read as a printed card, and the
+  only radius that touches content.
+- **The rail's scroll arrows**, which are `rounded-full` circles.
+
+There is no radius scale. Those are the two exceptions and the list is closed.
+
+---
+
+## 5. Glass is chrome only
+
+Frosting appears on **chrome and nothing else**: the phone masthead, the phone tab bar, the
+desktop sidebar, and the rail's scroll arrows. It never appears on content, on a tile, on a
+poster, on a card, or on a dialog surface.
+
+One recipe, everywhere:
+
+```
+bg-ground/95 backdrop-blur-[2px]     /* masthead, tab bar, sidebar */
+bg-ground/80 backdrop-blur-[2px]     /* rail arrows, over moving artwork */
+```
+
+### The repaint reasoning — this is a performance rule, not a taste one
+
+**A backdrop filter repaints everything behind it.** That cost is paid on every frame the
+element is composited over moving content, which for a sticky masthead over a scrolling
+page and a sidebar beside a scrolling document is *every scrolled frame*. It is the single
+most expensive visual effect in this build.
+
+That is why:
+
+- **The value is `2px`, not the prototype's `blur(22px)`.** The mock's heavier value was
+  not taken. `sidebar.tsx` and `up-next-rail.tsx` both reuse the masthead's already-shipped
+  lighter recipe explicitly rather than introducing a second, heavier one.
+- **Every frosted surface in the build pays the same small cost.** There is exactly one
+  blur radius in the product. A second one is a second performance profile to reason about,
+  for a difference nobody asked for.
+- **New frosted surfaces are not free.** Adding frosting to content multiplies the repaint
+  area by the thing most likely to be large and scrolling.
+
+Read as taste, `2px` looks like an arbitrarily timid blur that someone might reasonably
+"improve". It is not timid. It is the number, and the reason is above.
+
+What the frosting actually buys: type scrolling underneath **greys rather than disappears**.
+At 95% opacity over `ground` the chrome is effectively opaque and the blur is doing the
+work at the edges.
+
+---
+
+## 6. The sweep
+
+Recording a watch on an episode row is one motion, and it is the only place the accent moves.
+
+```css
+@utility watch-sweep {
+  position: absolute;  inset: 0;
+  background: var(--color-accent);
+  transform: scaleX(0);  transform-origin: left center;
+  pointer-events: none;
+  animation: watch-sweep-in 200ms var(--ease-press) forwards;
+}
+@keyframes watch-sweep-in {
+  0%   { transform: scaleX(0); opacity: 0.3; }
+  100% { transform: scaleX(1); opacity: 0;   }
+}
+```
+
+- **`200ms`**, on `--ease-press` (`cubic-bezier(0.16, 1, 0.3, 1)`) — roughly half the
+  retired strike's `420ms`. *Quiet and immediate*, not a performance to sit through.
+- **A wash across the row it marks**, scaling in from the left and fading out over the same
+  run, so **nothing accent-coloured is left once it settles.** The row itself, dimmed, is
+  what says *watched* from here — the sweep is punctuation, not a state.
+- **Three phases per row**: `unwatched` → `marking` → `settled`, ended by `WatchSweep`'s own
+  `onAnimationEnd`. An episode already watched on the server **mounts straight into
+  `settled`** — no animation plays for a mark that happened before the page loaded.
+- **The optimistic flag and the phase are separate state.** `watched` flips the instant the
+  row is touched — the control disappears and the trailing label reads *Watched*
+  immediately. `phase` governs only the sweep. The record is never waiting on the animation.
+
+### The bounding-rect guarantee
+
+**The row's bounding rect, before the sweep and after it, is the same rect.** This is the
+one property the sweep exists to preserve, and it is why the wash is `position: absolute;
+inset: 0` inside the row's own `relative` `<li>` — it never takes flow space.
+
+The hard part is not the sweep; it is the **recording control**, which *is* in flow and
+*does* disappear the instant the mark lands. Its box is taller than the plain `code-line`
+text either side renders on its own, so left alone the row shrinks the moment the button
+goes — under a thumb that is still resting on it.
+
+**`min-h-11` (`2.75rem`) is the fix**, and it is sized to the row's own tallest natural
+content (name line + `py-2.5`), not to the control's padding box. The first attempt,
+`min-h-[1.375rem]`, was sized to the button alone and still let the row settle about
+`0.6px` shorter — Tailwind's preflight `box-sizing` means `min-height` competes with the
+taller of the row's two states, not with the control.
+
+**Measured in a real Chromium tab against the compiled CSS** (`getBoundingClientRect`), not
+inferred from class names:
+
+| Pane width | States measured | `<li>` |
+|---|---|---|
+| `420px` | unwatched-with-button · mid-sweep · `260ms` in (past the `200ms`, fully settled) · settled-with-rewatch-and-unwatch | **`372 × 44px`**, at `x 24 / y 51.44`, identical across all four |
+| `375px` (phone, less the same `1.5rem` gutters) | before the press · after the mark settled | **`327 × 44px`**, identical |
+
+The earlier #89 harness measured the same row before the sweep existed and landed on the
+same `44px` height at three widths (`371 × 44` / `326 × 44` / `291 × 44`), with the episode
+name beside it identical in every state rather than moving as the controls changed. The
+`1px` difference against #139's `372` is rounding noise between two separately-built
+harnesses, not a regression.
+
+**Two things buy that guarantee and both are load-bearing**: the fixed trailing measure
+(`TRAILING`) and the name's `truncate`. Without the second, a long name wraps and takes the
+row's height with it. `FilmRow` reuses the same `li` shape for the same reason.
+
+**Re-measure if you touch the row.** It did not pass the first time.
+
+### Reduced motion costs the animation and never the event
+
+`prefers-reduced-motion: reduce` shortens `watch-sweep` to `1ms`. It does not remove it, and
+it changes nothing about the write: the state flip was already instant, and this only
+shortens how long the wash takes to reach the fully-transparent end it always reaches.
+
+The same rule holds everywhere motion exists:
+
+- **The poster morph** collapses to `animation-duration: 0s` on
+  `::view-transition-group/-old/-new` — which is exactly what a browser without View
+  Transitions support falls back to. A reader who asks for less motion gets an **instant
+  swap**, navigation and panel-swap alike, **never a missing tile or a missing panel**.
+- **The rails** still scroll by exactly the same whole tiles; they just arrive there. This
+  is the one motion the CSS media query cannot reach, because `behavior: "smooth"` in
+  JavaScript overrides `scroll-behavior` rather than reading it — so `up-next-rail.tsx`
+  checks the query itself at the moment of the scroll.
+
+**The event always happens. Only the animation is negotiable.**
+
+---
+
+## 7. The rails
+
+The desktop *Up next* page is **three rails, in this order**, and they are the only rails in
+the product.
+
+| Rail | Head line | Rule (`db/access.ts`, `listUpNextRails`) |
+|---|---|---|
+| **Ongoing** | *Watching · your most recent* | *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
+| **Coming back** | *Caught up · an episode is dated* | *caught up* ∧ the **up next** episode's air date is in the future |
+| **Old friends** | *Watching · everything else* | *watching*, everything not in **Ongoing** |
+
+The membership rules live in `db/access.ts` and not in the components on purpose: the
+surface decides the words and the order they read in, and knows nothing about what put a
+title on one rail rather than another. **Nothing is stored, nothing is refreshed and
+nothing can go stale** — a rail is a `slice` and a `WHERE`, evaluated on read, because a
+stored copy of derived state is a second answer that can disagree with the watches
+(ADR-0001).
+
+### Twelve is a chosen build-time constant
+
+`ONGOING_RAIL_SIZE = 12`.
+
+**It is a count, not a duration, and that is the decision.** The measured signal in the
+committed library was an empty 61–90 day gap in *days since last watch*, which suggests a
+60-day threshold. A count was chosen over it because **a count is self-correcting**: Ongoing
+is never empty after a quiet month, and never 199 long after a binge year. A 60-day rule is
+both, in turn, on the same library.
+
+**Twelve specifically**, because the rail is one horizontal run of posters and twelve is
+about two screens of it — long enough that a week of ordinary watching does not fall out of
+it, short enough that the head of it still reads as *what I am actually in the middle of*.
+The shape it is drawn against: of 283 non-abandoned titles with a dated watch, **199 (70%)
+are more than two years cold**, and the surface before #137 treated every one of them
+identically to something watched last night.
+
+**It is a build-time constant.** Not a stored setting, not a user preference, and not a
+thing any surface can change — nothing takes it as an argument and nothing writes it. It is
+exported only so the tests can prove the cap holds at exactly this number.
+
+**It is never displayed.** *Your most recent* is the head line, with the numeral removed
+from the prototype's *"watching · your 12 most recent"*, because a twelve on a rail head
+reads as a count whether it is meant as one or not.
+
+### The rules a rail obeys
+
+- **An empty rail is absent** — no heading over nothing, no sentence, no zero, no reserved
+  space. **Every** rail empty is a different fact, answered once by `UpNextRailsSurface` in
+  `UpNextEmpty`'s own voice, because *you're caught up* is a sentence and not three
+  absences.
+- **An empty rail is never a failed read.** Both empty branches are reachable only from a
+  read that succeeded. A failure throws past the surface into the route's `error.tsx`,
+  which draws the read-failure treatment with a reference id. There is no `try` anywhere on
+  the path — that is what keeps *you're all caught up* from being the thing a database that
+  is down says.
+- **Old friends has no cap**, and that is the rule. It is not truncated and there is no
+  *"and 175 more"* — a rail that silently stopped at N would be the *showing 10 of 62* line
+  with the number filed off. The surface bounds it with a horizontal scroll, and the
+  poster's own `loading="lazy"` keeps the artwork off the wire until it is scrolled towards.
+- **A scroll comes to rest on a whole poster** — `snap-x snap-mandatory` on the track,
+  `snap-start` on every tile. `scroll-pl-6` is load-bearing with it: without it the snap
+  aligns to the padding box and the first poster of every rail parks under the page's own
+  gutter. The **trailing** poster of a scrolled rail is still cut by the track's right edge
+  — that overhang is what says the rail continues. What the rule forbids is a rail that
+  *stops* mid-poster.
+- **The arrows are an affordance, not decoration.** A trackpad swipes a track like this and
+  a wheel mouse cannot, so they are what makes the rail reachable at all. A rail that fits
+  gets neither; a rail that scrolls gets both, and the one with nowhere left to go is
+  **`disabled` rather than removed**. They fade in on hover **and on focus** — a button at
+  `opacity: 0` is still in the tab order, and an invisible focused control is worse than no
+  control. They move by whole tiles, measured off the rendered tiles rather than restated
+  from the tile's class list.
+
+### A tile
+
+A poster, the title beneath it in plain body text over at most two lines, and the year under
+that. **Nothing else. No count, no badge, no state label, no episode name, no rating.**
+
+The library is not a backlog to feel bad about, and every fact a tile withholds is one click
+away in the panel it opens.
+
+- **Desktop rail tile: `132px` wide**, and width is the *only* measure fixed — height comes
+  from the poster's `2/3` ratio, so a real poster is never cropped. `132` rather than the
+  prototype's `104`: the mock composes at roughly `1102px` with a `336px` panel, where 104
+  is about a fifth of the main column; a real desktop is wider and the panel is `420px`, so
+  the prototype's *density* (five or so whole tiles, and a sixth showing there is more)
+  needs the larger number.
+- **Phone group tile: fluid.** The grid's column width decides it. `width={132}` is still
+  passed to `Poster`, but only to pick a CDN bucket — it sizes nothing on screen.
+- **Clicking a rail tile swaps the panel; it is never a navigation.** The page never routes,
+  so it never loses its place, so comparing two candidates costs nothing.
+
+### The phone is not rails
+
+The phone renders **five vertical groups** instead (#138): **Ongoing · Coming back · Old
+friends · Watchlist · Abandoned** — the same three rules the desktop rails read, plus the
+two states the desktop reaches through Library's own chips and the phone does not carry on
+this screen.
+
+Each group is a label, an unconditional `more ›` into a screen holding the whole of it, and
+**a static three-up grid** (`grid-cols-3`, `slice(0, 3)`) — *not* a scrolling track. A rail
+read as a single cramped column is not a smaller rail, it is a different surface.
+
+`more ›` appears whenever the group is non-empty, **even when the group has three or fewer
+entries** and the screen behind it would show exactly what is already visible. Hiding it
+once a group fits would make the link's presence a count in disguise.
+
+> **⚠️ There is no recording control anywhere on the phone home.** This is #138's stated
+> reversal, put to Adham twice with the cost named both times and chosen both times. To mark
+> an episode, open the title. **Do not helpfully re-add one.**
+
+---
+
+## 8. The poster, and the morph
+
+### The poster
+
+462 pieces of real artwork, shown as themselves: **full colour, at TMDB's own `2/3` ratio,
+uncropped.** One layer, one `@utility`, no children and no pseudo-elements.
+
+- **A plain `<img>`, deliberately.** ADR-0001 keeps artwork on TMDB's CDN with no blobs
+  stored; `next/image` would put Vercel's metered optimiser between the two, and 462 titles
+  of borrowed artwork is exactly the shape of thing that quietly starts costing against
+  `SPEC.md` §3.8's £5/month ceiling.
+- **One CDN size per surface, not one size everywhere.** `bucketFor` picks the smallest of
+  `92 · 154 · 185 · 342 · 500 · 780` that covers the width the call site actually renders,
+  without upscaling past the source. A wall of real artwork at real ratios does not have one
+  measure.
+- **Every surface fixes its own width or height — never both.** The `2/3` ratio determines
+  the other side, rather than a crop.
+- **`alt=""` and `aria-hidden`.** The poster is never the only place a title is named —
+  every surface that renders one renders the name beside it as real text, so an `alt` here
+  would make a screen reader read every title twice.
+
+### The morph
+
+Selecting a tile morphs its poster into the one on the surface that opens — the desktop
+panel, or the phone's title-detail route.
+
+**Two name families, on purpose**: `rail-poster-{id}` for the desktop pane and
+`group-poster-{id}` for the phone route. The desktop pane and the phone route can both be
+showing the same title at once — a reader on desktop with the phone route open in another
+tab — and a name shared across them would pair the wrong two elements.
+
+**A name can only mark one on-screen element at a time.** The rail tile therefore *drops*
+its name once selected (the pane is the one showing that poster now) and picks it back up
+the moment something else is selected, ready to be the next morph's start. Without the drop,
+picking a second tile would mount a second `rail-poster-{id}` for the *first* tile's id
+while the original was still on screen, and the browser skips a transition it finds
+duplicated rather than guessing which one wins.
+
+---
+
+## 9. What this world deliberately has no token for
+
+The previous file's real value was partly in naming what it had **no** token for, so that
+the next ticket would not add one and call it an oversight fix. The same list, for the world
+that shipped. `app/globals.css` is **20 `@theme` declarations and 4 `@utility` rules**, and
+that is the whole of the system.
+
+**There is no spacing scale.** No `--space-*`, no `--gutter`, no rhythm unit. Spacing is
+Tailwind's own default steps at the call site. A named scale would be a fifth thing to keep
+in step with the four that exist, for a world whose layouts are counted in single figures.
+
+**There is no elevation model, and no shadow of any kind.** Depth in this world is surface
+layering and hairlines. **There are no drop shadows at all** — not on a tile, not on a
+dialog, not on the chrome — and adding one is not a fix. There is no shadow token to reach
+for and no "raised" concept beyond the `raised` *colour*.
+
+What exists instead is a **three-step stacking order**, written at the call sites and not
+tokenised, because three values used once each are not a scale:
+
+| Level | What sits there |
+|---|---|
+| `z-30` | sticky chrome — the phone masthead and the phone tab bar |
+| `z-40` | the write-failure toast |
+| `z-50` | the offline banner |
+
+The order is the argument: chrome is under a failure, and a failure is under *the network
+is gone*, which is the one thing that can invalidate everything below it.
+
+**There is no radius scale.** `--radius-none: 0px` is the statement; the poster's `7px` and
+the rail arrows' circle are the two exceptions and they are written into their own rules.
+
+**There is no second palette**, no tonal ramp, no tint or shade steps, and no semantic
+colour beyond the seven tokens. There is no success green, no warning amber, no destructive
+red — a failure is the accent and the failure treatment, and that is the whole vocabulary.
+
+**There is no line-height token**, and no `--text-*--line-height` paired with any size. §4
+says why: one size has to serve both a condensed caps title and a plain running line.
+
+**There is no component library**, and the omission is deliberate. Where a treatment must
+not drift, it is a **named class string** in the module that owns it — `GHOST_RECOVERY`,
+`SOLID_RECOVERY`, `DISABLED_DIM`, `IN_FLIGHT`, `STATE_LABELS`, `episode-line.ts`'s four
+strings — not a component and not a fifth `@utility`.
+
+**There is no motion system.** One easing curve (`--ease-press`), one duration that matters
+(`200ms`), and a small number of `duration-150` colour transitions. There is no motion
+scale, no stagger, no spring, and no shared transition token.
+
+**There is no icon set.** The handful that exist are hand-drawn rectilinear SVGs sharing one
+vocabulary with the press mark — *a magnifier would be the only curve in the application.*
+
+**There is no breakpoint token.** `lg` is the one that matters (desktop sidebar and rails
+above it, masthead and tab bar below it), and it is Tailwind's own.
+
+---
+
+## 10. The permanent exclusions
+
+Not "not yet". These do not arrive later, and **no space is reserved for them** — no empty
+rails, no placeholder tabs, no "coming soon".
+
+- **No counts.** Not on a rail head, not on a tile, not on the page. No *showing 10 of 62*,
+  no *"and 175 more"*, no numeral standing in for a size.
+- **No badges** of any kind.
+- **No dashboard** — no stats, no charts, no day streak, no year in review.
+- **No rating on a tile.** A tile is a poster, a name and a year. Ratings live on the
+  programme note.
+- **No sort on Up next.** The order is the rails' own, and it is not a control.
+- **No home rails other than Up next's three.** Not for Lists, not for genres, not for
+  upcoming. Lists have their own destination on both devices, deliberately not a rail —
+  *what do I watch tonight* is a different question from *what did I group*.
+- **No theme picker**, no in-product light/dark control, and no alternate palette. The
+  system setting decides (§2).
+- **No multi-select, no select-all, no bulk edit** on any surface.
+- **No recording control on the phone home** (§7).
+
+---
+
+## 11. Outstanding, and not licence
+
+Read off the build, flagged on #144's pull request rather than written up as rules. **These
+are defects to close, not precedent to copy.** Nothing below should be cited as
+justification in a new diff.
+
+### The accent's third meaning survives on four pre-#134 surfaces
+
+§3 is the rule. These surfaces still paint the accent for *"live"*, quoting a sentence from
+the retired DESIGN.md — *"the accent always means live"* — that no longer exists anywhere:
+
+- `library-state.ts` — the **Watching** state label is `text-accent`, the only one of the
+  five that is coloured.
+- `library-filter-bar.tsx` — the **Watching** chip's text is accent-coloured even when
+  unselected, named in its own docblock as "the one exception".
+- `library-filter-bar.tsx` and `settings/timezone-control.tsx` — both **select carets** are
+  `text-accent`.
+
+Each cites a section of a file that this rewrite deleted. They need a ticket that either
+re-narrows them to `text` or states *watching* as a third deliberate meaning of the accent —
+but not both, and not silently.
+
+### `app/tab-bar.tsx.bak` is committed, and contains merge-conflict markers
+
+A tracked file at `app/tab-bar.tsx.bak` carrying live `<<<<<<<` / `=======` / `>>>>>>>`
+markers, added in `15ed65d`. It is not compiled and not linted (the `.bak` extension keeps
+it out of both), so nothing has caught it. It should be deleted.
+
+### Stale references left by the rewrite's own blockers
+
+- `sidebar.tsx` cites `.impeccable/mocks/catalogue-wall.html` as the approved mock. **That
+  path does not exist** in the repository — the tracked prototype is
+  `design/catalogue-wall.html`.
+- `errors/recovery-buttons.ts` fixes `app/globals.css`'s contents at *"twenty-one `@theme`
+  declarations and three `@utility` rules"*. It is **20 and 4**.
+- `masthead.tsx` still cites `docs/design/prototypes/repertory-bill.html` for measures the
+  Catalogue Wall now sets.
+- `db/access.ts`'s `listUpNextRails` rule table calls the up next episode *"the next
+  episode"*. `CONTEXT.md` lists **next episode** among the three terms *Up next* must avoid,
+  alongside *continue watching* and *resume*. It is a docblock and not a string on screen,
+  so nothing a reader sees is wrong — but it is the phrase the domain language exists to
+  keep out of the vocabulary.
+- `.impeccable/design.json` is a generated artifact dated 2026-08-17 still describing the
+  retired ink/stock/bone world.
+
+### `SPEC.md` §10.3 is a divergence log against a file that no longer exists
+
+Its entries reference *Rating Scale*, *Phone*, *Layout* and *Navigation* — sections of the
+retired DESIGN.md. §10.3 is now a historical record rather than a live instruction, and is
+marked as such in `SPEC.md` by this ticket, but its individual entries were not rewritten.

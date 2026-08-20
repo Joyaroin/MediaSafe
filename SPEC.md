@@ -25,12 +25,14 @@ order settles it:
 | 1 | **This file** (`SPEC.md`) | Build order, v1 boundary, open questions, and the corrections in §10 | current |
 | 2 | **`CONTEXT.md`** | Domain language. 28 terms. Every identifier and every string on screen | current |
 | 3 | **`docs/adr/0001-watch-identity-and-derived-state.md`** | Schema and derivation. Inherited verbatim | current, **as amended** — see §10.1 |
-| 4 | **`DESIGN.md`** | The visual world. Tokens, rules, components | current, **two gaps** — see §10.3 |
+| 4 | **`DESIGN.md`** | The visual world. Tokens, rules, components | current — **rewritten wholesale** by #144 from the shipped build |
 | 5 | **`docs/design/v1-surfaces.md`** + `-wireframes.md` | Screen list, layout divergence, per-screen states | **partly superseded** — see §10.2 |
 | 6 | **`PRODUCT.md`** | Historical. Product truth as understood on 2026-08-17 morning | **stale in eight places** — see §10.4 |
 
-`docs/design/prototypes/repertory-bill.html` is a **reference build, not a source of truth.**
-`DESIGN.md` was extracted from it and outranks it. Two things it renders are wrong; §10.3 names them.
+**Neither prototype is a source of truth.** `docs/design/prototypes/repertory-bill.html` recorded the
+letterpress world; `design/catalogue-wall.html` recorded the Catalogue Wall that replaced it and was
+binding on appearance from #132 until #144 merged. `DESIGN.md` now outranks both, and is written from
+the shipped build rather than extracted from either — see `DESIGN.md` §1.
 
 ---
 
@@ -647,7 +649,14 @@ Beyond this product's destination, and returning only as a fresh decision:
 - **Export.** No user-facing export screen, ever. Durability is infrastructure, not a button. The
   asymmetry is deliberate and was put to Adham explicitly: with no export, the only file MediaSafe
   can read is one `tvtracker` wrote.
-- **A theme picker, light mode, or an alternate palette.** One committed world.
+- **A theme picker.** No in-product control over the palette, at any width, ever.
+  **Amended by [#134](https://github.com/Joyaroin/MediaSafe/issues/134), recorded by
+  [#144](https://github.com/Joyaroin/MediaSafe/issues/144).** This line used to read *"a theme
+  picker, light mode, or an alternate palette — one committed world"*, and two thirds of it is no
+  longer true: the Catalogue Wall ships **both** a light and a dark palette, and the system setting
+  decides between them (`app/globals.css`, `DESIGN.md` §2). The ban on a **picker** survives
+  untouched — it was never a ban on the system being asked. The one-committed-world rule that used
+  to justify it does not survive.
 - **An admin surface**, a users list, or any bulk-edit affordance — no multi-select, no select-all,
   no batch state change.
 - **A guest mode**, a read cache, a local store, a service worker, or an offline queue.
@@ -699,6 +708,14 @@ The brief stands except where later tickets moved it. Do not build from these li
 | Wireframes, import screen (two counters) | #25 — **three** |
 
 ### 10.3 `DESIGN.md` and the prototype — every recorded divergence
+
+> **⚠️ Historical from [#144](https://github.com/Joyaroin/MediaSafe/issues/144) onwards.** Every
+> entry below is written against the *retired* `DESIGN.md` — the bone/ink/vermilion letterpress
+> world — and names sections (*Rating Scale*, *Phone*, *Layout*, *Navigation*) that the rewritten
+> file no longer has. It is kept as the record of how those divergences were settled, and **is not
+> a live instruction**: a divergence from the current `DESIGN.md` is raised against that file
+> directly, and the world it describes is the one that shipped, so there is nothing left here for a
+> new entry to diverge *from*.
 
 Two defects, one gap, and two build-time deviations. **This list is where a divergence from
 `DESIGN.md` lives.** A deviation argued only in a code comment is one nobody reading the design
