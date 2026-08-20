@@ -248,9 +248,20 @@ describe("the filter chips", () => {
   const chips = (value: "all" | LibraryState = "all") =>
     renderToStaticMarkup(createElement(LibraryChips, { value, onChange: () => {} }));
 
+  /**
+   * #132 wrapped each chip's label in a `<span>` so it can sit `z-10` above the travelling
+   * `<ChipGround />` — the label is no longer a button's direct text child. This walks each
+   * `<button>...</button>` block (they don't nest, so stopping at the first `</button>`
+   * after each opening tag is exact) and returns the one whose block contains the label.
+   */
+  const chipButton = (markup: string, label: string) =>
+    [...markup.matchAll(/<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g)]
+      .map((match) => match[0])
+      .find((button) => button.includes(`>${label}<`));
+
   it("renders exactly six, in CONTEXT.md's words and SPEC.md §7's order", () => {
     const markup = chips();
-    const labels = [...markup.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map(
+    const labels = [...markup.matchAll(/<span class="relative z-10">([^<]+)<\/span>/g)].map(
       (match) => match[1],
     );
 
@@ -266,7 +277,7 @@ describe("the filter chips", () => {
 
   it("inverts the selected chip to a text-coloured ground with ground-coloured text", () => {
     const markup = chips("finished");
-    const finishedButton = markup.match(/<button[^>]*>Finished<\/button>/)?.[0];
+    const finishedButton = chipButton(markup, "Finished");
 
     expect(finishedButton).toContain('aria-pressed="true"');
     expect(finishedButton).toContain("bg-text");
@@ -275,8 +286,8 @@ describe("the filter chips", () => {
 
   it("keeps the Watching chip vermilion even unselected, and every other chip dim", () => {
     const markup = chips("all");
-    const watchingButton = markup.match(/<button[^>]*>Watching<\/button>/)?.[0];
-    const finishedButton = markup.match(/<button[^>]*>Finished<\/button>/)?.[0];
+    const watchingButton = chipButton(markup, "Watching");
+    const finishedButton = chipButton(markup, "Finished");
 
     expect(watchingButton).toContain('aria-pressed="false"');
     expect(watchingButton).toContain("text-accent");
