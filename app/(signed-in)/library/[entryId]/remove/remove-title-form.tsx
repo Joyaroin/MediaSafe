@@ -133,14 +133,11 @@ export function RemoveTitleForm({
           </p>
 
           {failure.kind === "unknown" ? (
-            <p className="mt-6 text-item text-dim">
-              <Link
-                href="/library"
-                className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
-              >
+            <div className="mt-6">
+              <Link href="/library" className={GHOST_RECOVERY}>
                 Open your library ›
               </Link>
-            </p>
+            </div>
           ) : null}
 
           {failure.reference === null ? null : (

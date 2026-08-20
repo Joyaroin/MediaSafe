@@ -27,61 +27,87 @@ import { PHONE_BAR } from "@/app/phone-bar";
 const GLOBALS = readFileSync("app/globals.css", "utf8");
 const TAB_BAR = readFileSync("app/tab-bar.tsx", "utf8");
 const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
-const WRAPPER = readFileSync("app/(signed-in)/tab-transition.tsx", "utf8");
+const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
-const TAB_PAGES = [
+/**
+ * Every screen that participates — the four tabs, and Settings, which is a push out of
+ * them rather than a move along them. A screen that navigates but is not wrapped is a
+ * screen that arrives with nothing while everything around it slides, and that reads as
+ * the animation being broken rather than absent.
+ */
+const NAV_PAGES = [
   "app/(signed-in)/up-next/page.tsx",
   "app/(signed-in)/search/page.tsx",
   "app/(signed-in)/library/page.tsx",
   "app/(signed-in)/lists/page.tsx",
+  "app/(signed-in)/settings/page.tsx",
 ];
 
 describe("which way the content moves", () => {
   it("derives direction from position in the bar, not from history", () => {
     // `findIndex` over `TABS` on both sides is the mechanism. A `router`/history check
     // here would be the bug this guards.
-    expect(TAB_BAR).toContain("tabTransitionTypes");
+    expect(TAB_BAR).toContain("navTransitionTypes");
     expect(TAB_BAR).toMatch(/TABS\.findIndex/);
-    expect(TAB_BAR).toContain('to > from ? ["tab-forward"] : ["tab-back"]');
+    expect(TAB_BAR).toContain('to > from ? ["nav-forward"] : ["nav-back"]');
   });
 
-  it("claims no direction for a tap on the current tab, or from off the bar", () => {
-    // Both return `[]` — no type, so `default: "none"` applies and nothing animates.
-    // A screen sliding out and back to arrive where it already was is motion that means
-    // nothing; `-1` is a route under none of the four and has no position to compare.
-    expect(TAB_BAR).toContain("if (from === -1 || from === to) return [];");
+  it("claims no direction for a tap on the tab you are already on", () => {
+    // No type, so `default: "none"` applies and nothing animates. A screen sliding out
+    // and back to arrive where it already was is motion that means nothing.
+    expect(TAB_BAR).toContain("if (from === to) return [];");
+  });
+
+  it("treats a tab tapped from off the bar as coming back out", () => {
+    // `-1` is a screen pushed outside the four — Settings, `/import`, `/welcome`. This
+    // used to return `[]`, which made Settings the one screen you slid *into* and then
+    // left with nothing. It is the mirror of the `nav-forward` the masthead attaches.
+    expect(TAB_BAR).toContain('if (from === -1) return ["nav-back"];');
+    // Order matters: the same-tab check has to come first, or a same-tab tap from `-1`
+    // would be impossible to express. Assert `from === to` is tested before `from === -1`.
+    expect(TAB_BAR.indexOf("if (from === to)")).toBeLessThan(
+      TAB_BAR.indexOf("if (from === -1)"),
+    );
+  });
+
+  it("sends the reader into Settings forwards, from the one phone entrance", () => {
+    // Without this Settings was the single screen that arrived with no motion while every
+    // tab around it slid — which is what makes an animation read as broken rather than
+    // absent.
+    expect(MASTHEAD).toContain('transitionTypes={["nav-forward"]}');
+    expect(MASTHEAD).toContain('href="/settings"');
   });
 
   it("attaches the types to the links themselves", () => {
-    expect(TAB_BAR).toContain("transitionTypes={tabTransitionTypes(pathname, href)}");
+    expect(TAB_BAR).toContain("transitionTypes={navTransitionTypes(pathname, href)}");
   });
 });
 
 describe("where the wrapper lives", () => {
-  it("is in every one of the four pages", () => {
-    for (const page of TAB_PAGES) {
+  it("is in every page that participates, Settings included", () => {
+    for (const page of NAV_PAGES) {
       const source = readFileSync(page, "utf8");
-      expect(source, `${page} is not wrapped`).toContain("<TabTransition>");
+      expect(source, `${page} is not wrapped`).toContain("<NavTransition>");
     }
   });
 
   it("is NOT in the signed-in layout, where enter and exit could never fire", () => {
     // A layout persists across navigations within its group. This is the single easiest
     // way to "simplify" this feature into doing nothing at all.
-    expect(LAYOUT).not.toContain("TabTransition");
+    expect(LAYOUT).not.toContain("NavTransition");
     expect(LAYOUT).not.toContain("ViewTransition");
   });
 
   it("maps both directions and defaults both halves to none", () => {
-    expect(WRAPPER).toContain('"tab-forward": "tab-forward"');
-    expect(WRAPPER).toContain('"tab-back": "tab-back"');
+    expect(WRAPPER).toContain('"nav-forward": "nav-forward"');
+    expect(WRAPPER).toContain('"nav-back": "nav-back"');
     // On the mapping, and again on the component — the guide's own shape. Without these
     // the four pages animate during the poster morph and every Suspense reveal.
     expect(WRAPPER).toMatch(/default:\s*"none"/);
     expect(WRAPPER).toMatch(/default="none"/);
-    expect(WRAPPER).toContain("enter={TAB_DIRECTIONS}");
-    expect(WRAPPER).toContain("exit={TAB_DIRECTIONS}");
+    expect(WRAPPER).toContain("enter={NAV_DIRECTIONS}");
+    expect(WRAPPER).toContain("exit={NAV_DIRECTIONS}");
   });
 });
 
@@ -112,38 +138,40 @@ describe("the chrome stays still", () => {
 
 describe("both directions are drawn, and only on the phone", () => {
   it("defines a forward and a back pair that mirror each other", () => {
-    for (const cls of ["tab-forward", "tab-back"]) {
+    for (const cls of ["nav-forward", "nav-back"]) {
       expect(GLOBALS).toContain(`::view-transition-old(.${cls})`);
       expect(GLOBALS).toContain(`::view-transition-new(.${cls})`);
     }
     // Mirrored: the old side leaves the way the new side arrives from.
-    expect(GLOBALS).toMatch(/::view-transition-old\(\.tab-forward\)\s*\{\s*--tab-slide:\s*-60px/);
-    expect(GLOBALS).toMatch(/::view-transition-new\(\.tab-forward\)\s*\{\s*--tab-slide:\s*60px/);
-    expect(GLOBALS).toMatch(/::view-transition-old\(\.tab-back\)\s*\{\s*--tab-slide:\s*60px/);
-    expect(GLOBALS).toMatch(/::view-transition-new\(\.tab-back\)\s*\{\s*--tab-slide:\s*-60px/);
+    expect(GLOBALS).toMatch(/::view-transition-old\(\.nav-forward\)\s*\{\s*--nav-slide:\s*-60px/);
+    expect(GLOBALS).toMatch(/::view-transition-new\(\.nav-forward\)\s*\{\s*--nav-slide:\s*60px/);
+    expect(GLOBALS).toMatch(/::view-transition-old\(\.nav-back\)\s*\{\s*--nav-slide:\s*60px/);
+    expect(GLOBALS).toMatch(/::view-transition-new\(\.nav-back\)\s*\{\s*--nav-slide:\s*-60px/);
   });
 
   it("leaves quickly and arrives slowly, off this file's own motion tokens", () => {
     // `DESIGN.md`/`globals.css`: exits run at `--dur-fast` against entrances at
     // `--dur-base` or slower. No hardcoded milliseconds.
-    const forwardOut = GLOBALS.match(/::view-transition-old\(\.tab-forward\)\s*\{[^}]*\}/)![0];
-    const forwardIn = GLOBALS.match(/::view-transition-new\(\.tab-forward\)\s*\{[^}]*\}/)![0];
+    const forwardOut = GLOBALS.match(/::view-transition-old\(\.nav-forward\)\s*\{[^}]*\}/)![0];
+    const forwardIn = GLOBALS.match(/::view-transition-new\(\.nav-forward\)\s*\{[^}]*\}/)![0];
     expect(forwardOut).toContain("var(--dur-fast)");
     expect(forwardIn).toContain("var(--dur-base)");
     expect(forwardOut).not.toMatch(/\d+ms/);
     expect(forwardIn).not.toMatch(/\d+ms/);
   });
 
-  it("never reaches the desktop, because only the phone bar tags a navigation", () => {
-    // `sidebar-nav.tsx` is the desktop's navigation. If it ever attaches a type, the
-    // desktop starts sliding too and this stops being a phone change.
+  it("never reaches the desktop, because only phone chrome tags a navigation", () => {
+    // `sidebar-nav.tsx` carries the same four destinations *and* its own Settings link.
+    // If it ever attaches a type the desktop starts sliding too, and this stops being a
+    // phone change.
     const sidebar = readFileSync("app/sidebar-nav.tsx", "utf8");
     expect(sidebar).not.toContain("transitionTypes");
-    // And the bar that does attach them is phone-only. `lg:hidden` moved into
-    // `PHONE_BAR` when issue #197 gave the selection bar the same recipe, so the property
-    // is checked through the constant rather than by searching this file for a literal
-    // that is no longer written in it.
+    // Both surfaces that do attach them are phone-only. The masthead still says so in its
+    // own markup; the tab bar's `lg:hidden` moved into `PHONE_BAR` when issue #197 gave
+    // the Library's selection bar the same recipe, so that half is checked through the
+    // constant rather than by searching a file for a literal no longer written in it.
     expect(TAB_BAR).toContain("PHONE_BAR");
     expect(PHONE_BAR).toContain("lg:hidden");
+    expect(MASTHEAD).toContain("lg:hidden");
   });
 });

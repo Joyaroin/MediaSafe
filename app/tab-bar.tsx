@@ -74,8 +74,8 @@ const TABS = [
 ] as const;
 
 /**
- * Which way along the bar a tap moves the reader, as a transition type the CSS can act on
- * (`globals.css`, *Moving between the four phone tabs*).
+ * Which way a tap moves the reader, as a transition type the CSS can act on
+ * (`globals.css`, *Moving between the phone's screens*).
  *
  * Derived from the two tabs' **positions in `TABS`**, not from history: the bar is a
  * horizontal row of four and the direction that means anything here is the one the reader
@@ -83,18 +83,28 @@ const TABS = [
  * "forward" whenever it happened to be a new entry, which is the opposite of what the row
  * shows.
  *
- * A tap on the current tab returns `[]` — no type, so no animation. Next's `Link` still
- * navigates, and a screen sliding out and back in to arrive where it already was is the
- * clearest case of motion that means nothing.
+ * Three cases, and the third is the one that keeps Settings symmetrical:
+ *
+ * - **Same tab** — no type, so no animation. A screen sliding out and back in to arrive
+ *   where it already was is the clearest case of motion that means nothing.
+ * - **Another tab** — forward or back by position in the row.
+ * - **Not on a tab at all** (`from === -1`) — the reader is on a screen pushed *outside*
+ *   the four, which today means Settings, `/import` or `/welcome`. Tapping a tab from
+ *   there is coming back out to the tab level, so it is `nav-back` — the mirror of the
+ *   `nav-forward` `masthead.tsx` attaches on the way in.
+ *
+ *   This case used to return `[]`, which made Settings the one screen you slid *into* and
+ *   then jumped out of with nothing. Note that a title detail is **not** this case:
+ *   `isCurrentRoute` matches `/library/{id}` to the Library tab, so a reader three screens
+ *   deep is still on a tab and still gets a lateral direction.
  */
-function tabTransitionTypes(pathname: string, href: string): string[] {
+function navTransitionTypes(pathname: string, href: string): string[] {
   const from = TABS.findIndex((tab) => isCurrentRoute(pathname, tab.href));
   const to = TABS.findIndex((tab) => tab.href === href);
 
-  // `-1` is a route under none of the four — a title detail pushed from elsewhere. There
-  // is no position to compare against, so there is no direction to claim.
-  if (from === -1 || from === to) return [];
-  return to > from ? ["tab-forward"] : ["tab-back"];
+  if (from === to) return [];
+  if (from === -1) return ["nav-back"];
+  return to > from ? ["nav-forward"] : ["nav-back"];
 }
 
 export function TabBar() {
@@ -124,7 +134,7 @@ export function TabBar() {
           <Link
             key={href}
             href={href}
-            transitionTypes={tabTransitionTypes(pathname, href)}
+            transitionTypes={navTransitionTypes(pathname, href)}
             aria-current={current ? "page" : undefined}
             className={
               current

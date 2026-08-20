@@ -783,11 +783,11 @@
   animation-timing-function: var(--ease-out-quart);
 }
 
-/* ── Moving between the four phone tabs ─────────────────────────────────────────────
+/* ── Moving between the phone's screens ─────────────────────────────────────────────
    Tapping a tab used to be an instant swap. The machinery for something better was
    already here — `::view-transition-group(*)` above has been authored since #141 — but
-   nothing triggered a transition on tab navigation, so the one place the phone changes
-   screens wholesale was the one place nothing moved.
+   nothing triggered a transition on navigation, so the places the phone changes screens
+   wholesale were the places nothing moved.
 
    **A directional slide, not a crossfade.** Next's own guide draws the distinction: a
    slide says *going somewhere*, a crossfade says *same place, different content*. Four
@@ -797,44 +797,52 @@
    derives the direction from the two tabs' positions rather than from history, so it is
    the bar's own geometry that decides.
 
-   **Phone-only, without a media query.** The types are attached by `tab-bar.tsx`'s
-   `Link`s, and that bar is `lg:hidden`. `sidebar-nav.tsx` — the desktop's own navigation —
-   attaches none, so a desktop navigation carries no transition type, falls to the pages'
-   `default: "none"`, and animates exactly as it did before. #136 deleted this build's only
-   `matchMedia` branch and this does not bring one back.
+   **Settings uses the same pair, in its hierarchical sense.** It is reached from the
+   masthead rather than from the bar, so it is a push *out of* the four rather than a move
+   along them: `nav-forward` on the way in, and `nav-back` on any tab tapped from a screen
+   that is on none of them. That symmetry is why the classes are named for the *direction*
+   and not for the tab bar — one vocabulary covers both the lateral move and the push, and
+   a second pair of near-identical classes would only invite the two to drift apart.
+
+   **Phone-only, without a media query.** The types are attached by `tab-bar.tsx`'s `Link`s
+   and by `masthead.tsx`'s Settings entrance, both of which are `lg:hidden`.
+   `sidebar-nav.tsx` — the desktop's own navigation, carrying the same four destinations
+   and its own Settings link — attaches none, so a desktop navigation carries no transition
+   type, falls to the pages' `default: "none"`, and animates exactly as it did before. #136
+   deleted this build's only `matchMedia` branch and this does not bring one back.
 
    `60px` is the guide's own offset, taken rather than re-derived: far enough to read as
    direction, short enough that nothing has to be tracked across the screen. The timings
    are this file's, not the guide's — `--dur-fast` out against `--dur-base` in, which is
    the asymmetry the motion section above already states (*"arriving is where the character
    lives; leaving is where impatience does"*). */
-::view-transition-old(.tab-forward) {
-  --tab-slide: -60px;
+::view-transition-old(.nav-forward) {
+  --nav-slide: -60px;
   animation:
-    var(--dur-fast) var(--ease-out-quart) both tab-fade reverse,
-    var(--dur-slow) var(--ease-in-out-soft) both tab-slide reverse;
+    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
+    var(--dur-slow) var(--ease-in-out-soft) both nav-slide reverse;
 }
-::view-transition-new(.tab-forward) {
-  --tab-slide: 60px;
+::view-transition-new(.nav-forward) {
+  --nav-slide: 60px;
   animation:
-    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both tab-fade,
-    var(--dur-slow) var(--ease-in-out-soft) both tab-slide;
-}
-
-::view-transition-old(.tab-back) {
-  --tab-slide: 60px;
-  animation:
-    var(--dur-fast) var(--ease-out-quart) both tab-fade reverse,
-    var(--dur-slow) var(--ease-in-out-soft) both tab-slide reverse;
-}
-::view-transition-new(.tab-back) {
-  --tab-slide: -60px;
-  animation:
-    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both tab-fade,
-    var(--dur-slow) var(--ease-in-out-soft) both tab-slide;
+    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both nav-fade,
+    var(--dur-slow) var(--ease-in-out-soft) both nav-slide;
 }
 
-@keyframes tab-fade {
+::view-transition-old(.nav-back) {
+  --nav-slide: 60px;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
+    var(--dur-slow) var(--ease-in-out-soft) both nav-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --nav-slide: -60px;
+  animation:
+    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both nav-fade,
+    var(--dur-slow) var(--ease-in-out-soft) both nav-slide;
+}
+
+@keyframes nav-fade {
   from {
     opacity: 0;
   }
@@ -843,9 +851,9 @@
   }
 }
 
-@keyframes tab-slide {
+@keyframes nav-slide {
   from {
-    translate: var(--tab-slide);
+    translate: var(--nav-slide);
   }
   to {
     translate: 0;

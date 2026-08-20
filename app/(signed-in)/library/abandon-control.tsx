@@ -3,16 +3,19 @@
 import { useRef, useState } from "react";
 
 import type { LibraryState } from "@/db/access";
-import { IN_FLIGHT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { abandonAction, unabandonAction, type AbandonOutcome } from "./title-detail-actions";
 
 /**
  * The one hand-set state in the model, and the way back out of it — issue #87.
- * `DESIGN.md`'s Abandon Control section is binding: a row carrying a dim underlined text
- * button, no border, no fill, no icon, and **never accent** in any state, because the
- * accent is reserved for recording a watch. Issue #139 drops the row's own hairline top —
+ * `DESIGN.md`'s Abandon Control section used to bind this row to a dim underlined text
+ * button, no border, no fill, no icon, and never accent in any state. Issue #195 moves it
+ * onto `GHOST_RECOVERY` — accent border, accent text, solid on hover — the same register
+ * every other control in that conversion takes, spent here knowingly rather than by
+ * accident (`DESIGN.md` §12 owes a ticket to settle what the accent means; this adds to
+ * that question rather than resolving it). Issue #139 drops the row's own hairline top —
  * title detail's new-world treatment separates its blocks by gap alone.
  *
  * ── One row, both directions ──────────────────────────────────────────────────────────
@@ -93,7 +96,7 @@ export function AbandonControl({
         onClick={() => void attempt()}
         disabled={optimistic !== null}
         aria-label={shown ? `Take back giving up on ${titleName}` : `Give up on ${titleName}`}
-        className={`code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text ${IN_FLIGHT}`}
+        className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
       >
         {shown ? "Take it back" : "Give up on this"}
       </button>

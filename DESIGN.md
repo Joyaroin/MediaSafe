@@ -1073,6 +1073,42 @@ not drift, it is a **named class string** in the module that owns it — `GHOST_
 `SOLID_RECOVERY`, `DISABLED_DIM`, `IN_FLIGHT`, `STATE_LABELS`, `episode-line.ts`'s four
 strings — not a component and not a fifth `@utility`.
 
+### Buttons
+
+`errors/recovery-buttons.ts` names the vocabulary: `GHOST_RECOVERY` (an outline — `border-
+accent`, `text-accent` — that inverts to solid on hover), `SOLID_RECOVERY` (the one primary
+action a surface gets: `bg-accent`, `text-accent-ink`), and `DISABLED_DIM`, `IN_FLIGHT`,
+`NOT_YET_ARMED` layered onto either. Despite the module's own name, it stopped being
+errors-only well before issue #195 — `lists/create-list-form.tsx`'s `New list` and
+`settings/page.tsx`'s `Import a library ›` already wore `GHOST_RECOVERY`, among a dozen
+other everyday controls with nothing to do with a failure.
+
+**Issue #195 extends it to fourteen controls that used to be underlined prose wearing a
+link's clothes** — six already `<button>` elements, eight navigating `<Link>` elements,
+neither set changing which is which (§10's rule about element type is orthogonal to this
+one about how a control looks). Every one takes `GHOST_RECOVERY`. **No third, neutral tier
+was invented** — that was considered and declined, because `New list` and `Import a
+library ›` had already set the shape a control this ordinary takes, and a second register
+for the same weight of control would be exactly the drift `errors/recovery-buttons.ts`'s own
+docblock exists to prevent.
+
+**This spends the accent knowingly, on thirteen of the fourteen.** Only *Rewatch*
+(`programme-note-episodes.tsx`) already painted accent before this ticket — it records a
+watch, which is what the accent has always meant. The other thirteen move from dim,
+borderless, unaccented type onto `GHOST_RECOVERY`, and two of them are a sharper reversal
+than the rest: `abandon-control.tsx` used to bind itself to *never accent in any state,
+because giving up on a show is exactly as quiet an act as it sounds*, and
+`remove-control.tsx` reasoned the same way about removal. Those two had a stated rule to
+override; the other eleven simply had no rule *for* the accent either, and now have it.
+Issue #195 overrides all of it, in the open: a control nobody can tell apart from prose is
+a control nobody presses, and that cost more than the accent's rationing did. §12 below
+already names seven surfaces spending the accent on something other than recording a
+watch — this batch is an eighth reason, filed under one name rather than across thirteen
+separate call sites, and it does not settle §12's own question. The ticket that empties
+that section still has to choose between narrowing the accent back, naming a second
+sanctioned meaning, or spending it as "whatever is most alive on a surface" — and still
+has one more category of use, now the widest one on the list, to account for once it does.
+
 **There is a motion system, and there did not use to be.** This entry previously read
 *there is no motion system … no motion scale, no stagger, no spring, and no shared
 transition token* — an accurate description of a build whose entire vocabulary was one
@@ -1181,6 +1217,14 @@ only selection and the dialog frames; or accept the accent as "the one colour, s
 whatever is most alive on this surface" and say so. **What must not happen is each call site
 answering separately**, which is how it got here. Until then §3's table is the map, and the
 right precedent to copy is `up-next-tile.tsx`'s, not `rating-control.tsx`'s.
+
+**An eighth category, added knowingly rather than by accident, and the widest one here.**
+§10's Buttons subsection records that issue #195 put thirteen controls onto
+`GHOST_RECOVERY` — `abandon-control.tsx` and `remove-control.tsx` among them, overriding
+both files' own prior *never accent* reasoning in the open; the other eleven had no such
+rule to override, only no accent to begin with. It is filed here rather than argued twice:
+the same ticket that settles the three questions
+above has one more use of the accent to fold in once it does.
 
 ### `app/tab-bar.tsx.bak` is committed, and contains merge-conflict markers
 
