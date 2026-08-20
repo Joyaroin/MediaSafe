@@ -1,6 +1,7 @@
 import { getCookies } from "better-auth/cookies";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { asUserId, type UserId } from "@/db/access";
 /* eslint-disable-next-line no-restricted-imports --
@@ -36,12 +37,24 @@ import { authOptions, getAuth } from "@/lib/auth";
  * makes it untestable and makes the import and the nightly refresh — neither of which has
  * a session at all — impossible to write without a second path to the same rows.
  *
- * ── The session is read from the database on every call ──────────────────────────────
+ * ── The session is read from the database once per request ───────────────────────────
  *
  * There is no cookie cache (`lib/auth.ts` turns Better Auth's off), so this is a query
  * and not a signature check. That is the cost of *sign-out revokes the session
  * server-side* being literally true: with the cache on, a copied cookie keeps answering
  * yes for the length of the cache after the row is gone.
+ *
+ * `lib/auth.ts` calls that cost "one query per request", and `cache()` on `currentSession`
+ * below is what makes the sentence true. Without it the cost is one query per *caller*,
+ * and the callers are not one: rendering `/up-next` asks three times — `masthead.tsx` and
+ * `sidebar.tsx` each want the display name, the page itself wants the user id — so three
+ * round trips answer a question whose answer cannot change between them.
+ *
+ * **This is not the cookie cache under another name, and it does not weaken revocation.**
+ * React's `cache()` is scoped to a single server render pass and is dropped when that pass
+ * ends. The next request queries the session table again, so a deleted row is still gone
+ * on the very next navigation. What is deduplicated is one render asking one question
+ * repeatedly — never one answer outliving the request that fetched it.
  */
 
 /**
@@ -68,9 +81,9 @@ import { authOptions, getAuth } from "@/lib/auth";
  * question. Not exported — a caller holding a session is a caller that can read a user id
  * off it without the branding, which is the whole thing `db/access.ts` is guarding.
  */
-async function currentSession() {
+const currentSession = cache(async () => {
   return getAuth().api.getSession({ headers: await headers() });
-}
+});
 
 export async function requireUserId(): Promise<UserId> {
   const session = await currentSession();

@@ -31,6 +31,22 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en-GB" className={archivo.variable}>
+      <head>
+        {/*
+          Every poster on every populated surface is an `image.tmdb.org` URL
+          (`app/poster.tsx`), and none of them is discoverable until the RSC payload has
+          landed and rendered. Without this, the first poster on a cold visit pays a DNS
+          lookup, a TCP connect and a TLS handshake to a third-party origin before its
+          first byte — serially, and at the exact moment the grid is trying to appear.
+
+          `preconnect` moves all three off the critical path and into the time the server
+          is still thinking. `crossOrigin` is required for the socket to be reused by the
+          anonymous image requests that follow; without it the browser opens a second
+          connection and the hint buys nothing.
+        */}
+        <link rel="preconnect" href="https://image.tmdb.org" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://image.tmdb.org" />
+      </head>
       <body>
         {/* At the very top of the page, before anything else, because DESIGN.md says the
             banner is at the very top of the page. When the masthead arrives it goes
