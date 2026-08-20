@@ -1,6 +1,13 @@
 import { GroupTile, type GroupTileEntry } from "./group-tile";
 
 /**
+ * The widest this screen's own `grid-cols-*` breakpoints get (`lg:grid-cols-6` below) —
+ * `library-grid.tsx`'s `FIRST_ROW` makes the identical argument for the identical shape of
+ * grid.
+ */
+const FIRST_ROW = 6;
+
+/**
  * The screen behind one of the phone home's `more ›` links (issue #138) — a heading and
  * the whole of one group, shipped in this diff rather than reserved for later (§9: *no
  * "coming soon", no `more ›` that leads nowhere*).
@@ -54,8 +61,12 @@ export function GroupScreen({
         </section>
       ) : (
         <ol className="grid grid-cols-3 gap-4 p-4 sm:grid-cols-4 lg:grid-cols-6">
-          {entries.map((entry) => (
-            <GroupTile key={entry.libraryEntryId} entry={entry} />
+          {entries.map((entry, index) => (
+            <GroupTile
+              key={entry.libraryEntryId}
+              entry={entry}
+              aboveFold={index < FIRST_ROW}
+            />
           ))}
         </ol>
       )}

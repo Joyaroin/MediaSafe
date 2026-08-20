@@ -203,7 +203,10 @@ function Loading({
   return (
     <div className="px-6 py-5">
       <ViewTransition key={transitionName} name={transitionName}>
-        <Poster posterPath={posterPath} width={382} className="w-full" />
+        {/* Always the pane's one poster, already known selected before this even mounts
+            (`useLibrarySelection`'s own `selectedPosterPath`) — the two-pane surface this
+            ticket's own wording names as already knowing its poster is visible. */}
+        <Poster posterPath={posterPath} width={382} className="w-full" aboveFold />
       </ViewTransition>
 
       {/* `status`, not `alert`: metadata and episodes arriving is a normal moment of this

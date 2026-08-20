@@ -86,7 +86,15 @@ const NEXT_LINES: Record<LibraryState, (entry: LibraryEntryRow) => string> = {
   abandoned: () => "Watching it again clears this",
 };
 
-export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
+export function LibraryEntryCell({
+  entry,
+  aboveFold = false,
+}: {
+  entry: LibraryEntryRow;
+  /** This cell is in the bill's first visible row — `library-grid.tsx`'s to say, since it
+   *  is the one that knows the column count (`app/poster.tsx`). */
+  aboveFold?: boolean;
+}) {
   const abandoned = entry.state === "abandoned";
   const state = STATE_LABELS[entry.state];
   const nextLine = NEXT_LINES[entry.state];
@@ -101,6 +109,7 @@ export function LibraryEntryCell({ entry }: { entry: LibraryEntryRow }) {
           posterPath={entry.posterPath}
           width={BILL_POSTER_WIDTH}
           className={abandoned ? `${BILL_POSTER} opacity-45` : BILL_POSTER}
+          aboveFold={aboveFold}
         />
 
         <div className="min-w-0 flex-1">

@@ -35,6 +35,7 @@ export function Poster({
   posterPath,
   width,
   className,
+  aboveFold = false,
 }: {
   /** TMDB's `poster_path`, or `null` when TMDB has no artwork for this title. */
   posterPath: string | null;
@@ -44,6 +45,15 @@ export function Poster({
    *  `poster` utility's `aspect-ratio: 2 / 3` is what determines the other side, rather
    *  than a crop. */
   className: string;
+  /**
+   * This instance is on screen without scrolling — the caller's own first grid row, rail
+   * tile, or the pane/page's one hero poster. `Poster` is a shared module with call sites
+   * across every surface in the app and cannot tell an above-the-fold instance from a
+   * below-the-fold one by itself; the surface rendering it knows. Defaults to `false` so
+   * an existing call site that never passes this keeps downloading lazily, exactly as
+   * before — only a surface that opts a poster in starts fetching it eagerly.
+   */
+  aboveFold?: boolean;
 }) {
   return (
     <div className={`poster ${className}`}>
@@ -63,7 +73,8 @@ export function Poster({
           src={`https://image.tmdb.org/t/p/${bucketFor(width)}${posterPath}`}
           alt=""
           aria-hidden="true"
-          loading="lazy"
+          loading={aboveFold ? "eager" : "lazy"}
+          fetchPriority={aboveFold ? "high" : undefined}
           decoding="async"
         />
       )}

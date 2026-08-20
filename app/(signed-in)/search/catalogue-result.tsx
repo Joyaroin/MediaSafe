@@ -41,7 +41,15 @@ import { addToLibraryAction, type MarkedResult } from "./actions";
  * raising a second one — and `attempt` never reads React state for anything the write
  * depends on, so a closure the store is holding cannot go stale in a way that matters.
  */
-export function CatalogueResultRow({ result }: { result: MarkedResult }) {
+export function CatalogueResultRow({
+  result,
+  aboveFold = false,
+}: {
+  result: MarkedResult;
+  /** This row is the results list's first — `search-surface.tsx`'s to say, since results
+   *  render one to a row (`app/poster.tsx`). */
+  aboveFold?: boolean;
+}) {
   /**
    * Optimistic. Seeded from the server's answer, set true on press, and set back on
    * failure — the rollback half of `SPEC.md` §3.3.
@@ -87,7 +95,12 @@ export function CatalogueResultRow({ result }: { result: MarkedResult }) {
 
   return (
     <li className="flex items-center gap-4 py-4">
-      <Poster posterPath={result.posterPath} width={78} className="w-[78px] shrink-0" />
+      <Poster
+        posterPath={result.posterPath}
+        width={78}
+        className="w-[78px] shrink-0"
+        aboveFold={aboveFold}
+      />
 
       <div className="min-w-0 flex-1">
         <h2 className="bill-title text-bill-md text-text">{result.name}</h2>

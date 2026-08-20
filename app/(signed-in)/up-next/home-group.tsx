@@ -18,6 +18,14 @@ import { GroupTile, type GroupTileEntry } from "./group-tile";
 const TILE = "w-[104px] shrink-0 snap-start";
 
 /**
+ * How many tiles of this group's own track are on screen before a reader scrolls it — a
+ * `104px` tile plus the track's `gap-3` (`12px`) is `116px` of pitch, and even a small
+ * phone viewport (`320px`, minus the track's own `px-4` gutter) covers three of those.
+ * The rest of a 187-title group stays `app/poster.tsx`'s default lazy.
+ */
+const FIRST_RUN = 3;
+
+/**
  * One of the phone home's five groups (issue #138) — a label, a `more ›` into that group's
  * own screen, and the group itself as a horizontally scrolling run of posters.
  *
@@ -102,8 +110,13 @@ export function HomeGroup({
       </div>
 
       <ol className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-4 px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {entries.map((entry) => (
-          <GroupTile key={entry.libraryEntryId} entry={entry} className={TILE} />
+        {entries.map((entry, index) => (
+          <GroupTile
+            key={entry.libraryEntryId}
+            entry={entry}
+            className={TILE}
+            aboveFold={index < FIRST_RUN}
+          />
         ))}
       </ol>
     </section>

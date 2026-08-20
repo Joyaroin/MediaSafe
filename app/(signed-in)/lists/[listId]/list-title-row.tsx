@@ -50,6 +50,7 @@ export function ListTitleRow({
   dragHandle,
   liRef,
   style,
+  aboveFold = false,
 }: {
   readonly title: ListDetailTitleRow;
   readonly dragHandle: ReactNode;
@@ -57,6 +58,9 @@ export function ListTitleRow({
   readonly liRef?: (element: HTMLLIElement | null) => void;
   /** The live transform a drag or a keyboard move applies to this row. */
   readonly style?: CSSProperties;
+  /** This row is the list's first — `ReorderableTitleList`'s to say, since a list renders
+   *  one row per title (`app/poster.tsx`). */
+  readonly aboveFold?: boolean;
 }) {
   const meta = metaLine(title);
 
@@ -66,7 +70,12 @@ export function ListTitleRow({
         {title.position}
       </span>
 
-      <Poster posterPath={title.posterPath} width={56} className="w-14 shrink-0" />
+      <Poster
+        posterPath={title.posterPath}
+        width={56}
+        className="w-14 shrink-0"
+        aboveFold={aboveFold}
+      />
 
       <div className="min-w-0 flex-1">
         <h2 className="bill-title text-bill-md text-text">{title.name}</h2>

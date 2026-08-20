@@ -231,6 +231,7 @@ export function ReorderableTitleList({
               key={title.titleId}
               title={title}
               style={style}
+              aboveFold={index === 0}
               liRef={(element) => {
                 if (element) rowElements.current.set(title.titleId, element);
                 else rowElements.current.delete(title.titleId);

@@ -115,7 +115,9 @@ export default async function UnownedTitlePage({
             `w-full` poster, so both title pages share the behaviour and issue #141's
             poster morph is what owns changing it. Every width in play still lands in
             TMDB's `w500` bucket (`app/poster.tsx`), so nothing served differs meanwhile. */}
-        <Poster posterPath={detail.posterPath} width={382} className="w-full" />
+        {/* This page's one hero poster, always the visible artwork on it — the same
+            reasoning `programme-note-content.tsx` gives for its own (`app/poster.tsx`). */}
+        <Poster posterPath={detail.posterPath} width={382} className="w-full" aboveFold />
 
         {/* An `h1` where the owned page's shared content renders an `h2`: that component
             is also the desktop pane, which sits inside the library screen and under its

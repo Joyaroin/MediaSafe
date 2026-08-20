@@ -111,7 +111,10 @@ export function ProgrammeNoteContent({
           either frame at render time — both land in TMDB's `w500` bucket regardless, so a
           closer number would change nothing served, only how honest this one reads. */}
       <ViewTransition key={posterTransitionName} name={posterTransitionName}>
-        <Poster posterPath={detail.posterPath} width={382} className="w-full" />
+        {/* Always the hero poster of whichever surface holds this component — the desktop
+            pane's selected entry or the phone route's whole page — so it is always the
+            visible one, never a below-the-fold instance among many (`app/poster.tsx`). */}
+        <Poster posterPath={detail.posterPath} width={382} className="w-full" aboveFold />
       </ViewTransition>
 
       <h2 className="bill-title mt-5 text-bill-xl">{detail.name}</h2>

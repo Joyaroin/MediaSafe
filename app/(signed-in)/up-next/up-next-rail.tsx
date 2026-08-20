@@ -70,6 +70,15 @@ interface Reach {
 const NEITHER_WAY: Reach = { back: false, forward: false };
 
 /**
+ * How many tiles of this rail's own track are on screen before a reader scrolls it — a
+ * `132px` tile plus the track's `gap-3` (`12px`) is `144px` of pitch, and even the
+ * narrowest desktop width this rail renders at (`lg:` and up, `1024px`, minus the track's
+ * own `px-6` gutter) covers six of those. The rest of a long rail stays `app/poster.tsx`'s
+ * default lazy.
+ */
+const FIRST_RUN = 6;
+
+/**
  * `"smooth"`, unless the reader has asked for less motion — in which case the rail still
  * moves by exactly the same whole tiles, it just arrives there.
  *
@@ -194,8 +203,12 @@ export function UpNextRail({
         aria-labelledby={railId}
         className="stagger-rise flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-6 px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {entries.map((entry) => (
-          <UpNextTile key={entry.libraryEntryId} entry={entry} />
+        {entries.map((entry, index) => (
+          <UpNextTile
+            key={entry.libraryEntryId}
+            entry={entry}
+            aboveFold={index < FIRST_RUN}
+          />
         ))}
       </ol>
 
