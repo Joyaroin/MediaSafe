@@ -197,89 +197,19 @@
   border-radius: 7px;
 }
 
-/* ── The Material Event, in the old world ────────────────────────────────────────────
-   Marking a watch is a material event, not a state toggle, and on the two surfaces still
-   drawn from the world #12 built (`up-next-grid.tsx`'s TONIGHT card, and the phone home's
-   dominant card until #138 retires it), it still happens as two motions timed off
-   `--ease-press`. Both utilities are `position: absolute`, applied only inside a
-   `relative` ancestor sized for text, so neither changes the row's bounding rect.
-
-   The strike scales in from the left over the name it sits on top of; the stamp lands
-   off-register, rotated, over the row's block. Both settle for good — `forwards` — rather
-   than reverting, and the caller unmounts them once its own `settled` phase takes over,
-   which is what keeps a completed mark from leaving one of these behind permanently.
-
-   Issue #139 retires this pair on title detail, where marking a watch now lives — see
-   `watch-sweep` below. It stays here unchanged for the two surfaces above, which are not
-   this ticket's surface. */
-@utility watch-strike {
-  position: absolute;
-  inset-inline: 0;
-  top: 50%;
-  height: 2px;
-  background: var(--color-accent);
-  transform-origin: left center;
-  animation: watch-strike-in 420ms var(--ease-press) forwards;
-}
-
-@utility watch-stamp {
-  position: absolute;
-  top: 50%;
-  right: 0.5rem;
-  border: 2px solid var(--color-accent);
-  /* DESIGN.md's token mapping names this `stamp-watched` and pins its padding to
-     `0.25rem 0.5rem` — narrower than the strike button's `0.625rem`, and a different
-     value from it despite both being accent-on-ground. */
-  padding: 0.25rem 0.5rem;
-  color: var(--color-accent);
-  background: var(--color-ground);
-  transform-origin: center;
-  animation: watch-stamp-in 340ms var(--ease-press) forwards;
-}
-
-@keyframes watch-strike-in {
-  from {
-    transform: scaleX(0) translateY(-50%);
-  }
-  to {
-    transform: scaleX(1) translateY(-50%);
-  }
-}
-
-@keyframes watch-stamp-in {
-  from {
-    transform: translateY(-50%) rotate(-9deg) scale(1.5);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(-50%) rotate(-9deg) scale(1);
-    opacity: 1;
-  }
-}
-
-/* DESIGN.md, Motion: "under `prefers-reduced-motion: reduce`, the strike and stamp
-   collapse to `1ms` — the event still happens, it just does not animate." The event is
-   the state flip in `programme-note-episodes.tsx`, which is unconditional and instant
-   already; this is only what keeps the two motions from taking 420ms and 340ms to reach
-   the state they both end on regardless. */
-@media (prefers-reduced-motion: reduce) {
-  .watch-strike,
-  .watch-stamp {
-    animation-duration: 1ms;
-  }
-}
-
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────
-   One motion where the old world drew two: a wash of the accent across the row it marks,
-   scaling in from the left and fading out over the same run, so nothing accent-coloured
-   is left once it settles — the row itself, dimmed, is what says *watched* from here.
-   `position: absolute; inset: 0` inside the row's own `relative` `<li>`
-   (`programme-note-episodes.tsx`) is what keeps it out of flow, the same guarantee
-   `watch-strike`/`watch-stamp` above depend on for their own row.
+   A wash of the accent across the row it marks, scaling in from the left and fading out
+   over the same run, so nothing accent-coloured is left once it settles — the row itself,
+   dimmed, is what says *watched* from here. `position: absolute; inset: 0` inside the
+   row's own `relative` `<li>` (`programme-note-episodes.tsx`) is what keeps it out of
+   flow.
 
-   `~200ms` on `--ease-press`, roughly half of the old strike's `420ms` — "quiet and
-   immediate", not a performance to sit through. `WatchSweep`'s own `onAnimationEnd` is
-   what ends `marking` and starts `settled`, the same wiring `WatchStrike` used. */
+   Issue #88 built this row's watch as a material event with two motions, a strike and a
+   stamp, timed off `--ease-press` — that pair's own `watch-strike`/`watch-stamp`
+   utilities retired with issue #138, which retired the last surface still drawing them,
+   the phone home's dominant card. `~200ms` on `--ease-press`, roughly half of the old
+   strike's `420ms` — "quiet and immediate", not a performance to sit through.
+   `WatchSweep`'s own `onAnimationEnd` is what ends `marking` and starts `settled`. */
 @utility watch-sweep {
   position: absolute;
   inset: 0;

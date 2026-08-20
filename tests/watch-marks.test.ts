@@ -370,8 +370,7 @@ describe("a lost write, across surfaces", () => {
 describe("a surface arriving with its own server read", () => {
   it("lets the newer read win while nothing has written to the episode", () => {
     const { surface } = harness();
-    // An Up next surface seeds every episode unwatched — `listUpNext` only ever returns
-    // an unwatched next episode, so it has no watched state to seed with.
+    // A programme note row seeds from the episode it renders, unwatched.
     const row = surface(EPISODE);
     // The programme note opens later, from a `getTitleDetail` that knows about a watch
     // this store never made — an import, one client-side navigation away via settings.

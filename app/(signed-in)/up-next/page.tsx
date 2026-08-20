@@ -1,58 +1,56 @@
 import { ProgrammeNoteLayout } from "@/app/(signed-in)/library/programme-note-layout";
-import { listUpNext, listUpNextRails } from "@/db/access";
+import { listAbandoned, listUpNextRails, listWatchlist } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import { UpNextEmpty } from "./up-next-empty";
+import { UpNextGroups } from "./up-next-groups";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextRailsSurface } from "./up-next-rails-surface";
-import { UpNextSurface } from "./up-next-surface";
 
 /**
  * Up next — the surface both devices land on, and the one this app is opened to look at.
  *
  * Built at its own route by #101, made the landing screen by #102, made a desktop
- * destination by #136, and given a desktop form of its own by **#137**: three rails beside
- * the programme note, where the phone still has the deck.
+ * destination by #136, given a desktop form of its own by #137 — three rails beside the
+ * programme note — and given the phone a form of its own, at last, by **#138**: five
+ * vertical groups, replacing the deck `SPEC.md` §8 step 5 built. The deck's own read,
+ * `listUpNext`, and everything that rendered it, are gone with it.
  *
- * ── Two reads and two renders, and the cost of that, stated ───────────────────────────
+ * ── Three reads and two renders, and the cost of that, stated ─────────────────────────
  *
- * `listUpNextRails` answers the desktop and `listUpNext` answers the phone, and both run on
- * every load because **the server does not know the viewport** — #136 deleted the one
- * `matchMedia` branch this build ever had, deliberately, so which surface renders is a
- * Tailwind fact and not a server one. `hidden lg:block` and `lg:hidden` are the same device
- * the deleted desktop TONIGHT row used, for the same reason.
+ * `listUpNextRails` answers both devices — the phone's first three groups and the
+ * desktop's three rails are the same read — and `listWatchlist`/`listAbandoned` answer
+ * only the phone's last two. All three run on every load because **the server does not
+ * know the viewport** — #136 deleted the one `matchMedia` branch this build ever had,
+ * deliberately, so which surface renders is a Tailwind fact and not a server one.
+ * `hidden lg:block` and `lg:hidden` below are the same device the deleted desktop TONIGHT
+ * row used, for the same reason.
  *
- * **Be precise about what that costs, because it is more than a second query.** Both halves
- * are in the markup at every width, so a phone is sent and hydrates every rail tile —
- * OLD FRIENDS is uncapped, which is 187 of them on the committed library — and a desktop
- * hydrates the whole first page of the deck. The images are not part of that: a browser does
- * not fetch a `loading="lazy"` poster inside a `display: none` subtree, so the wasted half
- * costs DOM and hydration, not bandwidth or TMDB requests.
+ * **Be precise about what that costs.** A desktop load pays for the watchlist and
+ * abandoned reads without ever rendering them — the images are not part of that cost, since
+ * a browser does not fetch a `loading="lazy"` poster inside a `display: none` subtree, so
+ * the wasted read costs one query and some DOM, not bandwidth or TMDB requests. It is the
+ * same trade #137's own docblock made for the rails on a phone load, paid the other way
+ * now that the deck is gone: two surfaces sharing one route and reading everything either
+ * of them might render, rather than a second route for one destination.
  *
- * It is not paid for long, and it is not paid to buy anything: issue #138 replaces the deck
- * with the phone's own five vertical groups, at which point the deck read and the deck
- * render both go and the rails read serves the surface that is left. Fixing it before then
- * would mean either reading the viewport in JavaScript on the server's behalf — the one
- * thing #136 removed — or two routes for one destination.
+ * Every read here is unguarded. A failure in any of the three throws into `error.tsx`,
+ * which draws the read-failure treatment with a reference id over this page's own
+ * heading. There is no `try` here and none in `db/access.ts`: **this is the surface
+ * `AGENTS.md`'s rule bites hardest on**, because *you're caught up* is a plausible lie and
+ * a group that is absent because the database is down would read as a life well managed.
  *
- * Both are unguarded. A failure in either throws into `error.tsx`, which draws the
- * read-failure treatment with a reference id over this page's own heading. There is no `try`
- * here and none in `db/access.ts`: **this is the surface `AGENTS.md`'s rule bites hardest
- * on**, because *you're caught up* is a plausible lie and a rail that is absent because the
- * database is down would read as a life well managed.
+ * ── Two empty states, and they are not one ────────────────────────────────────────────
  *
- * ── Three empty states, and they are not one ──────────────────────────────────────────
+ * An **empty group** is absent — no heading over nothing (`home-group.tsx`). **All groups
+ * on one device empty** is a different fact, answered by `up-next-groups.tsx` and
+ * `up-next-rails-surface.tsx` respectively rather than here, since each of those is the
+ * component holding every group or rail its own device shows. Both are reachable only
+ * from reads that succeeded.
  *
- * An **empty rail** is absent — no heading over nothing (`up-next-rail.tsx`). **Every** rail
- * empty is a different fact, answered by `up-next-rails-surface.tsx` rather than here, since
- * that is the component holding all three. The phone's own empty deck is the branch that
- * *is* here, because the deck is the only thing this page reads for it. All three are
- * reachable only from a query that succeeded.
- *
- * Note that the two devices can honestly disagree here. A library that is entirely caught up
- * with a season announced has an empty deck and a populated COMING BACK rail, so the phone
- * says *you're caught up* while the desktop shows a rail. Both are true — the deck holds
- * *watching* and that rail does not — and #138 is where the phone gains the groups that
- * close the gap.
+ * The two devices can honestly disagree here, more often than they could before #138: a
+ * library with nothing watching, nothing dated to come back, nothing on the watchlist and
+ * nothing abandoned — but titles finished — reads as *you're caught up* on both devices at
+ * once now, where before #138 the phone's deck alone decided its own answer. What still
+ * differs is which five, or three, questions get asked.
  */
 export const dynamic = "force-dynamic";
 
@@ -60,7 +58,8 @@ export default async function UpNextPage() {
   const userId = await requireUserId();
 
   const rails = await listUpNextRails(userId);
-  const deck = await listUpNext(userId);
+  const watchlist = await listWatchlist(userId);
+  const abandoned = await listAbandoned(userId);
 
   return (
     /* The Library page's own two-pane shell — the rails swap the panel beside them, and
@@ -69,13 +68,9 @@ export default async function UpNextPage() {
       <div className="flex min-w-0 flex-1 flex-col">
         <UpNextHeading />
 
-        {/* The phone's deck, unchanged, until #138. */}
+        {/* The phone's five vertical groups. */}
         <div className="lg:hidden">
-          {deck.entries.length === 0 ? (
-            <UpNextEmpty />
-          ) : (
-            <UpNextSurface firstPage={deck} />
-          )}
+          <UpNextGroups rails={rails} watchlist={watchlist} abandoned={abandoned} />
         </div>
 
         {/* The desktop's three rails, which answer their own empty case. */}

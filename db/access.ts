@@ -1893,33 +1893,16 @@ function stateFrom(value: string): LibraryState {
 }
 
 /**
- * How many entries one fetch of the deck returns.
- *
- * `SPEC.md` §11.4 left the number open as a build-time call — #25 dissolved the *cap*
- * question into a *fetch* question and deliberately picked no figure. This is that call,
- * and it is a fetch size and not a cap: `DESIGN.md` forbids a numeric bound on the phone
- * deck ("Don't … put a numeric cap on the phone deck, or a 'showing 10 of 62' line"), and
- * the desktop row is bounded by the viewport instead. Twenty is one screen's worth of
- * deck with room to work down before the next fetch, against a real library whose
- * *watching* set is 284 titles.
- *
- * Exported for the tests, which have to page past it to prove that paging is stable. No
- * surface has any use for it: a page carries its own cursor, so a caller pages by asking
- * whether there is one rather than by counting to twenty.
- */
-export const UP_NEXT_PAGE_SIZE = 20;
-
-/**
- * One entry of the deck: a title, and the episode of it you are up to.
+ * One entry of a rail: a title, and the episode of it you are up to.
  *
  * ── Why the season and episode numbers are here, and not on `LibraryEntryRow` ────────
  *
  * `UpNext` above deliberately carries no numbers, because the library cell has no place
  * to print them and a surface holding them would be one keystroke from breaking *episodes
- * are named, never numbered alone*. The Up next card is the opposite case: `DESIGN.md`
- * sets the number **beside** the name as a dim code line — "S3 E4" over "Sweet Vitriol" —
- * on both the desktop row and the phone deck, so withholding them here would force a
- * surface to fetch them somewhere else.
+ * are named, never numbered alone*. This is the opposite case: `DESIGN.md` sets the
+ * number **beside** the name as a dim code line — "S3 E4" over "Sweet Vitriol" — on the
+ * desktop row this entry once fed too, so withholding them here would force a surface to
+ * fetch them somewhere else.
  *
  * `episodeName` is still `null` where TMDB has not named the episode. That is the honest
  * answer and it stays the surface's problem: the rule the surfaces follow is that they
@@ -1946,9 +1929,7 @@ export interface UpNextEntry {
    * makes for the identical fact.
    *
    * Here since #137, because the rail tile is a poster, a name and a year — the prototype's
-   * own tile (`design/catalogue-wall.html`), which is binding on appearance. Nothing on the
-   * phone deck renders it; the deck's cards carry an episode name where the tile carries a
-   * year, and one select list serving both is worth a field one of them ignores.
+   * own tile (`design/catalogue-wall.html`), which is binding on appearance.
    */
   readonly releaseYear: number | null;
   /** Borrowed. */
@@ -1958,46 +1939,6 @@ export interface UpNextEntry {
   readonly episodeName: string | null;
   readonly seasonNo: number;
   readonly episodeNo: number;
-}
-
-/**
- * Where the last page stopped — the whole sort key of its final entry, and nothing else.
- *
- * **Keyset, not an offset**, because the deck reorders under its own reader: marking the
- * top card watched makes that title the most recent watch, which moves it to the head of
- * the order. Against `OFFSET 20` every such write shifts the rows underneath it, so page
- * two repeats whatever slid down across the boundary. A cursor made of the sort key
- * itself asks for *everything after this entry, in this order*, which stays a truthful
- * question after the deck has moved.
- *
- * **What that buys is exactly one guarantee: no entry is served twice.** It does not, and
- * no cursor could, catch an entry that moves the other way — a title below the cursor
- * that gains a watch jumps to the head of the order, ahead of a point page two only looks
- * past, and so is not on page two. It is not lost: it is the first thing the next fetch
- * from the start returns, which is what a surface does after recording a watch. Paging
- * over a set that reorders under you can promise no duplicates or no misses, not both,
- * and a deck you work down is served by the first.
- *
- * It is opaque to surfaces: a page hands back whatever it was given and never reads a
- * field of it. Tampering with one can only reorder the tamperer's own deck — the account
- * scope is `ownedBy`, never the cursor.
- */
-export interface UpNextCursor {
-  /** 0 recency, 1 the air-date fallback, 2 nothing to date it by. */
-  readonly rank: number;
-  /** The timestamp that rank sorts by, as Postgres prints it. */
-  readonly sortAt: string;
-  readonly remaining: number;
-  /** The title's name, lower-cased — the same expression the order uses. */
-  readonly name: string;
-  readonly libraryEntryId: string;
-}
-
-/** One fetch of the deck. **No total**, and there is nowhere for one to be added. */
-export interface UpNextPage {
-  readonly entries: readonly UpNextEntry[];
-  /** `null` means this was the last page — not that the deck is empty. */
-  readonly nextCursor: UpNextCursor | null;
 }
 
 /**
@@ -2045,23 +1986,12 @@ export interface UpNextPage {
  *
  * `lower(name)` and the entry id are the total order underneath the rule. §7's own
  * *"every sort breaks ties by Title A–Z"* covers the first; the second is what makes
- * *two identical loads give an identical order* true of two entries that share a name,
- * and what lets a cursor name one row rather than a group of them.
+ * *two identical loads give an identical order* true of two entries that share a name.
  */
 interface UpNextOrder {
-  readonly rank: SQL;
-  readonly at: SQL;
-  readonly remaining: PgColumn;
-  readonly name: SQL;
-  readonly entry: PgColumn;
   /**
    * The five terms above as the `ORDER BY` itself, with their directions — the same shape
    * `orderByFor` returns for the library's four sorts.
-   *
-   * It is a member rather than something `listUpNext` assembles, because the sequence and
-   * the directions *are* half of the rule: `afterCursor` has to walk the same five terms
-   * in the same order, and a query that listed them itself would be a second place for
-   * that sequence to be written down and a second place for it to drift.
    */
   readonly orderBy: (SQL | PgColumn)[];
 }
@@ -2083,63 +2013,23 @@ function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
   const name = sql`lower(${title.name})`;
   const entry = libraryEntry.id;
 
-  return {
-    rank,
-    at,
-    remaining,
-    name,
-    entry,
-    orderBy: [rank, sql`${at} desc`, remaining, name, entry],
-  };
+  return { orderBy: [rank, sql`${at} desc`, remaining, name, entry] };
 }
 
 /**
- * *Everything after this entry, in this order* — the five order terms as one predicate,
- * written as the flat sum of their prefixes.
+ * Up next's membership and order, built once and read three ways — the desktop page's
+ * three rails (issue #137).
  *
- * Each line is one term: equal on everything before it, and strictly past it on that one.
- * Postgres's row constructor would say the same thing in a line, but only for an order
- * that ascends throughout, and this one descends on `at`. Spelling the cascade out keeps
- * it checkable against the `ORDER BY` line for line, which is the property worth having
- * in the one place a paging bug would show up as a missing card rather than an error.
- */
-function afterCursor(order: UpNextOrder, cursor: UpNextCursor): SQL {
-  const rank = sql`${cursor.rank}`;
-  const at = sql`${cursor.sortAt}::timestamptz`;
-  const remaining = sql`${cursor.remaining}`;
-  const name = sql`${cursor.name}`;
-  const entry = sql`${cursor.libraryEntryId}::uuid`;
-
-  return sql`(
-    ${order.rank} > ${rank}
-    or (${order.rank} = ${rank} and ${order.at} < ${at})
-    or (${order.rank} = ${rank} and ${order.at} = ${at}
-        and ${order.remaining} > ${remaining})
-    or (${order.rank} = ${rank} and ${order.at} = ${at}
-        and ${order.remaining} = ${remaining} and ${order.name} > ${name})
-    or (${order.rank} = ${rank} and ${order.at} = ${at}
-        and ${order.remaining} = ${remaining} and ${order.name} = ${name}
-        and ${order.entry} > ${entry})
-  )`;
-}
-
-/**
- * Up next's membership and order, built once and read four ways — the phone deck's page,
- * and the desktop page's three rails (issue #137).
+ * ── Why this is a builder and not three queries ───────────────────────────────────────
  *
- * ── Why this is a builder and not four queries ────────────────────────────────────────
- *
- * Issue #137 asked for the extraction before the rails, and the reason is the shape of the
- * failure it prevents. `upNextOrder` is five terms in a cascade and `afterCursor` walks the
- * same five in the same sequence; a rail that restated the `ORDER BY` would be a fourth
- * place for that sequence to be written down and a fourth place for it to drift. **A wrong
- * order does not throw.** It puts the wrong show at the top of the surface opened every
- * night, and the only person who could notice is the one assuming the app is right.
+ * `upNextOrder` is five terms in a cascade, and a rail that restated the `ORDER BY` would
+ * be a fourth place for that sequence to be written down and a fourth place for it to
+ * drift. **A wrong order does not throw.** It puts the wrong show at the top of the
+ * surface opened every night, and the only person who could notice is the one assuming
+ * the app is right.
  *
  * So the joins, the ownership scoping, the select list and the order live here, and what a
- * caller supplies is one predicate and a row limit. `order` is handed back because
- * `listUpNext` needs the same terms for its cursor's `WHERE`, which is the one thing a
- * caller does with the order rather than to it.
+ * caller supplies is one predicate and a row limit.
  *
  * ── The joins, and what each of them removes ──────────────────────────────────────────
  *
@@ -2166,12 +2056,11 @@ function afterCursor(order: UpNextOrder, cursor: UpNextCursor): SQL {
  * ── There is no `try` in here or in any caller ────────────────────────────────────────
  *
  * A failed read throws, and the Up next route's own `error.tsx` catches it (`AGENTS.md`).
- * An empty rail and an empty deck are reachable only from a query that succeeded, which is
- * the whole of what lets the surface tell *absent* from *broken* — and this is the surface
- * where it matters most, because *you are all caught up* is a plausible lie.
+ * An empty rail is reachable only from a query that succeeded, which is the whole of what
+ * lets the surface tell *absent* from *broken* — and this is the surface where it matters
+ * most, because *you are all caught up* is a plausible lie.
  */
 interface UpNextRead {
-  readonly order: UpNextOrder;
   /**
    * `where` narrows the read and nothing widens it: `ownedBy` is applied here rather than
    * left to a caller, so no membership predicate can forget it. `limit` is `null` for a
@@ -2180,13 +2069,7 @@ interface UpNextRead {
   readonly rows: (where: SQL, limit: number | null) => Promise<UpNextRow[]>;
 }
 
-/**
- * One row of the shared read: everything any Up next surface renders, plus the three
- * computed sort keys `UpNextCursor` carries. The cursor fields are selected for every
- * caller rather than only for the paged one, because the value of one select list is that
- * there is one — a rail pays three expressions it does not read, which is cheaper than a
- * second query shape that could disagree with this one about the order.
- */
+/** One row of the shared read: everything any Up next rail renders. */
 interface UpNextRow {
   readonly libraryEntryId: string;
   readonly titleId: string;
@@ -2197,10 +2080,6 @@ interface UpNextRow {
   readonly episodeName: string | null;
   readonly seasonNo: number;
   readonly episodeNo: number;
-  readonly remaining: number;
-  readonly rank: number;
-  readonly sortAt: string;
-  readonly sortName: string;
 }
 
 /**
@@ -2268,7 +2147,6 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
   const order = upNextOrder(lastWatch.watchedAt);
 
   return {
-    order,
     rows: async (where, limit) => {
       const query = executor
         .select({
@@ -2281,15 +2159,6 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           episodeName: episode.name,
           seasonNo: libraryEntryUpNext.seasonNo,
           episodeNo: libraryEntryUpNext.episodeNo,
-          remaining: libraryEntryRemaining.remaining,
-          rank: sql<number>`${order.rank}`.as("sort_rank"),
-          /**
-           * Postgres's own rendering of the timestamp, so that the value a cursor carries
-           * and the value it is compared against are the same one. Handing back whatever a
-           * driver happened to parse it into would put a second date format in the loop.
-           */
-          sortAt: sql<string>`${order.at}::text`.as("sort_at"),
-          sortName: sql<string>`${order.name}`.as("sort_name"),
         })
         .from(libraryEntry)
         .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -2328,65 +2197,6 @@ function upNextEntry(row: UpNextRow): UpNextEntry {
     seasonNo: row.seasonNo,
     episodeNo: row.episodeNo,
   };
-}
-
-/**
- * One fetch of the phone's deck — `WATCHING` in §7's order, one page at a time.
- *
- * Issue #136 gave both devices the same `/up-next` route reading this; issue #137 gave the
- * desktop half of that route its own read (`listUpNextRails` below) and left this one to
- * the phone alone until #138 replaces the deck with vertical groups. The two cannot
- * disagree about which titles are up next or in what order, because `upNextRead` above is
- * the one place either of them is decided.
- *
- * ── One extra row, and no count ──────────────────────────────────────────────────────
- *
- * The query asks for `UP_NEXT_PAGE_SIZE + 1` and returns at most `UP_NEXT_PAGE_SIZE`. The
- * row that does not fit is not data — it is the whole of what the page knows about what
- * comes after it, and it is spent on deciding whether `nextCursor` is null. No `count(*)`
- * is issued and no total is returned, because §7 gives the phone deck no numeric cap and
- * §9 forbids the "showing 10 of 62" line a total invites: a number nothing can render is a
- * number nothing can render wrong.
- */
-export async function listUpNext(
-  userId: UserId,
-  cursor: UpNextCursor | null = null,
-  executor: Executor = getDb(),
-): Promise<UpNextPage> {
-  const read = upNextRead(userId, executor);
-
-  const rows = await read.rows(
-    cursor === null
-      ? WATCHING
-      : sql`(${WATCHING} and ${afterCursor(read.order, cursor)})`,
-    UP_NEXT_PAGE_SIZE + 1,
-  );
-
-  const more = rows.length > UP_NEXT_PAGE_SIZE;
-  const page = more ? rows.slice(0, UP_NEXT_PAGE_SIZE) : rows;
-
-  let nextCursor: UpNextCursor | null = null;
-  if (more) {
-    const last = page.at(-1);
-    if (last === undefined) {
-      /**
-       * Unreachable: `more` means the query returned more rows than a page holds, so the
-       * page sliced out of them has a last row. It throws rather than falling through to
-       * a null cursor, because the fallthrough is a deck that silently ends early — which
-       * is the shape of failure this whole read exists to not have.
-       */
-      throw new Error("A full page of Up next has no last entry to page from.");
-    }
-    nextCursor = {
-      rank: last.rank,
-      sortAt: last.sortAt,
-      remaining: last.remaining,
-      name: last.sortName,
-      libraryEntryId: last.libraryEntryId,
-    };
-  }
-
-  return { entries: page.map(upNextEntry), nextCursor };
 }
 
 /**
@@ -2430,8 +2240,7 @@ export const ONGOING_RAIL_SIZE = 12;
  * *Every watching title is in exactly one of the two, and none is in both* is an acceptance
  * criterion, and it is worth having by construction rather than by two queries agreeing.
  * `LIMIT 12` and `OFFSET 12` over the same order would be two reads of a set that a watch
- * landing between them can reorder — the same reason `UpNextCursor` exists rather than an
- * offset. One read, sliced in memory, cannot have that gap at all.
+ * landing between them can reorder. One read, sliced in memory, cannot have that gap at all.
  *
  * It also settles what *the 12 most recently watched* means, which the rule alone leaves
  * open: **the head of §7's order over the watching set**, not the head of the whole
@@ -2481,6 +2290,68 @@ export async function listUpNextRails(
     comingBack: comingBack.map(upNextEntry),
     oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(upNextEntry),
   };
+}
+
+/**
+ * One entry of the phone's WATCHLIST or ABANDONED group (issue #138) — a poster, a name
+ * and a year, the same three facts a rail tile carries and nothing `upNextRead` above
+ * would even have: neither state has an episode after it worth pointing at, so there is
+ * no `library_entry_up_next` row to join for either — and, for a watchlist film, never
+ * could be (`UpNextRow`'s own note on why a film has no such row). Joining that view
+ * anyway would silently drop every watchlist and abandoned film off both groups.
+ */
+export interface LibraryStateGroupEntry {
+  readonly libraryEntryId: string;
+  readonly titleId: string;
+  readonly titleName: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+}
+
+/**
+ * **WATCHLIST and ABANDONED's membership: `library_entry_state`, filtered to one state.**
+ *
+ * Reused by both — `state` is the one thing they differ on — rather than two near-copies
+ * of the same three-table join. Ordered Title A–Z, `orderByFor`'s own default tiebreak
+ * (`db/library-sort.ts`'s vocabulary does not reach this reader, so the expression is
+ * repeated rather than imported): neither group has a §7 order of its own to inherit, and
+ * a filter-and-slice screen showing up to two hundred titles needs a stable one more than
+ * it needs a chosen one.
+ */
+async function listByState(
+  userId: UserId,
+  state: LibraryState,
+  executor: Executor,
+): Promise<readonly LibraryStateGroupEntry[]> {
+  return executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntryState.state, state)))
+    .orderBy(sql`lower(${title.name})`, libraryEntry.id);
+}
+
+/** The phone home's WATCHLIST group, and the screen `more ›` on it opens. */
+export async function listWatchlist(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly LibraryStateGroupEntry[]> {
+  return listByState(userId, "watchlist", executor);
+}
+
+/** The phone home's ABANDONED group, and the screen `more ›` on it opens. */
+export async function listAbandoned(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly LibraryStateGroupEntry[]> {
+  return listByState(userId, "abandoned", executor);
 }
 
 /** One row of a season/episode list — issue #58's title detail. */

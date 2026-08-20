@@ -26,10 +26,10 @@ export type { WatchAppearance, WatchMarkPhase } from "./watch-marks";
  * its caller was rendered with.
  *
  * **Still one hook, still one write.** #103 changes where the key is kept, not how many
- * implementations of the write there are: the three remaining callers — `EpisodeLine` and
- * `FilmRow` (`programme-note-episodes.tsx`) and `UpNextDominantCard`
- * (`up-next/up-next-dominant-card.tsx`) — call this exactly as they did, and get back
- * exactly what they did.
+ * implementations of the write there are: the two remaining callers — `EpisodeLine` and
+ * `FilmRow` (`programme-note-episodes.tsx`), the only place left that marks a watch since
+ * #138 retired the phone deck's own dominant card — call this exactly as they did, and
+ * get back exactly what they did.
  *
  * `episodeId` is `null` for a film, exactly as `RecordWatchParams` already allows.
  * `episodeName` is left absent for a film for the same reason: `LostWrite.episode` is

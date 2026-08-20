@@ -6,12 +6,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   asUserId,
-  listUpNext,
   listUpNextRails,
   ONGOING_RAIL_SIZE,
-  UP_NEXT_PAGE_SIZE,
   type UpNextEntry,
-  type UpNextPage,
   type UpNextRails,
   type UserId,
 } from "@/db/access";
@@ -21,24 +18,24 @@ import { readNativeImportFile, type NativeImportFile } from "@/import/native-for
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * The one read behind both Up next surfaces (issue #98) — which titles, in what order.
+ * The one read behind every Up next surface (issue #98) — which titles, in what order.
  *
  * ── Why this file is where the ordering is checked ───────────────────────────────────
  *
  * `SPEC.md` §7's ordering is the last read rule in the product that nothing checks, and
  * its failure is silent: a wrong order does not throw, it puts the wrong show at the top
- * of the screen whose whole job is to be trusted at half attention. Neither surface can
- * catch it — the phone deck and the desktop rails both render whatever arrives, in the
- * order it arrives — so the assertion has to live against the query.
+ * of the screen whose whole job is to be trusted at half attention. No surface can catch
+ * it — every one of them renders whatever arrives, in the order it arrives — so the
+ * assertion has to live against the query.
  *
  * ── The rails, and why they share these assertions rather than copying them ───────────
  *
  * Issue #137 made Up next three rails over one definition, and the same argument applies a
  * second time: a rail that held a *different* order would be a silently wrong screen, and
  * three copies of one expectation are three places for one rule to drift. So the ordering
- * cases below are written once and run against four readers — the deck, ONGOING, OLD
- * FRIENDS and COMING BACK — through `OrderReader`, and the rails' own *membership* rules
- * are asserted separately at the foot of this file.
+ * cases below are written once and run against three readers — ONGOING, OLD FRIENDS and
+ * COMING BACK — through `OrderReader`, and the rails' own *membership* rules are asserted
+ * separately at the foot of this file.
  *
  * ── No network, and nothing mocked ───────────────────────────────────────────────────
  *
@@ -210,23 +207,6 @@ async function seedWatching(
   return show;
 }
 
-/** Every entry, walked page by page, which is the only way this read is offered. */
-async function wholeDeck(tx: Transaction, userId: UserId): Promise<UpNextEntry[]> {
-  const entries: UpNextEntry[] = [];
-  let page: UpNextPage = await listUpNext(userId, null, tx);
-  entries.push(...page.entries);
-
-  while (page.nextCursor !== null) {
-    page = await listUpNext(userId, page.nextCursor, tx);
-    entries.push(...page.entries);
-  }
-  return entries;
-}
-
-async function deckNames(tx: Transaction, userId: UserId): Promise<string[]> {
-  return (await wholeDeck(tx, userId)).map((entry) => entry.titleName);
-}
-
 /**
  * A caught-up show that has something dated still to come — **COMING BACK's own membership,
  * as a seeder shaped exactly like `seedWatching`** so the ordering assertions below can be
@@ -276,22 +256,22 @@ async function railNames(
 }
 
 /**
- * One reader of `SPEC.md` §7's order — the phone deck, or one of #137's three rails — and
- * everything a case needs in order to be run against it unchanged.
+ * One reader of `SPEC.md` §7's order — one of #137's three rails — and everything a case
+ * needs in order to be run against it unchanged.
  *
- * **This exists so that §7's ordering is asserted once and checked four times.** The rule is
- * a five-term cascade, its failure is silent, and #137's own acceptance criterion is that
- * each rail holds it *"reusing the existing assertions rather than restating them"*. Three
- * copies of `expect(...).toEqual(["Yesterday", "Three days", "Ten days"])` would be three
- * places for one rule to drift, which is the same argument `db/access.ts`'s `upNextRead`
- * makes about the `ORDER BY` itself, one layer up.
+ * **This exists so that §7's ordering is asserted once and checked three times.** The rule
+ * is a five-term cascade, its failure is silent, and #137's own acceptance criterion is
+ * that each rail holds it *"reusing the existing assertions rather than restating them"*.
+ * Three copies of `expect(...).toEqual(["Yesterday", "Three days", "Ten days"])` would be
+ * three places for one rule to drift, which is the same argument `db/access.ts`'s
+ * `upNextRead` makes about the `ORDER BY` itself, one layer up.
  *
  * `displace` is what makes OLD FRIENDS reachable at all: it is *watching* minus ONGOING, so
  * a case that seeds three titles would put all three on ONGOING and leave the rail under
  * test empty. Seeding `ONGOING_RAIL_SIZE` titles watched *now* fills ONGOING exactly, and
  * every case below watches its own titles at `daysAgo(1)` or older — so the titles under
  * test land on OLD FRIENDS in the same relative order they would have held anywhere else.
- * For the other three readers it does nothing.
+ * For the other two readers it does nothing.
  */
 interface OrderReader {
   readonly label: string;
@@ -316,14 +296,6 @@ async function fillOngoing(tx: Transaction, userId: UserId): Promise<void> {
     });
   }
 }
-
-const DECK: OrderReader = {
-  label: "listUpNext",
-  seed: seedWatching,
-  displace: displaceNothing,
-  names: deckNames,
-  entries: wholeDeck,
-};
 
 const ONGOING: OrderReader = {
   label: "listUpNextRails — ONGOING",
@@ -555,145 +527,13 @@ function describeTheCascade(reader: OrderReader): void {
   });
 }
 
-for (const reader of [DECK, ONGOING, OLD_FRIENDS, COMING_BACK]) {
+for (const reader of [ONGOING, OLD_FRIENDS, COMING_BACK]) {
   describeTheSharedTerms(reader);
 }
 
-for (const reader of [DECK, ONGOING, OLD_FRIENDS]) {
+for (const reader of [ONGOING, OLD_FRIENDS]) {
   describeTheCascade(reader);
 }
-
-describe("listUpNext — what the deck contains", () => {
-  it("holds watching titles and leaves out the other four states", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-
-      await seedWatching(tx, reader, { name: "Watching", watchedAt: daysAgo(1) });
-
-      // Caught up: every released episode watched, and the next one has not aired.
-      const caughtUp = await seedShow(tx, reader, {
-        name: "Caught up",
-        episodes: [
-          { seasonNo: 1, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 2, airDate: UNRELEASED },
-        ],
-      });
-      await markWatched(tx, caughtUp, 0, daysAgo(1));
-
-      // Finished: every episode watched and the show is off the air.
-      const finished = await seedShow(tx, reader, {
-        name: "Finished",
-        inProduction: false,
-        episodes: [{ seasonNo: 1, episodeNo: 1 }],
-      });
-      await markWatched(tx, finished, 0, daysAgo(1));
-
-      // Watchlist: no watches at all, so no progress and nothing next.
-      await seedShow(tx, reader, {
-        name: "Watchlist",
-        episodes: [{ seasonNo: 1, episodeNo: 1 }],
-      });
-
-      expect(await deckNames(tx, reader)).toEqual(["Watching"]);
-    });
-  });
-
-  it("leaves out an abandoned title whatever its watches say", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-
-      // Watched yesterday, part-way through, and abandoned: on watches alone this would
-      // be the head of the deck. Abandoned outranks every derived state.
-      const abandoned = await seedShow(tx, reader, {
-        name: "Abandoned",
-        abandonedAt: daysAgo(30),
-        episodes: [
-          { seasonNo: 1, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 2 },
-          { seasonNo: 1, episodeNo: 3 },
-        ],
-      });
-      await markWatched(tx, abandoned, 0, daysAgo(1));
-      await seedWatching(tx, reader, { name: "Watching", watchedAt: daysAgo(9) });
-
-      expect(await deckNames(tx, reader)).toEqual(["Watching"]);
-    });
-  });
-
-  it("brings a caught-up show back once its next episode's air date has passed", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-
-      const returning = await seedShow(tx, reader, {
-        name: "Returning",
-        episodes: [
-          { seasonNo: 1, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 2, airDate: UNRELEASED },
-        ],
-      });
-      await markWatched(tx, returning, 0, daysAgo(1));
-
-      expect(await deckNames(tx, reader)).toEqual([]);
-
-      await tx
-        .update(episode)
-        .set({ airDate: daysFromToday(-1) })
-        .where(eq(episode.id, returning.episodeIds[1]));
-
-      expect(await deckNames(tx, reader)).toEqual(["Returning"]);
-    });
-  });
-
-  it("leaves out a watching title that has nothing next", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-
-      // Progress is a high-water mark, so watching the last episode and skipping the
-      // first two leaves this *watching* with no episode after it. There is no entry to
-      // render, which is the one place the deck is a strict subset of Library's
-      // *Watching* chip rather than the same set.
-      const skipped = await seedShow(tx, reader, {
-        name: "Skipped ahead",
-        episodes: [
-          { seasonNo: 1, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 2 },
-          { seasonNo: 1, episodeNo: 3 },
-        ],
-      });
-      await markWatched(tx, skipped, 2, daysAgo(1));
-      await seedWatching(tx, reader, { name: "In order", watchedAt: daysAgo(2) });
-
-      expect(await deckNames(tx, reader)).toEqual(["In order"]);
-    });
-  });
-
-  it("returns this account's entries and never another account's", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const stranger = await seedUser(tx, "stranger");
-
-      await seedWatching(tx, reader, { name: "Mine", watchedAt: daysAgo(5) });
-      await seedWatching(tx, stranger, { name: "Theirs", watchedAt: daysAgo(1) });
-
-      expect(await deckNames(tx, reader)).toEqual(["Mine"]);
-    });
-  });
-
-  it("answers an account with nothing to watch with an empty page", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      await seedWatching(tx, await seedUser(tx, "stranger"), {
-        name: "Theirs",
-        watchedAt: daysAgo(1),
-      });
-
-      const page = await listUpNext(reader, null, tx);
-
-      expect(page.entries).toEqual([]);
-      expect(page.nextCursor).toBeNull();
-    });
-  });
-});
 
 /**
  * A show with nothing left — *finished*, and the state ONGOING has to exclude however
@@ -1011,47 +851,10 @@ describe("listUpNextRails — what each rail contains", () => {
 
       const [entry] = (await listUpNextRails(reader, tx)).ongoing;
 
-      // The same entry shape the deck is handed — one select list, one type, so a rail
-      // cannot come to carry more or less than the deck does.
       expect(entry).toEqual({
         libraryEntryId: show.entryId,
         titleId: show.titleId,
         titleName: "Severance",
-        releaseYear: 2022,
-        posterPath: "/severance.jpg",
-        episodeId: show.episodeIds[1],
-        episodeName: "Cold Harbor",
-        seasonNo: 2,
-        episodeNo: 10,
-      });
-    });
-  });
-});
-
-describe("listUpNext — what an entry carries", () => {
-  it("carries everything both surfaces render", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const show = await seedShow(tx, reader, {
-        name: "Severance",
-        posterPath: "/severance.jpg",
-        episodes: [
-          { seasonNo: 2, episodeNo: 9, name: "Sweet Vitriol" },
-          { seasonNo: 2, episodeNo: 10, name: "Cold Harbor" },
-          { seasonNo: 3, episodeNo: 1, name: "Unknown" },
-        ],
-      });
-      await markWatched(tx, show, 0, daysAgo(1));
-
-      const [entry] = (await listUpNext(reader, null, tx)).entries;
-
-      expect(entry).toEqual({
-        libraryEntryId: show.entryId,
-        titleId: show.titleId,
-        titleName: "Severance",
-        // `seedShow`'s own year. Carried since #137, whose rail tile is a poster, a name
-        // and a year — the phone deck ignores it, and this assertion is exhaustive on
-        // purpose, so it is here rather than in a test of its own.
         releaseYear: 2022,
         posterPath: "/severance.jpg",
         episodeId: show.episodeIds[1],
@@ -1076,156 +879,15 @@ describe("listUpNext — what an entry carries", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNext(reader, null, tx)).entries;
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
 
-      // Null is the honest answer; the surface's own rule is that it never degrades to
+      // Null is the honest answer; the tile's own rule is that it never degrades to
       // "S1 E2" instead, and it cannot follow that rule from a name this read invented.
       expect(entry.episodeName).toBeNull();
       expect(entry.posterPath).toBeNull();
       // Same rule for a title TMDB has not dated: the tile prints no year line at all
       // rather than a placeholder, which it cannot do from a year this read invented.
       expect(entry.releaseYear).toBeNull();
-    });
-  });
-});
-
-describe("listUpNext — paging", () => {
-  it("pages at the fetch size and stops when the deck runs out", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const total = UP_NEXT_PAGE_SIZE + 5;
-
-      for (let index = 0; index < total; index += 1) {
-        await seedWatching(tx, reader, {
-          name: `Show ${String(index).padStart(3, "0")}`,
-          watchedAt: daysAgo(index + 1),
-        });
-      }
-
-      const first = await listUpNext(reader, null, tx);
-      expect(first.entries).toHaveLength(UP_NEXT_PAGE_SIZE);
-      expect(first.nextCursor).not.toBeNull();
-
-      const second = await listUpNext(reader, first.nextCursor, tx);
-      expect(second.entries).toHaveLength(5);
-      expect(second.nextCursor).toBeNull();
-    });
-  });
-
-  it("gives page two nothing page one already had, and skips nothing between them", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const total = UP_NEXT_PAGE_SIZE + 5;
-
-      // Every one of them ties on the last watch and on the remainder, so paging can
-      // only be stable if the cursor carries the whole sort key down to the entry id.
-      const sameMoment = daysAgo(2);
-      for (let index = 0; index < total; index += 1) {
-        await seedWatching(tx, reader, { name: "Identical", watchedAt: sameMoment });
-      }
-
-      const first = await listUpNext(reader, null, tx);
-      const second = await listUpNext(reader, first.nextCursor, tx);
-      const walked = [...first.entries, ...second.entries].map(
-        (entry) => entry.libraryEntryId,
-      );
-
-      expect(second.nextCursor).toBeNull();
-      expect(new Set(walked).size).toBe(total);
-      expect(walked).toHaveLength(total);
-    });
-  });
-
-  it("pages through the group that has no date to sort by at all", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const total = UP_NEXT_PAGE_SIZE + 3;
-
-      // Every one of these is rank 2: no dated watch, and no air date on the next
-      // episode either. Their sort timestamp is the constant that stands in for having
-      // none, so this is the one shape of cursor that has to survive the round trip
-      // through Postgres's own rendering of it.
-      for (let index = 0; index < total; index += 1) {
-        await seedWatching(tx, reader, {
-          name: `Undatable ${String(index).padStart(3, "0")}`,
-          watchedAt: null,
-          nextAirDate: null,
-        });
-      }
-
-      const walked = await wholeDeck(tx, reader);
-
-      expect(walked).toHaveLength(total);
-      expect(new Set(walked.map((entry) => entry.libraryEntryId)).size).toBe(total);
-    });
-  });
-
-  it("gives page two no repeat when a watch reorders the deck between the two fetches", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const shows: Show[] = [];
-      const total = UP_NEXT_PAGE_SIZE + 5;
-
-      for (let index = 0; index < total; index += 1) {
-        shows.push(
-          await seedWatching(tx, reader, {
-            name: `Show ${String(index).padStart(3, "0")}`,
-            watchedAt: daysAgo(index + 1),
-            remaining: 3,
-          }),
-        );
-      }
-
-      const first = await listUpNext(reader, null, tx);
-      expect(first.entries).toHaveLength(UP_NEXT_PAGE_SIZE);
-
-      // The write the cursor exists to survive: an entry sitting on page two is watched,
-      // which makes it the most recent watch of anything and moves it to the head of the
-      // order — across the boundary page one already went past.
-      const moved = shows[22];
-      await markWatched(tx, moved, 1, new Date());
-
-      const second = await listUpNext(reader, first.nextCursor, tx);
-      const walked = [...first.entries, ...second.entries].map(
-        (entry) => entry.libraryEntryId,
-      );
-
-      // The guarantee: nothing on page one comes back a second time. Against `OFFSET 20`
-      // this is exactly where a duplicate appears.
-      expect(new Set(walked).size).toBe(walked.length);
-
-      // And the limit, asserted rather than left to be discovered: a keyset cursor asks
-      // for what is *after* a point, so an entry that jumps ahead of that point is not on
-      // page two either. It is not lost — it is at the top of the deck on the next fetch
-      // from the start, which is what the surface does after recording a watch.
-      expect(second.entries.map((entry) => entry.libraryEntryId)).not.toContain(
-        moved.entryId,
-      );
-      expect((await listUpNext(reader, null, tx)).entries[0].libraryEntryId).toBe(
-        moved.entryId,
-      );
-    });
-  });
-
-  it("walks the whole deck in the order one unbounded read would have given", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const total = UP_NEXT_PAGE_SIZE * 2 + 3;
-
-      for (let index = 0; index < total; index += 1) {
-        await seedWatching(tx, reader, {
-          name: `Show ${String(index).padStart(3, "0")}`,
-          // Two groups tie on the last watch, so the walk crosses a tie boundary and a
-          // page boundary in the same read.
-          watchedAt: daysAgo((index % 7) + 1),
-          remaining: 2 + (index % 3),
-        });
-      }
-
-      const walked = await wholeDeck(tx, reader);
-
-      expect(walked).toHaveLength(total);
-      expect(new Set(walked.map((entry) => entry.libraryEntryId)).size).toBe(total);
     });
   });
 });
@@ -1406,8 +1068,8 @@ async function seedWholeFixture(
   await tx.execute(sql`analyze title, episode, library_entry, watch`);
 }
 
-describe("listUpNext — against the whole fixture", () => {
-  it("orders all 239 of the fixture's watching titles, in one walk", async () => {
+describe("listUpNextRails — against the whole fixture", () => {
+  it("orders all 239 of the fixture's watching titles, across ONGOING and OLD FRIENDS", async () => {
     await inTransaction(async (tx) => {
       const fixture = readSeedFixture();
       const reader = await seedUser(tx, "adham");
@@ -1461,14 +1123,19 @@ describe("listUpNext — against the whole fixture", () => {
         .map((tmdbId) => `Title ${tmdbId}`);
 
       // 439 titles carry a watch. 155 are abandoned and 45 more are caught up, so the
-      // deck is 239 — and every one of the 200 excluded is excluded by the state
-      // predicate, not by having nothing next.
+      // *watching* set is 239 — and every one of the 200 excluded is excluded by the
+      // state predicate, not by having nothing next.
       expect(expected).toHaveLength(239);
       // Exactly one of the fixture's titles has no dated watch at all, so exactly one
       // reaches the air-date fallback — and it therefore sorts below all 238 others.
       expect([...lastWatch.values()].filter((at) => at === null)).toHaveLength(1);
 
-      const walked = await wholeDeck(tx, reader);
+      // ONGOING then OLD FRIENDS, in that order, is the same walk a `listUpNext` deck
+      // once offered one page at a time: the two rails are one read over *watching*,
+      // sliced at `ONGOING_RAIL_SIZE`, and every watching title is in exactly one of them
+      // (`listUpNextRails — what each rail contains`, above).
+      const rails = await listUpNextRails(reader, tx);
+      const walked = [...rails.ongoing, ...rails.oldFriends];
 
       expect(walked.map((entry) => entry.titleName)).toEqual(expected);
       expect(new Set(walked.map((entry) => entry.libraryEntryId)).size).toBe(239);
