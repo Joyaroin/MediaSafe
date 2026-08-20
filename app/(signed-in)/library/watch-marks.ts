@@ -8,8 +8,10 @@ import {
   type WriteFailureStore,
 } from "@/errors/write-failure";
 import {
+  markWatchedThroughAction,
   recordWatchAction,
   unwatchAction,
+  type MarkWatchedThroughActionOutcome,
   type UnwatchActionOutcome,
   type WatchActionOutcome,
 } from "./watch-action";
@@ -161,6 +163,16 @@ export interface WatchWriter {
     readonly libraryEntryId: string;
     readonly episodeId: string | null;
   }): Promise<UnwatchActionOutcome>;
+  /**
+   * *Watched up to here* — issue #196. One press, one key, one transaction, and the set
+   * derived server-side from the episode named here: `markWatchedThroughAction`'s own
+   * docblock says why the browser does not send a list of ids.
+   */
+  recordThrough(params: {
+    readonly libraryEntryId: string;
+    readonly throughEpisodeId: string;
+    readonly sourceKey: string;
+  }): Promise<MarkWatchedThroughActionOutcome>;
 }
 
 export interface WatchMarks {
@@ -184,6 +196,21 @@ export interface WatchMarks {
   ): Promise<void>;
   /** Take one watch back — issue #89. */
   unwatch(subject: WatchSubject, naming: WatchNaming): Promise<void>;
+  /**
+   * Record everything up to and including one episode — issue #196.
+   *
+   * `covered` is what the row that pressed worked out is about to be written
+   * (`mark-through.ts`), and is what this marks on screen; `through` is the only thing
+   * that travels, and the server derives the set again from it. The two can disagree if
+   * the reader's page is older than the table, and the disagreement is harmless in the
+   * one direction it can go: every covered episode carries a watch once this lands,
+   * whichever press was the one to write it.
+   */
+  markThrough(
+    through: WatchSubject,
+    covered: readonly WatchSubject[],
+    naming: WatchNaming,
+  ): Promise<void>;
   /** The strike animation ended, on whichever surface got there first. */
   settle(subject: WatchSubject): void;
 }
@@ -226,6 +253,20 @@ interface Mark {
    * exactly the case a later surface's older seed must not overwrite.
    */
   written: boolean;
+  /**
+   * How many of **this episode's own** writes are on the wire right now — issue #196.
+   *
+   * Not the same question as `key !== null`, which is the one this was written as first
+   * and got wrong: a key outlives a *failed* attempt deliberately, so that the toast's
+   * *Try again* is a retry rather than a second write. An episode whose mark failed an
+   * hour ago therefore still has a key and nothing in flight, and a bulk press that read
+   * the key as busy would hand the row back permanently disabled.
+   *
+   * A count and not a flag, because two routes back to one write can be outstanding at
+   * once (`mark`'s own docblock): the first to answer must not report the episode idle
+   * while the second is still out.
+   */
+  inFlight: number;
   listeners: Set<() => void>;
 }
 
@@ -261,6 +302,17 @@ export function createWatchMarks({
   readonly mintKey?: () => string;
 }): WatchMarks {
   const marks = new Map<string, Mark>();
+  /**
+   * The outstanding *watched up to here* press against each episode it was pressed on —
+   * issue #196, and a second map rather than two more fields on `Mark` because the press
+   * is not a fact about the episode it names. `markThrough`'s docblock carries the
+   * argument; the shape is the two fields a `Mark` holds for its own write, minus the
+   * appearance, which the covered episodes hold individually.
+   */
+  const throughWrites = new Map<
+    string,
+    { key: string | null; raised: WriteFailureHandle | null }
+  >();
 
   function ensure(subject: WatchSubject, initial: WatchMarkView): Mark {
     const id = idOf(subject);
@@ -273,6 +325,7 @@ export function createWatchMarks({
       restore: appearanceOf(initial),
       raised: null,
       written: false,
+      inFlight: 0,
       listeners: new Set(),
     };
     marks.set(id, fresh);
@@ -318,7 +371,11 @@ export function createWatchMarks({
     holdRestore(one);
     apply(one, { watched: true, phase: "marking", pending: true });
 
+    one.inFlight += 1;
     const outcome = await record(subject, sourceKey);
+    // Decremented before every branch below, including the early return: this attempt is
+    // answered whatever the answer turns out to be about.
+    one.inFlight -= 1;
 
     // ── An attempt only ever speaks for the write it named ────────────────────────────
     //
@@ -408,7 +465,9 @@ export function createWatchMarks({
     holdRestore(one);
     apply(one, { watched: false, phase: "unwatched", pending: true });
 
+    one.inFlight += 1;
     const outcome = await removeWatch(subject);
+    one.inFlight -= 1;
 
     if (outcome.ok) {
       // Restated from the write that landed rather than left as the press set it: a
@@ -437,6 +496,109 @@ export function createWatchMarks({
   }
 
   /**
+   * *Watched up to here* — issue #196, and the third write this store owns.
+   *
+   * ── Why it belongs here and not in the row that draws the control ────────────────
+   *
+   * It writes the same rows the per-episode mark writes, so it has to move the same
+   * marks: a press on episode ten leaves nine other rows on screen that are now watched,
+   * and every one of them may also be showing on another surface (this file's top
+   * docblock). Held anywhere else, the two would disagree — a row would read unwatched
+   * with a landed write behind it, which is the case this store exists to make
+   * unreachable.
+   *
+   * ── One key, and its own map ─────────────────────────────────────────────────────
+   *
+   * The key names the press and is reused by the toast's *Try again*, exactly as `mark`'s
+   * is. It is **not** kept on any episode's `Mark`, because it is not any episode's: the
+   * pressed row may not even be in the set (a gap behind a watched row is the case), and
+   * an episode carrying two writes' keys in one field is two writes that would take each
+   * other's toast down. `throughWrites` is that separate home, keyed by the episode
+   * pressed.
+   *
+   * ── Rows arrive settled, and nothing sweeps ──────────────────────────────────────
+   *
+   * The phase goes straight to `settled` rather than through `marking`. The sweep marks
+   * *the event of recording one watch*; sixty-two of them would dramatise a migration as
+   * an evening's viewing (issue #196), and the rows are history rather than something
+   * that just happened.
+   *
+   * ── One toast for the press, not one per episode ─────────────────────────────────
+   *
+   * The write is one transaction and either lands whole or leaves nothing behind
+   * (`markWatchedThrough`), so there is exactly one thing that can be lost and exactly
+   * one thing to say about it. `raise()` is called once, here, and the per-episode marks
+   * are rolled back without raising any of their own.
+   */
+  async function markThrough(
+    through: WatchSubject,
+    covered: readonly WatchSubject[],
+    naming: WatchNaming,
+  ): Promise<void> {
+    const id = idOf(through);
+    const write = throughWrites.get(id) ?? { key: null, raised: null };
+    throughWrites.set(id, write);
+
+    write.key ??= mintKey();
+    const sourceKey = write.key;
+
+    // Every covered row, optimistically watched and settled, and held so a failure can
+    // put each one back exactly as it was at the moment of this press.
+    const marked = covered.map((subject) => ensure(subject, UNSEEN));
+    for (const one of marked) {
+      one.written = true;
+      holdRestore(one);
+      apply(one, { watched: true, phase: "settled", pending: true });
+    }
+
+    const outcome = await recordThrough(through, sourceKey);
+
+    // The same guard `mark` states at length: an attempt only ever speaks for the write
+    // it named, so an answer arriving after the key has moved on is not news.
+    if (write.key !== sourceKey) return;
+
+    if (outcome.ok) {
+      write.key = null;
+      for (const one of marked) {
+        apply(one, { watched: true, phase: "settled", pending: stillPending(one) });
+      }
+      if (write.raised) {
+        write.raised.resolve();
+        write.raised = null;
+      }
+      return;
+    }
+
+    for (const one of marked) {
+      apply(one, { ...one.restore, pending: stillPending(one) });
+    }
+
+    // One toast per lost write, not one per attempt — and here, not one per episode.
+    if (write.raised) return;
+
+    write.raised = failures.raise({
+      title: naming.title,
+      episode: naming.episode,
+      reference: outcome.reference,
+      // The same key, so *Try again* is a retry of this press rather than a second one.
+      retry: () => void markThrough(through, covered, naming),
+    });
+  }
+
+  /**
+   * Whether this episode is still busy once the press it was part of has answered.
+   *
+   * A bulk write does not get to clear `pending` on an episode whose **own** write is
+   * still on the wire — a single mark and a press through it can be outstanding at the
+   * same time, and a row whose control comes back under a write it cannot see is a row
+   * that can be pressed twice. `inFlight` is the question, and its own docblock says why
+   * `key !== null` is not: a key survives a failed attempt on purpose.
+   */
+  function stillPending(one: Mark): boolean {
+    return one.inFlight > 0;
+  }
+
+  /**
    * The one failure `recordWatchAction` cannot report itself, turned into the same
    * outcome shape: the request never reaching the server at all.
    */
@@ -457,6 +619,32 @@ export function createWatchMarks({
       return await writer.remove(subject);
     } catch (error) {
       return { ok: false, reference: referenceFor(error, { surface: "unwatch" }) };
+    }
+  }
+
+  /** The same wrapper again, around the press through an episode. */
+  async function recordThrough(
+    through: WatchSubject,
+    sourceKey: string,
+  ): Promise<MarkWatchedThroughActionOutcome> {
+    // A film has no episode list and so no control (`programme-note-episodes.tsx`);
+    // reaching here with none is a caller bug rather than a lost write, and it says so
+    // rather than posting a request the server would refuse.
+    if (through.episodeId === null) {
+      throw new Error("markThrough was given a film, which has no episode to mark through.");
+    }
+
+    try {
+      return await writer.recordThrough({
+        libraryEntryId: through.libraryEntryId,
+        throughEpisodeId: through.episodeId,
+        sourceKey,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        reference: referenceFor(error, { surface: "mark-watched-through" }),
+      };
     }
   }
 
@@ -485,6 +673,7 @@ export function createWatchMarks({
 
     mark,
     unwatch,
+    markThrough,
 
     settle(subject) {
       const one = marks.get(idOf(subject));
@@ -510,5 +699,6 @@ export const watchMarks = createWatchMarks({
   writer: {
     record: (params) => recordWatchAction(params),
     remove: (params) => unwatchAction(params),
+    recordThrough: (params) => markWatchedThroughAction(params),
   },
 });

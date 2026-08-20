@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -202,5 +205,155 @@ describe("the episode list", () => {
     const markup = episodes([], "film", "abandoned");
 
     expect(markup).toContain("Strike it");
+  });
+});
+
+/**
+ * *Watched up to here* on the row — issue #196.
+ *
+ * What is asserted here is only what a **render** can answer: whether the control is on a
+ * given row, and what it tells a screen reader it does. Which episodes one press would
+ * write is `tests/mark-through.test.ts`, and what the write actually does to the table is
+ * `tests/mark-watched-through.test.ts`; a rendered row shows a control rather than the
+ * eleven episodes behind it, so asserting the set from here would be asserting it through
+ * the wrong window.
+ *
+ * The control is found by its accessible label rather than by a class or a glyph. The
+ * label is the only text it has (`mark-through.ts`), so it is also the only thing a test
+ * could look for that a reader would notice going missing.
+ */
+const MARK_THROUGH = "Mark everything up to and including";
+
+describe("the watched-up-to-here control", () => {
+  it("appears on a row with an earlier unwatched episode", () => {
+    const markup = episodes([
+      episode({ id: "e1", episodeNo: 1, name: "Winter Is Coming" }),
+      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
+    ]);
+
+    expect(markup).toContain(
+      "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
+    );
+  });
+
+  it("is absent on a row with nothing unwatched before it", () => {
+    const markup = episodes([
+      episode({ id: "e1", episodeNo: 1, watched: true }),
+      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
+    ]);
+
+    // Issue #194's own words: a show already recorded is not covered in dead controls,
+    // and one press of *Strike it* already does the whole of what this would.
+    expect(markup).not.toContain(MARK_THROUGH);
+  });
+
+  it("is absent on the first episode of a show", () => {
+    const markup = episodes([episode({ id: "e1", episodeNo: 1 })]);
+
+    expect(markup).not.toContain(MARK_THROUGH);
+  });
+
+  it("appears on a watched row with a gap behind it", () => {
+    const markup = episodes([
+      episode({ id: "e1", episodeNo: 1, name: "Winter Is Coming" }),
+      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad", watched: true }),
+    ]);
+
+    // Progress is a high-water mark (`db/views.ts`), so a skipped episode sits behind a
+    // watched one — and closing that gap is the second thing this control is for.
+    expect(markup).toContain(
+      "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
+    );
+    // Beside the row's own controls, not instead of them.
+    expect(markup).toContain("Unwatch Season 1, Episode 2 — The Kingsroad");
+  });
+
+  it("never appears on a film", () => {
+    // A film has no episode list at all (`FilmRow`), so there is nothing for *up to here*
+    // to mean — and no row that could carry the control by accident.
+    expect(episodes([], "film", "watchlist")).not.toContain(MARK_THROUGH);
+    expect(episodes([], "film", "finished")).not.toContain(MARK_THROUGH);
+  });
+
+  it("never appears on a special, and an unwatched special never puts it on another row", () => {
+    const markup = episodes([
+      episode({ id: "s1", seasonNo: 0, episodeNo: 1, name: "Making Of" }),
+      episode({ id: "s2", seasonNo: 0, episodeNo: 2, name: "Blooper Reel" }),
+      episode({ id: "e1", seasonNo: 1, episodeNo: 1, name: "Winter Is Coming" }),
+    ]);
+
+    // Two unwatched specials sit before S1E1 and neither arms the control: a watch of a
+    // special changes no derived state, so it is not what a press would write and not a
+    // reason to offer one.
+    expect(markup).not.toContain(MARK_THROUGH);
+  });
+
+  it("carries no text of its own, so the episode name keeps the room it had", () => {
+    const markup = episodes([
+      episode({ id: "e1", episodeNo: 1, name: "Winter Is Coming" }),
+      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
+    ]);
+
+    /**
+     * The row's trailing slot is a fixed measure and its contents were already close to
+     * it (`programme-note-episodes.tsx`'s `TRAILING`, which records the browser
+     * measurements). Words on this control would come out of the episode name, which is
+     * the one thing on the row that must not shrink — so what the control renders is
+     * asserted to be a glyph and an attribute, and nothing a reader would see as text.
+     */
+    const visible = markup
+      .replace(/<[^>]+>/g, "\n")
+      .split("\n")
+      .filter((one) => one.length > 0);
+
+    expect(visible).toEqual([
+      "Season 1",
+      "E1",
+      "Winter Is Coming",
+      "Strike it",
+      "E2",
+      "The Kingsroad",
+      "Strike it",
+    ]);
+  });
+
+  it("reaches all three surfaces from one placement", () => {
+    /**
+     * The control is on the programme note's content, so the desktop pane, the phone
+     * title sheet and the title-detail route all get it without any of them being wired
+     * up separately — issue #196's *one placement serves three surfaces*.
+     *
+     * Read from source rather than rendered, because two of the three cannot be rendered
+     * in this harness at all: they reach `LiveTitleFacts` → `tmdb/catalogue.ts`, which is
+     * `server-only` and throws on import here (this file's own top docblock). The
+     * property is about which component each surface draws, and the import is where that
+     * is decided — so this fails for exactly the reason it names: one of the three grew
+     * its own episode list.
+     */
+    const surfaces = [
+      "app/(signed-in)/library/programme-note.tsx",
+      "app/(signed-in)/up-next/title-sheet.tsx",
+      "app/(signed-in)/library/[entryId]/title-detail-view.tsx",
+    ];
+
+    for (const surface of surfaces) {
+      const source = readFileSync(join(process.cwd(), surface), "utf8");
+      expect(source, `${surface} no longer renders the shared programme note`).toContain(
+        "<ProgrammeNoteContent",
+      );
+    }
+  });
+
+  it("writes no confirmation into the page until a row is pressed", () => {
+    const markup = episodes([
+      episode({ id: "e1", episodeNo: 1 }),
+      episode({ id: "e2", episodeNo: 2 }),
+    ]);
+
+    // One dialog for the list, mounted only while there is a press to confirm — not one
+    // per row, which on a long-running show would be sixty-two of them in the document
+    // to have at most one open.
+    expect(markup).not.toContain("<dialog");
+    expect(markup).not.toContain("Watched up to here?");
   });
 });

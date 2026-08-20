@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  MarkWatchedThroughActionOutcome,
   UnwatchActionOutcome,
   WatchActionOutcome,
 } from "@/app/(signed-in)/library/watch-action";
@@ -64,6 +65,15 @@ function harness() {
   const recorded: string[] = [];
   const answerRecord: Array<(outcome: WatchActionOutcome) => void> = [];
   const answerRemove: Array<(outcome: UnwatchActionOutcome) => void> = [];
+  /** Every *watched up to here* press the writer was handed — issue #196. */
+  const through: Array<{
+    readonly libraryEntryId: string;
+    readonly throughEpisodeId: string;
+    readonly sourceKey: string;
+  }> = [];
+  const answerThrough: Array<
+    (outcome: MarkWatchedThroughActionOutcome) => void
+  > = [];
   let minted = 0;
 
   const failures = createWriteFailureStore();
@@ -75,6 +85,10 @@ function harness() {
       },
       remove() {
         return new Promise((resolve) => answerRemove.push(resolve));
+      },
+      recordThrough(params) {
+        through.push(params);
+        return new Promise((resolve) => answerThrough.push(resolve));
       },
     },
     failures,
@@ -99,7 +113,16 @@ function harness() {
     };
   }
 
-  return { marks, failures, recorded, answerRecord, answerRemove, surface };
+  return {
+    marks,
+    failures,
+    recorded,
+    answerRecord,
+    answerRemove,
+    through,
+    answerThrough,
+    surface,
+  };
 }
 
 /** The one lost write on screen, or `undefined` — the toast's own view of the world. */
@@ -439,5 +462,190 @@ describe("the strike", () => {
     marks.settle(EPISODE);
 
     expect(row.view()).toEqual(UNWATCHED);
+  });
+});
+
+/**
+ * *Watched up to here* — issue #196, driven through the same store for the same reason
+ * the per-episode write is: one press moves a dozen rows, each of which any number of
+ * surfaces may be showing.
+ *
+ * The properties below are the ones that fail **silently**. A sweep that plays on every
+ * row is loud and would be noticed on the first press; a toast raised sixty-two times is
+ * loud too. What is quiet is a row left reading unwatched with a landed write behind it,
+ * a retry that mints a second key, and a bulk answer re-enabling a control whose own
+ * write is still on the wire.
+ */
+const THROUGH: WatchSubject = { libraryEntryId: "entry-1", episodeId: "episode-3" };
+const COVERED: readonly WatchSubject[] = [
+  { libraryEntryId: "entry-1", episodeId: "episode-1" },
+  { libraryEntryId: "entry-1", episodeId: "episode-2" },
+  { libraryEntryId: "entry-1", episodeId: "episode-3" },
+];
+const THROUGH_NAMING = {
+  title: "Better Call Saul",
+  episode: "3 episodes, through Season 1, Episode 3 — Nacho",
+};
+
+describe("marking watched up to an episode", () => {
+  it("sends the episode pressed and one key, and never the set", async () => {
+    const { marks, through, answerThrough } = harness();
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: true });
+    await press;
+
+    expect(through).toEqual([
+      {
+        libraryEntryId: "entry-1",
+        throughEpisodeId: "episode-3",
+        sourceKey: "key-1",
+      },
+    ]);
+  });
+
+  it("settles every covered row without a sweep playing on any of them", async () => {
+    const { marks, answerThrough, surface } = harness();
+    const rows = COVERED.map((subject) => surface(subject));
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: true });
+    await press;
+
+    for (const row of rows) {
+      // `settled`, never `marking` — `EpisodeLine` draws `WatchSweep` only for `marking`,
+      // so this is what "nothing sweeps; rows arrive settled" is, at the seam that
+      // decides it.
+      expect(row.view()).toEqual({ watched: true, phase: "settled", pending: false });
+    }
+  });
+
+  it("strikes the rows before the server has answered, and puts them all back if it fails", async () => {
+    const { marks, failures, answerThrough, surface } = harness();
+    const rows = COVERED.map((subject) => surface(subject));
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+
+    // Optimistic, and already settled: the reader sees the show recorded at once.
+    expect(rows.map((row) => row.view()?.watched)).toEqual([true, true, true]);
+
+    answerThrough[0]({ ok: false, reference: "ref-1" });
+    await press;
+
+    // Nothing behind, nothing on screen — the write is one transaction, so a half-struck
+    // season would be a lie about the table (`markWatchedThrough`).
+    for (const row of rows) expect(row.view()).toEqual(UNWATCHED);
+    expect(onlyToast(failures)).toMatchObject({ title: "Better Call Saul" });
+  });
+
+  it("raises exactly one toast for the press, not one per episode", async () => {
+    const { marks, failures, answerThrough } = harness();
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: false, reference: "ref-1" });
+    await press;
+
+    // `onlyToast` asserts the count itself; the episode line is what makes the one toast
+    // legible about a write that lost more than one episode.
+    expect(failures.get()).toHaveLength(1);
+    expect(onlyToast(failures)?.episode).toBe(THROUGH_NAMING.episode);
+  });
+
+  it("retries the same press rather than starting a second one", async () => {
+    const { marks, failures, through, answerThrough } = harness();
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: false, reference: "ref-1" });
+    await press;
+
+    onlyToast(failures)?.retry?.();
+    answerThrough[1]({ ok: true });
+    // The retry is a fresh promise inside the toast's closure; a turn of the loop is what
+    // lets it finish before the assertions below read the result.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Two requests, one key — the same guarantee a per-episode retry has, and the reason
+    // a lost press cannot become a second set of rows.
+    expect(through.map((one) => one.sourceKey)).toEqual(["key-1", "key-1"]);
+    expect(failures.get()).toHaveLength(0);
+  });
+
+  it("mints a new key for a deliberate second press, once the first has landed", async () => {
+    const { marks, through, answerThrough } = harness();
+
+    const first = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: true });
+    await first;
+
+    const second = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[1]({ ok: true });
+    await second;
+
+    expect(through.map((one) => one.sourceKey)).toEqual(["key-1", "key-2"]);
+  });
+
+  it("leaves a row busy whose own write is still on the wire", async () => {
+    const { marks, answerRecord, answerThrough, surface } = harness();
+    const own = COVERED[0];
+    const row = surface(own);
+
+    // The reader struck one episode, then pressed through a later one before the first
+    // came back — two writes, one of them covering the other's episode.
+    const single = marks.mark(own, NAMING);
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+
+    answerThrough[0]({ ok: true });
+    await press;
+
+    // The bulk answer must not re-enable this row's control: its own write has not been
+    // answered, and a second press against it would be a rewatch nothing on screen
+    // distinguishes from a real one.
+    expect(row.view()).toMatchObject({ watched: true, pending: true });
+
+    answerRecord[0]({ ok: true });
+    await single;
+
+    expect(row.view()).toMatchObject({ watched: true, pending: false });
+  });
+
+  it("hands a row back after a press, even where its own earlier mark was lost", async () => {
+    const { marks, answerRecord, answerThrough, surface } = harness();
+    const own = COVERED[0];
+    const row = surface(own);
+
+    // This episode's own mark failed and was never retried, so it still holds its key —
+    // deliberately, so the toast's *Try again* is a retry rather than a second write.
+    const lost = marks.mark(own, NAMING);
+    answerRecord[0]({ ok: false, reference: "ref-1" });
+    await lost;
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: true });
+    await press;
+
+    // Nothing is on the wire, so nothing is busy. Reading the surviving key as *in
+    // flight* would leave this row's controls dead for the life of the page — a landed
+    // write that takes the row with it.
+    expect(row.view()).toEqual({ watched: true, phase: "settled", pending: false });
+  });
+
+  it("does not un-strike a row whose own write landed, when the press is lost", async () => {
+    const { marks, answerRecord, answerThrough, surface } = harness();
+    const own = COVERED[0];
+    const row = surface(own);
+
+    const single = marks.mark(own, NAMING);
+    answerRecord[0]({ ok: true });
+    await single;
+
+    const press = marks.markThrough(THROUGH, COVERED, THROUGH_NAMING);
+    answerThrough[0]({ ok: false, reference: "ref-1" });
+    await press;
+
+    // What a failure puts back is the appearance as of the press — and as of this press
+    // that row was already watched, by a write of its own that landed. Rolling it to
+    // unwatched would be a landed write reading as a lost one.
+    expect(row.view()).toMatchObject({ watched: true });
   });
 });
