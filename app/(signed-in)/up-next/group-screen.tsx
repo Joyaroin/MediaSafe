@@ -34,6 +34,20 @@ const FIRST_ROW = 6;
  * here always pushes `/library/{id}` — at any width, since nothing gates this route to the
  * phone the way `up-next-groups.tsx` gates the five groups it is reached from.
  */
+/**
+ * The head all five group screens share, and now their `loading.tsx` too (issue #181) —
+ * extracted for the reason `library-heading.tsx` gives for its own extraction: written out
+ * six times, the six drift, and the one that drifts is a render nobody looks at until the
+ * day a read is slow.
+ */
+export function GroupHeading({ label }: { label: string }) {
+  return (
+    <div className="border-b border-hair px-4 pt-5 pb-3">
+      <h1 className="bill-title text-bill-lg text-text">{label}</h1>
+    </div>
+  );
+}
+
 export function GroupScreen({
   label,
   entries,
@@ -44,9 +58,7 @@ export function GroupScreen({
 }) {
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="border-b border-hair px-4 pt-5 pb-3">
-        <h1 className="bill-title text-bill-lg text-text">{label}</h1>
-      </div>
+      <GroupHeading label={label} />
 
       {entries.length === 0 ? (
         /**

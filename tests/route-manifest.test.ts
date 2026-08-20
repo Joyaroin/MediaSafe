@@ -271,39 +271,19 @@ const NO_PENDING_STATE = [
 ] as const;
 
 /**
- * **Not yet converted**, and this is the array
- * [#181](https://github.com/Joyaroin/MediaSafe/issues/181) empties.
+ * **The list [#181](https://github.com/Joyaroin/MediaSafe/issues/181) emptied.**
  *
- * Every route here genuinely waits on data the reader came to see, so every one of them is
- * a surface that today leaves the previous screen frozen on the glass until its queries
- * resolve. They are named individually rather than as a prefix for the reason issue #43
- * gives for the proxy list: a line in a pull request with a name on it, rather than a
- * pattern nobody looks at. The reason on each is what it reads.
+ * It held eleven routes — `/lists`, `/lists/[listId]`, `/settings`,
+ * `/settings/delete-account`, `/titles/[kind]/[tmdbId]`, `/up-next` and its five phone
+ * group screens — every one of them a surface that genuinely waits on data the reader came
+ * to see, and every one of them left the previous screen frozen on the glass until its
+ * queries resolved. Each got a `loading.tsx` of its own; `NO_PENDING_STATE` above is what
+ * remains, by decision rather than by backlog.
+ *
+ * The array stays rather than disappearing, so that a route added here in error fails as
+ * `notActuallyExempt` instead of silently reopening a list nobody is watching.
  */
-const NOT_YET_CONVERTED = [
-  /** `listLists` — the reader's own lists. */
-  "/lists",
-  /** `getListDetail` — and the `<h1>` is `{detail.name}`, so §9's back-link shape applies. */
-  "/lists/[listId]",
-  /** `requireDisplayName` and `requireTimezone`, both shown on the glass. */
-  "/settings",
-  /** `accountFootprint` — the counts the confirmation is about. */
-  "/settings/delete-account",
-  /** `getUnownedTitleDetail`, behind a redirect check. §9's back-link shape again. */
-  "/titles/[kind]/[tmdbId]",
-  /** `listUpNextRails`, the watchlist and the abandoned set, in one `Promise.all`. */
-  "/up-next",
-  /** `listAbandoned` — one of the five phone group screens. */
-  "/up-next/abandoned",
-  /** The phone group screen for titles waiting on a new season. */
-  "/up-next/coming-back",
-  /** The phone group screen for the second slice of `watching`. */
-  "/up-next/old-friends",
-  /** The phone group screen for the first slice of `watching`. */
-  "/up-next/ongoing",
-  /** `listWatchlist` — the fifth phone group screen. */
-  "/up-next/watchlist",
-] as const;
+const NOT_YET_CONVERTED: readonly string[] = [];
 
 /** The two lists are one exemption list to the audit, and two to a reader. */
 const EXEMPT_FROM_BOUNDARY = [...NO_PENDING_STATE, ...NOT_YET_CONVERTED];
@@ -337,9 +317,32 @@ describe("every dynamic surface has a loading boundary", () => {
     expect(hasBoundary("(signed-in)/library/[entryId]/remove")).toBe(true);
   });
 
-  /** And negatively, on a segment this ticket deliberately did not convert. */
-  it("does not find one where nothing has been converted yet", () => {
-    expect(hasBoundary("(signed-in)/up-next")).toBe(false);
+  /**
+   * The eleven segments #181 converted, asserted the same way — a floor against the audit
+   * quietly passing rather than actually looking, on the batch this ticket is responsible
+   * for rather than the one before it.
+   */
+  it("finds the boundary on every segment #181 converts", () => {
+    expect(hasBoundary("(signed-in)/lists")).toBe(true);
+    expect(hasBoundary("(signed-in)/lists/[listId]")).toBe(true);
+    expect(hasBoundary("(signed-in)/settings")).toBe(true);
+    expect(hasBoundary("(signed-in)/settings/delete-account")).toBe(true);
+    expect(hasBoundary("(signed-in)/titles/[kind]/[tmdbId]")).toBe(true);
+    expect(hasBoundary("(signed-in)/up-next")).toBe(true);
+    expect(hasBoundary("(signed-in)/up-next/abandoned")).toBe(true);
+    expect(hasBoundary("(signed-in)/up-next/coming-back")).toBe(true);
+    expect(hasBoundary("(signed-in)/up-next/old-friends")).toBe(true);
+    expect(hasBoundary("(signed-in)/up-next/ongoing")).toBe(true);
+    expect(hasBoundary("(signed-in)/up-next/watchlist")).toBe(true);
+  });
+
+  /**
+   * And negatively, on the four segments §9 decided genuinely have no pending state to
+   * draw — `/search`'s own read belongs to `search-surface.tsx`'s radius-3 union, not to a
+   * route boundary. `NO_PENDING_STATE` is where the reason for each of the four lives.
+   */
+  it("does not find one where none was ever meant to land", () => {
+    expect(hasBoundary("(signed-in)/search")).toBe(false);
   });
 
   /**
