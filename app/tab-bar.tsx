@@ -72,12 +72,40 @@ const TABS = [
   { href: "/lists", label: "Lists", Icon: ListsIcon },
 ] as const;
 
+/**
+ * Which way along the bar a tap moves the reader, as a transition type the CSS can act on
+ * (`globals.css`, *Moving between the four phone tabs*).
+ *
+ * Derived from the two tabs' **positions in `TABS`**, not from history: the bar is a
+ * horizontal row of four and the direction that means anything here is the one the reader
+ * can see in front of them. A history-based direction would call *Lists → Up next*
+ * "forward" whenever it happened to be a new entry, which is the opposite of what the row
+ * shows.
+ *
+ * A tap on the current tab returns `[]` — no type, so no animation. Next's `Link` still
+ * navigates, and a screen sliding out and back in to arrive where it already was is the
+ * clearest case of motion that means nothing.
+ */
+function tabTransitionTypes(pathname: string, href: string): string[] {
+  const from = TABS.findIndex((tab) => isCurrentRoute(pathname, tab.href));
+  const to = TABS.findIndex((tab) => tab.href === href);
+
+  // `-1` is a route under none of the four — a title detail pushed from elsewhere. There
+  // is no position to compare against, so there is no direction to claim.
+  if (from === -1 || from === to) return [];
+  return to > from ? ["tab-forward"] : ["tab-back"];
+}
+
 export function TabBar() {
   const pathname = usePathname();
 
   return (
     <nav
       aria-label="Primary"
+      // `viewTransitionName` takes this bar out of the `root` snapshot so it can be held
+      // still while the content slides underneath it — see `globals.css`. The name is a
+      // plain string rather than a token because it is an identity, not a measure.
+      style={{ viewTransitionName: "phone-tab-bar" }}
       className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-hair frosted pt-2 pb-[22px] lg:hidden"
     >
       {TABS.map(({ href, label, Icon }) => {
@@ -87,6 +115,7 @@ export function TabBar() {
           <Link
             key={href}
             href={href}
+            transitionTypes={tabTransitionTypes(pathname, href)}
             aria-current={current ? "page" : undefined}
             className={
               current

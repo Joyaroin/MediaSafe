@@ -683,6 +683,108 @@
   animation-timing-function: var(--ease-out-quart);
 }
 
+/* ── Moving between the four phone tabs ─────────────────────────────────────────────
+   Tapping a tab used to be an instant swap. The machinery for something better was
+   already here — `::view-transition-group(*)` above has been authored since #141 — but
+   nothing triggered a transition on tab navigation, so the one place the phone changes
+   screens wholesale was the one place nothing moved.
+
+   **A directional slide, not a crossfade.** Next's own guide draws the distinction: a
+   slide says *going somewhere*, a crossfade says *same place, different content*. Four
+   tabs are four destinations, and the bar itself is a horizontal row — so the direction
+   carries real information, which is *which way along that row you just moved*. Up next →
+   Lists and Lists → Up next are different journeys and now look like it. `tab-bar.tsx`
+   derives the direction from the two tabs' positions rather than from history, so it is
+   the bar's own geometry that decides.
+
+   **Phone-only, without a media query.** The types are attached by `tab-bar.tsx`'s
+   `Link`s, and that bar is `lg:hidden`. `sidebar-nav.tsx` — the desktop's own navigation —
+   attaches none, so a desktop navigation carries no transition type, falls to the pages'
+   `default: "none"`, and animates exactly as it did before. #136 deleted this build's only
+   `matchMedia` branch and this does not bring one back.
+
+   `60px` is the guide's own offset, taken rather than re-derived: far enough to read as
+   direction, short enough that nothing has to be tracked across the screen. The timings
+   are this file's, not the guide's — `--dur-fast` out against `--dur-base` in, which is
+   the asymmetry the motion section above already states (*"arriving is where the character
+   lives; leaving is where impatience does"*). */
+::view-transition-old(.tab-forward) {
+  --tab-slide: -60px;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both tab-fade reverse,
+    var(--dur-slow) var(--ease-in-out-soft) both tab-slide reverse;
+}
+::view-transition-new(.tab-forward) {
+  --tab-slide: 60px;
+  animation:
+    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both tab-fade,
+    var(--dur-slow) var(--ease-in-out-soft) both tab-slide;
+}
+
+::view-transition-old(.tab-back) {
+  --tab-slide: 60px;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both tab-fade reverse,
+    var(--dur-slow) var(--ease-in-out-soft) both tab-slide reverse;
+}
+::view-transition-new(.tab-back) {
+  --tab-slide: -60px;
+  animation:
+    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both tab-fade,
+    var(--dur-slow) var(--ease-in-out-soft) both tab-slide;
+}
+
+@keyframes tab-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tab-slide {
+  from {
+    translate: var(--tab-slide);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+/* ── The chrome does not travel with the content ─────────────────────────────────────
+   The masthead and the tab bar are the reader's fixed reference: if they slide too, the
+   whole viewport appears to move and the direction stops meaning anything. Naming them
+   takes them out of the `root` snapshot and gives each its own group, and these rules
+   then hold that group still.
+
+   `display: none` on the old snapshot is not decoration — without it the outgoing and
+   incoming copies of the bar are both painted for the length of the transition, which
+   reads as a flicker on the one element that is supposed to be the still point. The
+   `z-index` keeps both above the sliding content, which is otherwise painted over them. */
+::view-transition-group(phone-masthead),
+::view-transition-group(phone-tab-bar) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(phone-masthead),
+::view-transition-old(phone-tab-bar) {
+  display: none;
+}
+::view-transition-new(phone-masthead),
+::view-transition-new(phone-tab-bar) {
+  animation: none;
+}
+
+/* The transition overlay swallows pointer events for its whole duration, so a tap landing
+   mid-slide is a tap that does nothing. A reader moving quickly through four tabs is
+   exactly the case here, and losing their second tap would make the animation feel like
+   lag. Hit-testing still skips the named chrome above while the transition runs, which is
+   the other reason to keep these short. */
+::view-transition {
+  pointer-events: none;
+}
+
 /* Issue #141's poster morph, collapsed rather than removed: `::view-transition-group`
    is what moves and resizes the shared element, `::view-transition-old`/`-new` are what
    cross-fade the two snapshots inside it. Zeroing all three is what the browser itself

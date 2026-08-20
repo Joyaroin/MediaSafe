@@ -4,6 +4,7 @@ import { requireUserId } from "@/lib/session";
 import { UpNextGroups } from "./up-next-groups";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextRailsSurface } from "./up-next-rails-surface";
+import { TabTransition } from "../tab-transition";
 
 /**
  * Up next — the surface both devices land on, and the one this app is opened to look at.
@@ -75,22 +76,24 @@ export default async function UpNextPage() {
   ]);
 
   return (
-    /* The Library page's own two-pane shell — the rails swap the panel beside them, and
-       nothing on this page ever navigates. */
-    <ProgrammeNoteLayout>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <UpNextHeading />
+    <TabTransition>
+      {/* The Library page's own two-pane shell — the rails swap the panel beside them,
+          and nothing on this page ever navigates. */}
+      <ProgrammeNoteLayout>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <UpNextHeading />
 
-        {/* The phone's five vertical groups. */}
-        <div className="lg:hidden">
-          <UpNextGroups rails={rails} watchlist={watchlist} abandoned={abandoned} />
-        </div>
+          {/* The phone's five vertical groups. */}
+          <div className="lg:hidden">
+            <UpNextGroups rails={rails} watchlist={watchlist} abandoned={abandoned} />
+          </div>
 
-        {/* The desktop's three rails, which answer their own empty case. */}
-        <div className="hidden lg:block">
-          <UpNextRailsSurface rails={rails} />
+          {/* The desktop's three rails, which answer their own empty case. */}
+          <div className="hidden lg:block">
+            <UpNextRailsSurface rails={rails} />
+          </div>
         </div>
-      </div>
-    </ProgrammeNoteLayout>
+      </ProgrammeNoteLayout>
+    </TabTransition>
   );
 }
