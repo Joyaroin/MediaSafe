@@ -6,7 +6,7 @@ import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
 import { LibraryHeading } from "./library-heading";
 import { LibrarySurface } from "./library-surface";
-import { TabTransition } from "../tab-transition";
+import { NavTransition } from "../nav-transition";
 
 /**
  * The library — your library as a place you can look at, rather than a query you can run.
@@ -114,18 +114,18 @@ export default async function LibraryPage({
     if (!(await requireImportOfferAnswered())) redirect("/welcome");
 
     return (
-      <TabTransition>
+      <NavTransition>
         <main className="flex w-full flex-1 flex-col">
           <LibraryHeading />
           <EmptyLibrary />
         </main>
-      </TabTransition>
+      </NavTransition>
     );
   }
 
   return (
-    <TabTransition>
+    <NavTransition>
       <LibrarySurface entries={entries} sort={sort} />
-    </TabTransition>
+    </NavTransition>
   );
 }
