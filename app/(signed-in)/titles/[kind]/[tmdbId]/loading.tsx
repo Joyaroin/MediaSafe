@@ -1,5 +1,5 @@
+import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { PendingLine } from "@/app/pending-line";
-import { BackToListsBar } from "./back-to-lists-bar";
 
 /**
  * An unowned title's detail, still reading — a route whose heading is itself the answer.

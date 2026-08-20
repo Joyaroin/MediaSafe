@@ -1,8 +1,8 @@
 "use client";
 
+import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
-import { BackToListsBar } from "./back-to-lists-bar";
 
 /**
  * Title detail did not load, for a title you do not own. The segment boundary for this

@@ -1,7 +1,7 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getListDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import { BackToListsBar } from "./back-to-lists-bar";
+import { BackToListsBar } from "../back-to-lists-bar";
 import { EmptyListDetail } from "./empty-list-detail";
 import { ReorderableTitleList } from "./reorderable-title-list";
 

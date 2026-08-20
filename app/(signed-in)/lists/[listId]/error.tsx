@@ -2,7 +2,7 @@
 
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
-import { BackToListsBar } from "./back-to-lists-bar";
+import { BackToListsBar } from "../back-to-lists-bar";
 
 /**
  * A list did not load. The segment boundary for `[listId]` — same shape as

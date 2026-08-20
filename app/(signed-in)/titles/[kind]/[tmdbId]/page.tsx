@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import { AddToListControl } from "@/app/(signed-in)/library/add-to-list-control";
 import { LiveTitleFacts } from "@/app/(signed-in)/library/live-title-facts";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
+import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getUnownedTitleDetail, libraryEntryIdForTitle } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { catalogueKeyFrom } from "@/tmdb/mirror";
 import { AddToLibraryControl } from "./add-to-library-control";
-import { BackToListsBar } from "./back-to-lists-bar";
 import { UnownedEpisodes } from "./unowned-episodes";
 
 /**
