@@ -6,6 +6,7 @@ import { DisplayNameControl } from "./display-name-control";
 import { SettingsHeading } from "./settings-heading";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
+import { ThemeControl } from "./theme-control";
 import { TimezoneControl } from "./timezone-control";
 
 /**
@@ -105,6 +106,15 @@ export default async function SettingsPage() {
         </div>
 
         <TimezoneControl timezone={timezone} />
+
+        {/* Appearance sits in Profile rather than in a fourth section, because `SPEC.md`
+            §7's table gives Settings three and adding one would be a second spec change
+            on top of the picker itself. It is the least bad home rather than an obvious
+            one: unlike the display name and unlike the timezone, this is a **device**
+            preference and never touches `user` (`lib/theme.ts`). The timezone is the
+            neighbour that makes it bearable — that one is device-*detected* even though
+            it is account-stored, so the section already mixes the two ideas. */}
+        <ThemeControl />
       </section>
 
       <section aria-labelledby="data-h" className="mt-12 border-t border-hair pt-6">

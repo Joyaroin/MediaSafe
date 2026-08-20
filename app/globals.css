@@ -104,29 +104,86 @@
      "one shared source" its own docblock promised was a number nothing consulted. A
      custom property is the one form all three can actually read. */
   --tab-bar-height: 75px;
+
+  /* ── The dark palette's values, declared here and applied below ───────────────────
+     Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s `:root`,
+     unchanged: the linen redesign is a light-palette change and says so.
+
+     `--dark-ink` is the exception, and it is not a redesign of anything. `--ink` is
+     declared on `:root`, so without a dark value it would keep `#3d3c35` in dark too and
+     paint every heading near-black on a near-black ground. In dark `--text` is already
+     the brightest neutral on the sheet, so there is no darker-than-body step to give a
+     heading and `--ink` is `--text` — the same colour, so that `text-ink` means *full
+     strength for a heading* in both schemes rather than meaning nothing in one of them.
+
+     **Why the dark palette is a named set rather than a second `:root` block.** There are
+     now two ways to be in dark — the system asked, or the reader answered — and they are
+     two different selectors that cannot share one declaration block, because one of them
+     lives inside a media query. Writing the palette out twice would put every dark hex in
+     the file twice, and this file's whole argument is that a token has **one declaration
+     site**. Declared once here and mapped twice below, each colour still appears exactly
+     once; what repeats is the mapping, where a mistake is a visibly wrong colour rather
+     than a silent drift between two copies. */
+  --dark-ground: #0a0a0b;
+  --dark-raised: #17171a;
+  --dark-hair: #242429;
+  --dark-text: #f4f4f2;
+  --dark-dim: #8c8c8a;
+  --dark-accent: #ffb020;
+  --dark-accent-ink: #0a0a0b;
+  --dark-ink: #f4f4f2;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s
-       `:root`, unchanged: the linen redesign is a light-palette change and says so.
+/* ── The three theme states ──────────────────────────────────────────────────────────
+   `SPEC.md` §7 banned a theme picker until the linen redesign; that bullet now carries
+   the reversal and the reasoning. What the ban leaves behind is the shape below: the
+   system is still asked **unless** the reader has explicitly answered otherwise, so
+   *system* is the default rather than one of two equal options.
 
-       `--ink` is the exception, and it is not a redesign of anything. The token is
-       declared on `:root` above, so without a value here it would keep `#3d3c35` in
-       dark too and paint every heading near-black on a near-black ground. In dark
-       `--text` is already the brightest neutral on the sheet, so there is no darker-
-       than-body step to give a heading and `--ink` is `--text` — the same colour, so
-       that `text-ink` means *full strength for a heading* in both schemes rather than
-       meaning nothing in one of them. */
-    --ground: #0a0a0b;
-    --raised: #17171a;
-    --hair: #242429;
-    --text: #f4f4f2;
-    --dim: #8c8c8a;
-    --accent: #ffb020;
-    --accent-ink: #0a0a0b;
-    --ink: #f4f4f2;
+   1. No `data-theme` attribute → this rule's `:not()` matches, and the system decides.
+   2. `data-theme="light"` → the `:not()` fails, this block does not apply, and `:root`'s
+      light values stand even on a device set to dark.
+   3. `data-theme="dark"` → the block after this one, which must come **after** it in
+      source order: `:root[data-theme="dark"]` and `:root:not([data-theme="light"])` have
+      identical specificity (`:not()` takes its argument's), so order is what decides, not
+      weight. Moving the rule below above the media query would silently stop an explicit
+      *Dark* from winning on a device set to light.
+
+   `app/layout.tsx` sets the attribute before first paint; `lib/theme.ts` owns the key and
+   the writing of it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: var(--dark-ground);
+    --raised: var(--dark-raised);
+    --hair: var(--dark-hair);
+    --text: var(--dark-text);
+    --dim: var(--dark-dim);
+    --accent: var(--dark-accent);
+    --accent-ink: var(--dark-accent-ink);
+    --ink: var(--dark-ink);
   }
+}
+
+/* The reader answered *Dark*. After the media query on purpose — see above. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: var(--dark-ground);
+  --raised: var(--dark-raised);
+  --hair: var(--dark-hair);
+  --text: var(--dark-text);
+  --dim: var(--dark-dim);
+  --accent: var(--dark-accent);
+  --accent-ink: var(--dark-accent-ink);
+  --ink: var(--dark-ink);
+}
+
+/* The reader answered *Light*. The colours need no rule — `:root`'s own values are
+   already the light palette, and the media query above declines to overwrite them — but
+   `color-scheme` does, or the browser's own surfaces (form controls, scrollbars, the
+   caret) stay dark around a light page on a device set to dark. */
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 @theme {
@@ -259,8 +316,11 @@
 
 @layer base {
   html {
-    /* Follows the system setting rather than being pinned — SPEC.md §9's ban on a theme
-       picker survives; the one-committed-world rule it used to justify does not. */
+    /* The **default**: follow the system setting. It is no longer the only state — the
+       theme control (`settings/theme-control.tsx`) can pin it, and the two
+       `:root[data-theme=…]` rules above are what do the pinning. Those rules are
+       unlayered and this one is in `base`, so they win the cascade without needing to
+       out-specify anything. */
     color-scheme: light dark;
   }
 
