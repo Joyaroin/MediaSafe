@@ -1955,6 +1955,17 @@ export interface UpNextEntry {
    * this card and neither of them gets to be the unqualified one.
    */
   readonly titleName: string;
+  /**
+   * Borrowed, and `null` where TMDB has not dated the title — the rail tile prints no line
+   * at all in that case rather than a placeholder, the same choice `library-entry-cell.tsx`
+   * makes for the identical fact.
+   *
+   * Here since #137, because the rail tile is a poster, a name and a year — the prototype's
+   * own tile (`design/catalogue-wall.html`), which is binding on appearance. Nothing on the
+   * phone deck renders it; the deck's cards carry an episode name where the tile carries a
+   * year, and one select list serving both is worth a field one of them ignores.
+   */
+  readonly releaseYear: number | null;
   /** Borrowed. */
   readonly posterPath: string | null;
   readonly episodeId: string;
@@ -2036,10 +2047,14 @@ export interface UpNextPage {
  * ── Why *closest to finishing* is one term here and two in the library sort ──────────
  *
  * `orderByFor` needs a leading `case` to push `NULL` (a film) and `0` (a finished show)
- * to the bottom of its own sort. Neither reaches this deck: it holds *watching* shows,
- * every one of which has a `library_entry_remaining` row with at least one released
- * unwatched episode counted in it. So the tiebreak is a plain ascending `remaining`, and
- * the two are not one expression written twice — they are one rule applied to two sets.
+ * to the bottom of its own sort. Neither reaches this order, and #137's COMING BACK rail
+ * did not change that. `NULL` is a film's missing row, and no film is ever *watching* or
+ * *caught up* — `library_entry_state`'s film branch reads *finished* the moment there is a
+ * watch. `0` is a show with every episode watched, which is either *finished* or, if
+ * `in_production` is not `false`, a *caught up* show with nothing after its progress and so
+ * no `library_entry_up_next` row for the inner join to find. So the tiebreak is a plain
+ * ascending `remaining`, and the two are not one expression written twice — they are one
+ * rule applied to two sets.
  *
  * ── The last two terms are not in `SPEC.md`, and are not optional ───────────────────
  *
@@ -2124,66 +2139,137 @@ function afterCursor(order: UpNextOrder, cursor: UpNextCursor): SQL {
 }
 
 /**
- * One fetch of Up next — **the one definition of what is next**. Issue #136 gave both
- * devices the same `/up-next` route reading it, closing the one caller this docblock used
- * to name a second one for: the desktop TONIGHT row (`up-next-action.ts`, deleted with
- * that ticket), which read the same function so it could never disagree with the phone
- * deck about which titles were up next or in what order. One route, one read, so the
- * property this function existed to guarantee now has nothing left to guarantee it against.
+ * Up next's membership and order, built once and read four ways — the phone deck's page,
+ * and the desktop page's three rails (issue #137).
+ *
+ * ── Why this is a builder and not four queries ────────────────────────────────────────
+ *
+ * Issue #137 asked for the extraction before the rails, and the reason is the shape of the
+ * failure it prevents. `upNextOrder` is five terms in a cascade and `afterCursor` walks the
+ * same five in the same sequence; a rail that restated the `ORDER BY` would be a fourth
+ * place for that sequence to be written down and a fourth place for it to drift. **A wrong
+ * order does not throw.** It puts the wrong show at the top of the surface opened every
+ * night, and the only person who could notice is the one assuming the app is right.
+ *
+ * So the joins, the ownership scoping, the select list and the order live here, and what a
+ * caller supplies is one predicate and a row limit. `order` is handed back because
+ * `listUpNext` needs the same terms for its cursor's `WHERE`, which is the one thing a
+ * caller does with the order rather than to it.
+ *
+ * ── The joins, and what each of them removes ──────────────────────────────────────────
  *
  * `library_entry_up_next` has known *which episode* since build step 2. Which titles, in
- * what order, has never existed anywhere until here, and it exists here once: `upNextOrder`
- * above is the only place `SPEC.md` §7's rule is written down, and both surfaces read it
- * through this function.
+ * what order, has never existed anywhere but here: `upNextOrder` above is the only place
+ * `SPEC.md` §7's rule is written down, and every surface reads it through this builder.
  *
- * ── The deck's membership, which is one predicate ────────────────────────────────────
- *
- * `state = 'watching'` and nothing else. A caught-up show's next episode has not aired,
- * and offering it is offering something that does not exist yet; abandoned outranks every
- * derived state, so an abandoned title stays out whatever its watches say; a watchlist
- * title has no watches, so `library_entry_up_next` has no row for it and the inner join
- * removes it without being asked. Finished is out on both counts. That is the same set
- * Library's *Watching* chip holds, which is what `DESIGN.md` needs to be true when it
- * says the desktop row's remainder lives one click below behind that chip.
- *
- * There is deliberately **no air-date filter on the next episode**. `library_entry_state`
- * has already ruled out the case where nothing has aired, and §7's rule expects an unaired
- * or undated next episode to be *ordered* — that is what ranks 1 and 2 are for. Filtering
- * here would make half of the rule unreachable.
- *
- * The one place the deck is a strict subset of the chip: a show whose progress has passed
- * every mirrored episode — you skipped one and watched the last — is *watching* with
- * nothing after it, so `library_entry_up_next` has no row and there is no card to draw.
+ * The inner join on `library_entry_up_next` is a membership rule in its own right, and it
+ * is the one nothing states: a title with no episode after your progress has no row there,
+ * so there is nothing to render and nothing to offer. It removes a watchlist title (no
+ * watches, so no progress) without being asked, and it removes the *watching* show whose
+ * progress has passed every mirrored episode — you skipped one and watched the last. It is
+ * also what keeps COMING BACK honest: a caught-up show that has genuinely run out of
+ * listed episodes cannot appear on it, whatever `in_production` says.
  *
  * ── The title's most recent watch, joined rather than correlated ─────────────────────
  *
- * A rewatch is a second `watch` row (`CONTEXT.md`), so joining `watch` into the deck
- * directly would multiply an entry by its watches. `last_watch` groups them first. It is
- * scoped by `ownedBy` too — the join is on the entry, so it could not read across accounts
- * either way, but an unscoped read of an owned table is the one habit this module exists
- * to not have.
+ * A rewatch is a second `watch` row (`CONTEXT.md`), so joining `watch` in directly would
+ * multiply an entry by its watches. `last_watch` groups them first. It is scoped by
+ * `ownedBy` too — the join is on the entry, so it could not read across accounts either
+ * way, but an unscoped read of an owned table is the one habit this module exists to not
+ * have.
  *
- * ── One extra row, and no count ──────────────────────────────────────────────────────
+ * ── There is no `try` in here or in any caller ────────────────────────────────────────
  *
- * The query asks for `UP_NEXT_PAGE_SIZE + 1` and returns at most `UP_NEXT_PAGE_SIZE`. The
- * row that does not fit is not data — it is the whole of what the page knows about what
- * comes after it, and it is spent on deciding whether `nextCursor` is null. No `count(*)`
- * is issued and no total is returned, because §7 gives the phone deck no numeric cap and
- * `DESIGN.md` forbids the "showing 10 of 62" line a total invites: a number nothing can
- * render is a number nothing can render wrong.
- *
- * ── There is no `try` here ───────────────────────────────────────────────────────────
- *
- * A failed read throws, and the Up next surfaces' own error boundaries catch it
- * (`AGENTS.md`). An empty deck — everything caught up, or a library not yet imported — is
- * a real state and arrives as an empty `entries` with a null cursor, which is reachable
- * only from a query that succeeded.
+ * A failed read throws, and the Up next route's own `error.tsx` catches it (`AGENTS.md`).
+ * An empty rail and an empty deck are reachable only from a query that succeeded, which is
+ * the whole of what lets the surface tell *absent* from *broken* — and this is the surface
+ * where it matters most, because *you are all caught up* is a plausible lie.
  */
-export async function listUpNext(
-  userId: UserId,
-  cursor: UpNextCursor | null = null,
-  executor: Executor = getDb(),
-): Promise<UpNextPage> {
+interface UpNextRead {
+  readonly order: UpNextOrder;
+  /**
+   * `where` narrows the read and nothing widens it: `ownedBy` is applied here rather than
+   * left to a caller, so no membership predicate can forget it. `limit` is `null` for a
+   * read with no bound — a rail is bounded by its own rule, not by a fetch size.
+   */
+  readonly rows: (where: SQL, limit: number | null) => Promise<UpNextRow[]>;
+}
+
+/**
+ * One row of the shared read: everything any Up next surface renders, plus the three
+ * computed sort keys `UpNextCursor` carries. The cursor fields are selected for every
+ * caller rather than only for the paged one, because the value of one select list is that
+ * there is one — a rail pays three expressions it does not read, which is cheaper than a
+ * second query shape that could disagree with this one about the order.
+ */
+interface UpNextRow {
+  readonly libraryEntryId: string;
+  readonly titleId: string;
+  readonly titleName: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly episodeId: string;
+  readonly episodeName: string | null;
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  readonly remaining: number;
+  readonly rank: number;
+  readonly sortAt: string;
+  readonly sortName: string;
+}
+
+/**
+ * **ONGOING and OLD FRIENDS' membership: `state = 'watching'`, and nothing else.**
+ *
+ * The deck's own predicate since #98, unchanged by the rails being three readers over it
+ * — the two rails split this set by position in the order, not by a second predicate, so
+ * there is no way for a title to satisfy both or neither.
+ *
+ * Abandoned outranks every derived state, so an abandoned title stays out whatever its
+ * watches say; a watchlist title has no watches, so `library_entry_up_next` has no row for
+ * it; *finished* is out on both counts. That is the same set Library's *Watching* chip
+ * holds.
+ *
+ * There is deliberately **no air-date filter on the next episode** here.
+ * `library_entry_state` has already ruled out the case where nothing has aired, and §7's
+ * rule expects an unaired or undated next episode to be *ordered* — that is what ranks 1
+ * and 2 are for. Filtering here would make half of the rule unreachable.
+ *
+ * `satisfies`, not a bare string: `state` is a `text` column, so a typo here would be an
+ * empty rail rather than an error — silent, on the one predicate that decides what the
+ * surface contains.
+ */
+const WATCHING: SQL = eq(libraryEntryState.state, "watching" satisfies LibraryState);
+
+/**
+ * **COMING BACK's membership: *caught up*, and the next episode's air date is in the
+ * future.**
+ *
+ * The one rail that is not a slice of the deck. *Caught up* is `library_entry_state`'s
+ * "every released episode has a watch, and the show has not ended" — nothing to watch now,
+ * something to watch later (`CONTEXT.md`) — and this is the *later* made concrete:
+ * `library_entry_up_next`'s episode, dated, and dated after today.
+ *
+ * **A null air date is not a future one.** `air_date > current_date` is null against a null
+ * air date, which is false to a `WHERE`, so a caught-up show whose next episode TMDB has
+ * not dated never appears here. That is the honest answer and not an omission: the rail
+ * says *this is coming back on a day you could look up*, and there is no such day.
+ *
+ * **The rail empties itself.** Once the date passes, this predicate stops holding — and
+ * `library_entry_state` moves the title to *watching* in the same moment, which is what
+ * puts it on ONGOING instead. Neither transition is a write, a job or a stored flag; both
+ * are the same read on a different day.
+ *
+ * `current_date` is the server's, the exception `db/views.ts` states and defends at length
+ * for the identical comparison — an air date is a `date` with no instant in it to place in
+ * a zone.
+ */
+const COMING_BACK: SQL = sql`(
+    ${eq(libraryEntryState.state, "caught_up" satisfies LibraryState)}
+    and ${episode.airDate} > current_date
+  )`;
+
+function upNextRead(userId: UserId, executor: Executor): UpNextRead {
   const lastWatch = executor
     .select({
       libraryEntryId: watch.libraryEntryId,
@@ -2196,50 +2282,100 @@ export async function listUpNext(
 
   const order = upNextOrder(lastWatch.watchedAt);
 
-  const rows = await executor
-    .select({
-      libraryEntryId: libraryEntry.id,
-      titleId: title.id,
-      titleName: title.name,
-      posterPath: title.posterPath,
-      episodeId: libraryEntryUpNext.episodeId,
-      episodeName: episode.name,
-      seasonNo: libraryEntryUpNext.seasonNo,
-      episodeNo: libraryEntryUpNext.episodeNo,
-      remaining: libraryEntryRemaining.remaining,
-      rank: sql<number>`${order.rank}`.as("sort_rank"),
-      /**
-       * Postgres's own rendering of the timestamp, so that the value a cursor carries and
-       * the value it is compared against are the same one. Handing back whatever a driver
-       * happened to parse it into would put a second date format in the loop.
-       */
-      sortAt: sql<string>`${order.at}::text`.as("sort_at"),
-      sortName: sql<string>`${order.name}`.as("sort_name"),
-    })
-    .from(libraryEntry)
-    .innerJoin(title, eq(title.id, libraryEntry.titleId))
-    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
-    .innerJoin(libraryEntryUpNext, eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id))
-    .innerJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
-    .innerJoin(
-      libraryEntryRemaining,
-      eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
-    )
-    .leftJoin(lastWatch, eq(lastWatch.libraryEntryId, libraryEntry.id))
-    .where(
-      and(
-        ownedBy(userId, libraryEntry),
-        /**
-         * `satisfies`, not a bare string: `state` is a `text` column, so a typo here
-         * would be an empty deck rather than an error — silent, on the one predicate
-         * that decides what the deck contains.
-         */
-        eq(libraryEntryState.state, "watching" satisfies LibraryState),
-        cursor === null ? undefined : afterCursor(order, cursor),
-      ),
-    )
-    .orderBy(...order.orderBy)
-    .limit(UP_NEXT_PAGE_SIZE + 1);
+  return {
+    order,
+    rows: async (where, limit) => {
+      const query = executor
+        .select({
+          libraryEntryId: libraryEntry.id,
+          titleId: title.id,
+          titleName: title.name,
+          releaseYear: title.releaseYear,
+          posterPath: title.posterPath,
+          episodeId: libraryEntryUpNext.episodeId,
+          episodeName: episode.name,
+          seasonNo: libraryEntryUpNext.seasonNo,
+          episodeNo: libraryEntryUpNext.episodeNo,
+          remaining: libraryEntryRemaining.remaining,
+          rank: sql<number>`${order.rank}`.as("sort_rank"),
+          /**
+           * Postgres's own rendering of the timestamp, so that the value a cursor carries
+           * and the value it is compared against are the same one. Handing back whatever a
+           * driver happened to parse it into would put a second date format in the loop.
+           */
+          sortAt: sql<string>`${order.at}::text`.as("sort_at"),
+          sortName: sql<string>`${order.name}`.as("sort_name"),
+        })
+        .from(libraryEntry)
+        .innerJoin(title, eq(title.id, libraryEntry.titleId))
+        .innerJoin(
+          libraryEntryState,
+          eq(libraryEntryState.libraryEntryId, libraryEntry.id),
+        )
+        .innerJoin(
+          libraryEntryUpNext,
+          eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id),
+        )
+        .innerJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
+        .innerJoin(
+          libraryEntryRemaining,
+          eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
+        )
+        .leftJoin(lastWatch, eq(lastWatch.libraryEntryId, libraryEntry.id))
+        .where(and(ownedBy(userId, libraryEntry), where))
+        .orderBy(...order.orderBy);
+
+      return limit === null ? await query : await query.limit(limit);
+    },
+  };
+}
+
+/** The shared read's row as the entry every surface is handed. */
+function upNextEntry(row: UpNextRow): UpNextEntry {
+  return {
+    libraryEntryId: row.libraryEntryId,
+    titleId: row.titleId,
+    titleName: row.titleName,
+    releaseYear: row.releaseYear,
+    posterPath: row.posterPath,
+    episodeId: row.episodeId,
+    episodeName: row.episodeName,
+    seasonNo: row.seasonNo,
+    episodeNo: row.episodeNo,
+  };
+}
+
+/**
+ * One fetch of the phone's deck — `WATCHING` in §7's order, one page at a time.
+ *
+ * Issue #136 gave both devices the same `/up-next` route reading this; issue #137 gave the
+ * desktop half of that route its own read (`listUpNextRails` below) and left this one to
+ * the phone alone until #138 replaces the deck with vertical groups. The two cannot
+ * disagree about which titles are up next or in what order, because `upNextRead` above is
+ * the one place either of them is decided.
+ *
+ * ── One extra row, and no count ──────────────────────────────────────────────────────
+ *
+ * The query asks for `UP_NEXT_PAGE_SIZE + 1` and returns at most `UP_NEXT_PAGE_SIZE`. The
+ * row that does not fit is not data — it is the whole of what the page knows about what
+ * comes after it, and it is spent on deciding whether `nextCursor` is null. No `count(*)`
+ * is issued and no total is returned, because §7 gives the phone deck no numeric cap and
+ * §9 forbids the "showing 10 of 62" line a total invites: a number nothing can render is a
+ * number nothing can render wrong.
+ */
+export async function listUpNext(
+  userId: UserId,
+  cursor: UpNextCursor | null = null,
+  executor: Executor = getDb(),
+): Promise<UpNextPage> {
+  const read = upNextRead(userId, executor);
+
+  const rows = await read.rows(
+    cursor === null
+      ? WATCHING
+      : sql`(${WATCHING} and ${afterCursor(read.order, cursor)})`,
+    UP_NEXT_PAGE_SIZE + 1,
+  );
 
   const more = rows.length > UP_NEXT_PAGE_SIZE;
   const page = more ? rows.slice(0, UP_NEXT_PAGE_SIZE) : rows;
@@ -2265,18 +2401,100 @@ export async function listUpNext(
     };
   }
 
+  return { entries: page.map(upNextEntry), nextCursor };
+}
+
+/**
+ * **Twelve**, and it is a chosen number rather than a measured one.
+ *
+ * The measured signal in the committed library was an empty 61–90 day gap in *days since
+ * last watch*, which suggests a 60-day threshold. A **count** was chosen over a day count
+ * because it is self-correcting: ONGOING is never empty after a quiet month, and never 199
+ * long after a binge year. A 60-day rule is both, in turn, on the same library.
+ *
+ * Twelve, specifically, because the rail is one horizontal run of posters and twelve is
+ * about two screens of it — long enough that a week of ordinary watching does not fall out
+ * of it, short enough that the head of it still reads as *what I am actually in the middle
+ * of*. The measured shape it is drawn against: of 283 non-abandoned titles with a dated
+ * watch, 199 — 70% — are more than two years cold, and the deck before #137 treated every
+ * one of them identically to something watched last night.
+ *
+ * **It is a build-time constant.** Not a stored setting, not a user preference, and not a
+ * thing any surface can change: nothing takes it as an argument and nothing writes it. It
+ * is exported for the tests, which have to prove the cap holds at exactly this number.
+ */
+export const ONGOING_RAIL_SIZE = 12;
+
+/**
+ * The three rails of the desktop Up next page — issue #137, and **a grouping over the
+ * existing state and the existing order, evaluated on read**.
+ *
+ * | Rail | Rule |
+ * |---|---|
+ * | **ONGOING** | *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
+ * | **COMING BACK** | *caught up* ∧ the next episode's air date is in the future |
+ * | **OLD FRIENDS** | *watching*, everything not in ONGOING |
+ *
+ * **No column is added and no view is added.** Nothing here is stored, nothing is
+ * refreshed and nothing can go stale, for ADR-0001's reason: a stored copy of derived
+ * state is a second answer that can disagree with the watches. A rail is a `slice` and a
+ * `WHERE`, and both are computed the moment the page is read.
+ *
+ * ── Why ONGOING and OLD FRIENDS are one read and not two ─────────────────────────────
+ *
+ * *Every watching title is in exactly one of the two, and none is in both* is an acceptance
+ * criterion, and it is worth having by construction rather than by two queries agreeing.
+ * `LIMIT 12` and `OFFSET 12` over the same order would be two reads of a set that a watch
+ * landing between them can reorder — the same reason `UpNextCursor` exists rather than an
+ * offset. One read, sliced in memory, cannot have that gap at all.
+ *
+ * It also settles what *the 12 most recently watched* means, which the rule alone leaves
+ * open: **the head of §7's order over the watching set**, not the head of the whole
+ * library's recency. A finished show watched last night is not in the twelve and does not
+ * consume one of them — it is not on this surface at all, and the alternative reading would
+ * let a fortnight of films empty ONGOING while twenty shows sat part-watched. That is
+ * exactly the "never empty after a quiet month" property the count was chosen for.
+ *
+ * The head of that order is the twelve most recent *watches* where there are twelve dated
+ * watches, and thereafter whatever the cascade ranks next — the air-date fallback group,
+ * then the undatable one. A library with no dated watch at all still gets a full ONGOING
+ * rather than an empty one, which is the same choice, held consistently.
+ *
+ * ── OLD FRIENDS has no cap, and that is the rule ─────────────────────────────────────
+ *
+ * *Everything not in ONGOING* — 187 titles on the committed library. It is not truncated
+ * here and there is no "and 175 more": §9 forbids the count, and a rail that silently
+ * stopped at N would be the *showing 10 of 62* line with the number filed off. The surface
+ * bounds it with a horizontal scroll, and `app/poster.tsx`'s `loading="lazy"` is what keeps
+ * the artwork off the wire until a poster is scrolled towards.
+ *
+ * ── Two reads, in this order ──────────────────────────────────────────────────────────
+ *
+ * Sequential rather than concurrent: an `Executor` can be a transaction, and a transaction
+ * runs one statement at a time. They are two reads rather than one because they are two
+ * memberships — the alternative is a single read of *watching or coming back* partitioned
+ * in memory, which would need the state on every row and would put a third rule (*which
+ * rail is this?*) somewhere other than in the predicate that defines it.
+ */
+export interface UpNextRails {
+  readonly ongoing: readonly UpNextEntry[];
+  readonly comingBack: readonly UpNextEntry[];
+  readonly oldFriends: readonly UpNextEntry[];
+}
+
+export async function listUpNextRails(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<UpNextRails> {
+  const read = upNextRead(userId, executor);
+
+  const watching = await read.rows(WATCHING, null);
+  const comingBack = await read.rows(COMING_BACK, null);
+
   return {
-    entries: page.map((row) => ({
-      libraryEntryId: row.libraryEntryId,
-      titleId: row.titleId,
-      titleName: row.titleName,
-      posterPath: row.posterPath,
-      episodeId: row.episodeId,
-      episodeName: row.episodeName,
-      seasonNo: row.seasonNo,
-      episodeNo: row.episodeNo,
-    })),
-    nextCursor,
+    ongoing: watching.slice(0, ONGOING_RAIL_SIZE).map(upNextEntry),
+    comingBack: comingBack.map(upNextEntry),
+    oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(upNextEntry),
   };
 }
 
@@ -2466,6 +2684,157 @@ export async function getTitleDetail(
 function kindFrom(value: string): TitleKind {
   if (value === "film" || value === "show") return value;
   throw new Error(`title.kind was neither 'film' nor 'show': ${value}`);
+}
+
+/**
+ * One row of an unowned title's episode list — issue #148.
+ *
+ * `EpisodeDetail` above carries `watched` and `upNext`; this carries neither, and the
+ * absence is the type doing the ticket's work rather than a convention to remember. A
+ * surface handed one of these cannot draw a mark, a rewatch or an *Up next* chip, because
+ * there is no field on it that could say so — which is the whole of *nothing tells you
+ * something false about a show you have never watched*.
+ */
+export interface UnownedEpisodeDetail {
+  readonly id: string;
+  /** 0 = specials, grouped here as they are everywhere else. */
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  /** `null` where TMDB has not named it. Never falls back to a bare number. */
+  readonly name: string | null;
+}
+
+/**
+ * Title detail's borrowed half, and only that — issue #148.
+ *
+ * Every field here is a fact about the world (`CONTEXT.md`): it lives on `title` or
+ * `episode`, which are global and unowned (ADR-0001), so the same answer is true for
+ * every reader. `TitleDetailRow`'s other five fields — `libraryEntryId`, `state`,
+ * `rating`, and an episode's `watched` and `upNext` — are all *somebody's*, and this
+ * shape has no somebody to attribute them to.
+ */
+export interface UnownedTitleDetailRow {
+  /** What `addTitleToList` keys a membership on, so the unowned page can offer *Add to
+   *  list* the way the owned one already does (issue #147). */
+  readonly titleId: string;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly runtimeMins: number | null;
+  /** Empty for a film, and for a show TMDB has no episode data for. */
+  readonly episodes: readonly UnownedEpisodeDetail[];
+}
+
+/**
+ * One title, for a reader who does not own it — issue #148, and a second read beside
+ * `getTitleDetail` rather than a relaxation of it.
+ *
+ * ── Why this is not `getTitleDetail` with the owner made optional ─────────────────────
+ *
+ * That was the alternative and it is the shape to avoid. `getTitleDetail` is scoped by
+ * `ownedBy(userId, libraryEntry)` combined with an entry id, and it throws when the pair
+ * matches nothing — a tampered id, a foreign one and a deleted one are the same case, and
+ * all three are a boundary. Making that join optional would mean the read's `where` no
+ * longer had to mention an owner to return a row, and the failure mode of that is not a
+ * wrong screen: it is one account's library entry answering another account's request,
+ * out of a query that still reads as scoped. So ownership stays mandatory where it is,
+ * and the unowned case is a different function, with a different key and a different
+ * return type.
+ *
+ * ── Keyed by `(kind, tmdbId)`, which is what makes it unownable ───────────────────────
+ *
+ * `title_kind_tmdb_id_key` is that pair — TMDB numbers films and shows separately, so the
+ * id alone is not unique (`db/tables.ts`). What matters more than the choice of key is
+ * what the signature does not have: no user id, and no argument that could name one. The
+ * isolation model (this module's own docblock) is one filtered column, and a read with no
+ * owned table in it has nothing to filter and nothing to leak. `title` and `episode` were
+ * always like this; `libraryCatalogueKeys` is the only reason either has ever been asked
+ * a per-account question, and that question is really about `library_entry`.
+ *
+ * ── A missing title throws ────────────────────────────────────────────────────────────
+ *
+ * The treatment `getTitleDetail` and `getListDetail` give a row that is not there, for
+ * the reason they give it: there is nothing for this surface to degrade to. The route
+ * into the page is a list row, which cannot exist without the `title` row it names, so a
+ * miss here is a hand-typed id or a mirror that has lost a row — neither of which is an
+ * empty state, and both of which are honestly a page that did not load.
+ */
+export async function getUnownedTitleDetail(
+  kind: TitleKind,
+  tmdbId: number,
+  executor: Executor = getDb(),
+): Promise<UnownedTitleDetailRow> {
+  const [row] = await executor
+    .select({
+      titleId: title.id,
+      kind: title.kind,
+      tmdbId: title.tmdbId,
+      name: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
+    })
+    .from(title)
+    .where(and(eq(title.kind, kind), eq(title.tmdbId, tmdbId)));
+
+  if (!row) {
+    throw new Error(`No ${kind} with TMDB id ${tmdbId} is mirrored.`);
+  }
+
+  const episodeRows = await executor
+    .select({
+      id: episode.id,
+      seasonNo: episode.seasonNo,
+      episodeNo: episode.episodeNo,
+      name: episode.name,
+    })
+    .from(episode)
+    .where(eq(episode.titleId, row.titleId))
+    .orderBy(episode.seasonNo, episode.episodeNo);
+
+  return { ...row, kind: kindFrom(row.kind), episodes: episodeRows };
+}
+
+/**
+ * This account's own entry for one title, or `null` — issue #148.
+ *
+ * ── Null here is a state, not a failure ───────────────────────────────────────────────
+ *
+ * `SPEC.md` §3.2's distinction: a query that succeeded and found nothing means *you have
+ * not added this title*, which is the entire premise of the page this feeds. A failure
+ * still throws, from the driver, with no `catch` in the way.
+ *
+ * ── The two things it decides ─────────────────────────────────────────────────────────
+ *
+ * It is what the unowned route asks before rendering — an account that does own the title
+ * is sent to its own copy of it, so *there are not two kinds of show* survives a URL
+ * typed by hand — and it is how that page's *Add to library* finds the entry it has just
+ * created, to send the reader on to. `addTitleToLibrary` reports whether it created one
+ * and not which one, deliberately: its `onConflictDoNothing` returns no row on the
+ * conflict, and reading the id back here is more honest than making that write's return
+ * value depend on a second query it does not otherwise need.
+ *
+ * `ownedBy` is the whole of the isolation. Without it this reads *anybody's* entry for
+ * the title and the page offers a stranger's copy; with it, a title only somebody else
+ * has added answers `null`, which is the true answer.
+ */
+export async function libraryEntryIdForTitle(
+  userId: UserId,
+  kind: TitleKind,
+  tmdbId: number,
+  executor: Executor = getDb(),
+): Promise<string | null> {
+  const [row] = await executor
+    .select({ id: libraryEntry.id })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .where(
+      and(ownedBy(userId, libraryEntry), eq(title.kind, kind), eq(title.tmdbId, tmdbId)),
+    );
+
+  return row?.id ?? null;
 }
 
 /**

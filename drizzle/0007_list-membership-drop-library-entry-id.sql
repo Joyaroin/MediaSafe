@@ -1,0 +1,18 @@
+-- Issue #150, the contract half of ADR-0001 amendment 7 (#143): membership has pointed at
+-- `title`, not `library_entry`, since 0006. `SPEC.md` §3.7 is forward-only, so that
+-- migration left `library_entry_id` behind — nullable, unread — instead of dropping it in
+-- the same change. Nothing has ever written a row to it, and nothing in the codebase reads
+-- it; this drops it. It carried no foreign key or index of its own to drop with it — 0006
+-- already dropped `list_membership_library_entry_id_user_id_fk` and the composite primary
+-- key it was part of.
+--
+-- `ban-drop-column` is right in general — dropping a column code still reads is how a
+-- deploy loses data mid-flight. This one has been dead weight since 0006: no query, view,
+-- test or type in this codebase reaches `list_membership.library_entry_id`, verified by
+-- grep before this migration was written. The suppression is inline rather than in
+-- `.squawk.toml` because the rule stays on for every other migration.
+--
+-- The directive has to be the last comment line before the statement; squawk does not find
+-- it through the prose above.
+-- squawk-ignore ban-drop-column
+ALTER TABLE "list_membership" DROP COLUMN "library_entry_id";

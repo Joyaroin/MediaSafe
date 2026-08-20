@@ -12,10 +12,11 @@ import { Wordmark } from "./press-mark";
  * `sidebar-nav.tsx`'s own `PRIMARY` array rather than in the mock, at the same measures.
  *
  * `196px` (`w-[196px]`) is the mock's own measure, taken rather than re-derived — the same
- * principle `masthead.tsx` states for its own borrowed numbers. It is a placeholder width
- * on purpose: the issue that built this ticket calls the desktop Up next page it lands on
- * *"wide, until the rails land"* — this sidebar is the one piece of that eventual layout
- * built early, not the whole of it.
+ * principle `masthead.tsx` states for its own borrowed numbers. #136 called it a placeholder
+ * width, on the grounds that the desktop Up next page it lands on was *"wide, until the rails
+ * land"*; the rails landed in #137 and the measure held, so it is the mock's number and not
+ * a placeholder any more. What it leaves room for is a rails column and a `420px` programme
+ * note beside it (`up-next/page.tsx`).
  *
  * ── `lg:sticky lg:top-0 lg:h-screen` ──────────────────────────────────────────────────
  *

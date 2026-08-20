@@ -10,6 +10,7 @@ import {
   getListDetail,
   listLists,
   ownedBy,
+  removeTitleFromLibrary,
   reorderListMembership,
   type UserId,
 } from "@/db/access";
@@ -582,6 +583,90 @@ describe("reordering a list by dragging", () => {
 
       await expect(reorderListMembership(reader, listId, titleIds[0], 0, tx)).rejects.toThrow();
       await expect(reorderListMembership(reader, listId, titleIds[0], 4, tx)).rejects.toThrow();
+    });
+  });
+});
+
+/**
+ * *Removing a show leaves its list entries standing* — issue #151, read at the boundary the
+ * list page itself uses. `tests/remove-from-library.test.ts` holds the row-survival half of
+ * this against `list_membership` directly; what belongs here is `getListDetail`'s own view
+ * of the same sequence, since that view — not the raw table — is what a row on screen reads
+ * as untracked or owned from.
+ */
+describe("a title removed from the library, read through the list", () => {
+  it("keeps its position, reads as untracked, then owned again once re-added", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const removed = await seedShow(tx);
+      const staying = await seedShow(tx);
+      const { list: target } = unwrap(await createList(reader, "Comfort shows", tx));
+      await addTitleToList(reader, target.id, removed, tx);
+      await addTitleToList(reader, target.id, staying, tx);
+
+      const [entry] = await tx
+        .insert(libraryEntry)
+        .values({ userId: reader, titleId: removed })
+        .returning({ id: libraryEntry.id });
+
+      const owned = await getListDetail(reader, target.id, tx);
+      expect(owned.titles).toMatchObject([
+        { titleId: removed, libraryEntryId: entry.id, position: 1 },
+        { titleId: staying, libraryEntryId: null, position: 2 },
+      ]);
+
+      await removeTitleFromLibrary(reader, entry.id, tx);
+
+      const untracked = await getListDetail(reader, target.id, tx);
+      expect(untracked.titles).toMatchObject([
+        { titleId: removed, libraryEntryId: null, position: 1 },
+        { titleId: staying, libraryEntryId: null, position: 2 },
+      ]);
+
+      // Add to library puts it back — a fresh entry, not the one that was deleted.
+      const [again] = await tx
+        .insert(libraryEntry)
+        .values({ userId: reader, titleId: removed })
+        .returning({ id: libraryEntry.id });
+
+      const readded = await getListDetail(reader, target.id, tx);
+      expect(readded.titles).toMatchObject([
+        { titleId: removed, libraryEntryId: again.id, position: 1 },
+        { titleId: staying, libraryEntryId: null, position: 2 },
+      ]);
+      expect(again.id).not.toBe(entry.id);
+    });
+  });
+
+  /** The other account's own copy of the same title is a separate join, keyed by its own
+   *  `user_id` — a removal that names the reader's entry has nothing to say about it. */
+  it("leaves another account's own copy of the title, and their list, untouched", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const shared = await seedShow(tx);
+      const { list: mine } = unwrap(await createList(reader, "Mine", tx));
+      const { list: theirs } = unwrap(await createList(other, "Theirs", tx));
+      await addTitleToList(reader, mine.id, shared, tx);
+      await addTitleToList(other, theirs.id, shared, tx);
+
+      const [readerEntry] = await tx
+        .insert(libraryEntry)
+        .values({ userId: reader, titleId: shared })
+        .returning({ id: libraryEntry.id });
+      const [otherEntry] = await tx
+        .insert(libraryEntry)
+        .values({ userId: other, titleId: shared })
+        .returning({ id: libraryEntry.id });
+
+      await removeTitleFromLibrary(reader, readerEntry.id, tx);
+
+      expect((await getListDetail(reader, mine.id, tx)).titles).toMatchObject([
+        { titleId: shared, libraryEntryId: null },
+      ]);
+      expect((await getListDetail(other, theirs.id, tx)).titles).toMatchObject([
+        { titleId: shared, libraryEntryId: otherEntry.id },
+      ]);
     });
   });
 });
