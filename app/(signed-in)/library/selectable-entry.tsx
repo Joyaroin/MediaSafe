@@ -176,8 +176,10 @@ export function SelectableEntry({
     // Cleared here as well as on `animationend`, and the reason is
     // `prefers-reduced-motion`: `globals.css` sets `animation: none` there, so no
     // `animationend` is ever fired and the attribute set by the last hold would stay on
-    // this cell for the life of the mount. Invisible while the reader's setting holds —
-    // and a stray pop on the next hold the moment they turn it off.
+    // this cell for the life of the mount. That is invisible while the reader's setting
+    // holds, and stops being invisible the moment they turn it off — the media query
+    // stops matching, the rule underneath it applies to an element already carrying the
+    // attribute, and the cell pops on its own with nothing touching it.
     setLanded(false);
     swallowClick.current = false;
     origin.current = { x: event.clientX, y: event.clientY };
