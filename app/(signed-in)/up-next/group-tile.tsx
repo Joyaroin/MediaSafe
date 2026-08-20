@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
 
@@ -26,6 +27,14 @@ import { Poster } from "@/app/poster";
  * vertical grid instead (`home-group.tsx`, `group-screen.tsx`), so the poster is `w-full`
  * and the grid's own column width decides how large it renders. `width={132}` is passed to
  * `Poster` only to choose a CDN bucket, not to size anything on screen.
+ *
+ * ── `group-poster-{id}`, the morph's other half ───────────────────────────────────────
+ *
+ * Issue #141: the route this `Link` pushes lands on `title-detail-view.tsx`, which wraps
+ * its own poster in the same `group-poster-{id}` name. Unlike the desktop rail's tile
+ * (`up-next-tile.tsx`), this one never has to give the name up while selected — a route
+ * push unmounts the whole page this tile lives on, so there is never a moment where this
+ * tile and the phone route's hero poster are both on screen sharing it.
  */
 const POSTER_CDN_WIDTH = 132;
 
@@ -46,11 +55,13 @@ export function GroupTile({ entry }: { entry: GroupTileEntry }) {
   return (
     <li>
       <Link href={`/library/${entry.libraryEntryId}`} className="group block w-full text-left">
-        <Poster
-          posterPath={entry.posterPath}
-          width={POSTER_CDN_WIDTH}
-          className="w-full transition duration-150 group-hover:brightness-110"
-        />
+        <ViewTransition name={`group-poster-${entry.libraryEntryId}`}>
+          <Poster
+            posterPath={entry.posterPath}
+            width={POSTER_CDN_WIDTH}
+            className="w-full transition duration-150 group-hover:brightness-110"
+          />
+        </ViewTransition>
 
         <p className="mt-2 line-clamp-2 text-item leading-snug text-text">
           {entry.titleName}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, ViewTransition } from "react";
 
 import { TmdbAttribution } from "@/app/tmdb-attribution";
+import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
@@ -34,6 +35,23 @@ import { titleDetailAction } from "./title-detail-actions";
  * bails out and re-renders before anything commits — not inside `useEffect`, which is the
  * "cascading render" mistake `search-surface.tsx` already found and named. The effect
  * below only ever calls `setPhase` from inside `.then()`, same as `live-title-facts.tsx`.
+ *
+ * ── The morph, and why it has to start in the `loading` frame ────────────────────────
+ *
+ * Issue #141: the poster the reader pressed becomes this pane's poster, rather than one
+ * disappearing and another appearing once the read resolves. That means the transition
+ * name (`rail-poster-{id}`) has to move off the tile and onto this pane in the *same*
+ * commit — `library-selection.tsx`'s `select` is what makes it one commit, wrapping the
+ * write in `startTransition` so `<ViewTransition>` activates on it at all. Waiting for
+ * `titleDetailAction` to answer before mounting anything named would split that into two
+ * commits — the tile letting go in one, the pane picking up in a later, unrelated one —
+ * and the browser has nothing to morph between an exit and a separate enter.
+ *
+ * So `loading` mounts the poster immediately, from `selectedPosterPath` — a fact the
+ * tile already had in hand before it was ever pressed — while the rest of the note is
+ * still `titleDetailAction`'s to answer. `loaded` hands the same name to
+ * `ProgrammeNoteContent`'s own poster; same id, same image, so nothing visibly moves a
+ * second time when the swap happens, only the row of facts beneath it appears.
  */
 type Phase =
   | { readonly kind: "idle" }
@@ -46,7 +64,7 @@ function phaseFor(entryId: string | null): Phase {
 }
 
 export function ProgrammeNotePane() {
-  const { selectedEntryId } = useLibrarySelection();
+  const { selectedEntryId, selectedPosterPath } = useLibrarySelection();
 
   const [trackedEntryId, setTrackedEntryId] = useState(selectedEntryId);
   const [phase, setPhase] = useState<Phase>(() => phaseFor(selectedEntryId));
@@ -91,7 +109,12 @@ export function ProgrammeNotePane() {
       <div className="sticky top-0 flex max-h-screen flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto">
           {phase.kind === "idle" ? <NothingSelected /> : null}
-          {phase.kind === "loading" ? <Loading /> : null}
+          {phase.kind === "loading" && selectedEntryId !== null ? (
+            <Loading
+              posterPath={selectedPosterPath}
+              transitionName={`rail-poster-${selectedEntryId}`}
+            />
+          ) : null}
           {phase.kind === "failed" ? (
             <div className="px-6 py-5">
               <ReadFailure reference={phase.reference} retry={retry} />
@@ -100,6 +123,7 @@ export function ProgrammeNotePane() {
           {phase.kind === "loaded" ? (
             <ProgrammeNoteContent
               detail={phase.detail}
+              posterTransitionName={`rail-poster-${phase.detail.libraryEntryId}`}
               onStateChange={(libraryEntryId: string, state: LibraryState) =>
                 setPhase((prev) =>
                   // A write started against the entry this pane had selected when it was
@@ -150,13 +174,41 @@ function NothingSelected() {
   );
 }
 
-function Loading() {
+/**
+ * The poster arrives with `loading`, not with `loaded` — issue #141's morph needs it on
+ * screen, under this same `transitionName`, in the very commit that lets the tile go
+ * (`ProgrammeNotePane`'s own docblock has the reasoning). `posterPath` is
+ * `selectedPosterPath`, not a read — the pane has no title yet at this phase, only the
+ * fact the tile already knew.
+ *
+ * `key={transitionName}` is load-bearing, not decoration: this pane never remounts
+ * between two selections (`ProgrammeNotePane`'s own docblock — same instance, phase
+ * reset in place), so without a key React reuses the same `<ViewTransition>` fiber and
+ * only patches its `name` prop from the old id to the new one. React treats that as one
+ * boundary quietly renamed, not an old one leaving and a new one arriving, and reports
+ * two boundaries answering to the old name for the length of that commit — confirmed
+ * against a throwaway probe route before landing this, per the issue's own instruction
+ * to verify rather than assume. The key forces the swap React's own
+ * [View Transitions guide](https://react.dev/reference/react/ViewTransition) assumes:
+ * old fiber unmounts under its old name, a fresh one mounts under the new.
+ */
+function Loading({
+  posterPath,
+  transitionName,
+}: {
+  posterPath: string | null;
+  transitionName: string;
+}) {
   return (
     <div className="px-6 py-5">
+      <ViewTransition key={transitionName} name={transitionName}>
+        <Poster posterPath={posterPath} width={382} className="w-full" />
+      </ViewTransition>
+
       {/* `status`, not `alert`: metadata and episodes arriving is a normal moment of this
           page (`docs/design/v1-surfaces.md` §6), not an event worth interrupting anyone
           for. */}
-      <p role="status" className="code-line text-dim">
+      <p role="status" className="code-line mt-5 text-dim">
         Reading
       </p>
     </div>

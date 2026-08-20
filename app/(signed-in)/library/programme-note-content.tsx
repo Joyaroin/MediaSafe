@@ -1,3 +1,5 @@
+import { ViewTransition } from "react";
+
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { AbandonControl } from "./abandon-control";
@@ -64,13 +66,32 @@ import { titleMetaLine } from "./title-meta-line";
  *
  * The poster's own docblock is `app/poster.tsx`; this component just supplies the width
  * it renders it at.
+ *
+ * ── `posterTransitionName`, the morph's second half ───────────────────────────────────
+ *
+ * Issue #141. Each caller hands this the same name its own source tile carries —
+ * `rail-poster-{id}` from `programme-note.tsx`'s `loading` frame on desktop,
+ * `group-poster-{id}` from the phone route's `GroupTile` — so this poster is what the
+ * browser morphs the tile into. The two callers use different name families on purpose:
+ * the desktop pane and the phone route can both be showing the same title at once (a
+ * reader on desktop who also opens the phone route in another tab), and a name shared
+ * across them would pair the wrong two elements.
+ *
+ * `key={posterTransitionName}` carries the same weight `programme-note.tsx`'s `Loading`
+ * gives its own poster, for the identical reason: this component is never remounted on
+ * a selection change (its own top docblock), so without a key React would patch one
+ * `<ViewTransition>` fiber's `name` from the old id to the new one in place, which reads
+ * to the browser as two boundaries claiming the old name for a commit rather than one
+ * leaving and another arriving.
  */
 export function ProgrammeNoteContent({
   detail,
+  posterTransitionName,
   onStateChange,
   onRated,
 }: {
   detail: TitleDetailRow;
+  posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
   onRated: (libraryEntryId: string, rating: number) => void;
 }) {
@@ -81,8 +102,7 @@ export function ProgrammeNoteContent({
     <div className="px-6 py-5">
       {/* Full pane width — before #135 this was a `16/10` plate cropping whatever
           arrived. The `poster` utility's own `2/3` ratio derives the height from this
-          width instead; #141 owns repositioning this into a morph from the tile it was
-          opened from.
+          width instead.
 
           This component renders in two frames of different widths (this docblock's own
           `onRated` section): the desktop pane is `programme-note.tsx`'s `w-[420px]` minus
@@ -90,7 +110,9 @@ export function ProgrammeNoteContent({
           same padding. `382` covers a large phone (`430px` viewport) without measuring
           either frame at render time — both land in TMDB's `w500` bucket regardless, so a
           closer number would change nothing served, only how honest this one reads. */}
-      <Poster posterPath={detail.posterPath} width={382} className="w-full" />
+      <ViewTransition key={posterTransitionName} name={posterTransitionName}>
+        <Poster posterPath={detail.posterPath} width={382} className="w-full" />
+      </ViewTransition>
 
       <h2 className="bill-title mt-5 text-bill-xl">{detail.name}</h2>
 

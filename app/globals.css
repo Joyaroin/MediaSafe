@@ -239,3 +239,18 @@
     animation-duration: 1ms;
   }
 }
+
+/* Issue #141's poster morph, collapsed rather than removed: `::view-transition-group`
+   is what moves and resizes the shared element, `::view-transition-old`/`-new` are what
+   cross-fade the two snapshots inside it. Zeroing all three is what the browser itself
+   falls back to without View Transitions support, so a reader who asks for reduced
+   motion sees exactly that fallback — an instant swap, navigation and panel-swap alike,
+   never a missing tile or a missing panel. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

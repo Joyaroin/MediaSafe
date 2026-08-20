@@ -23,10 +23,25 @@ import { createContext, useContext } from "react";
  * `select` also serves `library-entry-cell.tsx`'s `aria-current`: `DESIGN.md`'s Library
  * Tile component names *"the current entry carries `aria-current`"*, and knowing which
  * one that is needs this same value, so it is read here rather than duplicated.
+ *
+ * ── `selectedPosterPath`, and why it travels with the id ──────────────────────────────
+ *
+ * Issue #141: the pane's poster morphs out of the rail tile that opened it, and the
+ * morph has to start in the same commit that deselects the tile — waiting for
+ * `titleDetailAction` to resolve first would deselect the tile one commit, then mount
+ * the pane's poster a separate commit later, which the browser sees as an exit and an
+ * unrelated enter rather than one shared-element move. The tile already has this fact
+ * in hand (`UpNextEntry.posterPath`) the moment it is pressed, so it is passed alongside
+ * the id rather than re-read from the eventual `titleDetailAction` answer.
+ *
+ * A caller with no poster to hand over — `selectable-entry.tsx`, which selects by id
+ * alone — omits it, and the pane simply mounts its loading poster nameless: no morph,
+ * the same plain swap this selection gave every candidate before #141.
  */
 interface LibrarySelection {
   readonly selectedEntryId: string | null;
-  select(entryId: string): void;
+  readonly selectedPosterPath: string | null;
+  select(entryId: string, posterPath?: string | null): void;
 }
 
 const LibrarySelectionContext = createContext<LibrarySelection | null>(null);

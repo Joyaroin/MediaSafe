@@ -71,7 +71,7 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
   };
 }
 
-const NO_SELECTION = { selectedEntryId: null, select: () => {} };
+const NO_SELECTION = { selectedEntryId: null, selectedPosterPath: null, select: () => {} };
 
 const withSelection = (children: React.ReactNode) =>
   createElement(LibrarySelectionProvider, { value: NO_SELECTION }, children);

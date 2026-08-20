@@ -17,6 +17,13 @@ import { ProgrammeNoteContent } from "../programme-note-content";
  * where the pane never navigates. It costs one comparison, and it means the two callers
  * of `ProgrammeNoteContent` answer a landed write identically rather than one of them
  * relying on a topology property to be safe.
+ *
+ * `posterTransitionName` is `group-poster-{id}` — issue #141, and the half of the morph
+ * this route owns. `GroupTile` carries the other half; both name families and the reason
+ * this one differs from the desktop pane's `rail-poster-{id}` are on
+ * `programme-note-content.tsx`'s own docblock. Next's route navigations are transitions
+ * on their own — Next's [View transitions guide](https://nextjs.org/docs/app/guides/view-transitions)
+ * says so — so nothing here has to ask for one the way the desktop pane's `select` does.
  */
 export function TitleDetailView({ detail }: { detail: TitleDetailRow }) {
   const [current, setCurrent] = useState(detail);
@@ -24,6 +31,7 @@ export function TitleDetailView({ detail }: { detail: TitleDetailRow }) {
   return (
     <ProgrammeNoteContent
       detail={current}
+      posterTransitionName={`group-poster-${current.libraryEntryId}`}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))
       }
