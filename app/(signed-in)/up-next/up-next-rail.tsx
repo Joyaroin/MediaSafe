@@ -104,6 +104,20 @@ function reachOf(track: HTMLElement): Reach {
   };
 }
 
+/**
+ * Whether the answer actually moved.
+ *
+ * `reachOf` mints a fresh object every call, so handing its result straight to `setReach`
+ * re-renders the rail on **every scroll event** — twelve tiles and two arrows, for two
+ * booleans that only change at the two ends of the track. A scroll event fires about once
+ * per displayed frame, so the waste is proportional to the refresh rate: a 120Hz screen
+ * pays it twice as often as the 60Hz one it was written on, during the one interaction
+ * where the main thread is least able to spare it.
+ */
+function sameReach(one: Reach, other: Reach): boolean {
+  return one.back === other.back && one.forward === other.forward;
+}
+
 export function UpNextRail({
   label,
   rule,
@@ -137,15 +151,20 @@ export function UpNextRail({
   function measure() {
     const track = trackRef.current;
     if (track === null) return;
-    setReach(reachOf(track));
+    // Bails on an unchanged answer rather than re-rendering to the same value. See
+    // `sameReach` for why this is the scroll path and not a micro-optimisation.
+    setReach((prev) => {
+      const next = reachOf(track);
+      return sameReach(prev, next) ? prev : next;
+    });
   }
 
   useEffect(() => {
     const track = trackRef.current;
     if (track === null) return;
 
-    setReach(reachOf(track));
-    const observer = new ResizeObserver(() => setReach(reachOf(track)));
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(track);
     return () => observer.disconnect();
   }, [entries]);
@@ -223,7 +242,12 @@ export function UpNextRail({
           trackpad can swipe the track and a wheel mouse cannot. */}
       {reach.back || reach.forward ? (
         <>
-          <RailArrow label={label} back onPress={() => step(-1)} enabled={reach.back} />
+          <RailArrow
+            label={label}
+            back
+            onPress={() => step(-1)}
+            enabled={reach.back}
+          />
           <RailArrow
             label={label}
             back={false}
