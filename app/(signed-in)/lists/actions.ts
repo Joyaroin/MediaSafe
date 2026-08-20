@@ -6,6 +6,7 @@ import {
   createListAndAddTitle,
   deleteList,
   listLists,
+  reorderListMembership,
   type ListSummary,
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
@@ -120,5 +121,27 @@ export async function createListAndAddTitleAction(
     return { ok: true, list: outcome.list };
   } catch (error) {
     return { ok: false, reason: "failed", reference: referenceFor(error, { surface: "lists" }) };
+  }
+}
+
+/** Whether a drag landed — issue #149. There is no `"duplicate"` case here, unlike the
+ *  three actions above: a position is never a name, and there is nothing about `1..count`
+ *  a second identical drag could collide with. */
+export type ReorderListOutcome =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reference: string | null };
+
+export async function reorderListAction(
+  listId: string,
+  titleId: string,
+  newPosition: number,
+): Promise<ReorderListOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    await reorderListMembership(userId, listId, titleId, newPosition);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
 }

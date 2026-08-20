@@ -45,8 +45,12 @@ function titleRow(overrides: Partial<ListDetailTitleRow> = {}): ListDetailTitleR
   };
 }
 
+// `dragHandle` is issue #149's addition — a real node in the product, `null` here since
+// this file is about the link each row renders, not the handle beside it.
 const render = (row: ListDetailTitleRow) =>
-  renderToStaticMarkup(createElement("ul", null, createElement(ListTitleRow, { title: row })));
+  renderToStaticMarkup(
+    createElement("ul", null, createElement(ListTitleRow, { title: row, dragHandle: null })),
+  );
 
 describe("a list row for a title this account does not own", () => {
   it("renders the borrowed facts, and links to the title's own unowned page", () => {
