@@ -139,13 +139,16 @@ export function AddToListControl({
 
   return (
     <div className={PROGRAMME_NOTE_SECTION}>
+      {/* Issue #195: was dim underlined text ending in a chevron that implied navigation
+          this control never did — it opens a dialog, nothing more. The chevron goes with
+          the underline; `GHOST_RECOVERY` is the register the rest of this batch takes. */}
       <button
         type="button"
         onClick={openDialog}
         aria-label={`Add ${titleName} to a list`}
-        className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
+        className={GHOST_RECOVERY}
       >
-        Add to list ›
+        Add to list
       </button>
 
       <dialog

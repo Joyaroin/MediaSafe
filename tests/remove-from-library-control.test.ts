@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RemoveControl } from "@/app/(signed-in)/library/remove-control";
+import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 
 /**
  * Where *Remove from library* is, and where it is not — issue #142.
@@ -63,16 +64,22 @@ describe("the remove control", () => {
     expect(render()).toContain('aria-label="Remove The Bear from your library"');
   });
 
-  it("never takes the reserved accent", () => {
-    // The accent means a watch was recorded and nothing else (`app/globals.css`, issue
-    // #134), and the abandon control is already named as the thing that must never take
-    // it. This is quieter still.
+  it("takes the accent now, knowingly, and only as GHOST_RECOVERY's outline", () => {
+    // Until issue #195 this control never took the reserved accent (`app/globals.css`,
+    // issue #134) — the abandon control was named as the thing that must never take it,
+    // and this was quieter still. #195 overrode both, in the open (`DESIGN.md` §10's
+    // Buttons subsection and §12 record it), because a control nobody can tell apart from
+    // prose is a control nobody presses.
     //
-    // Both names are asserted on purpose: `signal` was the token before #134 renamed it,
-    // and a revert or a stale copy reintroducing it would otherwise pass a check written
-    // only against the new one.
-    expect(render()).not.toMatch(/accent/);
-    expect(render()).not.toMatch(/signal/);
+    // What still must not happen is the *solid* fill `SOLID_RECOVERY` reserves for a
+    // surface's one primary action — this is `GHOST_RECOVERY`, an outline until pressed,
+    // never a filled accent ground sitting on the page from the moment it loads. Matched
+    // against the constants themselves rather than reconstructed patterns, so a change to
+    // either treatment's own definition is what this test tracks.
+    const markup = render();
+
+    expect(markup).toContain(GHOST_RECOVERY);
+    expect(markup).not.toContain(SOLID_RECOVERY);
   });
 });
 

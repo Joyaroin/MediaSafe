@@ -177,14 +177,13 @@ export default async function SettingsPage() {
             confirm it there.
           </p>
 
-          <p className="mt-6 text-item text-dim">
-            <Link
-              href="/settings/delete-account"
-              className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
-            >
+          {/* Issue #195: matches `Import a library ›` above — `GHOST_RECOVERY`, keeping
+              its chevron, in a plain `div` rather than the old underlined-prose `p`. */}
+          <div className="mt-6">
+            <Link href="/settings/delete-account" className={GHOST_RECOVERY}>
               Delete account ›
             </Link>
-          </p>
+          </div>
         </div>
       </section>
     </main>

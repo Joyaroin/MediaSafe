@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+
 /**
  * The two pieces the confirmation and its failure boundary both render — issue #142.
  *
@@ -9,9 +11,9 @@ import Link from "next/link";
  * the day it matters.
  *
  * Neither is a new treatment. The heading is `bill-title` at `text-bill-lg`, the step
- * `DESIGN.md`'s type table gives full-surface headlines. The link is the quiet underline
- * `errors/reference-line.tsx` already sets, rather than a second button competing with the
- * remove for the reader's eye.
+ * `DESIGN.md`'s type table gives full-surface headlines. Issue #195 moved the link off the
+ * quiet underline `errors/reference-line.tsx` set — it is `GHOST_RECOVERY` now, the
+ * register the whole underline conversion reuses.
  */
 
 /**
@@ -55,13 +57,10 @@ export function RemoveTitleHeading() {
  */
 export function BackToLibrary() {
   return (
-    <p className="mt-8 text-item text-dim">
-      <Link
-        href="/library"
-        className="underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
-      >
+    <div className="mt-8">
+      <Link href="/library" className={GHOST_RECOVERY}>
         ‹ Back to your library
       </Link>
-    </p>
+    </div>
   );
 }

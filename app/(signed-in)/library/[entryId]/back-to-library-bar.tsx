@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+
 /**
  * The one piece this route's three renders all have above the fold — issue #180.
  *
@@ -25,10 +27,9 @@ import Link from "next/link";
 export function BackToLibraryBar() {
   return (
     <div className="border-b border-hair px-6 py-4">
-      <Link
-        href="/library"
-        className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-      >
+      {/* Issue #195: GHOST_RECOVERY, not the old dim underline — the register the whole
+          underline conversion reuses. */}
+      <Link href="/library" className={GHOST_RECOVERY}>
         ‹ Library
       </Link>
     </div>
