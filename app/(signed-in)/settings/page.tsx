@@ -3,6 +3,7 @@ import Link from "next/link";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { requireDisplayName, requireTimezone, requireUserId } from "@/lib/session";
 import { DisplayNameControl } from "./display-name-control";
+import { SettingsHeading } from "./settings-heading";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
 import { TimezoneControl } from "./timezone-control";
@@ -92,7 +93,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-text">Settings</h1>
+      <SettingsHeading />
 
       <section aria-labelledby="profile-h" className="mt-12 border-t border-hair pt-6">
         <h2 id="profile-h" className="code-line text-dim">

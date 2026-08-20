@@ -682,13 +682,15 @@ here on purpose. §12 closed a defect of exactly that shape — *a number duplic
 with no reason to know it is wrong by default* — and a route count is the most movable number
 in the repository.)
 
-**The library is converted and the rest are not yet, and which is which is not recorded
-here.** Issue #180 built radius 1 on `/library` and its two child routes and brought the
-enforcement with it: `tests/route-manifest.test.ts` runs a second audit over `next build`'s
-own output, so every dynamic route still without a boundary is named in that file's
-exemption list with a reason, and adding one to a named route fails the check until the name
-comes out. That list is the live answer to *what is left*; a copy of it in this file would be
-the movable number again, one paragraph up from the note saying not to write one down.
+**Which routes have the treatment and which do not is not recorded here.** Issue #180 built
+radius 1 on `/library` and its two child routes and brought the enforcement with it:
+`tests/route-manifest.test.ts` runs a second audit over `next build`'s own output, so every
+dynamic route still without a boundary is named in that file's exemption list with a reason,
+and adding one to a named route fails the check until the name comes out. #181 worked through
+that list until it was empty; what remains unconverted is a route audited into
+`NO_PENDING_STATE` by decision, not backlog. Either way, that list is the live answer to *what
+is left*; a copy of it in this file would be the movable number again, one paragraph up from
+the note saying not to write one down.
 
 **Most of the answer was already built and was never written down here.** The programme note
 and the three live fact sections both draw a pending state, both draw the same one, and no

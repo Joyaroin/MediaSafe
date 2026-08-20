@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AddToListControl } from "@/app/(signed-in)/library/add-to-list-control";
 import { LiveTitleFacts } from "@/app/(signed-in)/library/live-title-facts";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
+import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getUnownedTitleDetail, libraryEntryIdForTitle } from "@/db/access";
@@ -92,14 +92,7 @@ export default async function UnownedTitlePage({
           destination rather than a history pop for the reason `library/[entryId]`'s own
           back link is: a link still works on a tab opened cold, where nothing has been
           popped from yet. */}
-      <div className="border-b border-hair px-6 py-4">
-        <Link
-          href="/lists"
-          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-        >
-          ‹ Lists
-        </Link>
-      </div>
+      <BackToListsBar />
 
       <div className="px-6 py-5">
         {/* `382` is `programme-note-content.tsx`'s number, taken deliberately rather than

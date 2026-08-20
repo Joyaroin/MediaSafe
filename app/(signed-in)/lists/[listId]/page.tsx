@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getListDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
+import { BackToListsBar } from "../back-to-lists-bar";
 import { EmptyListDetail } from "./empty-list-detail";
 import { ReorderableTitleList } from "./reorderable-title-list";
 
@@ -31,16 +30,9 @@ export default async function ListDetailPage({
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <div className="border-b border-hair px-6 py-4">
-        <Link
-          href="/lists"
-          className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-        >
-          ‹ Lists
-        </Link>
-
+      <BackToListsBar>
         <h1 className="bill-title mt-3 text-bill-sm text-text">{detail.name}</h1>
-      </div>
+      </BackToListsBar>
 
       {detail.titles.length === 0 ? (
         <EmptyListDetail />
