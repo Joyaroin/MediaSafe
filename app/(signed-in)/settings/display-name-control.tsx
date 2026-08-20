@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { displayName } from "@/app/display-name";
 import { IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
@@ -45,14 +45,29 @@ import { authClient } from "@/lib/auth-client";
  * exactly. A failure reverts the field to `committed` — the last name the server actually
  * confirmed — not to the `name` prop, which goes stale the moment one save succeeds.
  *
- * `router.refresh()` on success carries the new name to the masthead, the same mechanism
- * `sign-out-button.tsx` uses to keep the signed-in shell in step with a change made from
- * inside it — the masthead reads `user.name` server-side and has no other way to know.
+ * ── The shell hears the name, not the whole page — issue #179 ────────────────────────
+ *
+ * This used to call `router.refresh()` on success, and the reason given was true: the
+ * masthead and the sidebar read `user.name` server-side, they sit in
+ * `(signed-in)/layout.tsx`, and the client Router Cache keeps layouts across navigations,
+ * so nothing else would ever tell them. What was wrong was the price. A refresh re-renders
+ * the entire route tree and re-runs every read on the page — the session read included —
+ * and every one of those answers is already on screen. The only thing that changed is one
+ * string, and this component is holding it.
+ *
+ * So it publishes: `displayName.set(nextName)`, which the two cells in the shell subscribe
+ * to and nothing else re-renders. Issue #176's rule, applied to a write whose "updated
+ * row" is a single field — *return the updated data directly where the caller can apply
+ * it* rather than invalidate anything.
+ *
+ * **After the server confirmed it, never before.** The field itself is optimistic and
+ * rolls back; the masthead is not, and must not be. A name that appears up there and then
+ * quietly reverts is a lost write reported by a flicker, which is the opposite of the
+ * non-dismissing toast below.
  */
 const DISPLAY_NAME_MAX_LENGTH = 24;
 
 export function DisplayNameControl({ name }: { readonly name: string }) {
-  const router = useRouter();
   const [committed, setCommitted] = useState(name);
   const [value, setValue] = useState(name);
   const [inFlight, setInFlight] = useState(false);
@@ -81,7 +96,7 @@ export function DisplayNameControl({ name }: { readonly name: string }) {
       setCommitted(nextName);
       setValue(nextName);
       setInFlight(false);
-      router.refresh();
+      displayName.set(nextName);
       return;
     }
 

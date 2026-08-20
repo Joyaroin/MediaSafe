@@ -101,14 +101,16 @@ export function RemoveTitleForm({
      * title is already gone; re-enabling the button for those milliseconds would offer a
      * second press that could only ever fail.
      *
-     * `refresh()` before the navigation, exactly as in `delete-account-form.tsx`: it empties
-     * the client-side Router Cache, so the library cannot be served the grid that is still
-     * sitting in it with this title in it. `replace`, not `push`, so this page is not one
-     * back-press away — the title's own detail route still is, and a back press onto it
-     * finds no entry and renders that route's read failure, which is a rare landing and an
-     * honest one.
+     * There is no `refresh()` here any more (issue #179). Keeping the library from being
+     * served a grid with this title still in it is `revalidatePath("/library")` inside
+     * `removeTitleAction`, which names that route rather than refreshing this one on its
+     * way out, and rides back on the response of the write instead of costing a second
+     * round trip.
+     *
+     * `replace`, not `push`, so this page is not one back-press away — the title's own
+     * detail route still is, and a back press onto it finds no entry and renders that
+     * route's read failure, which is a rare landing and an honest one.
      */
-    router.refresh();
     router.replace("/library");
   }
 

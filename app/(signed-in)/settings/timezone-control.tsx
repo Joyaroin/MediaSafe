@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
@@ -52,8 +51,24 @@ import { readDeviceTimezone } from "@/lib/timezone";
  * zone returns to the stored one on failure; the screen never shows a zone that is not
  * saved.*
  *
- * `router.refresh()` on success carries the new zone to any server-rendered surface that
- * reads it, the same mechanism `display-name-control.tsx` uses for the masthead.
+ * ── There is no refresh after a landed write — issue #179 ────────────────────────────
+ *
+ * This used to end a successful save with `router.refresh()`, on the stated grounds that
+ * it carried the new zone *to any server-rendered surface that reads it*. There is no such
+ * surface. `requireTimezone()` has exactly one caller — `settings/page.tsx` — and all it
+ * does with the answer is hand it to this component as the `timezone` prop, which is the
+ * seed for a `displayed` that has already moved. The refresh re-rendered the whole route
+ * tree, session read included, to hand this component back the string it had just chosen.
+ *
+ * It reaches no other read either, which was checked rather than assumed: `user.timezone`
+ * appears in `lib/` and in the generated `auth-schema.ts`, and nowhere in `db/`. The
+ * derived-state views deliberately do **not** join it — `db/views.ts` says so at length,
+ * keeping ADR-0001's `air_date <= current_date` on the server's own date and naming the
+ * cost — so changing a zone today changes what this one control displays and nothing
+ * else. Should that view ever grow the join it describes, the surfaces reading it are
+ * other routes, every one of them `force-dynamic`, and Next.js has not reused a dynamic
+ * page segment from the client Router Cache on navigation since 15: walking to one would
+ * read the new zone because the read is fresh, not because anything here invalidated it.
  *
  * ── Reusing Better Auth's own update path ─────────────────────────────────────────────
  *
@@ -66,7 +81,6 @@ import { readDeviceTimezone } from "@/lib/timezone";
  * produce a bad value.
  */
 export function TimezoneControl({ timezone }: { readonly timezone: string }) {
-  const router = useRouter();
   const [committed, setCommitted] = useState(timezone);
   const [displayed, setDisplayed] = useState(timezone);
   const [inFlight, setInFlight] = useState(false);
@@ -104,7 +118,6 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
       setCommitted(nextZone);
       setDisplayed(nextZone);
       setInFlight(false);
-      router.refresh();
       return;
     }
 
