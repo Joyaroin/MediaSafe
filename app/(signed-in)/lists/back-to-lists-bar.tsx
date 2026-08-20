@@ -1,13 +1,15 @@
 import Link from "next/link";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+
 /**
  * The `‹ Lists` bar — shared by two route trees, not one, since a #181 code-review pass
  * caught the two as a near-verbatim paste of each other. `lists/[listId]`'s `page.tsx` and
  * `error.tsx` were already drawing it twice, character for character; `loading.tsx` would
  * have been the third paste there, and `titles/[kind]/[tmdbId]`'s own three renders were
  * about to become three more of the same markup rather than a second thing entirely — the
- * href, the copy and the underline are identical because a list is the only thing that
- * links to either route.
+ * href and the copy are identical because a list is the only thing that links to either
+ * route.
  *
  * It lives at `lists/`'s own root rather than inside `[listId]/`, the same shape
  * `library/add-to-list-control.tsx` and `library/live-title-facts.tsx` already take when
@@ -25,10 +27,9 @@ import Link from "next/link";
 export function BackToListsBar({ children }: { children?: React.ReactNode }) {
   return (
     <div className="border-b border-hair px-6 py-4">
-      <Link
-        href="/lists"
-        className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-      >
+      {/* Issue #195: GHOST_RECOVERY, not the old dim underline — the register the whole
+          underline conversion reuses. */}
+      <Link href="/lists" className={GHOST_RECOVERY}>
         ‹ Lists
       </Link>
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef } from "react";
 
 import type { ListSummary } from "@/db/access";
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { DeleteListDialog } from "./delete-list-dialog";
 import { formatTitleCount } from "./title-count";
 
@@ -31,10 +32,11 @@ import { formatTitleCount } from "./title-count";
  * `<button>` (the delete control) inside an `<a>`, and the two are not the same gesture
  * anyway: one opens the list, the other destroys it.
  *
- * The delete control follows `abandon-control.tsx`'s own vocabulary — a dim underlined
- * text button, never the accent — because giving up on a grouping is exactly as quiet an
- * act as giving up on a show, and for the same reason: it must never compete visually
- * with the one thing the accent is reserved for.
+ * Issue #195 moved the delete control off `abandon-control.tsx`'s old vocabulary — a dim
+ * underlined text button, never the accent — onto `GHOST_RECOVERY`, the register the whole
+ * underline conversion reuses knowingly. It no longer avoids the accent; nothing here reads
+ * as louder than the recording control for it, because `GHOST_RECOVERY` is an outline until
+ * pressed, not a fill.
  */
 export function ListRow({
   list,
@@ -57,15 +59,14 @@ export function ListRow({
       </Link>
 
       <div className="flex items-center">
-        {/* Quiet, and deliberately not a pill: a destroying control that looked like the
-            *New list* button above it would be the loudest thing on the screen doing the
-            most irreversible thing on it. `-mr-3` and the `h-11 w-16` give it the 44px
-            hit area the handoff requires without the underlined words growing a box. */}
+        {/* Issue #195: now a pill, on the same GHOST_RECOVERY register every other control
+            in this batch takes. `h-11` keeps the 44px tap target the old hit-area hack
+            gave it; the box itself is the target now, so the hack is gone with it. */}
         <button
           type="button"
           onClick={() => dialogRef.current?.showModal()}
           aria-label={`Delete ${list.name}`}
-          className="-mr-3 flex h-11 w-16 shrink-0 items-center justify-end pr-3 text-meta text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-ink"
+          className={`flex h-11 shrink-0 items-center ${GHOST_RECOVERY}`}
         >
           Delete
         </button>

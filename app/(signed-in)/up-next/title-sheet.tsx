@@ -13,6 +13,7 @@ import {
 
 import { exit, sheet } from "@/app/motion";
 import { Poster } from "@/app/poster";
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 import { groupPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { ProgrammeNoteContent } from "@/app/(signed-in)/library/programme-note-content";
@@ -237,11 +238,10 @@ export function TitleSheetProvider({
               {/* The one control, and it keeps the page's gutter. */}
               <div className="flex items-center justify-between border-b border-hair px-4 py-3">
                 <span className="code-line text-dim">Up next</span>
-                <button
-                  type="button"
-                  onClick={close}
-                  className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors hover:text-text"
-                >
+                {/* Issue #195: the underline goes, GHOST_RECOVERY takes its place — the
+                    same accent-ghost register every other secondary control in this batch
+                    takes, not a new one invented for a dismiss. */}
+                <button type="button" onClick={close} className={GHOST_RECOVERY}>
                   Close
                 </button>
               </div>

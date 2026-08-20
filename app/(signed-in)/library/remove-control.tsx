@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 
 /**
@@ -57,14 +58,17 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
  * is the honest one: `SPEC.md`'s caveat is that watches this application recorded are
  * restorable by no means at all, in the product or out of it.
  *
- * ── Quiet, and never the accent ──────────────────────────────────────────────────────
+ * ── No longer quiet, and the accent is spent knowingly ────────────────────────────────
  *
  * The accent is reserved for recording a watch — `app/globals.css` since issue #134, which
  * replaced the vermilion this rule was first written about with the Catalogue Wall's amber
- * and left the reservation exactly as it was. `DESIGN.md` names the abandon control as the
- * thing that must never take it; this is quieter still and takes it no more: dim underlined
- * type, no border, no fill, no icon. Loudness is not what protects a reader here — the
- * confirmation's real numbers are, and they are one navigation away.
+ * and left the reservation exactly as it was. This control used to take neither border nor
+ * fill nor icon rather than compete with that reservation. Issue #195 spends it anyway,
+ * knowingly and by name — `GHOST_RECOVERY`, the register the whole underline conversion
+ * reuses (`DESIGN.md` §12 owes a ticket to settle what the accent means; this adds to that
+ * question rather than resolving it). Loudness is still not what protects a reader here —
+ * the confirmation's real numbers are, and they are one navigation away — but the control
+ * has to read as pressable to get there at all.
  */
 export function RemoveControl({
   libraryEntryId,
@@ -78,7 +82,7 @@ export function RemoveControl({
       <Link
         href={`/library/${libraryEntryId}/remove`}
         aria-label={`Remove ${titleName} from your library`}
-        className="code-line text-dim underline decoration-hair underline-offset-4 transition-colors duration-150 hover:text-text"
+        className={GHOST_RECOVERY}
       >
         Remove from library ›
       </Link>
