@@ -98,10 +98,20 @@ export async function Masthead() {
         {/* `-mr-[11px]` pulls the 44px hit square's own padding back out to the 22px
             gutter, so the glyph lands on the gutter while the target stays 44px wide —
             the handoff's *every tap target ≥44px* without a header 11px wider than the
-            screen title it sits over. */}
+            screen title it sits over.
+
+            `nav-forward` because Settings is a push *out of* the four tabs, not a move
+            along them — this is the only entrance to it on the phone, and without a type
+            here it was the one screen that arrived with no motion at all while every tab
+            around it slid. The way back is `tab-bar.tsx`'s: tapping any tab from a screen
+            that is on none of them is `nav-back`, so the round trip mirrors.
+
+            The browser's own Back gesture still carries no type and so plays nothing,
+            which is a documented limit of the API rather than a decision here. */}
         <Link
           href="/settings"
           aria-label="Settings"
+          transitionTypes={["nav-forward"]}
           className="-mr-[11px] flex h-11 w-11 items-center justify-center text-dim transition-colors hover:text-ink"
         >
           <SettingsIcon className="h-[17px] w-[17px]" />

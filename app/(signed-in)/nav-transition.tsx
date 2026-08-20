@@ -1,7 +1,7 @@
 import { ViewTransition } from "react";
 
 /**
- * The four phone tabs' own enter/exit, wrapped once and used four times.
+ * The phone's own enter/exit, wrapped once and used by every screen that participates.
  *
  * ── Why this is a component and not a line in the layout ─────────────────────────────
  *
@@ -18,20 +18,21 @@ import { ViewTransition } from "react";
  * would slide during the poster morph (#141) and during any Suspense reveal — which is
  * both wrong to look at and a fight between two animations for the same pixels.
  *
- * It is also what makes the slide phone-only with no media query in it. Only
- * `tab-bar.tsx` attaches `tab-forward`/`tab-back`, and that bar is `lg:hidden`; a desktop
- * navigation from `sidebar-nav.tsx` carries no type at all, lands on `default`, and gets
- * exactly the nothing it got before.
+ * It is also what makes the slide phone-only with no media query in it. The only two
+ * places that attach `nav-forward`/`nav-back` are `tab-bar.tsx` and `masthead.tsx`'s
+ * Settings entrance, and both are `lg:hidden`; a desktop navigation — from
+ * `sidebar-nav.tsx`, which carries the same destinations and the same Settings link —
+ * attaches no type at all, lands on `default`, and gets exactly the nothing it got before.
  */
-const TAB_DIRECTIONS = {
-  "tab-forward": "tab-forward",
-  "tab-back": "tab-back",
+const NAV_DIRECTIONS = {
+  "nav-forward": "nav-forward",
+  "nav-back": "nav-back",
   default: "none",
 } as const;
 
-export function TabTransition({ children }: { children: React.ReactNode }) {
+export function NavTransition({ children }: { children: React.ReactNode }) {
   return (
-    <ViewTransition enter={TAB_DIRECTIONS} exit={TAB_DIRECTIONS} default="none">
+    <ViewTransition enter={NAV_DIRECTIONS} exit={NAV_DIRECTIONS} default="none">
       {children}
     </ViewTransition>
   );
