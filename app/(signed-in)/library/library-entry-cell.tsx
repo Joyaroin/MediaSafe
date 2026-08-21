@@ -122,6 +122,11 @@ export function LibraryEntryCell({
           libraryEntryId: entry.libraryEntryId,
           titleId: entry.titleId,
           name: entry.name,
+          // The same `abandoned` the tile's own dimming and state line are drawn from,
+          // handed on rather than re-derived — issue #199's bulk Abandon branches on it,
+          // and a second `entry.state === "abandoned"` computed somewhere else is a second
+          // place for the two to disagree.
+          abandoned,
         }}
         className="pressable flex w-full gap-3.5 p-3.5 text-left"
       >

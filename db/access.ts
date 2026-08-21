@@ -1467,6 +1467,110 @@ export async function abandonTitle(
 }
 
 /**
+ * How many entries a bulk abandon actually changed. A count rather than nothing at all,
+ * for `AddTitlesToListOutcome`'s reason: *did the whole set land* is what the transaction
+ * below promises outright, and *how many of them were not already given up on* is the
+ * only thing left to report.
+ */
+export interface AbandonTitlesOutcome {
+  readonly abandoned: number;
+}
+
+/**
+ * Give up on several titles at once, as one write — issue #199.
+ *
+ * ── Why this is not `abandonTitle` in a loop ─────────────────────────────────────────
+ *
+ * The same reason `addTitlesToList` is not `addTitleToList` in a loop: a loop cannot
+ * promise all-or-nothing. Six sequential `UPDATE`s are six transactions, four of which can
+ * commit before the fifth fails, and the reader is then left to work out which two of the
+ * six they still have to give up on. One transaction makes partial success structurally
+ * impossible, which is what lets `bulk-selection.ts` raise **one** toast for a lost
+ * abandon rather than one per title.
+ *
+ * ── Already-abandoned entries are read, not overwritten ──────────────────────────────
+ *
+ * The ticket is explicit that abandon over a set is not the toggle the single-title
+ * control is: *select four watching and two abandoned, press Abandon, and the four are
+ * abandoned while the two are left exactly as they were.* `bulk-selection.ts` filters the
+ * selection before it ever gets here, and this function filters again — not out of
+ * distrust of that caller, but because a Server Action is a POST endpoint anyone can call
+ * with any arguments, and `abandoned_at` is a time somebody's press already set.
+ * Re-stamping it with `now()` would keep the title abandoned while quietly moving *when*,
+ * which is a fact this write was never asked to change.
+ *
+ * So the entries are read first, inside the same transaction, and only the ones with a
+ * null `abandoned_at` are updated. `SELECT … FOR UPDATE` is deliberately not taken: two
+ * readers racing to abandon the same title both write the same column to a time within
+ * milliseconds of each other, and the loser of that race has nothing to correct.
+ *
+ * ── A missing entry is a throw, and takes the whole set with it ──────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` combined with the ids, exactly as `abandonTitle`. An id
+ * naming no row and an id naming somebody else's row are the same case from here, and both
+ * are a write that did not happen — so the transaction rolls back and none of the *other*
+ * ids are abandoned either. That is all-or-nothing holding for authorization as well as
+ * for infrastructure, which is the only thing that makes the toast's *nothing changed*
+ * true rather than usually true.
+ *
+ * ── Neither this nor `abandonTitle` touches `watch` ──────────────────────────────────
+ *
+ * Stated there at length and unchanged by doing several at once: giving up is not a fact
+ * about what was watched, so it is not recorded as one.
+ */
+export async function abandonTitles(
+  userId: UserId,
+  libraryEntryIds: readonly string[],
+  executor: Executor = getDb(),
+): Promise<AbandonTitlesOutcome> {
+  // No transaction and no round trip for a set with nothing in it, as `addTitlesToList`.
+  if (libraryEntryIds.length === 0) return { abandoned: 0 };
+
+  return executor.transaction(async (tx) => {
+    const rows = await tx
+      .select({ id: libraryEntry.id, abandonedAt: libraryEntry.abandonedAt })
+      .from(libraryEntry)
+      .where(
+        and(ownedBy(userId, libraryEntry), inArray(libraryEntry.id, [...libraryEntryIds])),
+      );
+
+    const found = new Set(rows.map((row) => row.id));
+    const missing = libraryEntryIds.filter((id) => !found.has(id));
+
+    if (missing.length > 0) {
+      throw new Error(
+        `Library entries ${missing.join(", ")} were not found in this account's library.`,
+      );
+    }
+
+    // Derived from the rows rather than from the request, so a caller that named the same
+    // entry twice updates it once and counts it once.
+    const pending = rows.filter((row) => row.abandonedAt === null).map((row) => row.id);
+
+    if (pending.length === 0) return { abandoned: 0 };
+
+    await tx
+      .update(libraryEntry)
+      .set({ abandonedAt: sql`now()` })
+      .where(
+        and(
+          ownedBy(userId, libraryEntry),
+          inArray(libraryEntry.id, pending),
+          // The read above already established this, and it is repeated so that the
+          // statement is right on its own: this is the line that makes re-stamping an
+          // existing `abandoned_at` impossible rather than merely unreached.
+          isNull(libraryEntry.abandonedAt),
+        ),
+      );
+
+    // `pending.length`, not a count read back off the `UPDATE`. The predicate is the one
+    // the read was taken under and both run in the same transaction, so the two numbers
+    // are equal by construction.
+    return { abandoned: pending.length };
+  });
+}
+
+/**
  * Take an abandonment back directly — the other of the two paths `CONTEXT.md`'s
  * *Abandoned* names out of, and the one that does not require recording a watch that did
  * not happen. The other path is the watch write itself: `recordWatch` already clears
