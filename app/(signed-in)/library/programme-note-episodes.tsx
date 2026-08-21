@@ -183,11 +183,13 @@ function SeasonList({
  *
  * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
  * is the same rule applied along the other axis, and issue #89 is what makes it
- * necessary: the slot holds three different sets of things — *Up next* beside *Strike
- * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch* — and they are
- * not the same width. Left to size themselves, the episode name beside them would jump
- * every time one gave way to another, which is `DESIGN.md`'s *nothing reflows* broken
- * sideways instead of vertically.
+ * necessary: the slot holds several different sets of things — *Up next* beside *Strike
+ * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch*; and, since
+ * #196, *watched up to here* on either side of that split — and they are not the same
+ * width. Left to size themselves, the episode name beside them would jump every time one
+ * gave way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways instead
+ * of vertically. (#89 wrote *three* here and enumerated three; the count is deliberately
+ * not restated now that the table below is the thing that enumerates them.)
  *
  * So the slot is fixed and its contents are right-aligned inside it, the name takes the
  * rest with `min-w-0`, and the name truncates rather than wrapping. Truncation is the
