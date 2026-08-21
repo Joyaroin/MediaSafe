@@ -31,6 +31,43 @@ export const GHOST_RECOVERY =
   "code-line border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
 
 /**
+ * `GHOST_RECOVERY` at the episode row's own measure — issue #203.
+ *
+ * **This is the same treatment, not a second one.** Identical border, identical accent,
+ * identical hover inversion; `px-2.5 py-1` where the surface-level one takes `px-4 py-2`.
+ * `DESIGN.md` §10 records that issue #195 *considered and declined* a third, neutral tier,
+ * and that ruling stands — what changes here is a measure, not a register, and the measure
+ * is not invented either: it is `RECORDING_CONTROL`'s, character for character
+ * (`app/(signed-in)/library/watch-mark-motion.tsx`). *Rewatch* and *Unwatch* now come back
+ * the same size as the *Strike it* they replace.
+ *
+ * ── Why the row needed one ───────────────────────────────────────────────────────────
+ *
+ * #195 moved the episode row's two watched controls onto `GHOST_RECOVERY` without
+ * re-measuring the fixed slot they sit in, and `px-4 py-2` does not fit it: the settled
+ * watched row went to `50.2px` against every other state's `44px`, so a row grew the
+ * moment a mark settled and took every row under it with it — `DESIGN.md` §6's
+ * *re-measure if you touch the row*, and the exact property `episode-line.ts` records
+ * being measured into existence twice. `programme-note-episodes.tsx`'s `TRAILING` carries
+ * the full before/after table.
+ *
+ * ── `shrink-0` is part of the treatment here, and only here ──────────────────────────
+ *
+ * Its one caller is a **fixed-measure** flex slot, which is the whole reason this variant
+ * exists. A flex child that may shrink is a control whose label wraps to two lines the
+ * first time a state runs long, which grows the row again by a different route — the
+ * failure this ticket is closing, wearing a different hat. `RECORDING_CONTROL` bakes it in
+ * beside the same slot for the same reason. The surface-level `GHOST_RECOVERY` above does
+ * not, and must not: it lays out in ordinary flow on a dozen surfaces that have no slot.
+ *
+ * If a second caller ever wants this measure outside a fixed slot, that is the moment to
+ * split the `shrink-0` back out — not before, because a constant with an unused escape
+ * hatch is a constant nobody can read the intent of.
+ */
+export const GHOST_RECOVERY_COMPACT =
+  "code-line shrink-0 border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
+
+/**
  * The one primary recovery action on a surface. Pressed state is `brightness(0.9)` over
  * `200ms`, per DESIGN.md's recording control.
  */
