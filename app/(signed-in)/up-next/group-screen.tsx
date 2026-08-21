@@ -1,3 +1,4 @@
+import { BulkSelectionProvider } from "@/app/(signed-in)/library/bulk-selection-provider";
 import { GroupTile, type GroupTileEntry } from "./group-tile";
 
 /**
@@ -31,8 +32,18 @@ const FIRST_ROW = 6;
  * ── No pane, no swap — a plain grid of `Link`s ────────────────────────────────────────
  *
  * `group-tile.tsx`'s own note: this screen has no desktop pane to select into, so a tile
- * here always pushes `/library/{id}` — at any width, since nothing gates this route to the
- * phone the way `up-next-groups.tsx` gates the five groups it is reached from.
+ * here always pushes `/library/{id}` outside a hold — at any width, since nothing gates
+ * this route to the phone the way `up-next-groups.tsx` gates the five groups it is
+ * reached from.
+ *
+ * ── Selection, gated here rather than by the tree — issue #198 ───────────────────────
+ *
+ * This route has no `lg:hidden` sibling the way the phone home does: it renders one grid
+ * at every width, `library-grid.tsx`'s own shape. So `BulkSelectionProvider` is mounted
+ * with its own `1024px` check doing real work here — the same deviation
+ * `bulk-selection-provider.tsx` already documents for the Library bill, reused rather than
+ * re-argued. Everything below the provider — the store, the action bar, the count, *Add to
+ * list*, *Done* — is #197's, unmodified.
  */
 /**
  * The head all five group screens share, and now their `loading.tsx` too (issue #181) —
@@ -72,15 +83,17 @@ export function GroupScreen({
           <p className="text-note text-dim">Nothing here right now.</p>
         </section>
       ) : (
-        <ol className="grid grid-cols-3 gap-4 p-4 sm:grid-cols-4 lg:grid-cols-6">
-          {entries.map((entry, index) => (
-            <GroupTile
-              key={entry.libraryEntryId}
-              entry={entry}
-              aboveFold={index < FIRST_ROW}
-            />
-          ))}
-        </ol>
+        <BulkSelectionProvider>
+          <ol className="grid grid-cols-3 gap-4 p-4 sm:grid-cols-4 lg:grid-cols-6">
+            {entries.map((entry, index) => (
+              <GroupTile
+                key={entry.libraryEntryId}
+                entry={entry}
+                aboveFold={index < FIRST_ROW}
+              />
+            ))}
+          </ol>
+        </BulkSelectionProvider>
       )}
     </main>
   );

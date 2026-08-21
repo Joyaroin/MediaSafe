@@ -1,9 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ViewTransition } from "react";
+import { useEffect, useRef, useState, ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
+import {
+  HOLD_MS,
+  HOLD_SLOP_PX,
+  HOLDABLE,
+  SELECTED,
+} from "@/app/(signed-in)/library/selectable-entry";
+import {
+  useBulkSelection,
+  useIsSelected,
+  useIsSelecting,
+} from "@/app/(signed-in)/library/bulk-selection-context";
+import { SelectionCheckBadge } from "@/app/(signed-in)/library/selection-check-badge";
 import { groupPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { useTitleSheet, type TitleSheetEntry } from "./title-sheet-context";
 
@@ -38,6 +50,28 @@ export type GroupTileEntry = TitleSheetEntry;
  * mounted. Without the drop the browser finds `group-poster-{id}` on both and skips the
  * morph rather than choosing. The rail does exactly this for the desktop pane, for exactly
  * this reason.
+ *
+ * ── The hold, reused rather than re-derived — issue #198 ─────────────────────────────
+ *
+ * `selectable-entry.tsx`'s gesture, verbatim: a `pointerdown` starts `HOLD_MS`'s timer, a
+ * drift past `HOLD_SLOP_PX` cancels it, and the click a landed hold's own pointer-up sends
+ * is swallowed rather than acted on. Nothing about that mechanism is Library-specific — it
+ * was already just *the finger stayed still for half a second*, and a group track exercises
+ * it against a press that can just as easily turn into a horizontal flick. The same slop
+ * that protects a scroll protects a swipe; there is no second gesture to write.
+ *
+ * What differs from a bill cell is what a landed tap does next, because this tile is
+ * sometimes a `<Link>` and sometimes a sheet-opening `<button>`. Both need the browser's own
+ * navigation suppressed on the two clicks this gesture claims — the swallowed one and a tap
+ * while selecting — so `onClick` calls `preventDefault()` there rather than relying on
+ * `type="button"` the way `selectable-entry.tsx` could.
+ *
+ * `useBulkSelection()`, `useIsSelecting()` and `useIsSelected()` all come from the Library's
+ * `bulk-selection-context.ts` unmodified: availability is a fact about the tree exactly the
+ * way #197 built it, and the tree above this tile is either `up-next-groups.tsx`'s
+ * `BulkSelectionProvider` or `group-screen.tsx`'s — never both, never neither where the
+ * gesture is meant to exist. The store, the action bar, the count and the exit rules are the
+ * ones #197 shipped; nothing here reimplements any of them.
  */
 export function GroupTile({
   entry,
@@ -68,6 +102,113 @@ export function GroupTile({
   const sheet = useTitleSheet();
   const heldBySheet = sheet?.openEntryId === entry.libraryEntryId;
 
+  const bulk = useBulkSelection();
+  const selecting = useIsSelecting();
+  const selected = useIsSelected(entry.libraryEntryId);
+
+  const [holding, setHolding] = useState(false);
+  const [landed, setLanded] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  /** The hold landed and the browser's own click has not been swallowed yet. */
+  const swallowClick = useRef(false);
+
+  function cancelHold(): void {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    origin.current = null;
+    setHolding(false);
+  }
+
+  // A tile can be unmounted mid-hold — the surface it is on navigates away, or (on the
+  // home) the tab is left before the timer lands. Without this the timer still fires, into
+  // a store that is still very much alive, and a title the reader can no longer see joins
+  // the selection.
+  useEffect(() => cancelHold, []);
+
+  function onPointerDown(event: React.PointerEvent<HTMLElement>): void {
+    if (bulk === null) return;
+    // `selectable-entry.tsx`'s own reason: `prefers-reduced-motion` leaves no
+    // `animationend` to clear this on, so it is cleared here too, on every new hold.
+    setLanded(false);
+    swallowClick.current = false;
+    origin.current = { x: event.clientX, y: event.clientY };
+    setHolding(true);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      origin.current = null;
+      swallowClick.current = true;
+      setHolding(false);
+      setLanded(true);
+      bulk.hold({
+        libraryEntryId: entry.libraryEntryId,
+        titleId: entry.titleId,
+        name: entry.titleName,
+      });
+    }, HOLD_MS);
+  }
+
+  function onPointerMove(event: React.PointerEvent<HTMLElement>): void {
+    const from = origin.current;
+    if (from === null) return;
+    if (
+      Math.abs(event.clientX - from.x) <= HOLD_SLOP_PX &&
+      Math.abs(event.clientY - from.y) <= HOLD_SLOP_PX
+    ) {
+      return;
+    }
+    cancelHold();
+  }
+
+  function onClick(event: React.MouseEvent<HTMLElement>): void {
+    if (swallowClick.current) {
+      swallowClick.current = false;
+      event.preventDefault();
+      return;
+    }
+
+    if (bulk !== null && selecting) {
+      event.preventDefault();
+      bulk.toggle({
+        libraryEntryId: entry.libraryEntryId,
+        titleId: entry.titleId,
+        name: entry.titleName,
+      });
+      return;
+    }
+
+    if (sheet !== null) sheet.open(entry);
+    // Outside a sheet this is a `<Link>`, whose own default navigation is left to run.
+  }
+
+  const holdHandlers = {
+    onClick,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: cancelHold,
+    onPointerCancel: cancelHold,
+    onPointerLeave: cancelHold,
+    // A long press on a phone otherwise raises the text-selection callout over the tile
+    // the reader is holding, which is the browser answering a gesture this app has just
+    // claimed. Suppressed only where the gesture exists.
+    onContextMenu: bulk === null ? undefined : (event: React.MouseEvent) => event.preventDefault(),
+    // `currentTarget === target` only: the check badge inside this element plays its own
+    // arrival, and an `animationend` bubbling up from it would clear this one's overshoot
+    // part-way through.
+    onAnimationEnd: (event: React.AnimationEvent<HTMLElement>) => {
+      if (event.currentTarget === event.target) setLanded(false);
+    },
+    "data-holding": holding ? "true" : undefined,
+    "data-landed": landed ? "true" : undefined,
+    "aria-pressed": selecting ? selected : undefined,
+  };
+
+  const tileClassName = `pressable group block w-full text-left${
+    bulk === null ? "" : ` ${HOLDABLE}`
+  }`;
+
   /* `[--poster-radius:14px]` rather than `rounded-[14px]`: both would be utilities and
        which one won would be decided by Tailwind's emit order, not by this class list
        (`globals.css`, the `poster` utility).
@@ -87,27 +228,43 @@ export function GroupTile({
        rectangles unchanged, so this fill is seen only by a title with no artwork at all.
        Against `--raised` the ring reads as drawn, and giving the `poster` utility a
        second fill for one surface would change the artwork-less well on every other
-       surface in the app. */
+       surface in the app.
+
+     ── The selected ring, since #198 ────────────────────────────────────────────────
+     Drawn here rather than on the tile's outer element: a group tile has no padded card
+     wrapping it the way a bill cell does, and `poster`'s own `overflow: hidden` is the one
+     box on this tile that already clips to a corner radius (`selectable-entry.tsx`'s
+     `SELECTED`). */
   const poster = (
     <Poster
       posterPath={entry.posterPath}
       width={POSTER_CDN_WIDTH}
       className={`w-full [--poster-radius:14px] shadow-[inset_0_0_0_1px_var(--color-hair)] transition duration-[var(--dur-fast)] group-hover:brightness-110 ${
         abandoned ? "opacity-55" : ""
-      }`}
+      }${selected ? ` ${SELECTED}` : ""}`}
       aboveFold={aboveFold}
     />
   );
 
   const body = (
     <>
-      {heldBySheet ? (
-        poster
-      ) : (
-        <ViewTransition name={groupPosterTransitionName(entry.libraryEntryId)}>
-          {poster}
-        </ViewTransition>
-      )}
+      {/* `relative` and nothing else: the check badge (#197, reused by #198) hangs off
+          the poster's own corner rather than the tile's, and the wrapper carries no
+          `overflow-hidden` of its own so the badge is free to sit half outside the
+          poster's box. */}
+      <div className="relative">
+        {heldBySheet ? (
+          poster
+        ) : (
+          <ViewTransition name={groupPosterTransitionName(entry.libraryEntryId)}>
+            {poster}
+          </ViewTransition>
+        )}
+
+        {/* Renders nothing at all outside a selection provider. */}
+        <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
+      </div>
+
       <p className="mt-2.5 line-clamp-2 text-tile font-medium leading-[1.25] tracking-[-0.01em] text-ink">
         {entry.titleName}
       </p>
@@ -126,16 +283,13 @@ export function GroupTile({
       {sheet === null ? (
         <Link
           href={`/library/${entry.libraryEntryId}`}
-          className="pressable group block w-full text-left"
+          className={tileClassName}
+          {...holdHandlers}
         >
           {body}
         </Link>
       ) : (
-        <button
-          type="button"
-          onClick={() => sheet.open(entry)}
-          className="pressable group block w-full text-left"
-        >
+        <button type="button" className={tileClassName} {...holdHandlers}>
           {body}
         </button>
       )}

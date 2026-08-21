@@ -71,15 +71,25 @@ export const DESKTOP_BREAKPOINT = "(min-width: 1024px)";
  * Android both settle around it — and the ticket's *around half a second*. Shorter turns
  * a slow tap into a selection; longer and the reader lets go before anything happens and
  * concludes the gesture does not exist.
+ *
+ * Exported since #198: `group-tile.tsx` runs the identical timer against a track that
+ * scrolls instead of a grid that does not, and a second `500` typed there would be the
+ * silent copy `DESKTOP_BREAKPOINT`'s own export already exists to prevent.
  */
-const HOLD_MS = 500;
+export const HOLD_MS = 500;
 
 /**
  * How far the pointer may drift and still count as held. A finger resting on a phone moves
  * a few pixels on its own; a scroll moves many more, and a grid of 472 cells is scrolled
  * far more often than it is held.
+ *
+ * Exported since #198, for the same reason as `HOLD_MS` — and it is this slop, unchanged,
+ * that answers the ticket's *a press that becomes a drag must not select* for a horizontal
+ * track: a flick moves the pointer well past `10px` before the timer would ever land, so
+ * the same cancel that protects a vertical scroll protects a horizontal one without a
+ * second rule.
  */
-const HOLD_SLOP_PX = 10;
+export const HOLD_SLOP_PX = 10;
 
 /**
  * What a cell that can be held has to give up, and it is all about the browser's own
@@ -94,8 +104,12 @@ const HOLD_SLOP_PX = 10;
  *
  * Both are added **only where the gesture exists**. On the desktop a reader can still
  * select a title's text and still right-click its artwork, exactly as before.
+ *
+ * Exported since #198: `group-tile.tsx`'s poster is an `<img>` too, and mobile Safari's
+ * *Save Image* / *Copy* sheet is exactly as much a false answer to a long press there as it
+ * is here.
  */
-const HOLDABLE = "select-none [-webkit-touch-callout:none]";
+export const HOLDABLE = "select-none [-webkit-touch-callout:none]";
 
 /**
  * The ring on a selected cell — **`--ink`, and not the accent the ticket asked for.**
@@ -128,8 +142,15 @@ const HOLDABLE = "select-none [-webkit-touch-callout:none]";
  * true. The negative offset draws it inside the border box, where the `li`'s own
  * `overflow-hidden` clips it to the card's `18px` radius — so the ring follows the corner
  * without this restating the radius.
+ *
+ * Exported since #198. `group-tile.tsx` draws it on the poster itself rather than on a
+ * card — a group tile has no padded, radiused wrapper the way a bill cell does, and
+ * `app/poster.tsx`'s own `overflow: hidden` is the only box here that clips to a corner —
+ * but the colour and the reasoning against the accent are unchanged: `home-group.tsx`'s
+ * heading is this screen's one accent role already, and a second one on the same tile
+ * would be the exact collision this constant exists to avoid.
  */
-const SELECTED = "outline-2 -outline-offset-2 outline-ink";
+export const SELECTED = "outline-2 -outline-offset-2 outline-ink";
 
 export function SelectableEntry({
   title,
