@@ -13,5 +13,7 @@ export default async function AbandonedGroupPage() {
   const userId = await requireUserId();
   const entries = await listAbandoned(userId);
 
-  return <GroupScreen label="Abandoned" entries={entries} />;
+  // `abandoned` because every entry `listAbandoned` returns is — the group is what knows,
+  // and issue #199's bulk Abandon has to skip them. See `GroupScreen`'s own prop note.
+  return <GroupScreen label="Abandoned" entries={entries} abandoned />;
 }

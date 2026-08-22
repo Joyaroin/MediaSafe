@@ -62,10 +62,27 @@ export function GroupHeading({ label }: { label: string }) {
 export function GroupScreen({
   label,
   entries,
+  abandoned = false,
 }: {
   /** Two words at most — the same label the home's `HomeGroup` printed for this group. */
   label: string;
   entries: readonly GroupTileEntry[];
+  /**
+   * Every title on this screen is abandoned — `abandoned/page.tsx` and no other caller,
+   * exactly as `up-next-groups.tsx` passes it for the home's fifth group.
+   *
+   * It is the group that knows, not the tile: `GroupTileEntry` carries no state, and the
+   * five screens are each built from one `library_entry_state` read, so *which group is
+   * this* is the only place the answer exists. Issue #199 is why the full screen needs it
+   * and the home group already had it — a selection made here feeds a bulk Abandon, and
+   * that press must skip titles already given up on. Without this the screen made
+   * entirely of them would be the one screen where the rule read every tile wrong.
+   *
+   * It still produces no dimming here, for the reason `GroupTile`'s own prop note gives:
+   * a heading that says ABANDONED is the explanation, and a grid of grey titles under it
+   * would be the same fact said twice.
+   */
+  abandoned?: boolean;
 }) {
   return (
     <main className="flex w-full flex-1 flex-col">
@@ -90,6 +107,7 @@ export function GroupScreen({
                 key={entry.libraryEntryId}
                 entry={entry}
                 aboveFold={index < FIRST_ROW}
+                abandoned={abandoned}
               />
             ))}
           </ol>
