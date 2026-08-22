@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import type { EpisodeDetail, LibraryState } from "@/db/access";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import {
   EPISODE_NAME_CELL,
@@ -183,41 +183,77 @@ function SeasonList({
  *
  * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
  * is the same rule applied along the other axis, and issue #89 is what makes it
- * necessary: the slot holds three different sets of things — *Up next* beside *Strike
- * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch* — and they are
- * not the same width. Left to size themselves, the episode name beside them would jump
- * every time one gave way to another, which is `DESIGN.md`'s *nothing reflows* broken
- * sideways instead of vertically.
+ * necessary: the slot holds several different sets of things — *Up next* beside *Strike
+ * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch*; and, since
+ * #196, *watched up to here* on either side of that split — and they are not the same
+ * width. Left to size themselves, the episode name beside them would jump every time one
+ * gave way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways instead
+ * of vertically. (#89 wrote *three* here and enumerated three; the count is deliberately
+ * not restated now that the table below is the thing that enumerates them.)
  *
  * So the slot is fixed and its contents are right-aligned inside it, the name takes the
  * rest with `min-w-0`, and the name truncates rather than wrapping. Truncation is the
  * cost, and it is the right one: a name that wraps takes the row's height with it, which
  * is the property #88 measured twice to get.
  *
- * **`10rem` is what the row already needed, not new width.** Measured against the
- * compiled CSS in a real browser, the widest of the three states is the one that was
- * there before issue #89 — *Up next* beside *Strike it*, at `153.6px`. The one #89 adds
- * comes in under it: *Rewatch* beside *Unwatch* at `138.1px` (re-measured for #140, which
- * renamed the label from *Undo*). So nothing had to give way to make room, and the
- * episode name is exactly as wide as it was.
+ * ── `12rem`, and what issue #203 found when it re-measured ──────────────────────────
  *
- * #145 needs no re-measurement, and this is the case where saying why is worth more than
- * a number: it **removes** a state rather than adding one. *Rewatch* beside *Watched*, at
- * `136.5px`, was the narrower of the two watched states and is unreachable now that every
- * watched row offers an unwatch. The widest state is the one it always was.
+ * The slot was `10rem` from #89 until #203, on the strength of a measurement that was
+ * true when it was taken: the widest state was *Up next* beside *Strike it*, and #89's
+ * own addition — *Rewatch* beside *Unwatch* — came in under it, so nothing had to give
+ * way and the episode name stayed exactly as wide as it was.
  *
- * That is also what settled the rewatch control's label, and the argument outlives the
- * state it was measured against. #89 measured *Watch it again* at `107.8px` and recorded
- * what it did to *Rewatch · Watched*: `136.5px` became `182px`. That state is gone with
- * #145 — but the two recorded numbers are what matter, and their difference is the
- * label's own cost, `45.5px`, which it charges to whichever watched state is on screen.
- * The state that replaced it is the wider of the two at `138.1px`, so the swap lands past
- * `183px` there: over the `160px` slot, and only payable by taking `22px` off every
- * episode name on the phone. *Rewatch* is `CONTEXT.md`'s own word for the thing, and it
- * fits. (Arithmetic on #89's measurements, not a fresh one — nothing about the two
- * surviving states' widths changed, so there was nothing new to measure.)
+ * **Issue #195 ended that and nothing re-measured.** It took the two watched controls
+ * from underlined text to `GHOST_RECOVERY`, whose `px-4 py-2` and border are far wider
+ * and taller than the prose they replaced. The result was on `main` for two tickets: a
+ * settled watched row at `50.2px` against every other state's `44px`, and `215.9px` of
+ * controls in a `160px` slot, spilling leftward over the episode name because they are
+ * `justify-end` inside a `shrink-0` box. **The row grew the moment a mark settled** —
+ * `DESIGN.md` §6's *re-measure if you touch the row*, and the exact property
+ * `episode-line.ts` was measured into existence twice to hold.
+ *
+ * Re-measured for #203 in a real Chromium tab against the compiled CSS with Archivo
+ * loaded (`getBoundingClientRect`), over every state the row has, at a `420px` pane and
+ * again at `375px` and `340px` — the contents figures are identical at all three, because
+ * the slot is fixed and the name takes the rest:
+ *
+ * | Trailing slot state | Before (of `160px`) | Row | After (of `192px`) | Row |
+ * |---|---|---|---|---|
+ * | *Strike it* | `63.7px` | `44px` | `63.7px` | `44px` |
+ * | *Up next* · *Strike it* | `118.3px` | `44px` | `114.3px` | `44px` |
+ * | *Watched* (mid-sweep) | `49.1px` | `44px` | `49.1px` | `44px` |
+ * | up-to · *Strike it* | `101.7px` | `44px` | `97.7px` | `44px` |
+ * | *Up next* · up-to · *Strike it* | `156.3px` | `44px` | `148.3px` | `44px` |
+ * | *Rewatch* · *Unwatch* | `177.9px` — **over** | `50.2px` | `149.9px` | `44px` |
+ * | up-to · *Rewatch* · *Unwatch* | `215.9px` — **over** | `50.2px` | **`183.9px`** | `44px` |
+ *
+ * Every state is back on `44px`, and the widest lands `8.1px` inside the slot — more
+ * headroom than the row already lived with, since #196's widest unwatched state sat
+ * `3.7px` inside the old one.
+ *
+ * ── Three things gave way, and the third is the one that cost something ─────────────
+ *
+ * 1. **The controls take `GHOST_RECOVERY_COMPACT`** — the same register at
+ *    `RECORDING_CONTROL`'s measure, so *Rewatch* and *Unwatch* are the size of the
+ *    *Strike it* they replace. That alone fixes the **height** outright, and is the whole
+ *    of what #203 called "a more compact ghost variant".
+ * 2. **The slot's own gap is `gap-2`, not `gap-3`.** The row's `gap-3` separates its three
+ *    major cells — number, name, slot. These are sibling controls inside one of those
+ *    cells, and a group should sit tighter than the cells it sits in. It is also `8px`
+ *    that does not come out of the name.
+ * 3. **The slot is `12rem`.** This is the part that is a decision rather than a
+ *    correction, and #203 said so: no padding value fixes the widest state. Its two
+ *    labels are `48.7px` and `49.2px` of text and the up-to glyph is a `26px` box —
+ *    `123.9px` before a single pixel of border, padding or gap — so `160px` cannot hold
+ *    them and be a button. The slot had to widen or a control had to go, and removing one
+ *    is #196's and #145's call, not this ticket's.
+ *
+ * **What that costs is name width, stated plainly**: `152px` → `120px` at a `420px` pane,
+ * `107px` → `75px` at `375px`, `71px` → `40px` at `340px`. The name still measures the
+ * same in every one of the seven states at a given width — which is the property this
+ * whole constant exists for, and the one thing that was never allowed to be traded.
  */
-const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
+const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
 
 /**
  * `DESIGN.md`, Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
@@ -323,6 +359,12 @@ const TRAILING = "flex w-40 shrink-0 items-center justify-end gap-3";
  * never accent, exactly as the abandon control was, and now takes the same `GHOST_RECOVERY`
  * as everything else in the batch — a knowing accent spend `remove-control.tsx` and
  * `abandon-control.tsx`'s own docblocks name too.
+ *
+ * Issue #203 keeps every word of that and changes the measure: the pair wears
+ * `GHOST_RECOVERY_COMPACT`, which is `GHOST_RECOVERY` at `RECORDING_CONTROL`'s padding.
+ * #195 chose the register and did not re-measure the fixed slot it had to fit in, and at
+ * `px-4 py-2` it did not fit — see `TRAILING`. So the chrome that distinguished these two
+ * from *Strike it* is still gone, deliberately; what came back is only its **size**.
  *
  * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
  * for the length of the sweep, and the controls arrive with `settled`. A control that
@@ -444,17 +486,22 @@ function EpisodeLine({
           <span className="code-line text-dim">Watched</span>
         ) : (
           <>
-            {/* Issue #195: both rows lose their underline for the same GHOST_RECOVERY
-                treatment the rest of this batch takes. Rewatch already painted accent —
-                it re-records a watch, which is what the accent is for — so this is no
+            {/* Issue #195: both rows lose their underline for the same ghost treatment
+                the rest of this batch takes. Rewatch already painted accent — it
+                re-records a watch, which is what the accent is for — so this is no
                 widening for that one; Unwatch was dim and moves onto the accent register
-                knowingly, the same call the abandon and remove controls make below. */}
+                knowingly, the same call the abandon and remove controls make below.
+
+                Issue #203: at `GHOST_RECOVERY_COMPACT` rather than `GHOST_RECOVERY` —
+                the same register at `RECORDING_CONTROL`'s measure, so the pair is the
+                size of the *Strike it* it replaces and the row does not grow when a mark
+                settles. `TRAILING` above holds the re-measurement. */}
             <button
               type="button"
               onClick={() => void attempt()}
               disabled={pending}
               aria-label={`Watch ${fullName} again`}
-              className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+              className={`${GHOST_RECOVERY_COMPACT} ${IN_FLIGHT}`}
             >
               Rewatch
             </button>
@@ -464,7 +511,7 @@ function EpisodeLine({
               onClick={() => void unwatch()}
               disabled={pending}
               aria-label={`Unwatch ${fullName}`}
-              className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+              className={`${GHOST_RECOVERY_COMPACT} ${IN_FLIGHT}`}
             >
               Unwatch
             </button>
@@ -585,38 +632,37 @@ function MarkWatchedButton({
  * pane and again at `375px`, both figures identical because the slot is fixed and the
  * name takes the rest:
  *
- * | Trailing slot state | Width, of `160px` | Row height |
+ * | Trailing slot state | Width, of `192px` | Row height |
  * |---|---|---|
  * | *Strike it* | `63.7px` | `44px` |
- * | *Up next* · *Strike it* | `118.3px` | `44px` |
+ * | *Up next* · *Strike it* | `114.3px` | `44px` |
  * | *Watched* (mid-sweep) | `49.1px` | `44px` |
- * | this · *Strike it* | `101.7px` | `44px` |
- * | ***Up next* · this · *Strike it*** | **`156.3px`** | `44px` |
- * | *Rewatch* · *Unwatch* | `177.9px` — **over** | `51.2px` |
- * | this · *Rewatch* · *Unwatch* | `215.9px` — **over** | `50.2px` |
+ * | this · *Strike it* | `97.7px` | `44px` |
+ * | ***Up next* · this · *Strike it*** | **`148.3px`** | `44px` |
+ * | *Rewatch* · *Unwatch* | `149.9px` | `44px` |
+ * | this · *Rewatch* · *Unwatch* | `183.9px` | `44px` |
  *
  * The fifth row is the widest state this control can put a row into on its own: an
- * up-next episode with a gap behind it, landing `3.7px` inside the slot at `44px` tall.
- * Across every state above it the episode name is **exactly as wide as it was** — `152px`
- * at a `420px` pane, `107px` at `375px` — which is the whole reason this is an icon:
- * *Watched up to here* as words is far past the slot, and the only thing left to pay for
- * them with is the name.
+ * up-next episode with a gap behind it. Across every state the episode name is **exactly
+ * as wide as it was** — `120px` at a `420px` pane, `75px` at `375px` — which is the whole
+ * reason this is an icon: *Watched up to here* as words is far past the slot, and the only
+ * thing left to pay for them with is the name.
  *
- * ── The last two rows are not this control's doing, and they are a live bug ──────────
+ * ── The last two rows were a live bug when #196 shipped, and #203 closed it ──────────
  *
- * They are measured here because this file is where the row's numbers live, and leaving
- * them out would make the table read as though the row still fits. It does not. Issue
- * #195 took *Rewatch* and *Unwatch* from underlined text to `GHOST_RECOVERY`, whose
- * `px-4 py-2` and border are far wider and taller than the text they replaced, and it did
- * not re-measure the slot they sit in — `DESIGN.md` §6's *re-measure if you touch the
- * row*, and the property `episode-line.ts` records being measured into existence twice.
+ * They are measured here because this file is where the row's numbers live, and #196 left
+ * them in rather than out so the table could not read as though the row still fitted. It
+ * did not. Issue #195 had taken *Rewatch* and *Unwatch* from underlined text to
+ * `GHOST_RECOVERY`, whose `px-4 py-2` and border are far wider and taller than the text
+ * they replaced, without re-measuring the slot they sit in — `DESIGN.md` §6's *re-measure
+ * if you touch the row*. Against the old `160px` slot they came back `177.9px` and
+ * `215.9px`, both at `50.2px` tall against every other state's `44px`.
  *
- * The consequence is on `main` with or without this ticket: a settled watched row is
- * `177.9px` of a `160px` slot and **`51.2px` tall against every other state's `44px`**, so
- * the row grows the moment a mark settles and takes every row under it with it. This
- * control adds to the overflow in that one state and causes none of it; the fix belongs
- * to the slot, which is #195's measurement to redo rather than this ticket's to
- * unilaterally re-cut, and it is filed rather than fixed here.
+ * Issue #203 re-cut the slot to `192px`, moved that pair onto `GHOST_RECOVERY_COMPACT` and
+ * tightened the slot's own gap to `gap-2`; `TRAILING` carries the before-and-after in full.
+ * **This control was never the cause and is not the fix** — its own widest state was
+ * `3.7px` inside the old slot — but it did add `38px` to the worst of the two, which is
+ * why the state is still tabulated here.
  *
  * A stated cost: the control's own box is `26px` square, not the `44px` a thumb wants.
  * That is the register the row already uses — *Strike it*'s box is `26.2px` — so the two
