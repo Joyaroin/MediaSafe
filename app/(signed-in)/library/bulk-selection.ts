@@ -303,7 +303,7 @@ export function createBulkSelection({
   ): Promise<boolean> {
     apply({ adding: true });
 
-    const outcome = await add(listId, titles);
+    const outcome = await sendAdd(listId, titles);
 
     apply({ adding: false });
 
@@ -345,7 +345,7 @@ export function createBulkSelection({
    * The one failure `addTitlesToListAction` cannot report itself, turned into the same
    * outcome shape: the request never reaching the server at all.
    */
-  async function add(
+  async function sendAdd(
     listId: string,
     titles: readonly SelectableTitle[],
   ): Promise<AddTitlesToListActionOutcome> {
@@ -361,6 +361,15 @@ export function createBulkSelection({
 
   /**
    * One attempt at the bulk abandon — `attempt` above, over the other write.
+   *
+   * The two are the same seven steps and are still two functions, which is a choice rather
+   * than an oversight. What differs between them is not a value that could be a parameter:
+   * it is which flag marks the wire busy, which of the two handles above holds the toast,
+   * what the request carries, and which slice of the selection is written. A merged version
+   * would take all four as arguments — two of them setter closures, because a handle cannot
+   * be assigned through a parameter — and the result would be one function that reads like
+   * neither write while the rules each one exists to state got harder to find. Twenty
+   * duplicated lines is the cheaper of the two costs.
    *
    * Two arguments and not one, because the two sets are different questions and conflating
    * them is precisely the bug this ticket exists to avoid. `selection` is everything the
