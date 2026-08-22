@@ -29,9 +29,15 @@ import { createContext, useContext } from "react";
  * This is what makes the pending frame possible: the sheet can draw the poster, the name
  * and the year immediately — `DESIGN.md` §9's *render what you already know* — and wait
  * only for what the read actually answers.
+ *
+ * `titleId` since issue #198: the sheet never reads it, but `group-tile.tsx` does, to build
+ * the `SelectableTitle` its hold gesture hands to `bulk-selection.ts` — a list membership is
+ * keyed on it (`db/tables.ts`), not on `libraryEntryId`. Both `UpNextEntry` and
+ * `LibraryStateGroupEntry` already carry it, so widening this shape costs no new read.
  */
 export interface TitleSheetEntry {
   readonly libraryEntryId: string;
+  readonly titleId: string;
   readonly titleName: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
