@@ -9,7 +9,12 @@ import {
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
 import { PHONE_BAR } from "@/app/phone-bar";
 import type { ListSummary } from "@/db/access";
-import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import {
+  GHOST_RECOVERY,
+  GHOST_RECOVERY_COMPACT,
+  IN_FLIGHT,
+  SOLID_RECOVERY_COMPACT,
+} from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context";
@@ -61,20 +66,29 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  * heading below still asks it the question it answers well, *how do you name a count of
  * titles in a sentence.*
  *
- * The gap between the four closes from `gap-3` to `gap-2`, and that is the only other
- * thing spent. What is deliberately **not** spent is the buttons' own padding: the three
- * keep `GHOST_RECOVERY` and `SOLID_RECOVERY` exactly as those constants write them, which
- * is `DESIGN.md`'s `0.5rem 1rem` for a recovery button. A `px-3` was tried here first and
- * is worth recording as a thing not to try again — it is not merely off-system, it does
- * **nothing**. This project has no `tailwind-merge`, so two padding utilities on one
- * element are decided by the order Tailwind emits them, and `.px-4` is written after
- * `.px-3` in the stylesheet; the later rule wins whatever the class string says. A
- * call-site override of a named treatment is silently dead here, not merely discouraged.
+ * The gap closes from `gap-3` to `gap-2`, and the three controls take the **compact
+ * measure** — `SOLID_RECOVERY_COMPACT` and `GHOST_RECOVERY_COMPACT`, `px-2.5 py-1` against
+ * the surface-level `px-4 py-2`. That is the same treatment at a different measure, not a
+ * second register: issue #203 established the ghost one for the episode row and this
+ * ticket added the solid one beside it, both argued in `errors/recovery-buttons.ts`. The
+ * two tickets are the same failure from opposite ends — there a fixed slot grew a row,
+ * here a fixed row squeezed a label.
  *
- * `truncate` under a `min-w-0` is what absorbs the rest: the buttons are `shrink-0`, so
- * where the row still does not fit — a 375px phone, narrower than the ones this was drawn
- * against — the count clips and the controls stay whole, which is the right way round for
- * a bar whose reason to exist is the controls.
+ * A `px-3` at these call sites was tried first, and is worth recording as a thing not to
+ * try again: it is not merely off-system, it does **nothing**. This project has no
+ * `tailwind-merge`, so two padding utilities on one element are decided by the order
+ * Tailwind emits them, and `.px-4` is written after `.px-3` in the stylesheet — the later
+ * rule wins whatever the class string says. Overriding a named treatment from a call site
+ * here is inert, which is exactly why the measure had to become a named constant.
+ *
+ * `truncate` under a `min-w-0` is what absorbs the rest: `shrink-0` is baked into both
+ * compact constants, so where the row still does not fit the count clips and the controls
+ * stay whole, which is the right way round for a bar whose reason to exist is the
+ * controls.
+ *
+ * The dialog below keeps the **surface** measure — its *Cancel* is still `GHOST_RECOVERY`.
+ * The compact one earns its keep in a row that cannot grow, and a modal with a whole page
+ * to itself is the opposite of that.
  *
  * ── Abandon sits beside Add to list, and Done still ends the row ─────────────────────
  *
@@ -199,7 +213,7 @@ export function SelectionActionBar() {
             type="button"
             onClick={openPicker}
             disabled={busy}
-            className={`${SOLID_RECOVERY} h-11 shrink-0 ${IN_FLIGHT}`}
+            className={`${SOLID_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
           >
             {view.adding ? "Adding" : "Add to list"}
           </button>
@@ -214,7 +228,7 @@ export function SelectionActionBar() {
             // Abandoning destroys nothing and every one of these titles keeps a control
             // that takes it back, so there is no number here worth stopping the reader to
             // state — and a summary across six is the collapse that reasoning rejects.
-            className={`${GHOST_RECOVERY} h-11 shrink-0 ${IN_FLIGHT}`}
+            className={`${GHOST_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
           >
             {view.abandoning ? "Abandoning" : "Abandon"}
           </button>
@@ -222,7 +236,7 @@ export function SelectionActionBar() {
           <button
             type="button"
             onClick={() => selection.end()}
-            className={`${GHOST_RECOVERY} h-11 shrink-0`}
+            className={`${GHOST_RECOVERY_COMPACT} h-11`}
           >
             Done
           </button>
