@@ -45,10 +45,26 @@ import { requireUserId } from "@/lib/session";
  * leaves the four watching groups and joins ABANDONED, so a reader who taps across to it
  * after this press would otherwise be served the Router Cache's copy of a screen this
  * write invalidated. Both routes are `force-dynamic`, so neither is being rescued from a
- * stale *server* cache — the client's is the one in question. The five group screens under
- * `/up-next/*` are not named: they are reached from `/up-next`, and naming five more paths
- * to cover a Back button would be spending the app's broadest invalidation five times over
- * for a screen the reader has to go looking for.
+ * stale *server* cache — the client's is the one in question.
+ *
+ * **The two named paths are not what makes the other surfaces correct today, and this
+ * paragraph exists because an earlier draft claimed they were.** It argued the five group
+ * screens under `/up-next/*` were deliberately left alone, which contradicted the very
+ * docblock the paragraph above sends the reader to: `remove/actions.ts` quotes
+ * `04-functions/revalidatePath.md` saying the call *"currently also causes all previously
+ * visited pages to refresh when navigated to again."* While that holds, every one of those
+ * screens is refreshed whether or not it is named, and so is every other route the reader
+ * has been to.
+ *
+ * Naming these two is therefore about what happens **when that breadth goes away** — the
+ * docs call the behaviour temporary — not about what is true now. `/library` is the one
+ * that would still be load-bearing on that day, because it is the route the press happens
+ * on and the only one whose freshness the reader sees immediately; `/up-next` is named
+ * because it is the other surface this write changes the meaning of, and one line now is
+ * cheaper than diagnosing a stale tab later. The five group screens stay unnamed on the
+ * ordinary grounds that they are reached from `/up-next` and a reader has to go looking
+ * for them — a judgement about cost, which is all it ever was, rather than a claim that
+ * they are stale, which was never true.
  */
 export type AbandonTitlesActionOutcome =
   | { readonly ok: true; readonly abandoned: number }
