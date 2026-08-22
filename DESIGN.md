@@ -459,6 +459,51 @@ up-next, marking, settled) at both pane widths: `44 / 44 / 44 / 44` at `420px` a
 **Re-measure if you touch the row.** It did not pass the first time, and it did not pass
 the second time either.
 
+### The third time was the button register, and nothing re-measured for two tickets
+
+Issue #195 moved *Rewatch* and *Unwatch* — the two controls a settled watched row offers —
+from underlined prose onto `GHOST_RECOVERY`. That was a deliberate call and this file
+records it under Buttons. What it did not do was re-measure the fixed slot they sit in.
+
+`GHOST_RECOVERY` is `px-4 py-2` around a `code-line` inside a border: a `34.2px` box
+against `RECORDING_CONTROL`'s `26.2px`. Two of them put the settled row at **`50.2px`
+against every other state's `44px`**, so the row grew the moment a mark settled and took
+every row under it with it — the failure this whole section exists to prevent, arriving by
+a route neither earlier re-measure had covered. They were also `177.9px` of a `160px`
+slot, and `215.9px` once #196's *watched up to here* was on the row too, spilling leftward
+**over the episode name** because the slot is `justify-end` inside a `shrink-0` box.
+
+#196 measured it, tabulated it, and filed it rather than patching it, because re-cutting
+the slot costs episode-name width and so is a decision. **Issue #203 is that decision**,
+and it took three things rather than one, because measurement showed no single one of them
+was enough:
+
+- **`GHOST_RECOVERY_COMPACT`** — `GHOST_RECOVERY` at `RECORDING_CONTROL`'s `px-2.5 py-1`.
+  The same register, not a new one; §10's ruling that #195 *considered and declined a
+  third, neutral tier* still holds, because a measure is not a tier. This alone fixes the
+  height, and returns the pair to the size of the *Strike it* they replace.
+- **`gap-2` inside the slot**, where the row itself keeps `gap-3`. Sibling controls inside
+  one cell should sit tighter than the three cells they sit among.
+- **`TRAILING` from `10rem` to `12rem`.** The part that costs something. No padding value
+  fixes the widest state: two labels at `48.7px` and `49.2px` of text beside a `26px`
+  glyph box is `123.9px` before a pixel of border, padding or gap, so `160px` could not
+  hold them and still be a button.
+
+Re-measured in Chromium against the compiled CSS with Archivo loaded, over all **seven**
+states the owned row now has, at `420px`, `375px` and `340px` panes:
+
+| | Widest slot contents | Every row |
+|---|---|---|
+| Before | `215.9px` of `160px` — **over by `55.9px`** | `44px`, except two at `50.2px` |
+| After | `183.9px` of `192px` — `8.1px` spare | **`44px`, all seven, at all three widths** |
+
+The stated cost is the episode name: `152 → 120px` at a `420px` pane, `107 → 75px` at
+`375px`, `71 → 40px` at `340px`. It is still identical across all seven states at a given
+width, which is the property `TRAILING` exists for and the one that was never tradeable.
+
+**So: re-measure if you touch the row — including when all you changed was a button's
+padding.** That is the one this section had not yet learned.
+
 ### Reduced motion costs the animation and never the event
 
 `prefers-reduced-motion: reduce` shortens `watch-sweep` to `1ms`. It does not remove it, and
@@ -1078,7 +1123,15 @@ strings — not a component and not a fifth `@utility`.
 `errors/recovery-buttons.ts` names the vocabulary: `GHOST_RECOVERY` (an outline — `border-
 accent`, `text-accent` — that inverts to solid on hover), `SOLID_RECOVERY` (the one primary
 action a surface gets: `bg-accent`, `text-accent-ink`), and `DISABLED_DIM`, `IN_FLIGHT`,
-`NOT_YET_ARMED` layered onto either. Despite the module's own name, it stopped being
+`NOT_YET_ARMED` layered onto either.
+
+**`GHOST_RECOVERY` has two measures and one register** — issue #203. `GHOST_RECOVERY` is
+`px-4 py-2`, for a control laying out in ordinary flow on a surface; `GHOST_RECOVERY_COMPACT`
+is the identical treatment at `px-2.5 py-1`, which is `RECORDING_CONTROL`'s own padding, for
+the episode row's fixed-measure trailing slot. Its single caller is that row. This does not
+reopen the ruling two paragraphs down — a second **size** of one register is not the third
+**tier** #195 declined, and the size is borrowed from the row rather than invented for it.
+§6 records why the row needed it and what the re-cut cost. Despite the module's own name, it stopped being
 errors-only well before issue #195 — `lists/create-list-form.tsx`'s `New list` and
 `settings/page.tsx`'s `Import a library ›` already wore `GHOST_RECOVERY`, among a dozen
 other everyday controls with nothing to do with a failure.
