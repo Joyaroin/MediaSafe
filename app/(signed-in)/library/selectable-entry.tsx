@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { SelectableTitle } from "./bulk-selection";
 import { useBulkSelection, useIsSelected, useIsSelecting } from "./bulk-selection-context";
 import { useLibrarySelection } from "./library-selection";
+import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
 
 /**
  * The thin client shell every one of the bill's 472 buttons sits inside — the one piece
@@ -31,28 +31,11 @@ import { useLibrarySelection } from "./library-selection";
  * server-rendered branch, so resizing past the breakpoint mid-session changes which one a
  * click does without a reload.
  *
- * ── The hold, and the three ways it does not fire — issue #197 ───────────────────────
+ * ── The hold — issue #197, shared with `group-tile.tsx` since #198 ───────────────────
  *
- * A `pointerdown` starts a timer. Half a second later, with the finger still down and
- * still in the same place, the timer hands the title to the selection store and the mode
- * opens. It does **not** fire if the pointer goes up first (that is a tap), if the pointer
- * has travelled more than a few pixels (that is a scroll — a grid this long is scrolled far
- * more often than it is held), or if there is no selection provider above this cell at all,
- * which on the desktop is always (`bulk-selection-provider.tsx`).
- *
- * The click that ends a landed hold is swallowed. The browser sends one anyway when the
- * finger lifts, and without the guard every hold would immediately toggle back off the
- * title it had just selected — the gesture undoing itself.
- *
- * ── Why the press is CSS and not Motion ──────────────────────────────────────────────
- *
- * The same reason `globals.css` gives for `pressable` and for the grid's stagger: *a press
- * has no state a finger can catch it in mid-flight*, and 472 Motion components on the one
- * screen that renders the whole library is exactly the cost that reasoning exists to
- * avoid. `data-holding` compresses the cell over the hold's own half-second, and
- * `data-landed` plays the overshoot the ticket asks for — *the held cell scales under the
- * press, then springs into its selected state* — clearing itself on `animationend` rather
- * than on a second timer.
+ * `use-hold-to-select.ts` owns the timer, the slop and the swallowed click; this file owns
+ * only what a landed tap or a swallowed click does next, which is the one part that
+ * genuinely differs by surface. See that file for the gesture's own reasoning.
  */
 /**
  * `DESIGN.md`'s own cutoff for "Desktop", and the same value every `lg:` Tailwind class
@@ -65,92 +48,6 @@ import { useLibrarySelection } from "./library-selection";
  * copy this constant exists to prevent.
  */
 export const DESKTOP_BREAKPOINT = "(min-width: 1024px)";
-
-/**
- * How long a finger has to stay down. `500ms` is the platform's own long-press — iOS and
- * Android both settle around it — and the ticket's *around half a second*. Shorter turns
- * a slow tap into a selection; longer and the reader lets go before anything happens and
- * concludes the gesture does not exist.
- *
- * Exported since #198: `group-tile.tsx` runs the identical timer against a track that
- * scrolls instead of a grid that does not, and a second `500` typed there would be the
- * silent copy `DESKTOP_BREAKPOINT`'s own export already exists to prevent.
- */
-export const HOLD_MS = 500;
-
-/**
- * How far the pointer may drift and still count as held. A finger resting on a phone moves
- * a few pixels on its own; a scroll moves many more, and a grid of 472 cells is scrolled
- * far more often than it is held.
- *
- * Exported since #198, for the same reason as `HOLD_MS` — and it is this slop, unchanged,
- * that answers the ticket's *a press that becomes a drag must not select* for a horizontal
- * track: a flick moves the pointer well past `10px` before the timer would ever land, so
- * the same cancel that protects a vertical scroll protects a horizontal one without a
- * second rule.
- */
-export const HOLD_SLOP_PX = 10;
-
-/**
- * What a cell that can be held has to give up, and it is all about the browser's own
- * answers to a long press.
- *
- * `select-none` stops the text-selection drag over the title. `-webkit-touch-callout` is
- * the one that matters on the device this feature is for: a long press on an `<img>` in
- * iOS Safari raises *Save Image* / *Copy*, and the poster is an `<img>` — so without this
- * the ticket's headline gesture opens a system sheet over the cell it was meant to select.
- * Inherited by the poster from here rather than set on the poster, so `app/poster.tsx`
- * stays a component that knows nothing about selection.
- *
- * Both are added **only where the gesture exists**. On the desktop a reader can still
- * select a title's text and still right-click its artwork, exactly as before.
- *
- * Exported since #198: `group-tile.tsx`'s poster is an `<img>` too, and mobile Safari's
- * *Save Image* / *Copy* sheet is exactly as much a false answer to a long press there as it
- * is here.
- */
-export const HOLDABLE = "select-none [-webkit-touch-callout:none]";
-
-/**
- * The ring on a selected cell — **`--ink`, and not the accent the ticket asked for.**
- *
- * Issue #197 says *an accent border and a check badge*. `app/globals.css`'s accent block
- * refuses it in as many words — *"Not focus, selection or the caret … they use brightness
- * and border weight off `--text`, so a colour spent on focus state is not a colour that
- * also means 'this was marked'"* — and the collision it is guarding against is not
- * hypothetical here. Role 1 is *the **Watching** state wherever it is named*, and
- * `library-entry-cell.tsx` paints that label in the accent **inside this very cell**. An
- * accent ring around an accent label is *two different accent roles on one screen*, which
- * the rule names as the exact failure it exists to prevent — and on the phone the two would
- * be two centimetres apart.
- *
- * So the ring and the badge are drawn in `--ink`, which is the alternative the rule itself
- * prescribes. Nothing else about the treatment changes: it is still a `2px` ring and a
- * check badge, still the loudest thing in the cell.
- *
- * ── An `outline`, not a border and not a shadow ──────────────────────────────────────
- *
- * A `2px` border occupies layout, so adding one would move a selected cell's contents by
- * two pixels against its neighbours' and make the grid twitch on every tap — `field-well`'s
- * reasoning, and it holds here too. Its answer is an inset `box-shadow`, and that is the
- * one thing this cannot borrow: `DESIGN.md` (*"There are no drop shadows at all — not on a
- * tile, not on a dialog, not on the chrome — and adding one is not a fix"*) and
- * `tests/library-surface.test.ts`'s *still casts no shadow* are both absolutes about
- * tiles, and a selected tile is a tile.
- *
- * `outline` costs no layout either and is not a shadow, so the invariant stays literally
- * true. The negative offset draws it inside the border box, where the `li`'s own
- * `overflow-hidden` clips it to the card's `18px` radius — so the ring follows the corner
- * without this restating the radius.
- *
- * Exported since #198. `group-tile.tsx` draws it on the poster itself rather than on a
- * card — a group tile has no padded, radiused wrapper the way a bill cell does, and
- * `app/poster.tsx`'s own `overflow: hidden` is the only box here that clips to a corner —
- * but the colour and the reasoning against the accent are unchanged: `home-group.tsx`'s
- * heading is this screen's one accent role already, and a second one on the same tile
- * would be the exact collision this constant exists to avoid.
- */
-export const SELECTED = "outline-2 -outline-offset-2 outline-ink";
 
 export function SelectableEntry({
   title,
@@ -171,67 +68,10 @@ export function SelectableEntry({
   const selecting = useIsSelecting();
   const selected = useIsSelected(title.libraryEntryId);
 
-  const [holding, setHolding] = useState(false);
-  const [landed, setLanded] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const origin = useRef<{ x: number; y: number } | null>(null);
-  /** The hold landed and the browser's own click has not been swallowed yet. */
-  const swallowClick = useRef(false);
-
-  function cancelHold(): void {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-    origin.current = null;
-    setHolding(false);
-  }
-
-  // A cell can be unmounted mid-hold by the filter field narrowing the grid under the
-  // reader's finger. Without this the timer still fires, into a store that is still very
-  // much alive, and a title the reader can no longer see joins the selection.
-  useEffect(() => cancelHold, []);
-
-  function onPointerDown(event: React.PointerEvent<HTMLButtonElement>): void {
-    if (bulk === null) return;
-    // Cleared here as well as on `animationend`, and the reason is
-    // `prefers-reduced-motion`: `globals.css` sets `animation: none` there, so no
-    // `animationend` is ever fired and the attribute set by the last hold would stay on
-    // this cell for the life of the mount. That is invisible while the reader's setting
-    // holds, and stops being invisible the moment they turn it off — the media query
-    // stops matching, the rule underneath it applies to an element already carrying the
-    // attribute, and the cell pops on its own with nothing touching it.
-    setLanded(false);
-    swallowClick.current = false;
-    origin.current = { x: event.clientX, y: event.clientY };
-    setHolding(true);
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      origin.current = null;
-      swallowClick.current = true;
-      setHolding(false);
-      setLanded(true);
-      bulk.hold(title);
-    }, HOLD_MS);
-  }
-
-  function onPointerMove(event: React.PointerEvent<HTMLButtonElement>): void {
-    const from = origin.current;
-    if (from === null) return;
-    if (
-      Math.abs(event.clientX - from.x) <= HOLD_SLOP_PX &&
-      Math.abs(event.clientY - from.y) <= HOLD_SLOP_PX
-    ) {
-      return;
-    }
-    cancelHold();
-  }
+  const gesture = useHoldToSelect(bulk, title);
 
   function onClick(): void {
-    if (swallowClick.current) {
-      swallowClick.current = false;
-      return;
-    }
+    if (gesture.consumeSwallowedClick()) return;
 
     if (bulk !== null && selecting) {
       bulk.toggle(title);
@@ -249,23 +89,9 @@ export function SelectableEntry({
     <button
       type="button"
       onClick={onClick}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={cancelHold}
-      onPointerCancel={cancelHold}
-      onPointerLeave={cancelHold}
-      // A long press on a phone otherwise raises the text-selection callout over the tile
-      // the reader is holding, which is the browser answering a gesture this app has just
-      // claimed. Suppressed only where the gesture exists.
-      onContextMenu={bulk === null ? undefined : (event) => event.preventDefault()}
-      // `currentTarget === target` only: the check badge inside this button plays its own
-      // arrival, and an `animationend` bubbling up from it would clear this one's overshoot
-      // part-way through.
-      onAnimationEnd={(event) => {
-        if (event.currentTarget === event.target) setLanded(false);
-      }}
-      data-holding={holding ? "true" : undefined}
-      data-landed={landed ? "true" : undefined}
+      {...gesture.handlers}
+      data-holding={gesture.holding ? "true" : undefined}
+      data-landed={gesture.landed ? "true" : undefined}
       // `DESIGN.md`, Library Tile: *"the current entry carries `aria-current`."* `"true"`
       // rather than `"page"` — unlike the masthead's nav cells
       // (`nav-cells.tsx`), a selected tile does not mean the browser is on that page; on

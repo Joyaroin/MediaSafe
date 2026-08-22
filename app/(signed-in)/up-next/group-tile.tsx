@@ -1,21 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, ViewTransition } from "react";
+import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
-import {
-  HOLD_MS,
-  HOLD_SLOP_PX,
-  HOLDABLE,
-  SELECTED,
-} from "@/app/(signed-in)/library/selectable-entry";
+import type { SelectableTitle } from "@/app/(signed-in)/library/bulk-selection";
 import {
   useBulkSelection,
   useIsSelected,
   useIsSelecting,
 } from "@/app/(signed-in)/library/bulk-selection-context";
 import { SelectionCheckBadge } from "@/app/(signed-in)/library/selection-check-badge";
+import { HOLDABLE, SELECTED, useHoldToSelect } from "@/app/(signed-in)/library/use-hold-to-select";
 import { groupPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { useTitleSheet, type TitleSheetEntry } from "./title-sheet-context";
 
@@ -51,18 +47,18 @@ export type GroupTileEntry = TitleSheetEntry;
  * morph rather than choosing. The rail does exactly this for the desktop pane, for exactly
  * this reason.
  *
- * ── The hold, reused rather than re-derived — issue #198 ─────────────────────────────
+ * ── The hold, shared rather than re-derived — issue #198 ─────────────────────────────
  *
- * `selectable-entry.tsx`'s gesture, verbatim: a `pointerdown` starts `HOLD_MS`'s timer, a
- * drift past `HOLD_SLOP_PX` cancels it, and the click a landed hold's own pointer-up sends
- * is swallowed rather than acted on. Nothing about that mechanism is Library-specific — it
- * was already just *the finger stayed still for half a second*, and a group track exercises
- * it against a press that can just as easily turn into a horizontal flick. The same slop
- * that protects a scroll protects a swipe; there is no second gesture to write.
+ * `use-hold-to-select.ts` owns the timer, the slop and the swallowed click — the same hook
+ * `selectable-entry.tsx` runs, not a second copy of it. Nothing about that mechanism was
+ * ever Library-specific: it is *the finger stayed still for `HOLD_MS`, within
+ * `HOLD_SLOP_PX`*, and a group track exercises it against a press that can just as easily
+ * turn into a horizontal flick. The same slop that protects a scroll protects a swipe; there
+ * is no second gesture to write.
  *
  * What differs from a bill cell is what a landed tap does next, because this tile is
  * sometimes a `<Link>` and sometimes a sheet-opening `<button>`. Both need the browser's own
- * navigation suppressed on the two clicks this gesture claims — the swallowed one and a tap
+ * navigation suppressed on the two clicks the gesture claims — the swallowed one and a tap
  * while selecting — so `onClick` calls `preventDefault()` there rather than relying on
  * `type="button"` the way `selectable-entry.tsx` could.
  *
@@ -106,76 +102,24 @@ export function GroupTile({
   const selecting = useIsSelecting();
   const selected = useIsSelected(entry.libraryEntryId);
 
-  const [holding, setHolding] = useState(false);
-  const [landed, setLanded] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const origin = useRef<{ x: number; y: number } | null>(null);
-  /** The hold landed and the browser's own click has not been swallowed yet. */
-  const swallowClick = useRef(false);
-
-  function cancelHold(): void {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-    origin.current = null;
-    setHolding(false);
-  }
-
-  // A tile can be unmounted mid-hold — the surface it is on navigates away, or (on the
-  // home) the tab is left before the timer lands. Without this the timer still fires, into
-  // a store that is still very much alive, and a title the reader can no longer see joins
-  // the selection.
-  useEffect(() => cancelHold, []);
-
-  function onPointerDown(event: React.PointerEvent<HTMLElement>): void {
-    if (bulk === null) return;
-    // `selectable-entry.tsx`'s own reason: `prefers-reduced-motion` leaves no
-    // `animationend` to clear this on, so it is cleared here too, on every new hold.
-    setLanded(false);
-    swallowClick.current = false;
-    origin.current = { x: event.clientX, y: event.clientY };
-    setHolding(true);
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      origin.current = null;
-      swallowClick.current = true;
-      setHolding(false);
-      setLanded(true);
-      bulk.hold({
-        libraryEntryId: entry.libraryEntryId,
-        titleId: entry.titleId,
-        name: entry.titleName,
-      });
-    }, HOLD_MS);
-  }
-
-  function onPointerMove(event: React.PointerEvent<HTMLElement>): void {
-    const from = origin.current;
-    if (from === null) return;
-    if (
-      Math.abs(event.clientX - from.x) <= HOLD_SLOP_PX &&
-      Math.abs(event.clientY - from.y) <= HOLD_SLOP_PX
-    ) {
-      return;
-    }
-    cancelHold();
-  }
+  /** Built once per render rather than at each of the gesture's two call sites — the store
+   *  only ever asks for `libraryEntryId`, `titleId` and `name` together. */
+  const title: SelectableTitle = {
+    libraryEntryId: entry.libraryEntryId,
+    titleId: entry.titleId,
+    name: entry.titleName,
+  };
+  const gesture = useHoldToSelect(bulk, title);
 
   function onClick(event: React.MouseEvent<HTMLElement>): void {
-    if (swallowClick.current) {
-      swallowClick.current = false;
+    if (gesture.consumeSwallowedClick()) {
       event.preventDefault();
       return;
     }
 
     if (bulk !== null && selecting) {
       event.preventDefault();
-      bulk.toggle({
-        libraryEntryId: entry.libraryEntryId,
-        titleId: entry.titleId,
-        name: entry.titleName,
-      });
+      bulk.toggle(title);
       return;
     }
 
@@ -185,23 +129,9 @@ export function GroupTile({
 
   const holdHandlers = {
     onClick,
-    onPointerDown,
-    onPointerMove,
-    onPointerUp: cancelHold,
-    onPointerCancel: cancelHold,
-    onPointerLeave: cancelHold,
-    // A long press on a phone otherwise raises the text-selection callout over the tile
-    // the reader is holding, which is the browser answering a gesture this app has just
-    // claimed. Suppressed only where the gesture exists.
-    onContextMenu: bulk === null ? undefined : (event: React.MouseEvent) => event.preventDefault(),
-    // `currentTarget === target` only: the check badge inside this element plays its own
-    // arrival, and an `animationend` bubbling up from it would clear this one's overshoot
-    // part-way through.
-    onAnimationEnd: (event: React.AnimationEvent<HTMLElement>) => {
-      if (event.currentTarget === event.target) setLanded(false);
-    },
-    "data-holding": holding ? "true" : undefined,
-    "data-landed": landed ? "true" : undefined,
+    ...gesture.handlers,
+    "data-holding": gesture.holding ? "true" : undefined,
+    "data-landed": gesture.landed ? "true" : undefined,
     "aria-pressed": selecting ? selected : undefined,
   };
 
