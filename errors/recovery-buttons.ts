@@ -75,6 +75,38 @@ export const SOLID_RECOVERY =
   "code-line bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
 
 /**
+ * `SOLID_RECOVERY` at `GHOST_RECOVERY_COMPACT`'s measure — issue #199.
+ *
+ * The same treatment and not a second one, on that constant's terms and for its reason:
+ * identical ground, identical ink, identical pressed `brightness(0.9)`; `px-2.5 py-1`
+ * where the surface-level one takes `px-4 py-2`. The measure is not invented here either —
+ * it is the compact ghost's, character for character, because the two sit **in the same
+ * row** and a primary at one measure beside secondaries at another is two rows' worth of
+ * spacing in one.
+ *
+ * ── Why the selection bar needed one ─────────────────────────────────────────────────
+ *
+ * Issue #199 gives the Library's selection bar a third control, and that bar cannot grow:
+ * `app/phone-bar.ts` fixes it at the tab bar's `75px` precisely so the swap moves nothing
+ * under it. A count, *Add to list*, *Abandon* and *Done* at the surface measure want more
+ * than a 375px phone has between the bar's `22px` margins, so the count would clip on
+ * every phone rather than on the narrow ones. This is the same failure #203 re-measured
+ * the episode row for, arriving from the other direction: there a fixed slot grew a row,
+ * here a fixed row squeezed a label.
+ *
+ * A `px-3` at the call site was tried before this existed and is the reason the constant
+ * is: with no `tailwind-merge` in this project, `.px-4` is emitted after `.px-3` and wins
+ * whatever the class string says. An override of a named treatment here is not
+ * discouraged, it is inert.
+ *
+ * `shrink-0` is baked in for `GHOST_RECOVERY_COMPACT`'s reason, which holds exactly as
+ * well here: the one caller is a flex row where the controls must keep their measure and
+ * the status line beside them is the thing that gives.
+ */
+export const SOLID_RECOVERY_COMPACT =
+  "code-line shrink-0 bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
+
+/**
  * How a disabled control is dimmed — **the dim alone, and one string for all of them.**
  *
  * `DESIGN.md`'s Buttons section names no disabled variant, so this is an extension of the

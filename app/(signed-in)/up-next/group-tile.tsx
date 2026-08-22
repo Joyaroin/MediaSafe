@@ -103,11 +103,17 @@ export function GroupTile({
   const selected = useIsSelected(entry.libraryEntryId);
 
   /** Built once per render rather than at each of the gesture's two call sites — the store
-   *  only ever asks for `libraryEntryId`, `titleId` and `name` together. */
+   *  only ever asks for these four together. `abandoned` is the prop above, handed on
+   *  rather than re-derived: issue #199's bulk Abandon branches on it, and it is the same
+   *  fact this tile already takes for its own dimming. That the tile prints no state label
+   *  is a decision about *this surface* (see the prop's own note); the selection's copy of
+   *  the fact is about the write, and a press on a group track must skip an
+   *  already-abandoned title exactly as one on the bill does. */
   const title: SelectableTitle = {
     libraryEntryId: entry.libraryEntryId,
     titleId: entry.titleId,
     name: entry.titleName,
+    abandoned,
   };
   const gesture = useHoldToSelect(bulk, title);
 

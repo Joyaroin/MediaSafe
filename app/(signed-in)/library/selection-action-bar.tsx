@@ -9,13 +9,19 @@ import {
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
 import { PHONE_BAR } from "@/app/phone-bar";
 import type { ListSummary } from "@/db/access";
-import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import {
+  GHOST_RECOVERY,
+  GHOST_RECOVERY_COMPACT,
+  IN_FLIGHT,
+  SOLID_RECOVERY_COMPACT,
+} from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context";
 
 /**
- * The bar that takes the tab bar's place while the reader is choosing — issue #197.
+ * The bar that takes the tab bar's place while the reader is choosing — issue #197, and
+ * issue #199's second action beside the first.
  *
  * ── Replaced, not stacked ────────────────────────────────────────────────────────────
  *
@@ -41,6 +47,61 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  * and this bar by the Library's own grid, so there is no component above both that has any
  * other reason to know either exists. One attribute and one CSS rule is the whole
  * mechanism, and it disappears with this component.
+ *
+ * ── Three controls in a row that cannot grow ─────────────────────────────────────────
+ *
+ * The bar's height is not this file's to spend. `app/phone-bar.ts` fixes it at the tab
+ * bar's own `44 + 8 + 22 + 1 = 75px` precisely so the swap moves nothing under it, and
+ * `(signed-in)/layout.tsx` clears exactly that at the foot of every phone page — so a
+ * second line for the count is not an option, however tempting it looks once there are
+ * three controls beside it.
+ *
+ * What gives instead is the **status line's wording**, and only its wording. It read
+ * *6 titles selected* while there were two controls; with three that sentence and
+ * `Add to list`, `Abandon` and `Done` want more than a 375px phone has between the bar's
+ * `22px` margins. So the line is now *6 selected* — the number and the verb, which is the
+ * whole of what it was saying, since the things being counted are on screen wearing check
+ * badges. The word it drops is the one `formatTitleCount` exists to pluralise, so that
+ * helper is no longer the right tool for this line and is not called on it; the picker's
+ * heading below still asks it the question it answers well, *how do you name a count of
+ * titles in a sentence.*
+ *
+ * The gap closes from `gap-3` to `gap-2`, and the three controls take the **compact
+ * measure** — `SOLID_RECOVERY_COMPACT` and `GHOST_RECOVERY_COMPACT`, `px-2.5 py-1` against
+ * the surface-level `px-4 py-2`. That is the same treatment at a different measure, not a
+ * second register: issue #203 established the ghost one for the episode row and this
+ * ticket added the solid one beside it, both argued in `errors/recovery-buttons.ts`. The
+ * two tickets are the same failure from opposite ends — there a fixed slot grew a row,
+ * here a fixed row squeezed a label.
+ *
+ * A `px-3` at these call sites was tried first, and is worth recording as a thing not to
+ * try again: it is not merely off-system, it does **nothing**. This project has no
+ * `tailwind-merge`, so two padding utilities on one element are decided by the order
+ * Tailwind emits them, and `.px-4` is written after `.px-3` in the stylesheet — the later
+ * rule wins whatever the class string says. Overriding a named treatment from a call site
+ * here is inert, which is exactly why the measure had to become a named constant.
+ *
+ * `truncate` under a `min-w-0` is what absorbs the rest: `shrink-0` is baked into both
+ * compact constants, so where the row still does not fit the count clips and the controls
+ * stay whole, which is the right way round for a bar whose reason to exist is the
+ * controls.
+ *
+ * The dialog below keeps the **surface** measure — its *Cancel* is still `GHOST_RECOVERY`.
+ * The compact one earns its keep in a row that cannot grow, and a modal with a whole page
+ * to itself is the opposite of that.
+ *
+ * ── Abandon sits beside Add to list, and Done still ends the row ─────────────────────
+ *
+ * Issue #199's own placement. It takes the ghost treatment against *Add to list*'s solid
+ * one, because the two are not equals: adding is the action the mode was built for and
+ * abandoning is the other thing you might do with the same selection.
+ *
+ * That leaves two ghost buttons next to each other, and the cost is worth naming: *Done*
+ * and *Abandon* are told apart by their labels rather than by their register, on a bar
+ * pressed with a thumb. It is accepted here rather than designed around because the
+ * mis-tap is recoverable — an abandon is a column with a control that clears it on every
+ * one of those titles (`abandon-control.tsx`), which is exactly the argument the ticket
+ * uses to refuse a confirmation here and to keep one on removal, where nothing comes back.
  *
  * ── The picker, and what it does not offer ───────────────────────────────────────────
  *
@@ -92,6 +153,19 @@ export function SelectionActionBar() {
   // sitting in the document waiting for one.
   if (selection === null || view === null) return null;
 
+  /**
+   * A write of either kind is on the wire, so neither control is armed.
+   *
+   * One flag over both of the store's, because the store refuses either press while either
+   * write is in flight (`bulk-selection.ts`) and a button that is refused should not look
+   * pressable. *Done* is deliberately left out of it: ending the mode is not a write, and a
+   * reader who has decided to leave should not be held there by a round trip they cannot
+   * see. A write already started still lands, still ends in its own toast if it is lost,
+   * and the store's identity check is what stops a late one clearing a selection that has
+   * moved on.
+   */
+  const busy = view.adding || view.abandoning;
+
   function openPicker(): void {
     dialogRef.current?.showModal();
     setPhase({ kind: "loading" });
@@ -127,27 +201,42 @@ export function SelectionActionBar() {
           // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
           // treatment and the space the layout reserves* a fact about one string instead
           // of a claim about two. The row inside it is this bar's own.
-          className={`${PHONE_BAR} flex items-center gap-3 px-[22px]`}
+          className={`${PHONE_BAR} flex items-center gap-2 px-[22px]`}
         >
           {/* Polite, not assertive: the count changes on every tap and this is the
               reader's own running total, not news about something that went wrong. */}
-          <p role="status" className="code-line flex-1 text-dim" data-numeric>
-            {formatTitleCount(view.selected.length)} selected
+          <p role="status" className="code-line min-w-0 flex-1 truncate text-dim" data-numeric>
+            {view.selected.length.toLocaleString("en-GB")} selected
           </p>
 
           <button
             type="button"
             onClick={openPicker}
-            disabled={view.adding}
-            className={`${SOLID_RECOVERY} h-11 shrink-0 ${IN_FLIGHT}`}
+            disabled={busy}
+            className={`${SOLID_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
           >
             {view.adding ? "Adding" : "Add to list"}
           </button>
 
           <button
             type="button"
+            onClick={() => void selection.abandon()}
+            disabled={busy}
+            // No confirmation, deliberately, and issue #199 is explicit about why the
+            // sibling control has one: removal's dialog reads a per-title footprint
+            // because a hundred-and-eighteen watches is a different decision from none.
+            // Abandoning destroys nothing and every one of these titles keeps a control
+            // that takes it back, so there is no number here worth stopping the reader to
+            // state — and a summary across six is the collapse that reasoning rejects.
+            className={`${GHOST_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
+          >
+            {view.abandoning ? "Abandoning" : "Abandon"}
+          </button>
+
+          <button
+            type="button"
             onClick={() => selection.end()}
-            className={`${GHOST_RECOVERY} h-11 shrink-0`}
+            className={`${GHOST_RECOVERY_COMPACT} h-11`}
           >
             Done
           </button>
@@ -202,7 +291,7 @@ export function SelectionActionBar() {
                     <button
                       type="button"
                       onClick={() => addTo(list.id)}
-                      disabled={view.adding}
+                      disabled={busy}
                       aria-label={`Add to ${list.name}`}
                       className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground ${IN_FLIGHT}`}
                     >
