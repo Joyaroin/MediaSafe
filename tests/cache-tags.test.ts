@@ -56,6 +56,7 @@ const { cacheState, reads } = vi.hoisted(() => ({
     listLists: vi.fn(),
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
+    accountStats: vi.fn(),
   },
 }));
 
@@ -116,6 +117,7 @@ const {
   READS,
   UNCACHED_READS,
   cachedAbandoned,
+  cachedAccountStats,
   cachedLibraryEntries,
   cachedLibraryEntryIdForTitle,
   cachedListDetail,
@@ -162,6 +164,9 @@ const CACHED = {
   listLists: (userId: typeof mine) => cachedLists(userId),
   getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
   getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
+  /** Issue #227. It takes no second argument at all — `/stats` has no controls — so it is
+   *  the one entry here whose call is the whole of its signature. */
+  accountStats: (userId: typeof mine) => cachedAccountStats(userId),
 } as const;
 
 /** What the fake behind `read` answers `userId` with. The library's is a list of rows,
@@ -323,6 +328,8 @@ describe("every write busts its tags", () => {
       `library:${mine}`,
       `up-next:${mine}`,
       `title-detail:${mine}`,
+      // #227: a watch is what every figure on `/stats` is made of.
+      `stats:${mine}`,
     ]);
     await cachedLibraryEntries(mine);
     await cachedLibraryEntries(yours);
@@ -354,6 +361,8 @@ describe("every write busts its tags", () => {
       [`up-next:${yours}`, "max"],
       [`lists:${yours}`, "max"],
       [`title-detail:${yours}`, "max"],
+      // The mirror carries `runtime_mins` and `release_year`, which only `/stats` reads.
+      [`stats:${yours}`, "max"],
     ]);
     expect(cacheState.updated).toEqual([]);
   });
@@ -371,6 +380,7 @@ describe("every write busts its tags", () => {
       `up-next:${yours}`,
       `lists:${yours}`,
       `title-detail:${yours}`,
+      `stats:${yours}`,
     ]);
   });
 
@@ -389,6 +399,75 @@ describe("every write busts its tags", () => {
 
     await cachedLibraryEntries(yours);
     expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([yours]);
+  });
+});
+
+/**
+ * Issue #227's own criterion: *every read on this page is cached and tagged through the tag
+ * module, and every watch write busts them.*
+ *
+ * The Stats page is the one surface in the application whose entire content is derived from
+ * `watch`, so a watch write that failed to bust it would leave a reader looking at a figure
+ * their own action had just made wrong — with no expiry behind the entry to heal it.
+ */
+describe("the Stats page's figures follow the watches they are made of", () => {
+  it("gives the reader figures their own watch landed in, whichever write made it", async () => {
+    for (const write of [
+      "recordWatch",
+      "unwatch",
+      "markWatchedUpTo",
+      "addTitleToLibraryWatched",
+      "applyImportChunk",
+    ] as const) {
+      cacheState.entries.clear();
+      cacheState.tags.clear();
+      cacheState.updated.length = 0;
+      reads.accountStats.mockClear();
+
+      await cachedAccountStats(mine);
+      invalidateFor(write, mine);
+      await cachedAccountStats(mine);
+
+      expect(
+        reads.accountStats,
+        `${write} did not bust the stats tag`,
+      ).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  /**
+   * The exception, asserted rather than left to the docblock. **Rating is the one fact a
+   * library entry carries that no aggregate reads**, so `rateTitle` busts three facts and
+   * leaves the figures standing — and a tag that named the account without naming the fact
+   * could not express that at all.
+   */
+  it("leaves the figures standing when only a rating changed", async () => {
+    await cachedLibraryEntries(mine);
+    await cachedAccountStats(mine);
+    reads.listLibraryEntries.mockClear();
+    reads.accountStats.mockClear();
+
+    invalidateFor("rateTitle", mine);
+
+    await cachedLibraryEntries(mine);
+    await cachedAccountStats(mine);
+    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
+    expect(reads.accountStats).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Abandoning moves a title between two of the five derived states, so the count per state
+   * changes with no watch written at all. It is the write most likely to be forgotten here,
+   * because nothing about it looks like a watch.
+   */
+  it("moves the count per state when a title is abandoned", async () => {
+    await cachedAccountStats(mine);
+    reads.accountStats.mockClear();
+
+    invalidateFor("abandonTitle", mine);
+
+    await cachedAccountStats(mine);
+    expect(reads.accountStats).toHaveBeenCalledTimes(1);
   });
 });
 

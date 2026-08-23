@@ -1,5 +1,5 @@
 /**
- * The five glyphs the app's navigation draws with — one rectilinear vocabulary shared by
+ * The six glyphs the app's navigation draws with — one rectilinear vocabulary shared by
  * every surface that lists a destination, rather than a set redrawn per surface.
  *
  * `tab-bar.tsx` minted the first three for the phone tab bar (issue #102); `sidebar.tsx`
@@ -62,6 +62,25 @@ export function ListsIcon({ className }: { className?: string }) {
       <rect x="8" y="10.5" width="14" height="3" fill="currentColor" />
       <rect x="2" y="18" width="3" height="3" fill="currentColor" />
       <rect x="8" y="18" width="14" height="3" fill="currentColor" />
+    </svg>
+  );
+}
+
+/**
+ * Three columns of rising height — issue #227's own drawing, and the sixth in this file.
+ *
+ * It is bars rather than a curve for the reason the header gives: *a magnifier would be the
+ * only curve in the application*, and a line chart's glyph would be the second. Three
+ * rectangles sharing a baseline are the same vocabulary `SearchIcon` and `ListsIcon` are
+ * drawn in, and they say *a comparison of quantities* without borrowing a shape from a
+ * chart this ticket does not ship.
+ */
+export function StatsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <rect x="2" y="14" width="5" height="8" fill="currentColor" />
+      <rect x="9.5" y="8" width="5" height="14" fill="currentColor" />
+      <rect x="17" y="2" width="5" height="20" fill="currentColor" />
     </svg>
   );
 }

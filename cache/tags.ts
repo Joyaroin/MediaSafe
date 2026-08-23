@@ -1,6 +1,7 @@
 import { revalidateTag, unstable_cache, updateTag } from "next/cache";
 
 import {
+  accountStats,
   getListDetail,
   getTitleDetail,
   libraryEntryIdForTitle,
@@ -9,6 +10,7 @@ import {
   listLists,
   listUpNextRails,
   listWatchlist,
+  type AccountStats,
   type LibraryEntryRow,
   type LibraryStateGroupEntry,
   type ListDetailRow,
@@ -68,13 +70,15 @@ import type { TitleKind } from "@/tmdb/mirror";
  */
 
 /**
- * **The facts that are cached** — not the functions that read them. Four of them, and the
+ * **The facts that are cached** — not the functions that read them. Five of them, and the
  * distinction between a fact and a function is what makes the map below tractable.
  *
  * Issue #219 opened with one, the library, and left the rest to #225, #226 and #227.
- * Issue #226 added the other three: the reader pays for up next, the lists and the title
- * detail on every navigation, and all three are **owned** — rows this account wrote, or
- * derived from them — so a write is the only thing that can make them wrong.
+ * Issue #226 added three: the reader pays for up next, the lists and the title detail on
+ * every navigation, and all three are **owned** — rows this account wrote, or derived from
+ * them — so a write is the only thing that can make them wrong. Issue #227 added the
+ * fifth, `stats`, which is the same category one step further out: every figure on that
+ * page is an aggregate over those same owned rows.
  *
  * A *fact* rather than a *read*, because several functions can answer one fact and they
  * must not be able to disagree about it. `listUpNextRails`, `listWatchlist` and
@@ -93,7 +97,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * they change on TMDB's schedule rather than on a write, and they are the one category
  * that carries a window as well as a tag. Nothing in this file has a window.
  */
-export type CachedRead = "library" | "up-next" | "lists" | "title-detail";
+export type CachedRead = "library" | "up-next" | "lists" | "title-detail" | "stats";
 
 /**
  * An account and a fact, and there is no other shape a tag has.
@@ -196,6 +200,20 @@ export const CACHED_READS = {
   /** Its episode rows carry a `released` flag read straight off `air_date <=
    *  current_date`, so the season grid changes at midnight even when nothing was written. */
   getTitleDetail: { cachedAs: "title-detail", readsCurrentDate: true },
+  /**
+   * Issue #227's Stats page — the whole of it, in one entry.
+   *
+   * **`readsCurrentDate` is emphatically true**, and this read reaches the clock by both
+   * routes this field exists to catch. It selects from `library_entry_state` and
+   * `library_entry_remaining`, so the count per derived state and the episodes remaining
+   * move at midnight exactly as Up next's do; and four of its eight statements consult
+   * `now()` directly, for the streak, the two averages and the activity window. The
+   * streak is the sharpest case in the application: it is *consecutive days up to
+   * **today***, so without the day in the key a reader who watched something yesterday
+   * would be shown yesterday's streak for as long as they wrote nothing — and a streak
+   * that will not fall to zero is a streak that means nothing.
+   */
+  accountStats: { cachedAs: "stats", readsCurrentDate: true },
 } as const satisfies Record<string, CachedReadShape>;
 
 /** A read `cache/tags.ts` wraps, named by the function in `db/access.ts` that performs it. */
@@ -231,8 +249,8 @@ export const UNCACHED_READS = {
 /**
  * ═══ The cached reads ════════════════════════════════════════════════════════════════
  *
- * Eight wrappers, one per entry in `CACHED_READS`, and everything true of one is true of
- * all eight. The properties are stated here once rather than restated in each docblock;
+ * Nine wrappers, one per entry in `CACHED_READS`, and everything true of one is true of
+ * all nine. The properties are stated here once rather than restated in each docblock;
  * what each function's own note carries is only what is particular to it.
  *
  * ── There is no `try` in any of them, and that is the point ──────────────────────────
@@ -259,7 +277,7 @@ export const UNCACHED_READS = {
  * rejected it — the rule has no type information and cannot see the account through a
  * function call, so a helper would have made every key in this codebase unreadable to the
  * one check that reads them. Inline is what the rule can see, and it is why the same
- * three tokens appear eight times below rather than once in a factory.
+ * three tokens appear nine times below rather than once in a factory.
  *
  * `unstable_cache` hashes `keyParts` together with the stringified callback and the JSON
  * of the call's arguments, so the account reaches the key twice: once in the array, and
@@ -437,6 +455,37 @@ export function cachedLibraryEntryIdForTitle(
 }
 
 /**
+ * Every figure on the Stats page — `stats/page.tsx`'s one read (issue #227).
+ *
+ * ── One entry over eight statements ──────────────────────────────────────────────────
+ *
+ * `accountStats` makes eight queries and returns one object (`db/access.ts`), so this is
+ * one cache entry for the whole page rather than one per figure. That is what makes the
+ * page cheap — a reader who navigates away and back pays nothing — and it is also what
+ * keeps the figures on it consistent with each other for as long as the entry lives,
+ * which eight separately-keyed reads would not.
+ *
+ * ── The day is in the key, and it is load-bearing here ───────────────────────────────
+ *
+ * `CACHED_READS`' own entry argues it: two of the eight statements read the derived views
+ * and four consult `now()`. The streak is the case that would embarrass this page without
+ * it — *consecutive days up to today* is a figure that must be allowed to fall to zero at
+ * midnight, and no write does that.
+ *
+ * ── No argument beyond the account ───────────────────────────────────────────────────
+ *
+ * Unlike the library and title detail, this read takes no second parameter: `/stats` has
+ * no sort, no id and no controls. So there is exactly one entry per account per day.
+ */
+export function cachedAccountStats(userId: UserId): Promise<AccountStats> {
+  const read = unstable_cache(accountStats, ["accountStats", userId, serverDay()], {
+    tags: [tagFor("stats", userId)],
+  });
+
+  return read(userId);
+}
+
+/**
  * Every write in `db/access.ts`, and the cached reads each one invalidates.
  *
  * ── Why the whole list, including the writes that invalidate nothing ─────────────────
@@ -502,23 +551,29 @@ export function cachedLibraryEntryIdForTitle(
 export const INVALIDATES = {
   /** A new entry, in `watchlist`, mirroring the shared title on the way in — the grid, the
    *  phone's WATCHLIST group, every list row for that title, and its own detail page. */
-  addTitleToLibrary: ["library", "up-next", "lists", "title-detail"],
-  addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail"],
-  applyImportChunk: ["library", "up-next", "lists", "title-detail"],
-  recordWatch: ["library", "up-next", "title-detail"],
-  unwatch: ["library", "up-next", "title-detail"],
-  markWatchedUpTo: ["library", "up-next", "title-detail"],
-  abandonTitle: ["library", "up-next", "title-detail"],
-  abandonTitles: ["library", "up-next", "title-detail"],
-  unabandonTitle: ["library", "up-next", "title-detail"],
+  addTitleToLibrary: ["library", "up-next", "lists", "title-detail", "stats"],
+  addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail", "stats"],
+  applyImportChunk: ["library", "up-next", "lists", "title-detail", "stats"],
+  recordWatch: ["library", "up-next", "title-detail", "stats"],
+  unwatch: ["library", "up-next", "title-detail", "stats"],
+  markWatchedUpTo: ["library", "up-next", "title-detail", "stats"],
+  abandonTitle: ["library", "up-next", "title-detail", "stats"],
+  abandonTitles: ["library", "up-next", "title-detail", "stats"],
+  unabandonTitle: ["library", "up-next", "title-detail", "stats"],
+  /**
+   * **The one write that changes three surfaces and no figure on `/stats`.** Rating is the
+   * single fact a library entry carries that no aggregate reads — not a count, not a
+   * decade, not a minute — so `stats` is absent here on purpose rather than by omission,
+   * and `tests/cache-tags.test.ts` is what keeps that a decision somebody made.
+   */
   rateTitle: ["library", "up-next", "title-detail"],
   /** The membership survives the entry (#133), so the list rows change too. */
-  removeTitleFromLibrary: ["library", "up-next", "lists", "title-detail"],
-  deleteAccount: ["library", "up-next", "lists", "title-detail"],
+  removeTitleFromLibrary: ["library", "up-next", "lists", "title-detail", "stats"],
+  deleteAccount: ["library", "up-next", "lists", "title-detail", "stats"],
   /** `mirrorTitle`: the name, poster and year on every surface, and the episode rows the
    *  derived views are built from. */
-  refreshTitleMirror: ["library", "up-next", "lists", "title-detail"],
-  repointTitle: ["library", "up-next", "lists", "title-detail"],
+  refreshTitleMirror: ["library", "up-next", "lists", "title-detail", "stats"],
+  repointTitle: ["library", "up-next", "lists", "title-detail", "stats"],
   /** Writes `user.import_offer_answered_at`, which no cached read selects. */
   markImportOfferAnswered: [],
   /** `list` and `list_membership`, which only the two list reads join. */
