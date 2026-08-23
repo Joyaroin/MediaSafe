@@ -537,7 +537,7 @@ describe("one gone title never stops the run", () => {
       );
 
       expect(outcome.candidates).toBe(2);
-      expect(outcome.refreshedTitleIds).toEqual([ordinary.id]);
+      expect(outcome.refreshed.map(({ id }) => id)).toEqual([ordinary.id]);
       expect(outcome.quarantined).toHaveLength(1);
       expect(outcome.failures).toEqual([]);
       expect((await titleRow(tx, ordinary.id)).metadataRefreshedAt.getTime()).toBeGreaterThan(
@@ -565,7 +565,7 @@ describe("one gone title never stops the run", () => {
       // and declined to guess* — and it still must not stop the run or stamp the title.
       expect(outcome.failures.map((one) => one.candidate.id)).toEqual([vanished.id]);
       expect(outcome.quarantined).toEqual([]);
-      expect(outcome.refreshedTitleIds).toEqual([ordinary.id]);
+      expect(outcome.refreshed.map(({ id }) => id)).toEqual([ordinary.id]);
       expect((await titleRow(tx, vanished.id)).metadataRefreshedAt.getTime()).toBe(
         refreshedAt.getTime(),
       );

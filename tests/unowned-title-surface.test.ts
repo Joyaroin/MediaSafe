@@ -162,8 +162,11 @@ describe("what the unowned route does not import", () => {
     // ticket leaves that alone; the way it leaves it alone is by not calling it from a
     // page whose whole premise is that there is no row.
     expect(owned.map(({ file }) => file)).toEqual([]);
+    // `cachedUnownedTitleDetail` since issue #225, which is `getUnownedTitleDetail`
+    // behind a title-tagged cache entry (`cache/borrowed-facts.ts`) and the same read.
+    // What this asserts is unchanged: one read of the borrowed half, on the unowned path.
     expect(
-      routeSources().filter(({ source }) => /getUnownedTitleDetail/.test(source)).length,
+      routeSources().filter(({ source }) => /cachedUnownedTitleDetail/.test(source)).length,
     ).toBe(1);
   });
 });

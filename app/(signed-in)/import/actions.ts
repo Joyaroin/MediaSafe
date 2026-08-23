@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
   accountsHoldingTitles,
@@ -10,7 +11,7 @@ import { referenceFor } from "@/errors/reference";
 import { titleMirror } from "@/tmdb/catalogue";
 import type { NativeImportTitle, NativeImportWatch } from "@/import/native-format";
 import { requireUserId } from "@/lib/session";
-import { isUnresolvedTitle, type TitleKind } from "@/tmdb/mirror";
+import { isUnresolvedTitle, type CatalogueKey, type TitleKind } from "@/tmdb/mirror";
 
 /**
  * The one Server Action the import screen drives, once per chunk of ~25 titles
@@ -80,17 +81,21 @@ export async function applyImportChunkAction(
   let landed: Extract<ImportChunkActionOutcome, { ok: true }>;
   /** Every global title row the chunk wrote — see the second bust below. */
   let mirroredTitleIds: readonly string[];
+  /** The same rows by catalogue key — see the third bust, issue #225. */
+  let mirroredKeys: readonly CatalogueKey[];
 
   try {
     const resolved: ImportChunkTitle[] = [];
     const skipped: SkippedTitle[] = [];
     const resolvedTmdbIds = new Set<number>();
+    const resolvedKeys: CatalogueKey[] = [];
 
     for (const one of titles) {
       try {
         const mirror = await titleMirror(one.kind, one.tmdbId);
         resolved.push({ mirror, abandoned: one.abandoned });
         resolvedTmdbIds.add(one.tmdbId);
+        resolvedKeys.push({ kind: one.kind, tmdbId: one.tmdbId });
       } catch (error) {
         // Only "TMDB does not have this id" is a skip. Everything else — a rate limit, an
         // outage, a network fault — is not this title's fault and must halt the chunk
@@ -113,6 +118,14 @@ export async function applyImportChunkAction(
     });
 
     mirroredTitleIds = outcome.mirroredTitleIds;
+    /**
+     * The keys of the titles the chunk mirrored, taken from what was handed to
+     * `applyImportChunk` rather than from what came back: the chunk is one transaction, so
+     * a returned outcome means every resolved title in it was written. The two lists are
+     * the same set said two ways, and each bust below needs its own way — one names
+     * accounts, the other names titles.
+     */
+    mirroredKeys = resolvedKeys;
     /**
      * Named field by field rather than spread. `ImportChunkOutcome` grew
      * `mirroredTitleIds` for the second bust below, and a spread would put a list of
@@ -157,5 +170,17 @@ export async function applyImportChunkAction(
     await accountsHoldingTitles(mirroredTitleIds),
     userId,
   );
+
+  /**
+   * And every mirrored title's borrowed facts — issue #225, and the bust with the widest
+   * reach in this application: an import is hundreds of titles, each of which had its
+   * global `title` and `episode` rows overwritten, and each of which has an unowned title
+   * page whose readers are the accounts that do *not* hold it. `accountsHoldingTitles`
+   * above cannot name a single one of them.
+   *
+   * No extra query for it — `mirroredKeys` is what this action already had in hand, and
+   * the bust is a framework call over a list rather than a round trip.
+   */
+  invalidateBorrowedFactsFor(mirroredKeys);
   return landed;
 }

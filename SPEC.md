@@ -31,9 +31,10 @@ order settles it:
 
 **`docs/adr/0002-the-read-cache-and-its-tags.md` is not in the table because it does not compete with
 anything in it.** It records one reversal — §3 constraint 1's read-cache clause,
-[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and the amendment it produced
-is written into §3.1 itself rather than left here to be reconciled. Read it before caching a second
-read; nothing else in this file depends on it.
+[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and one refinement of it, the
+lifetimes and tag scope borrowed facts get ([#225](https://github.com/Joyaroin/MediaSafe/issues/225),
+2026-08-23). Both amendments they produced are written into §3.1 itself rather than left here to be
+reconciled. Read the ADR before caching a further read; nothing else in this file depends on it.
 
 **Neither prototype is a source of truth.** `docs/design/prototypes/repertory-bill.html` recorded the
 letterpress world; `design/catalogue-wall.html` recorded the Catalogue Wall that replaced it and was
@@ -111,6 +112,28 @@ From the map, settled with Adham and not up for relitigation:
    > path to the database (`db/access.ts`), one query behind that read, and no second
    > implementation of it. `docs/adr/0002-the-read-cache-and-its-tags.md` records the reversal, what
    > replaced the ban, and the alternative that was rejected.
+   >
+   > **Extended 2026-08-23 — borrowed facts join it, and they carry a window**
+   > ([#225](https://github.com/Joyaroin/MediaSafe/issues/225)). Title detail's synopsis, cast and
+   > crew, watch providers, and the mirrored `title`/`episode` metadata are now cached too, in the
+   > same module and under the same two properties.
+   >
+   > They differ in one way that is a decision rather than a detail. An **owned** fact is correct
+   > until a write says otherwise, and every such write is in this repository, so it carries a tag
+   > and no window. A **borrowed** fact changes when TMDB changes its mind, which nothing here
+   > observes — a tag alone would never fire — so it carries **a six-hour window as well as a tag**.
+   > The window is a ceiling on being wrong, not the mechanism: the nightly sweep, every add and
+   > every import chunk bust what they rewrite, so a refreshed title is visible on the next read.
+   >
+   > And their tag names the **title**, not the account, while their key still names the account.
+   > The two answer different questions — a key decides what is shared, a tag decides what a bust
+   > reaches — and the readers of a borrowed fact are not enumerable as accounts: the unowned title
+   > page is read by precisely the accounts that do *not* hold the title. `cache/tags.ts` argues it
+   > at the tag, and ADR-0002 records it as the refinement it is.
+   >
+   > **The catalogue search stays uncached, deliberately.** A stored result set would hide a title
+   > TMDB added this morning and one this account added a minute ago, and a query string is a fact
+   > about neither a title nor a reader.
 2. **Empty and failed are structurally separate.** **No `catch` returns `[]`.** A read failure
    throws into an error boundary; an empty state is reachable only by a successful zero-row query.
 3. **A lost write is never silent.** The watch write is optimistic with rollback and a persistent

@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
   accountsHoldingTitles,
@@ -12,6 +13,7 @@ import { searchCatalogue, titleMirror } from "@/tmdb/catalogue";
 import {
   catalogueKeyFrom,
   catalogueKeyOf,
+  type CatalogueKey,
   type CatalogueResult,
   type TitleKind,
 } from "@/tmdb/mirror";
@@ -118,6 +120,8 @@ export async function addToLibraryAction(
   const userId = await requireUserId();
   /** The global row the add mirrored — see the second bust below for what it is for. */
   let titleId: string;
+  /** The same row by its catalogue key — the third bust, issue #225. */
+  let key: CatalogueKey;
 
   try {
     /**
@@ -130,7 +134,7 @@ export async function addToLibraryAction(
      * catalogue key arrives through (issue #148's add, and its route's own segments) —
      * this check was the first of the three and was copied to make the others.
      */
-    const key = catalogueKeyFrom(kind, tmdbId);
+    key = catalogueKeyFrom(kind, tmdbId);
 
     titleId = (await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId)))
       .titleId;
@@ -168,6 +172,21 @@ export async function addToLibraryAction(
     await accountsHoldingTitles([titleId]),
     userId,
   );
+
+  /**
+   * **And the title's own borrowed facts** — issue #225, and the third bust rather than a
+   * restatement of the second.
+   *
+   * The call above busts *the library of every account holding this title*. The mirror
+   * this add just rewrote is also what the unowned title page renders, and the accounts
+   * reading that page are by definition the ones that do *not* hold it — the population
+   * the query above cannot return. `invalidateBorrowedFactsFor` is tagged by the title
+   * instead of by the account and reaches all of them at once (`cache/borrowed-facts.ts`).
+   *
+   * A cache entry for this title existed a moment ago on somebody's screen, because a
+   * title is added from a list row that links to exactly that page.
+   */
+  invalidateBorrowedFactsFor([key]);
   return { ok: true };
 }
 
@@ -205,9 +224,11 @@ export async function addWatchedToLibraryAction(
   const userId = await requireUserId();
   /** The global row this add mirrored — see the second bust below for what it is for. */
   let titleId: string;
+  /** The same row by its catalogue key — the third bust, issue #225. */
+  let key: CatalogueKey;
 
   try {
-    const key = catalogueKeyFrom(kind, tmdbId);
+    key = catalogueKeyFrom(kind, tmdbId);
 
     titleId = (
       await addTitleToLibraryWatched(
@@ -224,16 +245,16 @@ export async function addWatchedToLibraryAction(
   }
 
   /**
-   * Both busts, past the `catch`, exactly as `addToLibraryAction` above does them — and
-   * for a stronger reason on this path, because this write moves the library's *state*
+   * All three busts, past the `catch`, exactly as `addToLibraryAction` above does them —
+   * and for a stronger reason on this path, because this write moves the library's *state*
    * as well as its membership: every released episode is watched, so the entry lands in
    * *finished* or *caught up* rather than on the watchlist.
    *
-   * The second call is not optional here either. `addTitleToLibraryWatched` calls
+   * The second and third are not optional here either. `addTitleToLibraryWatched` calls
    * `addTitleToLibrary` rather than copying it, precisely so the mirror refresh every
    * account reads happens on this path too — so this add refreshes what every other
-   * holder's grid prints, just as the plain one does (`cache/tags.ts`,
-   * `MIRRORS_SHARED_TITLE_ROWS`).
+   * holder's grid prints and what every non-holder's title page renders, just as the plain
+   * one does (`cache/tags.ts`, `MIRRORS_SHARED_TITLE_ROWS`).
    */
   invalidateFor("addTitleToLibraryWatched", userId);
   invalidateForOtherAccounts(
@@ -241,5 +262,6 @@ export async function addWatchedToLibraryAction(
     await accountsHoldingTitles([titleId]),
     userId,
   );
+  invalidateBorrowedFactsFor([key]);
   return { ok: true };
 }

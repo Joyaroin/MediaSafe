@@ -48,20 +48,40 @@ import { findRequestFor, type TmdbFindPayload } from "./reconcile";
  * the status, parses the body, and hands it to a pure function. A rule for anyone
  * extending it — **if you find yourself writing a branch here, it belongs in `mirror.ts`.**
  *
- * ── No cache, and that is `SPEC.md` §3.1 ─────────────────────────────────────────────
+ * ── `no-store` on every request, still, and now for a sharper reason ────────────────
  *
- * Every request below is `cache: "no-store"`. Constraint 1 forbids a read cache, and
- * Next's `fetch` cache is one — it would also mean a title added minutes ago being missing
- * from a result set that was rendered from a stored response. The mirror is the cache this
- * product has, it lives in Postgres, and ADR-0001 gives it a nightly refresh and a
- * six-month ceiling.
+ * Every request below is `cache: "no-store"`, as it was when `SPEC.md` §3.1 forbade a read
+ * cache outright. Issue #219 reversed that clause and #225 put three of the calls in this
+ * file behind an entry — so the line has moved rather than gone, and it is worth saying
+ * exactly where it now is: **this file does not cache; `cache/tags.ts` does.**
+ *
+ * Next's `fetch` cache is the thing still refused, and refused on the two properties the
+ * reversal rests on. It is keyed by URL, so it carries no account and
+ * `cache-key-carries-account.mjs` cannot see it; it carries no tag out of the module that
+ * owns the vocabulary, so nothing could bust it when the nightly sweep refreshes a title.
+ * A cache with neither property is the one shape the reversal explicitly did not buy. The
+ * three cached borrowed facts get both, from one file, one layer up.
+ *
+ * ── The one call that is not cached anywhere, and must not be ────────────────────────
+ *
+ * `searchCatalogue`. A reader who adds a title and searches for it again must see it as
+ * *in your library*, and the screen's own answer to that (`libraryCatalogueKeys`, in
+ * `search/actions.ts`) is not the only way a cache could lie here: a stored result set
+ * would also hide a title TMDB itself added minutes ago, which is the whole reason
+ * somebody searches for something they could not find yesterday. The results are not
+ * account-scopeable either — a query string is not a fact about a title or about a reader,
+ * so it belongs to neither vocabulary in `cache/tags.ts`. `tests/cache-tags.test.ts` holds
+ * this: the borrowed facts it names are four, and `searchCatalogue` is not one of them.
  *
  * ── The read path never calls this ───────────────────────────────────────────────────
  *
  * ADR-0001: *the read path never calls TMDB for a mirrored field.* Nothing that renders a
- * library, a state, progress or up next may import this module. Two things legitimately
+ * library, a state, progress or up next may import this module. Three things legitimately
  * do: the search screen, which is by definition asking the catalogue about titles you do
- * not have, and the add that follows it.
+ * not have; the add that follows it; and, since #225, `cache/tags.ts`, which wraps the
+ * three live-only calls at the foot of this file and no other. None of the three is a
+ * mirrored field — that is the whole distinction ADR-0001 draws, and `tmdb/live-facts.ts`
+ * owns the side of it these calls are on.
  */
 
 const TMDB_API = "https://api.themoviedb.org/3";
@@ -121,7 +141,8 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
       Authorization: `Bearer ${bearerToken()}`,
       Accept: "application/json",
     },
-    // SPEC.md §3.1 — no read cache. See the note at the top of this file.
+    // Never Next's `fetch` cache: it carries no account and no tag. Where a call below is
+    // cached it is cached in `cache/tags.ts`, which carries both. Top of this file.
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });

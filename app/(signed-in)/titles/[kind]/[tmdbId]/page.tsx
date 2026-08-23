@@ -6,7 +6,8 @@ import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
-import { getUnownedTitleDetail, libraryEntryIdForTitle } from "@/db/access";
+import { cachedUnownedTitleDetail } from "@/cache/borrowed-facts";
+import { libraryEntryIdForTitle } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { catalogueKeyFrom } from "@/tmdb/mirror";
 import { AddToLibraryControl } from "./add-to-library-control";
@@ -54,11 +55,27 @@ import { UnownedEpisodes } from "./unowned-episodes";
  *
  * ── A page read, unguarded ────────────────────────────────────────────────────────────
  *
- * Both mirrored reads (`libraryEntryIdForTitle`, `getUnownedTitleDetail`) are called
+ * Both mirrored reads (`libraryEntryIdForTitle`, `cachedUnownedTitleDetail`) are called
  * directly with no `try`: a failure throws into `error.tsx` beside this file, which is
  * `AGENTS.md`'s error discipline — a database MediaSafe cannot reach must never render as
  * a title with no episodes. `library/[entryId]/page.tsx` is the same shape, and its
  * docblock carries why the desktop pane cannot be.
+ *
+ * The cache does not change that, and this is the page where it would be tempting to
+ * think it does. `unstable_cache` stores a resolved value only, so a throw from
+ * `getUnownedTitleDetail` — a database that is down, or a `title` row that is genuinely
+ * not mirrored — travels out through `cachedUnownedTitleDetail` untouched and leaves
+ * nothing behind (`cache/borrowed-facts.ts`).
+ *
+ * ── The mirrored read is cached; the ownership question is not (issue #225) ──────────
+ *
+ * `cachedUnownedTitleDetail` is a **borrowed** fact: `title` and `episode` are global,
+ * they say what TMDB last said, and a nightly sweep or anybody's add is what changes them
+ * — so it carries a title-scoped tag and a window, and the sweep busts it.
+ * `libraryEntryIdForTitle` above it is the opposite kind of question — *do you own this?*
+ * — and it stays uncached deliberately: it is an owned fact, its ticket is #226, and a
+ * stale answer here is not a stale poster but this page rendering *Add to library* for a
+ * title the reader added in another tab.
  *
  * ── The three live facts stream in behind this render (issue #218) ───────────────────
  *
@@ -93,7 +110,7 @@ export default async function UnownedTitlePage({
   const owned = await libraryEntryIdForTitle(userId, kind, tmdbId);
   if (owned !== null) redirect(`/library/${owned}`);
 
-  const detail = await getUnownedTitleDetail(kind, tmdbId);
+  const detail = await cachedUnownedTitleDetail(userId, kind, tmdbId);
   const meta = titleMetaLine(detail);
 
   return (
@@ -149,7 +166,11 @@ export default async function UnownedTitlePage({
           titleName={detail.name}
         />
 
-        <LiveTitleFactsStreamed kind={detail.kind} tmdbId={detail.tmdbId} />
+        <LiveTitleFactsStreamed
+          userId={userId}
+          kind={detail.kind}
+          tmdbId={detail.tmdbId}
+        />
 
         {/* Issue #147's own acceptance criterion: *title detail offers Add to list, on an
             owned title and an untracked one alike*. It was only reachable on the owned

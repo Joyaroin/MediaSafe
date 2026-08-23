@@ -66,16 +66,22 @@ export interface SweepRepoint {
 export interface NightlySweepOutcome {
   readonly candidates: number;
   /**
-   * The titles that now carry fresh metadata, by `title.id` rather than by count — the
-   * count is `refreshedTitleIds.length` and is derived rather than stored, so the summary
-   * line and the cache busting cannot come to disagree about how many there were.
+   * The titles that now carry fresh metadata — the whole candidate rather than a count,
+   * so the summary line and the two cache busts cannot come to disagree about which
+   * titles moved.
    *
-   * The ids are here because `route.ts` needs them (issue #219): a refreshed mirror
-   * changes `title.name`, `release_year` and `poster_path`, which the library grid prints
-   * for every account holding that title, and those accounts' cached libraries have to be
-   * busted by somebody who knows which titles moved. Nothing else reads them.
+   * `route.ts` is the only reader, and it needs two different things out of each one
+   * (issues #219 and #225). **The `title.id`** resolves the accounts holding it, whose
+   * cached libraries print the `name`, `release_year` and `poster_path` this run just
+   * rewrote. **The `(kind, tmdbId)` pair** is the borrowed facts' tag: the unowned title
+   * page's mirrored read is keyed by the catalogue key, and its readers are by definition
+   * the accounts that do *not* hold the title, so the account list cannot reach them.
+   *
+   * A repoint is in here too, carrying the id that **vanished** — which is the right key
+   * to expire, because it is the one every stale entry was stored under. `repointed`
+   * below carries the survivor, and `route.ts` busts both.
    */
-  readonly refreshedTitleIds: readonly string[];
+  readonly refreshed: readonly SweepCandidate[];
   readonly failures: readonly SweepFailure[];
   /** Titles whose TMDB id is gone and which were repointed at the id that survived. */
   readonly repointed: readonly SweepRepoint[];
@@ -125,7 +131,7 @@ export async function runNightlySweep(
 ): Promise<NightlySweepOutcome> {
   const candidates = await titlesDueForRefresh(cap, executor);
 
-  const refreshedTitleIds: string[] = [];
+  const refreshed: SweepCandidate[] = [];
   const failures: SweepFailure[] = [];
   const repointed: SweepRepoint[] = [];
   const quarantined: SweepQuarantine[] = [];
@@ -134,7 +140,7 @@ export async function runNightlySweep(
     try {
       const mirror = await fetchMirror(candidate.kind, candidate.tmdbId);
       await refreshTitleMirror(mirror, executor);
-      refreshedTitleIds.push(candidate.id);
+      refreshed.push(candidate);
     } catch (error) {
       if (!isUnresolvedTitle(error)) {
         // Not manufactured `[]` — a failure recorded here, never a result standing in for
@@ -157,7 +163,12 @@ export async function runNightlySweep(
           // *was* refreshed — recording it is what keeps the summary line honest about
           // how many of the night's titles now carry fresh metadata, and what puts this
           // title's accounts on the list whose cached libraries `route.ts` busts.
-          refreshedTitleIds.push(candidate.id);
+          //
+          // The candidate carries the TMDB id that vanished, not the survivor. That is
+          // the key every stale borrowed-fact entry for this title was stored under, so
+          // it is the one to expire; `repointed` above carries the other, and `route.ts`
+          // busts both (issue #225).
+          refreshed.push(candidate);
         } else {
           quarantined.push({ candidate, reason: decision.reason });
         }
@@ -172,7 +183,7 @@ export async function runNightlySweep(
 
   const outcome: NightlySweepOutcome = {
     candidates: candidates.length,
-    refreshedTitleIds,
+    refreshed,
     failures,
     repointed,
     quarantined,
@@ -205,7 +216,7 @@ export async function runNightlySweep(
  */
 function reportToSentry({
   candidates,
-  refreshedTitleIds,
+  refreshed,
   failures,
   repointed,
   quarantined,
@@ -255,7 +266,7 @@ function reportToSentry({
   }
 
   Sentry.captureMessage(
-    `Nightly sweep: ${refreshedTitleIds.length} of ${candidates} refreshed, ${failures.length} skipped, ${repointed.length} repointed, ${quarantined.length} quarantined`,
+    `Nightly sweep: ${refreshed.length} of ${candidates} refreshed, ${failures.length} skipped, ${repointed.length} repointed, ${quarantined.length} quarantined`,
     {
       level: failures.length > 0 || quarantined.length > 0 ? "warning" : "info",
       tags: { surface: "nightly-sweep" },

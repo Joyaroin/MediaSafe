@@ -1,6 +1,6 @@
 # 0002 — The read cache, and the two properties that let it exist
 
-- **Status**: Accepted
+- **Status**: Accepted — **amended 2026-08-23**, see the last section
 - **Date**: 2026-08-22
 - **Ticket**: [#219 — The read cache, proven on the library](https://github.com/Joyaroin/MediaSafe/issues/219)
 - **Parent**: [#215](https://github.com/Joyaroin/MediaSafe/issues/215)
@@ -66,6 +66,10 @@ eventually.
 
 ## What is cached
 
+> **Superseded in part on 2026-08-23** by the amendment at the foot of this file: #225 added the four
+> borrowed facts. The paragraph below is left as written because the reasoning that follows it — the
+> shared mirror, and how it nearly went wrong — is what the amendment builds on.
+
 **One read: the library.** `cachedLibraryEntries` in `cache/tags.ts`, called by
 `app/(signed-in)/library/page.tsx`, and nothing else. Up next, the title detail and the lists are
 #226, #225 and #227, and each of those tickets decides for itself.
@@ -101,7 +105,7 @@ list in a docblock would not have caught it; a list held against the code does.
 
 The sweep makes **one** such call, naming `refreshTitleMirror`, and `repointTitle` is not a dead map
 entry: a repoint writes the survivor's mirror inside its own transaction, so `run-sweep.ts` records
-the repointed title in `refreshedTitleIds` beside the ordinary refreshes and the single bust per
+the repointed title in `outcome.refreshed` beside the ordinary refreshes and the single bust per
 account already covers it. The map answers *what does this write do to a cached read*; naming
 `repointTitle` at a second call site would bust the identical tag twice.
 
@@ -144,3 +148,114 @@ A **backstop** expiry — tags for correctness, plus a long `revalidate` in case
 was considered and also rejected, for a narrower reason: it would make a missing bust survivable, and
 a missing bust that is survivable is a missing bust nobody finds. The map is either complete or it is
 a bug, and there should be nothing quietly papering over the difference.
+
+---
+
+## Amended 2026-08-23 — borrowed facts, and the two ways they differ
+
+- **Ticket**: [#225 — Cache the borrowed facts](https://github.com/Joyaroin/MediaSafe/issues/225)
+- **Amends**: this ADR's *What is cached* and its rejection of time-based revalidation, both in
+  place; `SPEC.md` §3.1 carries the matching amendment
+- **Does not reverse anything above.** Every claim in the sections before this one still holds for
+  the reads it was written about.
+
+Four more reads are cached: title detail's **synopsis**, **cast and crew** and **watch providers**,
+and the **mirrored `title`/`episode` metadata** the unowned title page renders. They arrive with two
+differences from the library, and both of them are decisions.
+
+### The distinction this ADR now turns on
+
+An **owned** fact is an answer about an account — your library, your rating, your watches. Every
+write that can change one is in this repository, so a tag alone is sufficient: the entry is correct
+until something in `INVALIDATES` says otherwise.
+
+A **borrowed** fact is an answer about a title, copied from TMDB and the same for every reader. It
+changes when a distributor signs a contract or a contributor fixes a credit, and **nothing MediaSafe
+does observes either.** That is the whole of the difference, and both departures below follow from
+it.
+
+### Difference one: borrowed facts carry a window
+
+Six hours, in `cache/tags.ts`. That looks like the thing the last section of this ADR rejects, so be
+exact about why it is not.
+
+The rejection was of **a window in place of tags, on an owned fact**. Its argument was that a window
+is a period during which the library is permitted to disagree with the database, and that a reader
+who marks an episode must see the mark. Neither sentence has an analogue here. There is no write to
+disagree with: a synopsis is not something a reader of this application can change, and no action in
+it can. Without a window a borrowed fact would have **no expiry at all** and no event that could
+ever fire — the first reader of a title would pin its cast list for the life of the deployment. The
+window is not a shortcut past invalidation; it is the only invalidation that TMDB's own schedule can
+reach.
+
+The narrower rejection — **a backstop expiry behind tags, so a missing bust is survivable** — also
+survives, and it is worth saying which side of it this lands on. That argument was that a missing
+bust which heals is a missing bust nobody finds. It holds exactly where the bust is the mechanism,
+which for borrowed facts it is: the sweep, every add and every import chunk expire what they rewrite,
+and *a title refreshed by the nightly sweep is visible on the next read* is an acceptance criterion
+rather than something the window is allowed to satisfy six hours later. The window covers the changes
+**no bust could ever cover** — the ones that happen on TMDB's side, with nothing here watching.
+
+Six hours is set by the most volatile of the four, watch providers, which change on a licensing date;
+a synopsis and a cast list are effectively static once a title has aired. One hour was rejected for
+the round trips it spends chasing a change that happens a few times a year per title. One day was
+rejected because its apparent alignment with the nightly sweep is spurious — the sweep refreshes none
+of the three live facts — and what it would actually buy is a provider row that is wrong for a whole
+evening.
+
+### Difference two: their key names the account, their tag names the title
+
+The library's key and tag both name an account. A borrowed fact's key still does; its tag does not,
+and names the title instead. This is the part of #225 most likely to read as the property in *What
+replaced it* being given up, so it is recorded here rather than only in the module.
+
+A **key** decides which entries are shared, and two accounts must never share one. That is unchanged
+and still machine-checked: every `unstable_cache` call in the repository passes `userId` in its key
+parts, and `mediasafe/cache-key-carries-account` fails the build on any that stops.
+
+A **tag** decides which entries a bust can reach, and here the two come apart. What invalidates a
+borrowed fact is TMDB changing its mind about one title. The accounts holding a stale entry for it
+are *whoever has opened its page* — and for the mirrored metadata that is, by definition, the
+accounts that do **not** hold the title, because an owner is redirected off the unowned page to their
+own copy. There is no query that returns them. `accountsHoldingTitles`, which is the exactly right
+answer for the library grid, is the exactly wrong one here, and that mismatch is the clearest
+evidence these are two different questions rather than one asked twice.
+
+So the tag names the title and reaches every account's entry for it in one call
+(`invalidateBorrowedFactsFor`). Nothing leaks: a tag cannot be read, only busted, and busting one
+account's entry too many costs a re-read of a fact that is public to every reader anyway.
+
+**Keeping the account in the key is not ceremony**, even though the values are identical across
+accounts today. `WATCH_PROVIDER_REGION` in `tmdb/catalogue.ts` is a fixed constant carrying its own
+note that it becomes a per-user setting the day `user` grows a region. An entry keyed without an
+account is what would quietly serve one country's provider list to a reader in another on that day.
+The cost of being early is one TMDB read per account per window per title, on an application whose
+accounts are countable.
+
+### What is cached now
+
+`cachedLibraryEntries`, and the four in the borrowed section of `cache/tags.ts`. Up next, the lists
+and the **owned** half of title detail are still #226 — that read carries your state, your rating and
+your watches, so it is an owned fact and gets a tag and no window.
+
+### What still must not be cached, and is written down so it stays that way
+
+**The catalogue search.** A stored result set hides a title TMDB added this morning and one this
+account added a minute ago, and a query string is a fact about neither a title nor a reader — it
+belongs to neither vocabulary. `tmdb/catalogue.ts` carries the argument, and
+`tests/cache-tags.test.ts` holds it: the module wraps five named reads and `searchCatalogue` does not
+appear in it at all.
+
+**Next's `fetch` cache**, still, everywhere. Every TMDB request is `cache: "no-store"`. It is keyed
+by URL, so it carries no account and the lint rule cannot see it; it carries no tag from the module
+that owns the vocabulary, so nothing could bust it when the sweep refreshes a title. Where a TMDB
+call is cached it is cached a layer up, where both properties exist.
+
+### What did not change
+
+Everything under *What did not change* above, unchanged and now covering four more reads. In
+particular: **a failed borrowed read stores nothing.** The `catch` that turns one into an inline
+recovery with a reference id lives in `app/(signed-in)/library/live-facts.ts`, deliberately *outside*
+the cache — an `Outcome` computed inside it would have pinned *this section did not load* for six
+hours, with the reader's own *Try again* unable to clear it. That is `SPEC.md` §3.2 with a memory,
+and `tests/cache-tags.test.ts` fails if the handler ever moves.

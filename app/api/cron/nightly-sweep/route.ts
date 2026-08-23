@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateForOtherAccounts } from "@/cache/tags";
 import { accountsHoldingTitles } from "@/db/access";
 import { findByExternalId, titleMirror } from "@/tmdb/catalogue";
@@ -57,6 +58,15 @@ import { runNightlySweep } from "./run-sweep";
  * asleep, and stale-while-revalidate is the honest treatment for that. No `writer` is
  * passed because this run has none; the three add paths, which make the same shared-mirror
  * write from inside an action, do pass one.
+ *
+ * ── And it has to name the titles, too — issue #225 ──────────────────────────────────
+ *
+ * The account list above is the whole answer for the library grid and none of it for the
+ * unowned title page, whose mirrored read this run also rewrites and whose readers are
+ * precisely the accounts that do not hold the title. That page's read is tagged by the
+ * title, so the second call below busts by catalogue key and reaches every account at
+ * once. The two calls are not two spellings of one bust: they name different populations
+ * for different reads, and the sweep is the write that makes the difference visible.
  */
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -68,8 +78,37 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   invalidateForOtherAccounts(
     "refreshTitleMirror",
-    await accountsHoldingTitles(outcome.refreshedTitleIds),
+    await accountsHoldingTitles(outcome.refreshed.map(({ id }) => id)),
   );
+
+  /**
+   * And the borrowed facts of the titles themselves — issue #225, and the bust the call
+   * above cannot stand in for.
+   *
+   * `accountsHoldingTitles` answers *whose library grid prints this title*. The unowned
+   * title page's mirrored read is the other side of exactly that question: its readers are
+   * the accounts that do **not** hold the title, and there is no query that enumerates
+   * them, because the answer is *anyone who opens the page*. So the borrowed facts are
+   * tagged by the title instead, and one call reaches every account's entry for it
+   * (`cache/borrowed-facts.ts`).
+   *
+   * This is the acceptance criterion *a title refreshed by the nightly sweep is visible on
+   * the next read, without waiting for a window* — the window is six hours, and it is a
+   * ceiling rather than the mechanism.
+   *
+   * **Both ids of a repoint.** `outcome.refreshed` carries the candidate, whose `tmdbId`
+   * is the one that vanished — the key every stale entry is stored under, and so the one
+   * that has to be expired. The survivor is `repointed`'s `toTmdbId`, and it is busted too
+   * rather than assumed cold: the page for that id is reachable and may well have been
+   * read before tonight, under a `title` row that has just been rewritten to be this show.
+   */
+  invalidateBorrowedFactsFor([
+    ...outcome.refreshed,
+    ...outcome.repointed.map(({ candidate, toTmdbId }) => ({
+      kind: candidate.kind,
+      tmdbId: toTmdbId,
+    })),
+  ]);
 
   /**
    * A body, not a page: nothing renders this, and `SPEC.md` §6 is explicit that no
@@ -78,7 +117,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
    */
   return NextResponse.json({
     candidates: outcome.candidates,
-    refreshed: outcome.refreshedTitleIds.length,
+    refreshed: outcome.refreshed.length,
     skipped: outcome.failures.length,
     repointed: outcome.repointed.length,
     quarantined: outcome.quarantined.length,

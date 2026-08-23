@@ -4,7 +4,7 @@ import { listLibraryEntries, type LibraryEntryRow, type UserId } from "@/db/acce
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
 
 /**
- * The read cache: the whole tag vocabulary, every cached read, and every bust.
+ * The read cache: the owned half of the vocabulary, and every write that busts one.
  *
  * ── What this module reverses ────────────────────────────────────────────────────────
  *
@@ -22,11 +22,12 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  * A cache keeps that property only while two things hold, and both of them are here
  * rather than in anybody's memory:
  *
- * 1. **Every key carries an account.** `cachedLibraryEntries` is the only call to
- *    `unstable_cache` there is, and `eslint-rules/cache-key-carries-account.mjs` fails
- *    the build if its key parts stop naming one — on every `unstable_cache` call in the
- *    repository, not only on this one, so the second cached read is checked before it is
- *    written rather than after it leaks.
+ * 1. **Every key carries an account.** Every call to `unstable_cache` in this repository
+ *    is in `cache/` — this file and `borrowed-facts.ts` beside it — and
+ *    `eslint-rules/cache-key-carries-account.mjs` fails the build if any of their key
+ *    parts stops naming one. The rule reads every such call wherever it is written, so the
+ *    next cached read is checked before it exists rather than after it leaks. It held for
+ *    one call when #219 wrote it and holds for five now.
  * 2. **Every write busts its tags.** `INVALIDATES` below is the map, it is keyed by
  *    the write's own name in `db/access.ts`, and `tests/cache-tags.test.ts` fails when
  *    that file grows an `export async function` the map has not classified. A write
@@ -40,24 +41,41 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  *    (`asUserId`, `ownedBy`) is a helper rather than a query. A synchronous exported
  *    *write* would slip past, and would also be a thing that could not touch the database.
  *
- * ── Nothing caches or busts outside this file ────────────────────────────────────────
+ * ── Nothing caches or busts outside `cache/` ─────────────────────────────────────────
  *
- * `eslint.config.mjs` restricts `next/cache` everywhere but here, in the same register as
+ * `eslint.config.mjs` restricts `next/cache` to this directory, in the same register as
  * the data-access choke point next to it. That is what makes the two properties above
  * statements about the repository rather than about this module: a page that reached for
  * `unstable_cache` itself could satisfy neither, and now it cannot reach for it at all.
+ *
+ * ── Two kinds of fact, and two files ─────────────────────────────────────────────────
+ *
+ * **Owned facts** are answers about an account — the library, and in #226 up next, lists
+ * and owned title detail. They are correct until a write says otherwise, so they carry a
+ * tag and **no window**. That is this file.
+ *
+ * **Borrowed facts** are answers about a title, copied from TMDB and the same for every
+ * reader: a synopsis, a cast list, a watch-provider row, and the mirrored `title` and
+ * `episode` metadata. They change on TMDB's schedule and nothing MediaSafe does observes
+ * it, so a tag alone would never fire and they carry **a window as well** — issue #225,
+ * and `borrowed-facts.ts` beside this file, whose top block says why it is a second file
+ * rather than a second section. `SPEC.md` §3.1's amendment sets out the two lifetimes.
  */
 
 /**
- * The reads that are cached. One, today, and deliberately: issue #219 proves the
- * machinery on the library and leaves the rest to #225, #226 and #227. A second entry
- * here is a second cached read, and it is the ticket for it that decides whether there
- * should be one.
+ * The **owned** reads that are cached, named by the account-scoped tag they carry.
+ *
+ * One, today: issue #219 proved the machinery on the library and #226 is the ticket that
+ * brings up next, lists and owned title detail behind it. Borrowed reads are a separate
+ * vocabulary in `borrowed-facts.ts` — because a bust for one of those has to name a title
+ * rather than an account, and that file says why at length.
  */
 export type CachedRead = "library";
 
 /**
- * An account and a read, and there is no other shape a tag has.
+ * An account and a read — the shape every **owned** tag has. (`borrowedTagFor`, in
+ * `borrowed-facts.ts`, is the other one: a fact and a title, and no account. Its own block
+ * argues why that is not the property being given up.)
  *
  * Not exported: a tag that anything outside this file could build is a tag something
  * outside this file could bust, and half of what this module is for is that neither
@@ -70,7 +88,7 @@ function tagFor(read: CachedRead, userId: UserId): string {
 
 /**
  * The library, read through the cache — `library/page.tsx`'s one read, and the only
- * cached read there is.
+ * **owned** cached read there is.
  *
  * ── There is no `try` here, and that is the point ────────────────────────────────────
  *
@@ -160,6 +178,11 @@ export function cachedLibraryEntries(
  * `tests/cache-tags.test.ts` reads `db/access.ts` and fails if a function whose body calls
  * `mirrorTitle` is missing from that set — the add path was missed on the first pass here,
  * found in review, and this is the check that means the next one is not.
+ *
+ * Since issue #225 these same writes owe a **second** call, `invalidateBorrowedFactsFor`,
+ * and for a reason `invalidateForOtherAccounts` does not cover: the accounts *holding* a
+ * title are not the accounts reading its borrowed facts. That function's docblock draws
+ * the distinction; this list is the answer to *who owes it*, for both.
  */
 export const INVALIDATES = {
   addTitleToLibrary: ["library"],
