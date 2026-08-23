@@ -4184,10 +4184,17 @@ export interface WatchTime {
 }
 
 /** One month of the activity window, `YYYY-MM` in the reader's zone. A month with nothing
- *  in it is a row with `0`, never a missing row — a gap has to read as a gap. */
+ *  in it is a row with `0`, never a missing row — a gap has to read as a gap.
+ *
+ *  `filmWatches` and `episodeWatches` split the same `watches` total by kind — issue #229's
+ *  *episodes over time* and *films over time* charts read those two, and *monthly activity*
+ *  reads `watches` itself. Three charts, one query, so the three cannot disagree about what
+ *  a month contains. */
 export interface ActivityMonth {
   readonly month: string;
   readonly watches: number;
+  readonly filmWatches: number;
+  readonly episodeWatches: number;
 }
 
 /** `1990`, and how many titles in the library were released in it. */
@@ -4477,6 +4484,15 @@ async function activityByMonth(
       /** `count(watch.id)`, not `count(*)`: the left join leaves one all-null row for a
        *  month with nothing in it, and `count(*)` would report that row as one watch. */
       watches: sql<number>`count(${watch.id})`.mapWith(Number),
+      /** `watch.id` again rather than `*`, for the same reason and one more: the join's
+       *  all-null row has a null `episode_id` too, so `filter (where episode_id is null)`
+       *  would count it as a film watch on an empty month without this. */
+      filmWatches: sql<number>`count(${watch.id}) filter (
+        where ${watch.episodeId} is null
+      )`.mapWith(Number),
+      episodeWatches: sql<number>`count(${watch.id}) filter (
+        where ${watch.episodeId} is not null
+      )`.mapWith(Number),
     })
     .from(window)
     .leftJoin(

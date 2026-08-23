@@ -1,4 +1,5 @@
-import type { LibraryState } from "@/db/access";
+import type { ActivityMonth, DecadeCount, LibraryState } from "@/db/access";
+import type { StatsBarDatum } from "./stats-bar-chart";
 
 /**
  * How the Stats page turns a number into words — every one of them a pure function, and
@@ -147,4 +148,51 @@ export function undatedNote(undatedWatches: number): string | null {
   return undatedWatches === 1
     ? `${counted} carries no date and is not counted here.`
     : `${counted} carry no date and are not counted here.`;
+}
+
+/**
+ * ── The charts' data, issue #229 ─────────────────────────────────────────────────────
+ *
+ * Two shapes turn `AccountStats` into what `StatsBarChart` draws, kept here for the same
+ * reason as everything above them: neither reads a row, so both are exercised without a
+ * database and without a browser.
+ */
+
+/** Which of `ActivityMonth`'s three counts a chart is drawing, and the noun that count is
+ *  a count of — irregular, so it is a pair rather than a `plural()` call with a guessed
+ *  `s`. */
+const ACTIVITY_KIND_NOUN: Record<"watches" | "filmWatches" | "episodeWatches", [string, string]> = {
+  watches: ["watch", "watches"],
+  filmWatches: ["film watch", "film watches"],
+  episodeWatches: ["episode watch", "episode watches"],
+};
+
+/**
+ * The activity window as bars — *episodes over time*, *films over time* and *monthly
+ * activity* are the same twelve months, three counts. One function rather than three, so
+ * the months cannot drift into three different orders or three different labels.
+ */
+export function activityChartData(
+  activity: readonly ActivityMonth[],
+  kind: "watches" | "filmWatches" | "episodeWatches",
+): readonly StatsBarDatum[] {
+  const [noun, many] = ACTIVITY_KIND_NOUN[kind];
+
+  return activity.map((month) => ({
+    key: month.month,
+    label: monthInWords(month.month),
+    value: month[kind],
+    valueLabel: plural(month[kind], noun, many),
+  }));
+}
+
+/** The decades as bars — *distribution across decades*. Release-year order is
+ *  `topDecades`'s own (heaviest first), not chronological, matching the list beside it. */
+export function decadeChartData(topDecades: readonly DecadeCount[]): readonly StatsBarDatum[] {
+  return topDecades.map((decade) => ({
+    key: String(decade.decade),
+    label: decadeInWords(decade.decade),
+    value: decade.titles,
+    valueLabel: plural(decade.titles, "title"),
+  }));
 }

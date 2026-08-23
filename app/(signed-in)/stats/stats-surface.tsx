@@ -1,7 +1,9 @@
 import type { AccountStats } from "@/db/access";
 import {
+  activityChartData,
   averageInWords,
   dayInWords,
+  decadeChartData,
   decadeInWords,
   minutesInWords,
   monthInWords,
@@ -9,16 +11,16 @@ import {
   STATE_LABELS,
   undatedNote,
 } from "./stats-figures";
+import { StatsBarChart } from "./stats-bar-chart";
 
 /**
- * The Stats page, as type — issue #227.
+ * The Stats page, as type — issue #227, with its charts from #229.
  *
- * **No charts, and no space held for one.** The ticket is explicit that the page is complete
- * and readable without them, and #229 is where they arrive; nothing here is laid out around
- * a gap a chart will one day fill, because a page built as a frame for something absent
- * reads as broken until it ships. When the charts land they take their place beside these
- * sections rather than into a hole left for them — and the hidden data table `SPEC.md`'s
- * parent requires behind each chart is, in this ticket, simply the page.
+ * **The charts arrived beside these sections, not into a hole left for them.** #227 built
+ * this page with no chart and no space held for one — a page laid out around a gap reads as
+ * broken until the gap fills — so #229's four charts (`stats-bar-chart.tsx`) sit inside the
+ * `Activity` and `Top decades` sections that already existed rather than reshaping the page
+ * around them. Removing them leaves #227's page exactly as it shipped.
  *
  * **No genre statistic, and no space held for one either.** There is no genre column, no
  * genre in the mirror, and nothing that has ever read one, so there is nothing to report and
@@ -30,10 +32,14 @@ import {
  * below are the two shapes every one of them is built from, which is what keeps a page of a
  * dozen unrelated numbers reading as one page rather than as a dozen cards.
  *
- * **No accent anywhere.** `globals.css` rations vermilion to recording a watch, and a page
- * whose whole content is quantities is the easiest place in the application to spend it by
- * accident — one highlighted figure and the reservation is gone. `--ink` carries emphasis
- * here, exactly as the active tab does.
+ * **No accent anywhere, charts included.** `globals.css` rations vermilion to recording a
+ * watch, and a page whose whole content is quantities is the easiest place in the
+ * application to spend it by accident — one highlighted figure and the reservation is gone.
+ * `--ink` carries emphasis here, exactly as the active tab does. `DESIGN.md` §3 pre-commits
+ * the charts to the same rule by name — *no decorative colour on a chart* — and its own
+ * precedent for "the current one" agrees: the current sidebar destination is drawn in
+ * `text`, not the accent, because *accent means live action* and marking a fact the reader
+ * can already see is not one.
  *
  * ── The honesty rules, and where each one shows ──────────────────────────────────────
  *
@@ -62,15 +68,22 @@ function Figure({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** A section: its label, its figures, and — where there is one — the sentence saying what
- *  the figures do not cover. */
+/** A section: its label, its figures, its charts, and — where there is one — the sentence
+ *  saying what the figures do not cover.
+ *
+ *  `charts` is a sibling of `dl`, never inside it: `StatsBarChart`'s markup is a `div`, and
+ *  a `dl`'s content model is `dt`/`dd` groups and nothing else (issue #229). It sits after
+ *  the figures and before the note, so a section reads *numbers, then their shape, then
+ *  what neither counts* — and the note, when there is one, still reads as covering both. */
 function Section({
   label,
   note,
+  charts,
   children,
 }: {
   label: string;
   note?: string | null;
+  charts?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -78,6 +91,8 @@ function Section({
       <h2 className="label-line text-dim">{label}</h2>
 
       <dl className="mt-3">{children}</dl>
+
+      {charts}
 
       {note ? <p className="mt-3 text-item leading-relaxed text-dim">{note}</p> : null}
     </section>
@@ -168,7 +183,26 @@ export function StatsSurface({ stats }: { stats: AccountStats }) {
         />
       </Section>
 
-      <Section label="Activity" note={undated}>
+      <Section
+        label="Activity"
+        note={undated}
+        charts={
+          <>
+            <StatsBarChart
+              caption="Episodes watched, by month"
+              data={activityChartData(stats.activity, "episodeWatches")}
+            />
+            <StatsBarChart
+              caption="Films watched, by month"
+              data={activityChartData(stats.activity, "filmWatches")}
+            />
+            <StatsBarChart
+              caption="All watches, by month"
+              data={activityChartData(stats.activity, "watches")}
+            />
+          </>
+        }
+      >
         {stats.activity.map(({ month, watches }) => (
           <Figure
             key={month}
@@ -201,6 +235,14 @@ export function StatsSurface({ stats }: { stats: AccountStats }) {
           stats.titlesWithoutReleaseYear > 0
             ? `${plural(stats.titlesWithoutReleaseYear, "title")} in your library ${stats.titlesWithoutReleaseYear === 1 ? "has" : "have"} no release year on file, and ${stats.titlesWithoutReleaseYear === 1 ? "belongs" : "belong"} to no decade here.`
             : null
+        }
+        charts={
+          stats.topDecades.length > 0 ? (
+            <StatsBarChart
+              caption="Titles in your library, by decade"
+              data={decadeChartData(stats.topDecades)}
+            />
+          ) : null
         }
       >
         {stats.topDecades.length === 0 ? (
