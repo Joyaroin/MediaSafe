@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import {
   addTitleToLibrary,
   addTitleToLibraryWatched,
@@ -129,10 +130,20 @@ export async function addToLibraryAction(
     const key = catalogueKeyFrom(kind, tmdbId);
 
     await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId));
-    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search-add" }) };
   }
+
+  /**
+   * Past the `catch`, so only a landed add busts anything (issue #219). The reader is on
+   * `/search` and the surface they will next open is `/library`, which now serves a
+   * cached read — this is what stops that navigation finding a grid without the title
+   * they just added in it. An add that was already there still busts: `addTitleToLibrary`
+   * treats it as a success, and re-reading a library that did not change is cheaper than
+   * working out from here whether it did.
+   */
+  invalidateFor("addTitleToLibrary", userId);
+  return { ok: true };
 }
 
 /**

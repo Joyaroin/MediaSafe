@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import {
   abandonTitle,
   getTitleDetail,
@@ -123,6 +124,11 @@ export async function titleLiveFactsAction(
  * `abandoned_at` outranking every derived rule. `unabandonAction` has no such certainty —
  * its outcome is read back from `unabandonTitle`, which reads it from the view rather
  * than guessing, so this file adds no second copy of the five-state rule either.
+ *
+ * Both bust the library's tag (issue #219), past the `catch` and on the success path
+ * only: abandoning a title is a change of state, and state is the one thing beyond the
+ * poster that the library grid groups and prints. The four reads above bust nothing —
+ * they are reads, and three of them are TMDB rather than this database at all.
  */
 export type AbandonOutcome =
   | { readonly ok: true; readonly state: LibraryState }
@@ -133,19 +139,25 @@ export async function abandonAction(libraryEntryId: string): Promise<AbandonOutc
 
   try {
     await abandonTitle(userId, libraryEntryId);
-    return { ok: true, state: "abandoned" };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
   }
+
+  invalidateFor("abandonTitle", userId);
+  return { ok: true, state: "abandoned" };
 }
 
 export async function unabandonAction(libraryEntryId: string): Promise<AbandonOutcome> {
   const userId = await requireUserId();
+  let state: LibraryState;
 
   try {
     const outcome = await unabandonTitle(userId, libraryEntryId);
-    return { ok: true, state: outcome.state };
+    state = outcome.state;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
   }
+
+  invalidateFor("unabandonTitle", userId);
+  return { ok: true, state };
 }

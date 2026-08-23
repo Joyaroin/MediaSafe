@@ -529,6 +529,47 @@ export async function watchedTmdbEpisodeIds(
   return rows.map((row) => row.tmdbEpisodeId);
 }
 
+/**
+ * Which accounts hold any of these titles — the nightly sweep's cache question, and the
+ * second function in this file that reads an owned table without being scoped to one
+ * account (issue #219).
+ *
+ * ── Why it is allowed to be, and what keeps that narrow ──────────────────────────────
+ *
+ * The shape rule at the top of this module — *every exported function takes the user id
+ * as its first argument* — is about **who a row is served to**. This function serves no
+ * rows: it returns the ids of the accounts whose cached library the sweep has just
+ * changed, so those caches can be busted, and it can see no more of `library_entry` than
+ * the `user_id` column. `watchedTmdbEpisodeIds` above is the precedent and reads the same
+ * way: a background job asking a question about everybody's rows in order to do its job
+ * correctly, rather than a surface reading somebody else's library.
+ *
+ * `refreshTitleMirror` and `repointTitle` write `title.name`, `release_year` and
+ * `poster_path` — three columns `listLibraryEntries` selects and the library grid prints
+ * — and they write them for every account at once. Without this, a refreshed poster would
+ * sit behind a cache entry until that account's next write of its own. `SELECT DISTINCT`
+ * rather than a count: the caller busts one tag per account, so the same account twice is
+ * one bust, and doing that in SQL is cheaper than doing it in a `Set` afterwards.
+ *
+ * **An empty `titleIds` returns without querying**, and the guard is load-bearing rather
+ * than an optimisation, for `libraryCatalogueKeys`'s reason: `inArray` over an empty
+ * array is not a predicate that matches nothing in every driver, and a `where` that
+ * quietly disappeared would return every account in the database.
+ */
+export async function accountsHoldingTitles(
+  titleIds: readonly string[],
+  executor: Executor = getDb(),
+): Promise<UserId[]> {
+  if (titleIds.length === 0) return [];
+
+  const rows = await executor
+    .selectDistinct({ userId: libraryEntry.userId })
+    .from(libraryEntry)
+    .where(inArray(libraryEntry.titleId, [...titleIds]));
+
+  return rows.map((row) => asUserId(row.userId));
+}
+
 /** What `repointTitle` was asked to do — `tmdb/reconcile.ts` reached the decision. */
 export interface RepointParams {
   readonly titleId: string;
@@ -2399,6 +2440,16 @@ function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
  * A failed read throws into `app/(signed-in)/library/error.tsx`. Returning `[]` from a
  * failure is the one bug this codebase is built around not having (`AGENTS.md`), because
  * an empty library and a database that is down would then be the same screen.
+ *
+ * ── The page does not call this directly any more — issue #219 ───────────────────────
+ *
+ * `cache/tags.ts`'s `cachedLibraryEntries` wraps it, and that is what
+ * `library/page.tsx` calls. Nothing about the query changed: the user id is still the
+ * first argument, `ownedBy` is still the whole isolation model, and a rejection still
+ * leaves through `unstable_cache` untouched. What changed is that a caller may now be
+ * served an earlier answer, so **a write that changes what this returns has to bust the
+ * library's tag** — `INVALIDATED_BY` in that file is where each one is written down, and
+ * `tests/cache-tags.test.ts` fails if a write in this module is missing from it.
  */
 export async function listLibraryEntries(
   userId: UserId,

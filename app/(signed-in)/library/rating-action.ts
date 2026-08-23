@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import { rateTitle } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
@@ -38,8 +39,17 @@ export async function rateTitleAction(
 
   try {
     await rateTitle(userId, libraryEntryId, rating);
-    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "rating" }) };
   }
+
+  /**
+   * The library grid does not print a rating today, so this bust changes nothing anybody
+   * can see — and it is here anyway, because the row it wrote is the row the library
+   * reads. `cache/tags.ts`'s `INVALIDATED_BY` argues that in full; the short version is
+   * that the day `LibraryEntryRow` grows a rating is not the day anybody will remember to
+   * come back here.
+   */
+  invalidateFor("rateTitle", userId);
+  return { ok: true };
 }

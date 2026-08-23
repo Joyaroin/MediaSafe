@@ -102,10 +102,11 @@ export function RemoveTitleForm({
      * second press that could only ever fail.
      *
      * There is no `refresh()` here any more (issue #179). Keeping the library from being
-     * served a grid with this title still in it is `revalidatePath("/library")` inside
-     * `removeTitleAction`, which names that route rather than refreshing this one on its
-     * way out, and rides back on the response of the write instead of costing a second
-     * round trip.
+     * served a grid with this title still in it is the tag bust inside `removeTitleAction`
+     * — `revalidatePath("/library")` until #219 cached that read and gave it a tag of its
+     * own — which names this account's library rather than refreshing this page on its way
+     * out, and rides back on the response of the write instead of costing a second round
+     * trip.
      *
      * `replace`, not `push`, so this page is not one back-press away — the title's own
      * detail route still is, and a back press onto it finds no entry and renders that

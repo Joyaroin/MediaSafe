@@ -1,7 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
+import { invalidateFor } from "@/cache/tags";
 import { abandonTitles } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
@@ -30,41 +29,34 @@ import { requireUserId } from "@/lib/session";
  * treats any `ok` as success, because *the library now says what I asked it to say* is the
  * only question the reader was asking.
  *
- * ── The invalidation names `/library` ────────────────────────────────────────────────
+ * ── The invalidation is a tag now, not two paths — issue #219 ───────────────────────
  *
- * `remove/actions.ts` (issue #179) is the precedent and the argument, including the part
- * about `revalidatePath` today being broader than its name — read that docblock rather
- * than a second copy of it here. The difference is where the reader is standing. Removal
- * revalidates the route it is *leaving*; this press happens on `/library` and stays there,
- * so the re-render Next.js does of the current route — returning its RSC payload with this
- * action's own response (`02-guides/server-actions.md`) — is not an incidental cost but the
- * whole mechanism: it is what makes the grid behind the bar read *abandoned* the moment
- * the mode ends, with no second round trip and nothing optimistic to put back on failure.
+ * This action used to call `revalidatePath("/library")` and `revalidatePath("/up-next")`,
+ * and argued at length about which paths deserved naming. Both calls are gone, because
+ * the thing they were naming has changed underneath them: `/library`'s read is cached and
+ * tagged (`cache/tags.ts`), so `invalidateFor` busts **this account's library and nothing
+ * else** on the server — where `revalidatePath` was, in the docs' own words, *"currently
+ * also causing all previously visited pages to refresh"*. The narrow call replaces the
+ * broad one, and it is narrow on the axis that matters: one account, not one path.
  *
- * `/up-next` is named too, and for a reason `/library` does not need: an abandoned title
- * leaves the four watching groups and joins ABANDONED, so a reader who taps across to it
- * after this press would otherwise be served the Router Cache's copy of a screen this
- * write invalidated. Both routes are `force-dynamic`, so neither is being rescued from a
- * stale *server* cache — the client's is the one in question.
+ * `/up-next` is dropped rather than translated, and the reason is that it never had a
+ * server cache to invalidate — it is `force-dynamic` and uncached, as that docblock said
+ * itself: *"neither is being rescued from a stale server cache — the client's is the one
+ * in question."* The client's is still handled, and by the same mechanism as before:
+ * `updateTag` in a Server Action marks the path revalidated, which is what makes the
+ * browser evict its prefetch cache whole (`server-action-reducer.js`). So a reader who
+ * taps across to Up next after this press still gets a fresh screen. When issue #226
+ * caches that read, it gets a tag of its own and this call gains a second line — which is
+ * the point of the map in `cache/tags.ts` being the place that decides.
  *
- * **The two named paths are not what makes the other surfaces correct today, and this
- * paragraph exists because an earlier draft claimed they were.** It argued the five group
- * screens under `/up-next/*` were deliberately left alone, which contradicted the very
- * docblock the paragraph above sends the reader to: `remove/actions.ts` quotes
- * `04-functions/revalidatePath.md` saying the call *"currently also causes all previously
- * visited pages to refresh when navigated to again."* While that holds, every one of those
- * screens is refreshed whether or not it is named, and so is every other route the reader
- * has been to.
- *
- * Naming these two is therefore about what happens **when that breadth goes away** — the
- * docs call the behaviour temporary — not about what is true now. `/library` is the one
- * that would still be load-bearing on that day, because it is the route the press happens
- * on and the only one whose freshness the reader sees immediately; `/up-next` is named
- * because it is the other surface this write changes the meaning of, and one line now is
- * cheaper than diagnosing a stale tab later. The five group screens stay unnamed on the
- * ordinary grounds that they are reached from `/up-next` and a reader has to go looking
- * for them — a judgement about cost, which is all it ever was, rather than a claim that
- * they are stale, which was never true.
+ * What has not changed is the re-render: a Server Function that invalidates has Next.js
+ * render the **current** route again and return its RSC payload with the action's own
+ * response (`02-guides/server-actions.md`). This press happens on `/library` and stays
+ * there, so that re-render is the whole mechanism rather than an incidental cost — it is
+ * what makes the grid behind the bar read *abandoned* the moment the mode ends, with no
+ * second round trip and nothing optimistic to put back on failure. `updateTag` rather
+ * than `revalidateTag` is what makes that re-render see this write; `cache/tags.ts` has
+ * the paragraph on why those two are not interchangeable.
  */
 export type AbandonTitlesActionOutcome =
   | { readonly ok: true; readonly abandoned: number }
@@ -90,12 +82,9 @@ export async function abandonTitlesAction(
   }
 
   // Only after the write committed, and only when it changed something. A press over a
-  // selection that was already abandoned wrote nothing, so there is nothing for either
-  // route to be stale about.
-  if (abandoned > 0) {
-    revalidatePath("/library");
-    revalidatePath("/up-next");
-  }
+  // selection that was already abandoned wrote nothing, so there is nothing for the
+  // cached library to be stale about and a bust would only throw away a correct entry.
+  if (abandoned > 0) invalidateFor("abandonTitles", userId);
 
   return { ok: true, abandoned };
 }

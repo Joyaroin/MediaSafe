@@ -14,6 +14,11 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * the failure and returned `[]`, and for the whole life of that app a database that was
  * down rendered as a library with nothing in it.
  *
+ * The cache #219 put in front of that read does not add a second path. `unstable_cache`
+ * stores a resolved value and lets a rejection through untouched, so an empty entry is
+ * still only ever made from a query that succeeded and found nothing — there is no cache
+ * state in which this component stands in for a failure.
+ *
  * ── Everything about it is the opposite of the failure ───────────────────────────────
  *
  * `DESIGN.md`, States, makes the distinction structural rather than a matter of wording:

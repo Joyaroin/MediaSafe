@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import { applyImportChunk, type ImportChunkTitle } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { titleMirror } from "@/tmdb/catalogue";
@@ -65,6 +66,7 @@ export async function applyImportChunkAction(
   watches: readonly NativeImportWatch[],
 ): Promise<ImportChunkActionOutcome> {
   const userId = await requireUserId();
+  let landed: ImportChunkActionOutcome;
 
   try {
     const resolved: ImportChunkTitle[] = [];
@@ -97,8 +99,18 @@ export async function applyImportChunkAction(
       watches: usableWatches,
     });
 
-    return { ok: true, ...outcome, skipped };
+    landed = { ok: true, ...outcome, skipped };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "import-chunk" }) };
   }
+
+  /**
+   * Once per chunk, past the `catch` (issue #219). An import is many chunks, so this is
+   * many busts of the same tag — which costs nothing worth avoiding: `updateTag` expires
+   * an entry, and the library is not being read between chunks. Busting per chunk rather
+   * than once at the end is what makes a run that stops halfway leave a library that
+   * agrees with the rows it did write.
+   */
+  invalidateFor("applyImportChunk", userId);
+  return landed;
 }

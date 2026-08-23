@@ -29,6 +29,12 @@ order settles it:
 | 5 | **`docs/design/v1-surfaces.md`** + `-wireframes.md` | Screen list, layout divergence, per-screen states | **partly superseded** — see §10.2 |
 | 6 | **`PRODUCT.md`** | Historical. Product truth as understood on 2026-08-17 morning | **stale in eight places** — see §10.4 |
 
+**`docs/adr/0002-the-read-cache-and-its-tags.md` is not in the table because it does not compete with
+anything in it.** It records one reversal — §3 constraint 1's read-cache clause,
+[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and the amendment it produced
+is written into §3.1 itself rather than left here to be reconciled. Read it before caching a second
+read; nothing else in this file depends on it.
+
 **Neither prototype is a source of truth.** `docs/design/prototypes/repertory-bill.html` recorded the
 letterpress world; `design/catalogue-wall.html` recorded the Catalogue Wall that replaced it and was
 binding on appearance from #132 until #144 merged. `DESIGN.md` now outranks both, and is written from
@@ -81,9 +87,30 @@ review**. Everything not in §2's seven is specced-but-later; §9 lists it.
 
 From the map, settled with Adham and not up for relitigation:
 
-1. **One data path.** No guest mode, no second repository implementation, no read cache, no local
-   store, no service worker, no offline queue. `tvtracker`'s dual data path is the single biggest
-   reason this rewrite exists.
+1. **One data path.** No guest mode, no second repository implementation, ~~no read cache~~, no
+   local store, no service worker, no offline queue. `tvtracker`'s dual data path is the single
+   biggest reason this rewrite exists.
+
+   > **Amended 2026-08-22 — the read-cache clause is reversed**
+   > ([#219](https://github.com/Joyaroin/MediaSafe/issues/219), under
+   > [#215](https://github.com/Joyaroin/MediaSafe/issues/215)). **The other five hold unchanged.**
+   >
+   > The reasoning above stays on the page because it was right about what it was defending.
+   > `tvtracker` kept a second copy of the library and a second path to it, and the failure was not
+   > that the copy was stale — it was that *two reads of the same fact could disagree and nothing
+   > said which one was true.* This clause banned the mechanism because at the time nothing could
+   > hold the property without banning it.
+   >
+   > Something can now. `cache/tags.ts` owns every key, every tag and every bust; every key carries
+   > an account, and every write busts its tags inside the same action. Both are machine-checked —
+   > `mediasafe/cache-key-carries-account` in `npm run lint`, and `tests/cache-tags.test.ts` against
+   > `db/access.ts`'s real exports — so the property is enforced rather than remembered, which is the
+   > standard §3.2 is already held to next door.
+   >
+   > **What is cached is one read**: the library, and nothing else yet. There is still exactly one
+   > path to the database (`db/access.ts`), one query behind that read, and no second
+   > implementation of it. `docs/adr/0002-the-read-cache-and-its-tags.md` records the reversal, what
+   > replaced the ban, and the alternative that was rejected.
 2. **Empty and failed are structurally separate.** **No `catch` returns `[]`.** A read failure
    throws into an error boundary; an empty state is reachable only by a successful zero-row query.
 3. **A lost write is never silent.** The watch write is optimistic with rollback and a persistent

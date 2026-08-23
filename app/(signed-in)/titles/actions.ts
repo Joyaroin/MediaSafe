@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import {
   addTitleToLibrary,
   addTitleToLibraryWatched,
@@ -56,6 +57,7 @@ export async function addUnownedTitleToLibraryAction(
   tmdbId: number,
 ): Promise<AddToLibraryOutcome> {
   const userId = await requireUserId();
+  let libraryEntryId: string;
 
   try {
     /**
@@ -70,8 +72,8 @@ export async function addUnownedTitleToLibraryAction(
 
     await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId));
 
-    const libraryEntryId = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
-    if (libraryEntryId === null) {
+    const found = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
+    if (found === null) {
       /**
        * Unreachable: the write above either created this account's entry or found one
        * already there, and both leave a row for this read to find. It throws rather than
@@ -84,10 +86,19 @@ export async function addUnownedTitleToLibraryAction(
       );
     }
 
-    return { ok: true, libraryEntryId };
+    libraryEntryId = found;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unowned-add" }) };
   }
+
+  /**
+   * Past the `catch`, so only a landed add busts anything (issue #219). This action's
+   * caller navigates straight to the entry's own detail route, and `/library` is one back
+   * press behind it — the route whose read is cached — so the bust is what stops that
+   * press finding a grid the add is missing from.
+   */
+  invalidateFor("addTitleToLibrary", userId);
+  return { ok: true, libraryEntryId };
 }
 
 /**

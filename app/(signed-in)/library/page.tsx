@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { listLibraryEntries, listLists } from "@/db/access";
+import { cachedLibraryEntries } from "@/cache/tags";
+import { listLists } from "@/db/access";
 import { sortFrom } from "@/db/library-sort";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
@@ -90,9 +91,19 @@ export default async function LibraryPage({
 
   /**
    * Unguarded, deliberately. A failure here throws into `error.tsx`, which is the whole
-   * error discipline in one line.
+   * error discipline in one line — and it still does through the cache: `unstable_cache`
+   * stores a resolved value and lets a rejection through untouched, so there is no cache
+   * state in which a database that is down comes back as a library with nothing in it.
+   *
+   * Cached since issue #219, which reversed `SPEC.md` §3.1's read-cache clause and proved
+   * the machinery here. This is the same query it always was — `cache/tags.ts` wraps
+   * `listLibraryEntries`, keyed by this account and this sort, and every write that can
+   * change what this grid shows busts the tag inside its own action. What changed for
+   * this page is that navigating away and back no longer costs a round trip; what did not
+   * change is that the rows are this account's, because the key cannot be built without
+   * one.
    */
-  const entries = await listLibraryEntries(userId, sort);
+  const entries = await cachedLibraryEntries(userId, sort);
 
   if (entries.length === 0) {
     /**
