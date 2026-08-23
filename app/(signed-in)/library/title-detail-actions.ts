@@ -1,9 +1,8 @@
 "use server";
 
-import { invalidateFor } from "@/cache/tags";
+import { cachedTitleDetail, invalidateFor } from "@/cache/tags";
 import {
   abandonTitle,
-  getTitleDetail,
   unabandonTitle,
   type LibraryState,
   type TitleDetailRow,
@@ -33,23 +32,30 @@ export type { Outcome } from "./live-facts";
  * thrown Server Action's error before it crosses to the browser, so catching here is what
  * lets Sentry see the real exception and the reader see a reference id for it.
  *
- * The phone route does not call these. It calls `getTitleDetail` directly and lets a
+ * The phone route does not call these. It calls `cachedTitleDetail` directly and lets a
  * failure throw into its own boundary, for the same reason `app/(signed-in)/library/page.tsx`
- * does for the grid.
+ * does for the grid — the same wrapper this file calls, so the two surfaces share one
+ * cache entry and differ only in where a failure lands.
  */
 
 /** The mirrored half of title detail — the desktop pane's and the Up next sheet's read.
  *  Unchanged by issue #218: it stays the fast, DB-only read it always was, so the panel
  *  those two surfaces show still appears the moment this resolves, not gated behind
  *  whatever the three live facts below are doing (`titleLiveFactsAction`'s own docblock —
- *  and `live-title-facts.tsx`'s top one — carry why the two stay separate reads). */
+ *  and `live-title-facts.tsx`'s top one — carry why the two stay separate reads).
+ *
+ *  **The `try` is still doing its own job through the cache, and only its own.** It is here
+ *  because this action has no route boundary to throw into, not to make the read look
+ *  successful: `catch` returns an `Outcome` carrying a reference id, which is a reported
+ *  failure and not an empty result (`AGENTS.md`). `unstable_cache` stores nothing on a
+ *  rejection, so a failed read is not cached as one and the next call is a real read. */
 export async function titleDetailAction(
   libraryEntryId: string,
 ): Promise<Outcome<TitleDetailRow>> {
   const userId = await requireUserId();
 
   try {
-    return { ok: true, value: await getTitleDetail(userId, libraryEntryId) };
+    return { ok: true, value: await cachedTitleDetail(userId, libraryEntryId) };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "title-detail" }) };
   }

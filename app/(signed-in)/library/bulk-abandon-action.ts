@@ -39,15 +39,19 @@ import { requireUserId } from "@/lib/session";
  * also causing all previously visited pages to refresh"*. The narrow call replaces the
  * broad one, and it is narrow on the axis that matters: one account, not one path.
  *
- * `/up-next` is dropped rather than translated, and the reason is that it never had a
- * server cache to invalidate — it is `force-dynamic` and uncached, as that docblock said
- * itself: *"neither is being rescued from a stale server cache — the client's is the one
- * in question."* The client's is still handled, and by the same mechanism as before:
+ * `/up-next` was dropped rather than translated, because at the time it had no server
+ * cache to invalidate — it was `force-dynamic` and uncached, as that docblock said itself:
+ * *"neither is being rescued from a stale server cache — the client's is the one in
+ * question."* The client's is still handled, and by the same mechanism as before:
  * `updateTag` in a Server Action marks the path revalidated, which is what makes the
  * browser evict its prefetch cache whole (`server-action-reducer.js`). So a reader who
- * taps across to Up next after this press still gets a fresh screen. When issue #226
- * caches that read, it gets a tag of its own and this call gains a second line — which is
- * the point of the map in `cache/tags.ts` being the place that decides.
+ * taps across to Up next after this press still gets a fresh screen.
+ *
+ * **Issue #226 has since cached that read, and this call did not change.** The prediction
+ * here was that it would gain a second line; it gained nothing, because
+ * `INVALIDATES.abandonTitles` grew instead — one call, and the map decides how many tags it
+ * busts. That is the map being the place that decides, working slightly better than this
+ * paragraph expected: a call site cannot fall behind a fact it does not enumerate.
  *
  * What has not changed is the re-render: a Server Function that invalidates has Next.js
  * render the **current** route again and return its RSC payload with the action's own

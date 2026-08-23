@@ -1,5 +1,5 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
-import { getTitleDetail } from "@/db/access";
+import { cachedTitleDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { LiveTitleFactsStreamed } from "../live-title-facts-streamed";
 import { BackToLibraryBar } from "./back-to-library-bar";
@@ -15,11 +15,22 @@ import { TitleDetailView } from "./title-detail-view";
  *
  * ── A page read, not a Server Action ──────────────────────────────────────────────────
  *
- * Unlike the desktop pane, this is a page render: `getTitleDetail` is called directly and
- * unguarded, so a failure throws into `error.tsx` below — the same shape
+ * Unlike the desktop pane, this is a page render: `cachedTitleDetail` is called directly
+ * and unguarded, so a failure throws into `error.tsx` below — the same shape
  * `app/(signed-in)/library/page.tsx` uses for the grid. `title-detail-actions.ts`'s own
  * docblock is why the pane cannot do the same: it never navigates, so it has no route
  * boundary to throw into.
+ *
+ * ── Cached since #226, and this route and the pane share the entry ──────────────────
+ *
+ * `cache/tags.ts` wraps the mirrored read, keyed by this account and tagged `title-detail`
+ * — the same wrapper `titleDetailAction` calls for the desktop pane, so the two surfaces
+ * are one cache entry and cannot disagree about a title's state, rating or watched
+ * episodes. Every write that changes any of those busts the tag inside its own action.
+ *
+ * The **day is in the key**, unlike the lists: an episode's `released` flag is read off
+ * `air_date <= current_date`, so the season grid grows at midnight with no write behind it
+ * (`cache/tags.ts`'s `serverDay`, and ADR-0003).
  *
  * ── The three live facts stream in behind this render, not after it mounts (issue #218) ──
  *
@@ -38,7 +49,7 @@ export default async function TitleDetailPage({
 }) {
   const { entryId } = await params;
   const userId = await requireUserId();
-  const detail = await getTitleDetail(userId, entryId);
+  const detail = await cachedTitleDetail(userId, entryId);
 
   return (
     <main className="flex w-full flex-1 flex-col">

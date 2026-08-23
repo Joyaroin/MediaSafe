@@ -1,4 +1,4 @@
-import { listAbandoned } from "@/db/access";
+import { cachedAbandoned } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { GroupScreen } from "../group-screen";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AbandonedGroupPage() {
   const userId = await requireUserId();
-  const entries = await listAbandoned(userId);
+  const entries = await cachedAbandoned(userId);
 
   // `abandoned` because every entry `listAbandoned` returns is — the group is what knows,
   // and issue #199's bulk Abandon has to skip them. See `GroupScreen`'s own prop note.
