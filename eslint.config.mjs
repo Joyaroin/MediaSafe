@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+import cacheKeyCarriesAccount from "./eslint-rules/cache-key-carries-account.mjs";
 import noEmptyCatch from "./eslint-rules/no-empty-catch.mjs";
 
 /**
@@ -109,8 +110,53 @@ const AUTH_INSTANCE_PATTERN = {
   message: SESSION_BOUNDARY_MESSAGE,
 };
 
+/**
+ * The read cache, held to the standard the two boundaries above are held to (issue #219).
+ *
+ * `cache/tags.ts` owns the whole tag vocabulary — every key, every tag, every bust — and
+ * the two properties that keep *two reads of the same fact cannot disagree* true are
+ * properties **of that module**: keys carry an account because the only thing that builds
+ * one takes a `UserId`, and writes bust their tags because the map they bust from is
+ * there. A page that reached for `unstable_cache` itself would be outside both, so it may
+ * not reach for it at all.
+ *
+ * `next/cache` is the whole surface, not `unstable_cache` alone: `revalidatePath`,
+ * `revalidateTag` and `updateTag` are how the busting half gets done somewhere else.
+ * `cache-key-carries-account.mjs` covers the keying half wherever it is written, including
+ * inside `cache/`, where this restriction does not apply.
+ */
+const READ_CACHE_PATTERN = {
+  group: ["next/cache"],
+  message:
+    "Reads are cached and tags are busted in cache/tags.ts, which owns the vocabulary and takes the user id explicitly. Call invalidateFor() from your action (issue #219).",
+};
+
 const dataAccessChokePoint = {
   name: "mediasafe/data-access-choke-point",
+  rules: {
+    "no-restricted-imports": [
+      "error",
+      {
+        patterns: [
+          CONNECTION_PATTERN,
+          USER_ID_MINT_PATTERN,
+          BETTER_AUTH_PATTERN,
+          AUTH_INSTANCE_PATTERN,
+          READ_CACHE_PATTERN,
+        ],
+      },
+    ],
+  },
+};
+
+/**
+ * The inside of the read cache's choke point, and the only file exempt from it. It is
+ * still held to every other pattern above — owning the cache is not a licence to open a
+ * connection or resolve a session.
+ */
+const readCacheExemption = {
+  name: "mediasafe/read-cache",
+  files: ["cache/**"],
   rules: {
     "no-restricted-imports": [
       "error",
@@ -138,7 +184,7 @@ const sessionBoundaryExemption = {
   rules: {
     "no-restricted-imports": [
       "error",
-      { patterns: [CONNECTION_PATTERN, AUTH_INSTANCE_PATTERN] },
+      { patterns: [CONNECTION_PATTERN, AUTH_INSTANCE_PATTERN, READ_CACHE_PATTERN] },
     ],
   },
 };
@@ -167,6 +213,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   dataAccessChokePoint,
   sessionBoundaryExemption,
+  readCacheExemption,
   chokePointExemptions,
   // Override default ignores of eslint-config-next.
   globalIgnores([
@@ -177,11 +224,22 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
-    // SPEC.md §3.2 — no `catch` returns `[]` — enforced rather than remembered.
-    // `npm run lint` is one of the three things CI runs (SPEC.md §6), which is why the
-    // constraint lives here and not in a test: a test would never see a pull request.
-    plugins: { mediasafe: { rules: { "no-empty-catch": noEmptyCatch } } },
-    rules: { "mediasafe/no-empty-catch": "error" },
+    // SPEC.md §3.2 — no `catch` returns `[]` — and SPEC.md §3.1's amendment — no cache
+    // key without an account — both enforced rather than remembered. `npm run lint` is
+    // one of the three things CI runs (SPEC.md §6), which is why the two constraints live
+    // here and not in a test: a test would never see a pull request.
+    plugins: {
+      mediasafe: {
+        rules: {
+          "no-empty-catch": noEmptyCatch,
+          "cache-key-carries-account": cacheKeyCarriesAccount,
+        },
+      },
+    },
+    rules: {
+      "mediasafe/no-empty-catch": "error",
+      "mediasafe/cache-key-carries-account": "error",
+    },
   },
 ]);
 

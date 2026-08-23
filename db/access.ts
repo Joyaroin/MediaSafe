@@ -91,10 +91,21 @@ import type { NativeImportWatch } from "@/import/native-format";
  *
  * ── The shape, which is the deliverable ──────────────────────────────────────────────
  *
- * 1. **Every exported function takes the user id as its first argument.** Never a
- *    session, never a request, never `headers()`. A function that resolves its own
- *    caller cannot be called for a different user in a test, an import, or a nightly
- *    job — and, worse, it is a second place where "who is this" gets decided.
+ * 1. **Every exported function that serves a caller rows takes the user id as its first
+ *    argument.** Never a session, never a request, never `headers()`. A function that
+ *    resolves its own caller cannot be called for a different user in a test, an import,
+ *    or a nightly job — and, worse, it is a second place where "who is this" gets decided.
+ *
+ *    The qualifier is load-bearing and was added by issue #219, because the rule had
+ *    already grown two exceptions and read as though it had none. **Two functions here
+ *    read an owned table across every account**, and both are the nightly sweep's:
+ *    `watchedTmdbEpisodeIds` (`watch`, to reconcile a title whose TMDB id vanished) and
+ *    `accountsHoldingTitles` (`library_entry`, to find whose cached library a refreshed
+ *    mirror just changed). Neither hands a caller another account's rows — the first
+ *    returns TMDB episode ids and the second returns nothing but the `user_id` column
+ *    itself — and both exist because a background job has to ask a question about
+ *    everybody in order to be correct about anybody. A third one needs the same test:
+ *    *does this serve rows, or answer a question about the shape of the table?*
  * 2. **Session-to-user-id resolution happens once, at the boundary**, in
  *    `lib/session.ts`. Nothing here imports it. The direction of that dependency is the
  *    property: auth knows about the database, the database knows nothing about auth.
@@ -529,6 +540,47 @@ export async function watchedTmdbEpisodeIds(
   return rows.map((row) => row.tmdbEpisodeId);
 }
 
+/**
+ * Which accounts hold any of these titles — the nightly sweep's cache question, and the
+ * second function in this file that reads an owned table without being scoped to one
+ * account (issue #219).
+ *
+ * ── Why it is allowed to be, and what keeps that narrow ──────────────────────────────
+ *
+ * The shape rule at the top of this module — *every exported function takes the user id
+ * as its first argument* — is about **who a row is served to**. This function serves no
+ * rows: it returns the ids of the accounts whose cached library the sweep has just
+ * changed, so those caches can be busted, and it can see no more of `library_entry` than
+ * the `user_id` column. `watchedTmdbEpisodeIds` above is the precedent and reads the same
+ * way: a background job asking a question about everybody's rows in order to do its job
+ * correctly, rather than a surface reading somebody else's library.
+ *
+ * `refreshTitleMirror` and `repointTitle` write `title.name`, `release_year` and
+ * `poster_path` — three columns `listLibraryEntries` selects and the library grid prints
+ * — and they write them for every account at once. Without this, a refreshed poster would
+ * sit behind a cache entry until that account's next write of its own. `SELECT DISTINCT`
+ * rather than a count: the caller busts one tag per account, so the same account twice is
+ * one bust, and doing that in SQL is cheaper than doing it in a `Set` afterwards.
+ *
+ * **An empty `titleIds` returns without querying**, and the guard is load-bearing rather
+ * than an optimisation, for `libraryCatalogueKeys`'s reason: `inArray` over an empty
+ * array is not a predicate that matches nothing in every driver, and a `where` that
+ * quietly disappeared would return every account in the database.
+ */
+export async function accountsHoldingTitles(
+  titleIds: readonly string[],
+  executor: Executor = getDb(),
+): Promise<UserId[]> {
+  if (titleIds.length === 0) return [];
+
+  const rows = await executor
+    .selectDistinct({ userId: libraryEntry.userId })
+    .from(libraryEntry)
+    .where(inArray(libraryEntry.titleId, [...titleIds]));
+
+  return rows.map((row) => asUserId(row.userId));
+}
+
 /** What `repointTitle` was asked to do — `tmdb/reconcile.ts` reached the decision. */
 export interface RepointParams {
   readonly titleId: string;
@@ -612,6 +664,17 @@ export async function repointTitle(
 /** Whether the add created a library entry, or found one already there. */
 export interface AddOutcome {
   readonly added: boolean;
+  /**
+   * The global `title` row this add wrote — reported because **it is not this account's
+   * row** (issue #219). `mirrorTitle` upserts `name`, `release_year` and `poster_path`
+   * for every account holding the title, so the caller has to bust their cached libraries
+   * too, and it cannot ask which accounts those are without knowing which title moved.
+   *
+   * Present whether or not `added` is true. A re-add creates no library entry and still
+   * refreshes the mirror, which is the case that most needs this: nothing about the
+   * caller's own library changed, and everybody else's grid did.
+   */
+  readonly titleId: string;
 }
 
 /**
@@ -662,7 +725,7 @@ export async function addTitleToLibrary(
       .onConflictDoNothing({ target: [libraryEntry.userId, libraryEntry.titleId] })
       .returning({ id: libraryEntry.id });
 
-    return { added: created.length > 0 };
+    return { added: created.length > 0, titleId: mirrored.id };
   });
 }
 
@@ -683,6 +746,13 @@ export async function addTitleToLibrary(
 export interface AddWatchedOutcome {
   readonly added: boolean;
   readonly recorded: number;
+  /**
+   * `AddOutcome.titleId`'s reason, reached through the nested add (issue #219). This
+   * write mirrors the title exactly as the plain add does — its own docblock says the
+   * refresh *"every account reads"* is why it calls `addTitleToLibrary` rather than
+   * copying it — so its caller owes every other holder of that title a bust too.
+   */
+  readonly titleId: string;
 }
 
 /**
@@ -834,7 +904,7 @@ export async function addTitleToLibraryWatched(
     if (mirror.kind === "film") {
       // Already watched, so there is nothing this press can honestly add. A second row
       // would be a rewatch, and the reader asked to record having seen it, not twice.
-      if (watchedRows.length > 0) return { added, recorded: 0 };
+      if (watchedRows.length > 0) return { added, recorded: 0, titleId: entry.titleId };
 
       const written = await tx
         .insert(watch)
@@ -852,7 +922,7 @@ export async function addTitleToLibraryWatched(
         .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
         .returning({ id: watch.id });
 
-      return { added, recorded: written.length };
+      return { added, recorded: written.length, titleId: entry.titleId };
     }
 
     /**
@@ -880,7 +950,7 @@ export async function addTitleToLibraryWatched(
     );
     const covered = released.filter((one) => !alreadyWatched.has(one.id));
 
-    if (covered.length === 0) return { added, recorded: 0 };
+    if (covered.length === 0) return { added, recorded: 0, titleId: entry.titleId };
 
     const written = await tx
       .insert(watch)
@@ -903,7 +973,7 @@ export async function addTitleToLibraryWatched(
       .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
       .returning({ id: watch.id });
 
-    return { added, recorded: written.length };
+    return { added, recorded: written.length, titleId: entry.titleId };
   });
 }
 
@@ -955,6 +1025,13 @@ export interface ImportChunkOutcome {
   readonly titlesAdded: number;
   readonly watchesAdded: number;
   readonly arrivedAbandoned: number;
+  /**
+   * Every global `title` row this chunk mirrored — `AddOutcome.titleId`'s reason, at chunk
+   * scale (issue #219). Not the same set as *titles added*: a title already in this
+   * account's library still had its mirror refreshed, and so did one already in somebody
+   * else's, so this is the set whose holders' cached libraries the caller must bust.
+   */
+  readonly mirroredTitleIds: readonly string[];
 }
 
 /**
@@ -1156,6 +1233,7 @@ export async function applyImportChunk(
       titlesAdded: created.length,
       watchesAdded: written.length,
       arrivedAbandoned: created.filter((row) => row.abandonedAt !== null).length,
+      mirroredTitleIds: titleIds,
     };
   });
 }
@@ -2399,6 +2477,16 @@ function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
  * A failed read throws into `app/(signed-in)/library/error.tsx`. Returning `[]` from a
  * failure is the one bug this codebase is built around not having (`AGENTS.md`), because
  * an empty library and a database that is down would then be the same screen.
+ *
+ * ── The page does not call this directly any more — issue #219 ───────────────────────
+ *
+ * `cache/tags.ts`'s `cachedLibraryEntries` wraps it, and that is what
+ * `library/page.tsx` calls. Nothing about the query changed: the user id is still the
+ * first argument, `ownedBy` is still the whole isolation model, and a rejection still
+ * leaves through `unstable_cache` untouched. What changed is that a caller may now be
+ * served an earlier answer, so **a write that changes what this returns has to bust the
+ * library's tag** — `INVALIDATES` in that file is where each one is written down, and
+ * `tests/cache-tags.test.ts` fails if a write in this module is missing from it.
  */
 export async function listLibraryEntries(
   userId: UserId,

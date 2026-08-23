@@ -1,6 +1,11 @@
 "use server";
 
-import { applyImportChunk, type ImportChunkTitle } from "@/db/access";
+import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
+import {
+  accountsHoldingTitles,
+  applyImportChunk,
+  type ImportChunkTitle,
+} from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { titleMirror } from "@/tmdb/catalogue";
 import type { NativeImportTitle, NativeImportWatch } from "@/import/native-format";
@@ -65,6 +70,16 @@ export async function applyImportChunkAction(
   watches: readonly NativeImportWatch[],
 ): Promise<ImportChunkActionOutcome> {
   const userId = await requireUserId();
+  /**
+   * The success, held rather than returned, so the bust below runs past the `catch` and
+   * on the landed path only. Narrowed to the `ok: true` half deliberately: this variable
+   * can only ever hold the outcome of a chunk that committed, and typing it as the whole
+   * union would let a later edit put a failure in it and bust for a write that did not
+   * happen.
+   */
+  let landed: Extract<ImportChunkActionOutcome, { ok: true }>;
+  /** Every global title row the chunk wrote — see the second bust below. */
+  let mirroredTitleIds: readonly string[];
 
   try {
     const resolved: ImportChunkTitle[] = [];
@@ -97,8 +112,50 @@ export async function applyImportChunkAction(
       watches: usableWatches,
     });
 
-    return { ok: true, ...outcome, skipped };
+    mirroredTitleIds = outcome.mirroredTitleIds;
+    /**
+     * Named field by field rather than spread. `ImportChunkOutcome` grew
+     * `mirroredTitleIds` for the second bust below, and a spread would put a list of
+     * internal `title.id`s on the wire to the browser — a Server Action's return value is
+     * serialised and sent — for a screen that has no use for them.
+     */
+    landed = {
+      ok: true,
+      titlesAdded: outcome.titlesAdded,
+      watchesAdded: outcome.watchesAdded,
+      arrivedAbandoned: outcome.arrivedAbandoned,
+      skipped,
+    };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "import-chunk" }) };
   }
+
+  /**
+   * Once per chunk, past the `catch` (issue #219). An import is many chunks, so this is
+   * many busts of the same tag — which costs nothing worth avoiding: `updateTag` expires
+   * an entry, and the library is not being read between chunks. Busting per chunk rather
+   * than once at the end is what makes a run that stops halfway leave a library that
+   * agrees with the rows it did write.
+   */
+  invalidateFor("applyImportChunk", userId);
+
+  /**
+   * And every other account holding any title this chunk mirrored — `search/actions.ts`
+   * carries the argument in full. The short version: `applyImportChunk` upserts the
+   * **global** `title` and `episode` rows through the same `mirrorTitle` the add path and
+   * the nightly sweep use, so an import refreshes what everybody else's library grid
+   * prints. `mirroredTitleIds` is every title it wrote, not only the ones new to this
+   * account, because a title already in this library still had its shared mirror
+   * overwritten.
+   *
+   * One query per chunk rather than per title: `accountsHoldingTitles` takes the whole set
+   * and answers `SELECT DISTINCT`, so a chunk of twenty-five titles across three accounts
+   * is one read and three busts.
+   */
+  invalidateForOtherAccounts(
+    "applyImportChunk",
+    await accountsHoldingTitles(mirroredTitleIds),
+    userId,
+  );
+  return landed;
 }

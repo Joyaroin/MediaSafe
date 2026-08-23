@@ -173,10 +173,16 @@ export function FilterField({
  * ── Why a selection here is a navigation and not a `setState` ────────────────────────
  *
  * `SPEC.md` §7 puts sort state in the URL, so choosing an order calls `router.push` rather
- * than updating local state. That re-renders `page.tsx`, which re-runs `listLibraryEntries`
- * with the new `ORDER BY` and hands fresh, correctly-ordered `entries` back down — the
- * chip and the filter text are untouched, because they live in `LibrarySurface`, one level
- * below the re-render this causes.
+ * than updating local state. That re-renders `page.tsx`, which reads the library again at
+ * the new `ORDER BY` and hands correctly-ordered `entries` back down — the chip and the
+ * filter text are untouched, because they live in `LibrarySurface`, one level below the
+ * re-render this causes.
+ *
+ * Since issue #219 that read may not reach Postgres at all: `sort` is part of the cache
+ * key (`cache/tags.ts`), so each order is its own entry and switching back to one you have
+ * already used is served from it. The order is still decided in SQL — four `ORDER BY`s in
+ * `db/access.ts`, never a client-side re-sort — and every one of those entries carries the
+ * same tag, so a write busts all four together.
  *
  * The default carries no query string at all: a reader who never touches this control
  * keeps a clean `/library`, and picking *Title A–Z* again — the only selection that can

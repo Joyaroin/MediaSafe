@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import {
   markWatchedUpTo,
   recordWatch,
@@ -23,6 +24,16 @@ import { requireUserId } from "@/lib/session";
  * `recordWatch` itself carries the idempotency (`UNIQUE (user_id, source, source_key)`)
  * and the authorization (`ownedBy`); this wrapper adds nothing to either — it only turns
  * a throw into the outcome shape the client's rollback needs.
+ *
+ * ── The three writes here all bust the library's tag — issue #219 ────────────────────
+ *
+ * A watch is what `library_entry_state` and `library_entry_up_next` are derived from, so
+ * every one of these three changes both of the columns the library grid prints beyond the
+ * poster. The bust runs **past the `catch`, on the success path only**: a write that did
+ * not land changed nothing, and busting for it would throw away a correct entry while
+ * making a lost write look from here like one that happened. The optimistic mark and its
+ * rollback (`use-watch-mark.ts`) are untouched — this is what makes the server agree with
+ * the guess the browser already drew, rather than a second guess of its own.
  */
 export type WatchActionOutcome =
   | { readonly ok: true }
@@ -35,10 +46,12 @@ export async function recordWatchAction(
 
   try {
     await recordWatch(userId, params);
-    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "record-watch" }) };
   }
+
+  invalidateFor("recordWatch", userId);
+  return { ok: true };
 }
 
 /**
@@ -74,10 +87,12 @@ export async function unwatchAction(
 
   try {
     await unwatch(userId, params);
-    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unwatch" }) };
   }
+
+  invalidateFor("unwatch", userId);
+  return { ok: true };
 }
 
 /**
@@ -113,11 +128,13 @@ export async function markWatchedUpToAction(
 
   try {
     await markWatchedUpTo(userId, params);
-    return { ok: true };
   } catch (error) {
     return {
       ok: false,
       reference: referenceFor(error, { surface: "mark-watched-up-to" }),
     };
   }
+
+  invalidateFor("markWatchedUpTo", userId);
+  return { ok: true };
 }

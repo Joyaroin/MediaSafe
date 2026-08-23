@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { invalidateForOtherAccounts } from "@/cache/tags";
+import { accountsHoldingTitles } from "@/db/access";
 import { findByExternalId, titleMirror } from "@/tmdb/catalogue";
 
 import { unauthorized } from "./authorize";
@@ -33,6 +35,28 @@ import { runNightlySweep } from "./run-sweep";
  * `title` and `episode` are global and unowned (ADR-0001) — the mirror is refreshed for
  * everybody at once, so a sweep acting for nobody in particular is the correct shape, not
  * a corner this route cuts. It takes no user id and never calls `lib/session.ts`.
+ *
+ * ── It still has to name accounts, once, at the end — issue #219 ─────────────────────
+ *
+ * The library's read is cached, keyed and tagged per account (`cache/tags.ts`), and a
+ * refreshed mirror changes three columns that grid prints: `title.name`, `release_year`
+ * and `poster_path`. So the one write in this application that belongs to nobody is also
+ * the one write that can leave *somebody's* cached library disagreeing with the database,
+ * and it is the only write whose accounts are not simply the caller's own.
+ *
+ * `accountsHoldingTitles` resolves them from the titles the run actually refreshed —
+ * never from the candidates, because a title that failed or was quarantined changed
+ * nothing and busting for it would throw away a correct entry. `route.ts` does this and
+ * not `run-sweep.ts`, for the reason that file's own docblock gives: `run-sweep.ts` is
+ * the part that is tested against real Postgres without Next.js around it, and
+ * `revalidateTag` is Next.js. Resolving who is affected is a query; busting is a
+ * framework call; they belong on opposite sides of that line.
+ *
+ * `invalidateForOtherAccounts`, not `invalidateFor`: `updateTag` throws outside a Server
+ * Action, and nobody here is reading their own write — the reader whose poster changed is
+ * asleep, and stale-while-revalidate is the honest treatment for that. No `writer` is
+ * passed because this run has none; the three add paths, which make the same shared-mirror
+ * write from inside an action, do pass one.
  */
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -42,6 +66,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const outcome = await runNightlySweep(titleMirror, findByExternalId);
 
+  invalidateForOtherAccounts(
+    "refreshTitleMirror",
+    await accountsHoldingTitles(outcome.refreshedTitleIds),
+  );
+
   /**
    * A body, not a page: nothing renders this, and `SPEC.md` §6 is explicit that no
    * surface anywhere shows a refresh status. It exists only for the Vercel cron log —
@@ -49,7 +78,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
    */
   return NextResponse.json({
     candidates: outcome.candidates,
-    refreshed: outcome.refreshed,
+    refreshed: outcome.refreshedTitleIds.length,
     skipped: outcome.failures.length,
     repointed: outcome.repointed.length,
     quarantined: outcome.quarantined.length,

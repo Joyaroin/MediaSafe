@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateFor } from "@/cache/tags";
 import { deleteAccount } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { clearSessionCookie, requireUserId } from "@/lib/session";
@@ -69,6 +70,15 @@ export async function deleteAccountAction(
      */
     return { ok: false, reference: referenceFor(error, { surface: "delete-account" }) };
   }
+
+  /**
+   * The account's rows are gone; its cache entries are not, and an entry nothing will
+   * ever bust again is an entry holding a deleted library (issue #219). Better Auth mints
+   * a fresh id per account, so nobody inherits this one and nobody would be shown it —
+   * but *unreachable* and *dropped* are not the same thing, and the account deletion this
+   * app promises should not leave the last read of that library sitting in a cache.
+   */
+  invalidateFor("deleteAccount", userId);
 
   /**
    * After the delete, never before — see `clearSessionCookie`. The session row went with

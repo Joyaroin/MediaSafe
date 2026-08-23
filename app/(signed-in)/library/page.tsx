@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { listLibraryEntries, listLists } from "@/db/access";
+import { cachedLibraryEntries } from "@/cache/tags";
+import { listLists } from "@/db/access";
 import { sortFrom } from "@/db/library-sort";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
@@ -14,7 +15,9 @@ import { NavTransition } from "../nav-transition";
  * The desktop landing screen (`SPEC.md` §7) and the first surface in this application that
  * reads owned rows in bulk. Everything on it comes from one query: `listLibraryEntries`
  * joins the derived-state views, so where a title stands and what is next in it are
- * answered by `db/views.ts` and are not re-derived here or anywhere else.
+ * answered by `db/views.ts` and are not re-derived here or anywhere else. Since #219 that
+ * query is reached through `cache/tags.ts` rather than called directly — one query still,
+ * and sometimes an earlier answer to it.
  *
  * ── Two states this page still owns, and two more that live below it ────────────────
  *
@@ -49,9 +52,14 @@ import { NavTransition } from "../nav-transition";
  * `SPEC.md` §7: *sort state lives in the URL.* The chip and the filter-by-typing field are
  * ordinary client state, narrowing what this page already fetched — but the order itself
  * is decided in SQL (`db/access.ts`'s four `ORDER BY`s), so changing it has to re-run this
- * query. `?sort=`, read here and handed to `listLibraryEntries`, is what makes a link to a
- * sorted library a link to that order rather than to whatever the default was when it was
- * clicked.
+ * read. `?sort=`, read here and handed to `cachedLibraryEntries`, is what makes a link to
+ * a sorted library a link to that order rather than to whatever the default was when it
+ * was clicked.
+ *
+ * Since #219 that re-read may be answered from the cache rather than from Postgres —
+ * `sort` is part of the key, so each order is its own entry and every one of them carries
+ * the same tag. What has not changed is where the order is decided: still four `ORDER BY`s
+ * in SQL, never a client-side re-sort of rows fetched in some other order.
  *
  * ── Why the populated branch owns its own `<main>` ────────────────────────────────────
  *
@@ -90,9 +98,19 @@ export default async function LibraryPage({
 
   /**
    * Unguarded, deliberately. A failure here throws into `error.tsx`, which is the whole
-   * error discipline in one line.
+   * error discipline in one line — and it still does through the cache: `unstable_cache`
+   * stores a resolved value and lets a rejection through untouched, so there is no cache
+   * state in which a database that is down comes back as a library with nothing in it.
+   *
+   * Cached since issue #219, which reversed `SPEC.md` §3.1's read-cache clause and proved
+   * the machinery here. This is the same query it always was — `cache/tags.ts` wraps
+   * `listLibraryEntries`, keyed by this account and this sort, and every write that can
+   * change what this grid shows busts the tag inside its own action. What changed for
+   * this page is that navigating away and back no longer costs a round trip; what did not
+   * change is that the rows are this account's, because the key cannot be built without
+   * one.
    */
-  const entries = await listLibraryEntries(userId, sort);
+  const entries = await cachedLibraryEntries(userId, sort);
 
   if (entries.length === 0) {
     /**

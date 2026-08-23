@@ -1,6 +1,8 @@
 "use server";
 
+import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
+  accountsHoldingTitles,
   addTitleToLibrary,
   addTitleToLibraryWatched,
   libraryEntryIdForTitle,
@@ -22,11 +24,13 @@ import { catalogueKeyFrom, type TitleKind } from "@/tmdb/mirror";
  * your library* answer. It has to become the owned title's page, and that means the id of
  * the entry that now exists.
  *
- * `addTitleToLibrary` reports `{ added }` and not which row, for the reason its own
- * docblock gives: `onConflictDoNothing` returns nothing on the conflict. So the id is read
- * back afterwards, by the same function the page itself uses to decide whether you own
- * this title at all — one definition of *your entry for this title*, used by the read and
- * by the write's follow-up.
+ * `addTitleToLibrary` reports whether it added and which **title** it mirrored, never
+ * which library entry, for the reason its own docblock gives: `onConflictDoNothing`
+ * returns nothing on the conflict. So the entry id is read back afterwards, by the same
+ * function the page itself uses to decide whether you own this title at all — one
+ * definition of *your entry for this title*, used by the read and by the write's
+ * follow-up. (`titleId` arrived with #219 and answers a different question: whose caches
+ * this add just invalidated. It is not a route this page can send anybody to.)
  *
  * ── The mirror is fetched, not assumed ────────────────────────────────────────────────
  *
@@ -56,6 +60,9 @@ export async function addUnownedTitleToLibraryAction(
   tmdbId: number,
 ): Promise<AddToLibraryOutcome> {
   const userId = await requireUserId();
+  let libraryEntryId: string;
+  /** The global row the add mirrored — see the second bust below for what it is for. */
+  let titleId: string;
 
   try {
     /**
@@ -68,10 +75,11 @@ export async function addUnownedTitleToLibraryAction(
      */
     const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId));
+    titleId = (await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId)))
+      .titleId;
 
-    const libraryEntryId = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
-    if (libraryEntryId === null) {
+    const found = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
+    if (found === null) {
       /**
        * Unreachable: the write above either created this account's entry or found one
        * already there, and both leave a row for this read to find. It throws rather than
@@ -84,10 +92,33 @@ export async function addUnownedTitleToLibraryAction(
       );
     }
 
-    return { ok: true, libraryEntryId };
+    libraryEntryId = found;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unowned-add" }) };
   }
+
+  /**
+   * Past the `catch`, so only a landed add busts anything (issue #219). This action's
+   * caller navigates straight to the entry's own detail route, and `/library` is one back
+   * press behind it — the route whose read is cached — so the bust is what stops that
+   * press finding a grid the add is missing from.
+   */
+  invalidateFor("addTitleToLibrary", userId);
+
+  /**
+   * And every other account holding this title, for `search/actions.ts`'s reason and by
+   * the same mechanism: the add upserted the **global** `title` row and its episodes
+   * through `mirrorTitle`, so it refreshed what everybody else's library grid prints
+   * (ADR-0001). `cache/tags.ts`'s `MIRRORS_SHARED_TITLE_ROWS` is the list of writes that
+   * owe this call, and the test holds that list against the code rather than against
+   * anybody's memory.
+   */
+  invalidateForOtherAccounts(
+    "addTitleToLibrary",
+    await accountsHoldingTitles([titleId]),
+    userId,
+  );
+  return { ok: true, libraryEntryId };
 }
 
 /**
@@ -112,29 +143,46 @@ export async function addUnownedTitleWatchedToLibraryAction(
   sourceKey: string,
 ): Promise<AddToLibraryOutcome> {
   const userId = await requireUserId();
+  let libraryEntryId: string;
+  /** The global row this add mirrored — see the second bust below for what it is for. */
+  let titleId: string;
 
   try {
     const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibraryWatched(
-      userId,
-      await titleMirror(key.kind, key.tmdbId),
-      sourceKey,
-    );
+    titleId = (
+      await addTitleToLibraryWatched(
+        userId,
+        await titleMirror(key.kind, key.tmdbId),
+        sourceKey,
+      )
+    ).titleId;
 
-    const libraryEntryId = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
-    if (libraryEntryId === null) {
+    const found = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
+    if (found === null) {
       // Unreachable for the reason the action above gives, and a throw for the same one.
       throw new Error(
         `Added ${key.kind} ${key.tmdbId} to the library and then found no entry for it.`,
       );
     }
 
-    return { ok: true, libraryEntryId };
+    libraryEntryId = found;
   } catch (error) {
     return {
       ok: false,
       reference: referenceFor(error, { surface: "unowned-add-watched" }),
     };
   }
+
+  /**
+   * Both busts, for the reasons the action above gives — and this write moves the entry's
+   * state as well as creating it, so the grid it lands on is a different grid.
+   */
+  invalidateFor("addTitleToLibraryWatched", userId);
+  invalidateForOtherAccounts(
+    "addTitleToLibraryWatched",
+    await accountsHoldingTitles([titleId]),
+    userId,
+  );
+  return { ok: true, libraryEntryId };
 }

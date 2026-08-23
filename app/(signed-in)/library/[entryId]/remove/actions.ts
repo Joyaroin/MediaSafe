@@ -1,7 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
+import { invalidateFor } from "@/cache/tags";
 import { removeTitleFromLibrary } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
@@ -31,36 +30,36 @@ import { requireUserId } from "@/lib/session";
  * did not come from this page destroying somebody else's title is `ownedBy` inside
  * `removeTitleFromLibrary`, never a string the caller also controls.
  *
- * ── The invalidation names `/library` — issue #179 ───────────────────────────────────
+ * ── The invalidation names this account's library — issues #179, then #219 ───────────
  *
  * `remove-title-form.tsx` used to call `router.refresh()` before navigating, to stop the
  * library being served a grid that still had this title in it. That was a second round
  * trip, and it refreshed the wrong route: the one it refreshed was **this** page, which
  * the reader is in the act of leaving, while the route it was protecting was `/library`.
  *
- * `revalidatePath("/library")` names the affected path instead, and it runs only after the
- * `DELETE` has committed — a refused removal invalidates nothing, because nothing changed.
+ * #179 replaced it with `revalidatePath("/library")`, and said plainly what that cost:
+ * `04-functions/revalidatePath.md` documents the call as *currently also causing all
+ * previously visited pages to refresh*, so **it was the broadest invalidation in the app,
+ * not the narrowest** — held on the argument that the breadth was Next.js's and
+ * documented as temporary.
  *
- * ── What it actually costs, which is more than the name suggests ─────────────────────
+ * #219 made that argument unnecessary rather than waiting for it to come true. `/library`
+ * now has a cached read with a tag on it, so `invalidateFor` busts one account's library
+ * and nothing else on the server. Two things about it are worth keeping in view, both
+ * read off `node_modules/next/dist/docs/` and Next's own source rather than assumed,
+ * because `AGENTS.md` opens by saying this is not the Next.js you know:
  *
- * Two costs, both read off `node_modules/next/dist/docs/` rather than assumed, because
- * `AGENTS.md` opens by saying this is not the Next.js you know:
- *
- * 1. A Server Function that revalidates has Next.js re-render the **current** route and
+ * 1. A Server Function that invalidates has Next.js re-render the **current** route and
  *    return its RSC payload with the action's own response
- *    (`02-guides/server-actions.md`). So this page renders once more on the way out.
- * 2. `04-functions/revalidatePath.md` — *Currently, it also causes all previously visited
- *    pages to refresh when navigated to again. This behavior is temporary and will be
- *    updated in the future to apply only to the specific path.*
+ *    (`02-guides/server-actions.md`). So this page still renders once more on the way out.
+ * 2. The **client's** prefetch cache is still evicted whole, not per tag —
+ *    `server-action-reducer.js` carries the upstream `TODO: Evict only segments with
+ *    matching tags and/or paths`. That is the same breadth as before and it is still
+ *    Next.js's rather than this line's; what changed is that the server no longer shares
+ *    it, and this call needs no edit on the day the client stops sharing it either.
  *
- * The second one deserves saying plainly, in a ticket whose whole subject is writes that
- * re-render too much: **today this is the broadest invalidation in the app, not the
- * narrowest.** What the argument for it rests on is that the breadth is Next.js's and is
- * documented as temporary, while the *path* is this call's own and is exactly one; when
- * that behaviour is fixed upstream this line needs no edit to become what it reads as.
- * The alternative was not "something narrower" — it was `router.refresh()`, which cost a
- * second round trip and pointed at the wrong route, or nothing at all, which would leave
- * a `/library` entry restored by the Back button still showing a destroyed title.
+ * It still runs only after the `DELETE` has committed — a refused removal invalidates
+ * nothing, because nothing changed.
  *
  * `lists-surface.tsx` reaches the opposite conclusion about that same Back button, and
  * deliberately: nothing is destroyed there, so a stale restore costs a list briefly
@@ -91,6 +90,6 @@ export async function removeTitleAction(
     };
   }
 
-  revalidatePath("/library");
+  invalidateFor("removeTitleFromLibrary", userId);
   return { ok: true };
 }

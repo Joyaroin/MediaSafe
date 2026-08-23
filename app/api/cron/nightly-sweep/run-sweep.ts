@@ -65,7 +65,17 @@ export interface SweepRepoint {
  */
 export interface NightlySweepOutcome {
   readonly candidates: number;
-  readonly refreshed: number;
+  /**
+   * The titles that now carry fresh metadata, by `title.id` rather than by count — the
+   * count is `refreshedTitleIds.length` and is derived rather than stored, so the summary
+   * line and the cache busting cannot come to disagree about how many there were.
+   *
+   * The ids are here because `route.ts` needs them (issue #219): a refreshed mirror
+   * changes `title.name`, `release_year` and `poster_path`, which the library grid prints
+   * for every account holding that title, and those accounts' cached libraries have to be
+   * busted by somebody who knows which titles moved. Nothing else reads them.
+   */
+  readonly refreshedTitleIds: readonly string[];
   readonly failures: readonly SweepFailure[];
   /** Titles whose TMDB id is gone and which were repointed at the id that survived. */
   readonly repointed: readonly SweepRepoint[];
@@ -115,7 +125,7 @@ export async function runNightlySweep(
 ): Promise<NightlySweepOutcome> {
   const candidates = await titlesDueForRefresh(cap, executor);
 
-  let refreshed = 0;
+  const refreshedTitleIds: string[] = [];
   const failures: SweepFailure[] = [];
   const repointed: SweepRepoint[] = [];
   const quarantined: SweepQuarantine[] = [];
@@ -124,7 +134,7 @@ export async function runNightlySweep(
     try {
       const mirror = await fetchMirror(candidate.kind, candidate.tmdbId);
       await refreshTitleMirror(mirror, executor);
-      refreshed++;
+      refreshedTitleIds.push(candidate.id);
     } catch (error) {
       if (!isUnresolvedTitle(error)) {
         // Not manufactured `[]` — a failure recorded here, never a result standing in for
@@ -144,9 +154,10 @@ export async function runNightlySweep(
         if (decision.outcome === "repoint") {
           repointed.push({ candidate, toTmdbId: decision.toTmdbId });
           // A repoint wrote the survivor's mirror in the same transaction, so this title
-          // *was* refreshed — counting it is what keeps the summary line honest about
-          // how many of the night's titles now carry fresh metadata.
-          refreshed++;
+          // *was* refreshed — recording it is what keeps the summary line honest about
+          // how many of the night's titles now carry fresh metadata, and what puts this
+          // title's accounts on the list whose cached libraries `route.ts` busts.
+          refreshedTitleIds.push(candidate.id);
         } else {
           quarantined.push({ candidate, reason: decision.reason });
         }
@@ -161,7 +172,7 @@ export async function runNightlySweep(
 
   const outcome: NightlySweepOutcome = {
     candidates: candidates.length,
-    refreshed,
+    refreshedTitleIds,
     failures,
     repointed,
     quarantined,
@@ -194,7 +205,7 @@ export async function runNightlySweep(
  */
 function reportToSentry({
   candidates,
-  refreshed,
+  refreshedTitleIds,
   failures,
   repointed,
   quarantined,
@@ -244,7 +255,7 @@ function reportToSentry({
   }
 
   Sentry.captureMessage(
-    `Nightly sweep: ${refreshed} of ${candidates} refreshed, ${failures.length} skipped, ${repointed.length} repointed, ${quarantined.length} quarantined`,
+    `Nightly sweep: ${refreshedTitleIds.length} of ${candidates} refreshed, ${failures.length} skipped, ${repointed.length} repointed, ${quarantined.length} quarantined`,
     {
       level: failures.length > 0 || quarantined.length > 0 ? "warning" : "info",
       tags: { surface: "nightly-sweep" },

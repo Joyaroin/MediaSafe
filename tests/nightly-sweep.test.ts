@@ -289,7 +289,10 @@ describe("runNightlySweep", () => {
       const outcome = await runNightlySweep(fetchMirror, neverLookedUp, 10, tx);
 
       expect(outcome.candidates).toBe(3);
-      expect(outcome.refreshed).toBe(2);
+      // By id rather than by count since #219, because the ids are what `route.ts` busts
+      // the cached libraries of — a run that reported the right number and the wrong
+      // titles would leave the wrong accounts stale.
+      expect([...outcome.refreshedTitleIds].sort()).toEqual([a.id, c.id].sort());
       expect(outcome.failures.map((failure) => failure.candidate.id)).toEqual([broken.id]);
       // Named the two that actually landed, not assumed from the count alone: both moved
       // to (approximately) `now()`, and `broken` — the one fetch that threw — kept the
