@@ -30,6 +30,11 @@ const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
 const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
+/** The `::view-transition-{old,new}(.nav-{forward,back})` rule body, isolated so the
+ * tests below assert on its declarations rather than re-deriving the same extraction. */
+const blockFor = (side: "old" | "new", cls: "nav-forward" | "nav-back") =>
+  GLOBALS.match(new RegExp(`::view-transition-${side}\\(\\.${cls}\\)\\s*\\{[^}]*\\}`))![0];
+
 /**
  * Every screen that participates — the four tabs, and Settings, which is a push out of
  * them rather than a move along them. A screen that navigates but is not wrapped is a
@@ -138,24 +143,25 @@ describe("the chrome stays still", () => {
 
 describe("both directions are drawn, and only on the phone", () => {
   it("defines a forward and a back pair that mirror each other", () => {
-    for (const cls of ["nav-forward", "nav-back"]) {
+    for (const cls of ["nav-forward", "nav-back"] as const) {
       expect(GLOBALS).toContain(`::view-transition-old(.${cls})`);
       expect(GLOBALS).toContain(`::view-transition-new(.${cls})`);
     }
-    // Mirrored: the old side leaves the way the new side arrives from.
-    expect(GLOBALS).toMatch(/::view-transition-old\(\.nav-forward\)\s*\{\s*--nav-slide:\s*-60px/);
-    expect(GLOBALS).toMatch(/::view-transition-new\(\.nav-forward\)\s*\{\s*--nav-slide:\s*60px/);
-    expect(GLOBALS).toMatch(/::view-transition-old\(\.nav-back\)\s*\{\s*--nav-slide:\s*60px/);
-    expect(GLOBALS).toMatch(/::view-transition-new\(\.nav-back\)\s*\{\s*--nav-slide:\s*-60px/);
+    // Mirrored: the old side leaves the way the new side arrives from. #221 leaves this
+    // untouched — the direction still has to survive the duration/delay change.
+    expect(blockFor("old", "nav-forward")).toContain("--nav-slide: -60px");
+    expect(blockFor("new", "nav-forward")).toContain("--nav-slide: 60px");
+    expect(blockFor("old", "nav-back")).toContain("--nav-slide: 60px");
+    expect(blockFor("new", "nav-back")).toContain("--nav-slide: -60px");
+    // And the translate itself is still there to carry that direction.
+    expect(GLOBALS).toMatch(/@keyframes nav-slide\s*\{\s*from\s*\{\s*translate:\s*var\(--nav-slide\)/);
   });
 
   it("leaves quickly and arrives slowly, off this file's own motion tokens", () => {
     // `DESIGN.md`/`globals.css`: exits run at `--dur-fast` against entrances at
     // `--dur-base` or slower. No hardcoded milliseconds.
-    const forwardOut = GLOBALS.match(/::view-transition-old\(\.nav-forward\)\s*\{[^}]*\}/)![0];
-    const forwardIn = GLOBALS.match(/::view-transition-new\(\.nav-forward\)\s*\{[^}]*\}/)![0];
-    const backOut = GLOBALS.match(/::view-transition-old\(\.nav-back\)\s*\{[^}]*\}/)![0];
-    const backIn = GLOBALS.match(/::view-transition-new\(\.nav-back\)\s*\{[^}]*\}/)![0];
+    const forwardOut = blockFor("old", "nav-forward");
+    const forwardIn = blockFor("new", "nav-forward");
     expect(forwardOut).toContain("var(--dur-fast)");
     expect(forwardIn).toContain("var(--dur-base)");
     expect(forwardOut).not.toMatch(/\d+ms/);
@@ -163,44 +169,37 @@ describe("both directions are drawn, and only on the phone", () => {
 
     // #221: the slide no longer reaches for the slow token on either side — see the two
     // tests below for what it uses instead.
-    for (const block of [forwardOut, forwardIn, backOut, backIn]) {
-      expect(block).not.toContain("--dur-slow");
+    for (const cls of ["nav-forward", "nav-back"] as const) {
+      expect(blockFor("old", cls)).not.toContain("--dur-slow");
+      expect(blockFor("new", cls)).not.toContain("--dur-slow");
     }
   });
 
   it("carries no delay on the entrance's fade — #221", () => {
     // The previous shape delayed the entrance's fade by `--dur-fast`, so for that whole
-    // span the outgoing screen's title was still on screen — full opacity, already
-    // travelling — before the incoming one had begun to appear. `nav-fade` on the `-new`
-    // selectors must run straight from the shorthand's duration into `both`, with no
-    // third `var(--dur-*)` delay token sitting in between.
-    for (const cls of ["nav-forward", "nav-back"]) {
-      const block = GLOBALS.match(
-        new RegExp(`::view-transition-new\\(\\.${cls}\\)\\s*\\{[^}]*\\}`),
-      )![0];
-      expect(block).toMatch(/var\(--dur-base\)\s+var\(--ease-out-quart\)\s+both\s+nav-fade/);
-    }
-  });
-
-  it("runs the slide at the base duration rather than the slow one, both sides", () => {
-    // The slide used to keep moving for a further 160ms after the fade it was meant to
-    // accompany had already finished. It now settles with the fade instead.
-    for (const cls of ["nav-forward", "nav-back"]) {
-      const out = GLOBALS.match(
-        new RegExp(`::view-transition-old\\(\\.${cls}\\)\\s*\\{[^}]*\\}`),
-      )![0];
-      const incoming = GLOBALS.match(
-        new RegExp(`::view-transition-new\\(\\.${cls}\\)\\s*\\{[^}]*\\}`),
-      )![0];
-      expect(out).toMatch(/var\(--dur-base\)\s+var\(--ease-in-out-soft\)\s+both\s+nav-slide/);
-      expect(incoming).toMatch(
-        /var\(--dur-base\)\s+var\(--ease-in-out-soft\)\s+both\s+nav-slide/,
+    // span the outgoing screen's title was still on screen — still fading, still mid-
+    // slide — before the incoming one had begun to appear at all. `nav-fade` on the
+    // `-new` selectors must run straight from the shorthand's duration into `both`, with
+    // no third `var(--dur-*)` delay token sitting in between.
+    for (const cls of ["nav-forward", "nav-back"] as const) {
+      expect(blockFor("new", cls)).toMatch(
+        /var\(--dur-base\)\s+var\(--ease-out-quart\)\s+both\s+nav-fade/,
       );
     }
   });
 
-  it("still has a direction — the translate is not removed", () => {
-    expect(GLOBALS).toMatch(/@keyframes nav-slide\s*\{\s*from\s*\{\s*translate:\s*var\(--nav-slide\)/);
+  it("runs the slide at the base duration rather than the slow one, both sides", () => {
+    // The slide used to keep running at `--dur-slow` regardless of either fade, so the
+    // transition did not visually settle until well after the fades themselves were
+    // done. It now settles with the fade instead.
+    for (const cls of ["nav-forward", "nav-back"] as const) {
+      expect(blockFor("old", cls)).toMatch(
+        /var\(--dur-base\)\s+var\(--ease-in-out-soft\)\s+both\s+nav-slide/,
+      );
+      expect(blockFor("new", cls)).toMatch(
+        /var\(--dur-base\)\s+var\(--ease-in-out-soft\)\s+both\s+nav-slide/,
+      );
+    }
   });
 
   it("never reaches the desktop, because only phone chrome tags a navigation", () => {

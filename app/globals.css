@@ -817,15 +817,18 @@
    the asymmetry the motion section above already states (*"arriving is where the character
    lives; leaving is where impatience does"*).
 
-   #221 removed the delay this used to put in front of the entrance's fade: the outgoing
-   page faded out over `--dur-fast` while the incoming one sat invisible for that same
-   span before its own fade even started, so the old heading was still on screen — full
-   opacity, already sliding — for the first instant of every navigation. That reads as a
-   transition that has not finished rather than one that has. The two `nav-slide`
-   animations moved from `--dur-slow` to `--dur-base` in the same change, so the slide
-   finishes with the fade instead of continuing, invisibly, for another 160ms after — the
-   asymmetry above is still `--dur-fast` out against `--dur-base` in; it no longer also
-   means *and the slide takes longer than either*. */
+   #221 removed the delay this used to put in front of the entrance's fade, and shortened
+   the slide to match. Before this, the incoming page sat invisible for the whole
+   `--dur-fast` before its own fade even started, so the outgoing page was the only thing
+   on screen for that stretch — still fading, still mid-slide — which is what the issue
+   called *"the old heading is at full opacity and travelling."* The slide also ran the
+   full `--dur-slow` on both sides regardless of either fade, so the transition did not
+   visually settle until 380ms had passed even though the fades themselves were long done
+   by then — a transition that reads as unfinished rather than finished. The entrance's
+   fade now starts immediately, and both `nav-slide` animations moved from `--dur-slow` to
+   `--dur-base`, so the whole thing settles in step with the fade instead of trailing
+   behind it. The asymmetry above is unchanged — `--dur-fast` out against `--dur-base`
+   in — it no longer also means *and the slide takes longer than either*. */
 ::view-transition-old(.nav-forward) {
   --nav-slide: -60px;
   animation:

@@ -1175,16 +1175,24 @@ the app; all four of those absences are now present on purpose. What governs it:
   where the character lives; leaving is where impatience does.
 
   **#221 amended what that asymmetry means for the phone's tab-to-tab slide, and this is
-  recorded as a correction rather than silently overwritten.** The nav transition
-  (`app/globals.css`, `.nav-forward`/`.nav-back`) used to put a `--dur-fast` delay in
-  front of the entrance's fade and run both directions' slide at `--dur-slow` — so the
-  outgoing screen's heading was still on screen, at full opacity and already travelling,
-  for the first `--dur-fast` of every navigation, and the slide kept moving for a further
-  160ms after the fade it was meant to accompany had already finished. The entrance's
-  fade now carries no delay, and the slide runs at `--dur-base` on both sides, so it
-  settles with the fade instead of outliving it. The asymmetry itself is unchanged —
-  exits are still faster than entrances — it no longer also means *and the slide takes
-  longer than either*.
+  recorded as a correction rather than silently overwritten.** The full rationale is
+  quoted from `app/globals.css`, not re-derived here — if it ever disagrees with the
+  stylesheet, the stylesheet is right and this quotation is stale:
+
+  > #221 removed the delay this used to put in front of the entrance's fade, and
+  > shortened the slide to match. Before this, the incoming page sat invisible for the
+  > whole `--dur-fast` before its own fade even started, so the outgoing page was the
+  > only thing on screen for that stretch — still fading, still mid-slide — which is
+  > what the issue called *"the old heading is at full opacity and travelling."* The
+  > slide also ran the full `--dur-slow` on both sides regardless of either fade, so the
+  > transition did not visually settle until 380ms had passed even though the fades
+  > themselves were long done by then — a transition that reads as unfinished rather
+  > than finished. The entrance's fade now starts immediately, and both `nav-slide`
+  > animations moved from `--dur-slow` to `--dur-base`, so the whole thing settles in
+  > step with the fade instead of trailing behind it.
+
+  The asymmetry above is unchanged — exits are still faster than entrances — it no
+  longer also means *and the slide takes longer than either*.
 - **The dividing rule is interruptibility, and it decides the implementation**, not taste.
   Anything a finger or cursor can catch mid-flight is a **spring**, authored in
   `app/motion.ts`. Anything it cannot — a colour, a list entrance, a press — stays a CSS
