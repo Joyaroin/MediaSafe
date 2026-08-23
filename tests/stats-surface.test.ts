@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 
 import { EmptyStats } from "@/app/(signed-in)/stats/empty-stats";
 import {
+  activityChartData,
   averageInWords,
   dayInWords,
+  decadeChartData,
   decadeInWords,
   minutesInWords,
   monthInWords,
@@ -63,8 +65,8 @@ function stats(overrides: Partial<AccountStats> = {}): AccountStats {
     episodesPerWeek: 6.25,
     episodesPerMonth: 27.2,
     activity: [
-      { month: "2026-07", watches: 18 },
-      { month: "2026-08", watches: 31 },
+      { month: "2026-07", watches: 18, filmWatches: 3, episodeWatches: 15 },
+      { month: "2026-08", watches: 31, filmWatches: 5, episodeWatches: 26 },
     ],
     topDecades: [
       { decade: 2000, titles: 7 },
@@ -214,6 +216,72 @@ describe("there is no genre statistic, and no space held for one", () => {
 });
 
 /**
+ * The four charts — issue #229. Recharts' `ResponsiveContainer` cannot measure a
+ * container outside a browser, so a server-rendered chart's own SVG is empty; what is
+ * asserted here is everything that *does* render without one — the chart's `aria-hidden`
+ * wrapper and the hidden data table behind it, which is the accessible half of the
+ * feature and the half a browser was never needed to prove. The chart's geometry itself
+ * — the bars, and that the accent lands on the current month and nowhere in the decades
+ * chart — is checked by hand in a browser, not here.
+ */
+describe("the charts behind the numbers", () => {
+  it("names every chart the ticket asks for", () => {
+    const markup = surface();
+
+    for (const caption of [
+      "Episodes watched, by month",
+      "Films watched, by month",
+      "All watches, by month",
+      "Titles in your library, by decade",
+    ]) {
+      expect(markup).toContain(`<caption>${caption}</caption>`);
+    }
+  });
+
+  it("puts each chart's own SVG outside the accessibility tree", () => {
+    // One `aria-hidden="true"` per chart, and nothing else on the page carries one —
+    // each chart's geometry is decorative precisely because its hidden table beside it
+    // already says everything the geometry shows.
+    expect(surface().match(/aria-hidden="true"/g)).toHaveLength(4);
+  });
+
+  it("gives each chart's hidden table the same numbers as the section it sits in", () => {
+    const markup = surface({
+      activity: [
+        { month: "2026-07", watches: 18, filmWatches: 3, episodeWatches: 15 },
+        { month: "2026-08", watches: 31, filmWatches: 5, episodeWatches: 26 },
+      ],
+      topDecades: [
+        { decade: 2000, titles: 7 },
+        { decade: 1990, titles: 3 },
+      ],
+    });
+
+    expect(markup).toContain("<td>15 episode watches</td>");
+    expect(markup).toContain("<td>26 episode watches</td>");
+    expect(markup).toContain("<td>3 film watches</td>");
+    expect(markup).toContain("<td>5 film watches</td>");
+    expect(markup).toContain("<td>18 watches</td>");
+    expect(markup).toContain("<td>31 watches</td>");
+    expect(markup).toContain("<td>7 titles</td>");
+    expect(markup).toContain("<td>3 titles</td>");
+  });
+
+  /**
+   * Decades have no current period to spend the accent on (`stats-surface.tsx`), and a
+   * chart with nothing to plot is not drawn at all — the same rule `topDecades.length ===
+   * 0` already applies to the figures beside it, extended to the chart that would sit
+   * next to them.
+   */
+  it("draws no decades chart when nothing has a release year to place", () => {
+    const markup = surface({ topDecades: [] });
+
+    expect(markup).not.toContain("Titles in your library, by decade");
+    expect(markup.match(/aria-hidden="true"/g)).toHaveLength(3);
+  });
+});
+
+/**
  * The empty library. It is its own component and its own branch on `page.tsx`, so what is
  * asserted here is that it is a **sentence** rather than the surface with zeroes in it —
  * which is the acceptance criterion, and which a component that merely rendered
@@ -309,5 +377,44 @@ describe("turning a number into words", () => {
   it("says there is not enough to say, rather than naming a unit with no figure", () => {
     expect(averageInWords(null, "week")).toBe("not enough dated watches to say");
     expect(averageInWords(0, "week")).toBe("0.0 a week");
+  });
+
+  /**
+   * `activityChartData` is what keeps *episodes over time*, *films over time* and
+   * *monthly activity* from drifting into three orders or three wordings of the same
+   * twelve months — asserted here on the one field each chart actually differs by.
+   */
+  it("turns one month of activity into a bar, keyed and worded for its own count", () => {
+    const activity = [{ month: "2026-08", watches: 31, filmWatches: 5, episodeWatches: 26 }];
+
+    expect(activityChartData(activity, "episodeWatches")).toEqual([
+      { key: "2026-08", label: "August 2026", value: 26, valueLabel: "26 episode watches" },
+    ]);
+    expect(activityChartData(activity, "filmWatches")).toEqual([
+      { key: "2026-08", label: "August 2026", value: 5, valueLabel: "5 film watches" },
+    ]);
+    expect(activityChartData(activity, "watches")).toEqual([
+      { key: "2026-08", label: "August 2026", value: 31, valueLabel: "31 watches" },
+    ]);
+  });
+
+  it("pluralises a single watch of any kind correctly, irregular s and all", () => {
+    const oneOfEach = [{ month: "2026-08", watches: 1, filmWatches: 1, episodeWatches: 1 }];
+
+    expect(activityChartData(oneOfEach, "watches")[0].valueLabel).toBe("1 watch");
+    expect(activityChartData(oneOfEach, "filmWatches")[0].valueLabel).toBe("1 film watch");
+    expect(activityChartData(oneOfEach, "episodeWatches")[0].valueLabel).toBe("1 episode watch");
+  });
+
+  it("turns top decades into bars in the section's own order, not chronological order", () => {
+    expect(
+      decadeChartData([
+        { decade: 2000, titles: 7 },
+        { decade: 1990, titles: 3 },
+      ]),
+    ).toEqual([
+      { key: "2000", label: "2000s", value: 7, valueLabel: "7 titles" },
+      { key: "1990", label: "1990s", value: 3, valueLabel: "3 titles" },
+    ]);
   });
 });

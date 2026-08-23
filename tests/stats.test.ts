@@ -360,6 +360,29 @@ describe("a library with things in it", () => {
   });
 
   /**
+   * `watches` splits into `filmWatches` and `episodeWatches` — issue #229's *episodes over
+   * time* and *films over time* charts read the split, and it must agree with the total the
+   * *monthly activity* chart and the existing `Activity` section already read: two film
+   * watches, four episode watches, six watches, every month.
+   */
+  it("splits each month's watches into film and episode counts that sum to the total", async () => {
+    await inTransaction(async (tx) => {
+      const userId = await seedUser(tx);
+      await seedLibrary(tx, userId);
+
+      const stats = await accountStats(userId, tx);
+
+      expect(stats.activity.reduce((total, { filmWatches }) => total + filmWatches, 0)).toBe(2);
+      expect(
+        stats.activity.reduce((total, { episodeWatches }) => total + episodeWatches, 0),
+      ).toBe(4);
+      for (const month of stats.activity) {
+        expect(month.filmWatches + month.episodeWatches).toBe(month.watches);
+      }
+    });
+  });
+
+  /**
    * Decades come off `title.release_year` for every title in the library, watched or not —
    * the abandoned 1999 show is in the 1990s count. The title with no release year is in
    * none of them and is reported separately rather than dropped.
@@ -563,6 +586,13 @@ describe("an account with an empty library", () => {
 
       expect(stats.activity).toHaveLength(ACTIVITY_MONTHS);
       expect(stats.activity.every(({ watches }) => watches === 0)).toBe(true);
+      /**
+       * The left join's all-null row for an empty month has a null `episode_id` too — the
+       * same shape a film watch has. Asserted here so a `filter (where episode_id is null)`
+       * that forgets to join on `watch.id` regresses to reporting an empty month as a film.
+       */
+      expect(stats.activity.every(({ filmWatches }) => filmWatches === 0)).toBe(true);
+      expect(stats.activity.every(({ episodeWatches }) => episodeWatches === 0)).toBe(true);
     });
   });
 });
