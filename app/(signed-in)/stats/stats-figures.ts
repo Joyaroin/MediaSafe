@@ -26,12 +26,18 @@ const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24;
 /**
  * `1` → `"1 film"`, `3` → `"3 films"`. The one place plural `s` is decided.
  *
- * `plural` is the third argument rather than a rule, because English does not have one:
- * *watch* pluralises to *watches* and nothing this function could infer would get that
+ * The plural form is the third argument rather than a rule, because English does not have
+ * one: *watch* pluralises to *watches* and nothing this function could infer would get that
  * right without also getting something else wrong. Callers with a regular noun omit it.
+ *
+ * It is named `many` rather than `plural`, which is what it was first called and is the
+ * obvious name for it. A parameter with the function's own name shadows the function
+ * inside its own body — harmless here, because nothing recurses, and exactly the kind of
+ * harmless that stops being harmless the day somebody adds a recursive branch and binds a
+ * string instead.
  */
-export function plural(count: number, noun: string, plural = `${noun}s`): string {
-  return `${count.toLocaleString("en-GB")} ${count === 1 ? noun : plural}`;
+export function plural(count: number, noun: string, many = `${noun}s`): string {
+  return `${count.toLocaleString("en-GB")} ${count === 1 ? noun : many}`;
 }
 
 /**
