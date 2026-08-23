@@ -117,9 +117,11 @@ describe("the unowned episode list", () => {
 
     // Every word the owned row can put in its trailing slot, and the element that would
     // carry any of them. Nothing here should tell a reader anything about a show they have
-    // never watched — including that they have not watched it.
+    // never watched — including that they have not watched it. The recording control
+    // itself is icon-only since issue #217 and has no word to check for; the `<button>`
+    // assertion below is what rules it (and any control) out structurally instead.
     expect(markup).not.toMatch(/<button|<form|<input/);
-    expect(markup).not.toMatch(/Strike it|Rewatch|Unwatch|Watched|Up next/);
+    expect(markup).not.toMatch(/Rewatch|Unwatch|Watched|Up next/);
     // The accent means a watch was recorded (`app/globals.css`, issue #134); the up-next
     // chip is the only thing that draws it on an episode row, and there is no up next here.
     expect(markup).not.toMatch(/accent|signal/);

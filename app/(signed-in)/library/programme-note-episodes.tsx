@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { EpisodeDetail, LibraryState } from "@/db/access";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
+import { CheckmarkIcon } from "./checkmark-icon";
 import {
   EPISODE_NAME_CELL,
   EPISODE_NUMBER,
@@ -20,7 +21,8 @@ import { useLiveEpisodes } from "./use-live-episodes";
 import { useWatchMark } from "./use-watch-mark";
 import {
   QUIET_RECORDING_CONTROL,
-  RECORDING_CONTROL,
+  RECORDING_GLYPH,
+  RECORDING_HIT_BOX,
   WATCHED_NAME,
   WatchSweep,
 } from "./watch-mark-motion";
@@ -252,6 +254,46 @@ function SeasonList({
  * `107px` → `75px` at `375px`, `71px` → `40px` at `340px`. The name still measures the
  * same in every one of the seven states at a given width — which is the property this
  * whole constant exists for, and the one thing that was never allowed to be traded.
+ *
+ * ── What issue #217 found when it re-measured ────────────────────────────────────────
+ *
+ * *Strike it* became a checkmark (`MarkWatchedButton`), which retires the row's widest
+ * unwatched states rather than growing them: `RECORDING_HIT_BOX` is a fixed `44px` square
+ * with no text to widen, so the bullet above that reads *"Rewatch and Unwatch are the size
+ * of the Strike it they replace"* is now a fact about #203's history rather than about a
+ * control still in the row — Rewatch and Unwatch did not change, and `GHOST_RECOVERY_COMPACT`
+ * still carries its own `px-2.5 py-1` regardless of what the unwatched control now looks
+ * like.
+ *
+ * Re-measured against a real Chromium tab (`getBoundingClientRect`, via a Playwright
+ * instance rather than `npm run dev` — this ticket's session had no database or auth
+ * available to render the live page, so a standalone document was built from this file's
+ * own class strings instead of the compiled stylesheet directly; worth a second pass
+ * against the running app). The row-height figures below are that harness's own, exact:
+ * nothing in `RECORDING_HIT_BOX`'s box model depends on a typeface. The two combined-width
+ * figures that include a text label carry Archivo's own already-measured glyph widths
+ * (`tests/episode-row-trailing-slot.test.ts`'s `GLYPH` table) rather than the harness's
+ * substitute system font, for the reason that table gives for itself — recomputing text
+ * metrics a second, worse way. Over the four states the checkmark changed, at `420px`,
+ * `375px` and `340px` panes — every figure identical across all three widths, the same
+ * property `TRAILING` has held since #89:
+ *
+ * | Trailing slot state | Contents, of `192px` | Row |
+ * |---|---|---|
+ * | checkmark alone | `44px` | `44px` |
+ * | *Up next* · checkmark | `94.6px` | `44px` |
+ * | up-to · checkmark | `78px` | `44px` |
+ * | *Up next* · up-to · checkmark | `128.6px` | `44px` |
+ *
+ * Every checkmark state lands **under** its old *Strike it* figure (`63.7` / `114.3` /
+ * `97.7` / `148.3px`) rather than over it — `RECORDING_HIT_BOX`'s `44px` fixed square is
+ * narrower than a text pill wide enough to hold *Strike it*, so this ticket only ever
+ * gives the slot more room back, never less. The row height holds at `44px` in all four
+ * states, unchanged from #203's own table above — confirmed directly (not just inferred
+ * from the class strings) by the `btnTop === liTop` / `btnBottom === liBottom` readings
+ * the harness took alongside the width figures: `RECORDING_HIT_BOX`'s margin-corrected
+ * `44px` box paints exactly flush with the row's own top and bottom edge, at every one of
+ * the three pane widths.
  */
 const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
 
@@ -320,6 +362,19 @@ const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
  * that measurement and #139's own (`371` against `372`) is rounding noise between two
  * separately-built harnesses, not a regression — both land on the same `44px` height.
  *
+ * **Re-measured for issue #217**, which put a real `44px` hit box into the row for the
+ * first time (`RECORDING_HIT_BOX`, `TRAILING`'s own docblock has the full width table).
+ * The concern this time was not width but the button's own `-my-2` margin math actually
+ * holding in a real browser rather than only on paper — `episode-line.ts`'s own account of
+ * `min-h-[1.375rem]` missing by `0.6px` is the standing reason not to trust that kind of
+ * arithmetic unverified. `getBoundingClientRect` confirmed it: the checkmark's `44px`
+ * border box paints exactly flush with the `<li>`'s own top and bottom edge (`btnTop ===
+ * liTop`, `btnBottom === liBottom`, not merely close), and the `<li>` itself holds `44px`
+ * at all three pane widths, both alone and beside *Up next* and the up-to control. Taken
+ * against a standalone harness built from this file's own class strings rather than
+ * `npm run dev` (no database or auth was available in the session that did this), so worth
+ * a second pass in the real app before this note is trusted as fully as #89's and #139's.
+ *
  * ── Idempotency, one key per outstanding write ───────────────────────────────────────
  *
  * The key names the write, not the press: minted when none is outstanding, reused by every
@@ -340,8 +395,8 @@ const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
  * ── The two controls a struck row offers, and the one it does not ────────────────────
  *
  * Issue #89. A watched episode offers *Rewatch* and *Unwatch*, and **neither is the control
- * that struck it** — the ghost *Strike it* button is gone the moment the row is watched,
- * so the daily gesture cannot be repeated into a rewatch. `ADR-0001`'s per-click key
+ * that struck it** — the recording control is gone the moment the row is watched, so the
+ * daily gesture cannot be repeated into a rewatch. `ADR-0001`'s per-click key
  * protects one click across its retries and can do nothing about two clicks, and a
  * phantom rewatch is invisible by inspection next to the 1,156 real ones already in the
  * database.
@@ -361,10 +416,16 @@ const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
  * `abandon-control.tsx`'s own docblocks name too.
  *
  * Issue #203 keeps every word of that and changes the measure: the pair wears
- * `GHOST_RECOVERY_COMPACT`, which is `GHOST_RECOVERY` at `RECORDING_CONTROL`'s padding.
+ * `GHOST_RECOVERY_COMPACT`, `GHOST_RECOVERY` at `px-2.5 py-1` — the padding the row's own
+ * recording control carried at the time, back when it was `RECORDING_CONTROL`'s text pill.
  * #195 chose the register and did not re-measure the fixed slot it had to fit in, and at
- * `px-4 py-2` it did not fit — see `TRAILING`. So the chrome that distinguished these two
- * from *Strike it* is still gone, deliberately; what came back is only its **size**.
+ * `px-4 py-2` it did not fit — see `TRAILING`. Issue #217 changed what that control looks
+ * like again, to a `44px` hit box around a `26px` glyph (`RECORDING_HIT_BOX`/
+ * `RECORDING_GLYPH`), and left `GHOST_RECOVERY_COMPACT`'s own `px-2.5 py-1` untouched:
+ * *Rewatch* and *Unwatch* keep the measure #203 gave them on its own terms now, not as a
+ * live copy of a control that no longer has that shape. So the chrome that distinguished
+ * these two from the row's own recording control is still gone, deliberately; what came
+ * back for #203 was only its **size**.
  *
  * **Neither appears while the mark is still playing.** The trailing slot reads *Watched*
  * for the length of the sweep, and the controls arrive with `settled`. A control that
@@ -493,9 +554,9 @@ function EpisodeLine({
                 knowingly, the same call the abandon and remove controls make below.
 
                 Issue #203: at `GHOST_RECOVERY_COMPACT` rather than `GHOST_RECOVERY` —
-                the same register at `RECORDING_CONTROL`'s measure, so the pair is the
-                size of the *Strike it* it replaces and the row does not grow when a mark
-                settles. `TRAILING` above holds the re-measurement. */}
+                the same register at the row's own compact measure, so the row does not
+                grow when a mark settles. `TRAILING` above holds the re-measurement, #217's
+                own entry included. */}
             <button
               type="button"
               onClick={() => void attempt()}
@@ -592,9 +653,20 @@ function FilmRow({
   );
 }
 
-/** `EpisodeLine` and `FilmRow`'s one interactive element, identical either way — the same
- *  border/press treatment `DESIGN.md`'s Material Event Rule reserves for a recording
- *  control: it never turns blue, slides, or removes the row. */
+/**
+ * `EpisodeLine` and `FilmRow`'s one interactive element, identical either way — the same
+ * border/press treatment `DESIGN.md`'s Material Event Rule reserves for a recording
+ * control: it never turns blue, slides, or removes the row.
+ *
+ * A checkmark since issue #217, not the word *Strike it* — "a reader looking at an episode
+ * row should be able to tell what the control does without learning a verb." The two
+ * elements split the job a single `<button>` used to do alone: `RECORDING_HIT_BOX` is the
+ * real `44px` target (`watch-mark-motion.tsx` has the measurement in full), and
+ * `RECORDING_GLYPH` around `CheckmarkIcon` is what actually paints, at the same `26px` this
+ * row has drawn its icon controls at since `MarkUpToIcon`. The label carries exactly what
+ * it did before — `Mark ${fullName} watched` / `Mark ${titleName} watched` — so a screen
+ * reader loses nothing the eye now gets for free.
+ */
 function MarkWatchedButton({
   label,
   onClick,
@@ -612,9 +684,11 @@ function MarkWatchedButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`${RECORDING_CONTROL} ${IN_FLIGHT}`}
+      className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
     >
-      Strike it
+      <span className={RECORDING_GLYPH}>
+        <CheckmarkIcon className="block h-4 w-4" />
+      </span>
     </button>
   );
 }
@@ -665,17 +739,21 @@ function MarkWatchedButton({
  * why the state is still tabulated here.
  *
  * A stated cost: the control's own box is `26px` square, not the `44px` a thumb wants.
- * That is the register the row already uses — *Strike it*'s box is `26.2px` — so the two
- * sit as a pair, and a bigger one here would be a control that shouts over the daily
+ * That was the register the row already used when this was written — *Strike it*'s box was
+ * `26.2px` — so the two sat as a pair. Issue #217 gave the checkmark that replaced *Strike
+ * it* a real `44px` hit box, but its **visible** glyph, `RECORDING_GLYPH`, is drawn at this
+ * same `26px` measure, so the pair this paragraph describes still holds: what changed is
+ * only how much of the checkmark's `44px` is paint versus target, not the size the two
+ * glyphs read at. A bigger glyph here would still be a control that shouts over the daily
  * gesture in a slot that has no room for it either.
  *
  * ── Why it is dim and not accent ─────────────────────────────────────────────────────
  *
  * `QUIET_RECORDING_CONTROL` (`watch-mark-motion.tsx`) carries that argument, beside the
- * `RECORDING_CONTROL` it must not compete with — one module owning both is what stops the
- * pair drifting, and `DESIGN.md` §10 is the rule that says so. It was written inline here
- * until the two-axis review of #196 pointed out that it had become the second unnamed copy
- * of a hairline register the build already had.
+ * accent `RECORDING_GLYPH`/`RECORDING_HIT_BOX` it must not compete with — one module
+ * owning all three is what stops the pair drifting, and `DESIGN.md` §10 is the rule that
+ * says so. It was written inline here until the two-axis review of #196 pointed out that
+ * it had become the second unnamed copy of a hairline register the build already had.
  */
 function MarkUpToButton({
   label,
