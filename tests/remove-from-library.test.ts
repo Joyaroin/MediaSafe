@@ -435,7 +435,7 @@ describe("removing the title", () => {
 
       await removeTitleFromLibrary(reader, first.id, tx);
 
-      expect(await addTitleToLibrary(reader, mirror, tx)).toEqual({ added: true });
+      expect((await addTitleToLibrary(reader, mirror, tx)).added).toBe(true);
 
       const [again] = await tx
         .select({ id: libraryEntry.id, titleId: libraryEntry.titleId })

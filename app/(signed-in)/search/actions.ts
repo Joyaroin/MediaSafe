@@ -1,7 +1,8 @@
 "use server";
 
-import { invalidateFor } from "@/cache/tags";
+import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
+  accountsHoldingTitles,
   addTitleToLibrary,
   addTitleToLibraryWatched,
   libraryCatalogueKeys,
@@ -115,6 +116,8 @@ export async function addToLibraryAction(
   tmdbId: number,
 ): Promise<AddOutcome> {
   const userId = await requireUserId();
+  /** The global row the add mirrored — see the second bust below for what it is for. */
+  let titleId: string;
 
   try {
     /**
@@ -129,7 +132,8 @@ export async function addToLibraryAction(
      */
     const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId));
+    titleId = (await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId)))
+      .titleId;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search-add" }) };
   }
@@ -143,6 +147,27 @@ export async function addToLibraryAction(
    * working out from here whether it did.
    */
   invalidateFor("addTitleToLibrary", userId);
+
+  /**
+   * **And everybody else's, which is the half that is easy to miss.** This add did not
+   * only write this account's `library_entry`: it upserted the *global* `title` row and
+   * its episodes through `mirrorTitle`, refreshing `name`, `release_year` and
+   * `poster_path` for every account that already holds this title (ADR-0001 — `title` and
+   * `episode` are unowned and shared, and `addTitleToLibrary`'s own docblock has always
+   * said what that costs). Their cached libraries would otherwise go on printing the old
+   * mirror with nothing left to bust them, because there is no expiry behind it.
+   *
+   * A second read of the database on the add path, and it earns its place: without it the
+   * cache turns a documented sharing property into a stale screen its owner has no way to
+   * clear. `cache/tags.ts`'s `MIRRORS_SHARED_TITLE_ROWS` lists the four writes that need
+   * this, and `tests/cache-tags.test.ts` holds that list against which functions actually
+   * call `mirrorTitle`.
+   */
+  invalidateForOtherAccounts(
+    "addTitleToLibrary",
+    await accountsHoldingTitles([titleId]),
+    userId,
+  );
   return { ok: true };
 }
 

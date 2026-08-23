@@ -46,7 +46,7 @@ export async function rateTitleAction(
   /**
    * The library grid does not print a rating today, so this bust changes nothing anybody
    * can see — and it is here anyway, because the row it wrote is the row the library
-   * reads. `cache/tags.ts`'s `INVALIDATED_BY` argues that in full; the short version is
+   * reads. `cache/tags.ts`'s `INVALIDATES` argues that in full; the short version is
    * that the day `LibraryEntryRow` grows a rating is not the day anybody will remember to
    * come back here.
    */

@@ -99,12 +99,16 @@ describe("addTitleToLibrary", () => {
       const userId = await seedUser(tx, "adham");
       const mirror = showMirrorFixture();
 
-      expect(await addTitleToLibrary(userId, mirror, tx)).toEqual({ added: true });
+      const outcome = await addTitleToLibrary(userId, mirror, tx);
+      expect(outcome.added).toBe(true);
 
       const [row] = await tx
         .select()
         .from(title)
         .where(and(eq(title.kind, "show"), eq(title.tmdbId, mirror.tmdbId)));
+      // `titleId` names the global row this add wrote, which is what the caller busts
+      // every other holder's cached library from (issue #219).
+      expect(outcome.titleId).toBe(row.id);
       expect(row.name).toBe(mirror.name);
       expect(row.inProduction).toBe(false);
       // Written on every add, though nothing reads it yet: it is the only handle that
@@ -131,12 +135,14 @@ describe("addTitleToLibrary", () => {
       const userId = await seedUser(tx, "adham");
       const mirror = filmMirrorFixture();
 
-      expect(await addTitleToLibrary(userId, mirror, tx)).toEqual({ added: true });
+      const outcome = await addTitleToLibrary(userId, mirror, tx);
+      expect(outcome.added).toBe(true);
 
       const [row] = await tx
         .select()
         .from(title)
         .where(and(eq(title.kind, "film"), eq(title.tmdbId, mirror.tmdbId)));
+      expect(outcome.titleId).toBe(row.id);
       expect(row.runtimeMins).toBe(121);
       expect(row.externalId).toBeNull();
       expect(await tx.select().from(episode).where(eq(episode.titleId, row.id))).toEqual(
@@ -149,11 +155,17 @@ describe("addTitleToLibrary", () => {
       const userId = await seedUser(tx, "adham");
       const mirror = showMirrorFixture();
 
-      expect(await addTitleToLibrary(userId, mirror, tx)).toEqual({ added: true });
+      const first = await addTitleToLibrary(userId, mirror, tx);
+      expect(first.added).toBe(true);
       // The screen offers no second add, so this is a retry or two tabs — not a bug, and
       // not a reason to fail. It reports `added: false` so the caller can tell the
       // difference rather than assuming.
-      expect(await addTitleToLibrary(userId, mirror, tx)).toEqual({ added: false });
+      const second = await addTitleToLibrary(userId, mirror, tx);
+      expect(second.added).toBe(false);
+      // The re-add still upserted the shared mirror, so it still reports the title — this
+      // is the case that most needs it (issue #219): nothing about *this* library changed
+      // and everybody else's grid did.
+      expect(second.titleId).toBe(first.titleId);
 
       expect(await entriesFor(tx, userId)).toHaveLength(1);
     }));
@@ -164,8 +176,15 @@ describe("addTitleToLibrary", () => {
       const other = await seedUser(tx, "other");
       const mirror = showMirrorFixture();
 
-      await addTitleToLibrary(adham, mirror, tx);
-      expect(await addTitleToLibrary(other, mirror, tx)).toEqual({ added: true });
+      const first = await addTitleToLibrary(adham, mirror, tx);
+      const second = await addTitleToLibrary(other, mirror, tx);
+      expect(second.added).toBe(true);
+      /**
+       * The same global row, named by both — and this is the fact `invalidateForOtherAccounts`
+       * stands on (issue #219). `other`'s add re-mirrored the title `adham` already holds, so
+       * `adham`'s cached library is the one that has to be busted by somebody else's write.
+       */
+      expect(second.titleId).toBe(first.titleId);
 
       // One row per TMDB id, whoever added it. This is the design (ADR-0001), and it is
       // why the mapping that produces these rows is tested infrastructure.

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { invalidateForBackgroundWrite } from "@/cache/tags";
+import { invalidateForOtherAccounts } from "@/cache/tags";
 import { accountsHoldingTitles } from "@/db/access";
 import { findByExternalId, titleMirror } from "@/tmdb/catalogue";
 
@@ -52,9 +52,11 @@ import { runNightlySweep } from "./run-sweep";
  * `revalidateTag` is Next.js. Resolving who is affected is a query; busting is a
  * framework call; they belong on opposite sides of that line.
  *
- * `invalidateForBackgroundWrite`, not `invalidateFor`: `updateTag` throws outside a
- * Server Action, and nobody here is reading their own write — the reader whose poster
- * changed is asleep, and stale-while-revalidate is the honest treatment for that.
+ * `invalidateForOtherAccounts`, not `invalidateFor`: `updateTag` throws outside a Server
+ * Action, and nobody here is reading their own write — the reader whose poster changed is
+ * asleep, and stale-while-revalidate is the honest treatment for that. No `writer` is
+ * passed because this run has none; the three add paths, which make the same shared-mirror
+ * write from inside an action, do pass one.
  */
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -64,9 +66,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const outcome = await runNightlySweep(titleMirror, findByExternalId);
 
-  for (const userId of await accountsHoldingTitles(outcome.refreshedTitleIds)) {
-    invalidateForBackgroundWrite("refreshTitleMirror", userId);
-  }
+  invalidateForOtherAccounts(
+    "refreshTitleMirror",
+    await accountsHoldingTitles(outcome.refreshedTitleIds),
+  );
 
   /**
    * A body, not a page: nothing renders this, and `SPEC.md` §6 is explicit that no

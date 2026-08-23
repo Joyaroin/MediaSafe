@@ -91,10 +91,21 @@ import type { NativeImportWatch } from "@/import/native-format";
  *
  * ── The shape, which is the deliverable ──────────────────────────────────────────────
  *
- * 1. **Every exported function takes the user id as its first argument.** Never a
- *    session, never a request, never `headers()`. A function that resolves its own
- *    caller cannot be called for a different user in a test, an import, or a nightly
- *    job — and, worse, it is a second place where "who is this" gets decided.
+ * 1. **Every exported function that serves a caller rows takes the user id as its first
+ *    argument.** Never a session, never a request, never `headers()`. A function that
+ *    resolves its own caller cannot be called for a different user in a test, an import,
+ *    or a nightly job — and, worse, it is a second place where "who is this" gets decided.
+ *
+ *    The qualifier is load-bearing and was added by issue #219, because the rule had
+ *    already grown two exceptions and read as though it had none. **Two functions here
+ *    read an owned table across every account**, and both are the nightly sweep's:
+ *    `watchedTmdbEpisodeIds` (`watch`, to reconcile a title whose TMDB id vanished) and
+ *    `accountsHoldingTitles` (`library_entry`, to find whose cached library a refreshed
+ *    mirror just changed). Neither hands a caller another account's rows — the first
+ *    returns TMDB episode ids and the second returns nothing but the `user_id` column
+ *    itself — and both exist because a background job has to ask a question about
+ *    everybody in order to be correct about anybody. A third one needs the same test:
+ *    *does this serve rows, or answer a question about the shape of the table?*
  * 2. **Session-to-user-id resolution happens once, at the boundary**, in
  *    `lib/session.ts`. Nothing here imports it. The direction of that dependency is the
  *    property: auth knows about the database, the database knows nothing about auth.
@@ -653,6 +664,17 @@ export async function repointTitle(
 /** Whether the add created a library entry, or found one already there. */
 export interface AddOutcome {
   readonly added: boolean;
+  /**
+   * The global `title` row this add wrote — reported because **it is not this account's
+   * row** (issue #219). `mirrorTitle` upserts `name`, `release_year` and `poster_path`
+   * for every account holding the title, so the caller has to bust their cached libraries
+   * too, and it cannot ask which accounts those are without knowing which title moved.
+   *
+   * Present whether or not `added` is true. A re-add creates no library entry and still
+   * refreshes the mirror, which is the case that most needs this: nothing about the
+   * caller's own library changed, and everybody else's grid did.
+   */
+  readonly titleId: string;
 }
 
 /**
@@ -703,7 +725,7 @@ export async function addTitleToLibrary(
       .onConflictDoNothing({ target: [libraryEntry.userId, libraryEntry.titleId] })
       .returning({ id: libraryEntry.id });
 
-    return { added: created.length > 0 };
+    return { added: created.length > 0, titleId: mirrored.id };
   });
 }
 
@@ -996,6 +1018,13 @@ export interface ImportChunkOutcome {
   readonly titlesAdded: number;
   readonly watchesAdded: number;
   readonly arrivedAbandoned: number;
+  /**
+   * Every global `title` row this chunk mirrored — `AddOutcome.titleId`'s reason, at chunk
+   * scale (issue #219). Not the same set as *titles added*: a title already in this
+   * account's library still had its mirror refreshed, and so did one already in somebody
+   * else's, so this is the set whose holders' cached libraries the caller must bust.
+   */
+  readonly mirroredTitleIds: readonly string[];
 }
 
 /**
@@ -1197,6 +1226,7 @@ export async function applyImportChunk(
       titlesAdded: created.length,
       watchesAdded: written.length,
       arrivedAbandoned: created.filter((row) => row.abandonedAt !== null).length,
+      mirroredTitleIds: titleIds,
     };
   });
 }
@@ -2448,7 +2478,7 @@ function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
  * first argument, `ownedBy` is still the whole isolation model, and a rejection still
  * leaves through `unstable_cache` untouched. What changed is that a caller may now be
  * served an earlier answer, so **a write that changes what this returns has to bust the
- * library's tag** — `INVALIDATED_BY` in that file is where each one is written down, and
+ * library's tag** — `INVALIDATES` in that file is where each one is written down, and
  * `tests/cache-tags.test.ts` fails if a write in this module is missing from it.
  */
 export async function listLibraryEntries(

@@ -77,10 +77,21 @@ describe("db:seed, run twice", () => {
       const file = fileFor(550);
 
       const first = await applyImportChunk(userId, await buildChunk(file), tx);
-      expect(first).toEqual({ titlesAdded: 1, watchesAdded: 0, arrivedAbandoned: 0 });
+      expect(first).toMatchObject({
+        titlesAdded: 1,
+        watchesAdded: 0,
+        arrivedAbandoned: 0,
+      });
 
       // A fresh chunk, refetched from TMDB exactly as a second `npm run db:seed` would.
       const second = await applyImportChunk(userId, await buildChunk(file), tx);
-      expect(second).toEqual({ titlesAdded: 0, watchesAdded: 0, arrivedAbandoned: 0 });
+      // Nothing added the second time, and the same one title re-mirrored — a re-run
+      // writes no rows and still refreshes the shared mirror (issue #219).
+      expect(second).toMatchObject({
+        titlesAdded: 0,
+        watchesAdded: 0,
+        arrivedAbandoned: 0,
+      });
+      expect(second.mirroredTitleIds).toEqual(first.mirroredTitleIds);
     }));
 });

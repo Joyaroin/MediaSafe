@@ -28,11 +28,20 @@
  * (`db/access.ts`). The rule closes the case that gets written by accident — a key built
  * out of the entity alone — rather than proving anything about the value behind the name.
  *
- * **What it does not catch**, so a clean lint run is not mistaken for a proof: a key part
- * that reaches the array through a variable (`const parts = [read]`) is rejected outright
- * rather than analysed, which is the conservative direction; and an account-scoped key
- * over a query that forgot its own `user_id` filter is still a leak this rule cannot see.
- * `ownedBy` in `db/access.ts` is what that one rests on, and it always was.
+ * **What it does not catch**, so a clean lint run is not mistaken for a proof:
+ *
+ *  - A key part that reaches the array through a variable (`const parts = [read]`) is
+ *    rejected outright rather than analysed, which is the conservative direction.
+ *  - **A renamed import.** The rule matches the callee's *name*, so
+ *    `import { unstable_cache as uc } from "next/cache"` walks straight past it. That hole
+ *    is closed from the other side rather than here: `eslint.config.mjs` restricts
+ *    `next/cache` to `cache/` entirely, so the only file that can write such an import is
+ *    the one file whose whole subject is this, and a rename there would be a line somebody
+ *    chose to write. Closing it here instead would mean resolving imports, which this rule
+ *    cannot do and which the restriction already does better.
+ *  - An account-scoped key over a query that forgot its own `user_id` filter is still a
+ *    leak this rule cannot see. `ownedBy` in `db/access.ts` is what that one rests on, and
+ *    it always was.
  *
  * @type {import('eslint').Rule.RuleModule}
  */
@@ -48,7 +57,7 @@ const cacheKeyCarriesAccount = {
       keyPartsMissing:
         "A cached read needs key parts naming the account it was read for. Without them the key is the callback's source text, which is the same for every reader — so the first reader's library is served to all of them. Pass `[read, userId]` (cache/tags.ts).",
       keyPartsNotLiteral:
-        "The key parts of a cached read must be an array literal, so that the account in them can be seen here rather than traced. Build them inline — `[read, userId]` — as `keyPartsFor` in cache/tags.ts does.",
+        "The key parts of a cached read must be an array literal, so that the account in them can be seen here rather than traced. Build them inline — `[read, userId]` — as cachedLibraryEntries in cache/tags.ts does.",
       keyPartsWithoutAccount:
         "This cache key carries no account, so two readers share one entry and the second is served the first's rows. Add the user id to the key parts (cache/tags.ts).",
       tagWithoutAccount:

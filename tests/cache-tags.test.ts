@@ -94,8 +94,14 @@ function bust(tag: string): void {
 }
 
 const { asUserId } = await import("@/db/access");
-const { INVALIDATED_BY, READS, cachedLibraryEntries, invalidateFor, invalidateForBackgroundWrite } =
-  await import("@/cache/tags");
+const {
+  INVALIDATES,
+  MIRRORS_SHARED_TITLE_ROWS,
+  READS,
+  cachedLibraryEntries,
+  invalidateFor,
+  invalidateForOtherAccounts,
+} = await import("@/cache/tags");
 
 /** Two accounts, named so that a leak between them reads as a leak in the failure. */
 const mine = asUserId("user_mine");
@@ -215,11 +221,71 @@ describe("every write busts its tags", () => {
    * takes the immediate-expiry branch, which is `updateTag` wearing another name and is
    * not what a background write should be doing.
    */
-  it("uses stale-while-revalidate for a write nobody is watching", async () => {
-    invalidateForBackgroundWrite("refreshTitleMirror", yours);
+  it("uses stale-while-revalidate for a write nobody is watching", () => {
+    invalidateForOtherAccounts("refreshTitleMirror", [yours]);
 
     expect(cacheState.revalidated).toEqual([[`library:${yours}`, "max"]]);
     expect(cacheState.updated).toEqual([]);
+  });
+
+  /**
+   * The writer is in `accountsHoldingTitles`' answer after their own add, and their tag
+   * has already been busted with the stronger promise. Marking it stale again here would
+   * be a second pending entry for the same tag under a different profile.
+   */
+  it("skips the writer when busting the other holders of a shared title", () => {
+    invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
+
+    expect(cacheState.revalidated).toEqual([[`library:${yours}`, "max"]]);
+  });
+
+  /**
+   * The bug this pair of calls exists for, end to end: `mine` adds a title `yours`
+   * already holds, which upserts the shared `title` row and so changes what `yours` sees.
+   * Without the second call `yours` keeps the old mirror for ever — there is no expiry
+   * behind the entry to save it.
+   */
+  it("gives the other holders of a re-mirrored title a fresh read", async () => {
+    await cachedLibraryEntries(yours);
+    listLibraryEntriesMock.mockClear();
+
+    invalidateFor("addTitleToLibrary", mine);
+    invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
+
+    await cachedLibraryEntries(yours);
+    expect(listLibraryEntriesMock.mock.calls.map(([userId]) => userId)).toEqual([yours]);
+  });
+});
+
+/**
+ * `SPEC.md` §3.2 through the cache. The whole reversal rests on a cache entry never being
+ * made out of a failure, and until now that was asserted in four docblocks and checked
+ * nowhere.
+ *
+ * What this can and cannot prove is worth stating, because the `unstable_cache` here is a
+ * fake. It cannot prove Next.js declines to store a rejection — that is read off
+ * `unstable-cache.js`, where `cacheNewResult` is reached only after the callback resolves.
+ * What it does prove is the half that lives in this repository and could regress in a
+ * refactor: **`cache/tags.ts` adds no handler of its own.** A `.catch(() => [])` put on
+ * that read to "make the cache resilient" is the exact shape `AGENTS.md` opens on, and it
+ * would fail both assertions below rather than quietly turning a dead database into an
+ * empty library.
+ */
+describe("a failed read is not an empty library", () => {
+  const unreachable = new Error("the database is unreachable");
+
+  it("lets the rejection through instead of answering with rows", async () => {
+    listLibraryEntriesMock.mockRejectedValueOnce(unreachable);
+
+    await expect(cachedLibraryEntries(mine)).rejects.toThrow(unreachable);
+  });
+
+  it("stores nothing, so the next read is a real read", async () => {
+    listLibraryEntriesMock.mockRejectedValueOnce(unreachable);
+    await expect(cachedLibraryEntries(mine)).rejects.toThrow(unreachable);
+
+    expect(cacheState.entries.size).toBe(0);
+    expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
   });
 });
 
@@ -229,6 +295,13 @@ describe("every write busts its tags", () => {
  * than asserted: every `export async function` in that module is either a write with the
  * reads it invalidates, or a read. A new one is a failing test with the new name printed
  * in it, which is the smallest possible nudge to think about the cache once.
+ *
+ * **`export async function`, and nothing else.** The synchronous exports of that module
+ * are `asUserId` and `ownedBy`, which are helpers rather than queries — every function
+ * there that touches Postgres awaits it, so async is what separates the two, and adding
+ * the sync ones would put two names in the map that answer no question about a cached
+ * read. The cost is stated rather than hidden: a synchronous exported *write* would go
+ * unclassified, and it would also be a write that could not reach the database.
  */
 describe("the map covers db/access.ts", () => {
   const source = readFileSync(
@@ -245,7 +318,7 @@ describe("the map covers db/access.ts", () => {
   });
 
   it("classifies every one of them as a write or a read", () => {
-    const classified = new Set<string>([...Object.keys(INVALIDATED_BY), ...READS]);
+    const classified = new Set<string>([...Object.keys(INVALIDATES), ...READS]);
 
     expect(exported.filter((name) => !classified.has(name))).toEqual([]);
   });
@@ -254,13 +327,46 @@ describe("the map covers db/access.ts", () => {
     const known = new Set(exported);
 
     expect(
-      [...Object.keys(INVALIDATED_BY), ...READS].filter((name) => !known.has(name)),
+      [...Object.keys(INVALIDATES), ...READS].filter((name) => !known.has(name)),
     ).toEqual([]);
   });
 
   it("does not call the same function both a write and a read", () => {
-    const writes = new Set<string>(Object.keys(INVALIDATED_BY));
+    const writes = new Set<string>(Object.keys(INVALIDATES));
 
     expect(READS.filter((name) => writes.has(name))).toEqual([]);
+  });
+
+  /**
+   * The finding this test was written for. `mirrorTitle` upserts the **global** `title`
+   * and `episode` rows, so every function that calls it changes what *other accounts'*
+   * libraries show, and each of its callers owes an `invalidateForOtherAccounts` on top
+   * of its own bust. The first pass at #219 covered the nightly sweep's two callers and
+   * missed the add path's two — exactly the mistake a list in a docblock does not prevent
+   * and this does, because the set is held against the functions that make the call.
+   *
+   * Read by splitting the module at **every** top-level function, exported or not, so a
+   * `mirrorTitle` call is attributed to the function it sits in. Splitting on the exported
+   * ones alone was the first attempt and it was wrong in a way worth recording: the
+   * private helpers between two exports fall inside the earlier one's slice, so
+   * `mirrorTitle`'s own declaration counted as a call by whichever export happened to
+   * precede it — `libraryCatalogueKeys`, which does not add a title to anything.
+   */
+  it("names every function that writes the shared title rows", () => {
+    const boundaries = [
+      ...source.matchAll(/^(export )?(?:async )?function (\w+)/gm),
+    ];
+
+    const callsMirrorTitle = boundaries
+      .filter(([, exported], index) => {
+        if (exported === undefined) return false;
+
+        const start = boundaries[index].index ?? 0;
+        const end = boundaries[index + 1]?.index ?? source.length;
+        return source.slice(start, end).includes("mirrorTitle(");
+      })
+      .map(([, , name]) => name);
+
+    expect([...callsMirrorTitle].sort()).toEqual([...MIRRORS_SHARED_TITLE_ROWS].sort());
   });
 });

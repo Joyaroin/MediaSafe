@@ -128,8 +128,17 @@ describe("applyImportChunk", () => {
         tx,
       );
 
-      // The three counters `SPEC.md` §7's progress line prints, and nothing else.
-      expect(outcome).toEqual({ titlesAdded: 2, watchesAdded: 2, arrivedAbandoned: 1 });
+      // The three counters `SPEC.md` §7's progress line prints...
+      expect(outcome).toMatchObject({
+        titlesAdded: 2,
+        watchesAdded: 2,
+        arrivedAbandoned: 1,
+      });
+      // ...and the one thing that is not a counter and never reaches a screen: every
+      // global `title` row this chunk re-mirrored, which the action busts the other
+      // holders' cached libraries from (issue #219). Both titles, because both were
+      // mirrored, whether or not this account already had them.
+      expect(outcome.mirroredTitleIds).toHaveLength(2);
 
       expect(await entriesFor(tx, userId)).toHaveLength(2);
       expect(await watchesFor(tx, userId)).toHaveLength(2);
@@ -156,7 +165,14 @@ describe("applyImportChunk", () => {
       await applyImportChunk(userId, chunk, tx);
       const second = await applyImportChunk(userId, chunk, tx);
 
-      expect(second).toEqual({ titlesAdded: 0, watchesAdded: 0, arrivedAbandoned: 0 });
+      // Nothing written the second time — and one title still re-mirrored, because a
+      // re-run of the same chunk upserts the shared `title` row again (issue #219).
+      expect(second).toMatchObject({
+        titlesAdded: 0,
+        watchesAdded: 0,
+        arrivedAbandoned: 0,
+      });
+      expect(second.mirroredTitleIds).toHaveLength(1);
       expect(await entriesFor(tx, userId)).toHaveLength(1);
       expect(await watchesFor(tx, userId)).toHaveLength(2);
       expect(
@@ -460,8 +476,14 @@ describe("applyImportChunk", () => {
         tx,
       );
 
-      expect(outcome).toEqual({ titlesAdded: 1, watchesAdded: 1, arrivedAbandoned: 0 });
-      expect(await entriesFor(tx, userId)).toHaveLength(1);
+      expect(outcome).toMatchObject({
+        titlesAdded: 1,
+        watchesAdded: 1,
+        arrivedAbandoned: 0,
+      });
+      // One title, named once: the chunk carried the same mirror twice and `mirrorTitle`
+      // upserts on `(kind, tmdb_id)`, so there is one global row to bust holders of.
+      expect(new Set(outcome.mirroredTitleIds).size).toBe(1);
       expect(await watchesFor(tx, userId)).toHaveLength(1);
     }));
 
@@ -473,6 +495,7 @@ describe("applyImportChunk", () => {
         titlesAdded: 0,
         watchesAdded: 0,
         arrivedAbandoned: 0,
+        mirroredTitleIds: [],
       });
       expect(await entriesFor(tx, userId)).toHaveLength(0);
     }));

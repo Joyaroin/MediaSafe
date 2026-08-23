@@ -37,7 +37,7 @@ A read cache with **two properties, both enforced rather than remembered**:
    `eslint-rules/cache-key-carries-account.mjs` fails `npm run lint` on any `unstable_cache` or
    `cacheTag` call whose key or tag does not name an account — which is a rule about the *next*
    cached read, written before there is one.
-2. **Every write busts its tags, inside the same action, before returning.** `INVALIDATED_BY` in
+2. **Every write busts its tags, inside the same action, before returning.** `INVALIDATES` in
    `cache/tags.ts` maps every write in `db/access.ts` to the cached reads it invalidates, including
    the ones that invalidate nothing — an empty array is the answer *this changes nothing anybody has
    cached*, and it is written down so that a complete map is distinguishable from a partial one.
@@ -70,14 +70,40 @@ eventually.
 `app/(signed-in)/library/page.tsx`, and nothing else. Up next, the title detail and the lists are
 #226, #225 and #227, and each of those tickets decides for itself.
 
-The writes that bust it are every write to `library_entry` and every write to `watch`, plus the two
-that belong to the nightly sweep. That last pair is the only place this design had to reach outside
-one account: `refreshTitleMirror` and `repointTitle` change `title.name`, `release_year` and
-`poster_path`, which the library grid prints, and they change them for everybody holding that title
-at once. So `app/api/cron/nightly-sweep/route.ts` resolves the affected accounts through
-`accountsHoldingTitles` and busts each of their tags with `invalidateForBackgroundWrite`. It uses
-`revalidateTag(tag, "max")` there, because `updateTag` throws outside a Server Action and because
-nobody is reading their own write at four in the morning.
+The writes that bust it are every write to `library_entry` and every write to `watch`, plus four that
+are not about one account at all.
+
+### The shared mirror, which is where this nearly went wrong
+
+`title` and `episode` are **global and unowned** — one row per TMDB id, shared by every account
+(ADR-0001). Four functions write them, all through `db/access.ts`'s `mirrorTitle`, which upserts
+`name`, `release_year` and `poster_path` and the episode rows the two derived-state views are built
+from: `refreshTitleMirror` and `repointTitle` (the nightly sweep), and `addTitleToLibrary` and
+`applyImportChunk` (the add path and the import). So **one account adding a show changes what every
+other account holding it sees.** `addTitleToLibrary`'s docblock has said exactly that since build
+step 2: *one person adding a show creates the rows every other person reads, and re-adding one
+refreshes what they see.*
+
+Without a cache that was harmless, because everybody's next read was fresh. With one it is the
+failure this ADR exists to prevent, and it does not heal — there is no expiry behind the entry.
+
+So every caller of those four resolves the holders through `accountsHoldingTitles` and calls
+`invalidateForOtherAccounts` on top of its own bust. That function uses `revalidateTag(tag, "max")`
+rather than `updateTag`: nobody in that list is reading their own write, so stale-while-revalidate is
+the honest treatment, and the sweep could not call `updateTag` anyway from a route handler. The
+writer is skipped, because `invalidateFor` has already given them the stronger promise.
+
+**The first pass at this ticket covered the sweep's two and missed the add path's two**, which is
+recorded here rather than quietly fixed, because it is the argument for the check that replaced the
+oversight: `tests/cache-tags.test.ts` now reads `db/access.ts`, finds every function whose body calls
+`mirrorTitle`, and fails unless the set matches `MIRRORS_SHARED_TITLE_ROWS` in `cache/tags.ts`. A
+list in a docblock would not have caught it; a list held against the code does.
+
+The sweep makes **one** such call, naming `refreshTitleMirror`, and `repointTitle` is not a dead map
+entry: a repoint writes the survivor's mirror inside its own transaction, so `run-sweep.ts` records
+the repointed title in `refreshedTitleIds` beside the ordinary refreshes and the single bust per
+account already covers it. The map answers *what does this write do to a cached read*; naming
+`repointTitle` at a second call site would bust the identical tag twice.
 
 ## What did not change
 

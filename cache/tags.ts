@@ -8,8 +8,8 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  *
  * ── What this module reverses ────────────────────────────────────────────────────────
  *
- * `SPEC.md` §3 constraint 1 said *no read cache*, in a list of five things `tvtracker`'s
- * dual data path had taught. Issue #219 took that clause back and left the other four
+ * `SPEC.md` §3 constraint 1 said *no read cache*, in a list of six things `tvtracker`'s
+ * dual data path had taught. Issue #219 took that clause back and left the other five
  * standing — there is still no guest mode, no second repository implementation, no local
  * store, no service worker and no offline queue — and
  * `docs/adr/0002-the-read-cache-and-its-tags.md` is where the reversal is argued. Read
@@ -27,11 +27,18 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  *    the build if its key parts stop naming one — on every `unstable_cache` call in the
  *    repository, not only on this one, so the second cached read is checked before it is
  *    written rather than after it leaks.
- * 2. **Every write busts its tags.** `INVALIDATED_BY` below is the map, it is keyed by
+ * 2. **Every write busts its tags.** `INVALIDATES` below is the map, it is keyed by
  *    the write's own name in `db/access.ts`, and `tests/cache-tags.test.ts` fails when
- *    `db/access.ts` grows an export the map has not classified. A write nobody thought
- *    about is a failing test rather than a library that quietly disagrees with the
- *    database.
+ *    that file grows an `export async function` the map has not classified. A write
+ *    nobody thought about is a failing test rather than a library that quietly disagrees
+ *    with the database.
+ *
+ *    The check is that narrow on purpose and it is worth knowing where it stops: it reads
+ *    `db/access.ts` as text and matches `export async function`. Every read and every
+ *    write in that module is async, because every one of them awaits Postgres — so the
+ *    set it matches is the set that matters today, and a synchronous export
+ *    (`asUserId`, `ownedBy`) is a helper rather than a query. A synchronous exported
+ *    *write* would slip past, and would also be a thing that could not touch the database.
  *
  * ── Nothing caches or busts outside this file ────────────────────────────────────────
  *
@@ -133,16 +140,28 @@ export function cachedLibraryEntries(
  * are the opposite case and belong with the empty ones on the same argument: they touch
  * `list` and `list_membership`, which the library grid does not join and is not about.
  *
- * ── `refreshTitleMirror` and `repointTitle` are not the reader's writes ──────────────
+ * ── Four writes change what *other people's* libraries show ─────────────────────────
  *
- * They are the nightly sweep's, they change `title.name`, `release_year` and
- * `poster_path` — three columns the library grid prints — and they change them for every
- * account holding that title at once. That is why they are here and why
- * `invalidateForBackgroundWrite` exists: the sweep is a route handler rather than a
- * Server Action, so it cannot call `updateTag`, and the account is not the caller's own.
- * `app/api/cron/nightly-sweep/route.ts` resolves the accounts and busts each.
+ * `MIRRORS_SHARED_TITLE_ROWS` below names them, and it is the subtlest thing in this
+ * file. All four go through `db/access.ts`'s `mirrorTitle`, which upserts the **global**
+ * `title` row — `name`, `release_year`, `poster_path`, the three columns the library grid
+ * prints beyond state — and the global `episode` rows that `library_entry_state` and
+ * `library_entry_up_next` are derived from. `title` and `episode` are unowned, one row per
+ * TMDB id, shared by every account (ADR-0001), so **one account adding a show changes what
+ * every other account holding it sees.** `addTitleToLibrary`'s own docblock has said so
+ * since build step 2: *one person adding a show creates the rows every other person reads,
+ * and re-adding one refreshes what they see.*
+ *
+ * Without a cache that was harmless — everybody's next read was fresh. With one it is the
+ * exact failure this ticket exists to prevent, and it does not heal, because there is no
+ * expiry to fall back on. So every caller of these four resolves the holders through
+ * `accountsHoldingTitles` and calls `invalidateForOtherAccounts` as well as its own bust.
+ *
+ * `tests/cache-tags.test.ts` reads `db/access.ts` and fails if a function whose body calls
+ * `mirrorTitle` is missing from that set — the add path was missed on the first pass here,
+ * found in review, and this is the check that means the next one is not.
  */
-export const INVALIDATED_BY = {
+export const INVALIDATES = {
   addTitleToLibrary: ["library"],
   applyImportChunk: ["library"],
   recordWatch: ["library"],
@@ -168,11 +187,25 @@ export const INVALIDATED_BY = {
 } as const satisfies Record<string, readonly CachedRead[]>;
 
 /** A write in `db/access.ts`, named by the function that performs it. */
-export type Write = keyof typeof INVALIDATED_BY;
+export type Write = keyof typeof INVALIDATES;
+
+/**
+ * The writes that go through `mirrorTitle` and so change the shared `title` and `episode`
+ * rows — the four whose blast radius is every account holding the title, not just the one
+ * that made the write. `INVALIDATES`'s docblock argues it; this is the list, and
+ * `tests/cache-tags.test.ts` holds it against which functions in `db/access.ts` actually
+ * call `mirrorTitle`.
+ */
+export const MIRRORS_SHARED_TITLE_ROWS = [
+  "addTitleToLibrary",
+  "applyImportChunk",
+  "refreshTitleMirror",
+  "repointTitle",
+] as const satisfies readonly Write[];
 
 /**
  * `db/access.ts`'s reads, listed for one purpose: `tests/cache-tags.test.ts` adds them to
- * `INVALIDATED_BY`'s keys and holds the union against the module's real exports, so that
+ * `INVALIDATES`'s keys and holds the union against the module's real exports, so that
  * *classified* means classified as one or the other rather than merely absent from the
  * map. A read invalidates nothing, so there is nothing else this list is for.
  */
@@ -219,29 +252,53 @@ export const READS = [
  * write look from here like a write that happened. The optimistic rollback and the
  * persistent toast (`errors/write-failure.ts`) are untouched by any of this.
  *
- * ── Only from a Server Action ────────────────────────────────────────────────────────
+ * ── This is the writer's own account, and only from a Server Action ─────────────────
  *
- * `updateTag` throws outside one, by design and by name. The nightly sweep is the one
- * caller that is not an action; it uses `invalidateForBackgroundWrite` below.
+ * `updateTag` throws outside one, by design and by name. And it is the right call only
+ * for the account that made the write — the one about to be shown the result. Every other
+ * account whose library this write changed goes through `invalidateForOtherAccounts`
+ * below, which is a different promise and not a different spelling.
  */
 export function invalidateFor(write: Write, userId: UserId): void {
-  for (const read of INVALIDATED_BY[write]) {
+  for (const read of INVALIDATES[write]) {
     updateTag(tagFor(read, userId));
   }
 }
 
 /**
- * The same busts, from a route handler — the nightly sweep, and nothing else today.
+ * The same busts, for accounts that did **not** make the write — every holder of a title
+ * whose shared mirror it changed (`MIRRORS_SHARED_TITLE_ROWS`), and the nightly sweep's
+ * accounts, which are nobody's own.
  *
- * `revalidateTag(tag, "max")` rather than `updateTag`, for the two reasons that make this
- * a separate function and not a parameter: `updateTag` throws outside a Server Action,
- * and nobody here is reading their own write. Stale-while-revalidate is the honest
- * treatment for a refreshed poster — the next reader gets the entry that is already
- * there, and the one after that gets the refreshed one — where it would be the wrong
- * treatment for a reader who just abandoned a title.
+ * ── `revalidateTag(tag, "max")`, and why that is the honest call here ────────────────
+ *
+ * Nobody in `userIds` is reading their own write. They are somewhere else, or asleep, and
+ * what changed under them is a poster, a name, a year, or an episode that arrived — so
+ * stale-while-revalidate is exactly right: the next reader gets the entry that is already
+ * there and the one after that gets the refreshed one, and nobody waits on a query for a
+ * change they did not make. It would be the wrong call for the writer, which is why that
+ * is a separate function.
+ *
+ * It also works where `updateTag` cannot: the sweep is a route handler, and `updateTag`
+ * throws outside a Server Action.
+ *
+ * ── `writer` is skipped, not merely tolerated ───────────────────────────────────────
+ *
+ * `accountsHoldingTitles` returns every holder, and after an add the writer is one of
+ * them. Their tag has already been busted by `invalidateFor`, with the stronger promise;
+ * re-marking it stale here would be a second entry in Next's pending list for the same
+ * tag under a different profile, which is noise at best. The sweep passes no writer
+ * because it has none.
  */
-export function invalidateForBackgroundWrite(write: Write, userId: UserId): void {
-  for (const read of INVALIDATED_BY[write]) {
-    revalidateTag(tagFor(read, userId), "max");
+export function invalidateForOtherAccounts(
+  write: Write,
+  userIds: readonly UserId[],
+  writer?: UserId,
+): void {
+  for (const userId of userIds) {
+    if (userId === writer) continue;
+    for (const read of INVALIDATES[write]) {
+      revalidateTag(tagFor(read, userId), "max");
+    }
   }
 }
