@@ -16,7 +16,8 @@ import { coveredUpTo, markUpToLabel } from "./mark-up-to";
 import { MarkUpToDialog } from "./mark-up-to-dialog";
 import { MarkUpToIcon } from "./mark-up-to-icon";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
-import { episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
+import { SeasonChips } from "./season-chips";
+import { defaultSeason, episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
 import { useLiveEpisodes } from "./use-live-episodes";
 import { useWatchMark } from "./use-watch-mark";
 import {
@@ -98,8 +99,30 @@ export function ProgrammeNoteEpisodes({
 }
 
 /**
- * The seasons, and the one piece of state that belongs to the list rather than to a row —
- * issue #196's confirmation.
+ * The seasons, and the two pieces of state that belong to the list rather than to a row —
+ * issue #196's confirmation, and issue #224's chosen season.
+ *
+ * ── One season mounted, chosen from a chip row ───────────────────────────────────────
+ *
+ * Reaching Season 4 used to mean scrolling past every episode of Seasons 1 through 3,
+ * because every season rendered at once. `SeasonChips` (`season-chips.tsx`) draws every
+ * season as a chip in `groupBySeason`'s own specials-last order; only the chip's own
+ * season maps to rows below it, which is what turns this from a navigation fix into the
+ * render half of the show page's lag as well — a sixty-episode show now mounts the twenty
+ * or so rows of one season, not all sixty.
+ *
+ * `selectedSeason` starts from `defaultSeason` (`season-grouping.ts`) over the
+ * server-rendered `episodes` prop, not `live` — a lazy `useState` initializer, run once.
+ * Reading `live` instead would recompute the default on every optimistic mark, and
+ * marking the selected season's own last episode would silently move the selected chip to
+ * the next season out from under whichever reader just pressed it. The chip only moves
+ * when a reader presses another one.
+ *
+ * **The trade, recorded**: browser find-in-page no longer reaches an unselected season.
+ * That is the direct cost of only one season's rows existing in the document at a time,
+ * and it is the same trade `defaultSeason` is built to make cost nothing in the common
+ * case — the season a reader actually wants, the one holding *up next*, is the one
+ * already mounted.
  *
  * ── Why the dialog is here and not on the row ────────────────────────────────────────
  *
@@ -145,27 +168,36 @@ function SeasonList({
     readonly covered: readonly EpisodeDetail[];
   } | null>(null);
 
+  const [selectedSeason, setSelectedSeason] = useState(() => defaultSeason(episodes));
+
   const live = useLiveEpisodes(libraryEntryId, episodes);
+  const seasons = groupBySeason(live);
+  const current = seasons.find(([seasonNo]) => seasonNo === selectedSeason) ?? seasons[0];
 
   return (
     <>
-      {groupBySeason(live).map(([seasonNo, inSeason]) => (
-        <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
-          <p className="code-line text-dim">{seasonHeading(seasonNo)}</p>
-          <ol className={SEASON_LIST}>
-            {inSeason.map((one) => (
-              <EpisodeLine
-                key={one.id}
-                episode={one}
-                covered={coveredUpTo(live, one)}
-                libraryEntryId={libraryEntryId}
-                titleName={titleName}
-                onMarkUpTo={setConfirming}
-              />
-            ))}
-          </ol>
-        </div>
-      ))}
+      <SeasonChips
+        seasons={seasons.map(([seasonNo]) => seasonNo)}
+        selected={current[0]}
+        onSelect={setSelectedSeason}
+        libraryEntryId={libraryEntryId}
+      />
+
+      <div className={PROGRAMME_NOTE_SECTION}>
+        <p className="code-line text-dim">{seasonHeading(current[0])}</p>
+        <ol className={SEASON_LIST}>
+          {current[1].map((one) => (
+            <EpisodeLine
+              key={one.id}
+              episode={one}
+              covered={coveredUpTo(live, one)}
+              libraryEntryId={libraryEntryId}
+              titleName={titleName}
+              onMarkUpTo={setConfirming}
+            />
+          ))}
+        </ol>
+      </div>
 
       {confirming === null ? null : (
         <MarkUpToDialog

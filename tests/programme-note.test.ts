@@ -165,7 +165,16 @@ describe("the episode list", () => {
       .split("\n")
       .filter((one) => one.length > 0);
 
-    expect(visible).toEqual(["Season 1", "E1", "Winter Is Coming", "Rewatch", "Unwatch"]);
+    // "Season 1" twice: once as the sole season chip (issue #224), once as the heading
+    // over the rows it selects.
+    expect(visible).toEqual([
+      "Season 1",
+      "Season 1",
+      "E1",
+      "Winter Is Coming",
+      "Rewatch",
+      "Unwatch",
+    ]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {
@@ -181,6 +190,10 @@ describe("the episode list", () => {
     expect(markup).not.toContain("No episode data yet.");
     expect(markup).not.toContain("Season");
     expect(markup).not.toContain("Specials");
+    // Issue #224: a film renders no season selector at all — a control that answers a
+    // question a film was never asked (`programme-note-episodes.tsx`'s own words for the
+    // film branch, borrowed here for the same reason).
+    expect(markup).not.toContain("Choose a season");
   });
 
   it("carries the film recording control on an unwatched film, and not on a finished one", () => {
@@ -276,16 +289,19 @@ describe("the watched-up-to-here control", () => {
     expect(episodes([], "film", "finished")).not.toContain(MARK_THROUGH);
   });
 
-  it("never appears on a special, and an unwatched special never puts it on another row", () => {
+  it("never appears on a special itself", () => {
     const markup = episodes([
       episode({ id: "s1", seasonNo: 0, episodeNo: 1, name: "Making Of" }),
       episode({ id: "s2", seasonNo: 0, episodeNo: 2, name: "Blooper Reel" }),
-      episode({ id: "e1", seasonNo: 1, episodeNo: 1, name: "Winter Is Coming" }),
     ]);
 
-    // Two unwatched specials sit before S1E1 and neither arms the control: a watch of a
-    // special changes no derived state, so it is not what a press would write and not a
-    // reason to offer one.
+    // A watch of a special changes no derived state, so it is not what a press would
+    // write and not a reason to offer one. The companion claim this test used to make in
+    // the same render — that an unwatched special sitting before a real episode does not
+    // arm the control on that later row either — is `mark-up-to.test.ts`'s own "never
+    // counts a special, in the set or in what makes the control appear": issue #224
+    // mounts one season at a time, so a special and a later real-season row are never
+    // both in one render here for this file to check together any more.
     expect(markup).not.toContain(MARK_THROUGH);
   });
 
@@ -313,7 +329,15 @@ describe("the watched-up-to-here control", () => {
       .split("\n")
       .filter((one) => one.length > 0);
 
-    expect(visible).toEqual(["Season 1", "E1", "Winter Is Coming", "E2", "The Kingsroad"]);
+    // "Season 1" twice, the same as the sole-season case above — the chip and the heading.
+    expect(visible).toEqual([
+      "Season 1",
+      "Season 1",
+      "E1",
+      "Winter Is Coming",
+      "E2",
+      "The Kingsroad",
+    ]);
   });
 
   it("reaches all three surfaces from one placement", () => {
@@ -354,5 +378,73 @@ describe("the watched-up-to-here control", () => {
     // to have at most one open.
     expect(markup).not.toContain("<dialog");
     expect(markup).not.toContain("Watched up to here?");
+  });
+});
+
+/**
+ * The season chips — issue #224. What a static render can prove: every season is a chip
+ * in specials-last order, the default selection lands on the season holding *up next* (or
+ * falls back to the first season), the pressed chip's own state, and that only the
+ * selected season's rows are in the document at all. Choosing a *different* chip is not
+ * testable here — this file's own top docblock and `SPEC.md`'s Testing Decisions: there
+ * is no DOM environment in this suite and no click to simulate one with.
+ */
+describe("the season selector", () => {
+  function ariaPressed(markup: string, label: string): string | null {
+    const labelIndex = markup.indexOf(`>${label}<`);
+    const buttonStart = markup.lastIndexOf("<button", labelIndex);
+    const buttonTag = markup.slice(buttonStart, markup.indexOf(">", buttonStart) + 1);
+    return buttonTag.match(/aria-pressed="(true|false)"/)?.[1] ?? null;
+  }
+
+  it("renders every season as a chip, in specials-last order", () => {
+    const markup = episodes([
+      episode({ id: "s1", seasonNo: 0, episodeNo: 1, name: "Making Of" }),
+      episode({ id: "e1", seasonNo: 1, episodeNo: 1 }),
+      episode({ id: "e2", seasonNo: 2, episodeNo: 1, upNext: true, name: "New Beginnings" }),
+    ]);
+
+    expect(markup).toMatch(/role="group" aria-label="Choose a season"/);
+
+    const positions = ["Season 1", "Season 2", "Specials"].map((label) =>
+      markup.indexOf(`>${label}<`),
+    );
+    expect(positions.every((index) => index !== -1)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it("selects the season holding up next by default, pressed and correctly named", () => {
+    const markup = episodes([
+      episode({ id: "e1", seasonNo: 1, episodeNo: 1, watched: true }),
+      episode({ id: "e2", seasonNo: 2, episodeNo: 1, upNext: true, name: "New Beginnings" }),
+    ]);
+
+    expect(ariaPressed(markup, "Season 2")).toBe("true");
+    expect(ariaPressed(markup, "Season 1")).toBe("false");
+  });
+
+  it("falls back to the first season when nothing is up next", () => {
+    const markup = episodes([
+      episode({ id: "s1", seasonNo: 0, episodeNo: 1, name: "Making Of" }),
+      episode({ id: "e1", seasonNo: 1, episodeNo: 1 }),
+      episode({ id: "e2", seasonNo: 2, episodeNo: 1, name: "New Beginnings" }),
+    ]);
+
+    expect(ariaPressed(markup, "Season 1")).toBe("true");
+    expect(ariaPressed(markup, "Season 2")).toBe("false");
+    expect(ariaPressed(markup, "Specials")).toBe("false");
+  });
+
+  it("mounts only the selected season's episode rows", () => {
+    const markup = episodes([
+      episode({ id: "e1", seasonNo: 1, episodeNo: 1, name: "Winter Is Coming" }),
+      episode({ id: "e2", seasonNo: 2, episodeNo: 1, upNext: true, name: "New Beginnings" }),
+    ]);
+
+    // Season 2 is selected (it holds up next), so its own episode is on the page and
+    // Season 1's is not — even though Season 1 still gets a chip.
+    expect(markup).toContain("New Beginnings");
+    expect(markup).not.toContain("Winter Is Coming");
+    expect(markup).toMatch(/>Season 1</);
   });
 });

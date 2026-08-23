@@ -38,6 +38,32 @@ export function groupBySeason<T extends { readonly seasonNo: number }>(
   return [...bySeason.entries()];
 }
 
+/**
+ * Which season is selected when a reader opens a show — issue #224. The season holding
+ * *up next* if the title has one; otherwise the first season in the same specials-last
+ * order `groupBySeason` renders, which is what answers *a show with no released episodes
+ * falls back to its first season* along with every other reason a title can have no
+ * up-next episode at all — `getTitleDetail`'s own docblock (`db/access.ts`) names
+ * unstarted and finished-to-the-edge-of-what's-mirrored beside it, and this makes no
+ * distinction between them: whatever the reason, there is nothing to default to but the
+ * beginning.
+ *
+ * Takes the same episodes `groupBySeason` does and no more — `upNext` is a fact
+ * `getTitleDetail` already attaches to at most one episode, so this asks no question
+ * `groupBySeason` could not also answer from the same list.
+ *
+ * Requires at least one episode, the same precondition its one caller already holds:
+ * `SeasonList` (`programme-note-episodes.tsx`) only mounts once `ProgrammeNoteEpisodes`
+ * has ruled out an empty episode list.
+ */
+export function defaultSeason<T extends { readonly seasonNo: number; readonly upNext: boolean }>(
+  episodes: readonly T[],
+): number {
+  const upNext = episodes.find((one) => one.upNext);
+  if (upNext !== undefined) return upNext.seasonNo;
+  return groupBySeason(episodes)[0][0];
+}
+
 /** Season 0 is *Specials* on screen and in an episode's spoken-out name alike — a reader
  *  hearing `Season 0` from a screen reader while the heading above says `Specials` is the
  *  same word having two answers. */
