@@ -128,18 +128,33 @@ function subjectOf(libraryEntryId: string, episode: QueuedEpisode): WatchSubject
 const UNWATCHED: WatchMarkView = { watched: false, phase: "unwatched", pending: false };
 
 /**
- * Everything a tile needs from the store, as one string.
+ * Where a tile stands in its own run: how far along it is, whether that episode's write is
+ * on the wire, and what the episode behind it is doing.
  *
- * `useSyncExternalStore` compares snapshots with `Object.is`, so the snapshot has to be
- * either a stable object identity or a primitive. It is a primitive here — the position,
- * the in-flight flag and the phase, in that order — because there is no object the store
- * hands out that carries all three, and building one per call would re-render for ever.
- *
- * Everything the tile renders is decoded back out of this rather than read from the store
- * a second time during render, which is what keeps what it draws and what it re-rendered
- * for the same answer.
+ * The three travel together everywhere and are read together in one pass over the store,
+ * so they are one type rather than three returns.
  */
-function encode(marks: WatchMarks, libraryEntryId: string, queue: UpNextQueue): string {
+interface Position {
+  /** How many of this run's episodes the store calls watched — so, the index of the one
+   *  the tile is showing. Equal to the run's length once it is spent. */
+  readonly position: number;
+  readonly pending: boolean;
+  /** The **just-marked** episode's phase, which is the one the sweep plays over. */
+  readonly phase: WatchMarkPhase;
+}
+
+/**
+ * Read the store once and answer all three — the only place any of them is derived.
+ *
+ * The walk stops at the first episode the store does not call watched, which is this
+ * module's whole rule (see the docblock at the top of the file). Everything else in this
+ * file, React or not, is a caller of this.
+ */
+function positionOf(
+  marks: WatchMarks,
+  libraryEntryId: string,
+  queue: UpNextQueue,
+): Position {
   let position = 0;
   while (position < queue.episodes.length) {
     const view = marks.read(subjectOf(libraryEntryId, queue.episodes[position]));
@@ -148,25 +163,37 @@ function encode(marks: WatchMarks, libraryEntryId: string, queue: UpNextQueue): 
   }
 
   const current = queue.episodes[position] ?? null;
-  const pending =
-    current === null
-      ? false
-      : (marks.read(subjectOf(libraryEntryId, current))?.pending ?? false);
-
-  // The episode a press has just recorded, which is the one the sweep plays over.
   const marked = position > 0 ? queue.episodes[position - 1] : null;
-  const phase: WatchMarkPhase =
-    marked === null
-      ? "unwatched"
-      : (marks.read(subjectOf(libraryEntryId, marked))?.phase ?? "settled");
 
-  return `${position}|${pending ? "1" : "0"}|${phase}`;
+  return {
+    position,
+    pending:
+      current === null
+        ? false
+        : (marks.read(subjectOf(libraryEntryId, current))?.pending ?? false),
+    phase:
+      marked === null
+        ? "unwatched"
+        : (marks.read(subjectOf(libraryEntryId, marked))?.phase ?? "settled"),
+  };
 }
 
-interface Position {
-  readonly position: number;
-  readonly pending: boolean;
-  readonly phase: WatchMarkPhase;
+/**
+ * The same `Position`, as one string — **for `useSyncExternalStore` and nothing else.**
+ *
+ * That hook compares snapshots with `Object.is`, so a snapshot must be either a stable
+ * object identity or a primitive. `positionOf` builds a fresh object per call and there is
+ * no object in the store carrying all three fields to hand back instead, so returning it
+ * directly would re-render for ever. Serialising it is what makes the comparison a value
+ * comparison.
+ *
+ * `decode` is its exact inverse and the hook is its only caller: nothing outside the
+ * subscription ever goes through the string, and `readUpNextMark` below reaches
+ * `positionOf` directly.
+ */
+function encode(marks: WatchMarks, libraryEntryId: string, queue: UpNextQueue): string {
+  const { position, pending, phase } = positionOf(marks, libraryEntryId, queue);
+  return `${position}|${pending ? "1" : "0"}|${phase}`;
 }
 
 function decode(snapshot: string): Position {
@@ -204,7 +231,7 @@ export function readUpNextMark(
   libraryEntryId: string,
   queue: UpNextQueue,
 ): UpNextMarkReading {
-  const { position, pending, phase } = decode(encode(marks, libraryEntryId, queue));
+  const { position, pending, phase } = positionOf(marks, libraryEntryId, queue);
   return {
     episode: queue.episodes[position] ?? null,
     marked: position > 0 ? queue.episodes[position - 1] : null,

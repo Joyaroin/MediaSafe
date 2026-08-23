@@ -1,14 +1,14 @@
 "use client";
 
-import { MarkWatchedIcon } from "@/app/(signed-in)/library/mark-watched-icon";
+import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import {
-  RECORDING_CONTROL,
+  RECORDING_GLYPH,
   WatchSweep,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { OngoingEntry } from "@/db/access";
 import { GroupTile } from "./group-tile";
-import { queuedEpisodeFullName, useUpNextMark } from "./up-next-mark";
+import { queuedEpisodeFullName, useUpNextMark, type UpNextMark } from "./up-next-mark";
 
 /**
  * An Ongoing tile — issue #220, and the only tile in the application that records a watch.
@@ -41,9 +41,14 @@ import { queuedEpisodeFullName, useUpNextMark } from "./up-next-mark";
  *
  * ── The tile leaves the group when there is nothing released left ───────────────────
  *
- * `finished` renders nothing at all. The group's own heading goes with the last tile,
- * which `home-group.tsx` handles through the same rule (`up-next-mark.ts`'s
- * `stillMarkable`) rather than through a second one.
+ * `finished` renders nothing at all.
+ *
+ * In practice `ongoing-group.tsx` gets there first: it asks `stillMarkable` — the same
+ * rule, over the same store, in the same tick — and stops rendering this tile at all, so
+ * that the group's heading goes with its last tile rather than standing over an empty
+ * track. The check below is therefore normally unreachable, and it stays because a tile
+ * that renders a control it has nothing to point at is worse than a redundant guard: it
+ * would make this component correct only for as long as every caller remembers to filter.
  */
 export function OngoingTile({
   entry,
@@ -84,25 +89,37 @@ export function OngoingTile({
 const MARK_SLOT = "relative mt-2 flex min-h-11 items-center";
 
 /**
- * Both states of the slot at one measure, so the control does not change size when it
- * becomes its own reversal.
+ * The tile's hit box — `watch-mark-motion.tsx`'s `RECORDING_HIT_BOX` at a tile's measure.
  *
- * `26px` is not a new number: it is `RECORDING_CONTROL`'s own box, measured in a real
- * Chromium tab by issue #203 and recorded in `programme-note-episodes.tsx`'s `TRAILING`
- * table as `26.2px`. Stated as a height rather than left to the padding because the two
- * states have different contents — a `16px` glyph and a line of `code-line` text — and
- * padding alone would leave them two pixels apart.
+ * **The same `44px` height and the same `group`, and only the width differs.** That
+ * constant is `h-11 w-11` because it sits in a fixed-measure flex slot on an episode row
+ * with other controls beside it; here the slot is a tile's own width with nothing beside
+ * it, so the target is the whole `116px` rather than a `44px` square inside it. Widening a
+ * tap target is the one direction *every tap target ≥44px* (`app/masthead.tsx`) is safe to
+ * be wrong in.
+ *
+ * `RECORDING_HIT_BOX`'s `-my-2` is deliberately **not** carried over. It exists to pull the
+ * button's margin box back inside `EPISODE_ROW`'s own `py-2` budget so that row does not
+ * grow; this slot has no padding to reclaim and its own `min-h-11` already fixes the
+ * height.
+ *
+ * `group` is load-bearing: `RECORDING_GLYPH` inverts on `group-hover:`, so the chip answers
+ * a pointer over this box rather than over itself.
  */
-const TILE_CONTROL_BOX = "flex h-[26px] w-full items-center justify-center";
+const TILE_HIT_BOX = `group flex h-11 w-full items-center justify-center ${IN_FLIGHT}`;
 
-/** The mark. Accent, because recording a watch is what the accent is reserved for
- *  (`DESIGN.md` §3) — this is that meaning, in a new place, and not a new one. */
-const TILE_MARK = `${RECORDING_CONTROL} ${TILE_CONTROL_BOX} ${IN_FLIGHT}`;
-
-/** The reversal, in the same register at the same measure — `GHOST_RECOVERY_COMPACT` is
- *  the treatment the episode row's own *Unwatch* takes, so a reader meets one appearance
- *  for *take that back* wherever they are. */
-const TILE_UNDO = `${GHOST_RECOVERY_COMPACT} ${TILE_CONTROL_BOX}`;
+/**
+ * *Undo*'s chip, at the episode row's own compact measure.
+ *
+ * `GHOST_RECOVERY_COMPACT` is the treatment the episode row's *Unwatch* takes, reused
+ * rather than re-cut so a reader meets one appearance for *take that back* wherever they
+ * are — and not re-declared here with `group-hover:` in place of its `hover:`, which would
+ * be a fourth copy of the ghost string that `DESIGN.md` §10 exists to prevent. **The cost
+ * is stated**: the invert answers a pointer on the pill rather than on the hit box around
+ * it. Nothing is lost by it — this surface only ever renders inside `lg:hidden`
+ * (`up-next/page.tsx`), so there is no pointer here to disagree about.
+ */
+const TILE_UNDO_CHIP = GHOST_RECOVERY_COMPACT;
 
 /**
  * The slot, and the three things it can hold.
@@ -125,7 +142,7 @@ const TILE_UNDO = `${GHOST_RECOVERY_COMPACT} ${TILE_CONTROL_BOX}`;
  * and `SPEC.md` §3.3's rule is about writes that are **lost** — which still raise the
  * persistent toast, from the marks store, naming this title and this episode.
  */
-function MarkSlot({ mark }: { mark: ReturnType<typeof useUpNextMark> }) {
+function MarkSlot({ mark }: { mark: UpNextMark }) {
   const { episode, undoable, pending, phase, settle } = mark;
 
   return (
@@ -135,9 +152,9 @@ function MarkSlot({ mark }: { mark: ReturnType<typeof useUpNextMark> }) {
           type="button"
           onClick={mark.undo}
           aria-label={`Undo marking ${queuedEpisodeFullName(undoable)} watched`}
-          className={TILE_UNDO}
+          className={TILE_HIT_BOX}
         >
-          Undo
+          <span className={TILE_UNDO_CHIP}>Undo</span>
         </button>
       ) : episode === null ? (
         /* A capped queue that ran dry. The slot keeps its height and offers nothing —
@@ -154,9 +171,13 @@ function MarkSlot({ mark }: { mark: ReturnType<typeof useUpNextMark> }) {
              `season-grouping.ts`'s full name — the same words the toast would use if the
              write were lost, and the same rule the episode row's own control follows. */
           aria-label={`Mark ${queuedEpisodeFullName(episode)} watched`}
-          className={TILE_MARK}
+          className={TILE_HIT_BOX}
         >
-          <MarkWatchedIcon className="h-4 w-4" />
+          {/* The episode row's own chip and glyph, unchanged (#217) — the tile and the
+              show page draw one control, not two that look alike. */}
+          <span className={RECORDING_GLYPH}>
+            <CheckmarkIcon className="h-4 w-4" />
+          </span>
         </button>
       )}
 

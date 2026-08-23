@@ -707,16 +707,28 @@ disguise.
 > action began by opening something — the complaint §8 step 5 exists to answer, one screen
 > further on. #220 reverses it for **Ongoing only**.
 
-The Ongoing tile grows a **mark slot** under its year line: a full-width accent ghost
-control carrying the check glyph, replaced *in place* by *Undo* for six seconds after a
-press, and holding its height when it carries neither.
+The Ongoing tile grows a **mark slot** under its year line: the episode row's own recording
+control, replaced *in place* by *Undo* for six seconds after a press, and holding its height
+when it carries neither.
 
+- **The control is #217's, not a second one.** `RECORDING_GLYPH` around `CheckmarkIcon`,
+  unchanged — the tile and the show page draw one control rather than two that resemble
+  each other. What differs is the hit box: `RECORDING_HIT_BOX` is `h-11 w-11` because it
+  sits in a fixed-measure slot with other controls beside it, and the tile's is `h-11
+  w-full` because the slot is a tile's own width with nothing beside it. Widening a tap
+  target is the one direction *≥44px* is safe to be wrong in. The row's `-my-2` is not
+  carried over — it reclaims `EPISODE_ROW`'s padding, and this slot has none.
 - **The slot is `min-h-11`** — the same `44px` floor `episode-line.ts` measured the episode
   row into, and for the same reason. §6's bounding-rect guarantee applies to a tile as much
-  as to a row: the slot holds three things over a tile's life and a slot that collapsed on
-  the third would move every tile after it in the track while a thumb was still down. Both
-  controls are drawn at `h-[26px]`, which is `RECORDING_CONTROL`'s own measured box, so the
-  control does not change size when it becomes its own reversal.
+  as to a row: the slot holds three things over a tile's life, and one that collapsed on the
+  third would move every tile after it in the track while a thumb was still down. Both
+  states are the same `44px` hit box, so the control does not change size when it becomes
+  its own reversal.
+- ***Undo* is `GHOST_RECOVERY_COMPACT`**, the treatment the episode row's *Unwatch* takes,
+  reused rather than re-cut so *take that back* has one appearance. It is **not**
+  re-declared with `group-hover:` in place of its `hover:`, which would be a fourth copy of
+  the ghost string §10 exists to prevent; the cost is that its invert answers a pointer on
+  the pill rather than on the hit box, and this surface only ever renders inside `lg:hidden`.
 - **The accent is the reserved meaning, in a new place.** §3's table names *recording a
   watch* as what the colour is for; this is that, not a sixth role. **What it does change is
   that the phone home now carries two accent roles** — the group heads, which are *the way

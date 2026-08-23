@@ -2848,12 +2848,22 @@ export async function listUpNextRails(
   );
 
   return {
-    /** An entry with no run at all is an empty run, never a missing key: `OngoingEntry`
-     *  is a shape every Ongoing tile has, and a tile branching on `undefined` would be a
-     *  fourth answer beside the three `UpNextQueue` already enumerates. */
+    /**
+     * `OngoingEntry` is a shape every Ongoing tile has, so a missing key is not one of the
+     * answers: a tile branching on `undefined` would be a fourth case beside the three
+     * `UpNextQueue` already enumerates.
+     *
+     * `upNextQueues` writes a key for every id it is handed, so this fallback is
+     * unreachable — and it is written **`more: true`** rather than `more: false` for the
+     * direction it would fail in if that ever stopped being true. An empty run with
+     * `more: false` is *this show has nothing released left*, which takes the tile out of
+     * the group; with `more: true` it is *this read has nothing to offer yet*, which keeps
+     * the tile and offers no control. A bug should never be able to tell a reader a show
+     * finished.
+     */
     ongoing: ongoing.map((entry) => ({
       ...entry,
-      queue: queues.get(entry.libraryEntryId) ?? { episodes: [], more: false },
+      queue: queues.get(entry.libraryEntryId) ?? { episodes: [], more: true },
     })),
     comingBack: comingBack.map(upNextEntry),
     oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(upNextEntry),
