@@ -109,10 +109,12 @@ describe("the episode list", () => {
   it("carries the recording control on an unwatched episode, and not on a watched one", () => {
     const markup = episodes([episode({ id: "e1", episodeNo: 1, watched: false })]);
 
-    expect(markup).toContain("Strike it");
+    // The control is a checkmark, not a word (issue #217) — an unwatched row's own
+    // accessible label is the only reliable text left to look for.
+    expect(markup).toContain("Mark Season 1, Episode 1 — Winter Is Coming watched");
 
     const watchedMarkup = episodes([episode({ id: "e1", episodeNo: 1, watched: true })]);
-    expect(watchedMarkup).not.toContain("Strike it");
+    expect(watchedMarkup).not.toContain("Mark Season 1, Episode 1 — Winter Is Coming watched");
   });
 
   it("offers a watched episode a rewatch control that is not the one that struck it", () => {
@@ -122,7 +124,7 @@ describe("the episode list", () => {
     // The whole rule, at the only place it can be checked without a browser: the gesture
     // that records the first watch is not on a watched row at all, so repeating it cannot
     // produce a rewatch (issue #89).
-    expect(markup).not.toContain("Strike it");
+    expect(markup).not.toContain("Mark Season 1, Episode 1 — Winter Is Coming watched");
   });
 
   it("offers unwatch on every watched episode, whatever recorded the watch", () => {
@@ -184,11 +186,10 @@ describe("the episode list", () => {
   it("carries the film recording control on an unwatched film, and not on a finished one", () => {
     const markup = episodes([], "film", "watchlist");
 
-    expect(markup).toContain("Strike it");
     expect(markup).toContain("Mark Game of Thrones watched");
 
     const finishedMarkup = episodes([], "film", "finished");
-    expect(finishedMarkup).not.toContain("Strike it");
+    expect(finishedMarkup).not.toContain("Mark Game of Thrones watched");
     expect(finishedMarkup).toContain("Watched");
   });
 
@@ -204,7 +205,7 @@ describe("the episode list", () => {
   it("shows the film recording control for an abandoned, never-watched film too", () => {
     const markup = episodes([], "film", "abandoned");
 
-    expect(markup).toContain("Strike it");
+    expect(markup).toContain("Mark Game of Thrones watched");
   });
 });
 
@@ -243,7 +244,7 @@ describe("the watched-up-to-here control", () => {
     ]);
 
     // Issue #194's own words: a show already recorded is not covered in dead controls,
-    // and one press of *Strike it* already does the whole of what this would.
+    // and one press of the checkmark already does the whole of what this would.
     expect(markup).not.toContain(MARK_THROUGH);
   });
 
@@ -300,21 +301,19 @@ describe("the watched-up-to-here control", () => {
      * measurements). Words on this control would come out of the episode name, which is
      * the one thing on the row that must not shrink — so what the control renders is
      * asserted to be a glyph and an attribute, and nothing a reader would see as text.
+     *
+     * Since issue #217 the row's *other* control is icon-only too — `MarkWatchedButton`
+     * no longer renders *Strike it* — so E2's row carries two glyphs and E1's carries one,
+     * and neither adds a word to this list. That is this test's own subject widening by
+     * one control rather than a change to what it asserts: no visible text on the row
+     * comes from anything but the episode's own name.
      */
     const visible = markup
       .replace(/<[^>]+>/g, "\n")
       .split("\n")
       .filter((one) => one.length > 0);
 
-    expect(visible).toEqual([
-      "Season 1",
-      "E1",
-      "Winter Is Coming",
-      "Strike it",
-      "E2",
-      "The Kingsroad",
-      "Strike it",
-    ]);
+    expect(visible).toEqual(["Season 1", "E1", "Winter Is Coming", "E2", "The Kingsroad"]);
   });
 
   it("reaches all three surfaces from one placement", () => {

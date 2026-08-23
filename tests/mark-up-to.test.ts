@@ -82,7 +82,7 @@ describe("coveredUpTo", () => {
       { season: 1, number: 2 },
     ]);
 
-    // *Strike it* already does the whole of what a press here would do, so the control
+    // The checkmark already does the whole of what a press here would do, so the control
     // would be a second way to record one episode rather than a way to record many.
     expect(coveredUpTo(episodes, episodes[1])).toBeNull();
   });

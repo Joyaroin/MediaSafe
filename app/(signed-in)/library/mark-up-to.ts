@@ -62,7 +62,7 @@ import { episodeFullName } from "./season-grouping";
  * `null` and an empty list are deliberately not both reachable: the control is offered
  * exactly where at least one **earlier** episode is unwatched, so a non-null answer
  * always has something in it. That is stricter than *would write at least one row* —
- * `through` itself being unwatched is not enough, because *Strike it* on that same row
+ * `through` itself being unwatched is not enough, because the checkmark on that same row
  * already records exactly that one episode and nothing else.
  *
  * `episodes` is the whole title's list in the show's own order, as `getTitleDetail` hands

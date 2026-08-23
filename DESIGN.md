@@ -504,6 +504,32 @@ width, which is the property `TRAILING` exists for and the one that was never tr
 **So: re-measure if you touch the row — including when all you changed was a button's
 padding.** That is the one this section had not yet learned.
 
+### The fourth time: the recording control became a checkmark
+
+Issue #217. *Strike it* was the row's own recording control's text; it is now
+`CheckmarkIcon` in `RECORDING_HIT_BOX`, a fixed `44px` hit square with no label to widen —
+`programme-note-episodes.tsx`'s `TRAILING` docblock carries the reasoning and the geometry
+in full, and `watch-mark-motion.tsx`'s own docblock walks through the box model that keeps
+a `44px`-tall button from growing a `44px`-tall row (`h-11` corrected by `-my-2`'s negative
+margin, landing the button's margin-box exactly on the row's own `28px` budget).
+
+Re-measured against a real Chromium tab (`getBoundingClientRect`) at `420px`, `375px` and
+`340px` panes, over every state the checkmark touches — every figure identical across all
+three widths, and every state narrower than the *Strike it* figure it replaces:
+
+| Trailing slot state | Contents, of `192px` | Row |
+|---|---|---|
+| checkmark alone | `44px` (was `63.7px`) | `44px` |
+| *Up next* · checkmark | `94.6px` (was `114.3px`) | `44px` |
+| up-to · checkmark | `78px` (was `97.7px`) | `44px` |
+| *Up next* · up-to · checkmark | `128.6px` (was `148.3px`) | `44px` |
+
+*Watched* mid-sweep and the settled *Rewatch* · *Unwatch* pair read nothing from the
+recording control and are unchanged from the table above. This session had no database or
+auth available to render the live page, so the re-measure ran against a standalone document
+built from this file's own class strings rather than `npm run dev` directly — worth a second
+pass against the running app, though nothing in a fixed-pixel box model depends on that.
+
 ### Reduced motion costs the animation and never the event
 
 `prefers-reduced-motion: reduce` shortens `watch-sweep` to `1ms`. It does not remove it, and
@@ -1127,10 +1153,13 @@ action a surface gets: `bg-accent`, `text-accent-ink`), and `DISABLED_DIM`, `IN_
 
 **`GHOST_RECOVERY` has two measures and one register** — issue #203. `GHOST_RECOVERY` is
 `px-4 py-2`, for a control laying out in ordinary flow on a surface; `GHOST_RECOVERY_COMPACT`
-is the identical treatment at `px-2.5 py-1`, which is `RECORDING_CONTROL`'s own padding, for
-the episode row's fixed-measure trailing slot. Its single caller is that row. This does not
-reopen the ruling two paragraphs down — a second **size** of one register is not the third
-**tier** #195 declined, and the size is borrowed from the row rather than invented for it.
+is the identical treatment at `px-2.5 py-1`, for the episode row's fixed-measure trailing
+slot. Its single caller is that row. This does not reopen the ruling two paragraphs down —
+a second **size** of one register is not the third **tier** #195 declined, and the size was
+borrowed from the row's own recording control rather than invented for it — that control was
+a `code-line` text pill at the time (`RECORDING_CONTROL`), and issue #217 has since redrawn
+it as a checkmark in a `44px` hit box; `GHOST_RECOVERY_COMPACT`'s `px-2.5 py-1` did not move
+with it and is now its own established measure rather than a live copy of another control's.
 §6 records why the row needed it and what the re-cut cost. Despite the module's own name, it stopped being
 errors-only well before issue #195 — `lists/create-list-form.tsx`'s `New list` and
 `settings/page.tsx`'s `Import a library ›` already wore `GHOST_RECOVERY`, among a dozen
