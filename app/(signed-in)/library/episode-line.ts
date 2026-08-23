@@ -58,6 +58,16 @@ export const EPISODE_ROW = "flex min-h-11 items-center gap-3 py-2";
  */
 export const EPISODE_NUMBER = "code-line w-9 shrink-0 text-dim";
 
+/**
+ * The same `E1` label, inverted — the one episode that is up next, wherever its number is
+ * drawn. `EpisodeLine` swaps to this from `EPISODE_NUMBER` above when `episode.upNext`; the
+ * up-next row (`up-next-row.tsx`, issue #228) is always showing that episode, so it draws
+ * this and never the dim variant. Written once for the same reason every constant in this
+ * file is: a second copy of this exact string is a second row that was never measured
+ * against the first, and it would drift silently the day one of them changed.
+ */
+export const EPISODE_NUMBER_UP_NEXT = "code-line w-9 shrink-0 bg-accent px-1 py-0.5 text-center text-accent-ink";
+
 /** The name's cell. `min-w-0` and the `truncate` inside it are what keep a long name from
  *  wrapping and taking the row's measured height with it. */
 export const EPISODE_NAME_CELL = "min-w-0 flex-1 text-item";

@@ -38,9 +38,13 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
  *
  * ── Distinct from the abandon control, deliberately and in two ways ──────────────────
  *
- * They sit near each other and **the ticket exists to stop them reading as the same thing**:
- * abandoning keeps your history and is undone by watching the show again, removing destroys
- * your history and is undone by nothing. So the difference is carried twice.
+ * They used to sit near each other, and **the ticket existed to stop them reading as the
+ * same thing** even so: abandoning keeps your history and is undone by watching the show
+ * again, removing destroys your history and is undone by nothing. Issue #228 moves the
+ * abandon control up beside the state line and leaves this one at the foot of the pane, so
+ * the two are no longer adjacent — but the difference stays carried twice below, because a
+ * reader who has seen one still has to tell the other apart from memory rather than from
+ * position on the page.
  *
  * *In shape.* `AbandonControl` is one row — a text button with its reassurance set opposite,
  * on the same baseline. This is a block: the link on its own line with the consequence
