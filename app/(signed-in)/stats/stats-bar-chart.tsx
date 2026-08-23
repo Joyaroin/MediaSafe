@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip } from "recharts";
 
 /**
  * The Stats page's one chart primitive — issue #229.
@@ -21,11 +21,13 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
  * The number is one hover or tap away, in the tooltip, and always available without either
  * in the table below.
  *
- * **The accent is spent on the current period only, never invented.** `currentKey` is
- * `undefined` where a chart has no meaningful "now" — `stats-surface.tsx`'s decades chart,
- * because a release-year distribution has no current period to spend it on — and every
- * other bar, current or not, is drawn in `--text`, the same tone `Figure`'s value already
- * uses, so the chart's geometry and the figures beside it read as one page.
+ * **Every bar is `--text`, and none of them is the accent.** `DESIGN.md` §3 pre-commits to
+ * this by name — *"No decorative colour on a chart when charts arrive (#229)"* — and §3's
+ * own precedent for "the current one" is the same answer: the current sidebar destination
+ * is `text` at full strength against `dim` siblings, not the accent, because *accent means
+ * live action* and a fact the reader can already see (the section's own figures print the
+ * current month last) is not an action. `--accent` stays reserved for recording a watch,
+ * exactly as `stats-surface.tsx`'s figures already keep it.
  */
 
 /** One bar, and the two ways its value reaches a reader: the number itself, for the
@@ -64,9 +66,10 @@ function TooltipCard({
   );
 }
 
-/** The numbers behind the chart, for a screen reader — `SPEC.md`'s parent: *a picture is
- *  not the only way to read this page.* Visually hidden rather than omitted, because the
- *  chart beside it is `aria-hidden` and carries no text a screen reader could read instead. */
+/** The numbers behind the chart, for a screen reader — issue #215's user story 60: *"the
+ *  numbers behind every chart, so that a picture is not the only way to read this page."*
+ *  Visually hidden rather than omitted, because the chart beside it is `aria-hidden` and
+ *  carries no text a screen reader could read instead. */
 function HiddenDataTable({
   caption,
   data,
@@ -107,13 +110,9 @@ function HiddenDataTable({
 export function StatsBarChart({
   caption,
   data,
-  currentKey,
 }: {
   caption: string;
   data: readonly StatsBarDatum[];
-  /** The one key allowed to draw in `--accent` — the current month, when a chart's window
-   *  has one. `undefined` spends the accent nowhere in this chart. */
-  currentKey?: string;
 }) {
   return (
     <div className="mt-3">
@@ -121,14 +120,13 @@ export function StatsBarChart({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data as StatsBarDatum[]} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
             <Tooltip content={<TooltipCard />} cursor={false} />
-            <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={28} isAnimationActive={false}>
-              {data.map((datum) => (
-                <Cell
-                  key={datum.key}
-                  fill={datum.key === currentKey ? "var(--color-accent)" : "var(--color-text)"}
-                />
-              ))}
-            </Bar>
+            <Bar
+              dataKey="value"
+              fill="var(--color-text)"
+              radius={[3, 3, 0, 0]}
+              maxBarSize={28}
+              isAnimationActive={false}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

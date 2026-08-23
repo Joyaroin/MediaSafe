@@ -221,8 +221,8 @@ describe("there is no genre statistic, and no space held for one", () => {
  * asserted here is everything that *does* render without one — the chart's `aria-hidden`
  * wrapper and the hidden data table behind it, which is the accessible half of the
  * feature and the half a browser was never needed to prove. The chart's geometry itself
- * — the bars, and that the accent lands on the current month and nowhere in the decades
- * chart — is checked by hand in a browser, not here.
+ * — every bar drawn in `--text`, with no accent anywhere on the page (`DESIGN.md` §3) —
+ * is checked by hand in a browser, not here.
  */
 describe("the charts behind the numbers", () => {
   it("names every chart the ticket asks for", () => {
@@ -268,10 +268,9 @@ describe("the charts behind the numbers", () => {
   });
 
   /**
-   * Decades have no current period to spend the accent on (`stats-surface.tsx`), and a
-   * chart with nothing to plot is not drawn at all — the same rule `topDecades.length ===
-   * 0` already applies to the figures beside it, extended to the chart that would sit
-   * next to them.
+   * A chart with nothing to plot is not drawn at all — the same rule
+   * `topDecades.length === 0` already applies to the figures beside it, extended to the
+   * chart that would sit next to them.
    */
   it("draws no decades chart when nothing has a release year to place", () => {
     const markup = surface({ topDecades: [] });

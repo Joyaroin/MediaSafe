@@ -32,12 +32,14 @@ import { StatsBarChart } from "./stats-bar-chart";
  * below are the two shapes every one of them is built from, which is what keeps a page of a
  * dozen unrelated numbers reading as one page rather than as a dozen cards.
  *
- * **The accent is scoped to the current period, and nowhere else.** `globals.css` rations
- * vermilion to recording a watch, and a page whose whole content is quantities is the
- * easiest place in the application to spend it by accident — one highlighted figure and the
- * reservation is gone. `--ink` carries emphasis in the figures below, exactly as the active
- * tab does; the one exception is a chart's current-month bar, which is the same reservation
- * read literally — *live*, the way the accent has meant everywhere else since #134.
+ * **No accent anywhere, charts included.** `globals.css` rations vermilion to recording a
+ * watch, and a page whose whole content is quantities is the easiest place in the
+ * application to spend it by accident — one highlighted figure and the reservation is gone.
+ * `--ink` carries emphasis here, exactly as the active tab does. `DESIGN.md` §3 pre-commits
+ * the charts to the same rule by name — *no decorative colour on a chart* — and its own
+ * precedent for "the current one" agrees: the current sidebar destination is drawn in
+ * `text`, not the accent, because *accent means live action* and marking a fact the reader
+ * can already see is not one.
  *
  * ── The honesty rules, and where each one shows ──────────────────────────────────────
  *
@@ -114,12 +116,6 @@ export function StatsSurface({ stats }: { stats: AccountStats }) {
    *  wordings of the same fact. */
   const undated = undatedNote(stats.undatedWatches);
 
-  /** The activity window always ends with the reader's current month (`db/access.ts`'s
-   *  `activityByMonth`), so the last row is always the one the three activity charts spend
-   *  the accent on — never recomputed from a client-side clock, which would drift from the
-   *  reader's own timezone the query already bucketed against. */
-  const currentMonth = stats.activity.at(-1)?.month;
-
   /*
     `divide-y`, not a `border-t` on each section. The rule belongs *between* sections and
     nowhere else: a top border on the first one would put a hairline directly under the
@@ -195,17 +191,14 @@ export function StatsSurface({ stats }: { stats: AccountStats }) {
             <StatsBarChart
               caption="Episodes watched, by month"
               data={activityChartData(stats.activity, "episodeWatches")}
-              currentKey={currentMonth}
             />
             <StatsBarChart
               caption="Films watched, by month"
               data={activityChartData(stats.activity, "filmWatches")}
-              currentKey={currentMonth}
             />
             <StatsBarChart
               caption="All watches, by month"
               data={activityChartData(stats.activity, "watches")}
-              currentKey={currentMonth}
             />
           </>
         }
@@ -244,8 +237,6 @@ export function StatsSurface({ stats }: { stats: AccountStats }) {
             : null
         }
         charts={
-          // No `currentKey`: a release-year distribution has no current period for the
-          // accent to mean anything about, so it stays unspent in this one chart.
           stats.topDecades.length > 0 ? (
             <StatsBarChart
               caption="Titles in your library, by decade"
