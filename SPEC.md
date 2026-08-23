@@ -29,11 +29,14 @@ order settles it:
 | 5 | **`docs/design/v1-surfaces.md`** + `-wireframes.md` | Screen list, layout divergence, per-screen states | **partly superseded** — see §10.2 |
 | 6 | **`PRODUCT.md`** | Historical. Product truth as understood on 2026-08-17 morning | **stale in eight places** — see §10.4 |
 
-**`docs/adr/0002-the-read-cache-and-its-tags.md` is not in the table because it does not compete with
-anything in it.** It records one reversal — §3 constraint 1's read-cache clause,
-[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and the amendment it produced
-is written into §3.1 itself rather than left here to be reconciled. Read it before caching a second
-read; nothing else in this file depends on it.
+**`docs/adr/0002-the-read-cache-and-its-tags.md` and `docs/adr/0003-the-clock-is-an-input-not-a-window.md`
+are not in the table because they do not compete with anything in it.** Between them they record one
+reversal — §3 constraint 1's read-cache clause,
+[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and the correction
+[#226](https://github.com/Joyaroin/MediaSafe/issues/226) made to it a day later, when the other owned
+reads joined the cache and the clock turned out to be an input none of the tags could speak for. Both
+amendments are written into §3.1 itself rather than left here to be reconciled. Read both before
+caching another read; nothing else in this file depends on either.
 
 **Neither prototype is a source of truth.** `docs/design/prototypes/repertory-bill.html` recorded the
 letterpress world; `design/catalogue-wall.html` recorded the Catalogue Wall that replaced it and was
@@ -111,6 +114,23 @@ From the map, settled with Adham and not up for relitigation:
    > path to the database (`db/access.ts`), one query behind that read, and no second
    > implementation of it. `docs/adr/0002-the-read-cache-and-its-tags.md` records the reversal, what
    > replaced the ban, and the alternative that was rejected.
+   >
+   > **Updated 2026-08-23 — the owned reads followed**
+   > ([#226](https://github.com/Joyaroin/MediaSafe/issues/226)). The paragraph above was true for a
+   > day. Eight reads are cached now: the library grid and the ownership check under `library`, the
+   > three up-next reads under `up-next`, both list reads under `lists`, and title detail under
+   > `title-detail`. **The sentence that has not changed is the one that matters** — still one path
+   > to the database, still one query behind each read, still no second implementation of any of
+   > them. `cache/tags.ts` also records, for every read in `db/access.ts` it does *not* cache, a
+   > sentence saying why, and a test fails on a read that has neither.
+   >
+   > It also closed a hole #219 left open, which is worth naming here because it is a way the
+   > property above can fail with every write correctly busted. The derived views read
+   > `current_date`, so an episode airing tonight changes what up next and the library say **with no
+   > write to hang a bust on**. The day is now part of the key of every read that consults it. That
+   > is not the time-based revalidation this clause forbids — it is an input to the query appearing
+   > in the key of the query, and `docs/adr/0003-the-clock-is-an-input-not-a-window.md` argues the
+   > difference.
 2. **Empty and failed are structurally separate.** **No `catch` returns `[]`.** A read failure
    throws into an error boundary; an empty state is reachable only by a successful zero-row query.
 3. **A lost write is never silent.** The watch write is optimistic with rollback and a persistent

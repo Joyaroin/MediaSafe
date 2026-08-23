@@ -1,7 +1,24 @@
 import { revalidateTag, unstable_cache, updateTag } from "next/cache";
 
-import { listLibraryEntries, type LibraryEntryRow, type UserId } from "@/db/access";
+import {
+  getListDetail,
+  getTitleDetail,
+  libraryEntryIdForTitle,
+  listAbandoned,
+  listLibraryEntries,
+  listLists,
+  listUpNextRails,
+  listWatchlist,
+  type LibraryEntryRow,
+  type LibraryStateGroupEntry,
+  type ListDetailRow,
+  type ListSummary,
+  type TitleDetailRow,
+  type UpNextRails,
+  type UserId,
+} from "@/db/access";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
+import type { TitleKind } from "@/tmdb/mirror";
 
 /**
  * The read cache: the whole tag vocabulary, every cached read, and every bust.
@@ -12,8 +29,10 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  * dual data path had taught. Issue #219 took that clause back and left the other five
  * standing — there is still no guest mode, no second repository implementation, no local
  * store, no service worker and no offline queue — and
- * `docs/adr/0002-the-read-cache-and-its-tags.md` is where the reversal is argued. Read
- * the ADR before adding a second cached read; this file is the mechanism, not the
+ * `docs/adr/0002-the-read-cache-and-its-tags.md` is where the reversal is argued.
+ * `docs/adr/0003-the-clock-is-an-input-not-a-window.md` is the second half of it, added by
+ * #226: the derived views read `current_date`, so the day is in the key of every read that
+ * consults one. Read both before adding a cached read; this file is the mechanism, not the
  * reasoning.
  *
  * ── The property, and the two things it now rests on ─────────────────────────────────
@@ -22,11 +41,11 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  * A cache keeps that property only while two things hold, and both of them are here
  * rather than in anybody's memory:
  *
- * 1. **Every key carries an account.** `cachedLibraryEntries` is the only call to
- *    `unstable_cache` there is, and `eslint-rules/cache-key-carries-account.mjs` fails
- *    the build if its key parts stop naming one — on every `unstable_cache` call in the
- *    repository, not only on this one, so the second cached read is checked before it is
- *    written rather than after it leaks.
+ * 1. **Every key carries an account.** Every call to `unstable_cache` in the repository is
+ *    in this file, and `eslint-rules/cache-key-carries-account.mjs` fails the build if any
+ *    of their key parts stops naming one. The rule was written for #219 before there was a
+ *    second cached read; #226 added seven, and every one of them was checked as it was
+ *    written rather than after it leaked, which is the whole reason it was written early.
  * 2. **Every write busts its tags.** `INVALIDATES` below is the map, it is keyed by
  *    the write's own name in `db/access.ts`, and `tests/cache-tags.test.ts` fails when
  *    that file grows an `export async function` the map has not classified. A write
@@ -49,15 +68,35 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
  */
 
 /**
- * The reads that are cached. One, today, and deliberately: issue #219 proves the
- * machinery on the library and leaves the rest to #225, #226 and #227. A second entry
- * here is a second cached read, and it is the ticket for it that decides whether there
- * should be one.
+ * **The facts that are cached** — not the functions that read them. Four of them, and the
+ * distinction between a fact and a function is what makes the map below tractable.
+ *
+ * Issue #219 opened with one, the library, and left the rest to #225, #226 and #227.
+ * Issue #226 added the other three: the reader pays for up next, the lists and the title
+ * detail on every navigation, and all three are **owned** — rows this account wrote, or
+ * derived from them — so a write is the only thing that can make them wrong.
+ *
+ * A *fact* rather than a *read*, because several functions can answer one fact and they
+ * must not be able to disagree about it. `listUpNextRails`, `listWatchlist` and
+ * `listAbandoned` are the phone's five groups and the desktop's three rails, drawn from
+ * the same entries, so they share `up-next` and one bust reaches all of them. `listLists`
+ * and `getListDetail` share `lists` for the same reason: adding a title to a list changes
+ * that list's count on one surface and its rows on the other, and a vocabulary that let
+ * those be busted separately would let them be busted separately by mistake.
+ *
+ * The cost is over-busting: `getListDetail` for list A is dropped when list B is renamed.
+ * That is a read this account was going to pay for eventually, and it is the right way to
+ * be wrong — the other direction is a surface holding an answer the database contradicts,
+ * with no expiry behind it to heal.
+ *
+ * Borrowed facts — TMDB's synopsis, cast and providers — are **not** here. They are #225's,
+ * they change on TMDB's schedule rather than on a write, and they are the one category
+ * that carries a window as well as a tag. Nothing in this file has a window.
  */
-export type CachedRead = "library";
+export type CachedRead = "library" | "up-next" | "lists" | "title-detail";
 
 /**
- * An account and a read, and there is no other shape a tag has.
+ * An account and a fact, and there is no other shape a tag has.
  *
  * Not exported: a tag that anything outside this file could build is a tag something
  * outside this file could bust, and half of what this module is for is that neither
@@ -69,10 +108,134 @@ function tagFor(read: CachedRead, userId: UserId): string {
 }
 
 /**
- * The library, read through the cache — `library/page.tsx`'s one read, and the only
- * cached read there is.
+ * **Today, as the database sees it — the one input these reads have that no write
+ * touches.**
  *
- * ── There is no `try` here, and that is the point ────────────────────────────────────
+ * ── Why a date is in a cache key at all ──────────────────────────────────────────────
+ *
+ * `db/views.ts` derives *released* from `season_no > 0 AND air_date IS NOT NULL AND
+ * air_date <= current_date`, and all three derived views rest on it. So the clock alone
+ * moves a show from COMING BACK to ONGOING when tonight's episode airs, moves a caught-up
+ * show back to watching, and lengthens the queue an Ongoing tile walks — **with no write
+ * anywhere in the system**.
+ *
+ * A tag cannot fire for that: there is no write to hang the bust on. Before this, the
+ * consequence was bounded only by how often the reader wrote something — an account that
+ * marked nothing for a week would be served last week's Up next for a week, and there is
+ * no expiry behind the entry to heal it. That is the failure `SPEC.md` §3 constraint 1
+ * was written about, arriving by a door the tag vocabulary had left open.
+ *
+ * ── This is not a revalidation window, and the difference is the whole argument ───────
+ *
+ * ADR-0002 rejected time-based revalidation because *a window is a period during which
+ * the answer is permitted to disagree with the database*. A day in the key is the
+ * opposite of that. `current_date` is an **input to the query**, and this puts that input
+ * in the query's key — so the entry is exactly right at every instant it is served, and
+ * tomorrow is a different question rather than today's answer gone stale. Nothing here
+ * expires, and there is no interval in which a wrong answer is tolerated.
+ *
+ * ── UTC, because `current_date` is the server's ─────────────────────────────────────
+ *
+ * `SPEC.md` §5 computes every day boundary `AT TIME ZONE` the reader's own zone, and
+ * `db/views.ts` records the released test as a deliberate exception to it: an air date is
+ * a `date` with no instant in it, so the views read the server's `current_date` literally.
+ * This key part must be the same day those queries used or it would be keying on a
+ * boundary the answer does not turn on, so it is UTC — matching a Postgres running with
+ * `TimeZone` at UTC, which is Neon's default and the local container's.
+ *
+ * That is a claim about a live database rather than about this function, so it is checked
+ * against one: `tests/server-day.test.ts` asserts this equals `select current_date`. If
+ * the database is ever moved to another zone, that test fails rather than the cache
+ * quietly keying on the wrong midnight.
+ */
+export function serverDay(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** What one cached read is: the fact it answers, and whether the clock is one of its
+ *  inputs. */
+interface CachedReadShape {
+  readonly cachedAs: CachedRead;
+  /** True when the query consults `current_date`, directly or through a derived view —
+   *  see `serverDay`. It is what decides whether the day is in the key. */
+  readonly readsCurrentDate: boolean;
+}
+
+/**
+ * **Every cached read in this application, and there is nowhere else one can be.**
+ *
+ * Each entry is one function in `db/access.ts`, the fact it is tagged under, and whether
+ * it consults the clock. The wrappers below are held against this table by
+ * `tests/cache-tags.test.ts` — a name here with no wrapper, or a wrapper whose key or tag
+ * disagrees with its entry, is a failing test.
+ *
+ * ── Why `readsCurrentDate` is written down rather than inferred ──────────────────────
+ *
+ * It cannot be inferred: `listWatchlist` contains no date at all, and reaches
+ * `current_date` two joins away through `library_entry_state`. Getting it wrong in the
+ * cautious direction costs one read a day; getting it wrong the other way is a surface
+ * frozen at the day it was last written to. So it is a field somebody fills in, and the
+ * line to hold when filling it in is simple: **does this query touch a derived view, or
+ * an `air_date` comparison, at any depth?**
+ *
+ * `getListDetail` is the case worth reading twice. It prints a title's name, year and
+ * poster and joins `library_entry` for the id — stored columns, every one, and no derived
+ * view anywhere. A list's contents do not change at midnight, so it does not carry the
+ * day.
+ */
+export const CACHED_READS = {
+  listLibraryEntries: { cachedAs: "library", readsCurrentDate: true },
+  /** *Is this title in my library* — `library_entry` joined to `title`, by account. No
+   *  derived view, so no clock: an add or a remove is the only thing that changes it. */
+  libraryEntryIdForTitle: { cachedAs: "library", readsCurrentDate: false },
+  listUpNextRails: { cachedAs: "up-next", readsCurrentDate: true },
+  listWatchlist: { cachedAs: "up-next", readsCurrentDate: true },
+  listAbandoned: { cachedAs: "up-next", readsCurrentDate: true },
+  listLists: { cachedAs: "lists", readsCurrentDate: false },
+  getListDetail: { cachedAs: "lists", readsCurrentDate: false },
+  /** Its episode rows carry a `released` flag read straight off `air_date <=
+   *  current_date`, so the season grid changes at midnight even when nothing was written. */
+  getTitleDetail: { cachedAs: "title-detail", readsCurrentDate: true },
+} as const satisfies Record<string, CachedReadShape>;
+
+/** A read `cache/tags.ts` wraps, named by the function in `db/access.ts` that performs it. */
+export type CachedReadName = keyof typeof CACHED_READS;
+
+/**
+ * **The other half of issue #226's *no read remains uncached without a recorded reason*.**
+ *
+ * Every read in `db/access.ts` that is *not* in `CACHED_READS` is here with a sentence
+ * saying why, and `tests/cache-tags.test.ts` fails on an entry whose sentence is too short
+ * to be one. A reason is a thing somebody had to write; an omission is not. That is the
+ * entire mechanism, and it is the same one `INVALIDATES`' empty arrays already use.
+ */
+export const UNCACHED_READS = {
+  accountFootprint:
+    "Read once, on the delete-account confirmation, by a reader who is about to make it wrong. Caching a count somebody is reading in order to destroy buys nothing and adds a way for the number and the deletion to disagree.",
+  accountsHoldingTitles:
+    "A write's own read: it resolves who to bust *for* the cache. Caching it would mean invalidation deciding who to invalidate from a cached answer, which is the one place a stale row turns into a bust that never happens.",
+  getUnownedTitleDetail:
+    "Borrowed, not owned, and takes no account — the lint rule could not key it and a tag alone would never fire for it. Issue #225 caches it with a window as well as a tag.",
+  libraryCatalogueKeys:
+    "The search screen's already-added check, read against a set of keys that changes per query. The key would be the query, so the hit rate is the odds of the same reader searching the same thing twice.",
+  resolveSeedUserId:
+    "`scripts/db-seed.ts` only. Nothing in the application calls it and there is no request around it to cache in.",
+  titleFootprint:
+    "The remove confirmation's counts, read by a reader about to remove the title — `accountFootprint`'s reason exactly, one title down.",
+  titlesDueForRefresh:
+    "The nightly sweep's candidate list, ordered by `metadata_refreshed_at`, which the sweep itself then moves. A cached answer would hand tomorrow's run the same 200 titles it refreshed tonight.",
+  watchedTmdbEpisodeIds:
+    "Read inside the sweep's reconciliation, from that run's transaction. `unstable_cache` cannot take an executor, so caching it would mean reading outside the transaction whose rows it is about.",
+} as const satisfies Record<string, string>;
+
+/**
+ * ═══ The cached reads ════════════════════════════════════════════════════════════════
+ *
+ * Eight wrappers, one per entry in `CACHED_READS`, and everything true of one is true of
+ * all eight. The properties are stated here once rather than restated in each docblock;
+ * what each function's own note carries is only what is particular to it.
+ *
+ * ── There is no `try` in any of them, and that is the point ──────────────────────────
  *
  * `unstable_cache` writes a cache entry from a resolved value only: a rejection
  * propagates out of it untouched and nothing is stored. So a failed read still throws
@@ -81,43 +244,196 @@ function tagFor(read: CachedRead, userId: UserId): string {
  * held without one. A cache that stored `[]` for a database that was down would be
  * `tvtracker`'s bug with a longer memory.
  *
- * ── Sort is part of the key, and one tag busts every sort ────────────────────────────
+ * ── No `revalidate`, on any of them ──────────────────────────────────────────────────
  *
- * `sort` is an argument, so each order is its own entry — four of them at most
- * (`db/library-sort.ts`). They all carry the same tag, because they are all the same
- * account's library, so one `updateTag` invalidates every order at once. Nothing has to
- * enumerate them and nothing can forget one.
- *
- * ── No `revalidate`, so no clock ─────────────────────────────────────────────────────
- *
- * An entry lives until a tag busts it. Time-based revalidation is the alternative the ADR
- * rejects, and it is rejected on the property rather than on cost: a window in which the
- * library is allowed to disagree with the database is exactly what the original
+ * An entry lives until a tag busts it. Time-based revalidation is the alternative
+ * ADR-0002 rejects, and it is rejected on the property rather than on cost: a window in
+ * which a surface is allowed to disagree with the database is exactly what the original
  * constraint existed to forbid, and a shorter window is a smaller lie rather than a
- * different kind of one.
+ * different kind of one. The day in some of these keys is **not** that — `serverDay`
+ * argues the distinction at length.
  *
- * ── The key parts are written out here, and not built by a helper ────────────────────
+ * ── The key parts are written out at each call, and not built by a helper ────────────
  *
  * They were, in the first draft of this file, and `mediasafe/cache-key-carries-account`
  * rejected it — the rule has no type information and cannot see the account through a
  * function call, so a helper would have made every key in this codebase unreadable to the
- * one check that reads them. Inline is what the rule can see, and there is exactly one
- * call to keep inline because nothing outside this file may make a second.
+ * one check that reads them. Inline is what the rule can see, and it is why the same
+ * three tokens appear eight times below rather than once in a factory.
  *
  * `unstable_cache` hashes `keyParts` together with the stringified callback and the JSON
- * of the call's arguments, so the account reaches the key twice: once in the array below,
- * and once as `listLibraryEntries`'s own first argument. Both are deliberate. The
- * argument is what a reader of the call site sees; the array is what the lint rule sees.
+ * of the call's arguments, so the account reaches the key twice: once in the array, and
+ * once as the read's own first argument. Both are deliberate. The argument is what a
+ * reader of the call site sees; the array is what the lint rule sees.
+ *
+ * ── The first key part is the read's own name ────────────────────────────────────────
+ *
+ * Not the tag it carries, which several of these share — two reads under one tag with one
+ * key would be relying on `unstable_cache` hashing the callback's source text to tell them
+ * apart, which is true today and is not a thing to depend on. The name is unique because
+ * `db/access.ts` cannot export two functions with it, and `tests/cache-tags.test.ts` holds
+ * every key against `CACHED_READS`'s own keys.
+ */
+
+/**
+ * The library grid — `library/page.tsx`'s one read.
+ *
+ * **Sort is an argument, so each order is its own entry** — four at most
+ * (`db/library-sort.ts`). They all carry the same tag, because they are all the same
+ * account's library, so one `updateTag` invalidates every order at once. Nothing has to
+ * enumerate them and nothing can forget one.
  */
 export function cachedLibraryEntries(
   userId: UserId,
   sort: LibrarySort = DEFAULT_LIBRARY_SORT,
 ): Promise<readonly LibraryEntryRow[]> {
-  const read = unstable_cache(listLibraryEntries, ["library", userId], {
-    tags: [tagFor("library", userId)],
-  });
+  const read = unstable_cache(
+    listLibraryEntries,
+    ["listLibraryEntries", userId, serverDay()],
+    { tags: [tagFor("library", userId)] },
+  );
 
   return read(userId, sort);
+}
+
+/**
+ * Up next's three rails, and the phone's first three groups — one read, both devices
+ * (`up-next/page.tsx`), and the read behind #220's Ongoing tile.
+ *
+ * **This is the read the ticket is sharpest about.** A mark from a tile advances the tile
+ * optimistically in the browser, so the screen is right immediately; without `recordWatch`
+ * busting `up-next`, a reload would hand back the rail from before the mark and offer the
+ * reader the episode they had just watched. The optimism and the bust are two halves of
+ * one promise, and the second half is `INVALIDATES` below.
+ */
+export function cachedUpNextRails(userId: UserId): Promise<UpNextRails> {
+  const read = unstable_cache(
+    listUpNextRails,
+    ["listUpNextRails", userId, serverDay()],
+    { tags: [tagFor("up-next", userId)] },
+  );
+
+  return read(userId);
+}
+
+/** The phone's WATCHLIST group, and the screen `more ›` opens on it. Tagged `up-next`
+ *  with the rails: it is the same account's entries, filtered to one state. */
+export function cachedWatchlist(
+  userId: UserId,
+): Promise<readonly LibraryStateGroupEntry[]> {
+  const read = unstable_cache(listWatchlist, ["listWatchlist", userId, serverDay()], {
+    tags: [tagFor("up-next", userId)],
+  });
+
+  return read(userId);
+}
+
+/** The phone's ABANDONED group, and its own screen. `cachedWatchlist`'s twin. */
+export function cachedAbandoned(
+  userId: UserId,
+): Promise<readonly LibraryStateGroupEntry[]> {
+  const read = unstable_cache(listAbandoned, ["listAbandoned", userId, serverDay()], {
+    tags: [tagFor("up-next", userId)],
+  });
+
+  return read(userId);
+}
+
+/**
+ * This account's lists, with their counts — the Lists destination, the phone's Lists rail
+ * above the library grid (#223), and the *Add to list* picker on title detail (#147).
+ *
+ * Three surfaces, one read and one tag, so a list created from the picker is on the
+ * destination and in the rail on the next render of either. That is the property the
+ * ticket names as *every surface reading that fact*, and it holds here because there is
+ * one read behind all three rather than because three call sites remember to agree.
+ */
+export function cachedLists(userId: UserId): Promise<ListSummary[]> {
+  const read = unstable_cache(listLists, ["listLists", userId], {
+    tags: [tagFor("lists", userId)],
+  });
+
+  return read(userId);
+}
+
+/**
+ * One list and what is in it — `lists/[listId]/page.tsx`.
+ *
+ * **`listId` is an argument, not a tag**, exactly as `sort` is on the library: each list is
+ * its own entry and one `lists` tag busts all of them. A per-list tag would be narrower and
+ * would need every list write to know which list it touched — `deleteList` does,
+ * `removeTitleFromLibrary` emphatically does not, since it changes the `libraryEntryId` on
+ * every list holding that title. One tag is the version of this that cannot be wrong.
+ *
+ * A list id from another account throws rather than answering (`getListDetail`), and it
+ * throws before there is anything to store — so a tampered id cannot put a foreign list in
+ * this account's cache.
+ */
+export function cachedListDetail(
+  userId: UserId,
+  listId: string,
+): Promise<ListDetailRow> {
+  const read = unstable_cache(getListDetail, ["getListDetail", userId], {
+    tags: [tagFor("lists", userId)],
+  });
+
+  return read(userId, listId);
+}
+
+/**
+ * One title, as the programme note and the phone's `library/[entryId]` route show it.
+ *
+ * `libraryEntryId` is an argument for `cachedListDetail`'s reason. **Its ownership check is
+ * still the query's**: `getTitleDetail` scopes by `ownedBy(userId, libraryEntry)` and the
+ * entry id together, so another account's entry id throws rather than answering, and the
+ * key being this account's does not make the row this account's — `ownedBy` does, and it
+ * always did (ADR-0002, *isolation still rests on `ownedBy`*).
+ */
+export function cachedTitleDetail(
+  userId: UserId,
+  libraryEntryId: string,
+): Promise<TitleDetailRow> {
+  const read = unstable_cache(
+    getTitleDetail,
+    ["getTitleDetail", userId, serverDay()],
+    { tags: [tagFor("title-detail", userId)] },
+  );
+
+  return read(userId, libraryEntryId);
+}
+
+/**
+ * *Is this title already in my library* — the unowned title route's redirect check
+ * (`titles/[kind]/[tmdbId]/page.tsx`).
+ *
+ * Tagged `library` rather than `title-detail`, because that is the fact it reads: a row in
+ * `library_entry` for this account and this title. Every write that can create or destroy
+ * one — the adds, the import, the remove, the account deletion — busts `library` already,
+ * so this needed no new entry in the map, and a tag naming the surface instead of the fact
+ * would have.
+ *
+ * ── The read-back inside the add actions is deliberately *not* this ──────────────────
+ *
+ * `titles/actions.ts` and `search/actions.ts` call `libraryEntryIdForTitle` directly,
+ * immediately after `addTitleToLibrary` and **before** the bust, to learn the id they are
+ * about to navigate the reader to. Routing that through here would read the entry from
+ * before the add, find `null`, and throw the *"added it and then found no entry"* error
+ * those actions raise for a case that is supposed to be unreachable. A read taken to
+ * confirm a write must not be served from a cache that write has not yet invalidated —
+ * which is the same rule `accountsHoldingTitles` is uncached for.
+ */
+export function cachedLibraryEntryIdForTitle(
+  userId: UserId,
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<string | null> {
+  const read = unstable_cache(
+    libraryEntryIdForTitle,
+    ["libraryEntryIdForTitle", userId],
+    { tags: [tagFor("library", userId)] },
+  );
+
+  return read(userId, kind, tmdbId);
 }
 
 /**
@@ -134,11 +450,33 @@ export function cachedLibraryEntries(
  * ── The tag names the row, not the column ────────────────────────────────────────────
  *
  * `rateTitle` writes `library_entry.rating`, which `listLibraryEntries` does not select
- * today, so a strict reading would put it with the empty ones. It busts the library
- * anyway, because the entry it writes *is* the row the library reads, and the day that
- * read grows a rating is not the day anybody will come back to this line. The list writes
- * are the opposite case and belong with the empty ones on the same argument: they touch
- * `list` and `list_membership`, which the library grid does not join and is not about.
+ * today, so a strict reading would put it with the empty ones. It busts `library` and
+ * `up-next` anyway, because the entry it writes *is* the row both of them read, and the
+ * day either grows a rating is not the day anybody will come back to this line. It busts
+ * `title-detail` for a plainer reason: `TitleDetailRow` carries `rating` outright, so that
+ * one is a dependency and not a precaution.
+ *
+ * ── What issue #226 changed here ─────────────────────────────────────────────────────
+ *
+ * Every row grew from one fact to as many as four, and the six list writes stopped being
+ * empty. Three readings are worth stating, because they are the ones that are wrong in
+ * somebody's first draft:
+ *
+ *  - **A watch does not touch the lists.** `listLists` counts memberships and
+ *    `getListDetail` prints a title's name, poster and this account's entry id; none of
+ *    them is a watch. So the watch writes bust three facts and not four.
+ *  - **A remove *does* touch the lists.** `getListDetail` left-joins `library_entry`, and
+ *    issue #133 decided a list survives its titles leaving the library — so the membership
+ *    stays and its `libraryEntryId` becomes `null`. A remove that busted only `library`
+ *    would leave every list holding that title claiming the reader still owns it.
+ *  - **The mirror writes touch all four.** `mirrorTitle` rewrites `title` and `episode`,
+ *    which is the name and poster on a list row, the episode grid on title detail, and the
+ *    air dates every derived view is built from. Nothing that reads a title escapes it.
+ *
+ * The six list writes bust `lists` and nothing else, on the mirror image of the argument
+ * that used to put them with the empty ones: they touch `list` and `list_membership`,
+ * which the library grid does not join, the rails do not join, and title detail does not
+ * join.
  *
  * ── Four writes change what *other people's* libraries show ─────────────────────────
  *
@@ -162,29 +500,34 @@ export function cachedLibraryEntries(
  * found in review, and this is the check that means the next one is not.
  */
 export const INVALIDATES = {
-  addTitleToLibrary: ["library"],
-  addTitleToLibraryWatched: ["library"],
-  applyImportChunk: ["library"],
-  recordWatch: ["library"],
-  unwatch: ["library"],
-  markWatchedUpTo: ["library"],
-  abandonTitle: ["library"],
-  abandonTitles: ["library"],
-  unabandonTitle: ["library"],
-  rateTitle: ["library"],
-  removeTitleFromLibrary: ["library"],
-  deleteAccount: ["library"],
-  refreshTitleMirror: ["library"],
-  repointTitle: ["library"],
+  /** A new entry, in `watchlist`, mirroring the shared title on the way in — the grid, the
+   *  phone's WATCHLIST group, every list row for that title, and its own detail page. */
+  addTitleToLibrary: ["library", "up-next", "lists", "title-detail"],
+  addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail"],
+  applyImportChunk: ["library", "up-next", "lists", "title-detail"],
+  recordWatch: ["library", "up-next", "title-detail"],
+  unwatch: ["library", "up-next", "title-detail"],
+  markWatchedUpTo: ["library", "up-next", "title-detail"],
+  abandonTitle: ["library", "up-next", "title-detail"],
+  abandonTitles: ["library", "up-next", "title-detail"],
+  unabandonTitle: ["library", "up-next", "title-detail"],
+  rateTitle: ["library", "up-next", "title-detail"],
+  /** The membership survives the entry (#133), so the list rows change too. */
+  removeTitleFromLibrary: ["library", "up-next", "lists", "title-detail"],
+  deleteAccount: ["library", "up-next", "lists", "title-detail"],
+  /** `mirrorTitle`: the name, poster and year on every surface, and the episode rows the
+   *  derived views are built from. */
+  refreshTitleMirror: ["library", "up-next", "lists", "title-detail"],
+  repointTitle: ["library", "up-next", "lists", "title-detail"],
   /** Writes `user.import_offer_answered_at`, which no cached read selects. */
   markImportOfferAnswered: [],
-  /** `list` and `list_membership`. No cached read joins either. */
-  createList: [],
-  createListAndAddTitle: [],
-  deleteList: [],
-  addTitleToList: [],
-  addTitlesToList: [],
-  reorderListMembership: [],
+  /** `list` and `list_membership`, which only the two list reads join. */
+  createList: ["lists"],
+  createListAndAddTitle: ["lists"],
+  deleteList: ["lists"],
+  addTitleToList: ["lists"],
+  addTitlesToList: ["lists"],
+  reorderListMembership: ["lists"],
 } as const satisfies Record<string, readonly CachedRead[]>;
 
 /** A write in `db/access.ts`, named by the function that performs it. */
@@ -213,29 +556,18 @@ export const MIRRORS_SHARED_TITLE_ROWS = [
 ] as const satisfies readonly Write[];
 
 /**
- * `db/access.ts`'s reads, listed for one purpose: `tests/cache-tags.test.ts` adds them to
- * `INVALIDATES`'s keys and holds the union against the module's real exports, so that
- * *classified* means classified as one or the other rather than merely absent from the
+ * `db/access.ts`'s reads — every one of them, from the two tables above rather than from a
+ * third list somebody would have to keep in step with both.
+ *
+ * It exists for one purpose: `tests/cache-tags.test.ts` adds these to `INVALIDATES`'s keys
+ * and holds the union against the module's real exports, so that *classified* means
+ * classified as cached, or as uncached with a reason, rather than merely absent from the
  * map. A read invalidates nothing, so there is nothing else this list is for.
  */
-export const READS = [
-  "accountFootprint",
-  "accountsHoldingTitles",
-  "getListDetail",
-  "getTitleDetail",
-  "getUnownedTitleDetail",
-  "libraryCatalogueKeys",
-  "libraryEntryIdForTitle",
-  "listAbandoned",
-  "listLibraryEntries",
-  "listLists",
-  "listUpNextRails",
-  "listWatchlist",
-  "resolveSeedUserId",
-  "titleFootprint",
-  "titlesDueForRefresh",
-  "watchedTmdbEpisodeIds",
-] as const;
+export const READS: readonly string[] = [
+  ...Object.keys(CACHED_READS),
+  ...Object.keys(UNCACHED_READS),
+];
 
 /**
  * Bust one account's tags for a write that has **already committed** — the call every

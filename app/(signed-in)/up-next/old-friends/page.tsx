@@ -1,4 +1,4 @@
-import { listUpNextRails } from "@/db/access";
+import { cachedUpNextRails } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { GroupScreen } from "../group-screen";
 
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OldFriendsGroupPage() {
   const userId = await requireUserId();
-  const rails = await listUpNextRails(userId);
+  const rails = await cachedUpNextRails(userId);
 
   return <GroupScreen label="Old friends" entries={rails.oldFriends} />;
 }

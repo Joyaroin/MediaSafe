@@ -29,13 +29,19 @@ import { ListsHeading } from "./lists-heading";
  * the write, so a second full render of the page could only ever agree with them.
  *
  * The two reasons the old docblock gave for keeping it were both checked and neither
- * holds. **No nav cell reads `listLists`** — `sidebar-nav.tsx` and `tab-bar.tsx` are
- * links and nothing else, and the only two callers of that query in the app are
- * `lists/page.tsx` and `listsForPickerAction`, which the *Add to list* dialog runs fresh
- * every time it opens. And **there is no server cache of this page to keep in step**:
- * `page.tsx` is `force-dynamic`, so nothing is stored to go stale, and Next.js has not
- * reused a dynamic page segment from the client Router Cache on a `Link` or `useRouter`
- * navigation since 15 (`staleTimes.dynamic` defaults to `0`).
+ * holds. **No nav cell reads the lists** — `sidebar-nav.tsx` and `tab-bar.tsx` are links
+ * and nothing else. And **there is no client-side page cache to keep in step**:
+ * `page.tsx` is `force-dynamic`, and Next.js has not reused a dynamic page segment from
+ * the client Router Cache on a `Link` or `useRouter` navigation since 15
+ * (`staleTimes.dynamic` defaults to `0`).
+ *
+ * **There is a server cache now, and it changes nothing here.** Issue #226 put the lists
+ * behind `cache/tags.ts` under the `lists` tag, and #223 added a third reader — the phone's
+ * Lists rail above the library grid — beside this page and the *Add to list* picker. All
+ * three read one entry, and every write in `lists/actions.ts` busts it inside its own
+ * action, so the entry cannot outlive the write that invalidates it. The optimistic update
+ * below is still what puts the row on screen; the bust is what the *next* render of any of
+ * the three surfaces reads.
  *
  * What that change did leave reusable is **browser history**: press Back onto this route
  * and the payload from before the write is what restores, so a list made and then

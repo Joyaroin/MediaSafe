@@ -66,6 +66,13 @@ eventually.
 
 ## What is cached
 
+> **Overtaken 2026-08-23 by [#226](https://github.com/Joyaroin/MediaSafe/issues/226).** This section
+> described the state on the day this ADR was accepted and is kept as written. Eight reads are cached
+> now, under four tags, and `cache/tags.ts`'s `CACHED_READS` is the live list —
+> `docs/adr/0003-the-clock-is-an-input-not-a-window.md` records what #226 added and the hole in the
+> design below that it found. Nothing else in this ADR is superseded: the two properties, the
+> `updateTag` choice, the success-only rule and the rejected alternative all still hold.
+
 **One read: the library.** `cachedLibraryEntries` in `cache/tags.ts`, called by
 `app/(signed-in)/library/page.tsx`, and nothing else. Up next, the title detail and the lists are
 #226, #225 and #227, and each of those tickets decides for itself.
@@ -144,3 +151,11 @@ A **backstop** expiry — tags for correctness, plus a long `revalidate` in case
 was considered and also rejected, for a narrower reason: it would make a missing bust survivable, and
 a missing bust that is survivable is a missing bust nobody finds. The map is either complete or it is
 a bug, and there should be nothing quietly papering over the difference.
+
+> **What this argument missed, found by #226.** *No expiry* is right about writes and says nothing
+> about the clock. The derived views compare `air_date` against `current_date`, so an episode airing
+> tonight changes what these reads answer with **no write to bust anything** — and a backstop expiry,
+> rejected above, was the only thing that would have caught it. The answer is neither a backstop nor
+> a window: `current_date` is an input to the query, so it belongs in the query's key.
+> `docs/adr/0003-the-clock-is-an-input-not-a-window.md` argues why that is the opposite of the
+> revalidation this section turns down, rather than a quieter version of it.

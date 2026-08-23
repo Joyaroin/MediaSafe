@@ -25,15 +25,26 @@ import { requireUserId } from "@/lib/session";
  * and the authorization (`ownedBy`); this wrapper adds nothing to either — it only turns
  * a throw into the outcome shape the client's rollback needs.
  *
- * ── The three writes here all bust the library's tag — issue #219 ────────────────────
+ * ── The three writes here bust three facts each — issues #219, then #226 ────────────
  *
  * A watch is what `library_entry_state` and `library_entry_up_next` are derived from, so
  * every one of these three changes both of the columns the library grid prints beyond the
- * poster. The bust runs **past the `catch`, on the success path only**: a write that did
- * not land changed nothing, and busting for it would throw away a correct entry while
- * making a lost write look from here like one that happened. The optimistic mark and its
- * rollback (`use-watch-mark.ts`) are untouched — this is what makes the server agree with
- * the guess the browser already drew, rather than a second guess of its own.
+ * poster. **Since #226 that reaches two more cached facts**, and one of them is the reason
+ * that ticket exists: `up-next`, because the rails and the phone's groups are built from
+ * the same two views; and `title-detail`, because the season grid marks the episode
+ * watched. The call site still passes one write name — `INVALIDATES` in `cache/tags.ts` is
+ * what knows how many facts that reaches.
+ *
+ * **This is the other half of #220's optimistic tile.** `up-next-mark.ts` advances an
+ * Ongoing tile before the server answers, so the screen is right immediately; without the
+ * `up-next` bust, a reload would serve the rail from before the mark and offer the reader
+ * the episode they had just watched. `unwatchAction` owes the same thing to *Undo*.
+ *
+ * The bust runs **past the `catch`, on the success path only**: a write that did not land
+ * changed nothing, and busting for it would throw away a correct entry while making a lost
+ * write look from here like one that happened. The optimistic mark and its rollback
+ * (`use-watch-mark.ts`) are untouched — this is what makes the server agree with the guess
+ * the browser already drew, rather than a second guess of its own.
  */
 export type WatchActionOutcome =
   | { readonly ok: true }

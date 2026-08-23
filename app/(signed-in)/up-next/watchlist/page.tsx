@@ -1,4 +1,4 @@
-import { listWatchlist } from "@/db/access";
+import { cachedWatchlist } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { GroupScreen } from "../group-screen";
 
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function WatchlistGroupPage() {
   const userId = await requireUserId();
-  const entries = await listWatchlist(userId);
+  const entries = await cachedWatchlist(userId);
 
   return <GroupScreen label="Watchlist" entries={entries} />;
 }

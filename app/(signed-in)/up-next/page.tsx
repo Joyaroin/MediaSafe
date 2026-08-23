@@ -1,5 +1,5 @@
 import { ProgrammeNoteLayout } from "@/app/(signed-in)/library/programme-note-layout";
-import { listAbandoned, listUpNextRails, listWatchlist } from "@/db/access";
+import { cachedAbandoned, cachedUpNextRails, cachedWatchlist } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { UpNextGroups } from "./up-next-groups";
 import { UpNextHeading } from "./up-next-heading";
@@ -33,11 +33,19 @@ import { NavTransition } from "../nav-transition";
  * now that the deck is gone: two surfaces sharing one route and reading everything either
  * of them might render, rather than a second route for one destination.
  *
- * Every read here is unguarded. A failure in any of the three throws into `error.tsx`,
- * which draws the read-failure treatment with a reference id over this page's own
- * heading. There is no `try` here and none in `db/access.ts`: **this is the surface
- * `AGENTS.md`'s rule bites hardest on**, because *you're caught up* is a plausible lie and
- * a group that is absent because the database is down would read as a life well managed.
+ * Since **#226** that cost is paid once rather than on every navigation: all three reads go
+ * through `cache/tags.ts`, keyed by this account and tagged `up-next`, and every write that
+ * can change what any group shows busts the tag inside its own action. What did not change
+ * is which questions get asked — the desktop still pays for the two groups it will not
+ * render, on the first load of the day and after any write.
+ *
+ * Every read here is unguarded, and still is through the cache: `unstable_cache` stores a
+ * resolved value only, so a rejection propagates out of it untouched and a failure in any
+ * of the three throws into `error.tsx`, which draws the read-failure treatment with a
+ * reference id over this page's own heading. There is no `try` here, none in
+ * `cache/tags.ts` and none in `db/access.ts`: **this is the surface `AGENTS.md`'s rule
+ * bites hardest on**, because *you're caught up* is a plausible lie and a group that is
+ * absent because the database is down would read as a life well managed.
  *
  * ── Two empty states, and they are not one ────────────────────────────────────────────
  *
@@ -70,9 +78,9 @@ export default async function UpNextPage() {
    * unguarded reads above the `AGENTS.md` rule protects are still unguarded.
    */
   const [rails, watchlist, abandoned] = await Promise.all([
-    listUpNextRails(userId),
-    listWatchlist(userId),
-    listAbandoned(userId),
+    cachedUpNextRails(userId),
+    cachedWatchlist(userId),
+    cachedAbandoned(userId),
   ]);
 
   return (

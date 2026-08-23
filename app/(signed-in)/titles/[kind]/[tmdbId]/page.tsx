@@ -6,7 +6,8 @@ import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
-import { getUnownedTitleDetail, libraryEntryIdForTitle } from "@/db/access";
+import { cachedLibraryEntryIdForTitle } from "@/cache/tags";
+import { getUnownedTitleDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { catalogueKeyFrom } from "@/tmdb/mirror";
 import { AddToLibraryControl } from "./add-to-library-control";
@@ -54,11 +55,20 @@ import { UnownedEpisodes } from "./unowned-episodes";
  *
  * ── A page read, unguarded ────────────────────────────────────────────────────────────
  *
- * Both mirrored reads (`libraryEntryIdForTitle`, `getUnownedTitleDetail`) are called
+ * Both mirrored reads (`cachedLibraryEntryIdForTitle`, `getUnownedTitleDetail`) are called
  * directly with no `try`: a failure throws into `error.tsx` beside this file, which is
  * `AGENTS.md`'s error discipline — a database MediaSafe cannot reach must never render as
  * a title with no episodes. `library/[entryId]/page.tsx` is the same shape, and its
  * docblock carries why the desktop pane cannot be.
+ *
+ * ── One of the two is cached, and the split is not arbitrary ────────────────────────
+ *
+ * The ownership question is **owned** — a row in this account's `library_entry` — so #226
+ * caches it under the `library` tag, which every add, import, remove and account deletion
+ * already busts. `getUnownedTitleDetail` is **borrowed**: it takes no account, the lint
+ * rule could not key it, and nothing MediaSafe does invalidates TMDB's mirror on a
+ * schedule a tag could follow. It is issue #225's, with a window as well as a tag, and
+ * until that ships it is read fresh on every load.
  *
  * ── The three live facts stream in behind this render (issue #218) ───────────────────
  *
@@ -90,7 +100,7 @@ export default async function UnownedTitlePage({
   const { kind, tmdbId } = catalogueKeyFrom(segments.kind, segments.tmdbId);
   const userId = await requireUserId();
 
-  const owned = await libraryEntryIdForTitle(userId, kind, tmdbId);
+  const owned = await cachedLibraryEntryIdForTitle(userId, kind, tmdbId);
   if (owned !== null) redirect(`/library/${owned}`);
 
   const detail = await getUnownedTitleDetail(kind, tmdbId);
