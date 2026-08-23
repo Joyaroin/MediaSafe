@@ -1,7 +1,7 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getTitleDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import { readLiveFacts } from "../live-facts";
+import { LiveTitleFactsStreamed } from "../live-title-facts-streamed";
 import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
@@ -21,13 +21,13 @@ import { TitleDetailView } from "./title-detail-view";
  * docblock is why the pane cannot do the same: it never navigates, so it has no route
  * boundary to throw into.
  *
- * ── The three live facts read here too, not after the page mounts (issue #218) ───────
+ * ── The three live facts stream in behind this render, not after it mounts (issue #218) ──
  *
- * `readLiveFacts` needs `detail.kind`/`detail.tmdbId`, so it runs after `getTitleDetail`
- * rather than beside it — the two are sequential, the three TMDB reads inside
- * `readLiveFacts` are concurrent with each other. It is called unguarded, same as the read
- * above it, but for the opposite reason: it never throws — each of the three fields is its
- * own caught outcome — so there is nothing here for a `try` to catch.
+ * `<LiveTitleFactsStreamed>` (`live-title-facts-streamed.tsx`) is a Server Component built
+ * right here and handed to `TitleDetailView` as an already-rendered node — this page never
+ * awaits it, so the mirrored read above is all that gates this page's own shell. Each of
+ * the three live reads runs inside its own `Suspense`, streamed in independently once
+ * `getTitleDetail` above has already resolved.
  */
 export const dynamic = "force-dynamic";
 
@@ -39,13 +39,15 @@ export default async function TitleDetailPage({
   const { entryId } = await params;
   const userId = await requireUserId();
   const detail = await getTitleDetail(userId, entryId);
-  const liveFacts = await readLiveFacts(detail.kind, detail.tmdbId);
 
   return (
     <main className="flex w-full flex-1 flex-col">
       <BackToLibraryBar />
 
-      <TitleDetailView detail={detail} liveFacts={liveFacts} />
+      <TitleDetailView
+        detail={detail}
+        liveFacts={<LiveTitleFactsStreamed kind={detail.kind} tmdbId={detail.tmdbId} />}
+      />
 
       {/* Always on screen here, unlike the desktop pane's conditional footer: this route
           only ever renders once the mirrored read above has already succeeded, so

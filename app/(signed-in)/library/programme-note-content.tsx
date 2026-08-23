@@ -1,11 +1,10 @@
+import type { ReactNode } from "react";
 import { ViewTransition } from "react";
 
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { AbandonControl } from "./abandon-control";
 import { AddToListControl } from "./add-to-list-control";
-import type { LiveFacts } from "./live-facts";
-import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { RatingControl } from "./rating-control";
 import { RemoveControl } from "./remove-control";
@@ -84,6 +83,19 @@ import { titleMetaLine } from "./title-meta-line";
  * `<ViewTransition>` fiber's `name` from the old id to the new one in place, which reads
  * to the browser as two boundaries claiming the old name for a commit rather than one
  * leaving and another arriving.
+ *
+ * ── `liveFacts` is a node, not data (issue #218) ──────────────────────────────────────
+ *
+ * This component does not fetch, or even know, how the three live sections get their
+ * data — it only knows where they sit in the layout. `library/[entryId]/page.tsx` and
+ * `titles/[kind]/[tmdbId]/page.tsx` hand in `<LiveTitleFactsStreamed kind tmdbId />`, a
+ * Server Component built server-side and passed down as an already-rendered element
+ * (React's own documented pattern for interleaving Server and Client Components); the
+ * desktop pane and the Up next sheet hand in `<LiveTitleFactsClientFetch kind tmdbId />`
+ * instead, since neither has a page render to stream the first behind
+ * (`live-title-facts.tsx`'s top docblock carries the full reasoning for both). Either way
+ * this component is identical for all four surfaces — issue #58's own promise — because
+ * the difference lives entirely in what the caller passes, not in anything here.
  */
 export function ProgrammeNoteContent({
   detail,
@@ -93,7 +105,7 @@ export function ProgrammeNoteContent({
   onRated,
 }: {
   detail: TitleDetailRow;
-  liveFacts: LiveFacts;
+  liveFacts: ReactNode;
   posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
   onRated: (libraryEntryId: string, rating: number) => void;
@@ -130,7 +142,7 @@ export function ProgrammeNoteContent({
 
       <p className={`code-line mt-4 ${state.className}`}>{state.label}</p>
 
-      <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} liveFacts={liveFacts} />
+      {liveFacts}
 
       {/* Where the prototype puts it: below the borrowed facts, above the abandon row,
           and identical for a film and a show — a rating is a fact about the title, and

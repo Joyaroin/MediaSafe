@@ -1,9 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 import type { TitleDetailRow } from "@/db/access";
-import type { LiveFacts } from "../live-facts";
 import { groupPosterTransitionName } from "../poster-transition-name";
 import { ProgrammeNoteContent } from "../programme-note-content";
 
@@ -32,7 +32,7 @@ export function TitleDetailView({
   liveFacts,
 }: {
   detail: TitleDetailRow;
-  liveFacts: LiveFacts;
+  liveFacts: ReactNode;
 }) {
   const [current, setCurrent] = useState(detail);
 
