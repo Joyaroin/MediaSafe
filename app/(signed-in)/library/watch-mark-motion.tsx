@@ -138,8 +138,14 @@ export const QUIET_RECORDING_CONTROL_LABELLED =
   "code-line border border-hair px-4 py-2 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
 
 /**
- * The same again at `RECORDING_CONTROL`'s measure — `px-2.5 py-1` — for the search result
- * row, and the third size in this file rather than a fourth register.
+ * The same again at `errors/recovery-buttons.ts`'s compact measure — `px-2.5 py-1` — for
+ * the search result row, and the third size in this file rather than a fourth register.
+ *
+ * The measure is `GHOST_RECOVERY_COMPACT`'s, which is where it now lives: it was
+ * `RECORDING_CONTROL`'s first, and issue #217 replaced that text pill with the checkmark's
+ * `RECORDING_HIT_BOX` / `RECORDING_GLYPH` pair. `GHOST_RECOVERY_COMPACT` took the number
+ * from it character for character while it still existed and is the surviving statement of
+ * it, so that is what this cites rather than a constant that is gone.
  *
  * ── Why the search row cannot take the surface measure ───────────────────────────────
  *
