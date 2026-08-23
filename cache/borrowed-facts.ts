@@ -327,12 +327,16 @@ export function cachedUnownedTitleDetail(
  * criterion in those words, and *the read after next* is a different promise.
  *
  * `updateTag` is the call that expires outright and it is unavailable here — it throws on
- * any route ending in `/route`, which the sweep is. `EXPIRE_NOW` is the same instruction
- * in the spelling a route handler may use: `revalidate()` branches on
- * `cacheLife?.expire === 0` exactly where it branches on a missing profile, which is what
- * `updateTag` passes (`next/dist/server/web/spec-extension/revalidate.js`). The one-argument
- * `revalidateTag(tag)` would also do it and is what `updateTag` literally calls, but Next
- * has deprecated that form and dropped it from the types.
+ * any route ending in `/route`, which the sweep is. `EXPIRE_NOW` is the same instruction in
+ * the spelling a route handler may use, and the claim rests on two things rather than one:
+ * `expire` is documented as *how many seconds from the start until it can no longer be
+ * used*, so zero is *not at all*; and `revalidate()` branches on `cacheLife?.expire === 0`
+ * in the same condition as a missing profile, which is exactly what `updateTag` passes
+ * (`next/dist/server/web/spec-extension/revalidate.js`).
+ *
+ * The one-argument `revalidateTag(tag)` is what `updateTag` literally calls and would do
+ * as well, but Next has deprecated that form and dropped it from the types, so reaching
+ * for it would mean a cast and a warning per call.
  *
  * `tests/cache-tags.test.ts` models the difference rather than flattening it: swap this
  * back to `"max"` and five assertions fail, one of them by name.
