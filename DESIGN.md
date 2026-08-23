@@ -1217,9 +1217,19 @@ rails, no placeholder tabs, no "coming soon".
 - **No rating on a tile.** A tile is a poster, a name and a year. Ratings live on the
   programme note.
 - **No sort on Up next.** The order is the rails' own, and it is not a control.
-- **No home rails other than Up next's three.** Not for Lists, not for genres, not for
-  upcoming. Lists have their own destination on both devices, deliberately not a rail —
-  *what do I watch tonight* is a different question from *what did I group*.
+- **No home rails other than Up next's three.** Not for genres, not for upcoming. **Amended
+  by #223.** Lists used to be this bullet's third example, and is not any more: #215's
+  *Library, Lists and Stats* work puts a rail of lists above the phone Library grid, so the
+  line no longer described the build and was not left standing as though it did. What
+  survives it is narrower and is the part that was actually load-bearing: Up next still
+  runs exactly three rails and gains no fourth, because the new one is not on Up next at
+  all — it lives on the phone's own Library screen, a different surface answering a
+  different question. *What do I watch tonight* is still one thing and *what did I group*
+  is still another; the new rail answers the second where the reader is already looking,
+  not on the home screen this bullet has always been about. `SPEC.md` §9's *their own
+  destination on both devices, not a rail on Up next* survives exactly as literally as it
+  reads: `/lists`, the desktop sidebar entry and the phone's own Lists tab are all exactly
+  where they were — #223 added a second way in, not a replacement for the destination.
 - **No theme picker**, no in-product light/dark control, and no alternate palette. The
   system setting decides (§2).
 - **No multi-select, no select-all, no bulk edit** on any surface. **Amended by #194.**
