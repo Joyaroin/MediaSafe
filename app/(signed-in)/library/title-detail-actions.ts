@@ -131,10 +131,13 @@ export async function titleLiveFactsAction(
  * its outcome is read back from `unabandonTitle`, which reads it from the view rather
  * than guessing, so this file adds no second copy of the five-state rule either.
  *
- * Both bust the library's tag (issue #219), past the `catch` and on the success path
- * only: abandoning a title is a change of state, and state is the one thing beyond the
- * poster that the library grid groups and prints. The four reads above bust nothing —
- * they are reads, and three of them are TMDB rather than this database at all.
+ * Both bust their tags (issue #219), past the `catch` and on the success path only:
+ * abandoning a title is a change of state, and state is the one thing beyond the poster
+ * that the library grid groups and prints. Since #226 that is three tags rather than one —
+ * the same state moves a title into the phone's ABANDONED group and changes what this very
+ * pane prints — and this call site did not change to say so, because `INVALIDATES` is where
+ * the count lives. The four reads above bust nothing: they are reads, and three of them are
+ * TMDB rather than this database at all.
  */
 export type AbandonOutcome =
   | { readonly ok: true; readonly state: LibraryState }

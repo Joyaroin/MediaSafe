@@ -77,6 +77,10 @@ export async function deleteAccountAction(
    * a fresh id per account, so nobody inherits this one and nobody would be shown it —
    * but *unreachable* and *dropped* are not the same thing, and the account deletion this
    * app promises should not leave the last read of that library sitting in a cache.
+   *
+   * All four facts since #226, and this is the write where the map earns most: an account
+   * deletion cascades through every owned table, so *which of them was cached* is exactly
+   * the question nobody should have to answer again at this call site.
    */
   invalidateFor("deleteAccount", userId);
 

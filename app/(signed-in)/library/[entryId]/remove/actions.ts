@@ -44,8 +44,17 @@ import { requireUserId } from "@/lib/session";
  * documented as temporary.
  *
  * #219 made that argument unnecessary rather than waiting for it to come true. `/library`
- * now has a cached read with a tag on it, so `invalidateFor` busts one account's library
- * and nothing else on the server. Two things about it are worth keeping in view, both
+ * now has a cached read with a tag on it, so `invalidateFor` busts one account's facts and
+ * nobody else's on the server.
+ *
+ * **Four facts, since #226**, and the fourth is the one worth naming: removing a title
+ * busts `lists` as well as `library`, `up-next` and `title-detail`, because `getListDetail`
+ * left-joins `library_entry` and issue #133 decided a list survives its titles leaving the
+ * library. The membership stays; its `libraryEntryId` goes `null`. A bust that named only
+ * the library would leave every list holding this title claiming the reader still owns it,
+ * with no expiry behind the entry to heal.
+ *
+ * Two things about the mechanism are worth keeping in view, both
  * read off `node_modules/next/dist/docs/` and Next's own source rather than assumed,
  * because `AGENTS.md` opens by saying this is not the Next.js you know:
  *
