@@ -1,12 +1,23 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════════════
-   The visual world — the Catalogue Wall, whose palette arrived here in issue #134 from
-   `design/catalogue-wall.html`. The bone/ink/vermilion letterpress world this replaced is
-   gone from the type ramp and the utilities below as well, and **`DESIGN.md` is now
-   written from this file rather than the other way round** (issue #144). That prototype is
-   historical reference from the same ticket; this stylesheet is the single declaration
-   site for every token, and `DESIGN.md` explains and constrains what is declared here.
+   The visual world — the mobile handoff, committed at
+   `docs/design/prototypes/mediasafe-mobile-handoff.md` with its board beside it at
+   `mediasafe-mobile.html`. **That is the path to cite**, here and in every component: until
+   issue #255 this file named the palette's source as `design_handoff_phone_linen`, which was
+   not a path to anything and could not be opened by anyone reading the comment. Citing a
+   prototype that was never committed is the failure `tvtracker` carries a dozen times over,
+   and it had started here.
+
+   Two older prototypes sit alongside it as historical reference, neither of them current:
+   `mediasafe-phone-up-next.html`, the exploration board whose turn 9 this file used to quote
+   values from, and `design/catalogue-wall.html`, whose palette arrived in issue #134 and
+   which still supplies the dark values below. The bone/ink/vermilion letterpress world #134
+   replaced is gone from the type ramp and the utilities as well.
+
+   **`DESIGN.md` is written from this file rather than the other way round** (issue #144).
+   This stylesheet is the single declaration site for every token; `DESIGN.md` explains and
+   constrains what is declared here; the handoff is what both answer to.
 
    The colour tokens are declared once — `--ground`, `--raised`, `--hair`, `--text`,
    `--dim`, `--accent`, `--accent-ink` — as plain custom properties on `:root`,
@@ -71,25 +82,79 @@
 
 :root {
   /* Light — the desktop in daylight, and since the linen redesign the phone in daylight
-     too. The Catalogue Wall's bone/white/near-black light palette is replaced here by
-     `design_handoff_phone_linen`'s turn 9: a linen ground, a warmer raised step that is
-     *darker* than the ground rather than lighter, and a vermilion accent in place of the
-     ochre. The tone relationship inverting is the point — `--raised` at `#eeede7` sits
-     below `#f9f7f0`, so a card reads as a well pressed into the sheet rather than a
-     panel floating above it, which is what lets the whole redesign carry no shadows at
-     all. */
-  --ground: #f9f7f0;
-  --raised: #eeede7;
-  --hair: #d5d2c3;
-  --text: #59584e;
-  --dim: #8a887c;
-  --accent: #a52516;
-  --accent-ink: #f9f7f0;
-  /* Derived, and the one token the handoff adds rather than replaces. `--text` at
-     `#59584e` on `--raised` is ~5:1 — correct for a metadata line and thin for a 34px
-     heading, so headings, title names and filled-field text get their own darker step
-     rather than the body colour being darkened for everyone. */
-  --ink: #3d3c35;
+     too. The Catalogue Wall's bone/white/near-black light palette is replaced here by the
+     mobile handoff's own token table, committed at
+     `docs/design/prototypes/mediasafe-mobile-handoff.md` and drawn at
+     `docs/design/prototypes/mediasafe-mobile.html`.
+
+     **These seven values are the handoff's, not an approximation of them.** They used to be
+     turn 9 of the *earlier exploration board* — the one now committed beside it as
+     `mediasafe-phone-up-next.html`, which this file cited as `design_handoff_phone_linen`
+     against no path at all. That board was the direction; this table is the brief that
+     landed after it, and the two differ in all seven values. Issue #255 closed the gap.
+
+     The tone relationship inverting is still the point — `--raised` at `#eeede6` sits
+     *below* `#f7f5ed`, so a card reads as a well pressed into the sheet rather than a panel
+     floating above it, which is what lets the whole redesign carry no shadows at all. The
+     handoff's Geometry table says so in as many words: *none on cards — the `--raised` /
+     `--ground` step is the only lift*. */
+  --ground: #f7f5ed;
+  --raised: #eeede6;
+  --hair: #d7d4c8;
+  --text: #34342f;
+  --dim: #929086;
+  --accent: #a52518;
+  --accent-ink: #f7f5ed;
+
+  /* ── `--dim` is adopted as given and is the weakest thing in this file ───────────────
+     Recorded here because it is a regression, it was taken deliberately, and the next
+     person to look at a metadata line deserves to find the number rather than re-measure
+     it. `#929086` on `--ground` is **2.93:1**, and on `--raised` 2.73:1. The value it
+     replaces managed 3.32:1 and 3.04:1.
+
+     That crosses a floor rather than merely dropping. The old value failed WCAG AA for
+     normal text (4.5:1) but cleared the 3:1 large-text threshold; this one clears
+     neither, and `--dim` carries the metadata line at 12–13px, which is normal text by
+     any reading. The handoff's own Accessibility section asks for visible focus rings and
+     ≥44px targets and then sets its metadata colour below the contrast floor.
+
+     It is adopted anyway because issue #255's first acceptance criterion is that the seven
+     tokens carry *the handoff's* values, and quietly darkening one while claiming to have
+     adopted the table would be worse than the contrast: it would make this file's values
+     un-diffable against the document it cites. The fix belongs in a ticket that changes
+     the number on purpose and says so — not in the commit whose whole claim is fidelity.
+
+     What softens it in practice, and what does not: `--dim` is never load-bearing on its
+     own — every state it colours is also carried by the label register or a dimmed name
+     (`library-state.ts`, `library-entry-cell.tsx`), so nothing is colour-only. What it
+     does not soften is a year, a runtime or an episode count, which are `--dim` and
+     nothing else. Those are now harder to read than they were. */
+
+  /* ── The three tokens the handoff proposes to add, and why none of them is here ──────
+     Its table names `--well` for the artwork placeholder, and offers `--body` for synopsis
+     paragraphs and `--rule-soft` for the episode-row divider. All three already exist under
+     other names: **the well is `--raised`**, **the soft rule is `--hair`**, and **the body
+     colour is `--text`**. Nothing new is declared, so dark keeps working without three
+     further values to map twice — which is the whole cost this file's one-declaration-site
+     argument is trying to avoid. `bg-raised`, `border-hair` and `text-text` are what the
+     handoff's three names resolve to; there is no `bg-well`, `text-body` or
+     `border-rule-soft` to reach for, deliberately. */
+
+  /* ── The heading step, re-derived rather than dropped ────────────────────────────────
+     `--ink` is the one token the handoff replaces nothing for, and adopting its table
+     unchanged would have quietly broken it. The old `--text` was `#59584e` — ~6:1 on
+     `--raised`, correct for a metadata line and thin for a 34px heading — so `--ink` sat a
+     step below it at `#3d3c35`. The handoff's `--text` is `#34342f`, which is **darker than
+     that old heading token**. Keeping `#3d3c35` would have rendered every heading in the app
+     lighter than the body text beneath it: an inverted hierarchy on every screen, and the
+     one failure mode this token exists to prevent.
+
+     So the value is re-derived below the new primary rather than the token being retired.
+     `#1f1f1b` is 15.2:1 on `--ground` against `--text`'s 11.5:1 — a 1.32× step, narrower
+     than the old 1.55× because the new body colour is itself far stronger and a
+     proportional step would have landed on near-black. It keeps the handoff's warm cast
+     (`#34342f` runs its blue channel five below red and green; `#1f1f1b` runs it four). */
+  --ink: #1f1f1b;
 
   /* ── The phone tab bar's height, and why it is declared here ──────────────────────
      `44px` cell + `8px` top padding + `22px` bottom padding + the `1px` `hair` top
@@ -110,11 +175,21 @@
      unchanged: the linen redesign is a light-palette change and says so.
 
      `--dark-ink` is the exception, and it is not a redesign of anything. `--ink` is
-     declared on `:root`, so without a dark value it would keep `#3d3c35` in dark too and
+     declared on `:root`, so without a dark value it would keep `#1f1f1b` in dark too and
      paint every heading near-black on a near-black ground. In dark `--text` is already
      the brightest neutral on the sheet, so there is no darker-than-body step to give a
      heading and `--ink` is `--text` — the same colour, so that `text-ink` means *full
      strength for a heading* in both schemes rather than meaning nothing in one of them.
+
+     **Why this is still the answer after the palette change.** Issue #255 asks for the
+     heading step re-derived "in light and dark", and in dark the word *darker* inverts: a
+     heading one step darker than `#f4f4f2` on a `#0a0a0b` ground is a heading receding into
+     the page. What the light theme is buying with `--ink` is *more* contrast for a heading,
+     and dark already spends it — `--dark-text` is 18:1 on `--dark-ground`, with only
+     `#ffffff` above it and nothing but halation on 34px type to gain there. So the dark
+     counterpart is declared, deliberately equal, and the property the ticket is actually
+     protecting holds in both schemes: **no heading renders lighter than the body beneath
+     it.** Equal is not lighter.
 
      **Why the dark palette is a named set rather than a second `:root` block.** There are
      now two ways to be in dark — the system asked, or the reader answered — and they are

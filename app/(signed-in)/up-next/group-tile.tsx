@@ -179,22 +179,24 @@ export function GroupTile({
        which one won would be decided by Tailwind's emit order, not by this class list
        (`globals.css`, the `poster` utility).
 
-       The inset ring is turn 9's `box-shadow:inset 0 0 0 1px var(--hair)` on the tile's
-       well.
+       The inset ring is the exploration board's `box-shadow:inset 0 0 0 1px var(--hair)`
+       on the tile's well, and it is inset — the handoff forbids drop shadows outright
+       (`docs/design/prototypes/mediasafe-mobile-handoff.md`, Geometry: *none on cards*).
 
-       **The fill is knowingly not the handoff's.** Its token table says the well is
-       `--hair`, which would put the ring on its own colour and make it invisible. The
-       board disagrees with its own table — `.linen .well` is `#e4e2d6`, a step lighter
-       than `--hair` (`#d5d2c3`) — and this keeps `poster`'s existing `--raised`
-       (`#eeede7`), which is a further step lighter again. So this is not the board's
-       colour either, and the difference is real rather than rounded away.
+       **The fill is `--raised`, and that is the handoff's well.** Its token table proposes
+       a fourth surface colour, `--well: #e2e0d6`, for exactly these artwork placeholders.
+       Issue #255 declines to declare it: a well is a raised step, and a third neutral would
+       be a third value to map twice for dark. So `poster`'s existing `--raised` (`#eeede6`)
+       stands in for it, one step lighter than the handoff drew — a real difference, named
+       here rather than rounded away.
 
-       It is the right trade because of what the pixels are: the handoff's own fidelity
-       note says the wells are a prototype device and that real TMDB artwork fills these
-       rectangles unchanged, so this fill is seen only by a title with no artwork at all.
-       Against `--raised` the ring reads as drawn, and giving the `poster` utility a
-       second fill for one surface would change the artwork-less well on every other
-       surface in the app.
+       The ring still reads against it: `--hair` is `#d7d4c8` on a `#eeede6` fill, which is
+       the same separation the handoff's own `--well` would have given it. And it is the
+       right trade because of what the pixels are — the handoff's fidelity note says the
+       wells are a prototype device and that real TMDB artwork fills these rectangles
+       unchanged, so this fill is seen only by a title with no artwork at all. Giving the
+       `poster` utility a second fill for one surface would change the artwork-less well on
+       every other surface in the app.
 
      ── The selected ring, since #198 ────────────────────────────────────────────────
      Drawn here rather than on the tile's outer element: a group tile has no padded card

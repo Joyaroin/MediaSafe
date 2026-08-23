@@ -40,24 +40,30 @@ ADR-0001 binds the schema. This file outranks any prototype.
 
 ## 0. Amended by the linen redesign — read this before anything below
 
-`design_handoff_phone_linen`, turn 9, redraws the four phone tabs — Up next, Search, The
-library, Lists — and **reverses several rules stated as absolutes below**. Everything in
-sections 1–12 was written for the Catalogue Wall's light palette, where `--raised` was
-white and sat *above* a bone ground. Turn 9 puts `--raised` **below** the ground
-(`#eeede7` on `#f9f7f0`), and most of what changed follows from that one inversion: a card
-no longer needs a line around it to read as a card.
+The mobile handoff — `docs/design/prototypes/mediasafe-mobile-handoff.md`, drawn at
+`mediasafe-mobile.html` — redraws the phone and **reverses several rules stated as absolutes
+below**. Everything in sections 1–12 was written for the Catalogue Wall's light palette, where
+`--raised` was white and sat *above* a bone ground. The handoff puts `--raised` **below** the
+ground (`#eeede6` on `#f7f5ed`), and most of what changed follows from that one inversion: a
+card no longer needs a line around it to read as a card.
+
+**On the name this section used to use.** It said `design_handoff_phone_linen`, turn 9, which
+named no path and pointed at no committed file. Turn 9 was an *earlier exploration board*, now
+committed as `mediasafe-phone-up-next.html`; the handoff that landed after it carries a
+different token table, and until issue #255 the stylesheet held turn 9's approximations in all
+seven values. The values below are the handoff's own.
 
 The stylesheet is still the single declaration site and still wins (see above). This
 section exists so a reader does not take a superseded absolute below as current.
 
 | Stated below | Now | Where |
 | --- | --- | --- |
-| §2's light palette | Replaced by the linen values, plus a new `--ink` for headings. Dark is untouched. | `app/globals.css` |
+| §2's light palette | Replaced by the handoff's seven values, with `--ink` re-derived *below* the new `--text` so headings stay darker than the body. Its proposed `--well`, `--body` and `--rule-soft` are **not** declared — they resolve to `--raised`, `--text` and `--hair`. Dark keeps #134's values and is re-checked on both paths. | `app/globals.css` |
 | The accent is reserved for recording a watch | The accent marks **what is live, and the one primary action of a screen** — one per screen, never two. `Add`, `New list` and the Up next group labels are now vermilion; the selected tab deliberately is **not**. | `app/globals.css` |
 | The Hairline Rule — *structure is drawn, not spaced*; library cells divided by `1px` borders, no radius, no gaps | Library cells, search results and list rows are `--raised` cards on gaps, at `16–18px` radii. Still no shadow anywhere: the `--raised`/`--ground` tone step is the only lift. | `library-grid.tsx`, `catalogue-result.tsx`, `list-row.tsx` |
 | §5 — the phone masthead on a `1px` rule, contents in bordered cells; chrome at `95%`/`2px` blur | No borders at all on the masthead. Both pieces of chrome frost at `78%` under a `22px` blur. | `masthead.tsx`, `tab-bar.tsx` |
 | Navigation — *active is inverted to bone/ink*, cells divided by hairlines | No inverted cell and no dividers. Active is icon and label in `--ink`, inactive `--dim`; the travelling `layoutId` block went with the inversion it animated. The library chips keep theirs. | `tab-bar.tsx` |
-| §4's type ramp as the whole case of sizes | The bill ramp still sets every surface turn 9 did not draw. The four phone tabs use a second, `px`-based register declared beside it, plus a `label-line` utility for the uppercase 11px label register. | `app/globals.css` |
+| §4's type ramp as the whole case of sizes | The bill ramp still sets every surface the handoff did not draw. The four phone tabs use a second, `px`-based register declared beside it, plus a `label-line` utility for the uppercase 11px label register. | `app/globals.css` |
 | The library heading is a step *below* Search's | All four phone tabs share one 34px `screen-title`, and none of the four carries a hairline under it. | the four `*-heading.tsx` |
 | §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | Cards, fields, chips and pills carry 9–22px radii, and the poster's radius is a `--poster-radius` variable with three per-surface values (`14`/`10`/`9`) over a `7px` default. There is still **no radius scale** — these are per-surface measures, not a ramp. | `app/globals.css`, the four screens |
 | *A pill would be the first radius in the application* | Two pills: `Add` (17px) and `New list` (22px). | `catalogue-result.tsx`, `create-list-form.tsx` |
@@ -68,7 +74,7 @@ Two things below are **not** superseded, and were checked rather than assumed:
 
 - **Empty, zero-match and failed stay structurally separate**, with the same heading step
   for zero-match and failure and different colour and border between them (§9,
-  `SPEC.md` §3). Turn 9 restyles those states to the token set and merges none of them.
+  `SPEC.md` §3). The handoff restyles those states to the token set and merges none of them.
 - **No shadows, and no second hairline weight.** The redesign removes lines; it does not
   replace them with elevation.
 
@@ -101,26 +107,42 @@ class, no second copy of the palette and no picker.**
 
 | Token | Utility | Light — the desktop in daylight | Dark — the phone at 11pm |
 |---|---|---|---|
-| `--ground` | `bg-ground` | `#f6f5f3` | `#0a0a0b` |
-| `--raised` | `bg-raised` | `#ffffff` | `#17171a` |
-| `--hair` | `border-hair` | `#e4e3df` | `#242429` |
-| `--text` | `text-text` | `#16161a` | `#f4f4f2` |
-| `--dim` | `text-dim` | `#6e6e6b` | `#8c8c8a` |
-| `--accent` | `text-accent` | `#a85d06` | `#ffb020` |
-| `--accent-ink` | `text-accent-ink` | `#ffffff` | `#0a0a0b` |
+| `--ground` | `bg-ground` | `#f7f5ed` | `#0a0a0b` |
+| `--raised` | `bg-raised` | `#eeede6` | `#17171a` |
+| `--hair` | `border-hair` | `#d7d4c8` | `#242429` |
+| `--text` | `text-text` | `#34342f` | `#f4f4f2` |
+| `--dim` | `text-dim` | `#929086` | `#8c8c8a` |
+| `--accent` | `text-accent` | `#a52518` | `#ffb020` |
+| `--accent-ink` | `text-accent-ink` | `#f7f5ed` | `#0a0a0b` |
 
-### The system setting decides, and there is no picker
+Light is the handoff's table, adopted whole in issue #255. Dark is unchanged from #134: the
+handoff says dark is out of scope, which does not survive the primary type colour changing
+meaning, but what it needed was **re-checking on both paths**, not new values.
 
-`html { color-scheme: light dark; }` — the setting follows the operating system and nothing
-in the product can override it.
+**An eighth token, derived rather than given.** `--ink` (`text-ink`) is the heading step —
+headings, title names and filled-field text — and it is the only colour here the handoff does
+not supply. It is `#1f1f1b` in light, one step below `--text`, and `#f4f4f2` in dark, equal to
+it. `app/globals.css` carries the derivation and the reason dark cannot take a darker step.
+
+**Three names the handoff proposes and this repository does not declare.** Its `--well` is
+`--raised`, its `--rule-soft` is `--hair`, and its `--body` is `--text`. Reach for the existing
+token; there is no `bg-well`, `border-rule-soft` or `text-body`.
+
+### The system setting decides unless the reader has answered otherwise
 
 **Neither theme is "the" theme.** The phone at 11pm and the desktop in daylight are both
 real scenes, which is why `color-scheme` is not pinned to dark and why both columns above
 are first-class rather than one being a derivation of the other.
 
-**There is still no theme picker, and never will be.** That prohibition survives from
-`SPEC.md` §9 intact. What did *not* survive is the one-committed-world rule that used to
-justify it: the ban on a picker was never a ban on the system being asked.
+**There are three states, not two, and both dark paths map every token.** No `data-theme`
+attribute and the system decides; `data-theme="light"` holds the light values on a device set
+to dark; `data-theme="dark"` holds the dark ones on a device set to light. The two dark
+selectors have identical specificity, so **source order is what decides** — the explicit rule
+must come after the media query. `app/globals.css` carries the full reasoning.
+
+**The no-picker prohibition is gone.** This section used to say there was no theme picker and
+never would be, citing `SPEC.md` §9. A picker shipped, §9 carries the reversal, and the
+sentence is struck rather than left standing as an absolute the code has already broken.
 
 ### The browser's own surfaces are painted too
 

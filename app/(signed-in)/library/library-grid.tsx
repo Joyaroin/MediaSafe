@@ -58,12 +58,13 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * The reversal is what the new palette buys. Under #134's light values `--raised` was
  * `#ffffff` against a `#f6f5f3` ground — a card would have been a white box on off-white,
  * which is why that world drew its structure in lines and needed the Hairline Rule to say
- * so. Turn 9 puts `--raised` *below* the ground (`#eeede7` on `#f9f7f0`), so a card is a
- * well pressed into the sheet and reads as a distinct object with no line around it and
+ * so. The handoff puts `--raised` *below* the ground (`#eeede6` on `#f7f5ed`), so a card is
+ * a well pressed into the sheet and reads as a distinct object with no line around it and
  * no shadow under it. Same information, same measure, one fewer device drawing it.
  *
- * There is still **no shadow anywhere** — the handoff is explicit that the tone
- * difference between `--raised` and `--ground` is the only lift in the design.
+ * There is still **no shadow anywhere** — `docs/design/prototypes/mediasafe-mobile-handoff.md`
+ * is explicit in its Geometry table that the tone difference between `--raised` and
+ * `--ground` is the only lift in the design.
  *
  * ── 472 of these ─────────────────────────────────────────────────────────────────────
  *

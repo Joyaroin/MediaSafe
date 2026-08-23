@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#dedbd2;font-family:Archivo,ui-sans-serif,system-ui,sans-serif}
+a{color:#a52518;text-decoration:none}a:hover{color:#7d1c12}
+@keyframes shimmer{0%{opacity:.5}50%{opacity:.9}100%{opacity:.5}}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sweepIn{0%{transform:scaleX(0);opacity:.3}100%{transform:scaleX(1);opacity:0}}
+.sweep{position:absolute;inset:0;background:#a52518;transform:scaleX(0);transform-origin:left center;pointer-events:none;animation:sweepIn 200ms cubic-bezier(.2,.8,.2,1) forwards}
+@media (prefers-reduced-motion:reduce){.sweep{animation-duration:1ms}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.bd{padding:40px 44px 36px;border-bottom:1px solid rgba(52,52,47,.12)}
+.bh{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+.bid{font:600 10px/1 Archivo,sans-serif;letter-spacing:.06em;padding:4px 7px;background:#34342f;color:#f7f5ed;border-radius:4px}
+.bt{font:600 13px/1.3 Archivo,sans-serif;color:#34342f}
+.bs{margin:0 0 22px;font:400 12px/1.5 Archivo,sans-serif;color:#6f6d64;max-width:680px}
+.row{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.cap{font:500 10px/1.3 Archivo,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#6f6d64;margin:0 0 8px}
+.frame{position:relative;width:393px;height:852px;overflow:hidden;background:#f7f5ed;color:#34342f;border-radius:30px;box-shadow:0 2px 3px rgba(52,52,47,.08),0 24px 60px -30px rgba(52,52,47,.5)}
+.mini{position:relative;width:340px;overflow:hidden;background:#f7f5ed;color:#34342f;border-radius:22px;padding:18px 18px 20px;box-shadow:0 1px 2px rgba(52,52,47,.08)}
+.scroll{position:absolute;inset:0 0 76px;overflow:hidden}
+.well{background:#e2e0d6;display:flex;align-items:center;justify-content:center;font:500 11px/1 Archivo,sans-serif;letter-spacing:.1em;color:#a9a69b;flex:none}
+.lbl{font:600 10.5px/1.35 Archivo,sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.h1{margin:0;font-variation-settings:"wdth" 88,"wght" 700;font-size:34px;line-height:1.06;letter-spacing:-.02em}
+.tap{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .12s ease,opacity .12s ease}
+.tap:active{transform:scale(.985);opacity:.9}
+</style></helmet>
+
+<section class="bd">
+<div class="bh"><span class="bid">1</span><span class="bt">MediaSafe — mobile redesign, eight screens</span></div>
+<p class="bs">One live prototype: tap the bottom bar, the page tabs, posters, checks and rows. Swipe or drag the Up next pager horizontally. Artwork is shown as labelled wells — real TMDB stills and posters drop straight into those rectangles.</p>
+<div class="row">
+
+<div>
+<p class="cap">Interactive prototype — 393 × 852</p>
+<div class="frame">
+  <div class="scroll" style="overflow-y:auto">
+
+    <sc-if value="{{ isTonight }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 0">
+          <div style="display:flex;align-items:center;gap:10px">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;flex:none"><rect x="1" y="1" width="22" height="22" fill="none" stroke="#928f85" stroke-width="1.6"></rect><rect x="5.5" y="10.6" width="13" height="2.8" fill="#a52518"></rect></svg>
+            <span class="lbl" style="color:#929086">MediaSafe</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="tap" onClick="{{ goYou }}" style="display:inline-flex;align-items:center;height:44px;padding:0 6px;font-size:14px;color:#34342f">Adham</span>
+            <span class="tap" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-10px;color:#34342f"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><rect x="2" y="5" width="20" height="1.8" fill="currentColor"></rect><rect x="14" y="2.2" width="3.2" height="7.4" fill="currentColor"></rect><rect x="2" y="11.1" width="20" height="1.8" fill="currentColor"></rect><rect x="6" y="8.3" width="3.2" height="7.4" fill="currentColor"></rect><rect x="2" y="17.2" width="20" height="1.8" fill="currentColor"></rect><rect x="16" y="14.4" width="3.2" height="7.4" fill="currentColor"></rect></svg></span>
+          </div>
+        </header>
+        <div style="padding:12px 20px 0"><h1 class="h1">Tonight</h1></div>
+        <div role="tablist" style="display:flex;gap:26px;padding:18px 20px 0;position:relative">
+          <span class="tap lbl" onClick="{{ goUpNext }}" style="padding-bottom:11px;color:{{ upNextTabColor }}">Up next</span>
+          <span class="tap lbl" onClick="{{ goUpcoming }}" style="padding-bottom:11px;color:{{ upcomingTabColor }}">Upcoming</span>
+          <span style="position:absolute;left:20px;bottom:0;width:100%;max-width:353px;height:1px;background:#d7d4c8"></span>
+          <span style="position:absolute;bottom:0;height:2px;background:#a52518;transition:transform .26s cubic-bezier(.2,.8,.2,1),width .26s cubic-bezier(.2,.8,.2,1);width:{{ tabW }};transform:{{ tabX }}"></span>
+        </div>
+      </div>
+      <div onPointerDown="{{ swipeStart }}" onPointerUp="{{ swipeEnd }}" style="overflow:hidden;touch-action:pan-y">
+        <div style="display:flex;width:200%;transition:transform .32s cubic-bezier(.2,.8,.2,1);transform:{{ pagerX }}">
+
+          <div style="width:50%;flex:none">
+            <section style="padding:22px 0 0">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 20px 12px">
+                <h2 class="lbl" style="margin:0;color:#a52518">Next episodes</h2>
+                <span class="tap" style="font:500 14px/1 Archivo,sans-serif;color:#a52518">More</span>
+              </div>
+              <ol style="display:flex;gap:12px;margin:0;padding:0 20px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory">
+                <sc-for list="{{ nextEpisodes }}" as="c" hint-placeholder-count="3">
+                  <li style="position:relative;width:262px;flex:none;scroll-snap-align:start;border-radius:16px;background:#eeede6;overflow:hidden;animation:rise .3s ease both">
+                    <sc-if value="{{ c.marking }}" hint-placeholder-val="{{ false }}">
+                      <span class="sweep"></span>
+                    </sc-if>
+                    <div class="tap" onClick="{{ c.open }}">
+                      <div class="well" style="aspect-ratio:16/9;width:100%">{{ c.stillLabel }}</div>
+                      <div style="padding:12px 14px 4px">
+                        <p class="lbl" style="margin:0;color:#929086">{{ c.series }}</p>
+                        <p style="margin:7px 0 0;display:flex;align-items:baseline;gap:8px"><span style="font-variation-settings:'wdth' 95,'wght' 700;font-size:17px;letter-spacing:-.01em">{{ c.code }}</span><span style="font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ c.remaining }}</span></p>
+                        <p style="margin:4px 0 0;font-size:14px;line-height:1.3;color:#34342f;text-wrap:pretty">{{ c.title }}</p>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px 8px 14px">
+                      <span style="font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ c.meta }}</span>
+                      <span class="tap" role="checkbox" onClick="{{ c.toggle }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px">
+                        <span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:1.5px solid #a52518;background:{{ c.checkBg }};color:{{ c.checkInk }};transition:background .18s ease">
+                          <svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg>
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                </sc-for>
+              </ol>
+            </section>
+            <section style="padding:28px 0 0">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 20px 12px">
+                <h2 class="lbl" style="margin:0;color:#a52518">Movies to watch</h2>
+                <span class="tap" style="font:500 14px/1 Archivo,sans-serif;color:#a52518">More</span>
+              </div>
+              <ol style="display:flex;gap:12px;margin:0;padding:0 20px;list-style:none;overflow-x:auto;scroll-snap-type:x mandatory">
+                <sc-for list="{{ films }}" as="f" hint-placeholder-count="3">
+                  <li style="width:132px;flex:none;scroll-snap-align:start">
+                    <div class="tap" onClick="{{ f.open }}">
+                      <div class="well" style="aspect-ratio:2/3;border-radius:12px;overflow:hidden">{{ f.posterLabel }}</div>
+                      <p style="margin:9px 0 0;font-size:14px;line-height:1.25;font-weight:500;text-wrap:pretty">{{ f.title }}</p>
+                      <p style="margin:3px 0 0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ f.meta }}</p>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+                      <span class="lbl" style="color:#929086;font-size:9.5px">{{ f.provider }}</span>
+                      <span class="tap" role="checkbox" onClick="{{ f.toggle }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-10px">
+                        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1.5px solid #a52518;background:{{ f.checkBg }};color:{{ f.checkInk }};transition:background .18s ease">
+                          <svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg>
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                </sc-for>
+              </ol>
+            </section>
+            <div style="height:34px"></div>
+          </div>
+
+          <div style="width:50%;flex:none">
+            <section style="padding:22px 0 0">
+              <h2 class="lbl" style="margin:0;padding:0 20px 4px;color:#a52518">Upcoming episodes</h2>
+              <sc-for list="{{ upcomingGroups }}" as="g" hint-placeholder-count="3">
+                <div style="padding:16px 20px 0">
+                  <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#34342f">{{ g.label }}</p>
+                  <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px">
+                    <sc-for list="{{ g.items }}" as="u" hint-placeholder-count="2">
+                      <li class="tap" onClick="{{ u.open }}" style="display:flex;gap:12px;padding:10px;border-radius:14px;background:#eeede6">
+                        <div class="well" style="width:84px;aspect-ratio:16/9;border-radius:9px;overflow:hidden;font-size:9px">{{ u.stillLabel }}</div>
+                        <div style="min-width:0;flex:1">
+                          <p class="lbl" style="margin:0;color:#929086;font-size:9.5px">{{ u.series }}</p>
+                          <p style="margin:5px 0 0;font-size:14px;font-weight:500;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.code }} · {{ u.title }}</p>
+                          <p style="margin:4px 0 0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ u.when }}</p>
+                        </div>
+                      </li>
+                    </sc-for>
+                  </ul>
+                </div>
+              </sc-for>
+            </section>
+            <section style="padding:26px 0 0">
+              <h2 class="lbl" style="margin:0;padding:0 20px 12px;color:#a52518">Upcoming movies</h2>
+              <ol style="display:flex;gap:12px;margin:0;padding:0 20px;list-style:none;overflow-x:auto">
+                <sc-for list="{{ upcomingFilms }}" as="f" hint-placeholder-count="3">
+                  <li style="width:138px;flex:none">
+                    <div class="well" style="aspect-ratio:2/3;border-radius:12px;overflow:hidden">{{ f.posterLabel }}</div>
+                    <p style="margin:9px 0 0;font-size:14px;font-weight:500;line-height:1.25;text-wrap:pretty">{{ f.title }}</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#929086">{{ f.release }}</p>
+                    <span class="lbl" style="display:inline-block;margin-top:7px;padding:3px 7px;border-radius:5px;background:#e2e0d6;color:#6f6d64;font-size:9px">{{ f.kind }}</span>
+                    <p style="margin:6px 0 0;font-size:12px;color:#a52518;font-variant-numeric:tabular-nums">{{ f.countdown }}</p>
+                  </li>
+                </sc-for>
+              </ol>
+            </section>
+            <div style="height:34px"></div>
+          </div>
+
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:20px 20px 0">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <svg viewBox="0 0 24 24" style="width:17px;height:17px;flex:none"><rect x="1" y="1" width="22" height="22" fill="none" stroke="#928f85" stroke-width="1.6"></rect><rect x="5.5" y="10.6" width="13" height="2.8" fill="#a52518"></rect></svg>
+            <span class="lbl" style="color:#929086">MediaSafe</span>
+          </div>
+          <span class="tap" onClick="{{ goYou }}" style="font-size:14px">Adham</span>
+        </div>
+        <h1 class="h1" style="margin-top:16px">Search</h1>
+        <p style="margin:10px 0 0;font-size:14px;line-height:1.5;color:#6f6d64;text-wrap:pretty">The catalogue of everything there is. Your own library is somewhere else.</p>
+        <label style="display:flex;align-items:center;gap:10px;height:48px;margin-top:16px;padding:0 14px;border-radius:12px;background:#eeede6;border:1px solid #d7d4c8">
+          <svg viewBox="0 0 24 24" style="width:15px;height:15px;flex:none;color:#929086"><rect x="2" y="5" width="20" height="2.2" fill="currentColor"></rect><rect x="5" y="10.9" width="14" height="2.2" fill="currentColor"></rect><rect x="9" y="16.8" width="6" height="2.2" fill="currentColor"></rect></svg>
+          <input value="{{ q }}" onChange="{{ setQ }}" placeholder="Search the catalogue" style="flex:1;border:0;background:none;outline:none;font:400 15px Archivo,sans-serif;color:#34342f"></input>
+        </label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <span class="lbl" style="color:#929086;font-size:9.5px">Recent</span>
+          <sc-for list="{{ recents }}" as="r" hint-placeholder-count="3">
+            <span class="tap" onClick="{{ r.pick }}" style="display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:16px;background:#eeede6;font-size:13px;color:#6f6d64">{{ r.label }}</span>
+          </sc-for>
+        </div>
+        <ul style="margin:18px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <li style="display:flex;gap:12px;padding:12px;border-radius:16px;background:#eeede6;animation:rise .28s ease both">
+              <div class="tap well" onClick="{{ r.open }}" style="width:54px;aspect-ratio:2/3;border-radius:9px;overflow:hidden;font-size:9px">{{ r.posterLabel }}</div>
+              <div style="min-width:0;flex:1">
+                <p class="lbl" style="margin:0;color:#a52518;font-size:9.5px">{{ r.kind }}</p>
+                <p class="tap" onClick="{{ r.open }}" style="margin:5px 0 0;font-size:16px;font-weight:600;line-height:1.2;letter-spacing:-.012em;text-wrap:pretty">{{ r.title }}</p>
+                <p style="margin:3px 0 0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ r.meta }}</p>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <sc-if value="{{ r.inLibrary }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:12px;color:#929086">In your library</span>
+                  </sc-if>
+                  <sc-if value="{{ r.addable }}" hint-placeholder-val="{{ true }}">
+                    <span class="tap" onClick="{{ r.add }}" style="display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:17px;background:#a52518;color:#f7f5ed;font-size:13px;font-weight:600">Add to library</span>
+                  </sc-if>
+                  <sc-if value="{{ r.addable }}" hint-placeholder-val="{{ true }}">
+                    <span class="tap" onClick="{{ r.watchlist }}" style="display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:17px;border:1px solid #a52518;color:#a52518;font-size:13px;font-weight:500">Watchlist</span>
+                  </sc-if>
+                </div>
+              </div>
+            </li>
+          </sc-for>
+        </ul>
+        <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:38px 6px 0;text-align:center">
+            <p style="margin:0;font-size:16px;font-weight:600">Nothing by that name</p>
+            <p style="margin:8px 0 0;font-size:14px;color:#929086">Try fewer words, or the original title.</p>
+          </div>
+        </sc-if>
+        <p style="margin:26px 0 0;padding-top:14px;border-top:1px solid #d7d4c8;font-size:11px;line-height:1.5;color:#929086">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+        <div style="height:24px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="padding:20px 20px 0">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between">
+            <h1 class="h1">The library</h1>
+            <div style="display:flex;gap:2px;padding-bottom:4px">
+              <span class="tap" onClick="{{ setViewList }}" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:{{ listBtnBg }};color:{{ listBtnInk }}"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><rect x="3" y="4" width="18" height="2.6" fill="currentColor"></rect><rect x="3" y="10.7" width="18" height="2.6" fill="currentColor"></rect><rect x="3" y="17.4" width="18" height="2.6" fill="currentColor"></rect></svg></span>
+              <span class="tap" onClick="{{ setViewGrid }}" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:{{ gridBtnBg }};color:{{ gridBtnInk }}"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><rect x="3" y="3" width="8" height="8" fill="currentColor"></rect><rect x="13" y="3" width="8" height="8" fill="currentColor"></rect><rect x="3" y="13" width="8" height="8" fill="currentColor"></rect><rect x="13" y="13" width="8" height="8" fill="currentColor"></rect></svg></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:14px;padding:3px;border-radius:12px;background:#eeede6;width:max-content">
+            <span class="tap" onClick="{{ setTitles }}" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:9px;font-size:13px;font-weight:500;background:{{ titlesBg }};color:{{ titlesInk }}">Titles</span>
+            <span class="tap" onClick="{{ setLists }}" style="display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:9px;font-size:13px;font-weight:500;background:{{ listsBg }};color:{{ listsInk }}">Lists</span>
+          </div>
+        </div>
+        <sc-if value="{{ libTitles }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex;gap:8px;margin-top:14px;padding:0 20px;overflow-x:auto">
+              <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+                <span class="tap" onClick="{{ f.pick }}" style="flex:none;display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:17px;font-size:13px;font-weight:500;background:{{ f.bg }};color:{{ f.ink }}">{{ f.label }}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:8px;padding:12px 20px 0">
+              <label style="display:flex;align-items:center;gap:9px;flex:1;height:42px;padding:0 13px;border-radius:12px;background:#eeede6;border:1px solid #d7d4c8">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;flex:none;color:#929086"><rect x="2" y="5" width="20" height="2.2" fill="currentColor"></rect><rect x="5" y="10.9" width="14" height="2.2" fill="currentColor"></rect><rect x="9" y="16.8" width="6" height="2.2" fill="currentColor"></rect></svg>
+                <span style="font-size:14px;color:#929086">Filter your library</span>
+              </label>
+              <span class="tap" style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 13px;border-radius:12px;background:#eeede6;border:1px solid #d7d4c8;font-size:14px;color:#6f6d64">Title A–Z<svg viewBox="0 0 12 8" style="width:9px;height:6px;color:#a52518"><polygon points="0,0 12,0 6,8" fill="currentColor"></polygon></svg></span>
+            </div>
+            <sc-if value="{{ libList }}" hint-placeholder-val="{{ true }}">
+              <ol style="margin:16px 0 0;padding:0 20px;list-style:none;display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ libraryRows }}" as="e" hint-placeholder-count="5">
+                  <li class="tap" onClick="{{ e.open }}" style="display:flex;gap:13px;padding:13px;border-radius:18px;background:#eeede6;animation:rise .3s ease both">
+                    <div class="well" style="width:62px;aspect-ratio:2/3;border-radius:10px;overflow:hidden;opacity:{{ e.posterOpacity }};font-size:9px">{{ e.posterLabel }}</div>
+                    <div style="min-width:0;flex:1">
+                      <p style="margin:0;font-size:16px;font-weight:600;line-height:1.2;letter-spacing:-.012em;text-wrap:pretty">{{ e.title }}</p>
+                      <p style="margin:4px 0 0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ e.year }}</p>
+                      <p class="lbl" style="margin:9px 0 0;font-size:9.5px;color:{{ e.stateInk }}">{{ e.state }}</p>
+                      <p style="margin:5px 0 0;font-size:13px;color:#6f6d64;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.next }}</p>
+                      <div style="margin-top:9px;height:3px;border-radius:2px;background:#ded9cc;overflow:hidden">
+                        <div style="height:100%;background:#a52518;transition:width .4s cubic-bezier(.2,.8,.2,1);width:{{ e.pct }}"></div>
+                      </div>
+                    </div>
+                  </li>
+                </sc-for>
+              </ol>
+            </sc-if>
+            <sc-if value="{{ libGrid }}" hint-placeholder-val="{{ false }}">
+              <ol style="margin:16px 0 0;padding:0 20px;list-style:none;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+                <sc-for list="{{ libraryRows }}" as="e" hint-placeholder-count="6">
+                  <li class="tap" onClick="{{ e.open }}">
+                    <div class="well" style="aspect-ratio:2/3;border-radius:11px;overflow:hidden;opacity:{{ e.posterOpacity }};font-size:9px">{{ e.posterLabel }}</div>
+                    <p style="margin:7px 0 0;font-size:12.5px;font-weight:500;line-height:1.25;text-wrap:pretty">{{ e.title }}</p>
+                    <div style="margin-top:6px;height:3px;border-radius:2px;background:#ded9cc;overflow:hidden"><div style="height:100%;background:#a52518;width:{{ e.pct }}"></div></div>
+                  </li>
+                </sc-for>
+              </ol>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ libLists }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:16px 20px 0">
+            <div style="display:flex;align-items:center;gap:9px">
+              <div style="flex:1;display:flex;align-items:center;height:44px;padding:0 13px;border-radius:12px;background:#eeede6;border:1px solid #d7d4c8;font-size:15px;color:#929086">Name a new list</div>
+              <span class="tap" style="display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:22px;background:#a52518;color:#f7f5ed;font-size:14px;font-weight:600">New list</span>
+            </div>
+            <ul style="margin:16px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ lists }}" as="l" hint-placeholder-count="3">
+                <li style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:12px 14px;border-radius:16px;background:#eeede6">
+                  <div style="min-width:0">
+                    <p style="margin:0;font-size:16px;font-weight:500">{{ l.name }}</p>
+                    <p style="margin:3px 0 0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ l.count }}</p>
+                  </div>
+                  <span class="tap" style="flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:44px;font-size:13px;color:#a52518">Delete</span>
+                </li>
+              </sc-for>
+            </ul>
+          </div>
+        </sc-if>
+        <div style="height:30px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isYou }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="position:relative">
+          <div class="well" style="height:206px;width:100%;background:#3a3831;color:#7d7a70">BACKDROP · PEAKY BLINDERS</div>
+          <div style="position:absolute;inset:0;background:linear-gradient(rgba(20,19,17,.15),rgba(20,19,17,.72))"></div>
+          <span class="tap" style="position:absolute;top:12px;left:12px;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:rgba(247,245,237,.92);color:#34342f"><svg viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6zm0 19a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3z" fill="currentColor"></path></svg></span>
+          <span class="tap" style="position:absolute;top:12px;right:12px;display:flex;align-items:center;justify-content:center;width:44px;height:44px;color:#f7f5ed;font-size:20px;letter-spacing:2px">···</span>
+          <div style="position:absolute;left:20px;bottom:-34px;display:flex;align-items:flex-end;gap:13px">
+            <div class="well" style="width:84px;height:84px;border-radius:50%;border:3px solid #f7f5ed;background:#d7d4c8;color:#8b887e;font-size:20px;letter-spacing:0">A</div>
+            <div style="padding-bottom:38px">
+              <p style="margin:0;font-variation-settings:'wdth' 92,'wght' 700;font-size:22px;color:#f7f5ed">Adham</p>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;padding:12px 20px 0">
+          <span class="tap" style="display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:18px;border:1px solid #34342f;font-size:13px;font-weight:500">Edit profile</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:14px;border-top:1px solid #d7d4c8;border-bottom:1px solid #d7d4c8">
+          <sc-for list="{{ counters }}" as="c" hint-placeholder-count="3">
+            <div class="tap" style="padding:14px 0;text-align:center;border-left:1px solid {{ c.divider }}">
+              <p style="margin:0;font-variation-settings:'wdth' 95,'wght' 700;font-size:20px;font-variant-numeric:tabular-nums">{{ c.value }}</p>
+              <p style="margin:3px 0 0;font-size:12px;color:#929086">{{ c.label }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <section style="padding:22px 0 0">
+          <div class="tap" style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 12px">
+            <h2 style="margin:0;font-variation-settings:'wdth' 90,'wght' 700;font-size:22px">Stats</h2>
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;color:#929086"><path d="M8 4l9 8-9 8" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
+          </div>
+          <ol style="display:flex;gap:10px;margin:0;padding:0 20px;list-style:none;overflow-x:auto">
+            <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+              <li style="flex:none;width:200px;border-radius:16px;background:#eeede6;overflow:hidden">
+                <p class="lbl" style="margin:0;padding:12px 14px;border-bottom:1px solid #d7d4c8;color:#6f6d64;font-size:9.5px">{{ s.label }}</p>
+                <div style="display:flex;gap:14px;padding:14px">
+                  <sc-for list="{{ s.parts }}" as="p" hint-placeholder-count="2">
+                    <div>
+                      <p style="margin:0;font-variation-settings:'wdth' 92,'wght' 700;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">{{ p.n }}</p>
+                      <p class="lbl" style="margin:5px 0 0;color:#929086;font-size:9px">{{ p.unit }}</p>
+                    </div>
+                  </sc-for>
+                </div>
+              </li>
+            </sc-for>
+          </ol>
+        </section>
+        <section style="padding:24px 0 0">
+          <div class="tap" style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 12px">
+            <h2 style="margin:0;font-variation-settings:'wdth' 90,'wght' 700;font-size:22px">Lists</h2>
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;color:#929086"><path d="M8 4l9 8-9 8" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
+          </div>
+          <div style="padding:0 20px">
+            <div style="display:flex;gap:2px;border-radius:14px;overflow:hidden">
+              <sc-for list="{{ collage }}" as="c" hint-placeholder-count="4">
+                <div class="well" style="flex:1;aspect-ratio:2/3;font-size:9px">{{ c.label }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:10px">
+              <p style="margin:0;font-size:15px;font-weight:500">Anime</p>
+              <p style="margin:0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">9 titles</p>
+            </div>
+            <div style="display:flex;justify-content:center;gap:6px;margin-top:12px">
+              <sc-for list="{{ dots }}" as="d" hint-placeholder-count="4">
+                <span style="width:6px;height:6px;border-radius:50%;background:{{ d.bg }}"></span>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+        <section style="padding:22px 0 0">
+          <div class="tap" style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 12px">
+            <h2 style="margin:0;font-variation-settings:'wdth' 90,'wght' 700;font-size:22px">Shows</h2>
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;color:#929086"><path d="M8 4l9 8-9 8" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
+          </div>
+          <ol style="display:flex;gap:10px;margin:0;padding:0 20px;list-style:none;overflow-x:auto">
+            <sc-for list="{{ showPosters }}" as="p" hint-placeholder-count="4">
+              <li class="tap well" onClick="{{ p.open }}" style="flex:none;width:96px;aspect-ratio:2/3;border-radius:11px;overflow:hidden;font-size:9px">{{ p.label }}</li>
+            </sc-for>
+          </ol>
+        </section>
+        <section style="padding:22px 0 0">
+          <div class="tap" style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 12px">
+            <h2 style="margin:0;font-variation-settings:'wdth' 90,'wght' 700;font-size:22px">Movies</h2>
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;color:#929086"><path d="M8 4l9 8-9 8" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
+          </div>
+          <ol style="display:flex;gap:10px;margin:0;padding:0 20px;list-style:none;overflow-x:auto">
+            <sc-for list="{{ films }}" as="f" hint-placeholder-count="4">
+              <li class="tap well" onClick="{{ f.open }}" style="flex:none;width:96px;aspect-ratio:2/3;border-radius:11px;overflow:hidden;font-size:9px">{{ f.posterLabel }}</li>
+            </sc-for>
+          </ol>
+        </section>
+        <div style="height:30px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isShow }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 10px 0">
+          <span class="tap" onClick="{{ back }}" style="display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 10px;font-size:14px;font-weight:500"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2"></path></svg>Back</span>
+          <span class="tap" onClick="{{ toggleMenu }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;font-size:19px;letter-spacing:2px">···</span>
+        </div>
+        <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="margin:0 20px;padding:6px;border-radius:14px;background:#eeede6;border:1px solid #d7d4c8">
+            <p class="tap" style="margin:0;padding:11px 12px;font-size:14px">Add to list</p>
+            <p class="tap" style="margin:0;padding:11px 12px;font-size:14px">Mark abandoned</p>
+            <p class="tap" style="margin:0;padding:11px 12px;font-size:14px;color:#a52518">Remove from library</p>
+          </div>
+        </sc-if>
+        <div style="padding:8px 20px 0">
+          <div class="well" style="width:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden">{{ detail.backdropLabel }}</div>
+          <div style="display:flex;gap:14px;margin-top:-40px;padding:0 4px">
+            <div class="well" style="width:88px;aspect-ratio:2/3;border-radius:12px;overflow:hidden;border:3px solid #f7f5ed;font-size:9px">{{ detail.posterLabel }}</div>
+            <div style="padding-top:46px;min-width:0">
+              <p class="lbl" style="margin:0;color:#a52518;font-size:9.5px">{{ detail.kind }}</p>
+              <h1 style="margin:6px 0 0;font-variation-settings:'wdth' 88,'wght' 700;font-size:26px;line-height:1.1;letter-spacing:-.02em;text-wrap:pretty">{{ detail.title }}</h1>
+            </div>
+          </div>
+          <p style="margin:12px 0 0;font-size:13px;color:#929086;font-variant-numeric:tabular-nums">{{ detail.meta }}</p>
+          <p class="lbl" style="margin:10px 0 0;font-size:9.5px;color:{{ detail.stateInk }}">{{ detail.stateLabel }}</p>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#54534a;text-wrap:pretty">{{ detail.synopsis }}</p>
+          <sc-if value="{{ detail.synMore }}" hint-placeholder-val="{{ true }}">
+            <span class="tap" onClick="{{ toggleSyn }}" style="display:inline-block;margin-top:6px;font-size:13px;font-weight:500;color:#a52518">{{ synLabel }}</span>
+          </sc-if>
+          <sc-if value="{{ detail.rating }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:10px;margin-top:16px">
+              <div style="display:flex;gap:4px">
+                <sc-for list="{{ ratingMarks }}" as="m" hint-placeholder-count="5">
+                  <span class="tap" onClick="{{ m.set }}" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:44px;color:{{ m.ink }}"><svg viewBox="0 0 24 24" style="width:17px;height:17px"><rect x="3" y="3" width="18" height="18" fill="currentColor"></rect></svg></span>
+                </sc-for>
+              </div>
+              <span style="font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ ratingText }}</span>
+            </div>
+          </sc-if>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <span class="tap" style="display:inline-flex;align-items:center;height:40px;padding:0 16px;border:1px solid #d7d4c8;border-radius:20px;color:#34342f;font-size:13.5px;font-weight:500">{{ detail.primaryLabel }}</span>
+            <sc-if value="{{ detail.unowned }}" hint-placeholder-val="{{ false }}">
+              <span class="tap" style="display:inline-flex;align-items:center;height:40px;padding:0 16px;border:1px solid #d7d4c8;border-radius:20px;color:#929086;font-size:13.5px;font-weight:500">{{ detail.secondaryLabel }}</span>
+            </sc-if>
+          </div>
+          <sc-if value="{{ detail.isFilm }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding:8px 0;border-top:1px solid #e4e1d6;border-bottom:1px solid #e4e1d6">
+              <span style="flex:1;font-size:14.5px;font-weight:500;color:{{ detail.filmNameInk }}">{{ detail.title }}</span>
+              <span class="tap" onClick="{{ detail.toggleFilm }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-10px"><span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1.5px solid #a52518;background:{{ detail.filmCheckBg }};color:{{ detail.filmCheckInk }};transition:background .18s ease"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg></span></span>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ detail.isSeries }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <section style="padding:24px 20px 0">
+              <h2 class="lbl" style="margin:0 0 10px;color:#a52518;font-size:9.5px">Next up</h2>
+              <div style="position:relative;border-radius:18px;background:#eeede6;overflow:hidden">
+                <sc-if value="{{ detail.nextMarking }}" hint-placeholder-val="{{ false }}">
+                  <span class="sweep"></span>
+                </sc-if>
+                <div class="tap" onClick="{{ detail.openNext }}">
+                  <div class="well" style="aspect-ratio:16/9;width:100%">{{ detail.nextStill }}</div>
+                  <div style="padding:13px 14px 0">
+                    <p style="margin:0;display:flex;align-items:baseline;gap:9px"><span style="font-variation-settings:'wdth' 95,'wght' 700;font-size:17px">{{ detail.nextCode }}</span><span style="font-size:12px;color:#929086">{{ detail.nextMeta }}</span></p>
+                    <p style="margin:5px 0 0;font-size:15px;font-weight:500">{{ detail.nextTitle }}</p>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px 14px">
+                  <span class="tap" onClick="{{ detail.openNext }}" style="font-size:13px;color:#a52518">Episode details</span>
+                  <span class="tap" onClick="{{ detail.toggleNext }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px">
+                    <span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:1.5px solid #a52518;background:{{ detail.nextCheckBg }};color:{{ detail.nextCheckInk }}"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg></span>
+                  </span>
+                </div>
+              </div>
+            </section>
+            <section style="padding:22px 20px 0">
+              <div style="display:flex;align-items:baseline;justify-content:space-between">
+                <h2 class="lbl" style="margin:0;color:#929086;font-size:9.5px">Progress</h2>
+                <p style="margin:0;font-size:13px;color:#6f6d64;font-variant-numeric:tabular-nums">{{ detail.progressText }}</p>
+              </div>
+              <div style="margin-top:9px;height:4px;border-radius:2px;background:#ded9cc;overflow:hidden"><div style="height:100%;background:#a52518;transition:width .45s cubic-bezier(.2,.8,.2,1);width:{{ detail.pct }}"></div></div>
+            </section>
+            <section style="padding:24px 0 0">
+              <h2 class="lbl" style="margin:0;padding:0 20px 12px;color:#929086;font-size:9.5px">Episodes</h2>
+              <div style="display:flex;gap:8px;padding:0 20px;overflow-x:auto">
+                <sc-for list="{{ detail.seasons }}" as="s" hint-placeholder-count="3">
+                  <span class="tap" onClick="{{ s.pick }}" style="flex:none;display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:18px;font-size:13px;font-weight:500;background:{{ s.bg }};color:{{ s.ink }}">{{ s.label }}</span>
+                </sc-for>
+              </div>
+              <ul style="margin:14px 0 0;padding:0 20px;list-style:none;display:flex;flex-direction:column;gap:2px">
+                <sc-for list="{{ detail.episodes }}" as="ep" hint-placeholder-count="6">
+                  <li style="position:relative;display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #e4e1d6;opacity:{{ ep.opacity }}">
+                    <sc-if value="{{ ep.marking }}" hint-placeholder-val="{{ false }}">
+                      <span class="sweep"></span>
+                    </sc-if>
+                    <span class="lbl" style="width:30px;flex:none;font-size:9.5px;color:#929086;font-variant-numeric:tabular-nums">{{ ep.num }}</span>
+                    <div class="tap" onClick="{{ ep.open }}" style="min-width:0;flex:1">
+                      <p style="margin:0;font-size:14.5px;font-weight:500;line-height:1.25;color:{{ ep.nameInk }};text-wrap:pretty">{{ ep.title }}</p>
+                      <p style="margin:3px 0 0;font-size:12px;color:#929086;font-variant-numeric:tabular-nums">{{ ep.meta }}</p>
+                    </div>
+                    <sc-if value="{{ ep.released }}" hint-placeholder-val="{{ true }}">
+                      <span class="tap" onClick="{{ ep.toggle }}" style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-10px">
+                        <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1.5px solid #a52518;background:{{ ep.checkBg }};color:{{ ep.checkInk }}"><svg viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg></span>
+                      </span>
+                    </sc-if>
+                    <sc-if value="{{ ep.unreleased }}" hint-placeholder-val="{{ false }}">
+                      <span class="lbl" style="flex:none;font-size:9px;color:#a9a69b">Not out</span>
+                    </sc-if>
+                  </li>
+                </sc-for>
+              </ul>
+            </section>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ detail.isFilm }}" hint-placeholder-val="{{ false }}">
+          <section style="padding:24px 20px 0">
+            <h2 class="lbl" style="margin:0 0 10px;color:#929086;font-size:9.5px">Release</h2>
+            <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ detail.releaseRows }}" as="r" hint-placeholder-count="3">
+                <li style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:#929086">{{ r.k }}</span><span>{{ r.v }}</span></li>
+              </sc-for>
+            </ul>
+          </section>
+        </sc-if>
+
+        <section style="padding:24px 20px 0">
+          <h2 class="lbl" style="margin:0 0 10px;color:#929086;font-size:9.5px">Where to watch</h2>
+          <div style="display:flex;gap:8px;overflow-x:auto">
+            <sc-for list="{{ providers }}" as="p" hint-placeholder-count="3">
+              <div style="flex:none;display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:14px;background:#eeede6">
+                <div class="well" style="width:32px;height:32px;border-radius:8px;font-size:9px">{{ p.mark }}</div>
+                <div><p style="margin:0;font-size:13.5px;font-weight:500">{{ p.name }}</p><p style="margin:2px 0 0;font-size:11.5px;color:#929086">{{ p.kind }}</p></div>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin:10px 0 0;font-size:12px;color:#929086">Data by JustWatch · <a href="#1a">View on TMDB</a></p>
+        </section>
+        <section style="padding:24px 0 0">
+          <h2 class="lbl" style="margin:0;padding:0 20px 12px;color:#929086;font-size:9.5px">Cast &amp; crew</h2>
+          <sc-if value="{{ noCast }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;padding:0 20px;font-size:13.5px;color:#929086">No cast listed for this title yet.</p>
+          </sc-if>
+          <ol style="display:flex;gap:11px;margin:0;padding:0 20px;list-style:none;overflow-x:auto">
+            <sc-for list="{{ cast }}" as="c" hint-placeholder-count="4">
+              <li style="flex:none;width:92px">
+                <div class="well" style="aspect-ratio:1;border-radius:12px;overflow:hidden;font-size:14px;letter-spacing:0">{{ c.initials }}</div>
+                <p style="margin:7px 0 0;font-size:13px;font-weight:500;line-height:1.2">{{ c.name }}</p>
+                <p style="margin:2px 0 0;font-size:11.5px;color:#929086;line-height:1.25">{{ c.role }}</p>
+              </li>
+            </sc-for>
+          </ol>
+        </section>
+        <p style="margin:24px 20px 0;padding-top:14px;border-top:1px solid #d7d4c8;font-size:11px;line-height:1.5;color:#929086">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+        <div style="height:34px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isEpisode }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 10px 0">
+          <span class="tap" onClick="{{ ep.toShow }}" style="display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 10px;font-size:14px;font-weight:500"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2"></path></svg>{{ ep.backLabel }}</span>
+        </div>
+        <div style="padding:8px 20px 0">
+          <div class="well" style="width:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden">{{ ep.stillLabel }}</div>
+          <p class="lbl" style="margin:16px 0 0;color:#929086;font-size:9.5px">{{ ep.series }}</p>
+          <p class="lbl" style="margin:8px 0 0;color:#a52518;font-size:9.5px">{{ ep.code }}</p>
+          <h1 style="margin:8px 0 0;font-variation-settings:'wdth' 88,'wght' 700;font-size:28px;line-height:1.1;letter-spacing:-.02em;text-wrap:pretty">{{ ep.title }}</h1>
+          <p style="margin:10px 0 0;font-size:13px;color:#929086;font-variant-numeric:tabular-nums">{{ ep.meta }}</p>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#54534a;text-wrap:pretty">{{ ep.synopsis }}</p>
+          <sc-if value="{{ ep.synMore }}" hint-placeholder-val="{{ false }}">
+            <span class="tap" onClick="{{ toggleSyn }}" style="display:inline-block;margin-top:6px;font-size:13px;font-weight:500;color:#a52518">{{ synLabel }}</span>
+          </sc-if>
+          <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+            <span class="tap" onClick="{{ ep.toggle }}" style="display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:22px;background:{{ ep.markBg }};color:{{ ep.markInk }};border:1px solid #a52518;font-size:14px;font-weight:600">{{ ep.markLabel }}</span>
+            <span class="tap" onClick="{{ openSheet }}" style="display:inline-flex;align-items:center;height:44px;padding:0 16px;border-radius:22px;border:1px solid #d7d4c8;font-size:14px;font-weight:500;color:#34342f">Watched up to here</span>
+          </div>
+        </div>
+        <section style="padding:24px 20px 0">
+          <h2 class="lbl" style="margin:0 0 10px;color:#929086;font-size:9.5px">Where to watch</h2>
+          <div style="display:flex;gap:8px;overflow-x:auto">
+            <sc-for list="{{ providers }}" as="p" hint-placeholder-count="2">
+              <div style="flex:none;display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:14px;background:#eeede6">
+                <div class="well" style="width:32px;height:32px;border-radius:8px;font-size:9px">{{ p.mark }}</div>
+                <div><p style="margin:0;font-size:13.5px;font-weight:500">{{ p.name }}</p><p style="margin:2px 0 0;font-size:11.5px;color:#929086">{{ p.kind }}</p></div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <section style="padding:24px 0 0">
+          <h2 class="lbl" style="margin:0;padding:0 20px 12px;color:#929086;font-size:9.5px">Episode cast</h2>
+          <sc-if value="{{ noCast }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;padding:0 20px;font-size:13.5px;color:#929086">No cast listed for this episode yet.</p>
+          </sc-if>
+          <ol style="display:flex;gap:11px;margin:0;padding:0 20px;list-style:none;overflow-x:auto">
+            <sc-for list="{{ cast }}" as="c" hint-placeholder-count="3">
+              <li style="flex:none;width:92px">
+                <div class="well" style="aspect-ratio:1;border-radius:12px;overflow:hidden;font-size:14px;letter-spacing:0">{{ c.initials }}</div>
+                <p style="margin:7px 0 0;font-size:13px;font-weight:500;line-height:1.2">{{ c.name }}</p>
+                <p style="margin:2px 0 0;font-size:11.5px;color:#929086;line-height:1.25">{{ c.role }}</p>
+              </li>
+            </sc-for>
+          </ol>
+        </section>
+        <div style="display:flex;gap:9px;padding:24px 20px 0">
+          <span class="tap" onClick="{{ ep.prev }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:46px;border-radius:14px;background:#eeede6;font-size:13.5px;font-weight:500">Previous</span>
+          <span class="tap" onClick="{{ ep.next }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:46px;border-radius:14px;background:#eeede6;font-size:13.5px;font-weight:500">Next episode</span>
+        </div>
+        <div style="height:34px"></div>
+      </div>
+    </sc-if>
+
+  </div>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:14px;right:14px;bottom:88px;z-index:6;display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:14px;background:#34342f;color:#f7f5ed;box-shadow:0 12px 30px -14px rgba(52,52,47,.7)">
+      <span style="flex:1;font-size:13px;line-height:1.35">{{ toastText }}</span>
+      <span class="tap" onClick="{{ retry }}" style="font-size:13px;font-weight:600;color:#f0bfb8">Retry</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;justify-content:flex-end;background:rgba(30,29,26,.4)">
+      <div class="tap" onClick="{{ closeSheet }}" style="flex:1;min-height:0"></div>
+      <div style="flex:none;border-radius:22px 22px 0 0;background:#f7f5ed;padding:20px 20px 18px;animation:rise .22s ease both">
+        <p style="margin:0;font-variation-settings:'wdth' 92,'wght' 700;font-size:20px">Watched up to here?</p>
+        <p style="margin:9px 0 0;font-size:14px;line-height:1.5;color:#6f6d64">{{ sheetBody }}</p>
+        <div style="display:flex;gap:9px;margin-top:18px">
+          <span class="tap" onClick="{{ closeSheet }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;height:46px;border-radius:14px;background:#eeede6;font-size:14px;font-weight:500">Cancel</span>
+          <span class="tap" onClick="{{ confirmSheet }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;height:46px;border-radius:14px;background:#a52518;color:#f7f5ed;font-size:14px;font-weight:600">Mark watched</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <nav style="position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);padding:8px 0 14px;border-top:1px solid #d7d4c8;background:rgba(247,245,237,.86);backdrop-filter:blur(20px) saturate(150%)">
+    <span class="tap" onClick="{{ goUpNextTab }}" role="tab" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:48px;color:{{ inkUpNext }}">
+      <span style="position:relative;display:block;width:20px;height:20px">
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px"><polygon points="6,3 21,12 6,21" fill="currentColor"></polygon></svg>
+        <span style="position:absolute;top:-2px;right:-4px;width:5px;height:5px;border-radius:50%;background:#a52518;opacity:{{ dotUpNext }}"></span>
+      </span>
+      <span style="font-size:10px;font-weight:500">Up next</span>
+    </span>
+    <span class="tap" onClick="{{ goSearchTab }}" role="tab" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:48px;color:{{ inkSearch }}">
+      <span style="position:relative;display:block;width:20px;height:20px">
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px"><rect x="2" y="5" width="20" height="2.5" fill="currentColor"></rect><rect x="5" y="10.75" width="14" height="2.5" fill="currentColor"></rect><rect x="9" y="16.5" width="6" height="2.5" fill="currentColor"></rect></svg>
+        <span style="position:absolute;top:-2px;right:-4px;width:5px;height:5px;border-radius:50%;background:#a52518;opacity:{{ dotSearch }}"></span>
+      </span>
+      <span style="font-size:10px;font-weight:500">Search</span>
+    </span>
+    <span class="tap" onClick="{{ goLibraryTab }}" role="tab" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:48px;color:{{ inkLibrary }}">
+      <span style="position:relative;display:block;width:20px;height:20px">
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px"><rect x="2" y="2" width="9" height="9" fill="currentColor"></rect><rect x="13" y="2" width="9" height="9" fill="currentColor"></rect><rect x="2" y="13" width="9" height="9" fill="currentColor"></rect><rect x="13" y="13" width="9" height="9" fill="currentColor"></rect></svg>
+        <span style="position:absolute;top:-2px;right:-4px;width:5px;height:5px;border-radius:50%;background:#a52518;opacity:{{ dotLibrary }}"></span>
+      </span>
+      <span style="font-size:10px;font-weight:500">Library</span>
+    </span>
+    <span class="tap" onClick="{{ goYou }}" role="tab" style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:48px;color:{{ inkYou }}">
+      <span style="position:relative;display:block;width:20px;height:20px">
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2"></path></svg>
+        <span style="position:absolute;top:-2px;right:-4px;width:5px;height:5px;border-radius:50%;background:#a52518;opacity:{{ dotYou }}"></span>
+      </span>
+      <span style="font-size:10px;font-weight:500">You</span>
+    </span>
+  </nav>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:18px">
+<p class="cap">States</p>
+<div class="mini">
+  <p class="lbl" style="margin:0 0 12px;color:#929086;font-size:9px">Loading skeleton</p>
+  <div style="display:flex;gap:12px">
+    <sc-for list="{{ dots }}" as="d" hint-placeholder-count="3">
+      <div style="flex:1">
+        <div style="aspect-ratio:2/3;border-radius:11px;background:#e2e0d6;animation:shimmer 1.4s ease-in-out infinite"></div>
+        <div style="height:9px;margin-top:8px;border-radius:4px;background:#e2e0d6;animation:shimmer 1.4s ease-in-out infinite"></div>
+        <div style="height:9px;width:52%;margin-top:6px;border-radius:4px;background:#e2e0d6;animation:shimmer 1.4s ease-in-out infinite"></div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+<div class="mini" style="text-align:center;padding:34px 20px">
+  <p class="lbl" style="margin:0 0 14px;color:#929086;font-size:9px;text-align:left">Empty — Up next</p>
+  <p style="margin:0;font-size:17px;font-weight:600">Nothing queued for tonight</p>
+  <p style="margin:8px 0 16px;font-size:13.5px;line-height:1.5;color:#929086">Add a show and its next episode turns up here.</p>
+  <span class="tap" style="display:inline-flex;align-items:center;height:42px;padding:0 16px;border-radius:21px;border:1px solid #a52518;color:#a52518;font-size:14px;font-weight:500">Search the catalogue</span>
+</div>
+<div class="mini">
+  <p class="lbl" style="margin:0 0 14px;color:#929086;font-size:9px">Empty — Upcoming &amp; Library</p>
+  <p style="margin:0;font-size:15px;font-weight:600">No release dates yet</p>
+  <p style="margin:6px 0 16px;font-size:13.5px;color:#929086">Nothing you keep has a date announced.</p>
+  <p style="margin:0;padding-top:14px;border-top:1px solid #d7d4c8;font-size:15px;font-weight:600">Your library is empty</p>
+  <p style="margin:6px 0 0;font-size:13.5px;color:#929086">Everything you add lands here.</p>
+</div>
+<div class="mini">
+  <p class="lbl" style="margin:0 0 12px;color:#929086;font-size:9px">Missing artwork · unreleased episode</p>
+  <div style="display:flex;gap:12px;align-items:flex-start">
+    <div style="width:62px">
+      <div style="aspect-ratio:2/3;border-radius:10px;background:#e2e0d6;border:1px dashed #cfcbbc;display:flex;align-items:center;justify-content:center;color:#a9a69b"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"></rect><path d="M6 16l4-5 3 3.5 2-2 3 3.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></div>
+      <p style="margin:7px 0 0;font-size:11.5px;color:#929086;line-height:1.3">No poster</p>
+    </div>
+    <div style="flex:1;opacity:.55">
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid #e4e1d6">
+        <span style="width:22px;font-size:13px;color:#929086">9</span>
+        <div style="flex:1"><p style="margin:0;font-size:14px;font-weight:500">Title to be announced</p><p style="margin:3px 0 0;font-size:12px;color:#929086">Airs Sep 4</p></div>
+        <span class="lbl" style="font-size:9px;color:#a9a69b">Not out</span>
+      </div>
+      <p style="margin:9px 0 0;font-size:12px;color:#929086;line-height:1.4">Unreleased rows are dimmed and have no toggle — the state is never colour-only.</p>
+    </div>
+  </div>
+</div>
+<div class="mini" style="background:#34342f;color:#f7f5ed">
+  <p class="lbl" style="margin:0 0 12px;color:#a9a69b;font-size:9px">Failed update · offline</p>
+  <div style="display:flex;align-items:center;gap:11px">
+    <span style="flex:1;font-size:13px;line-height:1.35">Couldn't save that watch. Nothing was lost.</span>
+    <span class="tap" style="font-size:13px;font-weight:600;color:#f0bfb8">Retry</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:9px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(247,245,237,.18);font-size:13px;color:#cfcbbc">
+    <span style="width:7px;height:7px;border-radius:50%;background:#f0bfb8"></span>Offline — watches are queued and sent when you're back.
+  </div>
+</div>
+</div>
+
+<div style="width:360px">
+<p class="cap">Tokens &amp; components</p>
+<div class="mini" style="width:100%">
+  <p class="lbl" style="margin:0 0 10px;color:#929086;font-size:9px">Colour</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <sc-for list="{{ swatches }}" as="s" hint-placeholder-count="7">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="width:26px;height:26px;border-radius:7px;flex:none;border:1px solid #d7d4c8;background:{{ s.hex }}"></span>
+        <div style="min-width:0"><p style="margin:0;font-size:11.5px;font-weight:500">{{ s.name }}</p><p style="margin:1px 0 0;font-size:10.5px;color:#929086;font-variant-numeric:tabular-nums">{{ s.hex }}</p></div>
+      </div>
+    </sc-for>
+  </div>
+  <p class="lbl" style="margin:20px 0 10px;color:#929086;font-size:9px">Type — Archivo</p>
+  <p style="margin:0;font-variation-settings:'wdth' 88,'wght' 700;font-size:30px;line-height:1.05">Screen title 34</p>
+  <p style="margin:8px 0 0;font-size:16px;font-weight:600">Card title 16/600</p>
+  <p style="margin:6px 0 0;font-size:14px">Body 14 · <span style="color:#929086;font-size:13px">metadata 13</span></p>
+  <p class="lbl" style="margin:8px 0 0;color:#a52518;font-size:10px">Label register 10.5 / .14em</p>
+  <p class="lbl" style="margin:20px 0 10px;color:#929086;font-size:9px">Buttons &amp; chips</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <span style="display:inline-flex;align-items:center;height:40px;padding:0 15px;border-radius:20px;background:#a52518;color:#f7f5ed;font-size:14px;font-weight:600">Primary</span>
+    <span style="display:inline-flex;align-items:center;height:40px;padding:0 15px;border-radius:20px;border:1px solid #a52518;color:#a52518;font-size:14px;font-weight:500">Ghost</span>
+    <span style="display:inline-flex;align-items:center;height:40px;padding:0 15px;border-radius:20px;background:#eeede6;color:#a9a69b;font-size:14px">Disabled</span>
+    <span style="display:inline-flex;align-items:center;height:32px;padding:0 13px;border-radius:16px;background:#a52518;color:#f7f5ed;font-size:13px;font-weight:500">Selected</span>
+    <span style="display:inline-flex;align-items:center;height:32px;padding:0 13px;border-radius:16px;background:#eeede6;color:#6f6d64;font-size:13px">Inactive</span>
+    <span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:1.5px solid #a52518;color:#a52518"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg></span>
+    <span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#a52518;color:#f7f5ed"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"></path></svg></span>
+  </div>
+  <p class="lbl" style="margin:20px 0 10px;color:#929086;font-size:9px">Spacing &amp; radius</p>
+  <p style="margin:0;font-size:12.5px;line-height:1.6;color:#54534a">Gutter 20 · card padding 12–14 · gap 8/10/12 · rail gap 12<br>Radius: 9 poster-sm · 11–12 poster · 14 row · 16–18 card · 22 pill · 12 field<br>Targets: every tap area ≥ 44 · nav cell 48 · check 44 around a 26–28 mark</p>
+  <p class="lbl" style="margin:20px 0 10px;color:#929086;font-size:9px">Interaction model</p>
+  <p style="margin:0;font-size:12.5px;line-height:1.6;color:#54534a">Tabs: tap or drag the pager; underline slides 260ms. Watched toggles fill in place and never navigate; tapping the card opens details. Progress bars animate on the same write. Press feedback is a 1.5% scale. Sort is a navigation, filters and switches are local state. Every motion above is disabled under reduced-motion.</p>
+</div>
+</div>
+
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:1050}}">
+const SHOWS = [
+  {
+    id: "bear", title: "The Bear", year: 2022, cert: "TV-MA", genres: "Drama · Comedy",
+    syn: "A young fine-dining chef comes home to Chicago to run his late brother's sandwich shop, and finds a kitchen that runs on grief, debt and habit.",
+    seasons: [
+      { n: 1, eps: [["System", "Jun 23, 2022", 29, "Carmy takes over the shop, meets the staff he inherited, and reads what the books actually say."], ["Hands", "Jun 23, 2022", 29, "A new stagiaire arrives with ideas, and the line closes ranks against her."], ["Brigade", "Jun 23, 2022", 31, "An attempt to run the kitchen like a fine-dining brigade meets the lunch rush."], ["Dogs", "Jun 23, 2022", 29, "A family birthday is catered on a day the shop cannot spare."], ["Sheridan", "Jun 23, 2022", 28, "Debt collectors, a failing walk-in, and one very long night of prep."], ["Ceres", "Jun 23, 2022", 33, "Two orders too many go out, and the kitchen finds out who it trusts."], ["Review", "Jun 23, 2022", 20, "Seven minutes of pre-order chaos, in one unbroken take."], ["Braciole", "Jun 23, 2022", 41, "The last recipe in the box turns out to be a letter."]] },
+      { n: 2, eps: [["Beef", "Jun 22, 2023", 33], ["Pasta", "Jun 22, 2023", 31], ["Sundae", "Jun 22, 2023", 36], ["Honeydew", "Jun 22, 2023", 34], ["Pop", "Jun 22, 2023", 40], ["Fishes", "Jun 22, 2023", 66]] },
+      { n: 3, eps: [["Tomorrow", "Jun 27, 2024", 37], ["Next", "Jun 27, 2024", 33], ["Doors", "Sep 4, 2026", 35]] },
+    ],
+  },
+  {
+    id: "sev", title: "Severance", year: 2022, cert: "TV-MA", genres: "Thriller · Sci-Fi",
+    syn: "Employees at Lumon Industries undergo a procedure that severs their work memories from the rest of their lives — until one of them starts asking who he is outside.",
+    seasons: [
+      { n: 1, eps: [["Good News About Hell", "Feb 18, 2022", 57, "A new refiner arrives on the severed floor, and nobody will say what the work is for."], ["Half Loop", "Feb 18, 2022", 46, "An outie learns his innie has been making requests he never authorised."], ["In Perpetuity", "Feb 25, 2022", 40, "A tour of the perpetuity wing, and the department's own founding myth."], ["The You You Are", "Mar 4, 2022", 40, "A self-help manual smuggled past the barrier starts to do real damage."], ["The Grim Barbarity of Optics", "Mar 11, 2022", 41, "A weekend away from the office turns into an interrogation of it."], ["Hide and Seek", "Mar 18, 2022", 44, "The floor plans a way out, and management notices the noise."]] },
+      { n: 2, eps: [["Hello, Ms. Cobel", "Jan 17, 2025", 49], ["Goodbye, Mrs. Selvig", "Jan 24, 2025", 44], ["Who Is Alive?", "Jan 31, 2025", 42]] },
+    ],
+  },
+  { id: "shogun", title: "Shōgun", year: 2024, cert: "TV-MA", genres: "Drama · History", syn: "In feudal Japan, a shipwrecked English pilot becomes a pawn between a scheming lord and the woman translating for them both.", seasons: [{ n: 1, eps: [["Anjin", "Feb 27, 2024", 60], ["Servants of Two Masters", "Feb 27, 2024", 56], ["Tomorrow Is Tomorrow", "Mar 5, 2024", 53]] }] },
+  { id: "horses", title: "Slow Horses", year: 2022, cert: "TV-MA", genres: "Spy · Drama", syn: "A dumping ground for MI5's failures turns out to be the only desk paying attention.", seasons: [{ n: 1, eps: [["Failure's Contagious", "Apr 1, 2022", 48], ["Work Drinks", "Apr 1, 2022", 45]] }] },
+];
+
+const FILMS = [
+  { id: "past", title: "Past Lives", year: 2023, runtime: "1h 45m", provider: "Prime Video", watched: false, syn: "Two childhood friends reunite in New York twenty-four years after her family left Seoul, and spend a week measuring the life each did not live." },
+  { id: "perfect", title: "Perfect Days", year: 2023, runtime: "2h 4m", provider: "Mubi", watched: false, syn: "A man who cleans Tokyo's public toilets keeps a life of small, exact pleasures." },
+  { id: "anatomy", title: "Anatomy of a Fall", year: 2023, runtime: "2h 32m", provider: "Netflix", watched: true, syn: "A novelist stands trial for her husband's death, and their marriage is read back to her as evidence." },
+  { id: "aftersun", title: "Aftersun", year: 2022, runtime: "1h 42m", provider: "Prime Video", watched: false, syn: "A woman remembers a holiday in Turkey with her young father, and what she was too young to see." },
+  { id: "burning", title: "Burning", year: 2018, runtime: "2h 28m", provider: "Not streaming", watched: false, syn: "A delivery driver, the girl he grew up with, and the rich stranger who says he burns greenhouses." },
+];
+
+const CASTS = {
+  bear: [["Jeremy Allen White", "Carmy"], ["Ayo Edebiri", "Sydney"], ["Ebon Moss-Bachrach", "Richie"], ["Liza Colón-Zayas", "Tina"]],
+  sev: [["Adam Scott", "Mark S."], ["Britt Lower", "Helly R."], ["Zach Cherry", "Dylan G."], ["Patricia Arquette", "Harmony Cobel"]],
+  shogun: [["Hiroyuki Sanada", "Lord Toranaga"], ["Cosmo Jarvis", "John Blackthorne"], ["Anna Sawai", "Lady Mariko"]],
+  horses: [["Gary Oldman", "Jackson Lamb"], ["Jack Lowden", "River Cartwright"], ["Kristin Scott Thomas", "Diana Taverner"]],
+  past: [["Greta Lee", "Nora"], ["Teo Yoo", "Hae Sung"], ["John Magaro", "Arthur"]],
+  perfect: [["Kōji Yakusho", "Hirayama"], ["Tokio Emoto", "Takashi"]],
+  anatomy: [["Sandra Hüller", "Sandra Voyter"], ["Swann Arlaud", "Vincent Renzi"], ["Milo Machado-Graner", "Daniel"]],
+  aftersun: [["Paul Mescal", "Calum"], ["Frankie Corio", "Sophie"]],
+  burning: [],
+};
+
+const clamp = (text, n) => (text.length > n ? { text: text.slice(0, n - 1).trimEnd() + "…", more: true } : { text, more: false });
+const initials = (s) => s.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+const pad = (n) => String(n).padStart(2, "0");
+
+class Component extends DCLogic {
+  state = {
+    tab: "upnext", page: 0, view: null, season: 1,
+    watched: { "bear-1-1": 1, "bear-1-2": 1, "sev-1-1": 1, "sev-1-2": 1, "sev-1-3": 1, "shogun-1-1": 1, "horses-1-1": 1, "horses-1-2": 1 },
+    filmsWatched: { anatomy: 1 },
+    libFilter: "All", libMode: "Titles", libView: "list",
+    q: "bear", menuOpen: false, synOpen: false, sheet: false, toast: false, rating: 0, marking: null,
+  };
+
+  show(id) { return SHOWS.find((s) => s.id === id); }
+  isW(k) { return !!this.state.watched[k]; }
+  epList(show, n) { const s = show.seasons.find((x) => x.n === n) || show.seasons[0]; return s.eps.map((e, i) => ({ n: s.n, e: i + 1, title: e[0], date: e[1], mins: e[2], ov: e[3] || null })); }
+  released(date) { return new Date(date) <= new Date("2026-08-23"); }
+  nextEp(show) {
+    for (const s of show.seasons) for (let i = 0; i < s.eps.length; i++) {
+      const k = `${show.id}-${s.n}-${i + 1}`;
+      if (!this.isW(k) && this.released(s.eps[i][1])) return { n: s.n, e: i + 1, title: s.eps[i][0], date: s.eps[i][1], mins: s.eps[i][2], key: k };
+    }
+    return null;
+  }
+  counts(show) {
+    let total = 0, seen = 0;
+    show.seasons.forEach((s) => s.eps.forEach((e, i) => { if (this.released(e[1])) { total++; if (this.isW(`${show.id}-${s.n}-${i + 1}`)) seen++; } }));
+    return { total, seen };
+  }
+  remainingAfter(show, ep) {
+    let n = 0, hit = false;
+    show.seasons.forEach((s) => s.eps.forEach((e, i) => {
+      if (!this.released(e[1])) return;
+      if (s.n === ep.n && i + 1 === ep.e) { hit = true; return; }
+      if (hit && !this.isW(`${show.id}-${s.n}-${i + 1}`)) n++;
+    }));
+    return n;
+  }
+  toggle(key) {
+    if (this.state.watched[key]) {
+      this.setState((s) => { const w = { ...s.watched }; delete w[key]; return { watched: w, marking: null }; });
+      return;
+    }
+    // The repo's marking → settled sequence: the sweep plays over the row it marks, and
+    // only when it ends does the watch commit (and Up next advance). watch-mark-motion.tsx
+    this.setState({ marking: key });
+    clearTimeout(this._settle);
+    this._settle = setTimeout(() => {
+      this.setState((s) => (s.marking !== key ? {} : { watched: { ...s.watched, [key]: 1 }, marking: null }));
+    }, 210);
+  }
+  componentWillUnmount() { clearTimeout(this._settle); }
+  go(tab) { this.setState({ tab, view: null, menuOpen: false, synOpen: false, sheet: false }); }
+  openShow(id, unowned) { this.setState({ view: { t: "show", id, unowned: !!unowned }, season: 1, synOpen: false, menuOpen: false, sheet: false }); }
+  openFilm(id, unowned) { this.setState({ view: { t: "film", id, unowned: !!unowned }, synOpen: false, menuOpen: false, sheet: false }); }
+  openEp(id, n, e) { this.setState({ view: { t: "ep", id, n, e }, synOpen: false, menuOpen: false, sheet: false }); }
+
+  renderVals() {
+    const st = this.state;
+    const v = st.view;
+    const T = "#34342f", DIM = "#929086", ACC = "#a52518", CARD = "#eeede6", CREAM = "#f7f5ed";
+
+    const out = {
+      isTonight: st.tab === "upnext" && !v,
+      isSearch: st.tab === "search" && !v,
+      isLibrary: st.tab === "library" && !v,
+      isYou: st.tab === "you" && !v,
+      isShow: !!v && (v.t === "show" || v.t === "film"),
+      isEpisode: !!v && v.t === "ep",
+      goYou: () => this.go("you"),
+      back: () => this.setState({ view: null, sheet: false, menuOpen: false }),
+      goUpNext: () => this.setState({ page: 0 }),
+      goUpcoming: () => this.setState({ page: 1 }),
+      upNextTabColor: st.page === 0 ? T : DIM,
+      upcomingTabColor: st.page === 1 ? T : DIM,
+      tabW: st.page === 0 ? "56px" : "76px",
+      tabX: st.page === 0 ? "translateX(20px)" : "translateX(102px)",
+      pagerX: `translateX(${st.page === 0 ? "0%" : "-50%"})`,
+      swipeStart: (e) => { this._x = e.clientX; },
+      swipeEnd: (e) => { const d = e.clientX - (this._x ?? e.clientX); if (d < -40) this.setState({ page: 1 }); else if (d > 40) this.setState({ page: 0 }); },
+      toggleMenu: () => this.setState((s) => ({ menuOpen: !s.menuOpen })),
+      menuOpen: st.menuOpen,
+      toggleSyn: () => this.setState((s) => ({ synOpen: !s.synOpen })),
+      synLabel: st.synOpen ? "Less" : "More",
+      openSheet: () => this.setState({ sheet: true }),
+      closeSheet: () => this.setState({ sheet: false }),
+      sheetOpen: st.sheet,
+      toast: st.toast,
+      toastText: "Couldn't save that watch. Nothing was lost.",
+      retry: () => this.setState({ toast: false }),
+      q: st.q,
+      setQ: (e) => this.setState({ q: e.target.value }),
+      ratingMarks: [1, 2, 3, 4, 5].map((n) => ({
+        ink: n <= st.rating ? ACC : "#cfcbbc", set: () => this.setState({ rating: n }),
+      })),
+      ratingText: st.rating ? `${st.rating} of 5` : "Not rated",
+      providers: [{ mark: "PV", name: "Prime Video", kind: "Stream" }, { mark: "AT", name: "Apple TV", kind: "Buy" }, { mark: "MU", name: "Mubi", kind: "Stream" }],
+      cast: ((v && CASTS[v.id]) || []).map(([name, role]) => ({ name, role, initials: initials(name) })),
+      hasCast: !!(v && CASTS[v.id] && CASTS[v.id].length),
+      noCast: !!(v && (!CASTS[v.id] || !CASTS[v.id].length)),
+      counters: [{ value: "128", label: "Following", divider: "transparent" }, { value: "96", label: "Followers", divider: "#d7d4c8" }, { value: "12", label: "Comments", divider: "#d7d4c8" }],
+      stats: [
+        { label: "TV time", parts: [{ n: "14", unit: "Months" }, { n: "20", unit: "Days" }, { n: "15", unit: "Hours" }] },
+        { label: "Episodes watched", parts: [{ n: "18,517", unit: "Episodes" }] },
+        { label: "Shows completed", parts: [{ n: "212", unit: "Shows" }] },
+        { label: "Film time", parts: [{ n: "1", unit: "Months" }, { n: "9", unit: "Days" }] },
+        { label: "Films watched", parts: [{ n: "643", unit: "Films" }] },
+      ],
+      collage: ["ONE PUNCH", "FIRE FORCE", "TORADORA", "MOB 100"].map((label) => ({ label })),
+      dots: [ACC, "#d7d4c8", "#d7d4c8", "#d7d4c8"].map((bg) => ({ bg })),
+      showPosters: SHOWS.map((s) => ({ label: initials(s.title), open: () => this.openShow(s.id) })),
+      lists: [{ name: "Anime", count: "9 titles" }, { name: "Comfort rewatches", count: "12 titles" }, { name: "Films Ana lent me", count: "1 title" }],
+      swatches: [
+        { name: "Background", hex: "#F7F5ED" }, { name: "Card", hex: "#EEEDE6" },
+        { name: "Border", hex: "#D7D4C8" }, { name: "Well", hex: "#E2E0D6" },
+        { name: "Primary text", hex: "#34342F" }, { name: "Secondary", hex: "#929086" },
+        { name: "Accent", hex: "#A52518" }, { name: "White", hex: "#FFFFFF" },
+      ],
+      goUpNextTab: () => this.go("upnext"),
+      goSearchTab: () => this.go("search"),
+      goLibraryTab: () => this.go("library"),
+      inkUpNext: st.tab === "upnext" ? T : DIM,
+      inkSearch: st.tab === "search" ? T : DIM,
+      inkLibrary: st.tab === "library" ? T : DIM,
+      inkYou: st.tab === "you" ? T : DIM,
+      dotUpNext: st.tab === "upnext" ? 1 : 0,
+      dotSearch: st.tab === "search" ? 1 : 0,
+      dotLibrary: st.tab === "library" ? 1 : 0,
+      dotYou: st.tab === "you" ? 1 : 0,
+    };
+
+    out.nextEpisodes = SHOWS.map((s) => {
+      const ep = this.nextEp(s);
+      if (!ep) return null;
+      const w = this.isW(ep.key) || st.marking === ep.key;
+      return {
+        marking: st.marking === ep.key,
+        series: s.title, code: `S${pad(ep.n)} · E${pad(ep.e)}`, title: ep.title,
+        remaining: `+${this.remainingAfter(s, ep)} remaining`, meta: `${ep.date} · ${ep.mins} min`,
+        stillLabel: `STILL · ${initials(s.title)} S${pad(ep.n)}E${pad(ep.e)}`,
+        checkBg: w ? ACC : "transparent", checkInk: w ? CREAM : ACC,
+        toggle: () => this.toggle(ep.key), open: () => this.openEp(s.id, ep.n, ep.e),
+      };
+    }).filter(Boolean);
+
+    out.films = FILMS.map((f) => {
+      const w = !!st.filmsWatched[f.id];
+      return {
+        title: f.title, meta: `${f.year} · ${f.runtime}`, provider: f.provider, posterLabel: initials(f.title),
+        checkBg: w ? ACC : "transparent", checkInk: w ? CREAM : ACC,
+        open: () => this.openFilm(f.id),
+        toggle: () => this.setState((s) => { const m = { ...s.filmsWatched }; if (m[f.id]) delete m[f.id]; else m[f.id] = 1; return { filmsWatched: m }; }),
+      };
+    });
+
+    out.upcomingGroups = [
+      { label: "Today", items: [["The Bear", 3, 3, "Doors", "21:00 · in 4 hours"]] },
+      { label: "Tomorrow", items: [["Severance", 2, 4, "Woe's Hollow", "03:00"], ["Slow Horses", 1, 3, "Bad Tradecraft", "Time unknown"]] },
+      { label: "Monday, August 24", items: [["Shōgun", 1, 4, "The Eightfold Fence", "Aug 24"]] },
+      { label: "Later", items: [["The Bear", 3, 4, "Title to be announced", "Sep 4"]] },
+    ].map((g) => ({
+      label: g.label,
+      items: g.items.map(([series, n, e, title, when]) => ({
+        series, code: `S${pad(n)}E${pad(e)}`, title, when, stillLabel: initials(series),
+        open: () => { const s = SHOWS.find((x) => x.title === series); if (s) this.openShow(s.id); },
+      })),
+    }));
+
+    out.upcomingFilms = [
+      { title: "One Battle After Another", release: "Sep 26 · Canada", kind: "Theatrical", countdown: "In 34 days" },
+      { title: "Hamnet", release: "Dec 12 · Canada", kind: "Theatrical", countdown: "In 111 days" },
+      { title: "Perfect Days", release: "Sep 4 · digital", kind: "Digital", countdown: "In 12 days" },
+    ].map((f) => ({ ...f, posterLabel: initials(f.title) }));
+
+    const RES = [
+      { id: "bear", title: "The Bear", kind: "Series", meta: "2022 · Drama", lib: true },
+      { id: "bearisland", title: "Bear Island", kind: "Film", meta: "1979 · Thriller", lib: false },
+      { id: "brother", title: "Brother Bear", kind: "Film", meta: "2003 · Animation", lib: false },
+      { id: "bearstory", title: "Bear Story", kind: "Film", meta: "Year unknown", lib: false },
+    ];
+    out.results = st.q.trim().length ? RES.map((r) => ({
+      title: r.title, kind: r.kind, meta: r.meta, posterLabel: initials(r.title),
+      inLibrary: r.lib, addable: !r.lib,
+      open: () => (r.id === "bear" ? this.openShow("bear", true) : this.openFilm("past", true)),
+      add: () => this.setState({ toast: true }),
+      watchlist: () => this.setState({ toast: true }),
+    })) : [];
+    out.noResults = st.q.trim().length > 0 && out.results.length === 0;
+    out.recents = ["severance", "shogun", "past lives"].map((label) => ({ label, pick: () => this.setState({ q: label }) }));
+
+    const FILTERS = ["All", "Watching", "Caught up", "Finished", "Watchlist"];
+    out.filters = FILTERS.map((label) => ({
+      label, pick: () => this.setState({ libFilter: label }),
+      bg: st.libFilter === label ? ACC : CARD,
+      ink: st.libFilter === label ? CREAM : (label === "Watching" ? ACC : "#6f6d64"),
+    }));
+    out.libTitles = st.libMode === "Titles";
+    out.libLists = st.libMode === "Lists";
+    out.libList = st.libView === "list";
+    out.libGrid = st.libView === "grid";
+    out.setTitles = () => this.setState({ libMode: "Titles" });
+    out.setLists = () => this.setState({ libMode: "Lists" });
+    out.setViewList = () => this.setState({ libView: "list" });
+    out.setViewGrid = () => this.setState({ libView: "grid" });
+    out.titlesBg = out.libTitles ? CREAM : "transparent";
+    out.titlesInk = out.libTitles ? T : DIM;
+    out.listsBg = out.libLists ? CREAM : "transparent";
+    out.listsInk = out.libLists ? T : DIM;
+    out.listBtnBg = out.libList ? CARD : "transparent";
+    out.listBtnInk = out.libList ? T : DIM;
+    out.gridBtnBg = out.libGrid ? CARD : "transparent";
+    out.gridBtnInk = out.libGrid ? T : DIM;
+
+    const rows = [];
+    SHOWS.forEach((s) => {
+      const c = this.counts(s);
+      const ep = this.nextEp(s);
+      const state = c.seen === 0 ? "Watchlist" : ep ? "Watching" : "Caught up";
+      rows.push({
+        title: s.title, year: s.year, state,
+        stateInk: state === "Watching" ? ACC : state === "Caught up" ? T : DIM,
+        next: ep ? `Next — ${ep.title}` : "Nothing to watch now",
+        pct: `${c.total ? Math.round((c.seen / c.total) * 100) : 0}%`,
+        posterLabel: initials(s.title), posterOpacity: 1,
+        open: () => this.openShow(s.id),
+      });
+    });
+    FILMS.forEach((f) => {
+      const w = !!st.filmsWatched[f.id];
+      rows.push({
+        title: f.title, year: f.year, state: w ? "Finished" : "Watchlist",
+        stateInk: w ? DIM : DIM, next: w ? "Nothing left to watch" : "Not started",
+        pct: w ? "100%" : "0%", posterLabel: initials(f.title), posterOpacity: 1,
+        open: () => this.openFilm(f.id),
+      });
+    });
+    out.libraryRows = rows
+      .filter((r) => st.libFilter === "All" || r.state === st.libFilter)
+      .sort((a, b) => a.title.localeCompare(b.title));
+
+    if (v && v.t === "show") {
+      const s = this.show(v.id);
+      const c = this.counts(s);
+      const ep = this.nextEp(s);
+      const epKey = ep ? `${s.id}-${ep.n}-${ep.e}` : null;
+      const owned = !v.unowned;
+      const stateLabel = !owned ? "Not in your library" : c.seen === 0 ? "Watchlist" : ep ? "Watching" : "Caught up";
+      out.detail = {
+        isSeries: true, isFilm: false, kind: "Series", title: s.title,
+        meta: `${s.year} · ${s.genres}`,
+        stateLabel, stateInk: stateLabel === "Watching" ? ACC : stateLabel === "Caught up" ? T : DIM,
+        owned, unowned: !owned, rating: owned,
+        synopsis: st.synOpen ? s.syn : clamp(s.syn, 132).text,
+        synMore: clamp(s.syn, 132).more,
+        backdropLabel: `BACKDROP · ${initials(s.title)}`, posterLabel: initials(s.title),
+        primaryLabel: owned ? "Add to list" : "Add to library",
+        secondaryLabel: owned ? "Rate" : "Add — watched",
+        nextStill: ep ? `STILL · S${pad(ep.n)}E${pad(ep.e)}` : "ALL CAUGHT UP",
+        nextCode: ep ? `S${pad(ep.n)} · E${pad(ep.e)}` : "—",
+        nextTitle: ep ? ep.title : "Nothing to watch now",
+        nextMeta: ep ? `${ep.date} · ${ep.mins} min` : "",
+        nextMarking: !!epKey && st.marking === epKey,
+        nextCheckBg: epKey && (this.isW(epKey) || st.marking === epKey) ? ACC : "transparent",
+        nextCheckInk: epKey && (this.isW(epKey) || st.marking === epKey) ? CREAM : ACC,
+        toggleNext: () => epKey && this.toggle(epKey),
+        openNext: () => ep && this.openEp(s.id, ep.n, ep.e),
+        progressText: `${c.seen} of ${c.total} episodes · ${c.total ? Math.round((c.seen / c.total) * 100) : 0}%`,
+        pct: `${c.total ? Math.round((c.seen / c.total) * 100) : 0}%`,
+        seasons: s.seasons.map((x) => ({
+          label: `Season ${x.n}`, pick: () => this.setState({ season: x.n }),
+          bg: st.season === x.n ? T : CARD, ink: st.season === x.n ? CREAM : "#6f6d64",
+        })),
+        episodes: this.epList(s, st.season).map((e) => {
+          const k = `${s.id}-${e.n}-${e.e}`;
+          const rel = this.released(e.date);
+          const w = this.isW(k) || st.marking === k;
+          return {
+            marking: st.marking === k,
+            num: `E${e.e}`, title: e.title, meta: `${e.date} · ${e.mins} min`,
+            released: rel, unreleased: !rel, opacity: rel ? 1 : 0.5,
+            nameInk: w ? DIM : T,
+            checkBg: w ? ACC : "transparent", checkInk: w ? CREAM : ACC,
+            toggle: () => this.toggle(k), open: () => this.openEp(s.id, e.n, e.e),
+          };
+        }),
+        releaseRows: [],
+      };
+    } else if (v && v.t === "film") {
+      const f = FILMS.find((x) => x.id === v.id) || FILMS[0];
+      const w = !!st.filmsWatched[f.id];
+      const ownedF = !v.unowned;
+      const stateLabelF = !ownedF ? "Not in your library" : w ? "Finished" : "Watchlist";
+      out.detail = {
+        isSeries: false, isFilm: true, kind: "Film", title: f.title,
+        meta: `${f.year} · ${f.runtime}`,
+        stateLabel: stateLabelF, stateInk: stateLabelF === "Finished" ? T : DIM,
+        owned: ownedF, unowned: !ownedF, rating: ownedF,
+        filmWatched: w, filmCheckBg: w ? ACC : "transparent", filmCheckInk: w ? CREAM : ACC, filmNameInk: w ? DIM : T,
+        toggleFilm: () => this.setState((s2) => { const m = { ...s2.filmsWatched }; if (m[f.id]) delete m[f.id]; else m[f.id] = 1; return { filmsWatched: m }; }),
+        synopsis: st.synOpen ? f.syn : clamp(f.syn, 132).text,
+        synMore: clamp(f.syn, 132).more,
+        backdropLabel: `BACKDROP · ${initials(f.title)}`, posterLabel: initials(f.title),
+        primaryLabel: ownedF ? "Add to list" : "Add to library",
+        secondaryLabel: ownedF ? "Rate" : "Add — watched",
+        releaseRows: [
+          { k: "Theatrical", v: `${f.year}` },
+          { k: "Digital", v: "Available now" },
+          { k: "Watched on", v: w ? "Aug 3, 2026" : "—" },
+        ],
+        seasons: [], episodes: [],
+        nextStill: "", nextCode: "", nextTitle: "", nextMeta: "", nextCheckBg: "transparent", nextCheckInk: ACC,
+        progressText: "", pct: "0%",
+        toggleNext: () => {}, openNext: () => {},
+      };
+      out.detail.primaryLabelClick = null;
+    } else {
+      out.detail = { isSeries: false, isFilm: false, seasons: [], episodes: [], releaseRows: [] };
+    }
+
+    if (v && v.t === "ep") {
+      const s = this.show(v.id);
+      const eps = this.epList(s, v.n);
+      const idx = eps.findIndex((e) => e.e === v.e);
+      const e = eps[idx] || eps[0];
+      const k = `${s.id}-${e.n}-${e.e}`;
+      const w = this.isW(k) || st.marking === k;
+      const before = this.epList(s, v.n).filter((x) => x.e <= e.e && !this.isW(`${s.id}-${x.n}-${x.e}`)).length;
+      const epSyn = e.ov || "No synopsis yet from TMDB.";
+      out.ep = {
+        backLabel: s.title, series: s.title, code: `Season ${e.n} · Episode ${e.e}`, title: e.title,
+        meta: `${e.date} · ${e.mins} min`, stillLabel: `STILL · S${pad(e.n)}E${pad(e.e)}`,
+        synopsis: st.synOpen ? epSyn : clamp(epSyn, 132).text,
+        synMore: clamp(epSyn, 132).more,
+        marking: st.marking === k,
+        toShow: () => this.openShow(s.id),
+        markLabel: w ? "Mark unwatched" : "Mark watched",
+        markBg: w ? "transparent" : ACC, markInk: w ? ACC : CREAM,
+        toggle: () => this.toggle(k),
+        prev: () => idx > 0 && this.openEp(s.id, e.n, eps[idx - 1].e),
+        next: () => idx < eps.length - 1 && this.openEp(s.id, e.n, eps[idx + 1].e),
+      };
+      out.sheetBody = `This marks ${before} episode${before === 1 ? "" : "s"} up to and including ${e.title} as watched.`;
+      out.confirmSheet = () => {
+        this.setState((s2) => {
+          const wm = { ...s2.watched };
+          eps.filter((x) => x.e <= e.e).forEach((x) => { wm[`${s.id}-${x.n}-${x.e}`] = 1; });
+          return { watched: wm, sheet: false };
+        });
+      };
+    } else {
+      out.ep = { backLabel: "Back", series: "", code: "", title: "", meta: "", stillLabel: "", synopsis: "", markLabel: "", markBg: "transparent", markInk: ACC, toggle: () => {}, prev: () => {}, next: () => {} };
+      out.sheetBody = "";
+      out.confirmSheet = () => this.setState({ sheet: false });
+    }
+
+    return out;
+  }
+}
+</script>
+</body>
+</html>

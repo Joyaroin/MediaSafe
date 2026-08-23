@@ -132,7 +132,9 @@ export function ProgrammeNoteContent({
         <Poster posterPath={detail.posterPath} width={382} className="w-full" aboveFold />
       </ViewTransition>
 
-      <h2 className="bill-title mt-5 text-bill-xl">{detail.name}</h2>
+      {/* `text-ink`, added by the palette audit (#255) — the owned half of the same pair
+          as `titles/[kind]/[tmdbId]/page.tsx`'s `h1`, and it had the same omission. */}
+      <h2 className="bill-title mt-5 text-bill-xl text-ink">{detail.name}</h2>
 
       {meta === null ? null : (
         <p className="code-line mt-3 text-dim" data-numeric>
