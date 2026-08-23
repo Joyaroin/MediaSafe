@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 
 import { referenceFor } from "@/errors/reference";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
-import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import type { TitleKind } from "@/tmdb/mirror";
 import { QUIET_RECORDING_CONTROL_LABELLED } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
@@ -17,6 +16,7 @@ import {
   addWatchedAccessibleLabel,
   addWatchedLabel,
 } from "@/app/(signed-in)/titles/add-watched";
+import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-add";
 
 /**
  * *Add to library*, and *Add — watched* beside it — issue #148's control and issue
@@ -53,18 +53,14 @@ import {
  * persistent toast naming the title, with the reference id from the action.
  *
  * The toast handle is a ref, and `attempt` is a function declaration so it can hand itself
- * to the toast as `retry`; `catalogue-result.tsx` carries the full reasoning for both, and
- * for **one toast per lost write, not one per attempt** (`AGENTS.md`).
+ * to the toast as `retry`; `catalogue-result.tsx` carries the full reasoning for both.
  *
- * The suppression guard is `standing()` rather than the bare `if (raised.current) return`.
- * `errors/write-failure.ts`'s own docblock is why, and it is the blind spot in the bare
- * form: a reader who dismisses a toast leaves the ref holding a handle for a failure that
- * is no longer on screen, and the *next* lost write is then suppressed entirely — *a lost
- * write is never silent* (`SPEC.md` §3.3) broken by the reader's own tidying up.
- *
- * **This paragraph used to end with *…than the bare form that `catalogue-result.tsx`
- * uses*, and that stopped being true in #222**: the search row now takes `standing()` too,
- * because a second control on that row made the blind spot reachable in one gesture.
+ * **What decides whether a second lost add gets its own toast is no longer here.** This
+ * file used to carry a `standing()` guard and a paragraph arguing it against
+ * `catalogue-result.tsx`'s barer one; #222 gave both surfaces a second control, which
+ * turned that guard into a way for a lost backfill to be answered by a plain add's *Try
+ * again* and resolve as a success. The rule and both of its blind spots — the reader's
+ * dismissal and the second write — now live in `lost-add.ts`, once, with a test.
  *
  * The caller mounts this under a key of the title it is about, for the reason `page.tsx`
  * gives there: neither the ref nor `pending` may survive onto a different title.
@@ -80,7 +76,7 @@ export function AddToLibraryControl({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
-  const raised = useRef<WriteFailureHandle | null>(null);
+  const raised = useRef<StandingAdd | null>(null);
   /**
    * The watched add's idempotency key — issue #222, minted on the first press and kept so
    * a retry is the same write rather than a second one. `catalogue-result.tsx` carries
@@ -90,10 +86,11 @@ export function AddToLibraryControl({
 
   /**
    * `watched` picks the write and travels into the toast's `retry` closure, so a retry
-   * retries the press that failed. Both controls share the one handle and the one
-   * `pending` flag: from this page's point of view they are the same event — this title
-   * is yours now, and the page you are on is no longer the right page — so a lost one of
-   * either is one sentence to the reader (`AGENTS.md`, *one toast per lost write*).
+   * retries the press that failed. Both controls share the one `pending` flag and the one
+   * ref, because both presses end in the same navigation — but **not** the assumption that
+   * they are one event: `lost-add.ts` is where a second lost add decides what to do with
+   * the first one's toast, and the two-axis review of #222 is why that is a rule with a
+   * test on it rather than a `standing()` guard here.
    */
   async function attempt(watched: boolean): Promise<void> {
     setPending(true);
@@ -105,7 +102,7 @@ export function AddToLibraryControl({
     if (outcome.ok) {
       // The write landed — including a retry that landed after a failure, which is the
       // only thing that takes this toast down other than the reader.
-      raised.current?.resolve();
+      raised.current?.handle.resolve();
       raised.current = null;
       // `pending` is deliberately left set: the control is on its way off screen, and
       // re-enabling it would offer a second press during the navigation.
@@ -115,13 +112,13 @@ export function AddToLibraryControl({
 
     setPending(false);
 
-    if (raised.current?.standing()) return;
-
-    raised.current = writeFailures.raise({
+    // One toast per title, about the press the reader made last. `lost-add.ts` holds the
+    // rule, and the failure in the bare guard this replaced.
+    raised.current = raiseLostAdd(raised.current, {
+      watched,
       // Named in full. The toast composes its own sentences from this and takes no
       // message, so there is no parameter an exception could arrive in.
       title: titleName,
-      // No episode: this is a change to the title itself, not to one instalment.
       reference: outcome.reference,
       retry: () => void attempt(watched),
     });
@@ -132,6 +129,20 @@ export function AddToLibraryControl({
      * Two controls, wrapping rather than truncating — issue #222. This page has no fixed
      * slot and no row to fit into, so the pair lays out in ordinary flow and takes a
      * second line on a narrow phone rather than squeezing either label.
+     *
+     * **They take the same measure**, `px-4 py-2`, and that is a rule rather than a
+     * coincidence: `errors/recovery-buttons.ts`'s `SOLID_RECOVERY_COMPACT` says *a primary
+     * at one measure beside secondaries at another is two rows' worth of spacing in one*,
+     * and this is one control group in one row. The search row's copy of this control is
+     * the compact measure for the opposite reason — there the two are two cells apart and
+     * the row would grow — and `watch-mark-motion.tsx` carries both halves.
+     *
+     * Measured in a real Chromium tab against the compiled CSS with Archivo loaded. Both
+     * controls come out `34.2px` tall, which is the point of the paragraph above; the pair
+     * plus its gap is `256.6px` on a show and `241.2px` on a film, against `327px` of
+     * content width at a `375px` viewport and `292px` at `340px`. So it stays on one line
+     * on a phone, and `flex-wrap` is the backstop for a longer label — a name has no
+     * bearing on it, since neither label carries one — rather than the everyday case.
      */
     <div className="mt-5 flex flex-wrap items-center gap-3">
       <button

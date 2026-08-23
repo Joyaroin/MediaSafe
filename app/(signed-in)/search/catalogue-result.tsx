@@ -3,12 +3,12 @@
 import { useRef, useState } from "react";
 
 import { referenceFor } from "@/errors/reference";
-import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
-import { QUIET_RECORDING_CONTROL_LABELLED } from "@/app/(signed-in)/library/watch-mark-motion";
+import { QUIET_RECORDING_CONTROL_LABELLED_COMPACT } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
   addWatchedAccessibleLabel,
   addWatchedLabel,
 } from "@/app/(signed-in)/titles/add-watched";
+import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-add";
 import { Poster } from "@/app/poster";
 import {
   addToLibraryAction,
@@ -82,7 +82,7 @@ export function CatalogueResultRow({
    * failure — the rollback half of `SPEC.md` §3.3.
    */
   const [inLibrary, setInLibrary] = useState(result.inLibrary);
-  const raised = useRef<WriteFailureHandle | null>(null);
+  const raised = useRef<StandingAdd | null>(null);
   /**
    * The watched add's idempotency key — issue #222. Minted on the first press and kept,
    * so a retry after a lost write is **the same write** rather than a second one: the
@@ -104,12 +104,15 @@ export function CatalogueResultRow({
    *
    * ── One function for both controls, and one toast between them ──────────────────────
    *
-   * `watched` picks the write; everything either side of it is identical, because from
-   * this row's point of view they are the same event — *this title is now in your
-   * library* — and a lost one of either is the same sentence to the reader. Sharing the
-   * handle is what keeps `AGENTS.md`'s **one toast per lost write** true across two
-   * controls rather than only within each: pressing the other one after a failure is a
-   * second route to the same intention, not a second thing to be told about.
+   * `watched` picks the write, and everything either side of it is identical because the
+   * two presses land the reader in the same place — *this title is now in your library*.
+   *
+   * **They are still two writes, and this used to say they were one event.** That claim
+   * is what the two-axis review of #222 took apart: a lost *Add — watched* answered by a
+   * standing *Add* toast is a backfill that vanishes and reports success. So `watched`
+   * travels into `raiseLostAdd` as well as into the retry closure, and `lost-add.ts`
+   * decides what a second lost add does to the first one's toast. What is shared is the
+   * ref, not the assumption.
    *
    * A retry always retries **the press that failed**, because `watched` travels into the
    * closure the toast holds. The alternative — a retry that re-read which control was
@@ -125,7 +128,7 @@ export function CatalogueResultRow({
     if (outcome.ok) {
       // The write landed — including the retry that landed after a failure, which is the
       // only thing that ever takes this toast down other than the reader.
-      raised.current?.resolve();
+      raised.current?.handle.resolve();
       raised.current = null;
       return;
     }
@@ -133,26 +136,17 @@ export function CatalogueResultRow({
     setInLibrary(false);
 
     /**
-     * One toast per lost add, not one per attempt. A retry that fails again updates
-     * nothing and stacks nothing; the toast is already saying the true thing.
-     *
-     * `standing()` rather than the bare `if (raised.current)` this file used to carry.
-     * `add-to-library-control.tsx` named the blind spot in the bare form — a reader who
-     * dismisses the toast leaves the ref holding a handle for a failure no longer on
-     * screen, and the *next* lost write is then suppressed entirely, which is
-     * `SPEC.md` §3.3 broken by the reader's own tidying up. It bites harder here now
-     * that the row has two controls: dismiss the first failure, press the other, and a
-     * second lost write would have been silent.
+     * One toast per title, about the press the reader made last — `lost-add.ts` holds the
+     * rule and the whole argument for it, including the failure the two-axis review of
+     * #222 found in the bare `if (raised.current?.standing()) return` this line replaced.
+     * The short version: with two controls on one row, that guard let a lost *watched*
+     * add be answered by a *plain* add's *Try again*, which then resolved as a success.
      */
-    if (raised.current?.standing()) return;
-
-    raised.current = writeFailures.raise({
+    raised.current = raiseLostAdd(raised.current, {
+      watched,
       // Named in full. The toast composes its own sentences from this and takes no
       // message, so there is no parameter an exception could arrive in.
       title: result.name,
-      // No episode: this is a change to the title itself, not to one instalment. That
-      // holds for the watched add too — it writes a show's worth of episodes, and naming
-      // one of them would name the wrong thing.
       reference: outcome.reference,
       retry: () => void attempt(watched),
     });
@@ -234,7 +228,7 @@ export function CatalogueResultRow({
             type="button"
             onClick={() => void attempt(true)}
             aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
-            className={`mt-2 ${QUIET_RECORDING_CONTROL_LABELLED}`}
+            className={`mt-2 ${QUIET_RECORDING_CONTROL_LABELLED_COMPACT}`}
           >
             {addWatchedLabel(result.kind)}
           </button>
