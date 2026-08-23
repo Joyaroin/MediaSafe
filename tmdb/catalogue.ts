@@ -53,7 +53,7 @@ import { findRequestFor, type TmdbFindPayload } from "./reconcile";
  * Every request below is `cache: "no-store"`, as it was when `SPEC.md` §3.1 forbade a read
  * cache outright. Issue #219 reversed that clause and #225 put three of the calls in this
  * file behind an entry — so the line has moved rather than gone, and it is worth saying
- * exactly where it now is: **this file does not cache; `cache/tags.ts` does.**
+ * exactly where it now is: **this file does not cache; `cache/` does.**
  *
  * Next's `fetch` cache is the thing still refused, and refused on the two properties the
  * reversal rests on. It is keyed by URL, so it carries no account and
@@ -70,7 +70,7 @@ import { findRequestFor, type TmdbFindPayload } from "./reconcile";
  * would also hide a title TMDB itself added minutes ago, which is the whole reason
  * somebody searches for something they could not find yesterday. The results are not
  * account-scopeable either — a query string is not a fact about a title or about a reader,
- * so it belongs to neither vocabulary in `cache/tags.ts`. `tests/cache-tags.test.ts` holds
+ * so it belongs to neither vocabulary in `cache/`. `tests/cache-tags.test.ts` holds
  * this: the borrowed facts it names are four, and `searchCatalogue` is not one of them.
  *
  * ── The read path never calls this ───────────────────────────────────────────────────
@@ -78,10 +78,10 @@ import { findRequestFor, type TmdbFindPayload } from "./reconcile";
  * ADR-0001: *the read path never calls TMDB for a mirrored field.* Nothing that renders a
  * library, a state, progress or up next may import this module. Three things legitimately
  * do: the search screen, which is by definition asking the catalogue about titles you do
- * not have; the add that follows it; and, since #225, `cache/tags.ts`, which wraps the
- * three live-only calls at the foot of this file and no other. None of the three is a
- * mirrored field — that is the whole distinction ADR-0001 draws, and `tmdb/live-facts.ts`
- * owns the side of it these calls are on.
+ * not have; the add that follows it; and, since #225, `cache/borrowed-facts.ts`, which
+ * wraps the three live-only calls at the foot of this file and no other. None of the three
+ * is a mirrored field — that is the whole distinction ADR-0001 draws, and
+ * `tmdb/live-facts.ts` owns the side of it these calls are on.
  */
 
 const TMDB_API = "https://api.themoviedb.org/3";
@@ -142,7 +142,7 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
       Accept: "application/json",
     },
     // Never Next's `fetch` cache: it carries no account and no tag. Where a call below is
-    // cached it is cached in `cache/tags.ts`, which carries both. Top of this file.
+    // cached it is cached in `cache/`, which carries both. Top of this file.
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
