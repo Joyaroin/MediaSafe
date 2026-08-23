@@ -88,7 +88,7 @@ import { titleMetaLine } from "./title-meta-line";
  *
  * This component does not fetch, or even know, how the three live sections get their
  * data — it only knows where they sit in the layout. `library/[entryId]/page.tsx` and
- * `titles/[kind]/[tmdbId]/page.tsx` hand in `<LiveTitleFactsStreamed kind tmdbId />`, a
+ * `titles/[kind]/[tmdbId]/page.tsx` hand in `<LiveTitleFactsStreamed userId kind tmdbId />`, a
  * Server Component built server-side and passed down as an already-rendered element
  * (React's own documented pattern for interleaving Server and Client Components); the
  * desktop pane and the Up next sheet hand in `<LiveTitleFactsClientFetch kind tmdbId />`

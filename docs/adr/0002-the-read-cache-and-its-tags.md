@@ -31,9 +31,10 @@ custom lint rules, and no place a tag vocabulary could live where it would be th
 
 A read cache with **two properties, both enforced rather than remembered**:
 
-1. **Every key carries an account.** The only call to `unstable_cache` in the repository is in
-   `cache/tags.ts`, and its key parts are `["library", userId]`. `next/cache` is a restricted import
-   everywhere else (`eslint.config.mjs`), so there cannot be a second call that forgets. And
+1. **Every key carries an account.** Every call to `unstable_cache` in the repository is in
+   `cache/` — one when this was written, thirteen now, across `tags.ts` and `borrowed-facts.ts` —
+   and each names a `userId` in its key parts. `next/cache` is a restricted import everywhere else
+   (`eslint.config.mjs`), by directory, so there cannot be a call outside that forgets. And
    `eslint-rules/cache-key-carries-account.mjs` fails `npm run lint` on any `unstable_cache` or
    `cacheTag` call whose key or tag does not name an account — which is a rule about the *next*
    cached read, written before there is one.
@@ -275,17 +276,18 @@ accounts are countable.
 
 ### What is cached now
 
-`cachedLibraryEntries`, and the four in the borrowed section of `cache/tags.ts`. Up next, the lists
-and the **owned** half of title detail are still #226 — that read carries your state, your rating and
-your watches, so it is an owned fact and gets a tag and no window.
+Thirteen reads: the nine owned ones in `cache/tags.ts` that #219, #226 and #227 built, and the four
+borrowed ones in `cache/borrowed-facts.ts` that this amendment is about. The **owned** half of title
+detail is among the nine and is not one of these four — `getTitleDetail` carries your state, your
+rating and your watches, so it is an owned fact and gets a tag and no window.
 
 ### What still must not be cached, and is written down so it stays that way
 
 **The catalogue search.** A stored result set hides a title TMDB added this morning and one this
 account added a minute ago, and a query string is a fact about neither a title nor a reader — it
 belongs to neither vocabulary. `tmdb/catalogue.ts` carries the argument, and
-`tests/cache-tags.test.ts` holds it: the module wraps five named reads and `searchCatalogue` does not
-appear in it at all.
+`tests/cache-tags.test.ts` holds it: the two files of `cache/` wrap thirteen named reads between
+them, and `searchCatalogue` is not one of them and does not appear in either.
 
 **Next's `fetch` cache**, still, everywhere. Every TMDB request is `cache: "no-store"`. It is keyed
 by URL, so it carries no account and the lint rule cannot see it; it carries no tag from the module

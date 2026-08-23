@@ -96,6 +96,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
    * the next read, without waiting for a window* — the window is six hours, and it is a
    * ceiling rather than the mechanism.
    *
+   * **The next read, literally.** The bust above uses `revalidateTag(tag, "max")`, which
+   * is stale-while-revalidate: the reader after it is served the old entry once. That is
+   * the right trade for a library grid and the wrong one here, so
+   * `invalidateBorrowedFactsFor` uses the profile-less call instead, which expires
+   * outright — the same thing `updateTag` does, minus the Server-Action guard this route
+   * could not satisfy. Its docblock carries the argument and the cost.
+   *
    * **Both ids of a repoint.** `outcome.refreshed` carries the candidate, whose `tmdbId`
    * is the one that vanished — the key every stale entry is stored under, and so the one
    * that has to be expired. The survivor is `repointed`'s `toTmdbId`, and it is busted too

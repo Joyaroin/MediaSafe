@@ -13,7 +13,6 @@ import {
 } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { CatalogueKey, TitleKind } from "@/tmdb/mirror";
-import type { BorrowedFact } from "./tags";
 
 /**
  * The read cache's other half: the facts a title page borrows from TMDB — issue #225.
@@ -67,29 +66,28 @@ import type { BorrowedFact } from "./tags";
  * Two vocabularies, two tag shapes, two bust functions, and a reviewer can tell from the
  * call which kind of fact a diff is invalidating.
  *
- * **The type itself lives in `tags.ts`**, beside `CachedRead` and the two classification
- * maps, and is imported here as a type only. That is the split this pair of files is
- * built on: `tags.ts` is the vocabulary — every name, and which of the three buckets each
- * read in `db/access.ts` falls into — and this file is the mechanism for one half of it.
- * The vocabulary has no TMDB import in it and so stays reachable from the client graph;
- * the mechanism does, and does not. A type import is erased, so naming it here costs
- * nothing at runtime.
+ * **The names themselves live in `tags.ts`** — `BorrowedFact` and `BORROWED_READS`, beside
+ * `CachedRead` and the other two classification maps. That is the split this pair of files
+ * is built on: `tags.ts` is the **vocabulary**, including which of the three buckets each
+ * read in `db/access.ts` falls into, and this file is the **mechanism** for one of them.
+ * The vocabulary has no TMDB import and so stays reachable from the client graph; the
+ * mechanism does, and does not. `READS` is the concrete reason it has to be that way round
+ * rather than the other: it must name the borrowed read, and it could not import it.
  */
 
 /**
- * The four, enumerated, so `invalidateBorrowedFactsFor` busts a fact added later without
- * anybody remembering to add it there too — and so `tests/cache-tags.test.ts` can hold the
- * list against the cached reads this module actually constructs.
- */
-const BORROWED_FACTS = [
-  "title-synopsis",
-  "title-cast-crew",
-  "title-watch-providers",
-  "title-mirror",
-] as const satisfies readonly BorrowedFact[];
-
-/**
- * The tag a borrowed fact carries: the fact, and the title it is about. **No account.**
+ * The tag every borrowed fact of one title carries: the title, and nothing else.
+ * **No account, and no fact either.**
+ *
+ * ── One tag for all four, not one each ───────────────────────────────────────────────
+ *
+ * The first draft gave each fact its own tag. Nothing ever busted one without the other
+ * three — `invalidateBorrowedFactsFor`'s docblock argues at length that a mirror refresh
+ * should re-earn all four — so four tags were four ways to express one event, three of
+ * which no caller used. That is the shape of a distinction being kept for a need nobody
+ * has, and it cost a fourfold multiple of `revalidateTag` calls on the sweep's path for
+ * it. One tag per title; the four entries are still four entries, kept apart by their key
+ * parts exactly as the library's four sort orders are.
  *
  * ── The key carries the account; the tag carries the title ───────────────────────────
  *
@@ -117,9 +115,18 @@ const BORROWED_FACTS = [
  * Not exported, for the reason `tagFor` is not: a tag anything outside this file could
  * build is one it could bust.
  */
-function borrowedTagFor(fact: BorrowedFact, kind: TitleKind, tmdbId: number): string {
-  return `${fact}:${kind}:${tmdbId}`;
+function borrowedTagFor(kind: TitleKind, tmdbId: number): string {
+  return `borrowed-facts:${kind}:${tmdbId}`;
 }
+
+/**
+ * *Expire this entry now*, as `revalidateTag`'s second argument — the one profile that is
+ * not a staleness window. Named rather than inlined because `{ expire: 0 }` at a call site
+ * reads like a configuration value and is in fact the whole difference between satisfying
+ * this ticket's acceptance criterion and missing it by one read;
+ * `invalidateBorrowedFactsFor`'s docblock is where that is argued.
+ */
+const EXPIRE_NOW = { expire: 0 } as const;
 
 /**
  * How long a borrowed fact may sit in the cache with nothing busting it — the *window*
@@ -203,7 +210,7 @@ export function cachedTitleSynopsis(
   tmdbId: number,
 ): Promise<string | null> {
   const read = unstable_cache(titleSynopsis, ["titleSynopsis", userId], {
-    tags: [borrowedTagFor("title-synopsis", kind, tmdbId)],
+    tags: [borrowedTagFor(kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
 
@@ -217,7 +224,7 @@ export function cachedTitleCastAndCrew(
   tmdbId: number,
 ): Promise<CastAndCrew> {
   const read = unstable_cache(titleCastAndCrew, ["titleCastAndCrew", userId], {
-    tags: [borrowedTagFor("title-cast-crew", kind, tmdbId)],
+    tags: [borrowedTagFor(kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
 
@@ -232,7 +239,7 @@ export function cachedTitleWatchProviders(
   tmdbId: number,
 ): Promise<readonly WatchProvider[]> {
   const read = unstable_cache(titleWatchProviders, ["titleWatchProviders", userId], {
-    tags: [borrowedTagFor("title-watch-providers", kind, tmdbId)],
+    tags: [borrowedTagFor(kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
 
@@ -270,7 +277,7 @@ export function cachedUnownedTitleDetail(
   tmdbId: number,
 ): Promise<UnownedTitleDetailRow> {
   const read = unstable_cache(getUnownedTitleDetail, ["getUnownedTitleDetail", userId], {
-    tags: [borrowedTagFor("title-mirror", kind, tmdbId)],
+    tags: [borrowedTagFor(kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
 
@@ -306,13 +313,29 @@ export function cachedUnownedTitleDetail(
  * facts are added. A fact that did not change is re-read once; a fact that changed and was
  * not busted is wrong for six hours.
  *
- * ── `revalidateTag(tag, "max")`, never `updateTag` ───────────────────────────────────
+ * ── `{ expire: 0 }`, which is expiry rather than staleness ──────────────────────────
  *
- * Nobody is ever reading their own write of a borrowed fact — that is what *borrowed*
- * means. The writer of an add is sent to their own entry's page, whose read is owned; the
- * sweep's readers are asleep. Stale-while-revalidate is the honest treatment for all of
- * them, and it is also the only one available to the sweep, which is a route handler where
- * `updateTag` throws.
+ * This is the one line of this ticket that was written wrong first, and the correction is
+ * worth keeping because the wrong version looked more idiomatic than the right one.
+ *
+ * The first draft passed `"max"`, copying `invalidateForOtherAccounts` next door. That is
+ * **stale-while-revalidate**: Next marks the entry stale, serves it to the next reader,
+ * and refreshes behind them — so the reader after the sweep would have been shown last
+ * night's mirror, and only the one after *that* the refresh. #219 accepts that trade for
+ * the library deliberately, and its test now says so. This ticket cannot: *a title
+ * refreshed by the nightly sweep is visible on the **next** read* is its acceptance
+ * criterion in those words, and *the read after next* is a different promise.
+ *
+ * `updateTag` is the call that expires outright and it is unavailable here — it throws on
+ * any route ending in `/route`, which the sweep is. `EXPIRE_NOW` is the same instruction
+ * in the spelling a route handler may use: `revalidate()` branches on
+ * `cacheLife?.expire === 0` exactly where it branches on a missing profile, which is what
+ * `updateTag` passes (`next/dist/server/web/spec-extension/revalidate.js`). The one-argument
+ * `revalidateTag(tag)` would also do it and is what `updateTag` literally calls, but Next
+ * has deprecated that form and dropped it from the types.
+ *
+ * `tests/cache-tags.test.ts` models the difference rather than flattening it: swap this
+ * back to `"max"` and five assertions fail, one of them by name.
  *
  * ── A repoint has two keys, and the caller passes both ───────────────────────────────
  *
@@ -331,8 +354,6 @@ export function cachedUnownedTitleDetail(
  */
 export function invalidateBorrowedFactsFor(titles: readonly CatalogueKey[]): void {
   for (const { kind, tmdbId } of titles) {
-    for (const fact of BORROWED_FACTS) {
-      revalidateTag(borrowedTagFor(fact, kind, tmdbId), "max");
-    }
+    revalidateTag(borrowedTagFor(kind, tmdbId), EXPIRE_NOW);
   }
 }

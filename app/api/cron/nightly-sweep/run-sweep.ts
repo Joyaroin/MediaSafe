@@ -70,7 +70,8 @@ export interface NightlySweepOutcome {
    * so the summary line and the two cache busts cannot come to disagree about which
    * titles moved.
    *
-   * `route.ts` is the only reader, and it needs two different things out of each one
+   * `route.ts` is its only reader outside this file — `reportToSentry` below counts it for
+   * the summary line — and it needs two different things out of each one
    * (issues #219 and #225). **The `title.id`** resolves the accounts holding it, whose
    * cached libraries print the `name`, `release_year` and `poster_path` this run just
    * rewrote. **The `(kind, tmdbId)` pair** is the borrowed facts' tag: the unowned title

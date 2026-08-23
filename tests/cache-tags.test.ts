@@ -39,6 +39,8 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     entries: new Map<string, unknown>(),
     /** The tags each entry carries, so a bust can find the entries it names. */
     tags: new Map<string, readonly string[]>(),
+    /** Entries a profiled `revalidateTag` marked stale: served once more, then dropped. */
+    stale: new Set<string>(),
     /** Every tag `updateTag` was called with, in order. */
     updated: [] as string[],
     /** Every `[tag, profile]` pair `revalidateTag` was called with, in order. */
@@ -97,6 +99,25 @@ vi.mock("next/cache", () => ({
     return async (...args: never[]) => {
       const invocationKey = `${fixedKey}-${JSON.stringify(args)}`;
       if (cacheState.entries.has(invocationKey)) {
+        /**
+         * A **stale** entry is served exactly once and then dropped, which is what
+         * stale-while-revalidate looks like from the reader's side: this read gets the old
+         * value, the refresh happens behind it, the next read gets the new one.
+         *
+         * Modelling this is not decoration. The first version of this double treated
+         * `revalidateTag(tag, "max")` as an outright delete — identical to `updateTag` —
+         * and so could not tell the two apart. A `cache/` that served one stale read after
+         * the nightly sweep passed every assertion here, including the one whose name
+         * claims to prove *visible on the next read*. The code review caught it; this is
+         * the change that means the next one cannot hide the same way.
+         */
+        if (cacheState.stale.has(invocationKey)) {
+          cacheState.stale.delete(invocationKey);
+          const staleValue = cacheState.entries.get(invocationKey);
+          cacheState.entries.delete(invocationKey);
+          cacheState.tags.delete(invocationKey);
+          return staleValue;
+        }
         return cacheState.entries.get(invocationKey);
       }
 
@@ -109,12 +130,24 @@ vi.mock("next/cache", () => ({
 
   updateTag(tag: string) {
     cacheState.updated.push(tag);
-    bust(tag);
+    expire(tag);
   },
 
-  revalidateTag(tag: string, profile: unknown) {
+  /**
+   * The fork the double exists to model. A **staleness profile** (`"max"`) marks entries
+   * stale and serves them once more; **`{ expire: 0 }`** expires them outright, taking the
+   * same branch in Next's own `revalidate()` as the profile-less call `updateTag` makes
+   * (`next/dist/server/web/spec-extension/revalidate.js`).
+   */
+  revalidateTag(tag: string, profile?: unknown) {
     cacheState.revalidated.push([tag, profile]);
-    bust(tag);
+    const expiresNow =
+      profile === undefined ||
+      (typeof profile === "object" && profile !== null && "expire" in profile
+        ? (profile as { expire?: number }).expire === 0
+        : false);
+    if (expiresNow) expire(tag);
+    else markStale(tag);
   },
 }));
 
@@ -138,11 +171,20 @@ vi.mock("@/db/access", async (importOriginal) => ({
  */
 vi.mock("@/tmdb/catalogue", () => ({ ...tmdb }));
 
-function bust(tag: string): void {
+/** Gone. The next read of this key is a real read. */
+function expire(tag: string): void {
   for (const [key, tags] of cacheState.tags) {
     if (!tags.includes(tag)) continue;
     cacheState.entries.delete(key);
     cacheState.tags.delete(key);
+    cacheState.stale.delete(key);
+  }
+}
+
+/** Still there, but owed one more serve before it is. */
+function markStale(tag: string): void {
+  for (const [key, tags] of cacheState.tags) {
+    if (tags.includes(tag)) cacheState.stale.add(key);
   }
 }
 
@@ -252,6 +294,7 @@ async function readEveryBorrowedFact(
 beforeEach(() => {
   cacheState.entries.clear();
   cacheState.tags.clear();
+  cacheState.stale.clear();
   cacheState.updated.length = 0;
   cacheState.revalidated.length = 0;
   cacheState.constructed.length = 0;
@@ -482,14 +525,33 @@ describe("every write busts its tags", () => {
    * already holds, which upserts the shared `title` row and so changes what `yours` sees.
    * Without the second call `yours` keeps the old mirror for ever — there is no expiry
    * behind the entry to save it.
+   *
+   * ── One stale read first, and that is the deliberate trade ──────────────────────────
+   *
+   * This assertion used to say the very next read was fresh. It passed because the double
+   * treated `revalidateTag(tag, "max")` as an outright delete; the real call marks the
+   * entry stale and serves it once while refreshing behind it (ADR-0002, and
+   * `invalidateForOtherAccounts`' own docblock, which calls stale-while-revalidate "the
+   * honest treatment" for an account that is not reading its own write). #225 corrected
+   * the double, and this is what the corrected one shows.
+   *
+   * **The behaviour is unchanged and intended** — `yours` is asleep, and a poster one page
+   * load out of date costs them nothing. What changed is that the test now says so instead
+   * of claiming something stronger. `#225`'s borrowed facts are the case where one stale
+   * read is *not* acceptable, and they use the profile-less call for exactly that reason.
    */
-  it("gives the other holders of a re-mirrored title a fresh read", async () => {
+  it("hands the other holders one stale read, then the re-mirrored one", async () => {
     await cachedLibraryEntries(yours);
     reads.listLibraryEntries.mockClear();
 
     invalidateFor("addTitleToLibrary", mine);
     invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
 
+    // Served from the stale entry: no read reached the database.
+    await cachedLibraryEntries(yours);
+    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
+
+    // And now the refresh.
     await cachedLibraryEntries(yours);
     expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([yours]);
   });
@@ -514,6 +576,7 @@ describe("the Stats page's figures follow the watches they are made of", () => {
     ] as const) {
       cacheState.entries.clear();
       cacheState.tags.clear();
+      cacheState.stale.clear();
       cacheState.updated.length = 0;
       reads.accountStats.mockClear();
 
@@ -1018,22 +1081,22 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
     expect(cacheState.constructed).toEqual([
       {
         keyParts: ["titleSynopsis", mine],
-        tags: ["title-synopsis:film:1972"],
+        tags: ["borrowed-facts:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
       {
         keyParts: ["titleCastAndCrew", mine],
-        tags: ["title-cast-crew:film:1972"],
+        tags: ["borrowed-facts:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
       {
         keyParts: ["titleWatchProviders", mine],
-        tags: ["title-watch-providers:film:1972"],
+        tags: ["borrowed-facts:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
       {
         keyParts: ["getUnownedTitleDetail", mine],
-        tags: ["title-mirror:film:1972"],
+        tags: ["borrowed-facts:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
     ]);
@@ -1134,22 +1197,64 @@ describe("a failed borrowed read is not a stored empty region", () => {
  * the next read, without waiting for a window.*
  */
 describe("busting a title's borrowed facts", () => {
-  it("expires all four facts of the named title and no others", () => {
+  /**
+   * One tag per title, and **no profile** — which is the difference between *expire this*
+   * and *serve it once more while you refresh it*. The `undefined` in this assertion is
+   * the acceptance criterion in one token; see the test below for what it buys.
+   */
+  it("expires the named title's facts with one profile-less call", () => {
     invalidateBorrowedFactsFor([SOLARIS]);
 
-    expect(cacheState.revalidated).toEqual([
-      ["title-synopsis:film:1972", "max"],
-      ["title-cast-crew:film:1972", "max"],
-      ["title-watch-providers:film:1972", "max"],
-      ["title-mirror:film:1972", "max"],
-    ]);
+    expect(cacheState.revalidated).toEqual([["borrowed-facts:film:1972", { expire: 0 }]]);
   });
 
   it("never uses updateTag, which the sweep's route handler could not call", () => {
     invalidateBorrowedFactsFor([SOLARIS, ANOTHER]);
 
     expect(cacheState.updated).toEqual([]);
-    expect(cacheState.revalidated).toHaveLength(8);
+    expect(cacheState.revalidated).toEqual([
+      ["borrowed-facts:film:1972", { expire: 0 }],
+      ["borrowed-facts:show:2001", { expire: 0 }],
+    ]);
+  });
+
+  /**
+   * One tag reaches all four entries. It is the reason a per-fact tag was dropped: every
+   * caller busts all four, so four tags were three spellings nobody used.
+   */
+  it("takes all four of a title's facts down together", async () => {
+    await readEveryBorrowedFact(mine, SOLARIS);
+    for (const mock of [tmdb.titleSynopsis, tmdb.titleCastAndCrew, tmdb.titleWatchProviders]) {
+      mock.mockClear();
+    }
+    reads.getUnownedTitleDetail.mockClear();
+
+    invalidateBorrowedFactsFor([SOLARIS]);
+    await readEveryBorrowedFact(mine, SOLARIS);
+
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleCastAndCrew).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleWatchProviders).toHaveBeenCalledTimes(1);
+    expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * **The criterion, in the one assertion that can tell the difference.**
+   *
+   * *A title refreshed by the nightly sweep is visible on the next read* — the **next**
+   * one. The first version of this ticket passed `"max"`, which is stale-while-revalidate:
+   * the reader after the sweep would have been served last night's mirror and only the one
+   * after that the refresh. Every test passed anyway, because the double deleted on both
+   * calls. It no longer does, so this assertion is now load-bearing: swap the profile-less
+   * call back to `"max"` and this line fails with last night's value in the message.
+   */
+  it("is visible on the next read, not the one after it", async () => {
+    await cachedUnownedTitleDetail(mine, "film", 1972);
+    reads.getUnownedTitleDetail.mockImplementation(async () => "the refreshed metadata");
+
+    invalidateBorrowedFactsFor([SOLARIS]);
+
+    expect(await cachedUnownedTitleDetail(mine, "film", 1972)).toBe("the refreshed metadata");
   });
 
   /**
