@@ -1,6 +1,10 @@
 "use server";
 
-import { addTitleToLibrary, libraryEntryIdForTitle } from "@/db/access";
+import {
+  addTitleToLibrary,
+  addTitleToLibraryWatched,
+  libraryEntryIdForTitle,
+} from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
 import { titleMirror } from "@/tmdb/catalogue";
@@ -83,5 +87,54 @@ export async function addUnownedTitleToLibraryAction(
     return { ok: true, libraryEntryId };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unowned-add" }) };
+  }
+}
+
+/**
+ * The same door, with the watch recorded on the way through — issue #222, over
+ * `db/access.ts`'s `addTitleToLibraryWatched`.
+ *
+ * Everything the action above says about itself holds here unchanged: the mirror is
+ * fetched rather than assumed, the entry id is read back afterwards by the same function
+ * the page uses to decide ownership, and `Outcome` rather than a throw because React
+ * strips a thrown Server Action's error before it crosses to the browser. It returns
+ * `AddToLibraryOutcome` — the same type — because the caller's question is the same one:
+ * **which entry is this reader now looking at**, since the page they are on stops being
+ * the right page the moment the write lands.
+ *
+ * `search/actions.ts`'s own watched add carries why this is a second action rather than a
+ * flag on the first, and why a browser-minted `sourceKey` is safe to take at a POST
+ * endpoint. Neither argument is repeated here.
+ */
+export async function addUnownedTitleWatchedToLibraryAction(
+  kind: TitleKind,
+  tmdbId: number,
+  sourceKey: string,
+): Promise<AddToLibraryOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    const key = catalogueKeyFrom(kind, tmdbId);
+
+    await addTitleToLibraryWatched(
+      userId,
+      await titleMirror(key.kind, key.tmdbId),
+      sourceKey,
+    );
+
+    const libraryEntryId = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
+    if (libraryEntryId === null) {
+      // Unreachable for the reason the action above gives, and a throw for the same one.
+      throw new Error(
+        `Added ${key.kind} ${key.tmdbId} to the library and then found no entry for it.`,
+      );
+    }
+
+    return { ok: true, libraryEntryId };
+  } catch (error) {
+    return {
+      ok: false,
+      reference: referenceFor(error, { surface: "unowned-add-watched" }),
+    };
   }
 }

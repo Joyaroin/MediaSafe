@@ -6,6 +6,7 @@ import {
   gt,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lt,
   lte,
@@ -662,6 +663,225 @@ export async function addTitleToLibrary(
       .returning({ id: libraryEntry.id });
 
     return { added: created.length > 0 };
+  });
+}
+
+/**
+ * What one press of *Add — watched* did: whether it created the entry, and how many
+ * watches it wrote.
+ *
+ * `added` is `addOutcome`'s own field, unchanged in meaning. `recorded` is
+ * `MarkWatchedUpToOutcome`'s, and it **stays off the wire** for that one's stated reason
+ * — a count on a surface is `DESIGN.md` §11's permanent exclusion, and this press shows
+ * the reader no episode list to reconcile a number against in the first place.
+ *
+ * The pair is genuinely two facts and not one. A show already in the library, added again
+ * from a stale search result, is `{ added: false, recorded: 6 }`; a show whose first
+ * season has not aired is `{ added: true, recorded: 0 }`. Collapsing them into a boolean
+ * would make those two indistinguishable from each other and from a failure.
+ */
+export interface AddWatchedOutcome {
+  readonly added: boolean;
+  readonly recorded: number;
+}
+
+/**
+ * Put one title in this account's library **and record having watched it**, in one
+ * transaction — issue #222, and the migration case that costs eighty taps without it.
+ *
+ * ── What "watched" means, for each of the two kinds ──────────────────────────────────
+ *
+ * A film is one watch, because a film is one watch. A show is **every released episode
+ * above season zero**, where released is `db/views.ts`'s own test verbatim: `season_no >
+ * 0 AND air_date IS NOT NULL AND air_date <= current_date`. A null air date is not
+ * released and a future one is not released.
+ *
+ * That is what makes the show land correctly with nothing special-cased. An ended show
+ * has no unreleased episodes, so every `season_no > 0` episode ends up watched and
+ * `library_entry_state`'s *finished* branch is reached; a show still in production has
+ * some, so the same rows reach *caught up* instead. Neither branch is named here, and
+ * neither is tested for — the states are the view's, evaluated on the next read.
+ *
+ * **`current_date` is read from Postgres, in the same statement that selects the rows.**
+ * Not a `Date` built in this process: the views compare against the server's
+ * `current_date` (`db/views.ts` records that as a deliberate exception to `SPEC.md` §5's
+ * timezone rule), and a write that decided *released* by a different clock than the read
+ * that renders it would be a show that reads *watching* the moment after it was recorded
+ * as finished.
+ *
+ * ── Specials, unaired and undated episodes are left alone, and stay markable ─────────
+ *
+ * `markWatchedUpTo` carries the argument for excluding specials and it is the same one:
+ * a watch of a season-zero episode changes no derived state, so writing one adds a row
+ * that answers nothing while holding the show back from *finished* over episodes the
+ * reader never counted. Unaired and undated episodes are excluded for a different reason
+ * — recording them would claim a watch of something that has not happened.
+ *
+ * All three remain exactly as markable by hand afterwards as any other episode. Nothing
+ * here writes a marker saying they were skipped, because there is no such thing to write:
+ * the absence of a `watch` row *is* unwatched.
+ *
+ * ── Idempotent twice over, because one guard is not enough ───────────────────────────
+ *
+ * The same press arriving twice is caught by `UNIQUE (user_id, source, source_key)`, the
+ * identity ADR-0001 chose. A *genuinely new* press against a title already recorded is
+ * caught by the already-watched filter below, which is the same filter `markWatchedUpTo`
+ * applies and exists for the same reason: a second `watch` row against an episode is a
+ * **rewatch** (`CONTEXT.md`), and one tap on *Add — watched* has no business claiming the
+ * reader saw the show twice. Neither guard stands in for the other — the first cannot see
+ * a press with a fresh key, and the second cannot see two copies of one press racing.
+ *
+ * The filter covers the film branch too, where "already watched" is simply *this entry
+ * has a watch at all*: a film's watch carries no episode, so there is no other kind of
+ * row it could be.
+ *
+ * ── Timestamped now, and what that costs ─────────────────────────────────────────────
+ *
+ * `watched_at` is `now()` — the transaction's own instant, so the whole press is one
+ * moment in the record — and **not** the null an import writes for the same situation.
+ * The consequence is stated rather than hidden, exactly as issue #196 stated it for
+ * `markWatchedUpTo`: the rails order on the most recent watch per title
+ * (`listUpNextRails`), so a show added-as-watched today rises above titles genuinely
+ * watched last week until something newer lands.
+ *
+ * ── `abandoned_at` is not cleared ────────────────────────────────────────────────────
+ *
+ * This is backfill, and ADR-0001 amendment 9 is the ruling: *a backfill written by the
+ * reader does not clear `abandoned_at`* — the clear follows a watch of something you are
+ * watching now, not a watch you are writing down about the past. `markWatchedUpTo` and
+ * `applyImportChunk` both take that side and this write joins them.
+ *
+ * On the ordinary path the column is null anyway, because the entry was created by the
+ * line above. It bites only where the title was already in the library and given up on —
+ * reachable from a search result rendered before the add happened in another tab — and
+ * there the abandoned title stays abandoned, with every watch this wrote still on it.
+ *
+ * ── One transaction, and the add inside it ───────────────────────────────────────────
+ *
+ * All-or-nothing is the ticket's own requirement and it is what makes the failure
+ * legible: one lost write, one toast, and a reader who reloads finds their library
+ * exactly as they left it rather than holding a watchlist entry for a show they said
+ * they had finished. That is why `addTitleToLibrary` is **called** here rather than
+ * copied — it opens a nested transaction, which Drizzle takes as a savepoint, so there is
+ * one definition of *add a title* and the mirror refresh every account reads happens on
+ * this path exactly as it does on the plain one.
+ *
+ * The entry is then read back rather than returned by the add, for the reason
+ * `titles/actions.ts` already gives: `addTitleToLibrary` reports `{ added }` and not
+ * which row, because `onConflictDoNothing` returns nothing on the conflict.
+ */
+export async function addTitleToLibraryWatched(
+  userId: UserId,
+  mirror: TitleMirror,
+  sourceKey: string,
+  executor: Executor = getDb(),
+): Promise<AddWatchedOutcome> {
+  return executor.transaction(async (tx) => {
+    const { added } = await addTitleToLibrary(userId, mirror, tx);
+
+    const [entry] = await tx
+      .select({ id: libraryEntry.id, titleId: libraryEntry.titleId })
+      .from(libraryEntry)
+      .innerJoin(title, eq(title.id, libraryEntry.titleId))
+      .where(
+        and(
+          ownedBy(userId, libraryEntry),
+          eq(title.kind, mirror.kind),
+          eq(title.tmdbId, mirror.tmdbId),
+        ),
+      );
+
+    if (!entry) {
+      /**
+       * Unreachable: the line above either created this account's entry or found one
+       * already there, and both leave a row for this read to find. It throws rather than
+       * recording nothing and reporting success — a press that reported the watches
+       * landed while writing none of them is the write reading as lost and as landed at
+       * once.
+       */
+      throw new Error(
+        `Added ${mirror.kind} ${mirror.tmdbId} to the library and then found no entry for it.`,
+      );
+    }
+
+    const watchedRows = await tx
+      .select({ episodeId: watch.episodeId })
+      .from(watch)
+      .where(eq(watch.libraryEntryId, entry.id));
+
+    if (mirror.kind === "film") {
+      // Already watched, so there is nothing this press can honestly add. A second row
+      // would be a rewatch, and the reader asked to record having seen it, not twice.
+      if (watchedRows.length > 0) return { added, recorded: 0 };
+
+      const written = await tx
+        .insert(watch)
+        .values({
+          userId,
+          libraryEntryId: entry.id,
+          titleId: entry.titleId,
+          // A film's watch carries no episode (ADR-0001 §3, where the composite foreign
+          // key makes the opposite unsatisfiable).
+          episodeId: null,
+          watchedAt: sql`now()`,
+          source: APP_WATCH_SOURCE,
+          sourceKey,
+        })
+        .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
+        .returning({ id: watch.id });
+
+      return { added, recorded: written.length };
+    }
+
+    /**
+     * `db/views.ts`'s released test, transcribed. It is read from `episode` rather than
+     * taken off `mirror.episodes` deliberately: the mirror is what TMDB said a moment
+     * ago, and `mirrorTitle` has just reconciled it against rows every other account
+     * shares. Deciding the set from the argument would let a title that failed to
+     * mirror an episode still be recorded as having it watched.
+     */
+    const released = await tx
+      .select({ id: episode.id })
+      .from(episode)
+      .where(
+        and(
+          eq(episode.titleId, entry.titleId),
+          gt(episode.seasonNo, 0),
+          isNotNull(episode.airDate),
+          lte(episode.airDate, sql`current_date`),
+        ),
+      )
+      .orderBy(episode.seasonNo, episode.episodeNo);
+
+    const alreadyWatched = new Set(
+      watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
+    );
+    const covered = released.filter((one) => !alreadyWatched.has(one.id));
+
+    if (covered.length === 0) return { added, recorded: 0 };
+
+    const written = await tx
+      .insert(watch)
+      .values(
+        covered.map((one) => ({
+          userId,
+          libraryEntryId: entry.id,
+          titleId: entry.titleId,
+          episodeId: one.id,
+          // The transaction's own instant, so the whole press is one moment in the
+          // record rather than sixty-two of them microseconds apart.
+          watchedAt: sql`now()`,
+          source: APP_WATCH_SOURCE,
+          // Derived per episode from the one key the press minted, which is
+          // `markWatchedUpTo`'s scheme and is shared with it on purpose: one press is
+          // one key, and a retry of it is a no-op row by row.
+          sourceKey: `${sourceKey}:${one.id}`,
+        })),
+      )
+      .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
+      .returning({ id: watch.id });
+
+    return { added, recorded: written.length };
   });
 }
 

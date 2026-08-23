@@ -29,8 +29,10 @@ import { UnownedEpisodes } from "./unowned-episodes";
  * tell you something false about a show you have never watched, because nothing here has
  * a field to say it with — `UnownedTitleDetailRow` carries no owned fact at all.
  *
- * What is present is one *Add to library*, and afterwards the title behaves like
- * everything else. There are not two kinds of show.
+ * What is present is *Add to library* and, since issue #222, *Add — watched* beside it —
+ * and afterwards the title behaves like everything else. There are not two kinds of show.
+ * The second control is not an exception to the paragraph above: it says nothing about
+ * what this reader has watched, it records what they say they have.
  *
  * ── Keyed by `(kind, tmdbId)`, not by a library entry ─────────────────────────────────
  *
@@ -125,8 +127,8 @@ export default async function UnownedTitlePage({
         )}
 
         {/* Where the owned page puts its state line — the line that says where this title
-            stands with you. It stands nowhere with you yet, and this is the one control
-            that changes that, so it takes the slot rather than sitting at the foot of a
+            stands with you. It stands nowhere with you yet, and these are the controls
+            that change that, so they take the slot rather than sitting at the foot of a
             page you would have to scroll to reach. */}
         {/* Keyed on the same argument as the control below it, and inert for the same
             reason — with one more: the success path unmounts this by navigating away, so

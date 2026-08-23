@@ -63,3 +63,42 @@ export const RECORDING_CONTROL =
  */
 export const QUIET_RECORDING_CONTROL =
   "shrink-0 border border-hair p-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+
+/**
+ * `QUIET_RECORDING_CONTROL` at a measure that can hold words — issue #222's *Add —
+ * watched*.
+ *
+ * **This is the same register, not a second one.** Identical hairline border, identical
+ * dim ink, identical accent on hover; `code-line px-2.5 py-1` where the one above takes
+ * `p-1`, and neither the measure nor the type register is invented — both are
+ * `RECORDING_CONTROL`'s, character for character. `errors/recovery-buttons.ts`'s
+ * `GHOST_RECOVERY_COMPACT` is the precedent and it states the rule this follows: a second
+ * **size** of one register is not the third **tier** `DESIGN.md` §10 records as considered
+ * and declined. The question of what a neutral tier *is* stays #194's, exactly as the
+ * docblock above leaves it.
+ *
+ * ── Why the watched add wears the quiet register and not the accent ──────────────────
+ *
+ * The reasoning above transfers whole, with one word changed. It records watches, so
+ * `app/globals.css`'s *Live* role would put it in the accent; it is dim at rest anyway,
+ * because **nothing beside the plain add may compete with it**. Adding is what a reader
+ * came to the screen to do and is the obvious default; this is pressed once, for a title
+ * they finished years ago, and then never again on it. A hairline border and dim ink says
+ * *pressable* without saying *press me*, and it takes the accent on hover because by then
+ * the reader has asked what it is and the honest answer is that it records watches.
+ *
+ * That is also what keeps `DESIGN.md` §3's *at most one solid-accent action per surface*
+ * true on the search screen, where the plain add is already that one.
+ *
+ * ── Its callers are not in this directory, and that is the trade ─────────────────────
+ *
+ * `app/(signed-in)/search/catalogue-result.tsx` and the unowned title page's
+ * `add-to-library-control.tsx`, neither of which is about a watch mark. Naming it here
+ * anyway is the lesser of the two costs: this module is where the register is defined and
+ * argued, and a copy of the string at either call site is the drift the constant above
+ * was extracted to stop — the same drift `errors/recovery-buttons.ts`'s own docblock
+ * exists to prevent. If a third register-owning module is ever pulled out of this file,
+ * both constants move together.
+ */
+export const QUIET_RECORDING_CONTROL_LABELLED =
+  "code-line shrink-0 border border-hair px-2.5 py-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";

@@ -7,15 +7,27 @@ import { referenceFor } from "@/errors/reference";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import type { TitleKind } from "@/tmdb/mirror";
+import { QUIET_RECORDING_CONTROL_LABELLED } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
   addUnownedTitleToLibraryAction,
+  addUnownedTitleWatchedToLibraryAction,
   type AddToLibraryOutcome,
 } from "@/app/(signed-in)/titles/actions";
+import {
+  addWatchedAccessibleLabel,
+  addWatchedLabel,
+} from "@/app/(signed-in)/titles/add-watched";
 
 /**
- * *Add to library* — issue #148's one control, and the whole of what this page offers to
- * do to a title. Everything else title detail can do to a title is a thing you can only
- * do to one you have, so this is the only door, and it is one press wide.
+ * *Add to library*, and *Add — watched* beside it — issue #148's control and issue
+ * #222's. Everything else title detail can do to a title is a thing you can only do to
+ * one you have, so this is still the only door; it is now two presses wide, and both of
+ * them lead through it.
+ *
+ * **The door is what is shared, and the destination is why.** Both writes end with this
+ * account owning the title, so both navigate to the same place, raise the same toast when
+ * they are lost, and hand the reader the same page afterwards. What differs is one
+ * argument to one action, which is why there is one `attempt` here and not two.
  *
  * ── It navigates rather than patching in place ────────────────────────────────────────
  *
@@ -66,11 +78,26 @@ export function AddToLibraryControl({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const raised = useRef<WriteFailureHandle | null>(null);
+  /**
+   * The watched add's idempotency key — issue #222, minted on the first press and kept so
+   * a retry is the same write rather than a second one. `catalogue-result.tsx` carries
+   * the full reasoning, and the key is minted the same way for the same reason.
+   */
+  const watchedKey = useRef<string | null>(null);
 
-  async function attempt(): Promise<void> {
+  /**
+   * `watched` picks the write and travels into the toast's `retry` closure, so a retry
+   * retries the press that failed. Both controls share the one handle and the one
+   * `pending` flag: from this page's point of view they are the same event — this title
+   * is yours now, and the page you are on is no longer the right page — so a lost one of
+   * either is one sentence to the reader (`AGENTS.md`, *one toast per lost write*).
+   */
+  async function attempt(watched: boolean): Promise<void> {
     setPending(true);
 
-    const outcome = await add(kind, tmdbId);
+    const outcome = watched
+      ? await addWatched(kind, tmdbId, (watchedKey.current ??= key()))
+      : await add(kind, tmdbId);
 
     if (outcome.ok) {
       // The write landed — including a retry that landed after a failure, which is the
@@ -93,15 +120,20 @@ export function AddToLibraryControl({
       title: titleName,
       // No episode: this is a change to the title itself, not to one instalment.
       reference: outcome.reference,
-      retry: () => void attempt(),
+      retry: () => void attempt(watched),
     });
   }
 
   return (
-    <div className="mt-5">
+    /**
+     * Two controls, wrapping rather than truncating — issue #222. This page has no fixed
+     * slot and no row to fit into, so the pair lays out in ordinary flow and takes a
+     * second line on a narrow phone rather than squeezing either label.
+     */
+    <div className="mt-5 flex flex-wrap items-center gap-3">
       <button
         type="button"
-        onClick={() => void attempt()}
+        onClick={() => void attempt(false)}
         disabled={pending}
         /**
          * The chip treatment `catalogue-result.tsx` already reasons about — **not**
@@ -113,6 +145,27 @@ export function AddToLibraryControl({
         className={`code-line border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground ${IN_FLIGHT}`}
       >
         Add to library
+      </button>
+
+      {/**
+       * The watched add, in the quiet register — `watch-mark-motion.tsx` carries why it
+       * is dim rather than accent, and the argument lands harder on this page than on the
+       * search row: the plain add here is **already** the hairline chip, so the only
+       * thing left to separate the default from the option is the ink. Full-strength
+       * `text` against `dim` is `DESIGN.md` §3's own device for exactly that, and it is
+       * what the sidebar uses to say which destination you are on.
+       *
+       * Two accent controls side by side would say neither is the default; a second
+       * `text` chip would say the same thing the other way.
+       */}
+      <button
+        type="button"
+        onClick={() => void attempt(true)}
+        disabled={pending}
+        aria-label={addWatchedAccessibleLabel(kind, titleName)}
+        className={`${QUIET_RECORDING_CONTROL_LABELLED} ${IN_FLIGHT}`}
+      >
+        {addWatchedLabel(kind)}
       </button>
     </div>
   );
@@ -132,3 +185,25 @@ async function add(kind: TitleKind, tmdbId: number): Promise<AddToLibraryOutcome
     };
   }
 }
+
+/** The same, for the watched add — issue #222. */
+async function addWatched(
+  kind: TitleKind,
+  tmdbId: number,
+  sourceKey: string,
+): Promise<AddToLibraryOutcome> {
+  try {
+    return await addUnownedTitleWatchedToLibraryAction(kind, tmdbId, sourceKey);
+  } catch (error) {
+    return {
+      ok: false as const,
+      reference: referenceFor(error, { surface: "unowned-add-watched" }),
+    };
+  }
+}
+
+/**
+ * One press, one idempotency key. `catalogue-result.tsx` carries why the key names the
+ * write rather than the attempt.
+ */
+const key = () => crypto.randomUUID();
