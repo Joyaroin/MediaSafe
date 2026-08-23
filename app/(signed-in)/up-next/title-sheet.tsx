@@ -15,6 +15,7 @@ import { exit, sheet } from "@/app/motion";
 import { Poster } from "@/app/poster";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
+import { LiveTitleFactsClientFetch } from "@/app/(signed-in)/library/live-title-facts";
 import { groupPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { ProgrammeNoteContent } from "@/app/(signed-in)/library/programme-note-content";
 import { titleDetailAction } from "@/app/(signed-in)/library/title-detail-actions";
@@ -260,6 +261,13 @@ export function TitleSheetProvider({
                 {phase.kind === "loaded" ? (
                   <ProgrammeNoteContent
                     detail={phase.detail}
+                    liveFacts={
+                      <LiveTitleFactsClientFetch
+                        key={`${phase.detail.kind}:${phase.detail.tmdbId}`}
+                        kind={phase.detail.kind}
+                        tmdbId={phase.detail.tmdbId}
+                      />
+                    }
                     posterTransitionName={groupPosterTransitionName(
                       phase.detail.libraryEntryId,
                     )}
@@ -267,10 +275,7 @@ export function TitleSheetProvider({
                       setPhase((prev) =>
                         prev.kind === "loaded" &&
                         prev.detail.libraryEntryId === libraryEntryId
-                          ? {
-                              kind: "loaded",
-                              detail: { ...prev.detail, state },
-                            }
+                          ? { kind: "loaded", detail: { ...prev.detail, state } }
                           : prev,
                       )
                     }
@@ -278,10 +283,7 @@ export function TitleSheetProvider({
                       setPhase((prev) =>
                         prev.kind === "loaded" &&
                         prev.detail.libraryEntryId === libraryEntryId
-                          ? {
-                              kind: "loaded",
-                              detail: { ...prev.detail, rating },
-                            }
+                          ? { kind: "loaded", detail: { ...prev.detail, rating } }
                           : prev,
                       )
                     }
