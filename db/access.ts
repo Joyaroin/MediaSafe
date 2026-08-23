@@ -2602,8 +2602,206 @@ export const ONGOING_RAIL_SIZE = 12;
  * in memory, which would need the state on every row and would put a third rule (*which
  * rail is this?*) somewhere other than in the predicate that defines it.
  */
+/**
+ * One episode a tile can mark, and the four facts it takes to mark it — issue #220.
+ *
+ * `episodeName` is `null` where TMDB has not named the episode, exactly as everywhere
+ * else. The surface never degrades to the number in its place: the tile's control reads
+ * its label from `season-grouping.ts`'s `episodeFullName`, which is the one answer in this
+ * build to what an unnamed episode is called.
+ */
+export interface QueuedEpisode {
+  readonly episodeId: string;
+  readonly episodeName: string | null;
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+}
+
+/**
+ * What an Ongoing tile can mark without another read — issue #220.
+ *
+ * ── Why a run and not one episode ────────────────────────────────────────────────────
+ *
+ * The tile advances **optimistically**: a press marks the episode and the tile is showing
+ * the one after it before the server has answered, which means the one after it has to be
+ * in the browser already. `UpNextEntry.episodeId` is the head of this run and says nothing
+ * about what follows, so a tile built on it alone could advance exactly nowhere.
+ *
+ * Nothing here is a second definition of *up next*. The run **starts** at
+ * `library_entry_up_next`'s own episode and walks the same `(season_no, episode_no)`
+ * ordering that view walks, so the head of `episodes` and `UpNextEntry.episodeId` are one
+ * fact read twice and cannot come to disagree.
+ *
+ * ── The run stops at the first unreleased episode, and that is the whole rule ────────
+ *
+ * *Released* is `db/views.ts`'s, unchanged — `air_date is not null and air_date <=
+ * current_date` — and the run is **truncated at the first episode that fails it** rather
+ * than filtered by it. Filtering would let a later released episode close a gap left by an
+ * earlier undated one, which would advance a tile past an episode nobody watched and put
+ * the app's idea of a reader's progress ahead of their own.
+ *
+ * That truncation is also what answers *marking the last released episode takes the tile
+ * out of the group*: the run empties, and an empty run is a tile with nothing to mark.
+ *
+ * ── `more`, and why the cap needs it ─────────────────────────────────────────────────
+ *
+ * `UP_NEXT_QUEUE_DEPTH` bounds what is read per tile, so an exhausted run is ambiguous on
+ * its own — the show may have run out of released episodes, or the cap may simply have
+ * been reached. `more` separates the two, and the read pays for it by fetching one row
+ * past the cap rather than by counting the rest of the show.
+ *
+ * | `episodes` | `more` | What the tile does |
+ * |---|---|---|
+ * | non-empty | either | offers the mark on `episodes[0]` |
+ * | empty | `false` | leaves the group — nothing released is left |
+ * | empty | `true` | stays, with no control, until the next load refills the run |
+ *
+ * The last row is the cap showing through, and it is reachable only by marking
+ * `UP_NEXT_QUEUE_DEPTH` episodes of one show from one tile without this page being loaded
+ * again in between. It renders as a tile that is momentarily not markable rather than as a
+ * tile that claims a show is finished, which is the direction this has to fail in.
+ */
+export interface UpNextQueue {
+  readonly episodes: readonly QueuedEpisode[];
+  /** There is at least one further released episode beyond `episodes`. */
+  readonly more: boolean;
+}
+
+/**
+ * An Ongoing tile's entry — issue #220, and the only rail entry that carries a queue.
+ *
+ * Ongoing is the one group with a mark control (`up-next-groups.tsx`), so it is the one
+ * group that pays for the second read. Coming back, Old friends, Watchlist and Abandoned
+ * stay exactly the shape they were.
+ */
+export interface OngoingEntry extends UpNextEntry {
+  readonly queue: UpNextQueue;
+}
+
+/**
+ * How far ahead one Ongoing tile is read — issue #220.
+ *
+ * **Four, and it caps a burst rather than estimating an evening.** The run only has to
+ * outlast the presses made between two loads of this page, and the scene the mark exists
+ * for is *one* tap — #215's own words are that it makes the most common action in the app
+ * one tap. Four covers a double bill and the fumble either side of it, and
+ * `UpNextQueue.more` is what keeps a fifth press honest rather than wrong.
+ *
+ * The cost is what bounds it. ONGOING holds at most `ONGOING_RAIL_SIZE` entries, so this
+ * read returns at most `12 × 5` rows — the depth, plus the one row that answers `more` —
+ * on a page that already makes three reads. Reading the whole show instead would be the
+ * same query returning several hundred episodes nobody is going to press tonight.
+ *
+ * Exported for the tests, which have to prove the cap and its `more` flag hold at exactly
+ * this number.
+ */
+export const UP_NEXT_QUEUE_DEPTH = 4;
+
+/**
+ * Every Ongoing tile's run of markable episodes, in one read — issue #220.
+ *
+ * ── One query for all twelve, and why it is not a lateral per entry ─────────────────
+ *
+ * `row_number()` partitioned by the entry gives each tile its own numbering over one scan,
+ * so twelve tiles cost one round trip rather than twelve. The window is ordered by
+ * `(season_no, episode_no)` — the same ordering `library_entry_up_next` uses to decide
+ * what is next — and the `>=` below is a **row comparison**, lexicographic, so it means
+ * *this episode or any after it* across a season boundary without a second clause.
+ *
+ * ── The air date travels, and the truncation happens here ───────────────────────────
+ *
+ * The query returns whether each row is released rather than filtering on it, because the
+ * rule is *stop at the first unreleased episode* and a `WHERE` cannot express *stop*. The
+ * walk below is that rule, and `UpNextQueue`'s docblock is where it is argued.
+ *
+ * ── An empty `entryIds` returns without querying ────────────────────────────────────
+ *
+ * The same guard `libraryCatalogueKeys` states at length: `inArray` over nothing is not a
+ * predicate that matches nothing in every driver, and a read of *every* entry's episodes
+ * is not the failure to find out with.
+ */
+async function upNextQueues(
+  userId: UserId,
+  entryIds: readonly string[],
+  executor: Executor,
+): Promise<Map<string, UpNextQueue>> {
+  const queues = new Map<string, UpNextQueue>();
+  if (entryIds.length === 0) return queues;
+
+  const ranked = executor
+    .select({
+      libraryEntryId: libraryEntryUpNext.libraryEntryId,
+      episodeId: episode.id,
+      episodeName: episode.name,
+      seasonNo: episode.seasonNo,
+      episodeNo: episode.episodeNo,
+      released:
+        sql<boolean>`${episode.airDate} is not null and ${episode.airDate} <= current_date`.as(
+          "released",
+        ),
+      rank: sql<number>`row_number() over (
+          partition by ${libraryEntryUpNext.libraryEntryId}
+          order by ${episode.seasonNo}, ${episode.episodeNo}
+        )`
+        .mapWith(Number)
+        .as("rank"),
+    })
+    .from(libraryEntryUpNext)
+    .innerJoin(
+      episode,
+      and(
+        eq(episode.titleId, libraryEntryUpNext.titleId),
+        gt(episode.seasonNo, 0),
+        sql`(${episode.seasonNo}, ${episode.episodeNo}) >= (${libraryEntryUpNext.seasonNo}, ${libraryEntryUpNext.episodeNo})`,
+      ),
+    )
+    .where(
+      and(
+        eq(libraryEntryUpNext.userId, userId),
+        inArray(libraryEntryUpNext.libraryEntryId, [...entryIds]),
+      ),
+    )
+    .as("ranked");
+
+  const rows = await executor
+    .select()
+    .from(ranked)
+    // One past the depth, which is the row that answers `more`.
+    .where(lte(ranked.rank, UP_NEXT_QUEUE_DEPTH + 1))
+    .orderBy(ranked.libraryEntryId, ranked.rank);
+
+  const runs = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const run = runs.get(row.libraryEntryId);
+    if (run) run.push(row);
+    else runs.set(row.libraryEntryId, [row]);
+  }
+
+  for (const entryId of entryIds) {
+    const run = runs.get(entryId) ?? [];
+    const released: QueuedEpisode[] = [];
+    for (const row of run) {
+      // The truncation, not a filter: the first unreleased episode ends the run whatever
+      // is dated behind it.
+      if (!row.released) break;
+      released.push({
+        episodeId: row.episodeId,
+        episodeName: row.episodeName,
+        seasonNo: row.seasonNo,
+        episodeNo: row.episodeNo,
+      });
+    }
+    queues.set(entryId, {
+      episodes: released.slice(0, UP_NEXT_QUEUE_DEPTH),
+      more: released.length > UP_NEXT_QUEUE_DEPTH,
+    });
+  }
+
+  return queues;
+}
+
 export interface UpNextRails {
-  readonly ongoing: readonly UpNextEntry[];
+  readonly ongoing: readonly OngoingEntry[];
   readonly comingBack: readonly UpNextEntry[];
   readonly oldFriends: readonly UpNextEntry[];
 }
@@ -2630,8 +2828,33 @@ export async function listUpNextRails(
     read.rows(COMING_BACK, null),
   ]);
 
+  const ongoing = watching.slice(0, ONGOING_RAIL_SIZE).map(upNextEntry);
+
+  /**
+   * The third read, and the only one of the three that is sequential — issue #220. It
+   * takes the entry ids the slice above chose, so it cannot be overlapped with the reads
+   * that produce them.
+   *
+   * It runs on every load of this page, including a desktop one, for the reason `page.tsx`
+   * states at length about the two reads that already do: **the server does not know the
+   * viewport**, and #136 deleted this build's only `matchMedia` branch deliberately. The
+   * cost is bounded by `UP_NEXT_QUEUE_DEPTH`'s own docblock rather than by a guess about
+   * who is looking.
+   */
+  const queues = await upNextQueues(
+    userId,
+    ongoing.map((entry) => entry.libraryEntryId),
+    executor,
+  );
+
   return {
-    ongoing: watching.slice(0, ONGOING_RAIL_SIZE).map(upNextEntry),
+    /** An entry with no run at all is an empty run, never a missing key: `OngoingEntry`
+     *  is a shape every Ongoing tile has, and a tile branching on `undefined` would be a
+     *  fourth answer beside the three `UpNextQueue` already enumerates. */
+    ongoing: ongoing.map((entry) => ({
+      ...entry,
+      queue: queues.get(entry.libraryEntryId) ?? { episodes: [], more: false },
+    })),
     comingBack: comingBack.map(upNextEntry),
     oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(upNextEntry),
   };

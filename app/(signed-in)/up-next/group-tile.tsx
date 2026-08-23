@@ -64,20 +64,50 @@ export type GroupTileEntry = TitleSheetEntry;
  *
  * `useBulkSelection()`, `useIsSelecting()` and `useIsSelected()` all come from the Library's
  * `bulk-selection-context.ts` unmodified: availability is a fact about the tree exactly the
- * way #197 built it, and the tree above this tile is either `up-next-groups.tsx`'s
- * `BulkSelectionProvider` or `group-screen.tsx`'s — never both, never neither where the
- * gesture is meant to exist. The store, the action bar, the count and the exit rules are the
- * ones #197 shipped; nothing here reimplements any of them.
+ * way #197 built it. The store, the action bar, the count and the exit rules are the ones
+ * #197 shipped; nothing here reimplements any of them.
+ *
+ * ── ⚠️ The hold has left the Up next **tab** — issue #220 ────────────────────────────
+ *
+ * Not by a branch in this file. `up-next-groups.tsx` no longer mounts a
+ * `BulkSelectionProvider`, so on the phone home `useBulkSelection()` is `null`, the hold
+ * hook is inert and `HOLDABLE` is never applied — while `group-screen.tsx` still mounts
+ * one, so the five group screens behind *More* keep the gesture exactly as #198 shipped
+ * it. **Availability is a fact about the tree**, which is the device #197 chose precisely
+ * so that withdrawing a gesture from one surface is a provider being removed rather than a
+ * media query being added.
+ *
+ * The reason is #215's: this tile now carries tap-to-open *and* tap-to-mark
+ * (`ongoing-tile.tsx`), and a card that also holds-to-select is three meanings on one
+ * card. **The cost is recorded** on #194, which scoped selection to the Up next tracks as
+ * well: bulk *Add to list* and bulk *Abandon* are no longer reachable from the home
+ * surface, and reaching them is one navigation — the Library grid, a group screen, or a
+ * list's detail rows.
  */
 export function GroupTile({
   entry,
   className,
   aboveFold = false,
   abandoned = false,
+  slot = null,
 }: {
   entry: GroupTileEntry;
   className?: string;
   aboveFold?: boolean;
+  /**
+   * Something under the tile's own text, inside its `<li>` and **outside** the pressable
+   * element — issue #220's mark control, and nothing else today.
+   *
+   * Outside is load-bearing rather than tidy: a `<button>` cannot contain a `<button>`,
+   * and on the group screens this tile is an `<a>`, which cannot contain one either. A
+   * control nested in the tile would also inherit the tile's own press and its hold, so a
+   * tap meant for the mark would open the sheet behind it.
+   *
+   * `null` for every group but Ongoing (`up-next-groups.tsx`), which is where the whole
+   * *only Ongoing carries a mark* rule lives — this prop asks no questions about which
+   * group it is in.
+   */
+  slot?: React.ReactNode;
   /**
    * This tile is an abandoned title. Only the phone home's Abandoned group passes it,
    * and it passes it for every tile at once (`home-group.tsx`). Named for the state
@@ -229,6 +259,8 @@ export function GroupTile({
           {body}
         </button>
       )}
+
+      {slot}
     </li>
   );
 }

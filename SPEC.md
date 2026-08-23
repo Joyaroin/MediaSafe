@@ -229,9 +229,12 @@ fourth.
    **Watchlist** and **Abandoned**, the two states the desktop reaches only through Library's own
    chips. A few titles each, with `more ›` into that group's own screen. #138 **replaces** the deck
    this bullet used to describe — one dominant card, recording control in the thumb arc — and with it
-   the recording control the phone landing screen carried: **there is no recording control on Up next
-   at all now, on either device.** To mark an episode, open the title. The rails' and the groups'
-   shared rules are in *Up next — the three rails* below.
+   the recording control the phone landing screen carried. **[#220](https://github.com/Joyaroin/MediaSafe/issues/220)
+   puts one back, on the Ongoing group's tiles and nowhere else**: one tap records tonight's episode,
+   the tile advances and offers *Undo* in place. The desktop rails are unchanged and carry none; on
+   the phone, Coming back, Old friends, Watchlist and Abandoned carry none either. To mark anything
+   else, or to give up on a title, open it. The rails' and the groups' shared rules are in *Up next —
+   the three rails* below.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
 4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
@@ -552,9 +555,25 @@ Built here as the phone deck — one dominant card, recording control in the thu
 cap — and the desktop TONIGHT row, viewport-bounded to whole cards; both are superseded now. The
 desktop TONIGHT row went with #136's sidebar, replaced by #137's three horizontal rails. The phone
 deck's own **contract is replaced by [#138](https://github.com/Joyaroin/MediaSafe/issues/138)**:
-five vertical groups — the same three rules the desktop rails read, plus Watchlist and Abandoned —
-and no recording control anywhere on the surface at all; to mark an episode or give up on a title,
-you open it.
+five vertical groups — the same three rules the desktop rails read, plus Watchlist and Abandoned.
+
+**#138's *no recording control anywhere on the surface* is reversed by
+[#220](https://github.com/Joyaroin/MediaSafe/issues/220), and #138 is reopened with the reversal on
+it.** An **Ongoing** tile carries a mark: one tap records tonight's episode, the tile advances to the
+next one optimistically with no route change and no success toast, and offers *Undo* in place while a
+fumble is still plausible. Marking the last released episode takes the tile out of the group. The
+other four groups carry no control — Coming back and Old friends are shows nobody is mid-episode on,
+Watchlist would turn one tap into *start this show*, and a mistap on Abandoned would silently clear
+the one hand-set state in this app. To give up on a title you still open it.
+
+The reasoning #138 gave was sound and the cost is what changed: this step exists to deliver *the
+daily scene at one tap from a cold open*, and a surface with no control put the app's most frequent
+action back behind opening something — which is the complaint this step was written to answer, one
+screen further on. **The hold gesture leaves this surface in exchange** ([#194](https://github.com/Joyaroin/MediaSafe/issues/194)'s
+scope is amended on that ticket): a tile carrying tap-to-open, tap-to-mark and hold-to-select is
+three meanings on one card. Selection stays on the Library grid, the five group screens behind
+*More*, and list detail rows, so bulk *Add to list* and bulk *Abandon* are one navigation away from
+the home rather than on it.
 
 **Leaves**: the daily scene at one tap from a cold open. **This is the cutover gate** — not step 3.
 Cutting over before Up next exists regresses the highest-frequency scene against the app being
