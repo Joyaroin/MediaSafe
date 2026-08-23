@@ -1,6 +1,10 @@
 "use server";
 
-import { addTitleToLibrary, libraryCatalogueKeys } from "@/db/access";
+import {
+  addTitleToLibrary,
+  addTitleToLibraryWatched,
+  libraryCatalogueKeys,
+} from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { searchCatalogue, titleMirror } from "@/tmdb/catalogue";
 import {
@@ -128,5 +132,55 @@ export async function addToLibraryAction(
     return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search-add" }) };
+  }
+}
+
+/**
+ * Add one catalogue result **and record having watched it**, in the same tap — issue
+ * #222, over `db/access.ts`'s `addTitleToLibraryWatched`.
+ *
+ * A second action rather than a boolean on the one above, and that is a decision. A
+ * Server Action is a POST endpoint whose arguments are whatever the caller sent, and the
+ * two do materially different things to a library — one writes an entry, the other writes
+ * an entry and every released episode of a show. A flag would make *which of those
+ * happened* a value in a request body rather than which endpoint was called, and the
+ * `sourceKey` below has no meaning at all on the plain add.
+ *
+ * ── The key is minted by the browser, and that is safe here ──────────────────────────
+ *
+ * `sourceKey` is a `crypto.randomUUID()` from the control that pressed, held across
+ * retries so a lost write retried is the same write — the shape `watch-marks.ts` already
+ * mints one per episode for. Idempotency is `UNIQUE (user_id, source, source_key)`, which
+ * is **scoped to the account**, so a caller sending somebody else's key can only make its
+ * own write a no-op. It cannot reach another library, and nothing here trusts the value
+ * for anything but that.
+ *
+ * **Already in the library is still a success**, exactly as the plain add has it, and the
+ * write underneath is idempotent in both of the ways it needs to be — see its docblock.
+ * Reaching this twice is a retry or a second tab, and telling the reader their library is
+ * wrong because it already holds what they asked for would be a lie about a write that
+ * landed.
+ */
+export async function addWatchedToLibraryAction(
+  kind: TitleKind,
+  tmdbId: number,
+  sourceKey: string,
+): Promise<AddOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    const key = catalogueKeyFrom(kind, tmdbId);
+
+    await addTitleToLibraryWatched(
+      userId,
+      await titleMirror(key.kind, key.tmdbId),
+      sourceKey,
+    );
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      reference: referenceFor(error, { surface: "search-add-watched" }),
+    };
   }
 }
