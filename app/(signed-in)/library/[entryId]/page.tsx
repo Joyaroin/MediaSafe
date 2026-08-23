@@ -57,7 +57,13 @@ export default async function TitleDetailPage({
 
       <TitleDetailView
         detail={detail}
-        liveFacts={<LiveTitleFactsStreamed kind={detail.kind} tmdbId={detail.tmdbId} />}
+        liveFacts={
+          <LiveTitleFactsStreamed
+            userId={userId}
+            kind={detail.kind}
+            tmdbId={detail.tmdbId}
+          />
+        }
       />
 
       {/* Always on screen here, unlike the desktop pane's conditional footer: this route

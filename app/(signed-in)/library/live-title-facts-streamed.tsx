@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import type { UserId } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
 import { readCastAndCrew, readSynopsis, readWatchProviders } from "./live-facts";
 import {
@@ -26,11 +27,25 @@ import {
  * page navigation for both callers of this component, which already remounts everything
  * here, but the key still matches the convention `live-title-facts.tsx`'s client variant
  * keys itself by at its own call site — belt and braces, at no real cost.
+ *
+ * ── `userId` is a prop, and it goes no further than this file ────────────────────────
+ *
+ * The three reads are cached since issue #225, and every cache key in this application
+ * carries an account, so the account has to reach them. Both callers are pages that have
+ * already resolved one through `requireUserId`, so it arrives as a prop rather than being
+ * resolved again — three times — here.
+ *
+ * It stops at the three async Server Components below. What crosses to the browser is the
+ * resolved `Outcome` and nothing else, exactly as before: `*FactSection` is a client
+ * component and takes no account, because a *Try again* is a Server Action and resolves
+ * its own.
  */
 export function LiveTitleFactsStreamed({
+  userId,
   kind,
   tmdbId,
 }: {
+  userId: UserId;
   kind: TitleKind;
   tmdbId: number;
 }) {
@@ -39,34 +54,42 @@ export function LiveTitleFactsStreamed({
   return (
     <>
       <Suspense key={`synopsis:${forTitle}`} fallback={<LiveFactPlaceholder heading="Synopsis" />}>
-        <SynopsisBoundary kind={kind} tmdbId={tmdbId} />
+        <SynopsisBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
       </Suspense>
 
       <Suspense
         key={`providers:${forTitle}`}
         fallback={<LiveFactPlaceholder heading="Watch providers" />}
       >
-        <WatchProvidersBoundary kind={kind} tmdbId={tmdbId} />
+        <WatchProvidersBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
       </Suspense>
 
       <Suspense key={`cast-crew:${forTitle}`} fallback={<LiveFactPlaceholder heading="Cast & crew" />}>
-        <CastAndCrewBoundary kind={kind} tmdbId={tmdbId} />
+        <CastAndCrewBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
       </Suspense>
     </>
   );
 }
 
-async function SynopsisBoundary({ kind, tmdbId }: { kind: TitleKind; tmdbId: number }) {
-  const initial = await readSynopsis(kind, tmdbId);
+/** One title, and the account whose cache entry of it this is. The three boundaries take
+ *  the same three things, so they say so once. */
+interface BoundaryProps {
+  readonly userId: UserId;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+}
+
+async function SynopsisBoundary({ userId, kind, tmdbId }: BoundaryProps) {
+  const initial = await readSynopsis(userId, kind, tmdbId);
   return <SynopsisFactSection kind={kind} tmdbId={tmdbId} initial={initial} />;
 }
 
-async function WatchProvidersBoundary({ kind, tmdbId }: { kind: TitleKind; tmdbId: number }) {
-  const initial = await readWatchProviders(kind, tmdbId);
+async function WatchProvidersBoundary({ userId, kind, tmdbId }: BoundaryProps) {
+  const initial = await readWatchProviders(userId, kind, tmdbId);
   return <WatchProvidersFactSection kind={kind} tmdbId={tmdbId} initial={initial} />;
 }
 
-async function CastAndCrewBoundary({ kind, tmdbId }: { kind: TitleKind; tmdbId: number }) {
-  const initial = await readCastAndCrew(kind, tmdbId);
+async function CastAndCrewBoundary({ userId, kind, tmdbId }: BoundaryProps) {
+  const initial = await readCastAndCrew(userId, kind, tmdbId);
   return <CastAndCrewFactSection kind={kind} tmdbId={tmdbId} initial={initial} />;
 }

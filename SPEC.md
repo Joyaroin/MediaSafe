@@ -32,11 +32,13 @@ order settles it:
 **`docs/adr/0002-the-read-cache-and-its-tags.md` and `docs/adr/0003-the-clock-is-an-input-not-a-window.md`
 are not in the table because they do not compete with anything in it.** Between them they record one
 reversal — §3 constraint 1's read-cache clause,
-[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and the correction
+[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — the correction
 [#226](https://github.com/Joyaroin/MediaSafe/issues/226) made to it a day later, when the other owned
-reads joined the cache and the clock turned out to be an input none of the tags could speak for. Both
-amendments are written into §3.1 itself rather than left here to be reconciled. Read both before
-caching another read; nothing else in this file depends on either.
+reads joined the cache and the clock turned out to be an input none of the tags could speak for, and
+the borrowed facts [#225](https://github.com/Joyaroin/MediaSafe/issues/225) added beside them, which
+are the one category carrying a window as well as a tag. All three amendments are written into §3.1
+itself rather than left here to be reconciled. Read both ADRs before caching another read; nothing
+else in this file depends on either.
 
 **Neither prototype is a source of truth.** `docs/design/prototypes/repertory-bill.html` recorded the
 letterpress world; `design/catalogue-wall.html` recorded the Catalogue Wall that replaced it and was
@@ -131,6 +133,31 @@ From the map, settled with Adham and not up for relitigation:
    > is not the time-based revalidation this clause forbids — it is an input to the query appearing
    > in the key of the query, and `docs/adr/0003-the-clock-is-an-input-not-a-window.md` argues the
    > difference.
+   >
+   > **Extended 2026-08-23 — borrowed facts join them, and they carry a window**
+   > ([#225](https://github.com/Joyaroin/MediaSafe/issues/225)). Title detail's synopsis, cast and
+   > crew, watch providers, and the mirrored `title`/`episode` metadata are cached too, in
+   > `cache/borrowed-facts.ts` beside the owned half and under the same two properties. Nine owned
+   > reads, four borrowed.
+   >
+   > They differ in two ways, both decisions rather than details. An **owned** fact is correct until
+   > a write says otherwise, so it carries a tag and no window. A **borrowed** fact changes when
+   > TMDB changes its mind, which nothing here observes and no key part can stand in for — a tag
+   > alone would never fire — so it carries **a six-hour window as well as a tag**. That is not the
+   > revalidation this clause forbids and not the one ADR-0003 turns down either: those are about
+   > inputs this codebase can name and put in a key, and this is the case where there is no such
+   > input. The window is a ceiling on being wrong, never the mechanism — the nightly sweep, every
+   > add and every import chunk bust what they rewrite, so a refreshed title is visible on the next
+   > read.
+   >
+   > And their tag names the **title**, not the account, while their key still names the account. A
+   > key decides what is shared; a tag decides what a bust reaches. The readers of a borrowed fact
+   > are not enumerable as accounts — the unowned title page is read by precisely the accounts that
+   > do *not* hold the title — so no account-scoped tag could reach them.
+   >
+   > **The catalogue search stays uncached, deliberately.** A stored result set would hide a title
+   > TMDB added this morning and one this account added a minute ago, and a query string is a fact
+   > about neither a title nor a reader.
 2. **Empty and failed are structurally separate.** **No `catch` returns `[]`.** A read failure
    throws into an error boundary; an empty state is reachable only by a successful zero-row query.
 3. **A lost write is never silent.** The watch write is optimistic with rollback and a persistent

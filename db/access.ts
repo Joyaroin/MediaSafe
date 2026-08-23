@@ -3524,6 +3524,21 @@ export interface UnownedTitleDetailRow {
  * into the page is a list row, which cannot exist without the `title` row it names, so a
  * miss here is a hand-typed id or a mirror that has lost a row — neither of which is an
  * empty state, and both of which are honestly a page that did not load.
+ *
+ * ── The page does not call this directly any more — issue #225 ───────────────────────
+ *
+ * `cache/borrowed-facts.ts`'s `cachedUnownedTitleDetail` wraps it, and that is what
+ * `titles/[kind]/[tmdbId]/page.tsx` calls. Nothing about the query changed, and the throws
+ * above still leave through `unstable_cache` untouched, because it stores resolved values
+ * only.
+ *
+ * What changed is that a caller may now be served an earlier answer, and **the thing that
+ * has to bust it is a rewrite of the mirror rather than a write of the reader's.** This
+ * read has no user id and no owned table in it, so it is on the borrowed side of the
+ * cache: its entry is tagged by `(kind, tmdbId)` and every write that reaches `mirrorTitle`
+ * — the list in `cache/tags.ts`'s `MIRRORS_SHARED_TITLE_ROWS` — owes it a call to
+ * `invalidateBorrowedFactsFor`, as does the nightly sweep. It also carries a six-hour
+ * window, which is a ceiling and not the mechanism.
  */
 export async function getUnownedTitleDetail(
   kind: TitleKind,

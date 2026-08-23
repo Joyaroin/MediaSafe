@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
   accountsHoldingTitles,
@@ -10,7 +11,7 @@ import {
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
 import { titleMirror } from "@/tmdb/catalogue";
-import { catalogueKeyFrom, type TitleKind } from "@/tmdb/mirror";
+import { catalogueKeyFrom, type CatalogueKey, type TitleKind } from "@/tmdb/mirror";
 
 /**
  * The one write on the page for a title you do not own — issue #148's *Add to library*.
@@ -63,6 +64,8 @@ export async function addUnownedTitleToLibraryAction(
   let libraryEntryId: string;
   /** The global row the add mirrored — see the second bust below for what it is for. */
   let titleId: string;
+  /** The same row by its catalogue key — the third bust, issue #225. */
+  let key: CatalogueKey;
 
   try {
     /**
@@ -73,7 +76,7 @@ export async function addUnownedTitleToLibraryAction(
      * `[kind]/[tmdbId]/page.tsx`: this action is reachable without ever loading that page,
      * so neither check stands in for the other.
      */
-    const key = catalogueKeyFrom(kind, tmdbId);
+    key = catalogueKeyFrom(kind, tmdbId);
 
     titleId = (await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId)))
       .titleId;
@@ -126,6 +129,16 @@ export async function addUnownedTitleToLibraryAction(
     await accountsHoldingTitles([titleId]),
     userId,
   );
+
+  /**
+   * And the title's own borrowed facts — issue #225. This action is the one where the
+   * point of the third bust is hardest to miss: the reader was **on** the unowned page for
+   * this title when they pressed, so that page's mirrored read is in the cache under this
+   * catalogue key, for them and for everybody else who has opened it. The add rewrote the
+   * global rows behind it (`mirrorTitle`), and the account list above cannot reach any of
+   * those entries, because holding a title is what takes you off this page.
+   */
+  invalidateBorrowedFactsFor([key]);
   return { ok: true, libraryEntryId };
 }
 
@@ -154,9 +167,11 @@ export async function addUnownedTitleWatchedToLibraryAction(
   let libraryEntryId: string;
   /** The global row this add mirrored — see the second bust below for what it is for. */
   let titleId: string;
+  /** The same row by its catalogue key — the third bust, issue #225. */
+  let key: CatalogueKey;
 
   try {
-    const key = catalogueKeyFrom(kind, tmdbId);
+    key = catalogueKeyFrom(kind, tmdbId);
 
     titleId = (
       await addTitleToLibraryWatched(
@@ -185,8 +200,8 @@ export async function addUnownedTitleWatchedToLibraryAction(
   }
 
   /**
-   * Both busts, for the reasons the action above gives — and this write moves the entry's
-   * state as well as creating it, so the grid it lands on is a different grid.
+   * All three busts, for the reasons the action above gives — and this write moves the
+   * entry's state as well as creating it, so the grid it lands on is a different grid.
    */
   invalidateFor("addTitleToLibraryWatched", userId);
   invalidateForOtherAccounts(
@@ -194,5 +209,6 @@ export async function addUnownedTitleWatchedToLibraryAction(
     await accountsHoldingTitles([titleId]),
     userId,
   );
+  invalidateBorrowedFactsFor([key]);
   return { ok: true, libraryEntryId };
 }

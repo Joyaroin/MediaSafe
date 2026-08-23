@@ -1,11 +1,16 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TitleKind } from "@/tmdb/mirror";
+
 /**
  * The read cache's two properties, held against the module that is supposed to have them
- * — issue #219, `cache/tags.ts`.
+ * — issue #219, and since #225 both files of it: `cache/tags.ts` for owned facts and
+ * `cache/borrowed-facts.ts` for the four a title page borrows from TMDB. One test file
+ * rather than two, because the properties are properties of the directory: no key without
+ * an account, no write without its bust, and no cached read constructed anywhere else.
  *
  * ── Why this file fakes Next.js instead of running it ────────────────────────────────
  *
@@ -28,24 +33,35 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * about Postgres.
  */
 
-const { cacheState, reads } = vi.hoisted(() => ({
+const { cacheState, reads, tmdb } = vi.hoisted(() => ({
   cacheState: {
     /** Cached values by invocation key, exactly as `unstable_cache` would hold them. */
     entries: new Map<string, unknown>(),
     /** The tags each entry carries, so a bust can find the entries it names. */
     tags: new Map<string, readonly string[]>(),
+    /** Entries a profiled `revalidateTag` marked stale: served once more, then dropped. */
+    stale: new Set<string>(),
     /** Every tag `updateTag` was called with, in order. */
     updated: [] as string[],
     /** Every `[tag, profile]` pair `revalidateTag` was called with, in order. */
     revalidated: [] as [string, unknown][],
-    /** The key parts and tags of every cached read that was constructed, in order. */
-    constructed: [] as { keyParts: string[]; tags: readonly string[] }[],
+    /** The key parts, tags and window of every cached read constructed, in order. */
+    constructed: [] as {
+      keyParts: string[];
+      tags: readonly string[];
+      revalidate: number | false | undefined;
+    }[],
   },
   /**
-   * Every read `cache/tags.ts` wraps, faked — one `vi.fn()` apiece rather than one shared
-   * spy, because *which* read the module reached for is half of what several assertions
-   * below are about. A `cachedWatchlist` that quietly called `listAbandoned` would satisfy
-   * a shared spy's call count and would be showing the reader the wrong group.
+   * Every read of `db/access.ts` that `cache/` wraps, faked — one `vi.fn()` apiece rather
+   * than one shared spy, because *which* read the module reached for is half of what
+   * several assertions below are about. A `cachedWatchlist` that quietly called
+   * `listAbandoned` would satisfy a shared spy's call count and would be showing the
+   * reader the wrong group.
+   *
+   * `getUnownedTitleDetail` is in here with the owned reads because it is in the same
+   * module and mocked the same way; what is different about it — a title-scoped tag and a
+   * window — is `cache/borrowed-facts.ts`'s doing, not this map's.
    */
   reads: {
     listLibraryEntries: vi.fn(),
@@ -57,6 +73,13 @@ const { cacheState, reads } = vi.hoisted(() => ({
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
     accountStats: vi.fn(),
+    getUnownedTitleDetail: vi.fn(),
+  },
+  /** The three borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. */
+  tmdb: {
+    titleSynopsis: vi.fn(),
+    titleCastAndCrew: vi.fn(),
+    titleWatchProviders: vi.fn(),
   },
 }));
 
@@ -64,17 +87,37 @@ vi.mock("next/cache", () => ({
   unstable_cache(
     callback: (...args: never[]) => Promise<unknown>,
     keyParts?: string[],
-    options?: { tags?: string[] },
+    options?: { tags?: string[]; revalidate?: number | false },
   ) {
     const fixedKey = `${callback.toString()}-${Array.isArray(keyParts) && keyParts.join(",")}`;
     cacheState.constructed.push({
       keyParts: keyParts ?? [],
       tags: options?.tags ?? [],
+      revalidate: options?.revalidate,
     });
 
     return async (...args: never[]) => {
       const invocationKey = `${fixedKey}-${JSON.stringify(args)}`;
       if (cacheState.entries.has(invocationKey)) {
+        /**
+         * A **stale** entry is served exactly once and then dropped, which is what
+         * stale-while-revalidate looks like from the reader's side: this read gets the old
+         * value, the refresh happens behind it, the next read gets the new one.
+         *
+         * Modelling this is not decoration. The first version of this double treated
+         * `revalidateTag(tag, "max")` as an outright delete — identical to `updateTag` —
+         * and so could not tell the two apart. A `cache/` that served one stale read after
+         * the nightly sweep passed every assertion here, including the one whose name
+         * claims to prove *visible on the next read*. The code review caught it; this is
+         * the change that means the next one cannot hide the same way.
+         */
+        if (cacheState.stale.has(invocationKey)) {
+          cacheState.stale.delete(invocationKey);
+          const staleValue = cacheState.entries.get(invocationKey);
+          cacheState.entries.delete(invocationKey);
+          cacheState.tags.delete(invocationKey);
+          return staleValue;
+        }
         return cacheState.entries.get(invocationKey);
       }
 
@@ -87,12 +130,24 @@ vi.mock("next/cache", () => ({
 
   updateTag(tag: string) {
     cacheState.updated.push(tag);
-    bust(tag);
+    expire(tag);
   },
 
-  revalidateTag(tag: string, profile: unknown) {
+  /**
+   * The fork the double exists to model. A **staleness profile** (`"max"`) marks entries
+   * stale and serves them once more; **`{ expire: 0 }`** expires them outright, taking the
+   * same branch in Next's own `revalidate()` as the profile-less call `updateTag` makes
+   * (`next/dist/server/web/spec-extension/revalidate.js`).
+   */
+  revalidateTag(tag: string, profile?: unknown) {
     cacheState.revalidated.push([tag, profile]);
-    bust(tag);
+    const expiresNow =
+      profile === undefined ||
+      (typeof profile === "object" && profile !== null && "expire" in profile
+        ? (profile as { expire?: number }).expire === 0
+        : false);
+    if (expiresNow) expire(tag);
+    else markStale(tag);
   },
 }));
 
@@ -101,11 +156,35 @@ vi.mock("@/db/access", async (importOriginal) => ({
   ...reads,
 }));
 
-function bust(tag: string): void {
+/**
+ * Mocked **whole**, with no `importOriginal` — and that is a constraint rather than a
+ * shortcut. `tmdb/catalogue.ts` is `import "server-only"`, which is a no-op inside Next's
+ * build and a hard throw under plain Node module resolution, so loading the real module
+ * here would fail the file before a single test ran (`tests/nightly-sweep-route.test.ts`
+ * and `run-sweep.ts` document the same wall from the other side). Since issue #225
+ * `cache/borrowed-facts.ts` imports it, so this mock is what keeps that half importable at
+ * all — and the reason it is a separate file from `tags.ts` in the first place.
+ *
+ * Nothing is lost by it. The three functions are a URL, a header and a `fetch`, and are
+ * deliberately untested there for that reason; what this file is about is the keys, the
+ * tags and the window wrapped around them.
+ */
+vi.mock("@/tmdb/catalogue", () => ({ ...tmdb }));
+
+/** Gone. The next read of this key is a real read. */
+function expire(tag: string): void {
   for (const [key, tags] of cacheState.tags) {
     if (!tags.includes(tag)) continue;
     cacheState.entries.delete(key);
     cacheState.tags.delete(key);
+    cacheState.stale.delete(key);
+  }
+}
+
+/** Still there, but owed one more serve before it is. */
+function markStale(tag: string): void {
+  for (const [key, tags] of cacheState.tags) {
+    if (tags.includes(tag)) cacheState.stale.add(key);
   }
 }
 
@@ -129,6 +208,13 @@ const {
   invalidateForOtherAccounts,
   serverDay,
 } = await import("@/cache/tags");
+const {
+  cachedTitleCastAndCrew,
+  cachedTitleSynopsis,
+  cachedTitleWatchProviders,
+  cachedUnownedTitleDetail,
+  invalidateBorrowedFactsFor,
+} = await import("@/cache/borrowed-facts");
 
 /** Two accounts, named so that a leak between them reads as a leak in the failure. */
 const mine = asUserId("user_mine");
@@ -176,9 +262,39 @@ function answerFor(read: keyof typeof CACHED, userId: string) {
   return read === "listLibraryEntries" ? libraryOf(userId) : ownedBy(userId);
 }
 
+/* ── The borrowed half, issue #225 ─────────────────────────────────────────────────── */
+
+/** Two titles, so *which title's entry was busted* is answerable from the value alone. */
+const SOLARIS = { kind: "film", tmdbId: 1972 } as const;
+const ANOTHER = { kind: "show", tmdbId: 2001 } as const;
+
+/** What a borrowed read answers, said so the title is legible in a failure. */
+function borrowedFrom(prefix: string) {
+  return async (kind: string, tmdbId: number) => `${prefix} of ${kind} ${tmdbId}`;
+}
+
+/**
+ * The four borrowed reads of one title, all of them, in one call.
+ *
+ * Not folded into `CACHED` above, and that is the point rather than an oversight: every
+ * entry in that table is keyed and tagged by account, and these four are tagged by title.
+ * A table that held both would have to carry the difference as a flag, and the difference
+ * is the whole subject of `cache/borrowed-facts.ts`.
+ */
+async function readEveryBorrowedFact(
+  userId: ReturnType<typeof asUserId>,
+  title: { kind: TitleKind; tmdbId: number },
+) {
+  await cachedTitleSynopsis(userId, title.kind, title.tmdbId);
+  await cachedTitleCastAndCrew(userId, title.kind, title.tmdbId);
+  await cachedTitleWatchProviders(userId, title.kind, title.tmdbId);
+  await cachedUnownedTitleDetail(userId, title.kind, title.tmdbId);
+}
+
 beforeEach(() => {
   cacheState.entries.clear();
   cacheState.tags.clear();
+  cacheState.stale.clear();
   cacheState.updated.length = 0;
   cacheState.revalidated.length = 0;
   cacheState.constructed.length = 0;
@@ -188,6 +304,18 @@ beforeEach(() => {
     read.mockImplementation(async (userId: string) => ownedBy(userId));
   }
   reads.listLibraryEntries.mockImplementation(async (userId: string) => libraryOf(userId));
+
+  // The borrowed four answer by title rather than by account — they take no user id, and
+  // the whole question about them is which *title's* entry a bust reached.
+  for (const [mock, prefix] of [
+    [tmdb.titleSynopsis, "the synopsis"],
+    [tmdb.titleCastAndCrew, "the cast and crew"],
+    [tmdb.titleWatchProviders, "the watch providers"],
+    [reads.getUnownedTitleDetail, "the mirrored metadata"],
+  ] as const) {
+    mock.mockReset();
+    mock.mockImplementation(borrowedFrom(prefix));
+  }
 });
 
 describe("every key carries an account", () => {
@@ -204,7 +332,15 @@ describe("every key carries an account", () => {
     await cachedLibraryEntries(mine);
 
     expect(cacheState.constructed).toEqual([
-      { keyParts: ["listLibraryEntries", mine, serverDay()], tags: [`library:${mine}`] },
+      // `revalidate: undefined` is an assertion, not a filler: an owned fact is correct
+      // until a write says otherwise, so a window here would only be a way for the
+      // library to be wrong. It is the one thing borrowed facts have that this does not
+      // (`cache/borrowed-facts.ts`), which makes it worth failing on rather than omitting.
+      {
+        keyParts: ["listLibraryEntries", mine, serverDay()],
+        tags: [`library:${mine}`],
+        revalidate: undefined,
+      },
     ]);
   });
 
@@ -389,14 +525,33 @@ describe("every write busts its tags", () => {
    * already holds, which upserts the shared `title` row and so changes what `yours` sees.
    * Without the second call `yours` keeps the old mirror for ever — there is no expiry
    * behind the entry to save it.
+   *
+   * ── One stale read first, and that is the deliberate trade ──────────────────────────
+   *
+   * This assertion used to say the very next read was fresh. It passed because the double
+   * treated `revalidateTag(tag, "max")` as an outright delete; the real call marks the
+   * entry stale and serves it once while refreshing behind it (ADR-0002, and
+   * `invalidateForOtherAccounts`' own docblock, which calls stale-while-revalidate "the
+   * honest treatment" for an account that is not reading its own write). #225 corrected
+   * the double, and this is what the corrected one shows.
+   *
+   * **The behaviour is unchanged and intended** — `yours` is asleep, and a poster one page
+   * load out of date costs them nothing. What changed is that the test now says so instead
+   * of claiming something stronger. `#225`'s borrowed facts are the case where one stale
+   * read is *not* acceptable, and they use the profile-less call for exactly that reason.
    */
-  it("gives the other holders of a re-mirrored title a fresh read", async () => {
+  it("hands the other holders one stale read, then the re-mirrored one", async () => {
     await cachedLibraryEntries(yours);
     reads.listLibraryEntries.mockClear();
 
     invalidateFor("addTitleToLibrary", mine);
     invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
 
+    // Served from the stale entry: no read reached the database.
+    await cachedLibraryEntries(yours);
+    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
+
+    // And now the refresh.
     await cachedLibraryEntries(yours);
     expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([yours]);
   });
@@ -421,6 +576,7 @@ describe("the Stats page's figures follow the watches they are made of", () => {
     ] as const) {
       cacheState.entries.clear();
       cacheState.tags.clear();
+      cacheState.stale.clear();
       cacheState.updated.length = 0;
       reads.accountStats.mockClear();
 
@@ -874,5 +1030,357 @@ describe("the map covers db/access.ts", () => {
       .map(({ name }) => name);
 
     expect([...writers].sort()).toEqual([...MIRRORS_SHARED_TITLE_ROWS].sort());
+  });
+});
+
+/**
+ * Every `.ts`/`.tsx` under `app/` whose text contains `needle`, as repository-relative
+ * paths. Used by one assertion below, which is a claim about *where a call appears* and
+ * so cannot be made from the module's own exports.
+ */
+function sourceFilesContaining(needle: string): string[] {
+  const root = path.join(import.meta.dirname, "..");
+  const found: string[] = [];
+
+  function walk(directory: string): void {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (/\.tsx?$/.test(entry.name) && readFileSync(full, "utf8").includes(needle)) {
+        found.push(path.relative(root, full));
+      }
+    }
+  }
+
+  walk(path.join(root, "app"));
+  return found;
+}
+
+/**
+ * The borrowed facts, and the two things they do differently — issue #225.
+ *
+ * Everything above is about facts that belong to an account. These four belong to a
+ * title: a synopsis, a cast list, a watch-provider row, and the mirrored `title` and
+ * `episode` metadata the unowned title page renders. They keep the account in the key,
+ * and they move the tag onto the title, and this block is where that pair is held.
+ */
+describe("a borrowed fact is keyed by account and tagged by title", () => {
+  const WINDOW_SECONDS = 6 * 60 * 60;
+
+  /**
+   * The shape assertion, on all four at once. It fails on any of the three ways this
+   * could regress: an account leaving a key (one reader served another's entry the day a
+   * region setting exists), a title leaving a tag (nothing the nightly sweep can bust),
+   * and a window going missing (a fact TMDB changed pinned for the life of the process,
+   * because no MediaSafe write observes it).
+   */
+  it("hands Next.js an account in every key and a title in every tag", async () => {
+    await readEveryBorrowedFact(mine, SOLARIS);
+
+    expect(cacheState.constructed).toEqual([
+      {
+        keyParts: ["titleSynopsis", mine],
+        tags: ["borrowed-facts:film:1972"],
+        revalidate: WINDOW_SECONDS,
+      },
+      {
+        keyParts: ["titleCastAndCrew", mine],
+        tags: ["borrowed-facts:film:1972"],
+        revalidate: WINDOW_SECONDS,
+      },
+      {
+        keyParts: ["titleWatchProviders", mine],
+        tags: ["borrowed-facts:film:1972"],
+        revalidate: WINDOW_SECONDS,
+      },
+      {
+        keyParts: ["getUnownedTitleDetail", mine],
+        tags: ["borrowed-facts:film:1972"],
+        revalidate: WINDOW_SECONDS,
+      },
+    ]);
+  });
+
+  /**
+   * The account is in the key parts and **not** in the arguments here — unlike the
+   * library, where it is `listLibraryEntries`'s own first parameter and would keep two
+   * readers apart on its own. `titleSynopsis(kind, tmdbId)` has no account to take, so
+   * the key parts are the *only* thing separating two readers of one title, and this is
+   * the test that fails if somebody simplifies them away.
+   */
+  it("never serves one account's borrowed entry to another", async () => {
+    await cachedTitleSynopsis(mine, "film", 1972);
+    await cachedTitleSynopsis(yours, "film", 1972);
+
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * Four facts, four entries. The keyParts prefix is what does it: the three TMDB reads
+   * are indistinguishable to `unstable_cache`'s key derivation by any other means under
+   * this file's mocks, and in production they are distinguished only by the callback's
+   * source text — which is a coincidence of the implementation rather than a property
+   * anybody chose. The prefix is the property anybody chose.
+   */
+  it("gives each of the four its own entry rather than one shared one", async () => {
+    await readEveryBorrowedFact(mine, SOLARIS);
+
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleCastAndCrew).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleWatchProviders).toHaveBeenCalledTimes(1);
+    expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("is a cache, and not merely four functions that read twice", async () => {
+    await readEveryBorrowedFact(mine, SOLARIS);
+    await readEveryBorrowedFact(mine, SOLARIS);
+
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
+    expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps two titles apart", async () => {
+    expect(await cachedTitleSynopsis(mine, "film", 1972)).toBe("the synopsis of film 1972");
+    expect(await cachedTitleSynopsis(mine, "show", 2001)).toBe("the synopsis of show 2001");
+  });
+});
+
+/**
+ * *One failed borrowed-fact read costs only its own region*, and *a cache miss is never
+ * rendered as an empty region* — two of this ticket's criteria, and the same property
+ * from two sides.
+ *
+ * The `catch` that turns a failure into an inline recovery lives in
+ * `app/(signed-in)/library/live-facts.ts`, one layer **above** these functions, and it
+ * cannot be exercised here: that file is `import "server-only"`. What can be exercised is
+ * the half that decides whether the catch is reached at all and whether the failure is
+ * remembered — which is this module, and which is the half a refactor could quietly
+ * change by "making the cache resilient".
+ */
+describe("a failed borrowed read is not a stored empty region", () => {
+  const unreachable = new Error("TMDB is unreachable");
+
+  it("lets the rejection through instead of answering with a value", async () => {
+    tmdb.titleSynopsis.mockRejectedValueOnce(unreachable);
+
+    await expect(cachedTitleSynopsis(mine, "film", 1972)).rejects.toThrow(unreachable);
+  });
+
+  /**
+   * The window is six hours, so an entry made out of a failure would be a section
+   * reading *this did not load* until this evening, with the reader's own *Try again*
+   * unable to clear it. Nothing is stored, so the retry is a real one.
+   */
+  it("stores nothing, so Try again is a real retry rather than a replay", async () => {
+    tmdb.titleSynopsis.mockRejectedValueOnce(unreachable);
+    await expect(cachedTitleSynopsis(mine, "film", 1972)).rejects.toThrow(unreachable);
+
+    expect(cacheState.entries.size).toBe(0);
+    expect(await cachedTitleSynopsis(mine, "film", 1972)).toBe("the synopsis of film 1972");
+  });
+
+  /** The three regions are three entries, so one failing leaves the other two answered. */
+  it("costs the failing fact its own region and nothing else", async () => {
+    tmdb.titleWatchProviders.mockRejectedValueOnce(unreachable);
+
+    await expect(cachedTitleWatchProviders(mine, "film", 1972)).rejects.toThrow(unreachable);
+    expect(await cachedTitleSynopsis(mine, "film", 1972)).toBe("the synopsis of film 1972");
+    expect(await cachedTitleCastAndCrew(mine, "film", 1972)).toBe(
+      "the cast and crew of film 1972",
+    );
+  });
+});
+
+/**
+ * The nightly sweep's criterion: *a title refreshed by the nightly sweep is visible on
+ * the next read, without waiting for a window.*
+ */
+describe("busting a title's borrowed facts", () => {
+  /**
+   * One tag per title, and **no profile** — which is the difference between *expire this*
+   * and *serve it once more while you refresh it*. The `undefined` in this assertion is
+   * the acceptance criterion in one token; see the test below for what it buys.
+   */
+  it("expires the named title's facts with one profile-less call", () => {
+    invalidateBorrowedFactsFor([SOLARIS]);
+
+    expect(cacheState.revalidated).toEqual([["borrowed-facts:film:1972", { expire: 0 }]]);
+  });
+
+  it("never uses updateTag, which the sweep's route handler could not call", () => {
+    invalidateBorrowedFactsFor([SOLARIS, ANOTHER]);
+
+    expect(cacheState.updated).toEqual([]);
+    expect(cacheState.revalidated).toEqual([
+      ["borrowed-facts:film:1972", { expire: 0 }],
+      ["borrowed-facts:show:2001", { expire: 0 }],
+    ]);
+  });
+
+  /**
+   * One tag reaches all four entries. It is the reason a per-fact tag was dropped: every
+   * caller busts all four, so four tags were three spellings nobody used.
+   */
+  it("takes all four of a title's facts down together", async () => {
+    await readEveryBorrowedFact(mine, SOLARIS);
+    for (const mock of [tmdb.titleSynopsis, tmdb.titleCastAndCrew, tmdb.titleWatchProviders]) {
+      mock.mockClear();
+    }
+    reads.getUnownedTitleDetail.mockClear();
+
+    invalidateBorrowedFactsFor([SOLARIS]);
+    await readEveryBorrowedFact(mine, SOLARIS);
+
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleCastAndCrew).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleWatchProviders).toHaveBeenCalledTimes(1);
+    expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * **The criterion, in the one assertion that can tell the difference.**
+   *
+   * *A title refreshed by the nightly sweep is visible on the next read* — the **next**
+   * one. The first version of this ticket passed `"max"`, which is stale-while-revalidate:
+   * the reader after the sweep would have been served last night's mirror and only the one
+   * after that the refresh. Every test passed anyway, because the double deleted on both
+   * calls. It no longer does, so this assertion is now load-bearing: swap the profile-less
+   * call back to `"max"` and this line fails with last night's value in the message.
+   */
+  it("is visible on the next read, not the one after it", async () => {
+    await cachedUnownedTitleDetail(mine, "film", 1972);
+    reads.getUnownedTitleDetail.mockImplementation(async () => "the refreshed metadata");
+
+    invalidateBorrowedFactsFor([SOLARIS]);
+
+    expect(await cachedUnownedTitleDetail(mine, "film", 1972)).toBe("the refreshed metadata");
+  });
+
+  /**
+   * **The test this whole tag shape exists for.** `yours` does not hold the title — which
+   * is exactly who reads the unowned title page — so `accountsHoldingTitles` would not
+   * return them and an account-scoped tag could never reach their entry. A title-scoped
+   * one does, and the refreshed mirror is on their next read rather than at the end of
+   * the six-hour window.
+   */
+  it("reaches an account the holders query could never have named", async () => {
+    expect(await cachedUnownedTitleDetail(yours, "film", 1972)).toBe(
+      "the mirrored metadata of film 1972",
+    );
+
+    reads.getUnownedTitleDetail.mockImplementation(async () => "the refreshed metadata");
+    invalidateBorrowedFactsFor([SOLARIS]);
+
+    expect(await cachedUnownedTitleDetail(yours, "film", 1972)).toBe("the refreshed metadata");
+  });
+
+  it("leaves a title the sweep did not touch exactly as it was", async () => {
+    await cachedUnownedTitleDetail(mine, "show", 2001);
+    reads.getUnownedTitleDetail.mockClear();
+
+    invalidateBorrowedFactsFor([SOLARIS]);
+
+    await cachedUnownedTitleDetail(mine, "show", 2001);
+    expect(reads.getUnownedTitleDetail).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The couplings this module cannot state in its types, held against the source of the
+ * files that owe them. Both are silent failures: the code runs, the tests pass, and one
+ * screen quietly disagrees with the database.
+ */
+describe("every shared-mirror write busts the borrowed facts too", () => {
+  const CALL_SITES = [
+    "app/(signed-in)/search/actions.ts",
+    "app/(signed-in)/titles/actions.ts",
+    "app/(signed-in)/import/actions.ts",
+    "app/api/cron/nightly-sweep/route.ts",
+  ];
+
+  /**
+   * `MIRRORS_SHARED_TITLE_ROWS` names the writes; the test above it holds that list
+   * against `db/access.ts`. This holds the *call sites* — every file that busts other
+   * accounts' libraries for a shared-mirror write also busts that title's borrowed facts,
+   * because the two calls cover different populations and neither is the other's
+   * shorthand (`invalidateBorrowedFactsFor`'s docblock). The add path was missed once on
+   * the account-scoped bust and found in review; this is the same check for the second
+   * one, before rather than after.
+   */
+  it.each(CALL_SITES)("%s makes both busts, not only the account one", (callSite) => {
+    const source = readFileSync(path.join(import.meta.dirname, "..", callSite), "utf8");
+
+    expect(source).toContain("invalidateForOtherAccounts(");
+    expect(source).toContain("invalidateBorrowedFactsFor(");
+  });
+
+  /**
+   * And nowhere else does. A bust from outside these four would mean a write that reaches
+   * `mirrorTitle` from a path `MIRRORS_SHARED_TITLE_ROWS` does not name — which is the
+   * thing that list exists to make impossible, so a new name here is a prompt to check it
+   * rather than a failure in itself.
+   */
+  it("is called from those four files and no others", () => {
+    const callers = sourceFilesContaining("invalidateBorrowedFactsFor(");
+
+    expect(callers.sort()).toEqual([...CALL_SITES].sort());
+  });
+});
+
+/**
+ * *Search results are not served from a cache in a way that hides a title added moments
+ * ago* — this ticket's last criterion, and the only one satisfied by something **not**
+ * happening. Which is exactly why it needs a test: nothing else in the suite fails when a
+ * fifth `unstable_cache` call appears around `searchCatalogue`.
+ *
+ * Read off the source rather than the behaviour, because there is no behaviour to read:
+ * the assertion is that the module constructs cached reads over these five callbacks and
+ * no sixth. `tmdb/catalogue.ts`'s own docblock carries the argument — a query string is a
+ * fact about neither a title nor a reader, and a stored result set hides both a title
+ * TMDB added this morning and one this account added a minute ago.
+ */
+describe("the reads that are cached, and the one that must never be", () => {
+  /** Both files of `cache/`, because the claim is about the directory, not either half. */
+  const source = ["tags.ts", "borrowed-facts.ts"]
+    .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
+    .join("\n");
+
+  it("wraps exactly the thirteen reads it is meant to", () => {
+    // `\s*` because several of these are formatted across lines. A regex that only
+    // matched the single-line spelling silently found five of the thirteen and passed.
+    const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
+
+    expect(cached).toEqual([
+      // `tags.ts` — the owned nine, in file order.
+      "listLibraryEntries",
+      "listUpNextRails",
+      "listWatchlist",
+      "listAbandoned",
+      "listLists",
+      "getListDetail",
+      "getTitleDetail",
+      "libraryEntryIdForTitle",
+      "accountStats",
+      // `borrowed-facts.ts` — the four.
+      "titleSynopsis",
+      "titleCastAndCrew",
+      "titleWatchProviders",
+      "getUnownedTitleDetail",
+    ]);
+  });
+
+  it("does not so much as name the catalogue search", () => {
+    expect(source).not.toContain("searchCatalogue");
+  });
+
+  /**
+   * And nothing outside `cache/` constructs one. `eslint.config.mjs` already restricts
+   * `next/cache` to that directory, so this is the belt to the lint rule's braces — and it
+   * is the assertion that would fail first if the exemption were ever widened to a second
+   * directory for convenience.
+   */
+  it("is the only place in the repository that constructs a cached read", () => {
+    expect(sourceFilesContaining("unstable_cache(")).toEqual([]);
   });
 });

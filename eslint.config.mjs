@@ -113,10 +113,14 @@ const AUTH_INSTANCE_PATTERN = {
 /**
  * The read cache, held to the standard the two boundaries above are held to (issue #219).
  *
- * `cache/tags.ts` owns the whole tag vocabulary — every key, every tag, every bust — and
- * the two properties that keep *two reads of the same fact cannot disagree* true are
- * properties **of that module**: keys carry an account because the only thing that builds
- * one takes a `UserId`, and writes bust their tags because the map they bust from is
+ * `cache/` owns the whole tag vocabulary — every key, every tag, every bust. Two files
+ * since issue #225, split for the reason `borrowed-facts.ts` gives at its top: `tags.ts`
+ * is reachable from client modules and TMDB's module is `server-only`. The restriction is
+ * on the **directory**, so the split changed nothing about it.
+ *
+ * The two properties that keep *two reads of the same fact cannot disagree* true are
+ * properties **of that directory**: keys carry an account because the only things that
+ * build one take a `UserId`, and writes bust their tags because the map they bust from is
  * there. A page that reached for `unstable_cache` itself would be outside both, so it may
  * not reach for it at all.
  *
@@ -128,7 +132,7 @@ const AUTH_INSTANCE_PATTERN = {
 const READ_CACHE_PATTERN = {
   group: ["next/cache"],
   message:
-    "Reads are cached and tags are busted in cache/tags.ts, which owns the vocabulary and takes the user id explicitly. Call invalidateFor() from your action (issue #219).",
+    "Reads are cached and tags are busted in cache/ — tags.ts for facts about an account, borrowed-facts.ts for facts about a title — which owns the vocabulary and takes the user id explicitly. Call invalidateFor() from your action (issue #219).",
 };
 
 const dataAccessChokePoint = {
@@ -150,7 +154,7 @@ const dataAccessChokePoint = {
 };
 
 /**
- * The inside of the read cache's choke point, and the only file exempt from it. It is
+ * The inside of the read cache's choke point, and the only directory exempt from it. It is
  * still held to every other pattern above — owning the cache is not a licence to open a
  * connection or resolve a session.
  */

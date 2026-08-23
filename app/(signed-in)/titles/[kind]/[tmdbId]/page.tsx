@@ -6,8 +6,8 @@ import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
+import { cachedUnownedTitleDetail } from "@/cache/borrowed-facts";
 import { cachedLibraryEntryIdForTitle } from "@/cache/tags";
-import { getUnownedTitleDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
 import { catalogueKeyFrom } from "@/tmdb/mirror";
 import { AddToLibraryControl } from "./add-to-library-control";
@@ -55,20 +55,35 @@ import { UnownedEpisodes } from "./unowned-episodes";
  *
  * ── A page read, unguarded ────────────────────────────────────────────────────────────
  *
- * Both mirrored reads (`cachedLibraryEntryIdForTitle`, `getUnownedTitleDetail`) are called
+ * Both mirrored reads (`cachedLibraryEntryIdForTitle`, `cachedUnownedTitleDetail`) are called
  * directly with no `try`: a failure throws into `error.tsx` beside this file, which is
  * `AGENTS.md`'s error discipline — a database MediaSafe cannot reach must never render as
  * a title with no episodes. `library/[entryId]/page.tsx` is the same shape, and its
  * docblock carries why the desktop pane cannot be.
  *
- * ── One of the two is cached, and the split is not arbitrary ────────────────────────
+ * The cache does not change that, and this is the page where it would be tempting to
+ * think it does. `unstable_cache` stores a resolved value only, so a throw from either —
+ * a database that is down, or a `title` row that is genuinely not mirrored — travels out
+ * through its wrapper untouched and leaves nothing behind.
+ *
+ * ── Both reads are cached now, on opposite sides of the vocabulary ──────────────────
+ *
+ * They are the clearest example in the application of the line `cache/` draws, because
+ * they sit two statements apart and are cached by different files for different reasons.
  *
  * The ownership question is **owned** — a row in this account's `library_entry` — so #226
  * caches it under the `library` tag, which every add, import, remove and account deletion
- * already busts. `getUnownedTitleDetail` is **borrowed**: it takes no account, the lint
- * rule could not key it, and nothing MediaSafe does invalidates TMDB's mirror on a
- * schedule a tag could follow. It is issue #225's, with a window as well as a tag, and
- * until that ships it is read fresh on every load.
+ * already busts. A stale answer there would be this page offering *Add to library* for a
+ * title the reader added in another tab, and a tag is exactly what prevents it.
+ *
+ * `cachedUnownedTitleDetail` is **borrowed** (#225): `title` and `episode` are global, they
+ * say what TMDB last said, and what changes them is a mirror refresh rather than a write
+ * of this reader's. So it is keyed by the account but tagged by the **title**, and it
+ * carries a window, because the accounts reading it are by definition the ones that do not
+ * hold the title and no account-scoped bust could ever reach them.
+ *
+ * Same page, same two lines of code, two different answers to *what makes this wrong?* —
+ * `cache/borrowed-facts.ts`'s tag block is where that is argued in full.
  *
  * ── The three live facts stream in behind this render (issue #218) ───────────────────
  *
@@ -103,7 +118,7 @@ export default async function UnownedTitlePage({
   const owned = await cachedLibraryEntryIdForTitle(userId, kind, tmdbId);
   if (owned !== null) redirect(`/library/${owned}`);
 
-  const detail = await getUnownedTitleDetail(kind, tmdbId);
+  const detail = await cachedUnownedTitleDetail(userId, kind, tmdbId);
   const meta = titleMetaLine(detail);
 
   return (
@@ -159,7 +174,11 @@ export default async function UnownedTitlePage({
           titleName={detail.name}
         />
 
-        <LiveTitleFactsStreamed kind={detail.kind} tmdbId={detail.tmdbId} />
+        <LiveTitleFactsStreamed
+          userId={userId}
+          kind={detail.kind}
+          tmdbId={detail.tmdbId}
+        />
 
         {/* Issue #147's own acceptance criterion: *title detail offers Add to list, on an
             owned title and an untracked one alike*. It was only reachable on the owned

@@ -23,7 +23,7 @@ import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
 import type { TitleKind } from "@/tmdb/mirror";
 
 /**
- * The read cache: the whole tag vocabulary, every cached read, and every bust.
+ * The read cache: the owned half of the vocabulary, and every write that busts one.
  *
  * ── What this module reverses ────────────────────────────────────────────────────────
  *
@@ -44,10 +44,12 @@ import type { TitleKind } from "@/tmdb/mirror";
  * rather than in anybody's memory:
  *
  * 1. **Every key carries an account.** Every call to `unstable_cache` in the repository is
- *    in this file, and `eslint-rules/cache-key-carries-account.mjs` fails the build if any
- *    of their key parts stops naming one. The rule was written for #219 before there was a
- *    second cached read; #226 added seven, and every one of them was checked as it was
- *    written rather than after it leaked, which is the whole reason it was written early.
+ *    in `cache/` — this file and `borrowed-facts.ts` beside it — and
+ *    `eslint-rules/cache-key-carries-account.mjs` fails the build if any of their key
+ *    parts stops naming one. The rule was written for #219 before there was a second
+ *    cached read; #226 added eight and #225 four, and every one of them was checked as it
+ *    was written rather than after it leaked, which is the whole reason it was written
+ *    early.
  * 2. **Every write busts its tags.** `INVALIDATES` below is the map, it is keyed by
  *    the write's own name in `db/access.ts`, and `tests/cache-tags.test.ts` fails when
  *    that file grows an `export async function` the map has not classified. A write
@@ -61,12 +63,25 @@ import type { TitleKind } from "@/tmdb/mirror";
  *    (`asUserId`, `ownedBy`) is a helper rather than a query. A synchronous exported
  *    *write* would slip past, and would also be a thing that could not touch the database.
  *
- * ── Nothing caches or busts outside this file ────────────────────────────────────────
+ * ── Nothing caches or busts outside `cache/` ─────────────────────────────────────────
  *
- * `eslint.config.mjs` restricts `next/cache` everywhere but here, in the same register as
+ * `eslint.config.mjs` restricts `next/cache` to this directory, in the same register as
  * the data-access choke point next to it. That is what makes the two properties above
  * statements about the repository rather than about this module: a page that reached for
  * `unstable_cache` itself could satisfy neither, and now it cannot reach for it at all.
+ *
+ * ── Two kinds of fact, and two files ─────────────────────────────────────────────────
+ *
+ * **Owned facts** are answers about an account — the library, and in #226 up next, lists
+ * and owned title detail. They are correct until a write says otherwise, so they carry a
+ * tag and **no window**. That is this file.
+ *
+ * **Borrowed facts** are answers about a title, copied from TMDB and the same for every
+ * reader: a synopsis, a cast list, a watch-provider row, and the mirrored `title` and
+ * `episode` metadata. They change on TMDB's schedule and nothing MediaSafe does observes
+ * it, so a tag alone would never fire and they carry **a window as well** — issue #225,
+ * and `borrowed-facts.ts` beside this file, whose top block says why it is a second file
+ * rather than a second section. `SPEC.md` §3.1's amendment sets out the two lifetimes.
  */
 
 /**
@@ -93,14 +108,19 @@ import type { TitleKind } from "@/tmdb/mirror";
  * be wrong — the other direction is a surface holding an answer the database contradicts,
  * with no expiry behind it to heal.
  *
- * Borrowed facts — TMDB's synopsis, cast and providers — are **not** here. They are #225's,
- * they change on TMDB's schedule rather than on a write, and they are the one category
- * that carries a window as well as a tag. Nothing in this file has a window.
+ * Borrowed facts — TMDB's synopsis, cast and providers, and the mirrored `title`/`episode`
+ * metadata — are **not** here. Issue #225 built them, in `borrowed-facts.ts` beside this
+ * file: they change on TMDB's schedule rather than on a write, and they are the one
+ * category that carries a window as well as a tag. **Nothing in this file has a window**,
+ * and `docs/adr/0003-the-clock-is-an-input-not-a-window.md` is why the day in some of the
+ * keys below is not one.
  */
 export type CachedRead = "library" | "up-next" | "lists" | "title-detail" | "stats";
 
 /**
- * An account and a fact, and there is no other shape a tag has.
+ * An account and a fact — the shape every **owned** tag has. (`borrowedTagFor`, in
+ * `borrowed-facts.ts`, is the other one: a fact and a title, and no account. Its own block
+ * argues why that is not the property being given up.)
  *
  * Not exported: a tag that anything outside this file could build is a tag something
  * outside this file could bust, and half of what this module is for is that neither
@@ -220,20 +240,70 @@ export const CACHED_READS = {
 export type CachedReadName = keyof typeof CACHED_READS;
 
 /**
+ * **The facts `borrowed-facts.ts` caches** — the other vocabulary, declared here beside the
+ * owned one rather than in the file that uses it.
+ *
+ * The names are not `CachedRead`s and the two must not be merged: a `CachedRead` is a fact
+ * about an account and its tag carries a `UserId`, while these are facts about a *title*
+ * and their tags carry a catalogue key. `borrowed-facts.ts`'s own tag block argues why
+ * that difference is not the isolation property being given up.
+ *
+ * They live in this file for a mechanical reason worth stating, because it is the only
+ * thing keeping the pair of files coherent: **this file must stay out of the client import
+ * graph.** `tags.ts` is reached from `watch-action.ts`, which is reached from the `"use
+ * client"` marks store; `borrowed-facts.ts` imports `tmdb/catalogue.ts`, which is
+ * `server-only` and throws under Vitest. So the vocabulary — plain names, no imports —
+ * lives here where everything can see it, and the mechanism lives there where only the
+ * server can. `READS` below is why that matters: it has to name every read in
+ * `db/access.ts`, including the borrowed one, and it could not import it.
+ */
+export type BorrowedFact =
+  | "title-synopsis"
+  | "title-cast-crew"
+  | "title-watch-providers"
+  | "title-mirror";
+
+/**
+ * The reads in `db/access.ts` that `borrowed-facts.ts` caches — the third bucket, beside
+ * `CACHED_READS` and `UNCACHED_READS`.
+ *
+ * One entry, and it earns being a map rather than a special case: `READS` below is the
+ * union of all three, and `tests/cache-tags.test.ts` holds that union against
+ * `db/access.ts`'s real exports. A read cannot fall between the three buckets, and the
+ * check never had to learn an exception — which is how a check stops being one.
+ *
+ * `getUnownedTitleDetail` sat in `UNCACHED_READS` from #226 until #225, under a sentence
+ * saying this ticket would come and take it. It came; the entry moved here rather than
+ * staying behind as a false one.
+ *
+ * The three TMDB reads are not here. They are not in `db/access.ts` at all — they are
+ * `tmdb/catalogue.ts`'s, and nothing classifies that module because nothing in it touches
+ * Postgres.
+ */
+export const BORROWED_READS = {
+  getUnownedTitleDetail: "title-mirror",
+} as const satisfies Record<string, BorrowedFact>;
+
+/**
  * **The other half of issue #226's *no read remains uncached without a recorded reason*.**
  *
- * Every read in `db/access.ts` that is *not* in `CACHED_READS` is here with a sentence
- * saying why, and `tests/cache-tags.test.ts` fails on an entry whose sentence is too short
- * to be one. A reason is a thing somebody had to write; an omission is not. That is the
- * entire mechanism, and it is the same one `INVALIDATES`' empty arrays already use.
+ * Every read in `db/access.ts` that is cached nowhere is here with a sentence saying why,
+ * and `tests/cache-tags.test.ts` fails on an entry whose sentence is too short to be one.
+ * A reason is a thing somebody had to write; an omission is not. That is the entire
+ * mechanism, and it is the same one `INVALIDATES`' empty arrays already use.
+ *
+ * **Cached nowhere, which since issue #225 is three places rather than two.** A read is
+ * either in `CACHED_READS` above, in `borrowed-facts.ts`'s `BORROWED_READS`, or here with
+ * its reason — and the test holds the union of the three against `db/access.ts`'s real
+ * exports, so a read cannot fall between them. `getUnownedTitleDetail` was here until
+ * #225, under a sentence saying that ticket would come and take it; it did, and the entry
+ * left with it rather than becoming a false one.
  */
 export const UNCACHED_READS = {
   accountFootprint:
     "Read once, on the delete-account confirmation, by a reader who is about to make it wrong. Caching a count somebody is reading in order to destroy buys nothing and adds a way for the number and the deletion to disagree.",
   accountsHoldingTitles:
     "A write's own read: it resolves who to bust *for* the cache. Caching it would mean invalidation deciding who to invalidate from a cached answer, which is the one place a stale row turns into a bust that never happens.",
-  getUnownedTitleDetail:
-    "Borrowed, not owned, and takes no account — the lint rule could not key it and a tag alone would never fire for it. Issue #225 caches it with a window as well as a tag.",
   libraryCatalogueKeys:
     "The search screen's already-added check, read against a set of keys that changes per query. The key would be the query, so the hit rate is the odds of the same reader searching the same thing twice.",
   resolveSeedUserId:
@@ -547,6 +617,11 @@ export function cachedAccountStats(userId: UserId): Promise<AccountStats> {
  * `tests/cache-tags.test.ts` reads `db/access.ts` and fails if a function whose body calls
  * `mirrorTitle` is missing from that set — the add path was missed on the first pass here,
  * found in review, and this is the check that means the next one is not.
+ *
+ * Since issue #225 these same writes owe a **second** call, `invalidateBorrowedFactsFor`,
+ * and for a reason `invalidateForOtherAccounts` does not cover: the accounts *holding* a
+ * title are not the accounts reading its borrowed facts. That function's docblock draws
+ * the distinction; this list is the answer to *who owes it*, for both.
  */
 export const INVALIDATES = {
   /** A new entry, in `watchlist`, mirroring the shared title on the way in — the grid, the
@@ -618,9 +693,14 @@ export const MIRRORS_SHARED_TITLE_ROWS = [
  * and holds the union against the module's real exports, so that *classified* means
  * classified as cached, or as uncached with a reason, rather than merely absent from the
  * map. A read invalidates nothing, so there is nothing else this list is for.
+ *
+ * **Three buckets since #225, not two.** A read is owned-cached, borrowed-cached, or
+ * uncached with a sentence saying why. Adding `BORROWED_READS` here rather than teaching
+ * the test about it is what keeps the test one assertion about a union.
  */
 export const READS: readonly string[] = [
   ...Object.keys(CACHED_READS),
+  ...Object.keys(BORROWED_READS),
   ...Object.keys(UNCACHED_READS),
 ];
 

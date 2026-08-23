@@ -74,29 +74,39 @@ export async function titleDetailAction(
  * They remain for what issue #218 left them for: a reader's own *Try again* on a section
  * that failed, after `titleLiveFactsAction` or `live-title-facts-streamed.tsx`'s own
  * `readSynopsis`/`readCastAndCrew`/`readWatchProviders` already answered the first read.
+ *
+ * ── The session's answer is now used, not only checked (issue #225) ──────────────────
+ *
+ * `requireUserId`'s return value used to be discarded on all four of these — the call was
+ * the authorisation and nothing more. The reads behind them are cached now and every cache
+ * key in this application carries an account (`cache/tags.ts`), so the id is passed down
+ * rather than dropped. The authorisation is unchanged and is still the reason the call
+ * comes first.
+ *
+ * **A *Try again* is a real retry, not a replayed failure.** These four sit on the reader-
+ * facing side of the cache, and the cache stores resolved values only: the read that just
+ * failed left no entry, so the button reaches TMDB again. It is the successful read next
+ * to it that is served from memory, which is the whole point of the ticket.
  */
 export async function titleSynopsisAction(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<Outcome<string | null>> {
-  await requireUserId();
-  return readSynopsis(kind, tmdbId);
+  return readSynopsis(await requireUserId(), kind, tmdbId);
 }
 
 export async function titleCastAndCrewAction(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<Outcome<CastAndCrew>> {
-  await requireUserId();
-  return readCastAndCrew(kind, tmdbId);
+  return readCastAndCrew(await requireUserId(), kind, tmdbId);
 }
 
 export async function titleWatchProvidersAction(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<Outcome<readonly WatchProvider[]>> {
-  await requireUserId();
-  return readWatchProviders(kind, tmdbId);
+  return readWatchProviders(await requireUserId(), kind, tmdbId);
 }
 
 /**
@@ -118,8 +128,7 @@ export async function titleLiveFactsAction(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<LiveFacts> {
-  await requireUserId();
-  return readLiveFacts(kind, tmdbId);
+  return readLiveFacts(await requireUserId(), kind, tmdbId);
 }
 
 /**
