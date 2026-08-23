@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { listLibraryEntries } from "@/db/access";
+import { listLibraryEntries, listLists } from "@/db/access";
 import { sortFrom } from "@/db/library-sort";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
@@ -123,9 +123,19 @@ export default async function LibraryPage({
     );
   }
 
+  /**
+   * Issue #223: the phone's Lists rail, above the grid. A second unguarded read, same
+   * discipline as `entries` above — a failed fetch here throws into this route's own
+   * `error.tsx` rather than rendering a library with no lists reachable from it. Only
+   * reached once the library is known non-empty: the empty branch above has no grid for a
+   * rail to sit "above", and the ticket's own acceptance criteria scope the rail to that
+   * shape.
+   */
+  const lists = await listLists(userId);
+
   return (
     <NavTransition>
-      <LibrarySurface entries={entries} sort={sort} />
+      <LibrarySurface entries={entries} sort={sort} lists={lists} />
     </NavTransition>
   );
 }

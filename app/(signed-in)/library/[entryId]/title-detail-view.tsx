@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useState } from "react";
 
 import type { TitleDetailRow } from "@/db/access";
@@ -26,12 +27,19 @@ import { ProgrammeNoteContent } from "../programme-note-content";
  * on their own — Next's [View transitions guide](https://nextjs.org/docs/app/guides/view-transitions)
  * says so — so nothing here has to ask for one the way the desktop pane's `select` does.
  */
-export function TitleDetailView({ detail }: { detail: TitleDetailRow }) {
+export function TitleDetailView({
+  detail,
+  liveFacts,
+}: {
+  detail: TitleDetailRow;
+  liveFacts: ReactNode;
+}) {
   const [current, setCurrent] = useState(detail);
 
   return (
     <ProgrammeNoteContent
       detail={current}
+      liveFacts={liveFacts}
       posterTransitionName={groupPosterTransitionName(current.libraryEntryId)}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))

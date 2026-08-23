@@ -19,28 +19,52 @@ export function WatchSweep({ onSettled }: { readonly onSettled: () => void }) {
 export const WATCHED_NAME = "text-dim";
 
 /**
- * The recording control's own treatment (`DESIGN.md`, Buttons: ghost, `1px` `accent`
- * border, `accent` text on `ground`, inverting to solid on hover) — one definition, so the
- * class string does not drift the way `errors/recovery-buttons.ts`'s own docblock warns
- * against. `MarkWatchedButton` (`programme-note-episodes.tsx`, issue #88) composes this
- * with `errors/recovery-buttons.ts`'s `IN_FLIGHT`. The desktop Up next row's own *Strike
- * it* button (`up-next-grid.tsx`, issue #100) was a second caller until issue #136 deleted
- * that row; still exported as its own named constant rather than inlined into its one
- * remaining caller, since a second caller returning is cheaper than every class string in
- * the build re-litigating what a recording control looks like from scratch.
+ * The recording control's hit box — issue #217, which took *Strike it* from a `code-line`
+ * text pill to a checkmark and, with the copy gone, could finally give the daily gesture
+ * the target size the row itself has always had. `catalogue-result.tsx`'s own words are
+ * why this is the `<button>` itself and not a wrapper around a smaller one: *"a button's
+ * hit area is its own border box and nothing its parent adds reaches it."*
+ *
+ * `h-11 w-11` is `44px` square, `app/masthead.tsx`'s and `catalogue-result.tsx`'s own
+ * number for *every tap target ≥44px*. `-my-2` is what keeps the row from growing to fit
+ * it: `EPISODE_ROW`'s own `py-2` is `8px` a side, and a negative margin of the same size
+ * pulls the button's margin box back to `44 − 16 = 28px` — the row's own budget, the exact
+ * ceiling `min-h-11` was measured to hold (`episode-line.ts`, `DESIGN.md` §6) and the one
+ * `RECORDING_CONTROL`'s old `26.2px` text pill sat comfortably under. The button's border
+ * box still paints the full `44px`; the margin only stops that box from pushing the row
+ * taller, the same trick `masthead.tsx`'s Settings link plays sideways instead of down.
+ *
+ * `group`, so `RECORDING_GLYPH` below can invert on a hover over the *hit box*, not over
+ * the smaller chip drawn inside it — the whole reason the two are separate elements.
  */
-export const RECORDING_CONTROL =
-  "code-line shrink-0 border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
+export const RECORDING_HIT_BOX = "group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
+
+/**
+ * The recording control's visible chip — the same ghost treatment (`DESIGN.md`, Buttons:
+ * `1px` `accent` border, `accent` text on `ground`, inverting to solid on press) the old
+ * `RECORDING_CONTROL` drew around its own text, now around `CheckmarkIcon` instead. Sized
+ * to the glyph (`p-1` around `h-4 w-4`) rather than to a label, because there is no longer
+ * a label to hold — `26px` square, unchanged from the `26.2px` box `MarkUpToIcon`'s own
+ * docblock already paired it with.
+ *
+ * `group-hover:`, not `hover:`: the element a pointer sits over is `RECORDING_HIT_BOX`,
+ * `9px` wider than this on every side, so the invert has to answer to the group rather
+ * than to itself. `MarkWatchedButton` composes both of these with
+ * `errors/recovery-buttons.ts`'s `IN_FLIGHT`, on the hit box — a `filter: brightness()`
+ * dims everything it paints, chip included, so `IN_FLIGHT` needs no second copy here.
+ */
+export const RECORDING_GLYPH =
+  "flex items-center justify-center border border-accent p-1 text-accent transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-ink";
 
 /**
  * The **quiet** recording control — issue #196's *watched up to here*, and the only
  * control in the application whose whole text is its accessible label.
  *
- * ── Why it is not `RECORDING_CONTROL`, and not `GHOST_RECOVERY` either ──────────────
+ * ── Why it is not `RECORDING_HIT_BOX`/`RECORDING_GLYPH`, and not `GHOST_RECOVERY` either ──
  *
  * It records watches, so `app/globals.css`'s *Live* role would put it in the accent. It is
  * dim at rest anyway, for the reason issue #89 gave *Rewatch* and *Unwatch* before #195
- * moved them: **nothing on this row may compete with the daily gesture.** *Strike it* is
+ * moved them: **nothing on this row may compete with the daily gesture.** The checkmark is
  * what a reader presses every evening; this is pressed once, when a show arrives, and then
  * never again on that title. A hairline border and dim ink says *pressable* without saying
  * *press me*. It takes the accent on hover, because by then the reader has asked what it

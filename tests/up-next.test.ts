@@ -8,6 +8,7 @@ import {
   asUserId,
   listUpNextRails,
   ONGOING_RAIL_SIZE,
+  UP_NEXT_QUEUE_DEPTH,
   type UpNextEntry,
   type UpNextRails,
   type UserId,
@@ -861,6 +862,26 @@ describe("listUpNextRails — what each rail contains", () => {
         episodeName: "Cold Harbor",
         seasonNo: 2,
         episodeNo: 10,
+        // Issue #220. Asserted whole here, rather than loosened to a matcher, because
+        // this case is *everything an Ongoing tile is handed* — the queue is now part of
+        // that and a tile cannot mark anything without it.
+        queue: {
+          episodes: [
+            {
+              episodeId: show.episodeIds[1],
+              episodeName: "Cold Harbor",
+              seasonNo: 2,
+              episodeNo: 10,
+            },
+            {
+              episodeId: show.episodeIds[2],
+              episodeName: "Unknown",
+              seasonNo: 3,
+              episodeNo: 1,
+            },
+          ],
+          more: false,
+        },
       });
     });
   });
@@ -888,6 +909,248 @@ describe("listUpNextRails — what each rail contains", () => {
       // Same rule for a title TMDB has not dated: the tile prints no year line at all
       // rather than a placeholder, which it cannot do from a year this read invented.
       expect(entry.releaseYear).toBeNull();
+    });
+  });
+});
+
+/**
+ * The Ongoing tile's queue — issue #220.
+ *
+ * ── Why this is a database test and not a store one ──────────────────────────────────
+ *
+ * What the tile *does* with a queue is exercised without a database in
+ * `tests/up-next-tile-mark.test.ts`, against the injectable marks store. What is here is
+ * the half no fake can answer: **which episodes are in it**. The run stops at the first
+ * unreleased episode, and *released* is `db/views.ts`'s `air_date is not null and
+ * air_date <= current_date` — the same predicate the derived states read, in three
+ * separate places. A queue that disagreed with it would take a tile out of the Ongoing
+ * group while `library_entry_state` still said *watching*, and neither surface would
+ * throw.
+ *
+ * `more` is the other half, and it is the one that decides whether a tile **leaves the
+ * group** or merely runs out of things to press. Getting it backwards is a tile that
+ * vanishes off a show with fifty episodes left, which looks exactly like a show that
+ * finished.
+ */
+describe("listUpNextRails — an Ongoing tile's queue", () => {
+  it("starts the queue at the episode that is up next", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      // One fact read twice, and the assertion is that they cannot disagree.
+      expect(entry.queue.episodes[0].episodeId).toBe(entry.episodeId);
+      expect(entry.queue.episodes.map((one) => one.episodeNo)).toEqual([2, 3]);
+    });
+  });
+
+  it("crosses a season boundary in the same order the up-next view uses", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 2, episodeNo: 1 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      expect(
+        entry.queue.episodes.map((one) => `S${one.seasonNo}E${one.episodeNo}`),
+      ).toEqual(["S1E2", "S2E1"]);
+    });
+  });
+
+  it("leaves specials out of the queue entirely", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 0, episodeNo: 1 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      expect(entry.queue.episodes.every((one) => one.seasonNo > 0)).toBe(true);
+    });
+  });
+
+  it("stops the queue at the first unreleased episode rather than filtering it out", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          // Unreleased, and the one after it released again — the non-monotonic case
+          // that separates *stop* from *filter*. Filtering would advance a tile past
+          // episode 3, which nobody can have watched.
+          { seasonNo: 1, episodeNo: 3, airDate: UNRELEASED },
+          { seasonNo: 1, episodeNo: 4 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      expect(entry.queue.episodes.map((one) => one.episodeNo)).toEqual([2]);
+      expect(entry.queue.more).toBe(false);
+    });
+  });
+
+  it("stops the queue at an episode TMDB has never dated", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3, airDate: null },
+          { seasonNo: 1, episodeNo: 4 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      // A null air date is not a released one, exactly as `db/views.ts` reads it.
+      expect(entry.queue.episodes.map((one) => one.episodeNo)).toEqual([2]);
+      expect(entry.queue.more).toBe(false);
+    });
+  });
+
+  it("caps the queue at the depth and says there is more behind it", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const episodes = Array.from(
+        { length: UP_NEXT_QUEUE_DEPTH + 3 },
+        (_, index) => ({ seasonNo: 1, episodeNo: index + 1 }),
+      );
+      const show = await seedShow(tx, reader, { episodes });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      expect(entry.queue.episodes).toHaveLength(UP_NEXT_QUEUE_DEPTH);
+      expect(entry.queue.more).toBe(true);
+    });
+  });
+
+  it("says there is no more behind a queue that is exactly the depth", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      // One watched, then exactly the depth left — the boundary the extra fetched row
+      // exists to get right, and the case where `more` being wrong would take a tile
+      // out of the group a whole show early.
+      const episodes = Array.from({ length: UP_NEXT_QUEUE_DEPTH + 1 }, (_, index) => ({
+        seasonNo: 1,
+        episodeNo: index + 1,
+      }));
+      const show = await seedShow(tx, reader, { episodes });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      expect(entry.queue.episodes).toHaveLength(UP_NEXT_QUEUE_DEPTH);
+      expect(entry.queue.more).toBe(false);
+    });
+  });
+
+  it("carries an episode TMDB has not named without inventing one", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2, name: null },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      expect(entry.queue.episodes[0].episodeName).toBeNull();
+    });
+  });
+
+  it("queues every Ongoing tile in one read, and never another account's", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const stranger = await seedUser(tx, "stranger");
+
+      const mine = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, mine, 0, daysAgo(1));
+
+      const alsoMine = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, alsoMine, 0, daysAgo(2));
+
+      const theirs = await seedShow(tx, stranger, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, theirs, 0, daysAgo(1));
+
+      const { ongoing } = await listUpNextRails(reader, tx);
+
+      expect(ongoing).toHaveLength(2);
+      expect(ongoing.every((entry) => entry.queue.episodes.length === 2)).toBe(true);
+      const queued = ongoing.flatMap((entry) =>
+        entry.queue.episodes.map((one) => one.episodeId),
+      );
+      expect(queued).not.toContain(theirs.episodeIds[1]);
+    });
+  });
+
+  it("gives Coming back and Old friends no queue at all", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const comingBack = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2, airDate: UNRELEASED },
+        ],
+      });
+      await markWatched(tx, comingBack, 0, daysAgo(1));
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(rails.comingBack).toHaveLength(1);
+      // Ongoing is the one group with a mark control, so it is the one group that pays
+      // for the queue. `in` rather than a value check: the absence is the assertion.
+      expect("queue" in rails.comingBack[0]).toBe(false);
+      for (const entry of rails.oldFriends) expect("queue" in entry).toBe(false);
     });
   });
 });

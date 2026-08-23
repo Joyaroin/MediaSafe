@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AddToListControl } from "@/app/(signed-in)/library/add-to-list-control";
-import { LiveTitleFacts } from "@/app/(signed-in)/library/live-title-facts";
+import { LiveTitleFactsStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
@@ -22,8 +22,8 @@ import { UnownedEpisodes } from "./unowned-episodes";
  *
  * The borrowed half is unchanged — poster, meta line, synopsis, providers, cast, episodes
  * and TMDB's attribution — because it is the same borrowed half, read from the same
- * global tables and rendered by the same components (`LiveTitleFacts`, and the shared
- * shaping in `library/season-grouping.ts` and `library/title-meta-line.ts`). What is
+ * global tables and rendered by the same components (`LiveTitleFactsStreamed`, and the
+ * shared shaping in `library/season-grouping.ts` and `library/title-meta-line.ts`). What is
  * absent is everything that would be an answer about *you*: no state line, no progress, no
  * up-next marking, no rating control, no abandon, no remove, no unwatch. Nothing here can
  * tell you something false about a show you have never watched, because nothing here has
@@ -54,10 +54,18 @@ import { UnownedEpisodes } from "./unowned-episodes";
  *
  * ── A page read, unguarded ────────────────────────────────────────────────────────────
  *
- * Both reads are called directly with no `try`: a failure throws into `error.tsx` beside
- * this file, which is `AGENTS.md`'s error discipline — a database MediaSafe cannot reach
- * must never render as a title with no episodes. `library/[entryId]/page.tsx` is the same
- * shape, and its docblock carries why the desktop pane cannot be.
+ * Both mirrored reads (`libraryEntryIdForTitle`, `getUnownedTitleDetail`) are called
+ * directly with no `try`: a failure throws into `error.tsx` beside this file, which is
+ * `AGENTS.md`'s error discipline — a database MediaSafe cannot reach must never render as
+ * a title with no episodes. `library/[entryId]/page.tsx` is the same shape, and its
+ * docblock carries why the desktop pane cannot be.
+ *
+ * ── The three live facts stream in behind this render (issue #218) ───────────────────
+ *
+ * `<LiveTitleFactsStreamed>` is a Server Component, built and rendered right where it
+ * appears below — this page never awaits it, so nothing here gates the page's own shell
+ * on TMDB. `library/[entryId]/page.tsx`'s docblock carries the fuller reasoning; it is the
+ * same component either way.
  */
 export const dynamic = "force-dynamic";
 
@@ -141,7 +149,7 @@ export default async function UnownedTitlePage({
           titleName={detail.name}
         />
 
-        <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} />
+        <LiveTitleFactsStreamed kind={detail.kind} tmdbId={detail.tmdbId} />
 
         {/* Issue #147's own acceptance criterion: *title detail offers Add to list, on an
             owned title and an untracked one alike*. It was only reachable on the owned

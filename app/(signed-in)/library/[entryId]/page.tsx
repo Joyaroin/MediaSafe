@@ -1,6 +1,7 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { getTitleDetail } from "@/db/access";
 import { requireUserId } from "@/lib/session";
+import { LiveTitleFactsStreamed } from "../live-title-facts-streamed";
 import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
@@ -19,6 +20,14 @@ import { TitleDetailView } from "./title-detail-view";
  * `app/(signed-in)/library/page.tsx` uses for the grid. `title-detail-actions.ts`'s own
  * docblock is why the pane cannot do the same: it never navigates, so it has no route
  * boundary to throw into.
+ *
+ * ── The three live facts stream in behind this render, not after it mounts (issue #218) ──
+ *
+ * `<LiveTitleFactsStreamed>` (`live-title-facts-streamed.tsx`) is a Server Component built
+ * right here and handed to `TitleDetailView` as an already-rendered node — this page never
+ * awaits it, so the mirrored read above is all that gates this page's own shell. Each of
+ * the three live reads runs inside its own `Suspense`, streamed in independently once
+ * `getTitleDetail` above has already resolved.
  */
 export const dynamic = "force-dynamic";
 
@@ -35,7 +44,10 @@ export default async function TitleDetailPage({
     <main className="flex w-full flex-1 flex-col">
       <BackToLibraryBar />
 
-      <TitleDetailView detail={detail} />
+      <TitleDetailView
+        detail={detail}
+        liveFacts={<LiveTitleFactsStreamed kind={detail.kind} tmdbId={detail.tmdbId} />}
+      />
 
       {/* Always on screen here, unlike the desktop pane's conditional footer: this route
           only ever renders once the mirrored read above has already succeeded, so

@@ -7,6 +7,7 @@ import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
+import { LiveTitleFactsClientFetch } from "./live-title-facts";
 import { railPosterTransitionName } from "./poster-transition-name";
 import { ProgrammeNoteContent } from "./programme-note-content";
 import { titleDetailAction } from "./title-detail-actions";
@@ -124,6 +125,13 @@ export function ProgrammeNotePane() {
           {phase.kind === "loaded" ? (
             <ProgrammeNoteContent
               detail={phase.detail}
+              liveFacts={
+                <LiveTitleFactsClientFetch
+                  key={`${phase.detail.kind}:${phase.detail.tmdbId}`}
+                  kind={phase.detail.kind}
+                  tmdbId={phase.detail.tmdbId}
+                />
+              }
               posterTransitionName={railPosterTransitionName(phase.detail.libraryEntryId)}
               onStateChange={(libraryEntryId: string, state: LibraryState) =>
                 setPhase((prev) =>

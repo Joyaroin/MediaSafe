@@ -33,6 +33,14 @@ import { describe, expect, it } from "vitest";
  * the labels, and the sums move and this fails with the number. It cannot catch a change
  * to the type ramp or the typeface, which move the glyph widths below — `GLYPH` is this
  * file's impure edge and its provenance is recorded on it.
+ *
+ * ── Issue #217 retired one label and added a fixed square in its place ───────────────
+ *
+ * *Strike it* became a checkmark: `RECORDING_HIT_BOX` (`watch-mark-motion.tsx`) is a
+ * `44px` square with no text in it, so it needs no glyph width — its contribution to a
+ * state's contents is `spacing(..., "w")`, not `GLYPH` plus padding the way every text
+ * control here still is. `checkmark()` below models that; `strikeIt()` is gone with the
+ * label it measured.
  */
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
@@ -69,6 +77,18 @@ function borderBox(classes: string): number {
 }
 
 /**
+ * The pixel value of a negative Tailwind `margin-block` utility — `-my-2` → `-8`. Returns
+ * `0` when the class string asks for none. Not folded into `spacing()` above: that helper
+ * only ever reads a positive utility, and a negative one needs its own leading-`-` match
+ * rather than a sign flipped after the fact, the same way Tailwind itself treats `-my-2`
+ * as its own class rather than `my-2` negated.
+ */
+function negativeMarginBlock(classes: string): number {
+  const match = new RegExp(`(?:^| )-my-(\\d+(?:\\.\\d+)?)(?: |$)`).exec(classes);
+  return match === null ? 0 : -Number(match[1]) * STEP_PX;
+}
+
+/**
  * Glyph widths, in px, of every label the trailing slot can render.
  *
  * **The impure edge.** Measured with `getBoundingClientRect` over a `code-line` span in a
@@ -84,7 +104,6 @@ function borderBox(classes: string): number {
  * what gets updated.
  */
 const GLYPH: Readonly<Record<string, number>> = {
-  "Strike it": 41.7,
   Rewatch: 48.69,
   Unwatch: 49.16,
   "Up next": 42.62,
@@ -102,7 +121,7 @@ const BUTTONS_SOURCE = sourceAt("errors/recovery-buttons.ts");
 const TRAILING = classStringNamed(EPISODES_SOURCE, "TRAILING");
 const EPISODE_ROW = classStringNamed(ROW_SOURCE, "EPISODE_ROW");
 const GHOST_COMPACT = classStringNamed(BUTTONS_SOURCE, "GHOST_RECOVERY_COMPACT");
-const RECORDING_CONTROL = classStringNamed(MOTION_SOURCE, "RECORDING_CONTROL");
+const RECORDING_HIT_BOX = classStringNamed(MOTION_SOURCE, "RECORDING_HIT_BOX");
 const QUIET_RECORDING_CONTROL = classStringNamed(MOTION_SOURCE, "QUIET_RECORDING_CONTROL");
 
 /** One thing in the slot: how wide its box is, and how tall. */
@@ -136,27 +155,40 @@ function markUpTo(): SlotItem {
   };
 }
 
-const strikeIt = () => labelled(RECORDING_CONTROL, "Strike it");
+/**
+ * The checkmark — `RECORDING_HIT_BOX` around `CheckmarkIcon`, issue #217. A fixed `44px`
+ * square, not a label wrapped in padding: its width is the box's own `w-11`, and its
+ * height is `h-11` corrected by `-my-2`'s negative margin, the same box-model arithmetic
+ * `watch-mark-motion.tsx`'s own docblock walks through — `44 − (2 × 8) = 28`, the row's
+ * own budget below (`leaves $name inside the row's own height`), not `44`.
+ */
+function checkmark(): SlotItem {
+  return {
+    width: spacing(RECORDING_HIT_BOX, "w"),
+    height: spacing(RECORDING_HIT_BOX, "h") + 2 * negativeMarginBlock(RECORDING_HIT_BOX),
+  };
+}
+
 const rewatch = () => labelled(GHOST_COMPACT, "Rewatch");
 const unwatch = () => labelled(GHOST_COMPACT, "Unwatch");
 
 /**
  * **Every state the trailing slot can be in**, read off `EpisodeLine`'s own branching:
  * an *Up next* label when `episode.upNext && !watched`; the up-to control whenever
- * `covered !== null`, on both sides of the watched branch; then one of *Strike it*
+ * `covered !== null`, on both sides of the watched branch; then one of the checkmark
  * (unwatched), *Watched* (mid-sweep) or *Rewatch* beside *Unwatch* (settled).
  *
  * An up-next episode is by definition unwatched, so *Up next* never appears beside the
  * watched pair — that is why there are seven rows here and not nine.
  */
 const STATES: readonly { readonly name: string; readonly items: readonly SlotItem[] }[] = [
-  { name: "Strike it", items: [strikeIt()] },
-  { name: "Up next · Strike it", items: [bare("Up next"), strikeIt()] },
+  { name: "checkmark", items: [checkmark()] },
+  { name: "Up next · checkmark", items: [bare("Up next"), checkmark()] },
   { name: "Watched (mid-sweep)", items: [bare("Watched")] },
-  { name: "up-to · Strike it", items: [markUpTo(), strikeIt()] },
+  { name: "up-to · checkmark", items: [markUpTo(), checkmark()] },
   {
-    name: "Up next · up-to · Strike it",
-    items: [bare("Up next"), markUpTo(), strikeIt()],
+    name: "Up next · up-to · checkmark",
+    items: [bare("Up next"), markUpTo(), checkmark()],
   },
   { name: "Rewatch · Unwatch", items: [rewatch(), unwatch()] },
   { name: "up-to · Rewatch · Unwatch", items: [markUpTo(), rewatch(), unwatch()] },
@@ -200,15 +232,17 @@ describe("the episode row's trailing slot", () => {
    * The measured numbers, pinned. `toBeLessThanOrEqual` above would still pass if a
    * change made the row *narrower* by dropping a control, so the table is asserted whole —
    * the same reason `programme-note-episodes.tsx` tabulates all seven rather than the
-   * widest.
+   * widest. The four checkmark rows are #217's own re-measure; the other three are
+   * untouched since #203, because neither *Watched* mid-sweep nor the settled pair reads
+   * anything from `RECORDING_HIT_BOX`.
    */
-  it("matches the widths measured in Chromium for #203", () => {
+  it("matches the widths measured for #217 and, for the unaffected states, for #203", () => {
     expect(Object.fromEntries(STATES.map((s) => [s.name, round(contentsOf(s.items))]))).toEqual({
-      "Strike it": 63.7,
-      "Up next · Strike it": 114.3,
+      checkmark: 44,
+      "Up next · checkmark": 94.6,
       "Watched (mid-sweep)": 49.1,
-      "up-to · Strike it": 97.7,
-      "Up next · up-to · Strike it": 148.3,
+      "up-to · checkmark": 78,
+      "Up next · up-to · checkmark": 128.6,
       "Rewatch · Unwatch": 149.9,
       "up-to · Rewatch · Unwatch": 183.9,
     });
@@ -220,7 +254,7 @@ describe("the episode row's trailing slot", () => {
    * apart, one of the two is drifting and `DESIGN.md` §10's "two measures, one register"
    * has stopped being true.
    */
-  it("wears GHOST_RECOVERY's treatment at RECORDING_CONTROL's measure", () => {
+  it("wears GHOST_RECOVERY's own treatment", () => {
     const treatment = (classes: string) =>
       classes
         .split(" ")
@@ -230,8 +264,20 @@ describe("the episode row's trailing slot", () => {
     expect(treatment(GHOST_COMPACT)).toEqual(
       treatment(classStringNamed(BUTTONS_SOURCE, "GHOST_RECOVERY")),
     );
-    expect(spacing(GHOST_COMPACT, "px")).toBe(spacing(RECORDING_CONTROL, "px"));
-    expect(spacing(GHOST_COMPACT, "py")).toBe(spacing(RECORDING_CONTROL, "py"));
+  });
+
+  /**
+   * #203's own measure, pinned now that there is nothing left to derive it from. Until
+   * issue #217 this compared `GHOST_COMPACT`'s padding to `RECORDING_CONTROL`'s, because
+   * #203 had borrowed it character for character. #217 gave the row's own recording
+   * control a `44px` hit box with no `px`/`py` of its own (`RECORDING_HIT_BOX` is sized by
+   * `h-11`/`w-11`, not padding), so that comparison has nothing left to read on the other
+   * side. `GHOST_RECOVERY_COMPACT`'s `px-2.5 py-1` did not change and is not wrong; it is
+   * simply its own constant now rather than a live copy of another one.
+   */
+  it("keeps the px-2.5 py-1 measure #203 gave it", () => {
+    expect(spacing(GHOST_COMPACT, "px")).toBe(10);
+    expect(spacing(GHOST_COMPACT, "py")).toBe(4);
   });
 
   /**

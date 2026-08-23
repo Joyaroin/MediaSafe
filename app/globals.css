@@ -815,31 +815,44 @@
    direction, short enough that nothing has to be tracked across the screen. The timings
    are this file's, not the guide's — `--dur-fast` out against `--dur-base` in, which is
    the asymmetry the motion section above already states (*"arriving is where the character
-   lives; leaving is where impatience does"*). */
+   lives; leaving is where impatience does"*).
+
+   #221 removed the delay this used to put in front of the entrance's fade, and shortened
+   the slide to match. Before this, the incoming page sat invisible for the whole
+   `--dur-fast` before its own fade even started, so the outgoing page was the only thing
+   on screen for that stretch — still fading, still mid-slide — which is what the issue
+   called *"the old heading is at full opacity and travelling."* The slide also ran the
+   full `--dur-slow` on both sides regardless of either fade, so the transition did not
+   visually settle until 380ms had passed even though the fades themselves were long done
+   by then — a transition that reads as unfinished rather than finished. The entrance's
+   fade now starts immediately, and both `nav-slide` animations moved from `--dur-slow` to
+   `--dur-base`, so the whole thing settles in step with the fade instead of trailing
+   behind it. The asymmetry above is unchanged — `--dur-fast` out against `--dur-base`
+   in — it no longer also means *and the slide takes longer than either*. */
 ::view-transition-old(.nav-forward) {
   --nav-slide: -60px;
   animation:
     var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
-    var(--dur-slow) var(--ease-in-out-soft) both nav-slide reverse;
+    var(--dur-base) var(--ease-in-out-soft) both nav-slide reverse;
 }
 ::view-transition-new(.nav-forward) {
   --nav-slide: 60px;
   animation:
-    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both nav-fade,
-    var(--dur-slow) var(--ease-in-out-soft) both nav-slide;
+    var(--dur-base) var(--ease-out-quart) both nav-fade,
+    var(--dur-base) var(--ease-in-out-soft) both nav-slide;
 }
 
 ::view-transition-old(.nav-back) {
   --nav-slide: 60px;
   animation:
     var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
-    var(--dur-slow) var(--ease-in-out-soft) both nav-slide reverse;
+    var(--dur-base) var(--ease-in-out-soft) both nav-slide reverse;
 }
 ::view-transition-new(.nav-back) {
   --nav-slide: -60px;
   animation:
-    var(--dur-base) var(--ease-out-quart) var(--dur-fast) both nav-fade,
-    var(--dur-slow) var(--ease-in-out-soft) both nav-slide;
+    var(--dur-base) var(--ease-out-quart) both nav-fade,
+    var(--dur-base) var(--ease-in-out-soft) both nav-slide;
 }
 
 @keyframes nav-fade {

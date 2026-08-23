@@ -9,14 +9,19 @@ import {
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
-import {
-  titleCastAndCrew,
-  titleSynopsis,
-  titleWatchProviders,
-  type CastAndCrew,
-} from "@/tmdb/catalogue";
+import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
+import {
+  readCastAndCrew,
+  readLiveFacts,
+  readSynopsis,
+  readWatchProviders,
+  type LiveFacts,
+  type Outcome,
+} from "./live-facts";
+
+export type { Outcome } from "./live-facts";
 
 /**
  * Title detail's four reads, each a Server Action rather than a page-render throw — the
@@ -31,11 +36,12 @@ import type { TitleKind } from "@/tmdb/mirror";
  * failure throw into its own boundary, for the same reason `app/(signed-in)/library/page.tsx`
  * does for the grid.
  */
-export type Outcome<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly reference: string | null };
 
-/** The mirrored half of title detail — the desktop pane's read, `db/access.ts`'s own. */
+/** The mirrored half of title detail — the desktop pane's and the Up next sheet's read.
+ *  Unchanged by issue #218: it stays the fast, DB-only read it always was, so the panel
+ *  those two surfaces show still appears the moment this resolves, not gated behind
+ *  whatever the three live facts below are doing (`titleLiveFactsAction`'s own docblock —
+ *  and `live-title-facts.tsx`'s top one — carry why the two stay separate reads). */
 export async function titleDetailAction(
   libraryEntryId: string,
 ): Promise<Outcome<TitleDetailRow>> {
@@ -57,18 +63,17 @@ export async function titleDetailAction(
  * endpoint anyone can call with any arguments, and `SPEC.md` §3's *no unauthenticated
  * route may ever be added* does not carve out an exception for one that happens to touch
  * no owned row.
+ *
+ * They remain for what issue #218 left them for: a reader's own *Try again* on a section
+ * that failed, after `titleLiveFactsAction` or `live-title-facts-streamed.tsx`'s own
+ * `readSynopsis`/`readCastAndCrew`/`readWatchProviders` already answered the first read.
  */
 export async function titleSynopsisAction(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<Outcome<string | null>> {
   await requireUserId();
-
-  try {
-    return { ok: true, value: await titleSynopsis(kind, tmdbId) };
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "title-synopsis" }) };
-  }
+  return readSynopsis(kind, tmdbId);
 }
 
 export async function titleCastAndCrewAction(
@@ -76,12 +81,7 @@ export async function titleCastAndCrewAction(
   tmdbId: number,
 ): Promise<Outcome<CastAndCrew>> {
   await requireUserId();
-
-  try {
-    return { ok: true, value: await titleCastAndCrew(kind, tmdbId) };
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "title-cast-crew" }) };
-  }
+  return readCastAndCrew(kind, tmdbId);
 }
 
 export async function titleWatchProvidersAction(
@@ -89,15 +89,30 @@ export async function titleWatchProvidersAction(
   tmdbId: number,
 ): Promise<Outcome<readonly WatchProvider[]>> {
   await requireUserId();
+  return readWatchProviders(kind, tmdbId);
+}
 
-  try {
-    return { ok: true, value: await titleWatchProviders(kind, tmdbId) };
-  } catch (error) {
-    return {
-      ok: false,
-      reference: referenceFor(error, { surface: "title-watch-providers" }),
-    };
-  }
+/**
+ * The desktop pane's and the Up next sheet's one combined read for the three live
+ * sections — issue #218. Neither surface navigates, so neither has a page render to
+ * stream the three behind (`live-title-facts-streamed.tsx` is what the two surfaces that
+ * do have one use instead). This is the next best thing: one round trip for all three,
+ * computed concurrently on the server (`readLiveFacts`, in `live-facts.ts`), fired once
+ * when `LiveTitleFactsClientFetch` mounts — not the three separate round trips that used
+ * to fire from three separate mounts before this issue, and not folded into
+ * `titleDetailAction` either, because that would gate the whole panel behind TMDB instead
+ * of just the three sections that are actually TMDB's to answer.
+ *
+ * Never throws — `readLiveFacts` catches each of the three fields on its own account — so
+ * there is no `Outcome` wrapping the whole call the way `titleDetailAction`'s DB read
+ * needs one.
+ */
+export async function titleLiveFactsAction(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<LiveFacts> {
+  await requireUserId();
+  return readLiveFacts(kind, tmdbId);
 }
 
 /**
