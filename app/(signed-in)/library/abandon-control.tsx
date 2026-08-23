@@ -44,6 +44,14 @@ import { abandonAction, unabandonAction, type AbandonOutcome } from "./title-det
  * `unabandonTitle` exists precisely so nothing here has to. Only the row's own boolean —
  * abandoned or not — is optimistic; the state line elsewhere on the page catches up the
  * moment `onChanged` reports what the view actually says.
+ *
+ * ── No margin of its own — issue #228 ─────────────────────────────────────────────────
+ *
+ * This used to open its own `PROGRAMME_NOTE_SECTION` gap, back when it stood alone at the
+ * foot of the pane. It is now the second child of the state row `programme-note-content.tsx`
+ * builds — *where the show stands* on one side, this on the other — so the gap above that
+ * row is that component's to set, and a second one written here would be added on top of
+ * it. This is still `AbandonControl`'s only caller, so nothing else loses a margin it needs.
  */
 export function AbandonControl({
   libraryEntryId,
@@ -90,7 +98,7 @@ export function AbandonControl({
   }
 
   return (
-    <div className="mt-7 flex items-baseline justify-between">
+    <div className="flex items-baseline justify-between gap-4">
       <button
         type="button"
         onClick={() => void attempt()}

@@ -9,6 +9,7 @@ import { CheckmarkIcon } from "./checkmark-icon";
 import {
   EPISODE_NAME_CELL,
   EPISODE_NUMBER,
+  EPISODE_NUMBER_UP_NEXT,
   EPISODE_ROW,
   SEASON_LIST,
 } from "./episode-line";
@@ -527,11 +528,7 @@ function EpisodeLine({
   return (
     <li className={`relative ${EPISODE_ROW}`}>
       <span
-        className={
-          episode.upNext && !watched
-            ? "code-line w-9 shrink-0 bg-accent px-1 py-0.5 text-center text-accent-ink"
-            : EPISODE_NUMBER
-        }
+        className={episode.upNext && !watched ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
         data-numeric
       >
         E{episode.episodeNo}
@@ -706,8 +703,12 @@ function FilmRow({
  * row has drawn its icon controls at since `MarkUpToIcon`. The label carries exactly what
  * it did before — `Mark ${fullName} watched` / `Mark ${titleName} watched` — so a screen
  * reader loses nothing the eye now gets for free.
+ *
+ * Exported since issue #228, for `up-next-row.tsx`'s dedicated row — the third caller
+ * alongside the two above, and still one control rather than three that resemble each
+ * other (`DESIGN.md` §7 names the show page as exactly this reuse).
  */
-function MarkWatchedButton({
+export function MarkWatchedButton({
   label,
   onClick,
   disabled,

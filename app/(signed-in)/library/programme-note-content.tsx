@@ -6,10 +6,13 @@ import { Poster } from "@/app/poster";
 import { AbandonControl } from "./abandon-control";
 import { AddToListControl } from "./add-to-list-control";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
+import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+import { progressLine, remainingLine } from "./progress-remaining";
 import { RatingControl } from "./rating-control";
 import { RemoveControl } from "./remove-control";
 import { STATE_LABELS } from "./library-state";
 import { titleMetaLine } from "./title-meta-line";
+import { UpNextRow } from "./up-next-row";
 
 /**
  * One title, read properly — the content the desktop pane and the phone route both show,
@@ -17,6 +20,18 @@ import { titleMetaLine } from "./title-meta-line";
  * pane replaces itself in place, the phone pushes a route. Neither wraps this in
  * anything about *how it got here*; both wrap it in where it lives (`ProgrammeNotePane`'s
  * sticky aside, or the phone route's `<main>`).
+ *
+ * ── The order is the reading order — issue #228 ───────────────────────────────────────
+ *
+ * Title information; where the show stands, with the one control that can change it beside
+ * it; progress and remaining; the up-next episode, markable on its own row; the season
+ * chips and the episode list; then rating, *Add to list* and *Remove*, in that order, below
+ * everything a reader came here more often to reach. The old order ran nearly the reverse
+ * of how often each is reached for — giving up on a sixty-episode show meant scrolling
+ * sixty episodes first, because the abandon control sat below all of them. It does not any
+ * more: `AbandonControl` moved beside the state line, and `UpNextRow` gives the page's most
+ * reached-for action a fixed row that does not depend on which season the chips below
+ * happen to be showing (`up-next-row.tsx`'s own docblock has the argument for that one).
  *
  * ── `onStateChange`, and the two writes that report through it ───────────────────────
  *
@@ -53,12 +68,14 @@ import { titleMetaLine } from "./title-meta-line";
  * there is no write here to land — which is also why it needs no entry-id guard of the kind
  * `AbandonControl`'s docblock explains.
  *
- * It is rendered **last, below the abandon control**, and the ordering is the ticket's
- * rather than an aesthetic choice: the two must sit near each other and must not read as
- * the same thing. `remove-control.tsx` carries how that difference is drawn, in shape and
- * in copy. The reason it belongs on this shared component rather than on the phone route is
- * that the desktop pane is title detail too — a title removable on one device and permanent
- * on the other would be the same feature having two answers.
+ * It is rendered **last of all**, below rating and list membership rather than beside the
+ * abandon control the way it once sat — issue #228 moves *that* control up next to the
+ * state line, on the reasoning that it is reached for far more often than removal is. The
+ * two no longer share a row, but `remove-control.tsx` still carries why they must not read
+ * as the same thing even in passing — a different shape, and a different promise in the
+ * copy underneath each. The reason removal belongs on this shared component rather than on
+ * the phone route is that the desktop pane is title detail too — a title removable on one
+ * device and permanent on the other would be the same feature having two answers.
  *
  * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
  * this component, outside this component's own scroll, which is a layout decision
@@ -112,6 +129,9 @@ export function ProgrammeNoteContent({
 }) {
   const state = STATE_LABELS[detail.state];
   const meta = titleMetaLine(detail);
+  // A film's `episodes` is always empty (`TitleDetailRow`'s own docblock), so this is
+  // `undefined` for one there is never a fact to find.
+  const upNext = detail.episodes.find((one) => one.upNext);
 
   return (
     <div className="px-6 py-5">
@@ -140,13 +160,62 @@ export function ProgrammeNoteContent({
         </p>
       )}
 
-      <p className={`code-line mt-4 ${state.className}`}>{state.label}</p>
+      {/* Where the show stands, with the one control that can change it beside it —
+          issue #228. The label is `STATE_LABELS`, exactly as it always was: nothing here
+          lets a reader set *watching*, *caught up*, *finished* or *watchlist* by hand,
+          because nothing anywhere does — the four are derived and `AbandonControl` is the
+          one write this page has ever offered against the state line. It used to sit at
+          the foot of the pane, below every episode; this is that same control, moved
+          rather than replaced, so giving up on a long show costs no scrolling. */}
+      <div className="mt-4 flex items-baseline justify-between gap-4">
+        <p className={`code-line ${state.className}`}>{state.label}</p>
+        <AbandonControl
+          libraryEntryId={detail.libraryEntryId}
+          titleName={detail.name}
+          abandoned={detail.state === "abandoned"}
+          onChanged={onStateChange}
+        />
+      </div>
 
       {liveFacts}
 
-      {/* Where the prototype puts it: below the borrowed facts, above the abandon row,
-          and identical for a film and a show — a rating is a fact about the title, and
-          nothing about it asks whether the title has episodes. */}
+      {/* Progress and remaining, shown for a show with episode data and nowhere else —
+          `progress-remaining.ts`'s own docblock has the derivation. A film has no episodes
+          to be either fact about, and an empty `episodes` for a show is TMDB not having
+          mirrored anything yet (`ProgrammeNoteEpisodes`'s own "No episode data yet."),
+          which "0 remaining" would misreport as caught up rather than as missing. */}
+      {detail.kind === "show" && detail.episodes.length > 0 ? (
+        <>
+          <p className={`code-line text-dim ${PROGRAMME_NOTE_SECTION}`}>
+            Progress — {progressLine(detail.episodes)}
+          </p>
+          <p className="code-line mt-1 text-dim">Remaining — {remainingLine(detail.episodes)}</p>
+        </>
+      ) : null}
+
+      {/* The up-next episode, markable on its own row without picking a season first —
+          issue #228, and `up-next-row.tsx`'s own docblock for why it is not simply the
+          season list defaulting to the right season. Absent whenever the title has none:
+          unstarted-with-nothing-mirrored-yet reads the same as finished-to-the-edge-of-what
+          TMDB-has here, and both are the honest absence of a fact rather than a guess. */}
+      {upNext === undefined ? null : (
+        <UpNextRow episode={upNext} libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
+      )}
+
+      <ProgrammeNoteEpisodes
+        kind={detail.kind}
+        episodes={detail.episodes}
+        libraryEntryId={detail.libraryEntryId}
+        titleName={detail.name}
+        state={detail.state}
+        onStateChange={onStateChange}
+      />
+
+      {/* Rating, *Add to list* and *Remove* — issue #228 moves all three below the
+          episode list, in the order they already stood in relative to one another. Each
+          is reached for far less often than anything above it, which is the whole of why
+          the old order (this trio ahead of the episode list) ran nearly the reverse of how
+          often each thing on this page is actually used. */}
       <RatingControl
         libraryEntryId={detail.libraryEntryId}
         titleName={detail.name}
@@ -159,22 +228,6 @@ export function ProgrammeNoteContent({
           this key is what gives every title a clean picker rather than five pieces of
           local state this component would otherwise have to reset by hand. */}
       <AddToListControl key={detail.titleId} titleId={detail.titleId} titleName={detail.name} />
-
-      <ProgrammeNoteEpisodes
-        kind={detail.kind}
-        episodes={detail.episodes}
-        libraryEntryId={detail.libraryEntryId}
-        titleName={detail.name}
-        state={detail.state}
-        onStateChange={onStateChange}
-      />
-
-      <AbandonControl
-        libraryEntryId={detail.libraryEntryId}
-        titleName={detail.name}
-        abandoned={detail.state === "abandoned"}
-        onChanged={onStateChange}
-      />
 
       <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
     </div>
