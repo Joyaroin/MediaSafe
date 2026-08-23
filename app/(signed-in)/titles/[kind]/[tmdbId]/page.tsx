@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AddToListControl } from "@/app/(signed-in)/library/add-to-list-control";
+import { readLiveFacts } from "@/app/(signed-in)/library/live-facts";
 import { LiveTitleFacts } from "@/app/(signed-in)/library/live-title-facts";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
@@ -85,6 +86,10 @@ export default async function UnownedTitlePage({
 
   const detail = await getUnownedTitleDetail(kind, tmdbId);
   const meta = titleMetaLine(detail);
+  // Issue #218: the three live facts read here too, not from a browser effect after
+  // `LiveTitleFacts` mounts — `readLiveFacts` never throws, each field is its own caught
+  // outcome, so this call is unguarded for the opposite reason `detail`'s is not.
+  const liveFacts = await readLiveFacts(detail.kind, detail.tmdbId);
 
   return (
     <main className="flex w-full flex-1 flex-col">
@@ -139,7 +144,7 @@ export default async function UnownedTitlePage({
           titleName={detail.name}
         />
 
-        <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} />
+        <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} liveFacts={liveFacts} />
 
         {/* Issue #147's own acceptance criterion: *title detail offers Add to list, on an
             owned title and an untracked one alike*. It was only reachable on the owned

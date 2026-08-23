@@ -7,6 +7,7 @@ import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
+import type { LiveFacts } from "./live-facts";
 import { railPosterTransitionName } from "./poster-transition-name";
 import { ProgrammeNoteContent } from "./programme-note-content";
 import { titleDetailAction } from "./title-detail-actions";
@@ -57,7 +58,7 @@ import { titleDetailAction } from "./title-detail-actions";
 type Phase =
   | { readonly kind: "idle" }
   | { readonly kind: "loading" }
-  | { readonly kind: "loaded"; readonly detail: TitleDetailRow }
+  | { readonly kind: "loaded"; readonly detail: TitleDetailRow; readonly liveFacts: LiveFacts }
   | { readonly kind: "failed"; readonly reference: string | null };
 
 function phaseFor(entryId: string | null): Phase {
@@ -86,7 +87,7 @@ export function ProgrammeNotePane() {
       if (request !== newestRequest.current) return;
       setPhase(
         outcome.ok
-          ? { kind: "loaded", detail: outcome.value }
+          ? { kind: "loaded", detail: outcome.value.detail, liveFacts: outcome.value.liveFacts }
           : { kind: "failed", reference: outcome.reference },
       );
     });
@@ -124,6 +125,7 @@ export function ProgrammeNotePane() {
           {phase.kind === "loaded" ? (
             <ProgrammeNoteContent
               detail={phase.detail}
+              liveFacts={phase.liveFacts}
               posterTransitionName={railPosterTransitionName(phase.detail.libraryEntryId)}
               onStateChange={(libraryEntryId: string, state: LibraryState) =>
                 setPhase((prev) =>
@@ -133,7 +135,7 @@ export function ProgrammeNotePane() {
                   // guard is what keeps that stale answer from patching whatever is on
                   // screen now.
                   prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
-                    ? { kind: "loaded", detail: { ...prev.detail, state } }
+                    ? { ...prev, detail: { ...prev.detail, state } }
                     : prev,
                 )
               }
@@ -145,7 +147,7 @@ export function ProgrammeNotePane() {
                   // belongs to a title the reader has already left would give the title
                   // now on screen somebody else's number to roll back to.
                   prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
-                    ? { kind: "loaded", detail: { ...prev.detail, rating } }
+                    ? { ...prev, detail: { ...prev.detail, rating } }
                     : prev,
                 )
               }

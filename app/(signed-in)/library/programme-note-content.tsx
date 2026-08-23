@@ -4,6 +4,7 @@ import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { AbandonControl } from "./abandon-control";
 import { AddToListControl } from "./add-to-list-control";
+import type { LiveFacts } from "./live-facts";
 import { LiveTitleFacts } from "./live-title-facts";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { RatingControl } from "./rating-control";
@@ -86,11 +87,13 @@ import { titleMetaLine } from "./title-meta-line";
  */
 export function ProgrammeNoteContent({
   detail,
+  liveFacts,
   posterTransitionName,
   onStateChange,
   onRated,
 }: {
   detail: TitleDetailRow;
+  liveFacts: LiveFacts;
   posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
   onRated: (libraryEntryId: string, rating: number) => void;
@@ -127,7 +130,7 @@ export function ProgrammeNoteContent({
 
       <p className={`code-line mt-4 ${state.className}`}>{state.label}</p>
 
-      <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} />
+      <LiveTitleFacts kind={detail.kind} tmdbId={detail.tmdbId} liveFacts={liveFacts} />
 
       {/* Where the prototype puts it: below the borrowed facts, above the abandon row,
           and identical for a film and a show — a rating is a fact about the title, and

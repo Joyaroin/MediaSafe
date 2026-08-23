@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { ReferenceLine } from "@/errors/reference-line";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
@@ -8,6 +8,7 @@ import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+import type { LiveFacts } from "./live-facts";
 import {
   titleCastAndCrewAction,
   titleSynopsisAction,
@@ -19,9 +20,20 @@ import {
  * The three live-only sections of title detail — synopsis, watch providers, cast and
  * crew. `docs/design/v1-surfaces.md` §7: *"one failed fetch must never take the screen,
  * and the mirrored half of the page works even when TMDB is down."* The mirrored half is
- * `ProgrammeNoteContent`, already on screen by the time this mounts; this component's job
- * is narrower — three independent fetches, three independent failures, none of which may
+ * `ProgrammeNoteContent`, already on screen by the time this renders; this component's job
+ * is narrower — three independent outcomes, three independent failures, none of which may
  * touch the other two or the page around them.
+ *
+ * ── `liveFacts` arrives resolved, not fetched here (issue #218) ──────────────────────
+ *
+ * This used to be three `useEffect`s, each firing its own Server Action once this
+ * component mounted — the page painted, then made three round trips. `liveFacts` is now
+ * read on the server, alongside (or ahead of) whatever page or pane is opening this title,
+ * and handed down already resolved: `library/[entryId]/page.tsx` and
+ * `titles/[kind]/[tmdbId]/page.tsx` call `readLiveFacts` directly; the desktop pane and the
+ * Up next sheet get it bundled into `titleDetailAction`'s own response. Either way, this
+ * component has never made a network request of its own — only a reader's own *Try again*
+ * on a section that failed does that (`LiveFactSection` below).
  *
  * ── Three actions, not one ────────────────────────────────────────────────────────────
  *
@@ -32,17 +44,16 @@ import {
 export function LiveTitleFacts({
   kind,
   tmdbId,
+  liveFacts,
 }: {
   kind: TitleKind;
   tmdbId: number;
+  liveFacts: LiveFacts;
 }) {
   // Each section is keyed by the title it is showing, so selecting a different one
-  // *remounts* the section rather than an effect resetting it in place — React's own
-  // pattern for "this state belongs to identity X and must not survive X changing". A
-  // fresh mount starts at `{ kind: "loading" }` for free, with nothing synchronously
-  // re-setting it, which is what keeps `useEffect` below clean of the exact mistake
-  // `search-surface.tsx` already found and named: *setting state synchronously in an
-  // effect body is a cascading render.*
+  // *remounts* the section rather than patching its state in place — a fresh mount seeds
+  // itself from that title's own `liveFacts.*` outcome, with nothing to reconcile against
+  // whatever the previous title's section last held.
   const forTitle = `${kind}:${tmdbId}`;
 
   return (
@@ -52,6 +63,7 @@ export function LiveTitleFacts({
         heading="Synopsis"
         kind={kind}
         tmdbId={tmdbId}
+        initial={liveFacts.synopsis}
         fetcher={titleSynopsisAction}
         render={(overview) =>
           overview === null ? null : (
@@ -70,6 +82,7 @@ export function LiveTitleFacts({
         heading="Watch providers"
         kind={kind}
         tmdbId={tmdbId}
+        initial={liveFacts.watchProviders}
         fetcher={titleWatchProvidersAction}
         render={(providers) => <WatchProviders providers={providers} />}
       />
@@ -79,6 +92,7 @@ export function LiveTitleFacts({
         heading="Cast & crew"
         kind={kind}
         tmdbId={tmdbId}
+        initial={liveFacts.castAndCrew}
         fetcher={titleCastAndCrewAction}
         render={(credit) => <CastAndCrewLine credit={credit} />}
       />
@@ -91,6 +105,12 @@ type Phase<T> =
   | { readonly kind: "loaded"; readonly value: T }
   | { readonly kind: "failed"; readonly reference: string | null };
 
+function outcomeToPhase<T>(outcome: Outcome<T>): Phase<T> {
+  return outcome.ok
+    ? { kind: "loaded", value: outcome.value }
+    : { kind: "failed", reference: outcome.reference };
+}
+
 /**
  * One live-only section's whole state machine — loading, loaded, or failed, entirely
  * independent of its siblings. Generic over what TMDB hands back, so the three sections
@@ -100,54 +120,41 @@ type Phase<T> =
  * region): the section still renders nothing in that case, which is the honest answer to
  * *TMDB has this field and it is empty* — not a failure, and not worth a heading over
  * nothing.
+ *
+ * `initial` seeds `phase` at mount and nothing after — `LiveTitleFacts` keys this
+ * component by title, so a new title is a new mount with its own `initial`, not a prop
+ * change an existing instance would have to reconcile. `loading` is reached only from
+ * `retry`, a reader's own action; there is no `useEffect` here at all, because there is no
+ * longer a fetch this component makes on its own account.
  */
 function LiveFactSection<T>({
   heading,
   kind,
   tmdbId,
+  initial,
   fetcher,
   render,
 }: {
   heading: string;
   kind: TitleKind;
   tmdbId: number;
+  initial: Outcome<T>;
   fetcher: (kind: TitleKind, tmdbId: number) => Promise<Outcome<T>>;
   render: (value: T) => React.ReactNode;
 }) {
-  // Starts at `loading` because `LiveTitleFacts` keys this component by title — a new
-  // title is a new mount, not a prop change, so there is no earlier title's `loaded`
-  // value for this initial state to leak.
-  const [phase, setPhase] = useState<Phase<T>>({ kind: "loading" });
-  // The newest request's sequence number, so a slower answer to a title the reader has
-  // since moved on from cannot land after a newer one already has — the same guard
+  const [phase, setPhase] = useState<Phase<T>>(() => outcomeToPhase(initial));
+  // The newest request's sequence number, so a slower answer to a retry the reader has
+  // since re-triggered cannot land after a newer one already has — the same guard
   // `search-surface.tsx` uses for the same reason.
   const newestRequest = useRef(0);
 
-  function fetchNow() {
+  function retry() {
     const request = ++newestRequest.current;
+    setPhase({ kind: "loading" });
     fetcher(kind, tmdbId).then((outcome) => {
       if (request !== newestRequest.current) return;
-      setPhase(
-        outcome.ok
-          ? { kind: "loaded", value: outcome.value }
-          : { kind: "failed", reference: outcome.reference },
-      );
+      setPhase(outcomeToPhase(outcome));
     });
-  }
-
-  // `fetchNow` only sets state inside the `.then()` callback — never synchronously in the
-  // effect body itself, which is the shape the mount above avoids for a reason:
-  // synchronous `setState` inside an effect is a cascading render, and `search-surface.tsx`
-  // already found and named this exact trap. Deps are what they look like: this section's
-  // whole identity, and a new mount (via the `key` above) covers the case they'd otherwise
-  // exist to catch.
-  useEffect(fetchNow, [kind, tmdbId, fetcher]);
-
-  /** *Try again* is a reader's own action, not an effect — a synchronous `setPhase` here
-   *  is not the pattern the lint rule above is about. */
-  function retry() {
-    setPhase({ kind: "loading" });
-    fetchNow();
   }
 
   if (phase.kind === "loading") {

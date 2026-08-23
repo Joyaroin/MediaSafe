@@ -9,14 +9,19 @@ import {
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
-import {
-  titleCastAndCrew,
-  titleSynopsis,
-  titleWatchProviders,
-  type CastAndCrew,
-} from "@/tmdb/catalogue";
+import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
+import {
+  readCastAndCrew,
+  readLiveFacts,
+  readSynopsis,
+  readWatchProviders,
+  type LiveFacts,
+  type Outcome,
+} from "./live-facts";
+
+export type { Outcome } from "./live-facts";
 
 /**
  * Title detail's four reads, each a Server Action rather than a page-render throw — the
@@ -31,18 +36,34 @@ import type { TitleKind } from "@/tmdb/mirror";
  * failure throw into its own boundary, for the same reason `app/(signed-in)/library/page.tsx`
  * does for the grid.
  */
-export type Outcome<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly reference: string | null };
 
-/** The mirrored half of title detail — the desktop pane's read, `db/access.ts`'s own. */
+/**
+ * The desktop pane's and the Up next sheet's one read for opening a title — issue #218.
+ * It used to hand back only the mirrored half (`TitleDetailRow`), leaving `LiveTitleFacts`
+ * to fire three more client round trips once it mounted. Now it fetches the three live
+ * facts too, concurrently with each other, on the same server round trip that already
+ * fetches the mirrored half — so opening a title costs one trip from the browser, not four,
+ * and the three live reads never wait on a mount to begin.
+ *
+ * The live facts need `detail.kind`/`detail.tmdbId` to ask TMDB anything, so they cannot
+ * start before `getTitleDetail` resolves — the two reads are sequential, not concurrent
+ * with each other, only the three live reads are concurrent with one another
+ * (`readLiveFacts`, in `live-facts.ts`).
+ */
+export interface TitleDetailWithLiveFacts {
+  readonly detail: TitleDetailRow;
+  readonly liveFacts: LiveFacts;
+}
+
 export async function titleDetailAction(
   libraryEntryId: string,
-): Promise<Outcome<TitleDetailRow>> {
+): Promise<Outcome<TitleDetailWithLiveFacts>> {
   const userId = await requireUserId();
 
   try {
-    return { ok: true, value: await getTitleDetail(userId, libraryEntryId) };
+    const detail = await getTitleDetail(userId, libraryEntryId);
+    const liveFacts = await readLiveFacts(detail.kind, detail.tmdbId);
+    return { ok: true, value: { detail, liveFacts } };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "title-detail" }) };
   }
@@ -57,18 +78,19 @@ export async function titleDetailAction(
  * endpoint anyone can call with any arguments, and `SPEC.md` §3's *no unauthenticated
  * route may ever be added* does not carve out an exception for one that happens to touch
  * no owned row.
+ *
+ * Issue #218 moved the *first* read of these three onto the server, alongside the page or
+ * pane's own detail read (`readLiveFacts`, called from this file's `titleDetailAction` and
+ * from the two title-detail page routes directly). These three actions remain for what is
+ * left: a reader's own *Try again* on a section that failed, which is a client-initiated
+ * request by nature — there is no page render or pane open for it to ride along with.
  */
 export async function titleSynopsisAction(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<Outcome<string | null>> {
   await requireUserId();
-
-  try {
-    return { ok: true, value: await titleSynopsis(kind, tmdbId) };
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "title-synopsis" }) };
-  }
+  return readSynopsis(kind, tmdbId);
 }
 
 export async function titleCastAndCrewAction(
@@ -76,12 +98,7 @@ export async function titleCastAndCrewAction(
   tmdbId: number,
 ): Promise<Outcome<CastAndCrew>> {
   await requireUserId();
-
-  try {
-    return { ok: true, value: await titleCastAndCrew(kind, tmdbId) };
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "title-cast-crew" }) };
-  }
+  return readCastAndCrew(kind, tmdbId);
 }
 
 export async function titleWatchProvidersAction(
@@ -89,15 +106,7 @@ export async function titleWatchProvidersAction(
   tmdbId: number,
 ): Promise<Outcome<readonly WatchProvider[]>> {
   await requireUserId();
-
-  try {
-    return { ok: true, value: await titleWatchProviders(kind, tmdbId) };
-  } catch (error) {
-    return {
-      ok: false,
-      reference: referenceFor(error, { surface: "title-watch-providers" }),
-    };
-  }
+  return readWatchProviders(kind, tmdbId);
 }
 
 /**

@@ -15,6 +15,7 @@ import { exit, sheet } from "@/app/motion";
 import { Poster } from "@/app/poster";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
+import type { LiveFacts } from "@/app/(signed-in)/library/live-facts";
 import { groupPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { ProgrammeNoteContent } from "@/app/(signed-in)/library/programme-note-content";
 import { titleDetailAction } from "@/app/(signed-in)/library/title-detail-actions";
@@ -73,7 +74,7 @@ import { TitleSheetContext, type TitleSheetEntry } from "./title-sheet-context";
 
 type Phase =
   | { readonly kind: "loading" }
-  | { readonly kind: "loaded"; readonly detail: TitleDetailRow }
+  | { readonly kind: "loaded"; readonly detail: TitleDetailRow; readonly liveFacts: LiveFacts }
   | { readonly kind: "failed"; readonly reference: string | null };
 
 export function TitleSheetProvider({
@@ -111,7 +112,7 @@ export function TitleSheetProvider({
       if (request !== newestRequest.current) return;
       setPhase(
         outcome.ok
-          ? { kind: "loaded", detail: outcome.value }
+          ? { kind: "loaded", detail: outcome.value.detail, liveFacts: outcome.value.liveFacts }
           : { kind: "failed", reference: outcome.reference },
       );
     });
@@ -134,7 +135,7 @@ export function TitleSheetProvider({
       if (request !== newestRequest.current) return;
       setPhase(
         outcome.ok
-          ? { kind: "loaded", detail: outcome.value }
+          ? { kind: "loaded", detail: outcome.value.detail, liveFacts: outcome.value.liveFacts }
           : { kind: "failed", reference: outcome.reference },
       );
     });
@@ -260,6 +261,7 @@ export function TitleSheetProvider({
                 {phase.kind === "loaded" ? (
                   <ProgrammeNoteContent
                     detail={phase.detail}
+                    liveFacts={phase.liveFacts}
                     posterTransitionName={groupPosterTransitionName(
                       phase.detail.libraryEntryId,
                     )}
@@ -267,10 +269,7 @@ export function TitleSheetProvider({
                       setPhase((prev) =>
                         prev.kind === "loaded" &&
                         prev.detail.libraryEntryId === libraryEntryId
-                          ? {
-                              kind: "loaded",
-                              detail: { ...prev.detail, state },
-                            }
+                          ? { ...prev, detail: { ...prev.detail, state } }
                           : prev,
                       )
                     }
@@ -278,10 +277,7 @@ export function TitleSheetProvider({
                       setPhase((prev) =>
                         prev.kind === "loaded" &&
                         prev.detail.libraryEntryId === libraryEntryId
-                          ? {
-                              kind: "loaded",
-                              detail: { ...prev.detail, rating },
-                            }
+                          ? { ...prev, detail: { ...prev.detail, rating } }
                           : prev,
                       )
                     }
