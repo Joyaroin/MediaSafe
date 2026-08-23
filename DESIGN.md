@@ -174,7 +174,7 @@ copying whichever call site they happened to open:
 
 | Role | Where | Standing |
 |---|---|---|
-| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`) | the reserved meaning |
+| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`); the Ongoing tile's mark and its *Undo* (`up-next/ongoing-tile.tsx`, #220) | the reserved meaning |
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
 | **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
@@ -641,6 +641,12 @@ that. **Nothing else. No count, no badge, no state label, no episode name, no ra
 The library is not a backlog to feel bad about, and every fact a tile withholds is one click
 away in the panel it opens.
 
+> **The list above is *facts*, and #220 does not add one.** The phone home's Ongoing tile
+> grows a control — a mark slot below the year (*The Ongoing tile records a watch* below) —
+> and it still prints no count, no badge, no state and **no episode name**. That the control
+> records an episode the tile does not name is a cost recorded in that section, not an
+> exception to this rule.
+
 - **Desktop rail tile: `132px` wide**, and width is the *only* measure fixed — height comes
   from the poster's `2/3` ratio, so a real poster is never cropped. `132` rather than the
   prototype's `104`: the mock composes at roughly `1102px` with a `336px` panel, where 104
@@ -692,9 +698,64 @@ grid, a better shape for scanning a large group than one horizontal run, and it 
 only route there. Hiding it once a group fits would make the link's presence a count in
 disguise.
 
-> **⚠️ There is no recording control anywhere on the phone home.** This is #138's stated
-> reversal, put to Adham twice with the cost named both times and chosen both times. To mark
-> an episode, open the title. **Do not helpfully re-add one.**
+### The Ongoing tile records a watch, and only that tile
+
+> **⚠️ This reverses #138, and #138 is reopened rather than worked around.** That ticket
+> decided *no recording control anywhere on this surface at all; to mark an episode or give
+> up on a title, you open it*, and said so here, in `SPEC.md` §8 step 5 and in three
+> components. The reasoning was sound; the consequence was that the app's most frequent
+> action began by opening something — the complaint §8 step 5 exists to answer, one screen
+> further on. #220 reverses it for **Ongoing only**.
+
+The Ongoing tile grows a **mark slot** under its year line: the episode row's own recording
+control, replaced *in place* by *Undo* for six seconds after a press, and holding its height
+when it carries neither.
+
+- **The control is #217's, not a second one.** `RECORDING_GLYPH` around `CheckmarkIcon`,
+  unchanged — the tile and the show page draw one control rather than two that resemble
+  each other. What differs is the hit box: `RECORDING_HIT_BOX` is `h-11 w-11` because it
+  sits in a fixed-measure slot with other controls beside it, and the tile's is `h-11
+  w-full` because the slot is a tile's own width with nothing beside it. Widening a tap
+  target is the one direction *≥44px* is safe to be wrong in. The row's `-my-2` is not
+  carried over — it reclaims `EPISODE_ROW`'s padding, and this slot has none.
+- **The slot is `min-h-11`** — the same `44px` floor `episode-line.ts` measured the episode
+  row into, and for the same reason. §6's bounding-rect guarantee applies to a tile as much
+  as to a row: the slot holds three things over a tile's life, and one that collapsed on the
+  third would move every tile after it in the track while a thumb was still down. Both
+  states are the same `44px` hit box, so the control does not change size when it becomes
+  its own reversal.
+- ***Undo* is `GHOST_RECOVERY_COMPACT`**, the treatment the episode row's *Unwatch* takes,
+  reused rather than re-cut so *take that back* has one appearance. It is **not**
+  re-declared with `group-hover:` in place of its `hover:`, which would be a fourth copy of
+  the ghost string §10 exists to prevent; the cost is that its invert answers a pointer on
+  the pill rather than on the hit box, and this surface only ever renders inside `lg:hidden`.
+- **The accent is the reserved meaning, in a new place.** §3's table names *recording a
+  watch* as what the colour is for; this is that, not a sixth role. **What it does change is
+  that the phone home now carries two accent roles** — the group heads, which are *the way
+  through this screen*, and this control, which is *the record*. They are legible apart
+  because they sit in different places and because only one group in five draws the second.
+  A **third** would still be a violation: an accent tile, badge or state label alongside
+  either of these.
+- **The sweep plays over the slot, not the tile.** §6's wash is over the box that was
+  pressed; across a poster it would be the accent painting artwork.
+- **The tile still prints no episode name** (see *A tile* above, unchanged). The control's
+  accessible label is what names the episode it records — `season-grouping.ts`'s full name,
+  the same words the write-failure toast would use. **This is a recorded cost**: a sighted
+  reader sees the slot offer *Undo* and sees the tile leave the group, but does not see
+  *which* episode advanced without opening the title.
+- **No success toast and no route change.** The tile advancing is the confirmation.
+- **The other four groups carry no control at all.** Coming back and Old friends are shows
+  nobody is mid-episode on; Watchlist would turn one tap into *start this show*; a mistap on
+  Abandoned would silently clear the one hand-set state in this app. **Do not helpfully add
+  one.**
+
+> **⚠️ And the hold has left this surface in exchange (#220).** A tile carrying
+> tap-to-open, tap-to-mark and hold-to-select is three meanings on one card, so
+> `up-next-groups.tsx` no longer mounts a `BulkSelectionProvider` — availability is a fact
+> about the tree, which is the device #197 chose so that withdrawing a gesture is a mount
+> rather than a media query. The **group screens behind *More* keep the hold unchanged**, as
+> do the Library grid and list detail rows. **The cost is recorded on #194**: bulk *Add to
+> list* and bulk *Abandon* are one navigation away from the home rather than on it.
 
 ### Opening a title does not leave Up next
 
@@ -1291,7 +1352,10 @@ rails, no placeholder tabs, no "coming soon".
   The thing this exclusion was written against — a select-all that edits a library in one
   unreviewable gesture — is still excluded, and #194's *no bulk remove* keeps removal's
   per-title footprint for the same reason.
-- **No recording control on the phone home** (§7).
+- ~~**No recording control on the phone home**~~ — **withdrawn by #220** (§7). The Ongoing
+  tile carries one; the other four groups and the desktop rails still carry none, and that
+  narrower rule is where the exclusion now lives. Struck rather than deleted, because an
+  exclusion that simply vanished would read as one nobody ever held.
 
 ---
 

@@ -1,0 +1,400 @@
+import { describe, expect, it } from "vitest";
+
+import type {
+  MarkWatchedUpToActionOutcome,
+  UnwatchActionOutcome,
+  WatchActionOutcome,
+} from "@/app/(signed-in)/library/watch-action";
+import { createWatchMarks } from "@/app/(signed-in)/library/watch-marks";
+import {
+  markFromTile,
+  readUpNextMark,
+  stillMarkable,
+  undoFromTile,
+} from "@/app/(signed-in)/up-next/up-next-mark";
+import type { OngoingEntry, QueuedEpisode } from "@/db/access";
+import { createWriteFailureStore } from "@/errors/write-failure";
+
+/**
+ * Marking tonight's episode from an Ongoing tile — issue #220, which **reopens #138**.
+ *
+ * ── Why this is here and not in a rendered component ─────────────────────────────────
+ *
+ * `up-next-mark.ts` is deliberately two halves: a hook, which is a `useSyncExternalStore`
+ * binding and a six-second timer, and the rules underneath it, which take the marks store
+ * as an argument. This suite has no DOM and does not want one (`SPEC.md` §6), so the rules
+ * are what is asserted — the same split `tests/watch-marks.test.ts` makes for the episode
+ * row, and for the same reason: a test that rendered components would spend its weight on
+ * wiring and reach none of the properties the ticket is about.
+ *
+ * ── What is *not* re-asserted here ───────────────────────────────────────────────────
+ *
+ * The idempotency key, the rollback and the toast are `watch-marks.ts`'s, and
+ * `tests/watch-marks.test.ts` covers them against the episode row. What this file adds is
+ * that **the tile is a second surface on that same machinery** — one key per outstanding
+ * write reused across retries, one toast per lost write, keyed by episode rather than by
+ * surface — plus the one thing that is genuinely new: the tile's position in its own
+ * queue, which is derived from the store rather than counted.
+ */
+
+const TITLE_NAME = "Better Call Saul";
+
+function episodeAt(seasonNo: number, episodeNo: number, name: string | null = null): QueuedEpisode {
+  return {
+    episodeId: `episode-${seasonNo}-${episodeNo}`,
+    episodeName: name ?? `Episode ${seasonNo}-${episodeNo}`,
+    seasonNo,
+    episodeNo,
+  };
+}
+
+function entryWith(
+  episodes: readonly QueuedEpisode[],
+  more = false,
+): OngoingEntry {
+  return {
+    libraryEntryId: "entry-1",
+    titleId: "title-1",
+    titleName: TITLE_NAME,
+    releaseYear: 2015,
+    posterPath: "/bcs.jpg",
+    episodeId: episodes[0]?.episodeId ?? "none",
+    episodeName: episodes[0]?.episodeName ?? null,
+    seasonNo: episodes[0]?.seasonNo ?? 1,
+    episodeNo: episodes[0]?.episodeNo ?? 1,
+    queue: { episodes, more },
+  };
+}
+
+/**
+ * The same harness `tests/watch-marks.test.ts` uses, minus the parts a tile never
+ * reaches: no promise is resolved until a test says so, so *while the write is still in
+ * flight* is a state this file can express.
+ */
+function harness() {
+  const recorded: string[] = [];
+  const removed: Array<{ libraryEntryId: string; episodeId: string | null }> = [];
+  const answerRecord: Array<(outcome: WatchActionOutcome) => void> = [];
+  const answerRemove: Array<(outcome: UnwatchActionOutcome) => void> = [];
+  let minted = 0;
+
+  const failures = createWriteFailureStore();
+  const marks = createWatchMarks({
+    writer: {
+      record(params) {
+        recorded.push(params.sourceKey);
+        return new Promise((resolve) => answerRecord.push(resolve));
+      },
+      remove(params) {
+        removed.push(params);
+        return new Promise((resolve) => answerRemove.push(resolve));
+      },
+      recordUpTo(): Promise<MarkWatchedUpToActionOutcome> {
+        throw new Error("A tile never presses *watched up to here*.");
+      },
+    },
+    failures,
+    mintKey: () => `key-${(minted += 1)}`,
+  });
+
+  return { marks, failures, recorded, removed, answerRecord, answerRemove };
+}
+
+/** Let the store's own `await`s run. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+describe("an Ongoing tile's mark", () => {
+  it("shows the head of its queue before anything is pressed", () => {
+    const { marks } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+
+    expect(reading.episode?.episodeId).toBe("episode-1-2");
+    expect(reading.marked).toBeNull();
+    expect(reading.finished).toBe(false);
+    expect(reading.pending).toBe(false);
+  });
+
+  it("advances to the next episode before the server has answered", async () => {
+    const { marks, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+
+    // The advance, with the write still on the wire — this is the whole of *optimistic*.
+    expect(answerRecord).toHaveLength(1);
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.episode?.episodeId).toBe("episode-1-3");
+    expect(reading.marked?.episodeId).toBe("episode-1-2");
+    // The sweep plays over the slot that was pressed.
+    expect(reading.phase).toBe("marking");
+  });
+
+  it("stays advanced once the write lands, and raises no toast", async () => {
+    const { marks, failures, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: true });
+    await settle();
+
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
+      "episode-1-3",
+    );
+    // There is no success toast on this surface. The tile advancing is the confirmation.
+    expect(failures.get()).toHaveLength(0);
+  });
+
+  it("puts the tile back on the episode it was on when the write is lost", async () => {
+    const { marks, failures, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: false, reference: "sentry-1" });
+    await settle();
+
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.episode?.episodeId).toBe("episode-1-2");
+    // A tile that advanced and stayed advanced would be the only evidence of a watch that
+    // was never recorded. `SPEC.md` §3.3.
+    expect(reading.marked).toBeNull();
+    expect(failures.get()).toHaveLength(1);
+  });
+
+  it("names the title and the episode in full on the lost-write toast", async () => {
+    const { marks, failures, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2, "Mijo"), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: false, reference: "sentry-1" });
+    await settle();
+
+    const [lost] = failures.get();
+    expect(lost.title).toBe(TITLE_NAME);
+    // The one function that names an episode — never the number alone (`CONTEXT.md`).
+    expect(lost.episode).toBe("Season 1, Episode 2 — Mijo");
+    expect(lost.reference).toBe("sentry-1");
+  });
+
+  it("names an episode TMDB has not named without printing its number instead", async () => {
+    const { marks, failures, answerRecord } = harness();
+    const entry = entryWith([
+      { episodeId: "episode-unnamed", episodeName: null, seasonNo: 2, episodeNo: 4 },
+      episodeAt(2, 5),
+    ]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: false, reference: null });
+    await settle();
+
+    expect(failures.get()[0].episode).toBe("Season 2, Episode 4 — Not yet named");
+  });
+
+  it("mints one key per outstanding write and reuses it on every retry", async () => {
+    const { marks, failures, recorded, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: false, reference: null });
+    await settle();
+
+    failures.get()[0].retry?.();
+    await settle();
+    answerRecord[1]({ ok: false, reference: null });
+    await settle();
+
+    failures.get()[0].retry?.();
+    await settle();
+
+    // Three attempts, one write: a retry is not a rewatch.
+    expect(recorded).toEqual(["key-1", "key-1", "key-1"]);
+    // And one toast for it, however many times it was retried.
+    expect(failures.get()).toHaveLength(1);
+  });
+
+  it("takes the toast down when a retry finally lands", async () => {
+    const { marks, failures, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: false, reference: null });
+    await settle();
+
+    failures.get()[0].retry?.();
+    await settle();
+    answerRecord[1]({ ok: true });
+    await settle();
+
+    expect(failures.get()).toHaveLength(0);
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
+      "episode-1-3",
+    );
+  });
+
+  it("shares one key with another surface showing the same episode", async () => {
+    const { marks, recorded, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+    const subject = { libraryEntryId: entry.libraryEntryId, episodeId: "episode-1-2" };
+
+    // The tile presses, and then the title sheet it opened presses the same episode while
+    // the first write is still on the wire. The store is keyed by episode rather than by
+    // surface, so the second press joins the first write rather than starting a second.
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    void marks.mark(subject, { title: TITLE_NAME, episode: "Season 1, Episode 2" });
+    await settle();
+
+    expect(recorded).toEqual(["key-1", "key-1"]);
+    expect(answerRecord).toHaveLength(2);
+  });
+
+  it("reverses the watch, and the advance with it, when Undo is pressed", async () => {
+    const { marks, removed, answerRecord, answerRemove } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: true });
+    await settle();
+
+    void undoFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+
+    expect(removed).toEqual([
+      { libraryEntryId: "entry-1", episodeId: "episode-1-2" },
+    ]);
+    // The tile walks back by the same rule it walked forward by.
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.episode?.episodeId).toBe("episode-1-2");
+    expect(reading.marked).toBeNull();
+
+    answerRemove[0]({ ok: true });
+    await settle();
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
+      "episode-1-2",
+    );
+  });
+
+  it("marks a second episode without minting a key that belongs to the first", async () => {
+    const { marks, recorded, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3), episodeAt(1, 4)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: true });
+    await settle();
+
+    const advanced = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    void markFromTile(marks, entry, advanced.episode!);
+    await settle();
+
+    // Two episodes, two writes, two keys — the tile's advance is not a retry.
+    expect(recorded).toEqual(["key-1", "key-2"]);
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
+      "episode-1-4",
+    );
+  });
+
+  it("takes the tile out of the group when the last released episode is marked", async () => {
+    const { marks, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2)]);
+
+    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+
+    // Optimistically, before the server has answered — the tile leaves at the same moment
+    // it would have advanced.
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.finished).toBe(true);
+    expect(reading.episode).toBeNull();
+    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(false);
+
+    answerRecord[0]({ ok: true });
+    await settle();
+    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(false);
+  });
+
+  it("puts a tile that left the group back when the write is lost", async () => {
+    const { marks, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2)]);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+    answerRecord[0]({ ok: false, reference: null });
+    await settle();
+
+    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
+      "episode-1-2",
+    );
+  });
+
+  it("keeps a tile whose queue ran out but whose show has not", async () => {
+    const { marks } = harness();
+    // `more` is the difference between *this show is finished* and *this read stopped at
+    // the cap*, and getting it backwards would take a tile off a show with fifty episodes
+    // left.
+    const entry = entryWith([episodeAt(1, 2)], true);
+
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.finished).toBe(false);
+    expect(reading.episode).toBeNull();
+    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+  });
+
+  it("holds the control while its own write is on the wire", async () => {
+    const { marks, answerRecord } = harness();
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
+    const subject = { libraryEntryId: entry.libraryEntryId, episodeId: "episode-1-3" };
+
+    // The episode the tile is *about to* show, pressed from elsewhere first — the tile
+    // must not offer a control over a write it cannot see.
+    void marks.mark(subject, { title: TITLE_NAME, episode: "Season 1, Episode 3" });
+    await settle();
+    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    await settle();
+
+    // Position two: both episodes read watched, so the run is spent.
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode).toBeNull();
+
+    answerRecord[0]({ ok: false, reference: null });
+    await settle();
+
+    // The elsewhere-press failed, so the tile is back on episode three — and it is still
+    // pending, because that episode's own write is what was lost and the store says so.
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.episode?.episodeId).toBe("episode-1-3");
+  });
+
+  it("shows nothing markable, and is not finished, when the queue is empty", () => {
+    const { marks } = harness();
+    // The rare case `UpNextQueue` documents: an unreleased episode sits at the up-next
+    // position, so the run truncated to nothing. The tile is not finished — the show is
+    // simply not ready — and this is the read catching up, not a state to act on.
+    const entry = entryWith([], true);
+
+    const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
+    expect(reading.episode).toBeNull();
+    expect(reading.finished).toBe(false);
+  });
+
+  it("leaves the group when the queue is empty and nothing is behind it", () => {
+    const { marks } = harness();
+    const entry = entryWith([], false);
+
+    expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).finished).toBe(true);
+  });
+});

@@ -19,9 +19,12 @@ import { describe, expect, it } from "vitest";
  *     tile are two halves of one rule — *a scroll comes to rest on a whole poster* — and
  *     either one alone silently does nothing. So is `scroll-pl-4` against the track's own
  *     `px-4`: drop it and every group's first poster parks under the page gutter.
- *  3. **No recording control, still.** #138's stated reversal is the thing most likely to
- *     be "helpfully" undone by a later diff now that this surface is a rail like the
- *     desktop's, and the desktop's rails sit beside a pane full of controls.
+ *  3. **The recording control is on Ongoing and on nothing else.** #138's *no recording
+ *     control anywhere on this surface* was reversed by #220 for the Ongoing group alone,
+ *     and what needs guarding is now the boundary rather than the absence: a mark on
+ *     Watchlist would turn one tap into *start this show*, and one on Abandoned would
+ *     silently clear the only hand-set state in this app. Both would be a tidy-looking
+ *     generalisation of `HomeGroup` in a later diff, and neither would throw.
  *
  * ── Why this reads source rather than rendering ───────────────────────────────────────
  *
@@ -129,15 +132,19 @@ describe("what #138 and #144 keep", () => {
     expect(code).toMatch(/entries\.length === 0/);
   });
 
-  it("puts no recording control on the phone home", () => {
+  it("puts the recording control in one place, and it is not the shared group", () => {
     for (const file of [
+      // The shared group — four of the five render through it, so a control here would be
+      // a control on Watchlist and Abandoned as well.
       HOME_GROUP,
+      // The shared tile, which the group screens behind *More* render too.
       "app/(signed-in)/up-next/group-tile.tsx",
-      "app/(signed-in)/up-next/up-next-groups.tsx",
     ]) {
       // The control itself, not the word — every one of these files discusses marking in
-      // prose, and #138's whole point is that the discussion is where it stays.
-      const control = /MarkWatchedButton|useWatchMark|watch-action|markWatched|WatchSweep/;
+      // prose, and #220 narrowed the rule rather than dropping it: the discussion is still
+      // where it stays on everything but the Ongoing tile.
+      const control =
+        /MarkWatchedButton|useWatchMark|useUpNextMark|watch-action|markWatched|WatchSweep/;
 
       expect({ file, marks: control.test(sourceAt(file)) }).toEqual({
         file,

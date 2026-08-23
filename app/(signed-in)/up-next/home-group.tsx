@@ -16,7 +16,7 @@ import { GroupTile, type GroupTileEntry } from "./group-tile";
  * `shrink-0` is what stops flex from compressing a long group's tiles to nothing, and
  * `snap-start` is the tile's half of the snap the track asks for.
  */
-const TILE = "w-[116px] shrink-0 snap-start";
+export const TILE = "w-[116px] shrink-0 snap-start";
 
 /**
  * How many tiles of this group's own track are on screen before a reader scrolls it — a
@@ -27,7 +27,7 @@ const TILE = "w-[116px] shrink-0 snap-start";
  * fetch this constant exists to make. The rest of a 187-title group stays
  * `app/poster.tsx`'s default lazy.
  */
-const FIRST_RUN = 3;
+export const FIRST_RUN = 3;
 
 /**
  * One of the phone home's five groups (issue #138) — a label, a `More` link into that
@@ -117,6 +117,41 @@ export function HomeGroup({
   if (entries.length === 0) return null;
 
   return (
+    <GroupSection label={label} href={href}>
+      {entries.map((entry, index) => (
+        <GroupTile
+          key={entry.libraryEntryId}
+          entry={entry}
+          className={TILE}
+          aboveFold={index < FIRST_RUN}
+          abandoned={abandoned}
+        />
+      ))}
+    </GroupSection>
+  );
+}
+
+/**
+ * The head and the track a group is drawn in, with the tiles left to the caller — issue
+ * #220 split this out of `HomeGroup` above.
+ *
+ * `HomeGroup` renders four of the five groups through it, and `ongoing-group.tsx` renders
+ * the fifth: Ongoing's tiles are interactive, and which of them are still in the group is
+ * a client-side question now that a mark can take one out. Extracted rather than copied
+ * because the gutters here are load-bearing on each other — `scroll-pl-[22px]` against the
+ * track's own `px-[22px]` is what stops the first poster of every group parking under the
+ * page gutter, and a second copy of that pairing is a second group that snaps wrong.
+ */
+export function GroupSection({
+  label,
+  href,
+  children,
+}: {
+  label: string;
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
     <section className="pt-[26px]">
       {/* The head keeps the page's gutter; the track below carries its own, so that it can
           bleed to the viewport edges.
@@ -127,14 +162,19 @@ export function HomeGroup({
           already reading as the one warm thing in the row does not also need an arrow
           pointing at itself.
 
-          This head is Up next's whole accent role — *the way through this screen*, in
-          `globals.css`'s terms — and it repeats once per group, which is five times over
-          on a full screen. That is five instances of one role and not five spends; the
-          rule is stated as roles rather than as a count precisely so that a repeating
-          structure does not read as a violation. What would violate it is a *second*
-          accent role appearing here — a vermilion tile, badge or control alongside these
-          heads. There is none, and there is no recording control on this surface at all
-          (`up-next-groups.tsx`). */}
+          This head is *the way through this screen*, in `globals.css`'s terms, and it
+          repeats once per group — five times over on a full screen. That is five instances
+          of one role and not five spends; the rule is stated as roles rather than as a
+          count precisely so that a repeating structure does not read as a violation.
+
+          **Since issue #220 there is a second accent role on this surface**, and it is
+          the one the colour is reserved for: the Ongoing tiles' mark control
+          (`ongoing-tile.tsx`). `DESIGN.md` §3's table names *recording a watch* as the
+          accent's reserved meaning and §7 has been amended to say this surface now carries
+          it. The two roles are legible apart because they sit in different places — a
+          heading above a track, a control under a poster — and because only one group in
+          five draws the second. What would still violate the rule is a *third*: an accent
+          tile, badge or state label alongside either of these. */}
       <div className="flex items-center justify-between gap-3 px-[22px] pb-3">
         <h2 className="label-line text-accent">{label}</h2>
         <Link
@@ -146,15 +186,7 @@ export function HomeGroup({
       </div>
 
       <ol className="flex snap-x snap-mandatory gap-[14px] overflow-x-auto scroll-pl-[22px] px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {entries.map((entry, index) => (
-          <GroupTile
-            key={entry.libraryEntryId}
-            entry={entry}
-            className={TILE}
-            aboveFold={index < FIRST_RUN}
-            abandoned={abandoned}
-          />
-        ))}
+        {children}
       </ol>
     </section>
   );
