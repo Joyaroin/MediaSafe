@@ -119,7 +119,7 @@ export function CatalogueResultRow({
     setInLibrary(true);
 
     const outcome = watched
-      ? await addWatched(result.kind, result.tmdbId, (watchedKey.current ??= key()))
+      ? await addWatched(result.kind, result.tmdbId, (watchedKey.current ??= mintKey()))
       : await add(result.kind, result.tmdbId);
 
     if (outcome.ok) {
@@ -333,4 +333,4 @@ async function addWatched(
  * every route back to it — the control and the toast's *Try again* — reuses it and a
  * retry is a no-op rather than a second recording.
  */
-const key = () => crypto.randomUUID();
+const mintKey = () => crypto.randomUUID();

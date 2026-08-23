@@ -56,12 +56,15 @@ import {
  * to the toast as `retry`; `catalogue-result.tsx` carries the full reasoning for both, and
  * for **one toast per lost write, not one per attempt** (`AGENTS.md`).
  *
- * The suppression guard is `standing()` rather than the bare `if (raised.current) return`
- * that file uses. `errors/write-failure.ts`'s own docblock is why, and it is the blind
- * spot in the bare form: a reader who dismisses a toast leaves the ref holding a handle
- * for a failure that is no longer on screen, and the *next* lost write is then suppressed
- * entirely — *a lost write is never silent* (`SPEC.md` §3.3) broken by the reader's own
- * tidying up.
+ * The suppression guard is `standing()` rather than the bare `if (raised.current) return`.
+ * `errors/write-failure.ts`'s own docblock is why, and it is the blind spot in the bare
+ * form: a reader who dismisses a toast leaves the ref holding a handle for a failure that
+ * is no longer on screen, and the *next* lost write is then suppressed entirely — *a lost
+ * write is never silent* (`SPEC.md` §3.3) broken by the reader's own tidying up.
+ *
+ * **This paragraph used to end with *…than the bare form that `catalogue-result.tsx`
+ * uses*, and that stopped being true in #222**: the search row now takes `standing()` too,
+ * because a second control on that row made the blind spot reachable in one gesture.
  *
  * The caller mounts this under a key of the title it is about, for the reason `page.tsx`
  * gives there: neither the ref nor `pending` may survive onto a different title.
@@ -96,7 +99,7 @@ export function AddToLibraryControl({
     setPending(true);
 
     const outcome = watched
-      ? await addWatched(kind, tmdbId, (watchedKey.current ??= key()))
+      ? await addWatched(kind, tmdbId, (watchedKey.current ??= mintKey()))
       : await add(kind, tmdbId);
 
     if (outcome.ok) {
@@ -206,4 +209,4 @@ async function addWatched(
  * One press, one idempotency key. `catalogue-result.tsx` carries why the key names the
  * write rather than the attempt.
  */
-const key = () => crypto.randomUUID();
+const mintKey = () => crypto.randomUUID();
