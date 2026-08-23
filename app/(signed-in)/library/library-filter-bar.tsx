@@ -1,9 +1,7 @@
 "use client";
 
-import { motion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { snappy } from "@/app/motion";
 import { LIBRARY_STATES, type LibraryState } from "@/db/access";
 import {
   DEFAULT_LIBRARY_SORT,
@@ -11,6 +9,7 @@ import {
   type LibrarySort,
 } from "@/db/library-sort";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+import { CHIP_BASE, ChipGround, chipClassName as sharedChipClassName } from "./chip";
 
 /**
  * The library heading bar's controls — the chips, the filter-by-typing field, the sort
@@ -50,44 +49,21 @@ const CHIPS: { value: Chip; label: string }[] = [
  * `DESIGN.md`, Chips: *selected inverts to a `text`-coloured ground with `ground`-coloured
  * text. Unselected is `ground` with dim `text` text, hovering to `raised` with full-strength
  * text. The Watching chip is the one exception: its text is accent-coloured even when
- * unselected, because the accent always means live.* One function rather than a lookup
- * table, because there is exactly one exception to name and a table would give it the same
- * shape as five identical rows.
+ * unselected, because the accent always means live.* The shape every chip shares —
+ * selected or not — moved to `chip.tsx` for issue #224, which reuses it for the season
+ * selector; only the one exception named above is local here, because it is a fact about
+ * the Watching state and not about the register.
  */
-/* The selected chip's ground is drawn by `<ChipGround />` below rather than by a
+/* The selected chip's ground is drawn by `<ChipGround />` (`chip.tsx`) rather than by a
    `bg-ink` class, so every chip here is transparent-grounded and the same size whether it
-   is selected or not. The fill is one element that slides between them.
-
-   Turn 9 makes the chip a `32px` pill at a `16px` radius, and changes what unselected
-   looks like: it used to be the page ground hovering to `--raised`, which worked when
-   `--raised` was white and the ground was bone. In the linen palette `--raised` is
-   *darker* than the ground, so an unselected chip is a filled well and a selected one is
-   a darker fill still — the row reads as a set of objects rather than as labels that grow
-   a background on hover. */
+   is selected or not. The fill is one element that slides between them. */
 function chipClassName(value: Chip, selected: boolean): string {
-  const base =
-    "relative flex h-8 shrink-0 items-center rounded-2xl px-3.5 text-meta font-medium";
-  if (selected) return `${base} text-ground`;
-  if (value === "watching") {
+  if (value === "watching" && !selected) {
     // The one exception, and it survives the redesign intact: Watching keeps its accent
     // label even unselected, because the accent always means live.
-    return `${base} bg-raised text-accent transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
+    return `${CHIP_BASE} bg-raised text-accent transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
   }
-  return `${base} bg-raised text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink`;
-}
-
-/** The travelling fill. `snappy` and not `smooth`: a chip is pressed directly, and a
- *  trace of overshoot is what makes a direct manipulation feel answered rather than
- *  merely processed. It travels as a `16px`-radius pill since turn 9 — the shape moved,
- *  the shared-layout element did not. */
-function ChipGround() {
-  return (
-    <motion.span
-      layoutId="library-chip-selected"
-      className="absolute inset-0 rounded-2xl bg-ink"
-      transition={snappy}
-    />
-  );
+  return sharedChipClassName(selected);
 }
 
 export function LibraryChips({
@@ -115,7 +91,7 @@ export function LibraryChips({
           onClick={() => onChange(chip.value)}
           className={chipClassName(chip.value, chip.value === value)}
         >
-          {chip.value === value ? <ChipGround /> : null}
+          {chip.value === value ? <ChipGround layoutId="library-chip-selected" /> : null}
           <span className="relative z-10">{chip.label}</span>
         </button>
       ))}
