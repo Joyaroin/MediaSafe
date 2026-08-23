@@ -6,10 +6,10 @@ import {
   addTitleToLibraryWatched,
   asUserId,
   ownedBy,
+  type Executor,
   recordWatch,
   type UserId,
 } from "@/db/access";
-import type { Transaction } from "@/db/client";
 import {
   episode,
   libraryEntry,
@@ -19,7 +19,7 @@ import {
   watch,
 } from "@/db/schema";
 import type { TitleMirror } from "@/tmdb/mirror";
-import { inTransaction, setUpTestDatabase } from "./support/database";
+import { database, inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
  * `addTitleToLibraryWatched`, against real Postgres — issue #222.
@@ -64,7 +64,7 @@ const nextNumber = () => ++counter;
 /** A fresh `source_key` — one per press, exactly as the browser mints one per tap. */
 const nextKey = () => `press-${nextNumber()}`;
 
-async function seedUser(tx: Transaction, name: string): Promise<UserId> {
+async function seedUser(tx: Executor, name: string): Promise<UserId> {
   const id = `${name}-${nextNumber()}`;
   await tx.insert(user).values({ id, name, email: `${id}@example.test` });
   return asUserId(id);
@@ -131,7 +131,7 @@ const TWO_SEASONS: readonly EpisodeSpec[] = [
 ];
 
 async function entryIdFor(
-  tx: Transaction,
+  tx: Executor,
   userId: UserId,
   mirror: TitleMirror,
 ): Promise<string> {
@@ -151,7 +151,7 @@ async function entryIdFor(
 
 /** Which episodes of this entry carry a watch, named `season-episode` and in order. */
 async function watchedEpisodes(
-  tx: Transaction,
+  tx: Executor,
   userId: UserId,
   entryId: string,
 ): Promise<string[]> {
@@ -164,14 +164,14 @@ async function watchedEpisodes(
   return rows.map((one) => `${one.seasonNo}-${one.episodeNo}`);
 }
 
-async function watchRowsOf(tx: Transaction, userId: UserId, entryId: string) {
+async function watchRowsOf(tx: Executor, userId: UserId, entryId: string) {
   return tx
     .select()
     .from(watch)
     .where(and(ownedBy(userId, watch), eq(watch.libraryEntryId, entryId)));
 }
 
-async function stateOf(tx: Transaction, entryId: string): Promise<string> {
+async function stateOf(tx: Executor, entryId: string): Promise<string> {
   const [row] = await tx
     .select({ state: libraryEntryState.state })
     .from(libraryEntryState)
@@ -179,7 +179,7 @@ async function stateOf(tx: Transaction, entryId: string): Promise<string> {
   return row.state;
 }
 
-async function abandonedAtOf(tx: Transaction, entryId: string): Promise<Date | null> {
+async function abandonedAtOf(tx: Executor, entryId: string): Promise<Date | null> {
   const [row] = await tx
     .select({ abandonedAt: libraryEntry.abandonedAt })
     .from(libraryEntry)
@@ -472,6 +472,89 @@ describe("addTitleToLibraryWatched", () => {
         await watchedEpisodes(tx, stranger, await entryIdFor(tx, stranger, mirror)),
       ).toEqual([]);
     }));
+
+  /**
+   * Not `inTransaction`, because a race cannot happen inside one transaction — see
+   * `support/database.ts`'s `database()` for what that costs and why it is worth it here.
+   */
+  it("records a show once when two surfaces press it at the same moment", async () => {
+    const db = database();
+    const userId = await seedUser(db, "concurrent");
+    const mirror = showMirror(TWO_SEASONS);
+
+    /**
+     * Two presses with **two keys**, which is what makes this a race rather than a
+     * retry: the browser holds one key per press, so a second tap on one control
+     * carries the first one's key and is caught by `UNIQUE (user_id, source,
+     * source_key)`. Two *surfaces* — the search row in one tab, the unowned title page
+     * in another — mint two, and neither guard in the write can see the other's rows
+     * until it commits.
+     *
+     * What stops them is `mirrorTitle`'s `ON CONFLICT DO UPDATE` against `title`, which
+     * locks that row for the rest of the transaction, so the two presses queue and the
+     * second reads `watch` after the first has committed. That is a property of the
+     * mirror refresh rather than of the write under test, which is exactly why it is
+     * asserted here — the day something skips the refresh, this fails.
+     */
+    const [first, second] = await Promise.all([
+      addTitleToLibraryWatched(userId, mirror, nextKey(), db),
+      addTitleToLibraryWatched(userId, mirror, nextKey(), db),
+    ]);
+
+    const entryId = await entryIdFor(db, userId, mirror);
+    // Six rows, not twelve. A duplicate here is a **rewatch** (`CONTEXT.md`), and a
+    // phantom one is indistinguishable on every screen from one the reader made —
+    // ADR-0001 amendment 4 counts 1,156 real ones already in the library.
+    expect(await watchedEpisodes(db, userId, entryId)).toEqual([
+      "1-1",
+      "1-2",
+      "1-3",
+      "2-1",
+      "2-2",
+      "2-3",
+    ]);
+    // And the two presses agree about who wrote them: one recorded the six, the other
+    // found nothing left to do. Not both reporting six.
+    expect(first.recorded + second.recorded).toBe(6);
+    expect(await watchRowsOf(db, userId, entryId)).toHaveLength(6);
+  });
+
+  /**
+   * The same race with the entry **already there** — the half the test above cannot
+   * reach, and the one where the cheaper explanation runs out.
+   *
+   * On a new title `library_entry`'s own unique index would serialize the two anyway: the
+   * second `INSERT … ON CONFLICT DO NOTHING` waits on the first's uncommitted row. An
+   * entry that already exists conflicts with nothing, so that particular queue never
+   * forms, and what holds the property up is the `title` lock alone. Both cases are here
+   * because a change could take away either one.
+   *
+   * Reachable from two stale tabs: the controls only render for a title you do not own,
+   * so both surfaces have to have been drawn before either add landed.
+   */
+  it("records a show once when two presses land on an entry that already exists", async () => {
+    const db = database();
+    const userId = await seedUser(db, "concurrent-existing");
+    const mirror = showMirror(TWO_SEASONS);
+
+    await addTitleToLibrary(userId, mirror, db);
+
+    const [first, second] = await Promise.all([
+      addTitleToLibraryWatched(userId, mirror, nextKey(), db),
+      addTitleToLibraryWatched(userId, mirror, nextKey(), db),
+    ]);
+
+    const entryId = await entryIdFor(db, userId, mirror);
+    expect(await watchedEpisodes(db, userId, entryId)).toEqual([
+      "1-1",
+      "1-2",
+      "1-3",
+      "2-1",
+      "2-2",
+      "2-3",
+    ]);
+    expect(first.recorded + second.recorded).toBe(6);
+  });
 
   it("adds a show with nothing released yet and records nothing", () =>
     inTransaction(async (tx) => {

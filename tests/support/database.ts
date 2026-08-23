@@ -106,6 +106,31 @@ export function setUpTestDatabase(name: string): TestDatabase {
 }
 
 /**
+ * The pool itself, for the one kind of assertion a rolled-back transaction cannot make:
+ * **two transactions running at once** — issue #222.
+ *
+ * `inTransaction` gives every test one transaction, which is exactly what makes it
+ * isolated and exactly what makes a race unreachable from inside it. A read-then-write
+ * that is safe alone and wrong when two of it interleave is invisible to every other file
+ * in this directory, and it is a class of bug this schema is unusually exposed to: a
+ * duplicated `watch` row is a **rewatch** (`CONTEXT.md`), and 1,156 genuine ones are
+ * already in the library (`docs/adr/0001-watch-identity-and-derived-state.md`, amendment
+ * 4), so a phantom one looks exactly like something the reader did.
+ *
+ * ── The cost, stated because it is real ──────────────────────────────────────────────
+ *
+ * **Nothing written through this is rolled back.** The scratch database is dropped at the
+ * end of the file and that is the whole of the cleanup, so a test using this must mint
+ * its own account and its own title and scope every assertion to them — which every test
+ * in this directory already does, because `nextNumber()` was built for it.
+ *
+ * Reach for `inTransaction` unless the thing under test is concurrency itself.
+ */
+export function database(): Database {
+  return current().db;
+}
+
+/**
  * The sentinel thrown to force a rollback.
  *
  * Drizzle's transaction wrapper issues `ROLLBACK` and rethrows whatever came out of the

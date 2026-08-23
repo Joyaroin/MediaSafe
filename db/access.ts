@@ -735,6 +735,28 @@ export interface AddWatchedOutcome {
  * has a watch at all*: a film's watch carries no episode, so there is no other kind of
  * row it could be.
  *
+ * ── And two presses at once, which neither guard would catch on its own ──────────────
+ *
+ * Both guards above are blind to a transaction that has not committed yet, so two presses
+ * of *this* title from two surfaces — the search row in one tab, the unowned title page
+ * in another, each with its own key — would both read an empty `watch` and both write the
+ * whole show. Twelve rows, six of them phantom rewatches, indistinguishable on every
+ * screen from history the reader made (ADR-0001 amendment 4).
+ *
+ * **They cannot interleave, and the reason is one line above rather than anything here.**
+ * `addTitleToLibrary` mirrors on the way in, and `mirrorTitle`'s upsert against `title` is
+ * `ON CONFLICT DO UPDATE`, which takes a row lock on that title for the rest of the
+ * transaction. Two presses of one title therefore queue on it, and the second one's read
+ * of `watch` is a later statement with a later snapshot — so it sees what the first one
+ * committed and finds nothing left to write. `tests/add-to-library-watched.test.ts` pins
+ * this with two real concurrent transactions, once on a new entry and once on one that
+ * already existed.
+ *
+ * **This is load-bearing and it is not obvious**, which is the whole reason it is written
+ * down: it is a property of the mirror refresh, not of this function, and an optimisation
+ * that skipped the refresh for a title mirrored recently would take it away without
+ * touching a line of this file. The tests would fail, which is where that gets caught.
+ *
  * ── Timestamped now, and what that costs ─────────────────────────────────────────────
  *
  * `watched_at` is `now()` — the transaction's own instant, so the whole press is one
