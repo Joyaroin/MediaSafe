@@ -1173,6 +1173,18 @@ the app; all four of those absences are now present on purpose. What governs it:
   `--ease-out-quart`, `--ease-in-out-soft`.
 - **Exits run at `--dur-fast` against entrances at `--dur-base` or slower.** Arriving is
   where the character lives; leaving is where impatience does.
+
+  **#221 amended what that asymmetry means for the phone's tab-to-tab slide, and this is
+  recorded as a correction rather than silently overwritten.** The nav transition
+  (`app/globals.css`, `.nav-forward`/`.nav-back`) used to put a `--dur-fast` delay in
+  front of the entrance's fade and run both directions' slide at `--dur-slow` — so the
+  outgoing screen's heading was still on screen, at full opacity and already travelling,
+  for the first `--dur-fast` of every navigation, and the slide kept moving for a further
+  160ms after the fade it was meant to accompany had already finished. The entrance's
+  fade now carries no delay, and the slide runs at `--dur-base` on both sides, so it
+  settles with the fade instead of outliving it. The asymmetry itself is unchanged —
+  exits are still faster than entrances — it no longer also means *and the slide takes
+  longer than either*.
 - **The dividing rule is interruptibility, and it decides the implementation**, not taste.
   Anything a finger or cursor can catch mid-flight is a **spring**, authored in
   `app/motion.ts`. Anything it cannot — a colour, a list entrance, a press — stays a CSS

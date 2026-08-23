@@ -154,10 +154,53 @@ describe("both directions are drawn, and only on the phone", () => {
     // `--dur-base` or slower. No hardcoded milliseconds.
     const forwardOut = GLOBALS.match(/::view-transition-old\(\.nav-forward\)\s*\{[^}]*\}/)![0];
     const forwardIn = GLOBALS.match(/::view-transition-new\(\.nav-forward\)\s*\{[^}]*\}/)![0];
+    const backOut = GLOBALS.match(/::view-transition-old\(\.nav-back\)\s*\{[^}]*\}/)![0];
+    const backIn = GLOBALS.match(/::view-transition-new\(\.nav-back\)\s*\{[^}]*\}/)![0];
     expect(forwardOut).toContain("var(--dur-fast)");
     expect(forwardIn).toContain("var(--dur-base)");
     expect(forwardOut).not.toMatch(/\d+ms/);
     expect(forwardIn).not.toMatch(/\d+ms/);
+
+    // #221: the slide no longer reaches for the slow token on either side — see the two
+    // tests below for what it uses instead.
+    for (const block of [forwardOut, forwardIn, backOut, backIn]) {
+      expect(block).not.toContain("--dur-slow");
+    }
+  });
+
+  it("carries no delay on the entrance's fade — #221", () => {
+    // The previous shape delayed the entrance's fade by `--dur-fast`, so for that whole
+    // span the outgoing screen's title was still on screen — full opacity, already
+    // travelling — before the incoming one had begun to appear. `nav-fade` on the `-new`
+    // selectors must run straight from the shorthand's duration into `both`, with no
+    // third `var(--dur-*)` delay token sitting in between.
+    for (const cls of ["nav-forward", "nav-back"]) {
+      const block = GLOBALS.match(
+        new RegExp(`::view-transition-new\\(\\.${cls}\\)\\s*\\{[^}]*\\}`),
+      )![0];
+      expect(block).toMatch(/var\(--dur-base\)\s+var\(--ease-out-quart\)\s+both\s+nav-fade/);
+    }
+  });
+
+  it("runs the slide at the base duration rather than the slow one, both sides", () => {
+    // The slide used to keep moving for a further 160ms after the fade it was meant to
+    // accompany had already finished. It now settles with the fade instead.
+    for (const cls of ["nav-forward", "nav-back"]) {
+      const out = GLOBALS.match(
+        new RegExp(`::view-transition-old\\(\\.${cls}\\)\\s*\\{[^}]*\\}`),
+      )![0];
+      const incoming = GLOBALS.match(
+        new RegExp(`::view-transition-new\\(\\.${cls}\\)\\s*\\{[^}]*\\}`),
+      )![0];
+      expect(out).toMatch(/var\(--dur-base\)\s+var\(--ease-in-out-soft\)\s+both\s+nav-slide/);
+      expect(incoming).toMatch(
+        /var\(--dur-base\)\s+var\(--ease-in-out-soft\)\s+both\s+nav-slide/,
+      );
+    }
+  });
+
+  it("still has a direction — the translate is not removed", () => {
+    expect(GLOBALS).toMatch(/@keyframes nav-slide\s*\{\s*from\s*\{\s*translate:\s*var\(--nav-slide\)/);
   });
 
   it("never reaches the desktop, because only phone chrome tags a navigation", () => {
