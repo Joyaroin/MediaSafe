@@ -12,7 +12,7 @@ import {
   type CastAndCrew,
 } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
-import type { TitleKind } from "@/tmdb/mirror";
+import type { CatalogueKey, TitleKind } from "@/tmdb/mirror";
 
 /**
  * The read cache's other half: the facts a title page borrows from TMDB — issue #225.
@@ -174,6 +174,15 @@ const BORROWED_FACT_WINDOW_SECONDS = 6 * 60 * 60;
  * replay of a stored failure. A cache that held the `Outcome` would render a failed read
  * as an empty region for six hours, which is `AGENTS.md`'s opening rule with a memory.
  *
+ * ── Four near-identical wrappers, and a helper is not available ──────────────────────
+ *
+ * These read as begging to be one function taking a fact and a read. They cannot be, for
+ * the reason `cachedLibraryEntries` records next door: `mediasafe/cache-key-carries-account`
+ * has no type information and cannot see an account through a function call, so key parts
+ * built by a helper would be invisible to the one check that reads them. Inline is what
+ * the rule can see. The duplication is the price of the check, it is bounded by the number
+ * of cached reads, and `tests/cache-tags.test.ts` asserts the whole list of them.
+ *
  * ── The account in the key is not ceremony ───────────────────────────────────────────
  *
  * These three are the same answer for every reader **today**. `titleWatchProviders` is one
@@ -307,10 +316,16 @@ export function cachedUnownedTitleDetail(
  * to expire are the ones under the id that just stopped existing *and* the one it became.
  * This takes a list rather than one key partly so a caller holding both can say so —
  * `app/api/cron/nightly-sweep/route.ts` is the one that does.
+ *
+ * ── `CatalogueKey`, which is the type the rest of this application already uses ──────
+ *
+ * Not a structural `{ kind, tmdbId }` written out here. `tmdb/mirror.ts` owns that pair as
+ * a named concept, `catalogueKeyFrom` is the one predicate every door validates it
+ * through, and the sweep's `SweepCandidate` satisfies it without conversion. Spelling it
+ * longhand would have made this the one place in the codebase where the catalogue key is
+ * an anonymous shape rather than the thing it is.
  */
-export function invalidateBorrowedFactsFor(
-  titles: readonly { readonly kind: TitleKind; readonly tmdbId: number }[],
-): void {
+export function invalidateBorrowedFactsFor(titles: readonly CatalogueKey[]): void {
   for (const { kind, tmdbId } of titles) {
     for (const fact of BORROWED_FACTS) {
       revalidateTag(borrowedTagFor(fact, kind, tmdbId), "max");
