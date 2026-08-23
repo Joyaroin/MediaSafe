@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import type { LibraryEntryRow } from "@/db/access";
+import type { LibraryEntryRow, ListSummary } from "@/db/access";
 import type { LibrarySort } from "@/db/library-sort";
 import {
   type Chip,
@@ -15,6 +15,7 @@ import { BulkSelectionProvider } from "./bulk-selection-provider";
 import { useIsSelecting } from "./bulk-selection-context";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
+import { ListsRail } from "./lists-rail";
 import { ProgrammeNoteLayout } from "./programme-note-layout";
 
 /**
@@ -58,9 +59,12 @@ import { ProgrammeNoteLayout } from "./programme-note-layout";
 export function LibrarySurface({
   entries,
   sort,
+  lists,
 }: {
   entries: readonly LibraryEntryRow[];
   sort: LibrarySort;
+  /** Issue #223: every list, for the phone-only rail above the grid. */
+  lists: readonly ListSummary[];
 }) {
   return (
     <ProgrammeNoteLayout>
@@ -69,7 +73,7 @@ export function LibrarySurface({
           only thing a selection is about; the programme note beside it keeps the click it
           has always had, and there is no provider over it to take one. */}
       <BulkSelectionProvider>
-        <LibraryColumn entries={entries} sort={sort} />
+        <LibraryColumn entries={entries} sort={sort} lists={lists} />
       </BulkSelectionProvider>
     </ProgrammeNoteLayout>
   );
@@ -98,13 +102,22 @@ export function LibrarySurface({
  * `chip` and `filterText` live in this component rather than in the bar, so the filter
  * they describe survives the controls being taken away: the reader comes back after *Done*
  * to the grid they left, not to one that quietly reset itself while they were choosing.
+ *
+ * ── The Lists rail hides with the filter bar during selection — issue #223 ───────────
+ *
+ * `ListsRail` reads no selection state of its own; this component's one `useIsSelecting()`
+ * read below covers it too, the same way it already covers the chips, the field and the
+ * sort control. That is `SPEC.md`'s reason restated for a second control: a chip or a list
+ * card pressed mid-selection would act on titles the selection can no longer show.
  */
 function LibraryColumn({
   entries,
   sort,
+  lists,
 }: {
   entries: readonly LibraryEntryRow[];
   sort: LibrarySort;
+  lists: readonly ListSummary[];
 }) {
   // The boolean and not the snapshot: this component renders the whole grid under it, and
   // subscribing to every change would re-render all 472 cells on every tap
@@ -144,6 +157,8 @@ function LibraryColumn({
           </>
         )}
       </LibraryHeading>
+
+      {selecting ? null : <ListsRail lists={lists} />}
 
       {visible.length === 0 ? (
         <ZeroMatches onClear={clearFilter} />
