@@ -5,11 +5,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { smooth } from "./motion";
-import { LibraryIcon, ListsIcon, SearchIcon, SettingsIcon, UpNextIcon } from "./nav-icons";
+import {
+  LibraryIcon,
+  ListsIcon,
+  SearchIcon,
+  SettingsIcon,
+  StatsIcon,
+  UpNextIcon,
+} from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 
 /**
- * The sidebar's five destinations, and the one thing about them that needs the browser —
+ * The sidebar's six destinations, and the one thing about them that needs the browser —
  * issue #136, merged against issue #146 rather than after it. `sidebar.tsx` renders the
  * wordmark and the display name around this; this is only the part that has to know which
  * route the reader is on.
@@ -44,12 +51,26 @@ import { isCurrentRoute } from "./nav-route";
  * section. *Lists* has no route under it — `/lists` is flat — but the check costs
  * nothing to apply uniformly, the same reasoning `tab-bar.tsx` gives for *Up next*.
  * *Settings* gets the pushed-route treatment for real, for `/settings/delete-account`.
+ *
+ * ── Stats is the fifth here, and the sixth destination overall ───────────────────────
+ *
+ * Issue #227, and it is added rather than swapped in — which is the whole difference
+ * between this column and the phone's row. `tab-bar.tsx` had a budget of four and had to
+ * retire Lists to make room; a column has no such budget, and `SPEC.md` §6's constraint 6
+ * licenses *two genuinely different layouts, not one that stretches*, so the desktop keeps
+ * **Lists and Stats both**. A sidebar that dropped Lists to mirror the phone would be
+ * copying a constraint it does not have.
+ *
+ * Appended rather than slotted next to Library, so that no existing destination moves. A
+ * reader who reaches for the fourth row of this column has been reaching for it since #136
+ * and should still find Lists there.
  */
 const PRIMARY = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/lists", label: "Lists", Icon: ListsIcon },
+  { href: "/stats", label: "Stats", Icon: StatsIcon },
 ] as const;
 
 const SETTINGS = { href: "/settings", label: "Settings", Icon: SettingsIcon } as const;
@@ -101,7 +122,7 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {/* `DESIGN.md`'s Hairline Rule: a `1px` `hair` rule between the four primary
+      {/* `DESIGN.md`'s Hairline Rule: a `1px` `hair` rule between the five primary
           destinations and Settings, the same division the masthead used to draw between
           its nav cells and its Settings entrance — carried over as a rule rather than as
           another bordered cell, since the sidebar is a column, not a row. */}

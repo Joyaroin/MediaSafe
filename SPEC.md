@@ -29,12 +29,16 @@ order settles it:
 | 5 | **`docs/design/v1-surfaces.md`** + `-wireframes.md` | Screen list, layout divergence, per-screen states | **partly superseded** — see §10.2 |
 | 6 | **`PRODUCT.md`** | Historical. Product truth as understood on 2026-08-17 morning | **stale in eight places** — see §10.4 |
 
-**`docs/adr/0002-the-read-cache-and-its-tags.md` is not in the table because it does not compete with
-anything in it.** It records one reversal — §3 constraint 1's read-cache clause,
-[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — and one refinement of it, the
-lifetimes and tag scope borrowed facts get ([#225](https://github.com/Joyaroin/MediaSafe/issues/225),
-2026-08-23). Both amendments they produced are written into §3.1 itself rather than left here to be
-reconciled. Read the ADR before caching a further read; nothing else in this file depends on it.
+**`docs/adr/0002-the-read-cache-and-its-tags.md` and `docs/adr/0003-the-clock-is-an-input-not-a-window.md`
+are not in the table because they do not compete with anything in it.** Between them they record one
+reversal — §3 constraint 1's read-cache clause,
+[#219](https://github.com/Joyaroin/MediaSafe/issues/219), 2026-08-22 — the correction
+[#226](https://github.com/Joyaroin/MediaSafe/issues/226) made to it a day later, when the other owned
+reads joined the cache and the clock turned out to be an input none of the tags could speak for, and
+the borrowed facts [#225](https://github.com/Joyaroin/MediaSafe/issues/225) added beside them, which
+are the one category carrying a window as well as a tag. All three amendments are written into §3.1
+itself rather than left here to be reconciled. Read both ADRs before caching another read; nothing
+else in this file depends on either.
 
 **Neither prototype is a source of truth.** `docs/design/prototypes/repertory-bill.html` recorded the
 letterpress world; `design/catalogue-wall.html` recorded the Catalogue Wall that replaced it and was
@@ -113,23 +117,43 @@ From the map, settled with Adham and not up for relitigation:
    > implementation of it. `docs/adr/0002-the-read-cache-and-its-tags.md` records the reversal, what
    > replaced the ban, and the alternative that was rejected.
    >
-   > **Extended 2026-08-23 — borrowed facts join it, and they carry a window**
+   > **Updated 2026-08-23 — the owned reads followed**
+   > ([#226](https://github.com/Joyaroin/MediaSafe/issues/226)). The paragraph above was true for a
+   > day. Eight reads are cached now: the library grid and the ownership check under `library`, the
+   > three up-next reads under `up-next`, both list reads under `lists`, and title detail under
+   > `title-detail`. **The sentence that has not changed is the one that matters** — still one path
+   > to the database, still one query behind each read, still no second implementation of any of
+   > them. `cache/tags.ts` also records, for every read in `db/access.ts` it does *not* cache, a
+   > sentence saying why, and a test fails on a read that has neither.
+   >
+   > It also closed a hole #219 left open, which is worth naming here because it is a way the
+   > property above can fail with every write correctly busted. The derived views read
+   > `current_date`, so an episode airing tonight changes what up next and the library say **with no
+   > write to hang a bust on**. The day is now part of the key of every read that consults it. That
+   > is not the time-based revalidation this clause forbids — it is an input to the query appearing
+   > in the key of the query, and `docs/adr/0003-the-clock-is-an-input-not-a-window.md` argues the
+   > difference.
+   >
+   > **Extended 2026-08-23 — borrowed facts join them, and they carry a window**
    > ([#225](https://github.com/Joyaroin/MediaSafe/issues/225)). Title detail's synopsis, cast and
-   > crew, watch providers, and the mirrored `title`/`episode` metadata are now cached too, in the
-   > same module and under the same two properties.
+   > crew, watch providers, and the mirrored `title`/`episode` metadata are cached too, in
+   > `cache/borrowed-facts.ts` beside the owned half and under the same two properties. Nine owned
+   > reads, four borrowed.
    >
-   > They differ in one way that is a decision rather than a detail. An **owned** fact is correct
-   > until a write says otherwise, and every such write is in this repository, so it carries a tag
-   > and no window. A **borrowed** fact changes when TMDB changes its mind, which nothing here
-   > observes — a tag alone would never fire — so it carries **a six-hour window as well as a tag**.
-   > The window is a ceiling on being wrong, not the mechanism: the nightly sweep, every add and
-   > every import chunk bust what they rewrite, so a refreshed title is visible on the next read.
+   > They differ in two ways, both decisions rather than details. An **owned** fact is correct until
+   > a write says otherwise, so it carries a tag and no window. A **borrowed** fact changes when
+   > TMDB changes its mind, which nothing here observes and no key part can stand in for — a tag
+   > alone would never fire — so it carries **a six-hour window as well as a tag**. That is not the
+   > revalidation this clause forbids and not the one ADR-0003 turns down either: those are about
+   > inputs this codebase can name and put in a key, and this is the case where there is no such
+   > input. The window is a ceiling on being wrong, never the mechanism — the nightly sweep, every
+   > add and every import chunk bust what they rewrite, so a refreshed title is visible on the next
+   > read.
    >
-   > And their tag names the **title**, not the account, while their key still names the account.
-   > The two answer different questions — a key decides what is shared, a tag decides what a bust
-   > reaches — and the readers of a borrowed fact are not enumerable as accounts: the unowned title
-   > page is read by precisely the accounts that do *not* hold the title. `cache/tags.ts` argues it
-   > at the tag, and ADR-0002 records it as the refinement it is.
+   > And their tag names the **title**, not the account, while their key still names the account. A
+   > key decides what is shared; a tag decides what a bust reaches. The readers of a borrowed fact
+   > are not enumerable as accounts — the unowned title page is read by precisely the accounts that
+   > do *not* hold the title — so no account-scoped tag could reach them.
    >
    > **The catalogue search stays uncached, deliberately.** A stored result set would hide a title
    > TMDB added this morning and one this account added a minute ago, and a query string is a fact
@@ -683,6 +707,24 @@ What came in with them, and what did not:
   five destinations — Up next, Library, Search, Lists, a rule, then Settings — replacing the
   masthead cells entirely (`app/sidebar.tsx`), and the phone keeps its four tabs
   (`app/tab-bar.tsx`), Lists included.
+
+  **The last clause is amended by [#227](https://github.com/Joyaroin/MediaSafe/issues/227),
+  2026-08-23. The phone no longer has a Lists tab; the desktop still has a Lists
+  destination.** The sentence is left standing above rather than rewritten, because what it
+  recorded was true and the reasoning behind it — *the destination goes in the nav that
+  actually exists* — is what produced the change rather than what the change overturns.
+
+  What moved, and why it is not a demotion: [#223](https://github.com/Joyaroin/MediaSafe/issues/223)
+  put a rail of every list above the phone's Library grid, so the phone reaches every list in
+  one tap from a tab it already lands on, and the tab that used to do that job had nothing
+  left to do. #227 spent it on **Stats**, which had no way in at all. The desktop sidebar
+  makes the opposite trade and keeps both — six destinations now, Up next, Library, Search,
+  Lists, Stats, a rule, then Settings — because §6's constraint 6 licenses *two genuinely
+  different layouts, not one that stretches*, and the tab budget being solved here is one the
+  desktop does not have.
+
+  **`/lists` and `/lists/[listId]` are untouched.** The rail leads to them, the sidebar links
+  to them, deep links keep working. A tab was retired; a destination was not.
 - **A list holds anything in the catalogue**, not only what you own, and is **ordered by hand**. So
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your
@@ -693,10 +735,28 @@ What came in with them, and what did not:
 The rule above is unchanged by that. Nothing reserves space for what has not shipped — a Lists tab
 appears when there is a Lists page behind it.
 
+**#227 is that rule run a second time, in both directions**, which is worth naming because it is the
+only place it has been: a **Stats** tab appeared on the day there was a Stats page behind it, and the
+Lists tab went the day the rail left it nothing to do. A tab is a way to a page, and it lasts exactly
+as long as it is the way.
+
 ### Specced, but later
 
 Desktop rails other than Up next's three (Upcoming) · discovery by genre · recommendations ·
-upcoming air dates · watch providers · stats · day streak · year in review.
+upcoming air dates · watch providers · ~~stats~~ · ~~day streak~~ · year in review.
+
+**Stats and the day streak left this list by
+[#227](https://github.com/Joyaroin/MediaSafe/issues/227), 2026-08-23**, and they are struck
+rather than deleted because a thing that simply vanished from a *later* list reads as a thing
+nobody ever deferred. Both now ship, on a **Stats** destination — the phone's fourth tab and
+the desktop sidebar's sixth entry — reporting only what the data actually supports.
+
+Two of this section's neighbours are load-bearing on that and did **not** move.
+**Discovery by genre stays**, and so does any genre statistic: there is no genre column, no
+genre in the mirror, and nothing that has ever read one, so a genre figure needs a schema
+change, a mirror change and a sweep backfill before it is even a design question. **Year in
+review stays**, for the reason given below — it needs a year of dated watches, and no amount
+of building brings that forward.
 
 **Watchlist left this list too, by [#138](https://github.com/Joyaroin/MediaSafe/issues/138)** —
 the phone's fourth of five vertical groups, Abandoned its fifth. Neither is a desktop rail: the
@@ -705,7 +765,8 @@ desktop still reaches both only through Library's own chips (*Library — filter
 Year in review cannot be v1 by definition — it needs a year of data. Real episode names are not
 separately scheduled; they are a property of every episode surface and ship with it.
 
-*(The schema carries a streak index anyway — §5.)*
+*(The schema carries a streak index anyway — §5. It is load-bearing now: `watch_user_id_watched_at_idx`
+is what the streak query reads, and #227 is where the bet placed in build step 1 paid.)*
 
 ### Out of scope entirely
 
@@ -752,7 +813,31 @@ Beyond this product's destination, and returning only as a fresh decision:
 - **An admin surface**, a users list, or any bulk-edit affordance — no multi-select, no select-all,
   no batch state change.
 - **A guest mode**, a read cache, a local store, a service worker, or an offline queue.
-- **A dashboard.** No stats, counts or charts on any v1 surface.
+- ~~**A dashboard.** No stats, counts or charts on any v1 surface.~~
+  **Reversed by [#227](https://github.com/Joyaroin/MediaSafe/issues/227), 2026-08-23.** Struck
+  rather than deleted, on the convention this section already follows for the theme picker: a
+  ban that simply disappeared would read as one nobody ever held, and the reasoning underneath
+  it is what shapes the thing that replaced it.
+
+  What the ban was actually against, and what still holds: **numbers as chrome on a surface
+  you came to do something else on.** No count on a rail head, no count on a tile, no
+  *showing 10 of 62*, no badge — every one of those is still forbidden, by this line and by
+  `DESIGN.md` §11's own. That rule cost nothing to keep because a figure printed beside a
+  poster answers a question nobody asked while you were choosing what to watch tonight.
+
+  What falls is narrower and is the part that was never argued: **that the questions
+  themselves are out of scope.** Watch time, episodes remaining, activity over time and the
+  streak are each one query and none of them was reachable — §8's parent found *"the app can
+  answer questions it never shows"*, and the honest reading of that is that the ban had
+  stopped describing a decision and started describing an absence. So the questions get **a
+  destination of their own** — somewhere you go, rather than something you find on a page
+  about something else — and the original rule survives everywhere it was ever about.
+
+  Three limits came with the reversal and are not incidental to it: **only what the data
+  supports is counted** (no genre statistic, at all, anywhere); **every time-based figure
+  says how many watches carry no date**; and **watch time says how many watches carried no
+  runtime** rather than presenting a partial sum as exact. A dashboard that rounds off its
+  own gaps is the thing this line was right about.
 
 ---
 
@@ -868,7 +953,10 @@ document will ever find, which is the drift this section exists to stop.
   is stale for the same reason: nothing sits above that column on desktop any more, and the pane is
   `top: 0` now (`programme-note.tsx`). The Phone section of Navigation is unaffected by any of
   this — the phone's fourth tab is Lists (#146), and it still reaches Settings through the
-  masthead's icon rather than a fifth one.
+  masthead's icon rather than a fifth one. **The tab named there is Stats since
+  [#227](https://github.com/Joyaroin/MediaSafe/issues/227)** (§9); the half of the sentence
+  this correction is about — four tabs, Settings through the masthead and never a fifth tab —
+  is unchanged.
 - **`DESIGN.md`'s Motion section claimed motion exists in exactly one place.** [#141](https://github.com/Joyaroin/MediaSafe/issues/141)
   adds a second: the poster that carries a reader from a tile into title detail, on both the
   phone's route push and the desktop's panel swap, morphed via React's `<ViewTransition>`

@@ -1,12 +1,12 @@
 "use server";
 
+import { cachedLists, invalidateFor } from "@/cache/tags";
 import {
   addTitleToList,
   addTitlesToList,
   createList,
   createListAndAddTitle,
   deleteList,
-  listLists,
   reorderListMembership,
   type ListSummary,
 } from "@/db/access";
@@ -24,6 +24,20 @@ import { requireUserId } from "@/lib/session";
  * `error.tsx` for an uncaught one to land in. `requireUserId` is the real authorization —
  * a Server Action is a POST endpoint anyone with a session can call with any arguments,
  * and `proxy.ts` only proves a cookie was present.
+ *
+ * ── Every write here busts `lists`, since issue #226 ────────────────────────────────
+ *
+ * Before that ticket these six invalidated nothing, and `INVALIDATES` said so with an
+ * empty array — correctly, because nothing that read `list` or `list_membership` was
+ * cached. Three surfaces read them now (the Lists destination, the phone's rail above the
+ * library grid, and the picker below), all through one `lists` tag, so each write ends in
+ * an `invalidateFor` and the three cannot fall out of step.
+ *
+ * **Past the `catch`, and past the outcomes that wrote nothing.** A failed write changed
+ * nothing, and neither did a duplicate name or an add of a title the list already held —
+ * busting for either would throw away a correct entry and make a write that did not happen
+ * look from the cache's side like one that did. `bulk-abandon-action.ts` already reads its
+ * own count this way; these read `ok` and `added`.
  */
 
 /**
@@ -40,14 +54,20 @@ export type CreateListActionOutcome =
 
 export async function createListAction(name: string): Promise<CreateListActionOutcome> {
   const userId = await requireUserId();
+  let list: ListSummary;
 
   try {
     const outcome = await createList(userId, name);
+    // A duplicate name wrote nothing, so there is nothing to invalidate: it leaves by its
+    // own door, before the bust below.
     if (!outcome.ok) return outcome;
-    return { ok: true, list: outcome.list };
+    list = outcome.list;
   } catch (error) {
     return { ok: false, reason: "failed", reference: referenceFor(error, { surface: "lists" }) };
   }
+
+  invalidateFor("createList", userId);
+  return { ok: true, list };
 }
 
 export type DeleteListOutcome =
@@ -59,10 +79,12 @@ export async function deleteListAction(listId: string): Promise<DeleteListOutcom
 
   try {
     await deleteList(userId, listId);
-    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
+
+  invalidateFor("deleteList", userId);
+  return { ok: true };
 }
 
 /** This account's lists, for the *Add to list* dialog to render as a picker — issue #147.
@@ -76,7 +98,7 @@ export async function listsForPickerAction(): Promise<ListsForPickerOutcome> {
   const userId = await requireUserId();
 
   try {
-    return { ok: true, lists: await listLists(userId) };
+    return { ok: true, lists: await cachedLists(userId) };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
@@ -94,13 +116,18 @@ export async function addTitleToListAction(
   titleId: string,
 ): Promise<AddTitleToListActionOutcome> {
   const userId = await requireUserId();
+  let added: boolean;
 
   try {
-    const outcome = await addTitleToList(userId, listId, titleId);
-    return { ok: true, added: outcome.added };
+    added = (await addTitleToList(userId, listId, titleId)).added;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
+
+  // `added: false` is a membership that was already there — the list says what it said
+  // before, so every cached read of it is still right.
+  if (added) invalidateFor("addTitleToList", userId);
+  return { ok: true, added };
 }
 
 /**
@@ -122,13 +149,18 @@ export async function addTitlesToListAction(
   titleIds: readonly string[],
 ): Promise<AddTitlesToListActionOutcome> {
   const userId = await requireUserId();
+  let added: number;
 
   try {
-    const outcome = await addTitlesToList(userId, listId, titleIds);
-    return { ok: true, added: outcome.added };
+    added = (await addTitlesToList(userId, listId, titleIds)).added;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
+
+  // Zero memberships created — every title in the selection was already on the list — so
+  // nothing any cached read shows has changed. `addTitleToListAction`'s reason, counted.
+  if (added > 0) invalidateFor("addTitlesToList", userId);
+  return { ok: true, added };
 }
 
 /** Same three-way shape as `CreateListActionOutcome`, for the same reason: `"duplicate"`
@@ -143,14 +175,18 @@ export async function createListAndAddTitleAction(
   titleId: string,
 ): Promise<CreateListAndAddOutcome> {
   const userId = await requireUserId();
+  let list: ListSummary;
 
   try {
     const outcome = await createListAndAddTitle(userId, name, titleId);
     if (!outcome.ok) return outcome;
-    return { ok: true, list: outcome.list };
+    list = outcome.list;
   } catch (error) {
     return { ok: false, reason: "failed", reference: referenceFor(error, { surface: "lists" }) };
   }
+
+  invalidateFor("createListAndAddTitle", userId);
+  return { ok: true, list };
 }
 
 /** Whether a drag landed — issue #149. There is no `"duplicate"` case here, unlike the
@@ -169,8 +205,12 @@ export async function reorderListAction(
 
   try {
     await reorderListMembership(userId, listId, titleId, newPosition);
-    return { ok: true };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
+
+  // `getListDetail` orders by `position`, so a drag changes the rows it returns even
+  // though the set of them is identical.
+  invalidateFor("reorderListMembership", userId);
+  return { ok: true };
 }

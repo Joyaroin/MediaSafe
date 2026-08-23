@@ -81,6 +81,14 @@ export async function addUnownedTitleToLibraryAction(
     titleId = (await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId)))
       .titleId;
 
+    /**
+     * `libraryEntryIdForTitle` and **not** `cachedLibraryEntryIdForTitle`, deliberately.
+     * The page's own ownership check goes through the cache (#226); this one cannot, because
+     * it runs after the write and *before* the bust below, so the cached answer would still
+     * be the `null` from before the add and the throw underneath would fire on a case that
+     * is supposed to be unreachable. A read taken to confirm a write must not be served
+     * from a cache that write has not yet invalidated.
+     */
     const found = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
     if (found === null) {
       /**
@@ -173,6 +181,8 @@ export async function addUnownedTitleWatchedToLibraryAction(
       )
     ).titleId;
 
+    // Uncached for the reason the action above gives, at length: this read confirms the
+    // write, so it must not come from a cache the write has not yet busted.
     const found = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
     if (found === null) {
       // Unreachable for the reason the action above gives, and a throw for the same one.

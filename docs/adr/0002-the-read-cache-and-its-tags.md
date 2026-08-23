@@ -66,9 +66,15 @@ eventually.
 
 ## What is cached
 
-> **Superseded in part on 2026-08-23** by the amendment at the foot of this file: #225 added the four
-> borrowed facts. The paragraph below is left as written because the reasoning that follows it — the
-> shared mirror, and how it nearly went wrong — is what the amendment builds on.
+> **Overtaken 2026-08-23 by [#226](https://github.com/Joyaroin/MediaSafe/issues/226) and
+> [#225](https://github.com/Joyaroin/MediaSafe/issues/225).** This section described the state on the
+> day this ADR was accepted and is kept as written. Nine owned reads are cached now, under five tags,
+> and `cache/tags.ts`'s `CACHED_READS` is the live list —
+> `docs/adr/0003-the-clock-is-an-input-not-a-window.md` records what #226 added and the hole in the
+> design below that it found. Four **borrowed** facts are cached beside them in
+> `cache/borrowed-facts.ts`, and the amendment at the foot of this file records those and the two
+> things they do differently. Nothing else in this ADR is superseded: the two properties, the
+> `updateTag` choice, the success-only rule and the rejected alternative all still hold.
 
 **One read: the library.** `cachedLibraryEntries` in `cache/tags.ts`, called by
 `app/(signed-in)/library/page.tsx`, and nothing else. Up next, the title detail and the lists are
@@ -149,6 +155,14 @@ was considered and also rejected, for a narrower reason: it would make a missing
 a missing bust that is survivable is a missing bust nobody finds. The map is either complete or it is
 a bug, and there should be nothing quietly papering over the difference.
 
+> **What this argument missed, found by #226.** *No expiry* is right about writes and says nothing
+> about the clock. The derived views compare `air_date` against `current_date`, so an episode airing
+> tonight changes what these reads answer with **no write to bust anything** — and a backstop expiry,
+> rejected above, was the only thing that would have caught it. The answer is neither a backstop nor
+> a window: `current_date` is an input to the query, so it belongs in the query's key.
+> `docs/adr/0003-the-clock-is-an-input-not-a-window.md` argues why that is the opposite of the
+> revalidation this section turns down, rather than a quieter version of it.
+
 ---
 
 ## Amended 2026-08-23 — borrowed facts, and the two ways they differ
@@ -156,6 +170,10 @@ a bug, and there should be nothing quietly papering over the difference.
 - **Ticket**: [#225 — Cache the borrowed facts](https://github.com/Joyaroin/MediaSafe/issues/225)
 - **Amends**: this ADR's *What is cached* and its rejection of time-based revalidation, both in
   place; `SPEC.md` §3.1 carries the matching amendment
+- **Sits beside**: [ADR-0003](0003-the-clock-is-an-input-not-a-window.md), landed the same day by
+  #226, which turns a window down again for the owned reads. The two are not in tension and the
+  section *Why this is not the window ADR-0003 rejects* below is where that is argued rather than
+  asserted — read it before adding a window to anything else.
 - **Does not reverse anything above.** Every claim in the sections before this one still holds for
   the reads it was written about.
 
@@ -176,8 +194,8 @@ it.
 
 ### Difference one: borrowed facts carry a window
 
-Six hours, in `cache/tags.ts`. That looks like the thing the last section of this ADR rejects, so be
-exact about why it is not.
+Six hours, in `cache/borrowed-facts.ts`. That looks like the thing the last section of this ADR
+rejects, so be exact about why it is not.
 
 The rejection was of **a window in place of tags, on an owned fact**. Its argument was that a window
 is a period during which the library is permitted to disagree with the database, and that a reader
@@ -202,6 +220,29 @@ the round trips it spends chasing a change that happens a few times a year per t
 rejected because its apparent alignment with the nightly sweep is spurious — the sweep refreshes none
 of the three live facts — and what it would actually buy is a provider row that is wrong for a whole
 evening.
+
+#### Why this is not the window ADR-0003 rejects
+
+[ADR-0003](0003-the-clock-is-an-input-not-a-window.md) landed the same day as this amendment and
+turns a window down again, for the owned reads, in terms that could be read as covering these four.
+It does not, and the distinction is the same one it draws for itself.
+
+ADR-0003 is about a dependency this codebase **can name**: `current_date`, which the derived views
+compare `air_date` against. Because it can be named, it can go in the key, and then the entry is
+exactly right at every instant it is served. Its argument against a window there is that a window
+would tolerate a wrong answer across a **discrete flip at a known instant** — midnight — which is
+both wrong for a while and avoidable outright.
+
+A borrowed fact has no such instant and no such input. TMDB does not tell this application when a
+provider deal lapses, there is no column to compare against, and no key part could stand in for one:
+putting *today* in the key of a synopsis would produce a fresh TMDB read every midnight and still
+miss a change made at noon. The dependency is genuinely unobservable from here, which is the case
+ADR-0003 never had to consider — and the case where a window stops being *a tolerated wrong answer*
+and becomes *the only mechanism there is*.
+
+The two ADRs therefore agree on the rule and differ only on which facts it reaches: **put every input
+you can name in the key, and bust on every write you can see. A window is what is left for the inputs
+you can do neither with.** Nothing owned has one, and `tests/cache-tags.test.ts` asserts that.
 
 ### Difference two: their key names the account, their tag names the title
 

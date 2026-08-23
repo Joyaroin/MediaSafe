@@ -13,6 +13,7 @@ import {
 } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { CatalogueKey, TitleKind } from "@/tmdb/mirror";
+import type { BorrowedFact } from "./tags";
 
 /**
  * The read cache's other half: the facts a title page borrows from TMDB — issue #225.
@@ -65,12 +66,15 @@ import type { CatalogueKey, TitleKind } from "@/tmdb/mirror";
  *
  * Two vocabularies, two tag shapes, two bust functions, and a reviewer can tell from the
  * call which kind of fact a diff is invalidating.
+ *
+ * **The type itself lives in `tags.ts`**, beside `CachedRead` and the two classification
+ * maps, and is imported here as a type only. That is the split this pair of files is
+ * built on: `tags.ts` is the vocabulary — every name, and which of the three buckets each
+ * read in `db/access.ts` falls into — and this file is the mechanism for one half of it.
+ * The vocabulary has no TMDB import in it and so stays reachable from the client graph;
+ * the mechanism does, and does not. A type import is erased, so naming it here costs
+ * nothing at runtime.
  */
-export type BorrowedFact =
-  | "title-synopsis"
-  | "title-cast-crew"
-  | "title-watch-providers"
-  | "title-mirror";
 
 /**
  * The four, enumerated, so `invalidateBorrowedFactsFor` busts a fact added later without
@@ -198,7 +202,7 @@ export function cachedTitleSynopsis(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<string | null> {
-  const read = unstable_cache(titleSynopsis, ["title-synopsis", userId], {
+  const read = unstable_cache(titleSynopsis, ["titleSynopsis", userId], {
     tags: [borrowedTagFor("title-synopsis", kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
@@ -212,7 +216,7 @@ export function cachedTitleCastAndCrew(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<CastAndCrew> {
-  const read = unstable_cache(titleCastAndCrew, ["title-cast-crew", userId], {
+  const read = unstable_cache(titleCastAndCrew, ["titleCastAndCrew", userId], {
     tags: [borrowedTagFor("title-cast-crew", kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
@@ -227,7 +231,7 @@ export function cachedTitleWatchProviders(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<readonly WatchProvider[]> {
-  const read = unstable_cache(titleWatchProviders, ["title-watch-providers", userId], {
+  const read = unstable_cache(titleWatchProviders, ["titleWatchProviders", userId], {
     tags: [borrowedTagFor("title-watch-providers", kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });
@@ -265,7 +269,7 @@ export function cachedUnownedTitleDetail(
   kind: TitleKind,
   tmdbId: number,
 ): Promise<UnownedTitleDetailRow> {
-  const read = unstable_cache(getUnownedTitleDetail, ["title-mirror", userId], {
+  const read = unstable_cache(getUnownedTitleDetail, ["getUnownedTitleDetail", userId], {
     tags: [borrowedTagFor("title-mirror", kind, tmdbId)],
     revalidate: BORROWED_FACT_WINDOW_SECONDS,
   });

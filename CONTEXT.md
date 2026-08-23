@@ -83,6 +83,14 @@ The episode after your progress. Skipping an episode moves you past it permanent
 never sends you backwards.
 _Avoid_: continue watching, resume, next episode
 
+**Watch time**:
+The runtimes of what you watched, added up, and reported separately for film and television. It is
+assembled from borrowed runtimes — per film and per episode — which are missing wherever TMDB had
+none, so it is a **floor rather than a total**, and the count of watches carrying no runtime is part
+of the figure rather than a footnote to it. A watch with no date still counts: this is derived from
+what you watched, not when.
+_Avoid_: hours watched, time spent, total runtime
+
 **Streak**:
 The number of consecutive days up to today on which at least one dated watch happened.
 _Avoid_: run, chain

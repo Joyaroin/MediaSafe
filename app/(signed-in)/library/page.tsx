@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { cachedLibraryEntries } from "@/cache/tags";
-import { listLists } from "@/db/access";
+import { cachedLibraryEntries, cachedLists } from "@/cache/tags";
 import { sortFrom } from "@/db/library-sort";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { EmptyLibrary } from "./empty-library";
@@ -148,8 +147,12 @@ export default async function LibraryPage({
    * reached once the library is known non-empty: the empty branch above has no grid for a
    * rail to sit "above", and the ticket's own acceptance criteria scope the rail to that
    * shape.
+   *
+   * Cached since #226, under the `lists` tag rather than this page's own `library` one —
+   * the tag names the fact, not the surface, so the rail here and the Lists destination
+   * are one entry and cannot disagree about which lists exist.
    */
-  const lists = await listLists(userId);
+  const lists = await cachedLists(userId);
 
   return (
     <NavTransition>

@@ -7,7 +7,7 @@ import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
 import { Poster } from "@/app/poster";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedUnownedTitleDetail } from "@/cache/borrowed-facts";
-import { libraryEntryIdForTitle } from "@/db/access";
+import { cachedLibraryEntryIdForTitle } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { catalogueKeyFrom } from "@/tmdb/mirror";
 import { AddToLibraryControl } from "./add-to-library-control";
@@ -55,27 +55,35 @@ import { UnownedEpisodes } from "./unowned-episodes";
  *
  * ── A page read, unguarded ────────────────────────────────────────────────────────────
  *
- * Both mirrored reads (`libraryEntryIdForTitle`, `cachedUnownedTitleDetail`) are called
+ * Both mirrored reads (`cachedLibraryEntryIdForTitle`, `cachedUnownedTitleDetail`) are called
  * directly with no `try`: a failure throws into `error.tsx` beside this file, which is
  * `AGENTS.md`'s error discipline — a database MediaSafe cannot reach must never render as
  * a title with no episodes. `library/[entryId]/page.tsx` is the same shape, and its
  * docblock carries why the desktop pane cannot be.
  *
  * The cache does not change that, and this is the page where it would be tempting to
- * think it does. `unstable_cache` stores a resolved value only, so a throw from
- * `getUnownedTitleDetail` — a database that is down, or a `title` row that is genuinely
- * not mirrored — travels out through `cachedUnownedTitleDetail` untouched and leaves
- * nothing behind (`cache/borrowed-facts.ts`).
+ * think it does. `unstable_cache` stores a resolved value only, so a throw from either —
+ * a database that is down, or a `title` row that is genuinely not mirrored — travels out
+ * through its wrapper untouched and leaves nothing behind.
  *
- * ── The mirrored read is cached; the ownership question is not (issue #225) ──────────
+ * ── Both reads are cached now, on opposite sides of the vocabulary ──────────────────
  *
- * `cachedUnownedTitleDetail` is a **borrowed** fact: `title` and `episode` are global,
- * they say what TMDB last said, and a nightly sweep or anybody's add is what changes them
- * — so it carries a title-scoped tag and a window, and the sweep busts it.
- * `libraryEntryIdForTitle` above it is the opposite kind of question — *do you own this?*
- * — and it stays uncached deliberately: it is an owned fact, its ticket is #226, and a
- * stale answer here is not a stale poster but this page rendering *Add to library* for a
- * title the reader added in another tab.
+ * They are the clearest example in the application of the line `cache/` draws, because
+ * they sit two statements apart and are cached by different files for different reasons.
+ *
+ * The ownership question is **owned** — a row in this account's `library_entry` — so #226
+ * caches it under the `library` tag, which every add, import, remove and account deletion
+ * already busts. A stale answer there would be this page offering *Add to library* for a
+ * title the reader added in another tab, and a tag is exactly what prevents it.
+ *
+ * `cachedUnownedTitleDetail` is **borrowed** (#225): `title` and `episode` are global, they
+ * say what TMDB last said, and what changes them is a mirror refresh rather than a write
+ * of this reader's. So it is keyed by the account but tagged by the **title**, and it
+ * carries a window, because the accounts reading it are by definition the ones that do not
+ * hold the title and no account-scoped bust could ever reach them.
+ *
+ * Same page, same two lines of code, two different answers to *what makes this wrong?* —
+ * `cache/borrowed-facts.ts`'s tag block is where that is argued in full.
  *
  * ── The three live facts stream in behind this render (issue #218) ───────────────────
  *
@@ -107,7 +115,7 @@ export default async function UnownedTitlePage({
   const { kind, tmdbId } = catalogueKeyFrom(segments.kind, segments.tmdbId);
   const userId = await requireUserId();
 
-  const owned = await libraryEntryIdForTitle(userId, kind, tmdbId);
+  const owned = await cachedLibraryEntryIdForTitle(userId, kind, tmdbId);
   if (owned !== null) redirect(`/library/${owned}`);
 
   const detail = await cachedUnownedTitleDetail(userId, kind, tmdbId);

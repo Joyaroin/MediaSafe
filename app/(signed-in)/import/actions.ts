@@ -163,7 +163,9 @@ export async function applyImportChunkAction(
    *
    * One query per chunk rather than per title: `accountsHoldingTitles` takes the whole set
    * and answers `SELECT DISTINCT`, so a chunk of twenty-five titles across three accounts
-   * is one read and three busts.
+   * is one read and three accounts' worth of busts — four tags apiece since #226, since an
+   * import changes every fact there is. Still one query, which is the part this paragraph
+   * is about.
    */
   invalidateForOtherAccounts(
     "applyImportChunk",

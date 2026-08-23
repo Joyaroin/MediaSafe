@@ -46,6 +46,7 @@ const NAV_PAGES = [
   "app/(signed-in)/search/page.tsx",
   "app/(signed-in)/library/page.tsx",
   "app/(signed-in)/lists/page.tsx",
+  "app/(signed-in)/stats/page.tsx",
   "app/(signed-in)/settings/page.tsx",
 ];
 
@@ -203,7 +204,9 @@ describe("both directions are drawn, and only on the phone", () => {
   });
 
   it("never reaches the desktop, because only phone chrome tags a navigation", () => {
-    // `sidebar-nav.tsx` carries the same four destinations *and* its own Settings link.
+    // `sidebar-nav.tsx` carries five primary destinations *and* its own Settings link —
+    // an overlapping set rather than the same one since #227, which retired the phone's
+    // Lists tab and gave the desktop Stats without taking Lists away.
     // If it ever attaches a type the desktop starts sliding too, and this stops being a
     // phone change.
     const sidebar = readFileSync("app/sidebar-nav.tsx", "utf8");

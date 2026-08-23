@@ -33,14 +33,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * about Postgres.
  */
 
-const {
-  cacheState,
-  listLibraryEntriesMock,
-  unownedTitleDetailMock,
-  synopsisMock,
-  castAndCrewMock,
-  watchProvidersMock,
-} = vi.hoisted(() => ({
+const { cacheState, reads, tmdb } = vi.hoisted(() => ({
   cacheState: {
     /** Cached values by invocation key, exactly as `unstable_cache` would hold them. */
     entries: new Map<string, unknown>(),
@@ -57,11 +50,35 @@ const {
       revalidate: number | false | undefined;
     }[],
   },
-  listLibraryEntriesMock: vi.fn(),
-  unownedTitleDetailMock: vi.fn(),
-  synopsisMock: vi.fn(),
-  castAndCrewMock: vi.fn(),
-  watchProvidersMock: vi.fn(),
+  /**
+   * Every read of `db/access.ts` that `cache/` wraps, faked — one `vi.fn()` apiece rather
+   * than one shared spy, because *which* read the module reached for is half of what
+   * several assertions below are about. A `cachedWatchlist` that quietly called
+   * `listAbandoned` would satisfy a shared spy's call count and would be showing the
+   * reader the wrong group.
+   *
+   * `getUnownedTitleDetail` is in here with the owned reads because it is in the same
+   * module and mocked the same way; what is different about it — a title-scoped tag and a
+   * window — is `cache/borrowed-facts.ts`'s doing, not this map's.
+   */
+  reads: {
+    listLibraryEntries: vi.fn(),
+    libraryEntryIdForTitle: vi.fn(),
+    listUpNextRails: vi.fn(),
+    listWatchlist: vi.fn(),
+    listAbandoned: vi.fn(),
+    listLists: vi.fn(),
+    getListDetail: vi.fn(),
+    getTitleDetail: vi.fn(),
+    accountStats: vi.fn(),
+    getUnownedTitleDetail: vi.fn(),
+  },
+  /** The three borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. */
+  tmdb: {
+    titleSynopsis: vi.fn(),
+    titleCastAndCrew: vi.fn(),
+    titleWatchProviders: vi.fn(),
+  },
 }));
 
 vi.mock("next/cache", () => ({
@@ -103,8 +120,7 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/db/access", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/db/access")>()),
-  listLibraryEntries: listLibraryEntriesMock,
-  getUnownedTitleDetail: unownedTitleDetailMock,
+  ...reads,
 }));
 
 /**
@@ -113,17 +129,14 @@ vi.mock("@/db/access", async (importOriginal) => ({
  * build and a hard throw under plain Node module resolution, so loading the real module
  * here would fail the file before a single test ran (`tests/nightly-sweep-route.test.ts`
  * and `run-sweep.ts` document the same wall from the other side). Since issue #225
- * `cache/tags.ts` imports it, so this mock is what keeps the module importable at all.
+ * `cache/borrowed-facts.ts` imports it, so this mock is what keeps that half importable at
+ * all — and the reason it is a separate file from `tags.ts` in the first place.
  *
  * Nothing is lost by it. The three functions are a URL, a header and a `fetch`, and are
  * deliberately untested there for that reason; what this file is about is the keys, the
  * tags and the window wrapped around them.
  */
-vi.mock("@/tmdb/catalogue", () => ({
-  titleSynopsis: synopsisMock,
-  titleCastAndCrew: castAndCrewMock,
-  titleWatchProviders: watchProvidersMock,
-}));
+vi.mock("@/tmdb/catalogue", () => ({ ...tmdb }));
 
 function bust(tag: string): void {
   for (const [key, tags] of cacheState.tags) {
@@ -135,12 +148,23 @@ function bust(tag: string): void {
 
 const { asUserId } = await import("@/db/access");
 const {
+  CACHED_READS,
   INVALIDATES,
   MIRRORS_SHARED_TITLE_ROWS,
   READS,
+  UNCACHED_READS,
+  cachedAbandoned,
+  cachedAccountStats,
   cachedLibraryEntries,
+  cachedLibraryEntryIdForTitle,
+  cachedListDetail,
+  cachedLists,
+  cachedTitleDetail,
+  cachedUpNextRails,
+  cachedWatchlist,
   invalidateFor,
   invalidateForOtherAccounts,
+  serverDay,
 } = await import("@/cache/tags");
 const {
   cachedTitleCastAndCrew,
@@ -159,6 +183,45 @@ function libraryOf(userId: string) {
   return [{ libraryEntryId: `entry-${userId}`, name: `A title only ${userId} has` }];
 }
 
+/**
+ * The same trick for every other read: a value that names the account it was read for, so
+ * an assertion can say *whose* rows came back rather than merely that some came back. A
+ * leak between two accounts is then a failure that prints the wrong name.
+ */
+function ownedBy(userId: string) {
+  return { readFor: userId };
+}
+
+/**
+ * Every cached wrapper, called the same way, so the account-isolation and staleness
+ * assertions can run over all of them rather than being written out eight times. The
+ * second argument each takes is fixed here — this table is about *whose* answer comes
+ * back, and an entry id is not the axis under test.
+ */
+const CACHED = {
+  listLibraryEntries: (userId: typeof mine) => cachedLibraryEntries(userId),
+  libraryEntryIdForTitle: (userId: typeof mine) =>
+    cachedLibraryEntryIdForTitle(userId, "show", 1399),
+  listUpNextRails: (userId: typeof mine) => cachedUpNextRails(userId),
+  listWatchlist: (userId: typeof mine) => cachedWatchlist(userId),
+  listAbandoned: (userId: typeof mine) => cachedAbandoned(userId),
+  listLists: (userId: typeof mine) => cachedLists(userId),
+  getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
+  getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
+  /** Issue #227. It takes no second argument at all — `/stats` has no controls — so it is
+   *  the one entry here whose call is the whole of its signature. */
+  accountStats: (userId: typeof mine) => cachedAccountStats(userId),
+} as const;
+
+/** What the fake behind `read` answers `userId` with. The library's is a list of rows,
+ *  because the assertions that predate #226 are about rows; the rest need only to name
+ *  the account they were read for. */
+function answerFor(read: keyof typeof CACHED, userId: string) {
+  return read === "listLibraryEntries" ? libraryOf(userId) : ownedBy(userId);
+}
+
+/* ── The borrowed half, issue #225 ─────────────────────────────────────────────────── */
+
 /** Two titles, so *which title's entry was busted* is answerable from the value alone. */
 const SOLARIS = { kind: "film", tmdbId: 1972 } as const;
 const ANOTHER = { kind: "show", tmdbId: 2001 } as const;
@@ -168,7 +231,14 @@ function borrowedFrom(prefix: string) {
   return async (kind: string, tmdbId: number) => `${prefix} of ${kind} ${tmdbId}`;
 }
 
-/** The four borrowed reads of one title, all of them, in one call. */
+/**
+ * The four borrowed reads of one title, all of them, in one call.
+ *
+ * Not folded into `CACHED` above, and that is the point rather than an oversight: every
+ * entry in that table is keyed and tagged by account, and these four are tagged by title.
+ * A table that held both would have to carry the difference as a flag, and the difference
+ * is the whole subject of `cache/borrowed-facts.ts`.
+ */
 async function readEveryBorrowedFact(
   userId: ReturnType<typeof asUserId>,
   title: { kind: TitleKind; tmdbId: number },
@@ -186,14 +256,19 @@ beforeEach(() => {
   cacheState.revalidated.length = 0;
   cacheState.constructed.length = 0;
 
-  listLibraryEntriesMock.mockReset();
-  listLibraryEntriesMock.mockImplementation(async (userId: string) => libraryOf(userId));
+  for (const read of Object.values(reads)) {
+    read.mockReset();
+    read.mockImplementation(async (userId: string) => ownedBy(userId));
+  }
+  reads.listLibraryEntries.mockImplementation(async (userId: string) => libraryOf(userId));
 
+  // The borrowed four answer by title rather than by account — they take no user id, and
+  // the whole question about them is which *title's* entry a bust reached.
   for (const [mock, prefix] of [
-    [synopsisMock, "the synopsis"],
-    [castAndCrewMock, "the cast and crew"],
-    [watchProvidersMock, "the watch providers"],
-    [unownedTitleDetailMock, "the mirrored metadata"],
+    [tmdb.titleSynopsis, "the synopsis"],
+    [tmdb.titleCastAndCrew, "the cast and crew"],
+    [tmdb.titleWatchProviders, "the watch providers"],
+    [reads.getUnownedTitleDetail, "the mirrored metadata"],
   ] as const) {
     mock.mockReset();
     mock.mockImplementation(borrowedFrom(prefix));
@@ -214,13 +289,39 @@ describe("every key carries an account", () => {
     await cachedLibraryEntries(mine);
 
     expect(cacheState.constructed).toEqual([
-      // `revalidate: undefined` is the assertion, not a filler: an owned fact is correct
-      // until a write says otherwise, so a window on this entry would only be a way for
-      // the library to be wrong. It is the one thing borrowed facts have that this does
-      // not (`cache/tags.ts`), which makes it worth failing on rather than omitting.
-      { keyParts: ["library", mine], tags: [`library:${mine}`], revalidate: undefined },
+      // `revalidate: undefined` is an assertion, not a filler: an owned fact is correct
+      // until a write says otherwise, so a window here would only be a way for the
+      // library to be wrong. It is the one thing borrowed facts have that this does not
+      // (`cache/borrowed-facts.ts`), which makes it worth failing on rather than omitting.
+      {
+        keyParts: ["listLibraryEntries", mine, serverDay()],
+        tags: [`library:${mine}`],
+        revalidate: undefined,
+      },
     ]);
   });
+
+  /**
+   * The same assertion for all eight, so a new cached read cannot arrive with a key that
+   * names its entity and not its reader. `CACHED_READS` is the module's own table of what
+   * each read is called and which tag it carries; this holds the calls against it.
+   */
+  it.each(Object.keys(CACHED) as (keyof typeof CACHED)[])(
+    "keys %s by its account and tags it by the fact it reads",
+    async (read) => {
+      await CACHED[read](mine);
+
+      const disposition = CACHED_READS[read];
+      expect(cacheState.constructed).toEqual([
+        {
+          keyParts: disposition.readsCurrentDate
+            ? [read, mine, serverDay()]
+            : [read, mine],
+          tags: [`${disposition.cachedAs}:${mine}`],
+        },
+      ]);
+    },
+  );
 
   /**
    * The one that would have caught it. Drop the account from the key parts and from the
@@ -231,7 +332,7 @@ describe("every key carries an account", () => {
     expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
     expect(await cachedLibraryEntries(yours)).toEqual(libraryOf(yours));
 
-    expect(listLibraryEntriesMock.mock.calls.map(([userId]) => userId)).toEqual([
+    expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([
       mine,
       yours,
     ]);
@@ -241,7 +342,7 @@ describe("every key carries an account", () => {
     await cachedLibraryEntries(mine);
     await cachedLibraryEntries(mine);
 
-    expect(listLibraryEntriesMock).toHaveBeenCalledTimes(1);
+    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -254,16 +355,47 @@ describe("every key carries an account", () => {
     await cachedLibraryEntries(mine, "recently-added");
     await cachedLibraryEntries(mine, "title");
 
-    expect(listLibraryEntriesMock).toHaveBeenCalledTimes(2);
+    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(2);
     expect(await cachedLibraryEntries(yours, "title")).toEqual(libraryOf(yours));
   });
+
+  /**
+   * Issue #226's *two accounts cannot see each other's up next, lists or title detail
+   * under any cache state*, asked of all eight rather than of the library alone — because
+   * the ticket adds seven reads and the leak it forbids is a property of each key, not of
+   * the module as a whole.
+   *
+   * `mine` reads first and warms an entry; `yours` reads second and must still reach the
+   * database. Both halves matter: a shared key would fail the value assertion *and* leave
+   * the second call unmade, and a test that only counted calls could be satisfied by a
+   * cache that had simply stopped caching.
+   */
+  it.each(Object.keys(CACHED) as (keyof typeof CACHED)[])(
+    "never serves one account's %s to another",
+    async (read) => {
+      expect(await CACHED[read](mine)).toEqual(answerFor(read, mine));
+      expect(await CACHED[read](yours)).toEqual(answerFor(read, yours));
+
+      expect(reads[read].mock.calls.map(([userId]) => userId)).toEqual([mine, yours]);
+    },
+  );
+
+  it.each(Object.keys(CACHED) as (keyof typeof CACHED)[])(
+    "reads %s once and serves the second call from the entry",
+    async (read) => {
+      await CACHED[read](mine);
+      await CACHED[read](mine);
+
+      expect(reads[read]).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 describe("every write busts its tags", () => {
   it("gives the reader the library their own write landed in", async () => {
     expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
 
-    listLibraryEntriesMock.mockImplementation(async () => [
+    reads.listLibraryEntries.mockImplementation(async () => [
       ...libraryOf(mine),
       { libraryEntryId: "entry-just-added", name: "The one I just added" },
     ]);
@@ -272,28 +404,40 @@ describe("every write busts its tags", () => {
     expect(await cachedLibraryEntries(mine)).toHaveLength(2);
   });
 
-  it("busts the writer's library and leaves everybody else's alone", async () => {
+  /**
+   * A watch reaches three of the four facts and every tag it busts is this account's.
+   * Written out rather than derived from `INVALIDATES`, which would assert only that the
+   * map is the map: *a watch does not touch the lists* is a claim about the queries, and
+   * it is the claim this line is here to fail on if `getListDetail` ever grows a watch.
+   */
+  it("busts the writer's facts and leaves everybody else's alone", async () => {
     await cachedLibraryEntries(mine);
     await cachedLibraryEntries(yours);
-    listLibraryEntriesMock.mockClear();
+    reads.listLibraryEntries.mockClear();
 
     invalidateFor("recordWatch", mine);
 
-    expect(cacheState.updated).toEqual([`library:${mine}`]);
+    expect(cacheState.updated).toEqual([
+      `library:${mine}`,
+      `up-next:${mine}`,
+      `title-detail:${mine}`,
+      // #227: a watch is what every figure on `/stats` is made of.
+      `stats:${mine}`,
+    ]);
     await cachedLibraryEntries(mine);
     await cachedLibraryEntries(yours);
-    expect(listLibraryEntriesMock.mock.calls.map(([userId]) => userId)).toEqual([mine]);
+    expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([mine]);
   });
 
   it("busts nothing for a write no cached read shows", async () => {
     await cachedLibraryEntries(mine);
-    listLibraryEntriesMock.mockClear();
+    reads.listLibraryEntries.mockClear();
 
     invalidateFor("markImportOfferAnswered", mine);
 
     expect(cacheState.updated).toEqual([]);
     await cachedLibraryEntries(mine);
-    expect(listLibraryEntriesMock).not.toHaveBeenCalled();
+    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
   });
 
   /**
@@ -305,7 +449,14 @@ describe("every write busts its tags", () => {
   it("uses stale-while-revalidate for a write nobody is watching", () => {
     invalidateForOtherAccounts("refreshTitleMirror", [yours]);
 
-    expect(cacheState.revalidated).toEqual([[`library:${yours}`, "max"]]);
+    expect(cacheState.revalidated).toEqual([
+      [`library:${yours}`, "max"],
+      [`up-next:${yours}`, "max"],
+      [`lists:${yours}`, "max"],
+      [`title-detail:${yours}`, "max"],
+      // The mirror carries `runtime_mins` and `release_year`, which only `/stats` reads.
+      [`stats:${yours}`, "max"],
+    ]);
     expect(cacheState.updated).toEqual([]);
   });
 
@@ -317,7 +468,13 @@ describe("every write busts its tags", () => {
   it("skips the writer when busting the other holders of a shared title", () => {
     invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
 
-    expect(cacheState.revalidated).toEqual([[`library:${yours}`, "max"]]);
+    expect(cacheState.revalidated.map(([tag]) => tag)).toEqual([
+      `library:${yours}`,
+      `up-next:${yours}`,
+      `lists:${yours}`,
+      `title-detail:${yours}`,
+      `stats:${yours}`,
+    ]);
   });
 
   /**
@@ -328,13 +485,226 @@ describe("every write busts its tags", () => {
    */
   it("gives the other holders of a re-mirrored title a fresh read", async () => {
     await cachedLibraryEntries(yours);
-    listLibraryEntriesMock.mockClear();
+    reads.listLibraryEntries.mockClear();
 
     invalidateFor("addTitleToLibrary", mine);
     invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
 
     await cachedLibraryEntries(yours);
-    expect(listLibraryEntriesMock.mock.calls.map(([userId]) => userId)).toEqual([yours]);
+    expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([yours]);
+  });
+});
+
+/**
+ * Issue #227's own criterion: *every read on this page is cached and tagged through the tag
+ * module, and every watch write busts them.*
+ *
+ * The Stats page is the one surface in the application whose entire content is derived from
+ * `watch`, so a watch write that failed to bust it would leave a reader looking at a figure
+ * their own action had just made wrong — with no expiry behind the entry to heal it.
+ */
+describe("the Stats page's figures follow the watches they are made of", () => {
+  it("gives the reader figures their own watch landed in, whichever write made it", async () => {
+    for (const write of [
+      "recordWatch",
+      "unwatch",
+      "markWatchedUpTo",
+      "addTitleToLibraryWatched",
+      "applyImportChunk",
+    ] as const) {
+      cacheState.entries.clear();
+      cacheState.tags.clear();
+      cacheState.updated.length = 0;
+      reads.accountStats.mockClear();
+
+      await cachedAccountStats(mine);
+      invalidateFor(write, mine);
+      await cachedAccountStats(mine);
+
+      expect(
+        reads.accountStats,
+        `${write} did not bust the stats tag`,
+      ).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  /**
+   * The exception, asserted rather than left to the docblock. **Rating is the one fact a
+   * library entry carries that no aggregate reads**, so `rateTitle` busts three facts and
+   * leaves the figures standing — and a tag that named the account without naming the fact
+   * could not express that at all.
+   */
+  it("leaves the figures standing when only a rating changed", async () => {
+    await cachedLibraryEntries(mine);
+    await cachedAccountStats(mine);
+    reads.listLibraryEntries.mockClear();
+    reads.accountStats.mockClear();
+
+    invalidateFor("rateTitle", mine);
+
+    await cachedLibraryEntries(mine);
+    await cachedAccountStats(mine);
+    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
+    expect(reads.accountStats).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Abandoning moves a title between two of the five derived states, so the count per state
+   * changes with no watch written at all. It is the write most likely to be forgotten here,
+   * because nothing about it looks like a watch.
+   */
+  it("moves the count per state when a title is abandoned", async () => {
+    await cachedAccountStats(mine);
+    reads.accountStats.mockClear();
+
+    invalidateFor("abandonTitle", mine);
+
+    await cachedAccountStats(mine);
+    expect(reads.accountStats).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * Issue #226's own criteria: the four surfaces that read one fact agreeing after a write,
+ * and the two writes whose blast radius the ticket names explicitly.
+ */
+describe("the surfaces reading one fact agree after a write", () => {
+  /**
+   * **The sharpest case in the ticket, and the reason it exists.** #220 lets a reader mark
+   * tonight's episode from an Ongoing tile without leaving Up next. The tile advances
+   * optimistically in the browser (`up-next-mark.ts` derives its position from the marks
+   * store), so the screen is already right — and it would stay right until the reader
+   * reloaded, at which point a cached `listUpNextRails` would hand back the rail from
+   * before the mark and the tile would offer the episode they had just watched.
+   *
+   * There is no expiry behind that entry to heal it. `recordWatch` busting `up-next` is
+   * the whole of the fix, and this is the assertion that fails if it stops.
+   */
+  it("gives a reloaded Ongoing tile the episode after the one just marked", async () => {
+    reads.listUpNextRails.mockResolvedValue({ nextEpisode: "S01E04" });
+    expect(await cachedUpNextRails(mine)).toEqual({ nextEpisode: "S01E04" });
+
+    reads.listUpNextRails.mockResolvedValue({ nextEpisode: "S01E05" });
+    invalidateFor("recordWatch", mine);
+
+    expect(await cachedUpNextRails(mine)).toEqual({ nextEpisode: "S01E05" });
+  });
+
+  /** *An undo from a tile is equally correct after a reload* — the same property, walked
+   *  back. `unwatch` is a different write and owes its own bust. */
+  it("gives a reloaded Ongoing tile the episode an undo put back", async () => {
+    reads.listUpNextRails.mockResolvedValue({ nextEpisode: "S01E05" });
+    await cachedUpNextRails(mine);
+
+    reads.listUpNextRails.mockResolvedValue({ nextEpisode: "S01E04" });
+    invalidateFor("unwatch", mine);
+
+    expect(await cachedUpNextRails(mine)).toEqual({ nextEpisode: "S01E04" });
+  });
+
+  /**
+   * One write, four surfaces. The library grid, the rails, the title detail and the phone's
+   * WATCHLIST group all read the same entry row, so a mark that left any one of them
+   * holding the old answer is the disagreement `SPEC.md` §3 constraint 1 existed to
+   * forbid — restated for the cache that replaced it.
+   */
+  it("leaves the grid, the rails, the groups and the title detail all agreeing", async () => {
+    await Promise.all([
+      cachedLibraryEntries(mine),
+      cachedUpNextRails(mine),
+      cachedWatchlist(mine),
+      cachedAbandoned(mine),
+      cachedTitleDetail(mine, "entry-1"),
+    ]);
+    for (const read of Object.values(reads)) read.mockClear();
+
+    invalidateFor("markWatchedUpTo", mine);
+
+    await Promise.all([
+      cachedLibraryEntries(mine),
+      cachedUpNextRails(mine),
+      cachedWatchlist(mine),
+      cachedAbandoned(mine),
+      cachedTitleDetail(mine, "entry-1"),
+    ]);
+
+    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
+    expect(reads.listUpNextRails).toHaveBeenCalledTimes(1);
+    expect(reads.listWatchlist).toHaveBeenCalledTimes(1);
+    expect(reads.listAbandoned).toHaveBeenCalledTimes(1);
+    expect(reads.getTitleDetail).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The list writes, which busted nothing before this ticket because nothing they touched
+   * was cached. Both list reads carry one tag, so the picker on title detail and the list's
+   * own page cannot disagree about which lists exist or what is in them.
+   */
+  it.each([
+    "createList",
+    "createListAndAddTitle",
+    "deleteList",
+    "addTitleToList",
+    "addTitlesToList",
+    "reorderListMembership",
+  ] as const)("busts both list reads for %s", async (write) => {
+    await cachedLists(mine);
+    await cachedListDetail(mine, "list-1");
+    reads.listLists.mockClear();
+    reads.getListDetail.mockClear();
+
+    invalidateFor(write, mine);
+
+    await cachedLists(mine);
+    await cachedListDetail(mine, "list-1");
+    expect(reads.listLists).toHaveBeenCalledTimes(1);
+    expect(reads.getListDetail).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * A list write is *only* a list write. The library grid does not join `list_membership`,
+   * so busting it here would throw away a correct entry for a change it cannot show —
+   * which is the same argument `INVALIDATES`' empty arrays make, applied to a write that
+   * does bust something.
+   */
+  it("leaves the library alone when only a list changed", async () => {
+    await cachedLibraryEntries(mine);
+    reads.listLibraryEntries.mockClear();
+
+    invalidateFor("addTitleToList", mine);
+
+    expect(cacheState.updated).toEqual([`lists:${mine}`]);
+    await cachedLibraryEntries(mine);
+    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
+  });
+
+  /**
+   * *Import chunks, ratings, abandonment, list membership changes, adds and removes all
+   * bust correctly.* Removing a title reaches the lists as well as the other three, and
+   * that is the one people get wrong: `getListDetail` selects `library_entry.id` through a
+   * left join, so a title leaving the library changes what its list rows say about it
+   * while the membership itself survives (issue #133).
+   */
+  it("busts the lists when a title leaves the library", async () => {
+    await cachedListDetail(mine, "list-1");
+    reads.getListDetail.mockClear();
+
+    invalidateFor("removeTitleFromLibrary", mine);
+
+    await cachedListDetail(mine, "list-1");
+    expect(reads.getListDetail).toHaveBeenCalledTimes(1);
+  });
+
+  /** A failed write busts nothing, because the caller never gets as far as the bust. This
+   *  is the shape every action has — `invalidateFor` past the `catch` — asserted as the
+   *  absence it is. */
+  it("busts nothing when the write never reached the map", async () => {
+    await cachedUpNextRails(mine);
+    reads.listUpNextRails.mockClear();
+
+    expect(cacheState.updated).toEqual([]);
+    await cachedUpNextRails(mine);
+    expect(reads.listUpNextRails).not.toHaveBeenCalled();
   });
 });
 
@@ -356,17 +726,114 @@ describe("a failed read is not an empty library", () => {
   const unreachable = new Error("the database is unreachable");
 
   it("lets the rejection through instead of answering with rows", async () => {
-    listLibraryEntriesMock.mockRejectedValueOnce(unreachable);
+    reads.listLibraryEntries.mockRejectedValueOnce(unreachable);
 
     await expect(cachedLibraryEntries(mine)).rejects.toThrow(unreachable);
   });
 
   it("stores nothing, so the next read is a real read", async () => {
-    listLibraryEntriesMock.mockRejectedValueOnce(unreachable);
+    reads.listLibraryEntries.mockRejectedValueOnce(unreachable);
     await expect(cachedLibraryEntries(mine)).rejects.toThrow(unreachable);
 
     expect(cacheState.entries.size).toBe(0);
     expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
+  });
+
+  /** Every read the module wraps, not the library alone — a `catch` added to any one of
+   *  the seven #226 introduces would be the same lie in a new place. */
+  it.each(Object.keys(CACHED) as (keyof typeof CACHED)[])(
+    "lets a failed %s through and stores nothing",
+    async (read) => {
+      reads[read].mockRejectedValueOnce(unreachable);
+
+      await expect(CACHED[read](mine)).rejects.toThrow(unreachable);
+      expect(cacheState.entries.size).toBe(0);
+    },
+  );
+});
+
+/**
+ * **The input these reads have that no write touches: today's date.**
+ *
+ * `db/views.ts` derives *released* from `air_date <= current_date`, and the three derived
+ * views are what `listLibraryEntries`, `listUpNextRails`, `listWatchlist`, `listAbandoned`
+ * and `getTitleDetail` are all built on. So an episode airing tonight moves a show from
+ * COMING BACK to ONGOING, and a caught-up show back to watching, **with no write anywhere
+ * in the system** — the clock alone did it.
+ *
+ * A tag cannot fire for that, because no write happened. Without the day in the key, a
+ * reader who makes no writes for a week is served last week's Up next for a week, and
+ * nothing expires behind it to heal. `cache/tags.ts` puts the day in the key parts of
+ * exactly the reads that consult `current_date`, and these are the assertions that hold it
+ * there.
+ *
+ * **This is not a revalidation window**, and the distinction is the one ADR-0002 rejected
+ * time-based revalidation on: a window is a period in which the answer is permitted to
+ * disagree with the database. A day in the key is the opposite — it is an input to the
+ * query appearing in the key of the query, so the entry is exactly right at every instant
+ * it is served, and a different day is a different question rather than a stale answer.
+ */
+describe("a read that consults today carries today in its key", () => {
+  const clockDependent = (Object.keys(CACHED) as (keyof typeof CACHED)[]).filter(
+    (read) => CACHED_READS[read].readsCurrentDate,
+  );
+  const clockFree = (Object.keys(CACHED) as (keyof typeof CACHED)[]).filter(
+    (read) => !CACHED_READS[read].readsCurrentDate,
+  );
+
+  /** A regex-matched-nothing guard, in the same spirit as the one over `exported`: two
+   *  empty lists would make every case below vacuous. */
+  it("has reads on both sides of the line", () => {
+    expect(clockDependent.length).toBeGreaterThan(0);
+    expect(clockFree.length).toBeGreaterThan(0);
+  });
+
+  it.each(clockDependent)("reads %s again once the date has rolled over", async (read) => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-23T22:00:00Z"));
+      await CACHED[read](mine);
+      reads[read].mockClear();
+
+      vi.setSystemTime(new Date("2026-08-24T00:30:00Z"));
+      await CACHED[read](mine);
+
+      expect(reads[read]).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * The reads over stored rows are on the other side of it, and stay there. A list's name,
+   * its memberships and whether this account holds a title are facts no clock changes, so
+   * a day in their key would be a fresh read every midnight buying nothing — the cost of
+   * the mechanism without the reason for it.
+   */
+  it.each(clockFree)("serves %s across a date rollover from the same entry", async (read) => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-23T22:00:00Z"));
+      await CACHED[read](mine);
+      reads[read].mockClear();
+
+      vi.setSystemTime(new Date("2026-08-24T00:30:00Z"));
+      await CACHED[read](mine);
+
+      expect(reads[read]).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * The day is read the way Postgres reads it, and `tests/server-day.test.ts` is what
+   * holds that claim against a real `current_date`. Here it is only the shape: a bare
+   * `YYYY-MM-DD`, so the key part is one token and not a whole timestamp that would change
+   * on every request and make the cache a very expensive way to read twice.
+   */
+  it("is a date and not an instant", () => {
+    expect(serverDay()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 
@@ -416,6 +883,38 @@ describe("the map covers db/access.ts", () => {
     const writes = new Set<string>(Object.keys(INVALIDATES));
 
     expect(READS.filter((name) => writes.has(name))).toEqual([]);
+  });
+
+  /**
+   * **Issue #226's last criterion, made mechanical: *no read remains uncached without a
+   * recorded reason*.**
+   *
+   * A read is in `CACHED_READS` with the tag it carries, or in `UNCACHED_READS` with a
+   * sentence saying why not — and a sentence is a thing somebody had to write, which is
+   * the smallest bar that cannot be cleared by forgetting. An empty string is the same
+   * omission as a missing entry, wearing a key, so it fails here too.
+   */
+  it("gives every uncached read a reason somebody wrote", () => {
+    const unexplained = Object.entries(UNCACHED_READS).filter(
+      ([, reason]) => reason.trim().length < 20,
+    );
+
+    expect(unexplained.map(([name]) => name)).toEqual([]);
+  });
+
+  /** A read in both tables would be the module disagreeing with itself about whether it is
+   *  in the cache, and `READS` would double-count it. */
+  it("puts each read in exactly one of the two tables", () => {
+    const cached = new Set<string>(Object.keys(CACHED_READS));
+
+    expect(Object.keys(UNCACHED_READS).filter((name) => cached.has(name))).toEqual([]);
+    expect(READS.length).toBe(new Set(READS).size);
+  });
+
+  /** Every cached read has a wrapper, and every wrapper a cached read. A table entry with
+   *  no function behind it is a claim about a cache that does not exist. */
+  it("has a wrapper for every read it calls cached", () => {
+    expect(Object.keys(CACHED_READS).sort()).toEqual(Object.keys(CACHED).sort());
   });
 
   /**
@@ -518,22 +1017,22 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
 
     expect(cacheState.constructed).toEqual([
       {
-        keyParts: ["title-synopsis", mine],
+        keyParts: ["titleSynopsis", mine],
         tags: ["title-synopsis:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
       {
-        keyParts: ["title-cast-crew", mine],
+        keyParts: ["titleCastAndCrew", mine],
         tags: ["title-cast-crew:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
       {
-        keyParts: ["title-watch-providers", mine],
+        keyParts: ["titleWatchProviders", mine],
         tags: ["title-watch-providers:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
       {
-        keyParts: ["title-mirror", mine],
+        keyParts: ["getUnownedTitleDetail", mine],
         tags: ["title-mirror:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
@@ -551,7 +1050,7 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
     await cachedTitleSynopsis(mine, "film", 1972);
     await cachedTitleSynopsis(yours, "film", 1972);
 
-    expect(synopsisMock).toHaveBeenCalledTimes(2);
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(2);
   });
 
   /**
@@ -564,18 +1063,18 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
   it("gives each of the four its own entry rather than one shared one", async () => {
     await readEveryBorrowedFact(mine, SOLARIS);
 
-    expect(synopsisMock).toHaveBeenCalledTimes(1);
-    expect(castAndCrewMock).toHaveBeenCalledTimes(1);
-    expect(watchProvidersMock).toHaveBeenCalledTimes(1);
-    expect(unownedTitleDetailMock).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleCastAndCrew).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleWatchProviders).toHaveBeenCalledTimes(1);
+    expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
   });
 
   it("is a cache, and not merely four functions that read twice", async () => {
     await readEveryBorrowedFact(mine, SOLARIS);
     await readEveryBorrowedFact(mine, SOLARIS);
 
-    expect(synopsisMock).toHaveBeenCalledTimes(1);
-    expect(unownedTitleDetailMock).toHaveBeenCalledTimes(1);
+    expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
+    expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
   });
 
   it("keeps two titles apart", async () => {
@@ -600,7 +1099,7 @@ describe("a failed borrowed read is not a stored empty region", () => {
   const unreachable = new Error("TMDB is unreachable");
 
   it("lets the rejection through instead of answering with a value", async () => {
-    synopsisMock.mockRejectedValueOnce(unreachable);
+    tmdb.titleSynopsis.mockRejectedValueOnce(unreachable);
 
     await expect(cachedTitleSynopsis(mine, "film", 1972)).rejects.toThrow(unreachable);
   });
@@ -611,7 +1110,7 @@ describe("a failed borrowed read is not a stored empty region", () => {
    * unable to clear it. Nothing is stored, so the retry is a real one.
    */
   it("stores nothing, so Try again is a real retry rather than a replay", async () => {
-    synopsisMock.mockRejectedValueOnce(unreachable);
+    tmdb.titleSynopsis.mockRejectedValueOnce(unreachable);
     await expect(cachedTitleSynopsis(mine, "film", 1972)).rejects.toThrow(unreachable);
 
     expect(cacheState.entries.size).toBe(0);
@@ -620,7 +1119,7 @@ describe("a failed borrowed read is not a stored empty region", () => {
 
   /** The three regions are three entries, so one failing leaves the other two answered. */
   it("costs the failing fact its own region and nothing else", async () => {
-    watchProvidersMock.mockRejectedValueOnce(unreachable);
+    tmdb.titleWatchProviders.mockRejectedValueOnce(unreachable);
 
     await expect(cachedTitleWatchProviders(mine, "film", 1972)).rejects.toThrow(unreachable);
     expect(await cachedTitleSynopsis(mine, "film", 1972)).toBe("the synopsis of film 1972");
@@ -665,7 +1164,7 @@ describe("busting a title's borrowed facts", () => {
       "the mirrored metadata of film 1972",
     );
 
-    unownedTitleDetailMock.mockImplementation(async () => "the refreshed metadata");
+    reads.getUnownedTitleDetail.mockImplementation(async () => "the refreshed metadata");
     invalidateBorrowedFactsFor([SOLARIS]);
 
     expect(await cachedUnownedTitleDetail(yours, "film", 1972)).toBe("the refreshed metadata");
@@ -673,12 +1172,12 @@ describe("busting a title's borrowed facts", () => {
 
   it("leaves a title the sweep did not touch exactly as it was", async () => {
     await cachedUnownedTitleDetail(mine, "show", 2001);
-    unownedTitleDetailMock.mockClear();
+    reads.getUnownedTitleDetail.mockClear();
 
     invalidateBorrowedFactsFor([SOLARIS]);
 
     await cachedUnownedTitleDetail(mine, "show", 2001);
-    expect(unownedTitleDetailMock).not.toHaveBeenCalled();
+    expect(reads.getUnownedTitleDetail).not.toHaveBeenCalled();
   });
 });
 
@@ -742,11 +1241,23 @@ describe("the reads that are cached, and the one that must never be", () => {
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
-  it("wraps exactly the five reads it is meant to", () => {
-    const cached = [...source.matchAll(/unstable_cache\((\w+),/g)].map(([, name]) => name);
+  it("wraps exactly the thirteen reads it is meant to", () => {
+    // `\s*` because several of these are formatted across lines. A regex that only
+    // matched the single-line spelling silently found five of the thirteen and passed.
+    const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
 
     expect(cached).toEqual([
+      // `tags.ts` — the owned nine, in file order.
       "listLibraryEntries",
+      "listUpNextRails",
+      "listWatchlist",
+      "listAbandoned",
+      "listLists",
+      "getListDetail",
+      "getTitleDetail",
+      "libraryEntryIdForTitle",
+      "accountStats",
+      // `borrowed-facts.ts` — the four.
       "titleSynopsis",
       "titleCastAndCrew",
       "titleWatchProviders",
