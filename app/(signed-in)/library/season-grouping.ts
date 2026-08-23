@@ -15,8 +15,12 @@
  */
 
 /** The episodes both surfaces read arrive from `db/access.ts` already ordered
- *  `(season_no, episode_no)`, so a `Map`'s insertion order *is* the season order —
- *  nothing here re-sorts, and nothing here may start to. */
+ *  `(season_no, episode_no)`, so a `Map`'s insertion order *is* the season order for every
+ *  real season — nothing here re-sorts those, and nothing here may start to. Season 0 is
+ *  the one exception: issue #216 moves it after the highest-numbered real season on
+ *  screen, so once every episode is grouped, a re-`set` of key `0` (if present) relocates
+ *  it to the end of the `Map`'s iteration order without touching any other season's
+ *  position or the database order those seasons keep. */
 export function groupBySeason<T extends { readonly seasonNo: number }>(
   episodes: readonly T[],
 ): readonly (readonly [number, T[]])[] {
@@ -25,6 +29,11 @@ export function groupBySeason<T extends { readonly seasonNo: number }>(
     const inSeason = bySeason.get(one.seasonNo);
     if (inSeason) inSeason.push(one);
     else bySeason.set(one.seasonNo, [one]);
+  }
+  const specials = bySeason.get(0);
+  if (specials !== undefined) {
+    bySeason.delete(0);
+    bySeason.set(0, specials);
   }
   return [...bySeason.entries()];
 }
