@@ -686,6 +686,8 @@ function MarkWatchedButton({
       aria-label={label}
       className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
     >
+      {/* `block`, for the same reason `MarkUpToIcon` below takes it: an inline svg sits on
+          a text baseline and adds descender space to a row whose height is measured. */}
       <span className={RECORDING_GLYPH}>
         <CheckmarkIcon className="block h-4 w-4" />
       </span>
