@@ -337,6 +337,15 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
+   * `/stats` — issue #227, and the surface with the most to wait on: `accountStats` makes
+   * eight statements, behind a tab a reader taps from anywhere. It arrives with a boundary
+   * rather than being converted later, and this is the floor that says so.
+   */
+  it("finds the boundary on the Stats destination #227 adds", () => {
+    expect(hasBoundary("(signed-in)/stats")).toBe(true);
+  });
+
+  /**
    * And negatively, on the four segments §9 decided genuinely have no pending state to
    * draw — `/search`'s own read belongs to `search-surface.tsx`'s radius-3 union, not to a
    * route boundary. `NO_PENDING_STATE` is where the reason for each of the four lives.

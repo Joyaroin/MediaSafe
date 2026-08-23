@@ -1321,9 +1321,33 @@ Not "not yet". These do not arrive later, and **no space is reserved for them** 
 rails, no placeholder tabs, no "coming soon".
 
 - **No counts.** Not on a rail head, not on a tile, not on the page. No *showing 10 of 62*,
-  no *"and 175 more"*, no numeral standing in for a size.
+  no *"and 175 more"*, no numeral standing in for a size. **Narrowed by #227.** The line no
+  longer describes the build — `/stats` is a page whose every element is a count — and it is
+  not left standing as though it did. What survives is the part that was actually
+  load-bearing, and it is the whole of what this bullet was ever written against: **a count
+  may not appear as chrome on a surface the reader came to do something else on.** A rail
+  head, a tile, a chip, a list card, a heading over a grid — none of them gains a numeral,
+  and *showing 10 of 62* and *and 175 more* remain forbidden by name. #223's Lists rail is
+  the worked example and predates the narrowing: it carries no count, and the ticket rejected
+  a capped vertical list partly because this rule left no honest way to write *and seven
+  more*.
+
+  A number is allowed where **the number is the content**. That is one destination, it is
+  reached deliberately, and it is not passed through on the way to anything.
 - **No badges** of any kind.
-- **No dashboard** — no stats, no charts, no day streak, no year in review.
+- ~~**No dashboard** — no stats, no charts, no day streak, no year in review.~~
+  **Withdrawn by #227**, and `SPEC.md` §9's *out of scope entirely* entry carries the
+  argument rather than it being made twice. In short: the ban was right about numbers as
+  chrome and was never argued about the questions themselves, so the questions got a
+  destination and the chrome rule stayed — see the bullet above, which is where it now lives.
+
+  What survives here is narrower and is about **this world's drawing**, which is the part
+  `DESIGN.md` owns: a figure on that page is type, set in the ramp §4 already declares, in
+  `--ink` and `--dim`. **No accent on a figure** — §3 rations vermilion to recording a watch,
+  and a page made of quantities is the easiest place in the application to spend it by
+  accident. **No decorative colour on a chart** when charts arrive (#229): §2's *no coloured
+  category, no coloured chart* is untouched by this. And **year in review is still out**, on
+  `SPEC.md` §9's own grounds rather than on this bullet's — it needs a year of dated watches.
 - **No rating on a tile.** A tile is a poster, a name and a year. Ratings live on the
   programme note.
 - **No sort on Up next.** The order is the rails' own, and it is not a control.
@@ -1340,6 +1364,15 @@ rails, no placeholder tabs, no "coming soon".
   destination on both devices, not a rail on Up next* survives exactly as literally as it
   reads: `/lists`, the desktop sidebar entry and the phone's own Lists tab are all exactly
   where they were — #223 added a second way in, not a replacement for the destination.
+
+  **The last clause is corrected by #227**, which is the ticket after this one in the same
+  parent: the phone's Lists **tab** is gone, spent on Stats, and the rail is now the phone's
+  way in rather than its second one. The destination is untouched — `/lists`,
+  `/lists/[listId]` and the desktop sidebar entry are all still there — so the sentence this
+  bullet is actually about (*their own destination on both devices, not a rail on Up next*)
+  survives exactly as it did. What has changed is that #223 turned out to be the first half
+  of a trade rather than a pure addition, and the note is corrected here rather than left to
+  contradict `app/tab-bar.tsx`.
 - **No theme picker**, no in-product light/dark control, and no alternate palette. The
   system setting decides (§2).
 - **No multi-select, no select-all, no bulk edit** on any surface. **Amended by #194.**

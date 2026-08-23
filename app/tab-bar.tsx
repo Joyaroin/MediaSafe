@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LibraryIcon, ListsIcon, SearchIcon, UpNextIcon } from "./nav-icons";
+import { LibraryIcon, SearchIcon, StatsIcon, UpNextIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 import { PHONE_BAR } from "./phone-bar";
 
@@ -66,11 +66,29 @@ import { PHONE_BAR } from "./phone-bar";
  * export that used to live in this file was exactly that mistake: nothing imported it,
  * it said `54`, and both dependents had drifted to `49`.
  */
+/**
+ * ── The fourth tab changed hands, and this is where that happened ────────────────────
+ *
+ * Issue #227. **Lists is no longer a tab on the phone; Stats is.** The four are still four
+ * — `SPEC.md` §9's tab budget is unchanged and no fifth was added — and the swap is the
+ * back half of a decision the front half of which shipped in #223: the Lists rail sits
+ * above the Library grid, so the phone still reaches every list in one tap from the tab it
+ * already lands on, and the tab that used to do that job had nothing left to do.
+ *
+ * **The Lists routes are untouched.** `/lists` and `/lists/[listId]` still exist, the rail
+ * leads to them, the desktop sidebar still links to them, and a deep link into either
+ * still works. This retires a *tab*, not a destination — and it is only done here, in this
+ * ticket, because a tab is only worth adding once there is a page behind it, which is what
+ * `/stats` now is.
+ *
+ * The desktop makes the opposite trade and keeps both, because it has the room:
+ * `sidebar-nav.tsx` runs six destinations where this runs four.
+ */
 const TABS = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
-  { href: "/lists", label: "Lists", Icon: ListsIcon },
+  { href: "/stats", label: "Stats", Icon: StatsIcon },
 ] as const;
 
 /**
@@ -79,7 +97,7 @@ const TABS = [
  *
  * Derived from the two tabs' **positions in `TABS`**, not from history: the bar is a
  * horizontal row of four and the direction that means anything here is the one the reader
- * can see in front of them. A history-based direction would call *Lists → Up next*
+ * can see in front of them. A history-based direction would call *Stats → Up next*
  * "forward" whenever it happened to be a new entry, which is the opposite of what the row
  * shows.
  *
@@ -89,9 +107,12 @@ const TABS = [
  *   where it already was is the clearest case of motion that means nothing.
  * - **Another tab** — forward or back by position in the row.
  * - **Not on a tab at all** (`from === -1`) — the reader is on a screen pushed *outside*
- *   the four, which today means Settings, `/import` or `/welcome`. Tapping a tab from
- *   there is coming back out to the tab level, so it is `nav-back` — the mirror of the
- *   `nav-forward` `masthead.tsx` attaches on the way in.
+ *   the four, which today means Settings, `/import`, `/welcome`, and — since #227 retired
+ *   its tab — `/lists` and a list's own screen. Tapping a tab from there is coming back
+ *   out to the tab level, so it is `nav-back` — the mirror of the `nav-forward`
+ *   `masthead.tsx` attaches on the way in. That is the right treatment for the Lists
+ *   screens too: the rail that leads to them is *on* the Library tab, so a reader
+ *   returning to the row is coming back out of something they went into.
  *
  *   This case used to return `[]`, which made Settings the one screen you slid *into* and
  *   then jumped out of with nothing. Note that a title detail is **not** this case:
