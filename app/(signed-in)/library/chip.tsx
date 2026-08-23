@@ -6,11 +6,12 @@ import { snappy } from "@/app/motion";
 
 /**
  * The chip's shape and its travelling selected fill — first built for the Library filter
- * bar (`library-filter-bar.tsx`) and pulled out from under it for issue #224, whose season
- * selector is required to be *the chip register the Library filter bar already uses,
- * travelling selected fill and all* rather than a second register invented beside it
- * (`DESIGN.md`'s one-register rule: a second selector vocabulary on an adjacent surface is
- * exactly what that rule exists to prevent).
+ * bar (`library-filter-bar.tsx`) and pulled out from under it for issue #224, whose spec
+ * (issue #215) requires the season selector to reuse *the chip register the Library
+ * filter bar already uses, travelling selected fill and all*, in as many words: "a second
+ * selector vocabulary on an adjacent surface is what the design system's one-register
+ * rule exists to prevent." That sentence is the spec's own reasoning for the requirement,
+ * not a rule `DESIGN.md` documents under that name — nothing in `DESIGN.md` is cited here.
  *
  * What moved here is the shape every chip shares: a `32px` pill at a `16px` radius,
  * unselected as a filled `bg-raised` well with dim text hovering to full strength,

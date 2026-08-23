@@ -172,21 +172,29 @@ function SeasonList({
 
   const live = useLiveEpisodes(libraryEntryId, episodes);
   const seasons = groupBySeason(live);
-  const current = seasons.find(([seasonNo]) => seasonNo === selectedSeason) ?? seasons[0];
+  // `?? seasons[0]` answers a different question from `defaultSeason`'s own fallback
+  // above: `seasons` is never empty here (`ProgrammeNoteEpisodes` guards that), so this
+  // only satisfies `.find`'s `undefined` case in the type system, for the one selection
+  // `groupBySeason` could ever drop — a live update reshaping seasons out from under a
+  // stale `selectedSeason` — which nothing here does today. The shape reads the same as
+  // `defaultSeason`'s "fall back to the first season" because both mean *the beginning of
+  // this same specials-last order*, not because one calls the other.
+  const [currentSeason, currentEpisodes] =
+    seasons.find(([seasonNo]) => seasonNo === selectedSeason) ?? seasons[0];
 
   return (
     <>
       <SeasonChips
         seasons={seasons.map(([seasonNo]) => seasonNo)}
-        selected={current[0]}
+        selected={currentSeason}
         onSelect={setSelectedSeason}
         libraryEntryId={libraryEntryId}
       />
 
       <div className={PROGRAMME_NOTE_SECTION}>
-        <p className="code-line text-dim">{seasonHeading(current[0])}</p>
+        <p className="code-line text-dim">{seasonHeading(currentSeason)}</p>
         <ol className={SEASON_LIST}>
-          {current[1].map((one) => (
+          {currentEpisodes.map((one) => (
             <EpisodeLine
               key={one.id}
               episode={one}
