@@ -143,29 +143,46 @@ export async function addUnownedTitleWatchedToLibraryAction(
   sourceKey: string,
 ): Promise<AddToLibraryOutcome> {
   const userId = await requireUserId();
+  let libraryEntryId: string;
+  /** The global row this add mirrored — see the second bust below for what it is for. */
+  let titleId: string;
 
   try {
     const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibraryWatched(
-      userId,
-      await titleMirror(key.kind, key.tmdbId),
-      sourceKey,
-    );
+    titleId = (
+      await addTitleToLibraryWatched(
+        userId,
+        await titleMirror(key.kind, key.tmdbId),
+        sourceKey,
+      )
+    ).titleId;
 
-    const libraryEntryId = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
-    if (libraryEntryId === null) {
+    const found = await libraryEntryIdForTitle(userId, key.kind, key.tmdbId);
+    if (found === null) {
       // Unreachable for the reason the action above gives, and a throw for the same one.
       throw new Error(
         `Added ${key.kind} ${key.tmdbId} to the library and then found no entry for it.`,
       );
     }
 
-    return { ok: true, libraryEntryId };
+    libraryEntryId = found;
   } catch (error) {
     return {
       ok: false,
       reference: referenceFor(error, { surface: "unowned-add-watched" }),
     };
   }
+
+  /**
+   * Both busts, for the reasons the action above gives — and this write moves the entry's
+   * state as well as creating it, so the grid it lands on is a different grid.
+   */
+  invalidateFor("addTitleToLibraryWatched", userId);
+  invalidateForOtherAccounts(
+    "addTitleToLibraryWatched",
+    await accountsHoldingTitles([titleId]),
+    userId,
+  );
+  return { ok: true, libraryEntryId };
 }

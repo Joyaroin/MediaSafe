@@ -746,6 +746,13 @@ export async function addTitleToLibrary(
 export interface AddWatchedOutcome {
   readonly added: boolean;
   readonly recorded: number;
+  /**
+   * `AddOutcome.titleId`'s reason, reached through the nested add (issue #219). This
+   * write mirrors the title exactly as the plain add does — its own docblock says the
+   * refresh *"every account reads"* is why it calls `addTitleToLibrary` rather than
+   * copying it — so its caller owes every other holder of that title a bust too.
+   */
+  readonly titleId: string;
 }
 
 /**
@@ -897,7 +904,7 @@ export async function addTitleToLibraryWatched(
     if (mirror.kind === "film") {
       // Already watched, so there is nothing this press can honestly add. A second row
       // would be a rewatch, and the reader asked to record having seen it, not twice.
-      if (watchedRows.length > 0) return { added, recorded: 0 };
+      if (watchedRows.length > 0) return { added, recorded: 0, titleId: entry.titleId };
 
       const written = await tx
         .insert(watch)
@@ -915,7 +922,7 @@ export async function addTitleToLibraryWatched(
         .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
         .returning({ id: watch.id });
 
-      return { added, recorded: written.length };
+      return { added, recorded: written.length, titleId: entry.titleId };
     }
 
     /**
@@ -943,7 +950,7 @@ export async function addTitleToLibraryWatched(
     );
     const covered = released.filter((one) => !alreadyWatched.has(one.id));
 
-    if (covered.length === 0) return { added, recorded: 0 };
+    if (covered.length === 0) return { added, recorded: 0, titleId: entry.titleId };
 
     const written = await tx
       .insert(watch)
@@ -966,7 +973,7 @@ export async function addTitleToLibraryWatched(
       .onConflictDoNothing({ target: [watch.userId, watch.source, watch.sourceKey] })
       .returning({ id: watch.id });
 
-    return { added, recorded: written.length };
+    return { added, recorded: written.length, titleId: entry.titleId };
   });
 }
 

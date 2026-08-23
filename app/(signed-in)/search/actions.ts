@@ -203,20 +203,43 @@ export async function addWatchedToLibraryAction(
   sourceKey: string,
 ): Promise<AddOutcome> {
   const userId = await requireUserId();
+  /** The global row this add mirrored — see the second bust below for what it is for. */
+  let titleId: string;
 
   try {
     const key = catalogueKeyFrom(kind, tmdbId);
 
-    await addTitleToLibraryWatched(
-      userId,
-      await titleMirror(key.kind, key.tmdbId),
-      sourceKey,
-    );
-    return { ok: true };
+    titleId = (
+      await addTitleToLibraryWatched(
+        userId,
+        await titleMirror(key.kind, key.tmdbId),
+        sourceKey,
+      )
+    ).titleId;
   } catch (error) {
     return {
       ok: false,
       reference: referenceFor(error, { surface: "search-add-watched" }),
     };
   }
+
+  /**
+   * Both busts, past the `catch`, exactly as `addToLibraryAction` above does them — and
+   * for a stronger reason on this path, because this write moves the library's *state*
+   * as well as its membership: every released episode is watched, so the entry lands in
+   * *finished* or *caught up* rather than on the watchlist.
+   *
+   * The second call is not optional here either. `addTitleToLibraryWatched` calls
+   * `addTitleToLibrary` rather than copying it, precisely so the mirror refresh every
+   * account reads happens on this path too — so this add refreshes what every other
+   * holder's grid prints, just as the plain one does (`cache/tags.ts`,
+   * `MIRRORS_SHARED_TITLE_ROWS`).
+   */
+  invalidateFor("addTitleToLibraryWatched", userId);
+  invalidateForOtherAccounts(
+    "addTitleToLibraryWatched",
+    await accountsHoldingTitles([titleId]),
+    userId,
+  );
+  return { ok: true };
 }

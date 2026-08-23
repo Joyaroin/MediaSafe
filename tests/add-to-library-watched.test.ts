@@ -195,7 +195,19 @@ describe("addTitleToLibraryWatched", () => {
 
       const outcome = await addTitleToLibraryWatched(userId, mirror, nextKey(), tx);
 
-      expect(outcome).toEqual({ added: true, recorded: 1 });
+      expect(outcome).toMatchObject({ added: true, recorded: 1 });
+
+      /**
+       * The **global** row, not this account's entry — the distinction is the whole point
+       * of reporting it (issue #219). This write mirrors the title like the plain add
+       * does, so its caller busts every other holder's cached library from this id, and an
+       * entry id here would bust nobody.
+       */
+      const [titleRow] = await tx
+        .select({ id: title.id })
+        .from(title)
+        .where(and(eq(title.kind, mirror.kind), eq(title.tmdbId, mirror.tmdbId)));
+      expect(outcome.titleId).toBe(titleRow.id);
 
       const entryId = await entryIdFor(tx, userId, mirror);
       const rows = await watchRowsOf(tx, userId, entryId);
@@ -215,7 +227,7 @@ describe("addTitleToLibraryWatched", () => {
 
       const entryId = await entryIdFor(tx, userId, mirror);
       // Six numbered episodes, and not the special in front of them.
-      expect(outcome).toEqual({ added: true, recorded: 6 });
+      expect(outcome).toMatchObject({ added: true, recorded: 6 });
       expect(await watchedEpisodes(tx, userId, entryId)).toEqual([
         "1-1",
         "1-2",
@@ -291,12 +303,12 @@ describe("addTitleToLibraryWatched", () => {
       const retried = await addTitleToLibraryWatched(userId, mirror, key, tx);
       const pressedAgain = await addTitleToLibraryWatched(userId, mirror, nextKey(), tx);
 
-      expect(first).toEqual({ added: true, recorded: 6 });
+      expect(first).toMatchObject({ added: true, recorded: 6 });
       // A retry is caught by `UNIQUE (user_id, source, source_key)`; a genuinely new
       // press is caught by the already-watched filter. Both are needed, and neither
       // stands in for the other.
-      expect(retried).toEqual({ added: false, recorded: 0 });
-      expect(pressedAgain).toEqual({ added: false, recorded: 0 });
+      expect(retried).toMatchObject({ added: false, recorded: 0 });
+      expect(pressedAgain).toMatchObject({ added: false, recorded: 0 });
       expect(await watchedEpisodes(tx, userId, await entryIdFor(tx, userId, mirror))).toEqual([
         "1-1",
         "1-2",
@@ -317,7 +329,7 @@ describe("addTitleToLibraryWatched", () => {
 
       // A second row against a film is a **rewatch** (`CONTEXT.md`, ADR-0001), and one
       // tap on *Add — watched* has no business claiming the reader saw it twice.
-      expect(pressedAgain).toEqual({ added: false, recorded: 0 });
+      expect(pressedAgain).toMatchObject({ added: false, recorded: 0 });
       expect(
         await watchRowsOf(tx, userId, await entryIdFor(tx, userId, mirror)),
       ).toHaveLength(1);
@@ -351,7 +363,7 @@ describe("addTitleToLibraryWatched", () => {
 
       // Five written, not six: `1-2` already had a watch, and a second row against it
       // would be a rewatch the reader never asked for.
-      expect(outcome).toEqual({ added: false, recorded: 5 });
+      expect(outcome).toMatchObject({ added: false, recorded: 5 });
       expect(await watchedEpisodes(tx, userId, entryId)).toEqual([
         "1-1",
         "1-2",
@@ -565,7 +577,7 @@ describe("addTitleToLibraryWatched", () => {
 
       // The add still lands. There is nothing to record, and that is the honest answer
       // for a show whose first episode has not aired — not a failure, and not a watch.
-      expect(outcome).toEqual({ added: true, recorded: 0 });
+      expect(outcome).toMatchObject({ added: true, recorded: 0 });
       const entryId = await entryIdFor(tx, userId, mirror);
       expect(await watchedEpisodes(tx, userId, entryId)).toEqual([]);
       // *Watchlist*, because `db/views.ts` reaches "no watches" before it reaches any

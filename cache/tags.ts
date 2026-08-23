@@ -163,6 +163,7 @@ export function cachedLibraryEntries(
  */
 export const INVALIDATES = {
   addTitleToLibrary: ["library"],
+  addTitleToLibraryWatched: ["library"],
   applyImportChunk: ["library"],
   recordWatch: ["library"],
   unwatch: ["library"],
@@ -190,14 +191,22 @@ export const INVALIDATES = {
 export type Write = keyof typeof INVALIDATES;
 
 /**
- * The writes that go through `mirrorTitle` and so change the shared `title` and `episode`
- * rows — the four whose blast radius is every account holding the title, not just the one
+ * The writes that reach `mirrorTitle` and so change the shared `title` and `episode`
+ * rows — the ones whose blast radius is every account holding the title, not just the one
  * that made the write. `INVALIDATES`'s docblock argues it; this is the list, and
  * `tests/cache-tags.test.ts` holds it against which functions in `db/access.ts` actually
- * call `mirrorTitle`.
+ * reach that call.
+ *
+ * **Reach, not call.** `addTitleToLibraryWatched` never names `mirrorTitle` — it calls
+ * `addTitleToLibrary`, deliberately, so that *"the mirror refresh every account reads
+ * happens on this path exactly as it does on the plain one"* (its own docblock). It
+ * mirrors the title just as surely for being one function further away, so the test
+ * follows the calls to a fixed point rather than grepping each body once. That was found
+ * the same way the add path was: by the check failing on a write somebody else added.
  */
 export const MIRRORS_SHARED_TITLE_ROWS = [
   "addTitleToLibrary",
+  "addTitleToLibraryWatched",
   "applyImportChunk",
   "refreshTitleMirror",
   "repointTitle",

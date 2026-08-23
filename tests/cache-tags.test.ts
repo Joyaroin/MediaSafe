@@ -346,27 +346,46 @@ describe("the map covers db/access.ts", () => {
    * and this does, because the set is held against the functions that make the call.
    *
    * Read by splitting the module at **every** top-level function, exported or not, so a
-   * `mirrorTitle` call is attributed to the function it sits in. Splitting on the exported
-   * ones alone was the first attempt and it was wrong in a way worth recording: the
-   * private helpers between two exports fall inside the earlier one's slice, so
-   * `mirrorTitle`'s own declaration counted as a call by whichever export happened to
-   * precede it — `libraryCatalogueKeys`, which does not add a title to anything.
+   * call is attributed to the function it sits in. Splitting on the exported ones alone
+   * was the first attempt and it was wrong in a way worth recording: the private helpers
+   * between two exports fall inside the earlier one's slice, so `mirrorTitle`'s own
+   * declaration counted as a call by whichever export happened to precede it —
+   * `libraryCatalogueKeys`, which does not add a title to anything.
+   *
+   * **Followed to a fixed point, not grepped once.** `addTitleToLibraryWatched` reaches
+   * the shared write through `addTitleToLibrary` and never names `mirrorTitle` itself, so
+   * a single pass would have called it clean. It arrived on `main` while #219 was in
+   * review and this check found it, which is the whole argument for the check — but only
+   * because it follows the call one more step.
    */
   it("names every function that writes the shared title rows", () => {
-    const boundaries = [
-      ...source.matchAll(/^(export )?(?:async )?function (\w+)/gm),
-    ];
+    const boundaries = [...source.matchAll(/^(export )?(?:async )?function (\w+)/gm)];
 
-    const callsMirrorTitle = boundaries
-      .filter(([, exported], index) => {
-        if (exported === undefined) return false;
+    const bodies = boundaries.map(([, exported, name], index) => ({
+      name,
+      exported: exported !== undefined,
+      body: source.slice(
+        boundaries[index].index ?? 0,
+        boundaries[index + 1]?.index ?? source.length,
+      ),
+    }));
 
-        const start = boundaries[index].index ?? 0;
-        const end = boundaries[index + 1]?.index ?? source.length;
-        return source.slice(start, end).includes("mirrorTitle(");
-      })
-      .map(([, , name]) => name);
+    const reachesMirrorTitle = new Set(["mirrorTitle"]);
+    for (let pass = 0; pass < bodies.length; pass++) {
+      const before = reachesMirrorTitle.size;
+      for (const { name, body } of bodies) {
+        const reaches = [...reachesMirrorTitle].some(
+          (callee) => callee !== name && body.includes(`${callee}(`),
+        );
+        if (reaches) reachesMirrorTitle.add(name);
+      }
+      if (reachesMirrorTitle.size === before) break;
+    }
 
-    expect([...callsMirrorTitle].sort()).toEqual([...MIRRORS_SHARED_TITLE_ROWS].sort());
+    const writers = bodies
+      .filter(({ name, exported }) => exported && reachesMirrorTitle.has(name))
+      .map(({ name }) => name);
+
+    expect([...writers].sort()).toEqual([...MIRRORS_SHARED_TITLE_ROWS].sort());
   });
 });
