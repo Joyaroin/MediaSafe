@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as m from "motion/react-m";
 
 import { snappy } from "@/app/motion";
 
@@ -42,7 +42,7 @@ export function chipClassName(selected: boolean): string {
  */
 export function ChipGround({ layoutId }: { layoutId: string }) {
   return (
-    <motion.span
+    <m.span
       layoutId={layoutId}
       className="absolute inset-0 rounded-2xl bg-ink"
       transition={snappy}

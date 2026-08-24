@@ -473,11 +473,20 @@ describe("the pager", () => {
    * one answer to it (`app/motion-provider.tsx`) and a second would be a second answer.
    * What this asserts is that both moving parts go through Motion at all, since a raw CSS
    * transition would sail straight past the global setting.
+   *
+   * **The spelling changed and the property did not.** This read `motion/react` and
+   * `<motion.div>` until the runtime was put behind `LazyMotion`: every call site now
+   * imports the *mini* components from `motion/react-m`, so the animation engine is a
+   * chunk fetched alongside the page rather than part of every route's first load — which
+   * it was, on every route, including the several that animate nothing. The two elements
+   * here are still Motion's, `MotionConfig` still sits above them, and the setting still
+   * reaches them, which is the whole of what this case is about. `strict` on the provider
+   * is what makes the old spelling throw rather than quietly re-bundle the runtime.
    */
   it("animates through Motion, so the root's reduced-motion setting reaches it", () => {
-    expect(pager).toContain('from "motion/react"');
-    expect(pager).toContain("<motion.div");
-    expect(pager).toContain("<motion.span");
+    expect(pager).toContain('from "motion/react-m"');
+    expect(pager).toContain("<m.div");
+    expect(pager).toContain("<m.span");
     expect(pager).not.toContain("transition-transform");
   });
 
