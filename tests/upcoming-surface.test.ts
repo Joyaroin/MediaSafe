@@ -73,6 +73,9 @@ function episodeOn(airDate: string, over: Partial<UpcomingEpisode> = {}): Upcomi
     seasonNo: 2,
     episodeNo: 4,
     episodeName: "Woe's Hollow",
+    // The show's poster, which is what an upcoming row draws — an unaired episode has no
+    // still of its own, which is why these rows were drawing an empty box.
+    posterPath: "/severance.jpg",
     stillPath: "/still.jpg",
     airDate,
     ...over,
@@ -198,19 +201,34 @@ describe("nothing upcoming, and a read that failed", () => {
 
 describe("a row that is missing something", () => {
   /**
-   * `EpisodeStill` holds the 16:9 ratio through the `still` utility, so an episode TMDB
-   * has no frame for keeps the row's measure and shows the `raised` ground — #245's user
-   * story 48. What must not happen is the frame disappearing and the text sliding left.
+   * The row draws the **show's poster**, not the episode's still.
+   *
+   * Every episode here is unaired and TMDB nearly always has no still for one — so the
+   * old row drew an empty frame on every row of the list, which is what #245's user story
+   * 48 was protecting the *measure* of. The measure still holds; there is now a picture
+   * inside it.
    */
-  it("keeps the still's frame when there is no still", () => {
-    const withStill = render([episodeOn(TODAY)]);
-    const without = render([episodeOn(TODAY, { stillPath: null })]);
+  it("draws the show's poster rather than the episode's still", () => {
+    const markup = render([episodeOn(TODAY)]);
 
-    expect(withStill).toContain("<img");
-    expect(without).not.toContain("<img");
-    // The frame itself, at the same measure, in both.
-    expect(without).toContain('class="still w-[84px] shrink-0"');
-    expect(withStill).toContain('class="still w-[84px] shrink-0"');
+    expect(markup).toContain("/severance.jpg");
+    // The still's own frame is gone from this row entirely — it never had anything in it.
+    expect(markup).not.toContain('class="still');
+    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:10px]"');
+  });
+
+  /**
+   * And a show TMDB has no poster for keeps the frame and shows its initials, rather than
+   * the empty rectangle every row of this list used to be — `app/poster.tsx`'s fallback,
+   * which is exactly the case it was built for.
+   */
+  it("falls back to the show's initials when there is no poster", () => {
+    const markup = render([episodeOn(TODAY, { posterPath: null })]);
+
+    expect(markup).not.toContain("<img");
+    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:10px]"');
+    // `Severance` — one word, one initial.
+    expect(markup).toContain(">S<");
   });
 
   /** An episode announced without a name prints its code and stops. The number is not

@@ -351,7 +351,7 @@ describe("which episodes are upcoming", () => {
 });
 
 describe("what a row carries", () => {
-  it("carries the still, the name and the entry the row navigates through", async () => {
+  it("carries the poster, the still, the name and the entry the row navigates through", async () => {
     await inTransaction(async (tx) => {
       const userId = await seedUser(tx, "row");
       const seeded = await seedShow(tx, userId, {
@@ -378,6 +378,20 @@ describe("what a row carries", () => {
         seasonNo: 2,
         episodeNo: 4,
         episodeName: "Doors",
+        /**
+         * The **show's** poster, which is what the row draws.
+         *
+         * Every episode on this surface is unaired, and TMDB nearly always has no still
+         * for an episode nobody has seen — so the row was drawing an empty frame on every
+         * row of the list. `title` was already joined here for the name; this is the
+         * column that gives the row a picture in the case that is the only case.
+         *
+         * `null` here because `seedShow` sets no poster. What matters is that the field is
+         * read from `title` and reaches the surface, not what this fixture happens to hold.
+         */
+        posterPath: null,
+        // Still on the type and still read: a real fact about the episode, for the day
+        // TMDB publishes stills ahead of air. The upcoming row no longer draws it.
         stillPath: "/still.jpg",
         airDate: FUTURE,
       });
