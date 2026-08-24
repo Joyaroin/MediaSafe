@@ -8,6 +8,7 @@ import {
   listLibraryEntries,
   listLists,
   listUpcomingEpisodes,
+  listUpcomingFilms,
   listUpNextRails,
   listWatchlistFilms,
   listYouListCards,
@@ -20,6 +21,7 @@ import {
   type ListSummary,
   type TitleDetailRow,
   type UpcomingEpisode,
+  type UpcomingFilm,
   type UpNextRails,
   type UserId,
   type YouRails,
@@ -237,6 +239,18 @@ export const CACHED_READS = {
    * week's *Today*.
    */
   listUpcomingEpisodes: { cachedAs: "up-next", readsCurrentDate: true },
+  /**
+   * Issue #252's half of the same page, under the same fact for the same reason — one tag
+   * across the pager, so watchlisting a film cannot leave the rail on page one and the
+   * section on page two disagreeing about what is on the watchlist.
+   *
+   * **`readsCurrentDate` is true twice over**, exactly as it is for the episodes: it
+   * selects through `library_entry_state`, so a film leaving the watchlist changes what it
+   * returns, and its own `where` compares `release_date` to `current_date`, so a film
+   * released overnight leaves this section with no write anywhere. Without the day in the
+   * key a reader who wrote nothing for a month would be counting down to a day gone by.
+   */
+  listUpcomingFilms: { cachedAs: "up-next", readsCurrentDate: true },
   listLists: { cachedAs: "lists", readsCurrentDate: false },
   getListDetail: { cachedAs: "lists", readsCurrentDate: false },
   /** Its episode rows carry a `released` flag read straight off `air_date <=
@@ -505,6 +519,33 @@ export function cachedUpcomingEpisodes(
   const read = unstable_cache(
     listUpcomingEpisodes,
     ["listUpcomingEpisodes", userId, serverDay()],
+    { tags: [tagFor("up-next", userId)] },
+  );
+
+  return read(userId);
+}
+
+/**
+ * Upcoming's films (#252) — the second half of the second page, beside the episodes and
+ * under the same `up-next` tag.
+ *
+ * The tag is shared with `cachedWatchlistFilms` deliberately, and that is the property
+ * worth naming: these are the *same watchlist*, read twice at different widths, and every
+ * write that can move a title on or off it — add, remove, a state change — busts both at
+ * once inside its own action. A fact of its own here would be a section still counting
+ * down to a film the reader had removed a page earlier.
+ *
+ * **The rows are cached; the countdown is not, and must not be.** What this returns is a
+ * window a day wider than the server's own day (`listUpcomingFilms` argues why), the same
+ * set of rows for every reader of this account whatever hour it is. *In 12 days* is then
+ * written per request against the reader's zone in `upcoming-grouping.ts` — caching those
+ * words would be caching a number that decrements at a midnight this key does not know
+ * about.
+ */
+export function cachedUpcomingFilms(userId: UserId): Promise<readonly UpcomingFilm[]> {
+  const read = unstable_cache(
+    listUpcomingFilms,
+    ["listUpcomingFilms", userId, serverDay()],
     { tags: [tagFor("up-next", userId)] },
   );
 

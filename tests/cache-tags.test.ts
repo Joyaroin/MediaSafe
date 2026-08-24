@@ -69,6 +69,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     listUpNextRails: vi.fn(),
     listWatchlistFilms: vi.fn(),
     listUpcomingEpisodes: vi.fn(),
+    listUpcomingFilms: vi.fn(),
     listLists: vi.fn(),
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
@@ -206,6 +207,7 @@ const {
   cachedLists,
   cachedTitleDetail,
   cachedUpcomingEpisodes,
+  cachedUpcomingFilms,
   cachedUpNextRails,
   cachedWatchlistFilms,
   cachedYouListCards,
@@ -256,6 +258,10 @@ const CACHED = {
   /** Issue #251's Upcoming — the landing pager's second page, tagged `up-next` with the
    *  two rails on its first, so one bust reaches the whole surface a reader pages across. */
   listUpcomingEpisodes: (userId: typeof mine) => cachedUpcomingEpisodes(userId),
+  /** Issue #252's half of that page. Tagged `up-next` beside `listWatchlistFilms`, which
+   *  is the same watchlist read at another width — one bust has to reach both, or a
+   *  removed film keeps a countdown running on the page next door. */
+  listUpcomingFilms: (userId: typeof mine) => cachedUpcomingFilms(userId),
   listLists: (userId: typeof mine) => cachedLists(userId),
   getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
   getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
@@ -1437,7 +1443,7 @@ describe("the reads that are cached, and the one that must never be", () => {
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
-  it("wraps exactly the sixteen reads it is meant to", () => {
+  it("wraps exactly the reads it is meant to, and no others", () => {
     // `\s*` because several of these are formatted across lines. A regex that only
     // matched the single-line spelling silently found five of them and passed.
     const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
@@ -1445,14 +1451,20 @@ describe("the reads that are cached, and the one that must never be", () => {
     expect(cached).toEqual([
       // `tags.ts` — the owned reads, in file order. #250 replaced two of #138's reads
       // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #251 added
-      // `listUpcomingEpisodes` beside it under the same `up-next` tag; #248 added
-      // `listYouListCards` and `listYouRails`; and #249 retired `accountStats`. The count
-      // is deliberately not written out here — it has drifted twice already, and the list
-      // below is the assertion.
+      // `listUpcomingEpisodes` beside it under the same `up-next` tag, #252 added
+      // `listUpcomingFilms` beside that one; #248 added `listYouListCards` and
+      // `listYouRails`; and #249 retired `accountStats`.
+      //
+      // **No count, in the name above or here.** It has been wrong or conflicting on
+      // three of the last four tickets to touch this file, because a total is a second
+      // statement of the list directly beneath it and only one of the two gets updated.
+      // The list is the assertion; a read arriving or leaving fails on the array, which
+      // is the failure worth having.
       "listLibraryEntries",
       "listUpNextRails",
       "listWatchlistFilms",
       "listUpcomingEpisodes",
+      "listUpcomingFilms",
       "listLists",
       "getListDetail",
       "getTitleDetail",

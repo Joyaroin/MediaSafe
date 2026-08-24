@@ -275,6 +275,33 @@ keep it from reopening the rule it sits inside:
 **No second pager gets it by default.** If another arrives, it argues from here rather than
 citing this as precedent, the way §12 requires of the rating scale.
 
+**Amended again by [#252](https://github.com/Joyaroin/MediaSafe/issues/252), for the film
+countdown, and this one is a *line of type* rather than a rule.** Upcoming's film card draws
+*In 12 days* in the accent under the release date. The ticket specifies it in as many words —
+*shown with that date and a countdown in the accent* — and the handoff draws it, so it wins
+under #245's stated default the same way the pager's rule did. It is written here because
+the paragraph above forbids exactly this by default: `up-next-phone-rail.tsx` warns that
+what would break the rail's own accent head is *a third — an accent badge, tile or state
+label alongside it*, and an accented line under an accented head is that shape.
+
+What the amendment covers is **a countdown to a date the reader is waiting for, and nothing
+else.** Three things keep it from reopening the rule it sits inside:
+
+- **It is not a state label.** The card carries no state — there is no chip, no badge and no
+  check on it (#250's refusal of a film check holds here twice over). What is accented is a
+  quantity that changes on its own every midnight, which is the opposite of a label naming a
+  condition the reader could already see.
+- **The date it counts to is not accented.** `26 Sept 2026` sits directly above it in `dim`,
+  exactly as `landing-pager.tsx` paints its selected label `text` and accents only the rule.
+  The accent is spent on the one thing on the card the reader cannot work out by looking.
+- **It is the thing that changes.** The pager's rule earned its exception by *drawing the
+  movement*; this draws the same thing standing still — the distance closing between now and
+  a day. A card whose countdown never moved would not need it.
+
+**No second countdown gets it by default**, and in particular **a count does not.** *3
+remaining* is a state label wearing a number and stays `dim`; §7's *no counts on a rail head*
+is the neighbouring rule and neither is loosened here.
+
 **Selection is the sharp edge of this.** The rule above says the accent is not selection,
 and `up-next-tile.tsx` obeys it — but `rating-control.tsx` paints the chosen cell
 `bg-accent text-accent-ink`, which is selection in the accent. Both are shipped. §12 is

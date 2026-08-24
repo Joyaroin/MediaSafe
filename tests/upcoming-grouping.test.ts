@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { groupUpcoming, readerDay } from "@/app/(signed-in)/up-next/upcoming-grouping";
+import {
+  awaitedFilms,
+  groupUpcoming,
+  readerDay,
+} from "@/app/(signed-in)/up-next/upcoming-grouping";
 
 /**
  * The Upcoming grouping, driven directly — issue #251, and the half of it the ticket asks
@@ -188,5 +192,117 @@ describe("the keys", () => {
       "weekday-2026-08-26",
       "later",
     ]);
+  });
+});
+
+/**
+ * The countdown under a film — issue #252, and the same module for the same reason.
+ *
+ * A countdown is *Today* and *Tomorrow* by another route: the words turn over at the
+ * reader's midnight exactly as the headings above them do, so they are computed against
+ * the same handed-in day and asserted the same way — never from a clock.
+ */
+
+/** A film of the shape the read returns, reduced to the one field the countdown reads. */
+function out(releaseDate: string, name = releaseDate) {
+  return { releaseDate, name };
+}
+
+const words = (films: readonly { releaseDate: string }[], today: string) =>
+  awaitedFilms(films, today).map((one) => one.countdown);
+
+describe("how far away a film is, in words", () => {
+  /** The three the ticket names — the day of release, one day, and several. */
+  it("says Today on the day of release", () => {
+    expect(words([out("2026-08-24")], "2026-08-24")).toEqual(["Today"]);
+  });
+
+  it("says Tomorrow the day before", () => {
+    expect(words([out("2026-08-25")], "2026-08-24")).toEqual(["Tomorrow"]);
+  });
+
+  it("counts the days out past that", () => {
+    expect(words([out("2026-08-26")], "2026-08-24")).toEqual(["In 2 days"]);
+    expect(words([out("2026-09-05")], "2026-08-24")).toEqual(["In 12 days"]);
+    expect(words([out("2026-12-12")], "2026-08-24")).toEqual(["In 110 days"]);
+  });
+
+  /**
+   * The two an `In ${days} days` alone would produce, and the reason this is words rather
+   * than a template. *In 0 days* lands on the day a reader has been waiting for, which is
+   * the single worst day for this line to read as a stub.
+   */
+  it("never says *In 0 days* or *In 1 day*", () => {
+    const both = words([out("2026-08-24"), out("2026-08-25")], "2026-08-24");
+
+    expect(both).not.toContain("In 0 days");
+    expect(both).not.toContain("In 1 day");
+  });
+
+  /**
+   * Counted over calendar days rather than elapsed time, so a daylight-saving transition
+   * inside the span cannot round the subtraction to the wrong integer. The UK's clocks go
+   * forward on 29 March 2026 and back on 25 October; both spans below cross one, and both
+   * are the plain difference between two dates.
+   */
+  it("counts calendar days across a daylight-saving transition", () => {
+    expect(words([out("2026-03-30")], "2026-03-28")).toEqual(["In 2 days"]);
+    expect(words([out("2026-10-26")], "2026-10-24")).toEqual(["In 2 days"]);
+  });
+
+  /** A year boundary is not a special case either — it is the same subtraction. */
+  it("counts across the end of a year", () => {
+    expect(words([out("2027-01-02")], "2026-12-31")).toEqual(["In 2 days"]);
+  });
+});
+
+describe("a film that is already out is not a film you are waiting for", () => {
+  /**
+   * `listUpcomingFilms` reads a day wider than the server's own day so that no reader's
+   * evening is missing from it. Spending that extra day is this function's job, in the
+   * reader's zone — a film released yesterday stays on the watchlist and stays on the
+   * films rail one page over, which is where a reader goes to watch it.
+   */
+  it("drops a release date that has passed", () => {
+    const waiting = awaitedFilms(
+      [out("2026-08-23", "already out"), out("2026-08-24", "out today")],
+      "2026-08-24",
+    );
+
+    expect(waiting.map((one) => one.film.name)).toEqual(["out today"]);
+  });
+
+  it("returns nothing when everything read is already out", () => {
+    expect(awaitedFilms([out("2026-08-23")], "2026-08-24")).toEqual([]);
+  });
+
+  /**
+   * The same list at the same instant reads differently either side of the line, which is
+   * the property the whole module exists for: at 13:30 UTC a film released on the 25th is
+   * out *today* in Auckland and still *tomorrow* in Honolulu, and neither reader is shown
+   * the other's answer.
+   */
+  it("answers in the reader's day rather than the server's", () => {
+    const instant = new Date("2026-08-24T13:30:00Z");
+    const film = [out("2026-08-25")];
+
+    expect(words(film, readerDay("Pacific/Auckland", instant))).toEqual(["Today"]);
+    expect(words(film, readerDay("Pacific/Honolulu", instant))).toEqual(["Tomorrow"]);
+  });
+});
+
+describe("the films come back in the order they were read", () => {
+  /** Nothing is re-sorted here: the read has the tie-breakers, and an ordering decided
+   *  twice is an ordering that comes to disagree with itself. */
+  it("keeps the read's order and does not touch the rows", () => {
+    const nearest = out("2026-09-05", "nearest");
+    const furthest = out("2026-12-12", "furthest");
+
+    const waiting = awaitedFilms([nearest, furthest], "2026-08-24");
+
+    expect(waiting.map((one) => one.film.name)).toEqual(["nearest", "furthest"]);
+    // The read's own object, beside the words rather than carrying them.
+    expect(waiting[0].film).toBe(nearest);
+    expect(waiting[0].film).not.toHaveProperty("countdown");
   });
 });
