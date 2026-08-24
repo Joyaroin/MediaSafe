@@ -151,7 +151,12 @@ export default async function UnownedTitlePage({
             is also the desktop pane, which sits inside the library screen and under its
             heading. This is a page about one title and nothing else, so the title is its
             heading. */}
-        <h1 className="bill-title mt-5 text-bill-xl">{detail.name}</h1>
+        {/* `text-ink`, added by the palette audit (#255). This is the largest heading in
+            the application and it was the only one drawn at the body colour — a 2.4rem
+            title at `--text` sitting directly above a synopsis at `--text`, while every
+            34px `screen-title` a step below it carried `text-ink`. That is the exact
+            inversion `--ink` is declared to prevent. */}
+        <h1 className="bill-title mt-5 text-bill-xl text-ink">{detail.name}</h1>
 
         {meta === null ? null : (
           <p className="code-line mt-3 text-dim" data-numeric>

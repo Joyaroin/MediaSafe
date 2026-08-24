@@ -14,6 +14,7 @@
     "test:routes": "vitest run tests/route-manifest.test.ts",
     "test:fixtures": "vitest run tests/fixture-archive.test.ts",
     "test:conversion": "vitest run tests/tvtracker-conversion.test.ts",
+    "test:palette": "vitest run tests/palette.test.ts",
     "convert:tvtracker": "tsx --env-file-if-exists=.env scripts/convert-tvtracker/cli.ts",
     "db:up": "docker compose up -d --wait && npm run db:migrate",
     "db:down": "docker compose down",
