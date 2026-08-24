@@ -34,9 +34,13 @@ import { ProgrammeNoteContent } from "../programme-note-content";
 export function TitleDetailView({
   detail,
   liveFacts,
+  cast,
 }: {
   detail: TitleDetailRow;
+  /** The synopsis and the watch providers, already streamed on the server. */
   liveFacts: ReactNode;
+  /** Cast, streamed separately because title detail puts it last. */
+  cast: ReactNode;
 }) {
   const [current, setCurrent] = useState(detail);
 
@@ -44,6 +48,7 @@ export function TitleDetailView({
     <ProgrammeNoteContent
       detail={current}
       liveFacts={liveFacts}
+      cast={cast}
       posterTransitionName={groupPosterTransitionName(current.libraryEntryId)}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))

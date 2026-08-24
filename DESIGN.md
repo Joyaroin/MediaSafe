@@ -118,6 +118,36 @@ beside it and useless in a rail of titles you have never heard of, where the pos
 identifies. Up to three letters, scaled off the rendered width, `aria-hidden` like the image it
 stands in for. `app/poster.tsx`.
 
+### Amended again by title detail's restructure
+
+Title detail was a full-width poster with everything stacked flat under it. It is now a
+head and a column of **cards**, and four rules above move with it.
+
+| Stated above | Now | Where |
+| --- | --- | --- |
+| Library cells, search results and list rows are `--raised` cards on gaps at `16–18px`; *a card no longer needs a line around it* | Title detail's sections are cards on the same terms, at `18px` — the top of that range, because these are whole sections rather than single rows. The screen this follows outlines every block; the outlines are **not** taken, for exactly the reason §0 gives. | `programme-note-section.ts`, `programme-note-content.tsx` |
+| §4's `text-bill-xl` is the title on both title screens | The **owned** screen's title is `text-bill-lg`, because it now sits in a hero beside a thumbnail rather than under a full-width poster, and `2.4rem` in a `420px` pane beside an image wraps before it reads. Catalogue detail is unchanged and keeps `text-bill-xl`. The two title screens no longer match, and that is the cost of restructuring one of them. | `title-hero.tsx` |
+| The accent marks what is live, one per screen | Unchanged, and title detail is where it was tested hardest: `STATE_LABELS` draws *Watching* in the accent and the new **progress bar** wants it too. The bar takes it — *how far through you are right now* is the most literal reading of *live* on the page — and the state word goes `--dim`, directly above a bar saying the same thing. | `title-hero.tsx`, `library-state.ts` |
+| Live-fact sections are a dim `code-line` label over a run of text | Each is a card with a real heading at `text-bill-sm`, and one carries an **eyebrow**: the region the watch providers are actually for. Inside a card the heading is the card's name; a dim monospace line there reads as metadata about the content rather than as what it is called. | `live-title-facts.tsx` |
+
+**The progress bar is the first bar in the application.** Solid `--accent` on a `--hair`
+track, `6px`, fully rounded. It is `aria-hidden` and the sentence under it —
+*"16 of 32 episodes watched"* — carries the meaning, because a `progressbar` role would
+announce the same fact again as a percentage nobody wrote. No gradient: the screen this
+follows draws one blue-to-pink, and §2 declares seven flat tokens.
+
+**Two rails arrive inside cards** — watch providers as logo cards, cast as portrait cards
+with the character name under each. Both bleed to their card's edge (`-mx-4` against the
+card's `px-4`) so a scroll looks like a scroll rather than a list that stops short; the
+card's `overflow-hidden` is what keeps the first card from squaring off a corner. The cast
+card draws through `app/poster.tsx`, so a performer TMDB has no photograph of falls back to
+their initials rather than a grey rectangle.
+
+**No star anywhere, and no icon-only controls.** The reference puts a filled star on its
+ratings and two unlabelled icon buttons in its hero. `nav-icons.tsx` twice refuses a curve
+on the rule that *a magnifier would be the only curve in the application*, and that rule
+holds here: the hero's two controls are words.
+
 Two things below are **not** superseded, and were checked rather than assumed:
 
 - **Empty, zero-match and failed stay structurally separate**, with the same heading step

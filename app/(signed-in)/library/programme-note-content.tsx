@@ -1,17 +1,15 @@
 import type { ReactNode } from "react";
-import { ViewTransition } from "react";
 
 import type { LibraryState, TitleDetailRow } from "@/db/access";
-import { Poster } from "@/app/poster";
-import { AbandonControl } from "./abandon-control";
-import { AddToListControl } from "./add-to-list-control";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
-import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
-import { progressLine, remainingLine } from "./progress-remaining";
+import {
+  PROGRAMME_NOTE_CARD,
+  PROGRAMME_NOTE_CARD_PAD,
+  PROGRAMME_NOTE_SECTION,
+} from "./programme-note-section";
 import { RatingControl } from "./rating-control";
 import { RemoveControl } from "./remove-control";
-import { STATE_LABELS } from "./library-state";
-import { titleMetaLine } from "./title-meta-line";
+import { TitleHero } from "./title-hero";
 import { UpNextRow } from "./up-next-row";
 
 /**
@@ -119,127 +117,109 @@ import { UpNextRow } from "./up-next-row";
 export function ProgrammeNoteContent({
   detail,
   liveFacts,
+  cast,
   posterTransitionName,
   onStateChange,
   onRated,
 }: {
   detail: TitleDetailRow;
+  /** The synopsis and the watch providers, streamed — see `live-title-facts-streamed.tsx`. */
   liveFacts: ReactNode;
+  /**
+   * Cast, streamed separately, because it goes **last** — after the rating rather than
+   * under the hero with the other two. One node could only put all three together.
+   */
+  cast: ReactNode;
   posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
   onRated: (libraryEntryId: string, rating: number) => void;
 }) {
-  const state = STATE_LABELS[detail.state];
-  const meta = titleMetaLine(detail);
   // A film's `episodes` is always empty (`TitleDetailRow`'s own docblock), so this is
   // `undefined` for one there is never a fact to find.
   const upNext = detail.episodes.find((one) => one.upNext);
 
+  /**
+   * ── The order, and why it is this one ─────────────────────────────────────────────
+   *
+   * Hero, then what the title *is*, then where to watch it, then what to watch next, then
+   * the episodes, then the things you do once you have watched.
+   *
+   * The three streamed facts used to arrive as one node in that order. Cast belongs at the
+   * bottom and the other two at the top, so the group is now two nodes — `liveFacts` and
+   * `cast`. Nothing about the streaming changed: each read always had its own `Suspense`
+   * and always resolved independently; the group was an ordering, and the ordering now
+   * belongs to this file, which is the thing that knows the order.
+   *
+   * Remove is last, behind everything, under its warning. It destroys your watches and
+   * your rating and nothing brings them back — the scroll is doing real work, and the
+   * screen this restructure follows puts it a thumb's width from *Mark watched*.
+   */
   return (
-    <div className="px-6 py-5">
-      {/* Full pane width — before #135 this was a `16/10` plate cropping whatever
-          arrived. The `poster` utility's own `2/3` ratio derives the height from this
-          width instead.
-
-          This component renders in two frames of different widths (this docblock's own
-          `onRated` section): the desktop pane is `programme-note.tsx`'s `w-[420px]` minus
-          this wrapper's `px-6` (`372px`), the phone route is the full viewport minus the
-          same padding. `382` covers a large phone (`430px` viewport) without measuring
-          either frame at render time — both land in TMDB's `w500` bucket regardless, so a
-          closer number would change nothing served, only how honest this one reads. */}
-      <ViewTransition key={posterTransitionName} name={posterTransitionName}>
-        {/* Always the hero poster of whichever surface holds this component — the desktop
-            pane's selected entry or the phone route's whole page — so it is always the
-            visible one, never a below-the-fold instance among many (`app/poster.tsx`). */}
-        <Poster
-          posterPath={detail.posterPath}
-          name={detail.name}
-          width={382}
-          className="w-full"
-          aboveFold
-        />
-      </ViewTransition>
-
-      {/* `text-ink`, added by the palette audit (#255) — the owned half of the same pair
-          as `titles/[kind]/[tmdbId]/page.tsx`'s `h1`, and it had the same omission. */}
-      <h2 className="bill-title mt-5 text-bill-xl text-ink">{detail.name}</h2>
-
-      {meta === null ? null : (
-        <p className="code-line mt-3 text-dim" data-numeric>
-          {meta}
-        </p>
-      )}
-
-      {/* Where the show stands, with the one control that can change it beside it —
-          issue #228. The label is `STATE_LABELS`, exactly as it always was: nothing here
-          lets a reader set *watching*, *caught up*, *finished* or *watchlist* by hand,
-          because nothing anywhere does — the four are derived and `AbandonControl` is the
-          one write this page has ever offered against the state line. It used to sit at
-          the foot of the pane, below every episode; this is that same control, moved
-          rather than replaced, so giving up on a long show costs no scrolling. */}
-      <div className="mt-4 flex items-baseline justify-between gap-4">
-        <p className={`code-line ${state.className}`}>{state.label}</p>
-        <AbandonControl
-          libraryEntryId={detail.libraryEntryId}
-          titleName={detail.name}
-          abandoned={detail.state === "abandoned"}
-          onChanged={onStateChange}
-        />
-      </div>
-
-      {liveFacts}
-
-      {/* Progress and remaining, shown for a show with episode data and nowhere else —
-          `progress-remaining.ts`'s own docblock has the derivation. A film has no episodes
-          to be either fact about, and an empty `episodes` for a show is TMDB not having
-          mirrored anything yet (`ProgrammeNoteEpisodes`'s own "No episode data yet."),
-          which "0 remaining" would misreport as caught up rather than as missing. */}
-      {detail.kind === "show" && detail.episodes.length > 0 ? (
-        <>
-          <p className={`code-line text-dim ${PROGRAMME_NOTE_SECTION}`}>
-            Progress — {progressLine(detail.episodes)}
-          </p>
-          <p className="code-line mt-1 text-dim">Remaining — {remainingLine(detail.episodes)}</p>
-        </>
-      ) : null}
-
-      {/* The up-next episode, markable on its own row without picking a season first —
-          issue #228, and `up-next-row.tsx`'s own docblock for why it is not simply the
-          season list defaulting to the right season. Absent whenever the title has none:
-          unstarted-with-nothing-mirrored-yet reads the same as finished-to-the-edge-of-what
-          TMDB-has here, and both are the honest absence of a fact rather than a guess. */}
-      {upNext === undefined ? null : (
-        <UpNextRow episode={upNext} libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
-      )}
-
-      <ProgrammeNoteEpisodes
-        kind={detail.kind}
-        episodes={detail.episodes}
-        libraryEntryId={detail.libraryEntryId}
-        titleName={detail.name}
-        state={detail.state}
+    <div className="px-4 py-5">
+      <TitleHero
+        detail={detail}
+        posterTransitionName={posterTransitionName}
         onStateChange={onStateChange}
       />
 
-      {/* Rating, *Add to list* and *Remove* — issue #228 moves all three below the
-          episode list, in the order they already stood in relative to one another. Each
-          is reached for far less often than anything above it, which is the whole of why
-          the old order (this trio ahead of the episode list) ran nearly the reverse of how
-          often each thing on this page is actually used. */}
-      <RatingControl
-        libraryEntryId={detail.libraryEntryId}
-        titleName={detail.name}
-        rating={detail.rating}
-        onRated={onRated}
-      />
+      {/* Synopsis and watch providers — each its own card, each streamed. */}
+      {liveFacts}
 
-      {/* Issue #147, keyed by `titleId` rather than `libraryEntryId` for the reason its
-          own docblock gives: the desktop pane never remounts on a selection change, so
-          this key is what gives every title a clean picker rather than five pieces of
-          local state this component would otherwise have to reset by hand. */}
-      <AddToListControl key={detail.titleId} titleId={detail.titleId} titleName={detail.name} />
+      {/* The up-next episode, markable on its own row without picking a season first —
+          issue #228, and `up-next-row.tsx`'s own docblock for why it is not simply the
+          season list defaulting to the right season.
 
-      <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
+          It survives the hero's progress bar rather than being absorbed by it: the bar
+          says *how far through*, and this names the specific episode and carries the
+          control that marks it. A bar cannot do either.
+
+          Absent whenever the title has none: unstarted-with-nothing-mirrored-yet reads the
+          same as finished-to-the-edge-of-what-TMDB-has, and both are the honest absence of
+          a fact rather than a guess. */}
+      {upNext === undefined ? null : (
+        <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+          <UpNextRow
+            episode={upNext}
+            libraryEntryId={detail.libraryEntryId}
+            titleName={detail.name}
+          />
+        </section>
+      )}
+
+      {/* The season chips and the full episode list, kept as they are. The screen this
+          follows replaces them with a grid of episode numbers and one expanded card —
+          which shows numbers where `CONTEXT.md` says *an episode is never referred to by
+          number alone*, and hides which episodes are watched behind a selection. */}
+      <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+        <ProgrammeNoteEpisodes
+          kind={detail.kind}
+          episodes={detail.episodes}
+          libraryEntryId={detail.libraryEntryId}
+          titleName={detail.name}
+          state={detail.state}
+          onStateChange={onStateChange}
+        />
+      </section>
+
+      <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+        <RatingControl
+          libraryEntryId={detail.libraryEntryId}
+          titleName={detail.name}
+          rating={detail.rating}
+          onRated={onRated}
+        />
+      </section>
+
+      {/* Cast, last of the borrowed facts and last of the cards: it is the section you
+          scroll to out of curiosity rather than to do something with. */}
+      {cast}
+
+      {/* Not in a card. Everything above is something to read or a thing you do to the
+          title; this is the one action that destroys what MediaSafe owns about it, and
+          giving it the same treatment as the rating would file it as one more setting. */}
+      <div className={PROGRAMME_NOTE_SECTION}>
+        <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
+      </div>
     </div>
   );
 }

@@ -493,7 +493,23 @@ describe("no heading renders lighter than the body beneath it", () => {
     // The registers exist and are used; without this the three properties below pass by
     // finding nothing at all.
     expect(classListsWith("screen-title").length).toBeGreaterThanOrEqual(4);
-    expect(classListsWith("text-bill-xl").length).toBeGreaterThanOrEqual(2);
+
+    /**
+     * **One, and it used to be two.**
+     *
+     * `text-bill-xl` was the title on both title screens — the owned one and the
+     * catalogue one. The owned screen's restructure puts its title inside a hero card
+     * beside a thumbnail rather than under a full-width poster, and 2.4rem in a 420px
+     * pane beside an image is a title that wraps before it reads; it takes `text-bill-lg`
+     * there now. Catalogue detail is unchanged and keeps the largest step.
+     *
+     * So the two title screens no longer set their titles alike, which is a real
+     * divergence and is the accepted cost of restructuring one of them and not the other.
+     * If catalogue detail ever takes the same hero, this floor goes back to two — and if
+     * it drops to nought, the register is unused and the checks below have nothing to
+     * check, which is what this line is for.
+     */
+    expect(classListsWith("text-bill-xl").length).toBeGreaterThanOrEqual(1);
   });
 
   it("inks every screen title", () => {

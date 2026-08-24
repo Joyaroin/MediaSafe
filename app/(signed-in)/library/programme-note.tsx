@@ -7,7 +7,7 @@ import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { useLibrarySelection } from "./library-selection";
-import { LiveTitleFactsClientFetch } from "./live-title-facts";
+import { LiveTitleFactsClientFetch, LiveTitleFactsProvider } from "./live-title-facts";
 import { railPosterTransitionName } from "./poster-transition-name";
 import { ProgrammeNoteContent } from "./programme-note-content";
 import { titleDetailAction } from "./title-detail-actions";
@@ -123,13 +123,28 @@ export function ProgrammeNotePane() {
             </div>
           ) : null}
           {phase.kind === "loaded" ? (
+            /* The provider owns the one fetch; the two slots below read it. Keyed by
+               title so a selection change remounts it rather than reconciling an earlier
+               title's answer into the new one. */
+            <LiveTitleFactsProvider
+              key={`${phase.detail.kind}:${phase.detail.tmdbId}`}
+              kind={phase.detail.kind}
+              tmdbId={phase.detail.tmdbId}
+            >
             <ProgrammeNoteContent
               detail={phase.detail}
               liveFacts={
                 <LiveTitleFactsClientFetch
-                  key={`${phase.detail.kind}:${phase.detail.tmdbId}`}
                   kind={phase.detail.kind}
                   tmdbId={phase.detail.tmdbId}
+                  slot="facts"
+                />
+              }
+              cast={
+                <LiveTitleFactsClientFetch
+                  kind={phase.detail.kind}
+                  tmdbId={phase.detail.tmdbId}
+                  slot="cast"
                 />
               }
               posterTransitionName={railPosterTransitionName(phase.detail.libraryEntryId)}
@@ -158,6 +173,7 @@ export function ProgrammeNotePane() {
                 )
               }
             />
+            </LiveTitleFactsProvider>
           ) : null}
         </div>
 

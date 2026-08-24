@@ -28,6 +28,8 @@ export interface TmdbCastMemberPayload {
   id?: number;
   name?: string;
   character?: string | null;
+  /** The performer's photograph, on TMDB's image CDN. See `CastMember.profilePath`. */
+  profile_path?: string | null;
   /** TMDB's own billing order. Lower is higher-billed. */
   order?: number;
 }
@@ -70,6 +72,17 @@ export interface CastMember {
   /** `null` when TMDB has no character name for this credit — an interview subject,
    *  a documentary's participants, a voice role TMDB has not captioned. */
   readonly character: string | null;
+  /**
+   * The performer's photograph, or `null` where TMDB has none.
+   *
+   * It arrives in the same `/credits` response the name and character already come from,
+   * so reading it costs no request — it was simply never mapped, because cast was a line
+   * of names. It is borrowed like every other fact here and can be replaced by a refresh.
+   *
+   * `null` is common and not an error: TMDB has no photograph for a great many credited
+   * performers, and the card that draws this falls back to their initials.
+   */
+  readonly profilePath: string | null;
 }
 
 /**
@@ -87,7 +100,12 @@ export function castFrom(payload: TmdbCreditsPayload): readonly CastMember[] {
     const id = integerFrom(member.id);
     if (id === null || !member.name || seen.has(id)) continue;
     seen.add(id);
-    cast.push({ id, name: member.name, character: textFrom(member.character) });
+    cast.push({
+      id,
+      name: member.name,
+      character: textFrom(member.character),
+      profilePath: textFrom(member.profile_path),
+    });
     if (cast.length >= MAX_CAST) break;
   }
 
