@@ -7,9 +7,11 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
-import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+import { EPISODE_SYNOPSIS_ABSENT, LIVE_FACT_FAILURE } from "./live-fact-copy";
+import { PROGRAMME_NOTE_SECTION, SYNOPSIS_PROSE } from "./programme-note-section";
 import type { LiveFacts } from "./live-facts";
 import {
+  episodeSynopsisAction,
   titleCastAndCrewAction,
   titleLiveFactsAction,
   titleSynopsisAction,
@@ -29,10 +31,13 @@ import {
  *
  * `LiveFactSection` below no longer fetches on its own account — it renders whatever
  * `initial: Outcome<T>` it is handed, and only makes a request of its own when a reader
- * clicks *Try again* on a section that failed. Two components feed it, through the three
- * fixed `*FactSection` wrappers further down (`SynopsisFactSection` and its two
- * siblings) — fixed rather than generic at that boundary because what crosses it is
- * `initial`, `kind` and `tmdbId` only, never a `render`/`fetcher` function:
+ * clicks *Try again* on a section that failed. Two components feed it, through the fixed
+ * `*FactSection` wrappers further down — three title-level ones, plus
+ * `EpisodeSynopsisFactSection`, which issue #253 added for the episode page and which is
+ * fed by that route rather than by either component below. They are fixed rather than
+ * generic at that boundary because what crosses it is `initial` and the read's identity
+ * only, never a `render` or `refetch` function — a function cannot cross from a Server
+ * Component, so the closure is built on this side:
  *
  * - `live-title-facts-streamed.tsx`'s `LiveTitleFactsStreamed` — a **Server Component**,
  *   used by the phone route and the unowned-title page, the two surfaces that are real
@@ -110,14 +115,15 @@ export function LiveTitleFactsClientFetch({
 }
 
 /**
- * The three sections, each a fixed (non-generic) instantiation of `LiveFactSection` below
- * — `heading`, `fetcher` and `render` hard-coded rather than threaded in. Exported so
- * `live-title-facts-streamed.tsx`'s three async Server Components can each render one
- * directly, handing it nothing but `initial` (a plain `Outcome<T>`, already resolved) and
- * `kind`/`tmdbId` — all three serialisable across the server/client boundary. A `render`
- * or `fetcher` function is not: passing one as a prop from a Server Component would need
- * it to cross the network, which is why it lives inside this client module instead of
- * being threaded in from outside it.
+ * The sections, each a fixed (non-generic) instantiation of `LiveFactSection` below —
+ * `heading`, `refetch` and `render` hard-coded rather than threaded in. Exported so the
+ * async Server Components in `live-title-facts-streamed.tsx` and (for the episode page,
+ * issue #253) `episode-synopsis-streamed.tsx` can each render one directly, handing it
+ * nothing but `initial` (a plain `Outcome<T>`, already resolved) and the numbers that
+ * identify the read — all serialisable across the server/client boundary. A `render` or
+ * `refetch` function is not: passing one as a prop from a Server Component would need it
+ * to cross the network, which is why the closure is built inside this client module
+ * instead of being threaded in from outside it.
  */
 export function SynopsisFactSection({
   kind,
@@ -131,13 +137,76 @@ export function SynopsisFactSection({
   return (
     <LiveFactSection
       heading="Synopsis"
-      kind={kind}
-      tmdbId={tmdbId}
       initial={initial}
-      fetcher={titleSynopsisAction}
+      refetch={() => titleSynopsisAction(kind, tmdbId)}
       render={(overview) =>
         overview === null ? null : (
-          <p className="max-w-[68ch] text-note leading-relaxed text-dim">{overview}</p>
+          <p className={SYNOPSIS_PROSE}>{overview}</p>
+        )
+      }
+    />
+  );
+}
+
+/**
+ * One **episode's** own synopsis — issue #253, and the fourth section this file draws.
+ *
+ * It is here rather than in the episode route's own directory because it is the same
+ * treatment: the same heading register, the same inline failure with the same sentence and
+ * the same reference id, the same *Try again*. `LiveFactSection`'s whole reason for
+ * existing is that a live-only region fails one way in this application, and a second copy
+ * of that markup next to the first is how a surface ends up failing a fifth way.
+ *
+ * ── The one thing it does that its three siblings do not: it renders the empty state ──
+ *
+ * `SynopsisFactSection` above returns `null` for a title TMDB has written no overview for,
+ * and `LiveFactSection` then draws no section at all. That is the right answer there — the
+ * synopsis is one of three sections on a page whose subject is elsewhere, and a heading
+ * over nothing is worse than a heading absent.
+ *
+ * It is the wrong answer here, and #253 says so in as many words: *when the catalogue has
+ * none, the page says so in a sentence*. The synopsis is the reason this page exists. An
+ * unexplained blank where it should be is exactly the empty region `AGENTS.md` opens on —
+ * a reader cannot tell it apart from a page that half-loaded, which is the same confusion
+ * *empty is not failed* exists to prevent, arriving from the other direction.
+ *
+ * So the two states are two sentences and they are never the same one:
+ *
+ *   - **No synopsis yet** — *TMDB has not written one for this episode yet.* A statement
+ *     about the catalogue, in `dim`, with no border, no accent and no control. Nothing
+ *     failed and there is nothing to retry.
+ *   - **The fetch failed** — `LiveFactSection`'s inline failure: *This did not load*, a
+ *     *Try again*, and the reference id. Something failed and it can be retried.
+ *
+ * Neither sentence contains a word of the other, which is the criterion. The reader can
+ * tell which happened without being told which happened.
+ */
+export function EpisodeSynopsisFactSection({
+  tmdbId,
+  seasonNo,
+  episodeNo,
+  initial,
+}: {
+  tmdbId: number;
+  seasonNo: number;
+  episodeNo: number;
+  initial: Outcome<string | null>;
+}) {
+  return (
+    <LiveFactSection
+      heading="Synopsis"
+      initial={initial}
+      refetch={() => episodeSynopsisAction(tmdbId, seasonNo, episodeNo)}
+      render={(overview) =>
+        overview === null ? (
+          // Plainly worded and plainly attributed: it is TMDB that has not written one,
+          // not MediaSafe that has lost it. `SPEC.md` §6's rule that every user-facing
+          // string is a plain sentence, on a state that is not an error at all.
+          <p className={SYNOPSIS_PROSE}>
+            {EPISODE_SYNOPSIS_ABSENT}
+          </p>
+        ) : (
+          <p className={SYNOPSIS_PROSE}>{overview}</p>
         )
       }
     />
@@ -158,10 +227,8 @@ export function WatchProvidersFactSection({
       // `CONTEXT.md`'s glossary is "Watch provider", and lists "where to watch" itself in
       // that entry's own `_Avoid_` line — this is the term, not a paraphrase of it.
       heading="Watch providers"
-      kind={kind}
-      tmdbId={tmdbId}
       initial={initial}
-      fetcher={titleWatchProvidersAction}
+      refetch={() => titleWatchProvidersAction(kind, tmdbId)}
       render={(providers) => <WatchProviders providers={providers} />}
     />
   );
@@ -179,10 +246,8 @@ export function CastAndCrewFactSection({
   return (
     <LiveFactSection
       heading="Cast & crew"
-      kind={kind}
-      tmdbId={tmdbId}
       initial={initial}
-      fetcher={titleCastAndCrewAction}
+      refetch={() => titleCastAndCrewAction(kind, tmdbId)}
       render={(credit) => <CastAndCrewLine credit={credit} />}
     />
   );
@@ -238,17 +303,29 @@ function outcomeToPhase<T>(outcome: Outcome<T>): Phase<T> {
  */
 export function LiveFactSection<T>({
   heading,
-  kind,
-  tmdbId,
   initial,
-  fetcher,
+  refetch,
   render,
 }: {
   heading: string;
-  kind: TitleKind;
-  tmdbId: number;
   initial: Outcome<T>;
-  fetcher: (kind: TitleKind, tmdbId: number) => Promise<Outcome<T>>;
+  /**
+   * What *Try again* runs — a thunk, closed over whatever identifies this read.
+   *
+   * It was `fetcher: (kind, tmdbId) => …` plus the two props to feed it, until issue #253
+   * added a section identified by three numbers rather than a kind and an id: an episode's
+   * own synopsis, addressed by `(tmdbId, seasonNo, episodeNo)`, because that is the only
+   * way TMDB addresses an episode. Widening the pair to a union, or adding a third prop
+   * two of the four sections ignore, would have made this component know the shape of
+   * every read that will ever use it.
+   *
+   * A thunk knows none of them. Every caller is inside this `"use client"` module and
+   * builds its own — which is the same constraint the `*FactSection` wrappers were already
+   * fixed rather than generic for: a function cannot cross from a Server Component, so the
+   * closure has to be made on this side. Nothing about the boundary changed; one prop
+   * absorbed two.
+   */
+  refetch: () => Promise<Outcome<T>>;
   render: (value: T) => React.ReactNode;
 }) {
   const [phase, setPhase] = useState<Phase<T>>(() => outcomeToPhase(initial));
@@ -260,7 +337,7 @@ export function LiveFactSection<T>({
   function retry() {
     const request = ++newestRequest.current;
     setPhase({ kind: "loading" });
-    fetcher(kind, tmdbId).then((outcome) => {
+    refetch().then((outcome) => {
       if (request !== newestRequest.current) return;
       setPhase(outcomeToPhase(outcome));
     });
@@ -274,10 +351,12 @@ export function LiveFactSection<T>({
     return (
       <div className={PROGRAMME_NOTE_SECTION}>
         <p className="code-line text-dim">{heading}</p>
-        <p className="mt-3 max-w-[62ch] text-note text-text">
-          This did not load. Nothing else on this page did either — the rest of it is not
-          affected.
-        </p>
+        {/* `live-fact-copy.ts`, not prose written here: this sentence and the episode
+            page's *no synopsis yet* must never converge, and while both were inline that
+            was a property nothing could check — this module's import graph is
+            `server-only` and cannot be rendered under Vitest. Naming them together is
+            what makes `tests/episode-synopsis-states.test.ts` possible. */}
+        <p className="mt-3 max-w-[62ch] text-note text-text">{LIVE_FACT_FAILURE}</p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <button type="button" onClick={retry} className={GHOST_RECOVERY}>
             Try again
