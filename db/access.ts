@@ -4438,6 +4438,181 @@ export async function reorderListMembership(
   });
 }
 
+/** How many posters a list card draws before it stops, in membership order. */
+const LIST_CARD_POSTERS = 4;
+
+export interface ListCard extends ListSummary {
+  /**
+   * Up to `LIST_CARD_POSTERS` posters, in list-membership order, filtered to the titles
+   * TMDB has artwork for — issue #248. **Four posters, not four slots**: a member with no
+   * poster is skipped rather than drawn as a gap, so the array is short only when the list
+   * itself does not have four covered titles to offer.
+   *
+   * Empty exactly when the card falls back to the missing-artwork frame — a list with no
+   * titles and a list whose titles all lack artwork are the same case from here, and
+   * `you-list-card.tsx` tests exactly the one thing that unifies them: this array's length.
+   */
+  readonly posterPaths: readonly string[];
+}
+
+/**
+ * The You page's lists rail — issue #248, and `listLists`'s own row plus the covers #248
+ * reverses SPEC's *list covers: still out* over.
+ *
+ * ── Two statements, not a window function ─────────────────────────────────────────────
+ *
+ * `listLists` is called for the row every other lists surface already reads — the name and
+ * `titleCount`, unchanged. The posters are a second, flat statement: every membership this
+ * account owns with a covered title, ordered by list then position, capped to four **in
+ * JavaScript** rather than with a `row_number() over (partition by …)` window. A personal
+ * library is small enough that the plainer query is the honest trade — `getListDetail` and
+ * `getTitleDetail` already prefer several simple statements combined in code over one
+ * clever one, for the same reason.
+ *
+ * ── `ownedBy` on the membership, not the list ─────────────────────────────────────────
+ *
+ * `list_membership` carries its own `user_id` (`reorderListMembership` reads it the same
+ * way), so this scopes there directly rather than joining `list` a second time only to
+ * scope through it.
+ */
+export async function listYouListCards(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly ListCard[]> {
+  const lists = await listLists(userId, executor);
+  if (lists.length === 0) return [];
+
+  const posterRows = await executor
+    .select({ listId: listMembership.listId, posterPath: title.posterPath })
+    .from(listMembership)
+    .innerJoin(title, eq(title.id, listMembership.titleId))
+    .where(and(ownedBy(userId, listMembership), isNotNull(title.posterPath)))
+    .orderBy(asc(listMembership.listId), asc(listMembership.position));
+
+  const postersByList = new Map<string, string[]>();
+  for (const row of posterRows) {
+    const posters = postersByList.get(row.listId) ?? [];
+    if (posters.length < LIST_CARD_POSTERS) {
+      posters.push(row.posterPath as string);
+      postersByList.set(row.listId, posters);
+    }
+  }
+
+  return lists.map((list) => ({ ...list, posterPaths: postersByList.get(list.id) ?? [] }));
+}
+
+/**
+ * The You page's shows and films rails — issue #248. Shows are the entries standing at
+ * *watching* or *caught up*; films are the entries standing at *finished*. Both rails are
+ * ordered by their title's most recent **dated** watch first.
+ *
+ * ── Why the two rails read different states ───────────────────────────────────────────
+ *
+ * #248 as filed asked for one rule, *watching or caught up*, applied to both kinds — but
+ * `CONTEXT.md`'s own glossary is explicit that **a film is only ever on your watchlist,
+ * finished, or abandoned**, and `library_entry_state`'s view agrees: `t.kind = 'film'`
+ * resolves straight to `'finished'` the moment it has any watch at all, before *watching*
+ * or *caught up* are even considered. A films rail filtered on those two states is not a
+ * films rail that is sometimes empty; it is one that can never hold a single row, for any
+ * account, ever — which fails #245's own user story 19, *"I want the same for films, so
+ * that both halves of my library are represented."* Literal compliance with the acceptance
+ * criterion defeats the reason the criterion was written. Films read *finished* instead,
+ * which is the one state a watched film can actually occupy — the direct analogue of "in
+ * play" that a title with no partial-progress concept has to offer.
+ *
+ * ── One read, split in memory, for `listUpNextRails`'s own reason ────────────────────
+ *
+ * A single query over both kinds' predicates, sliced afterwards, rather than two separate
+ * queries — the property that matters is *every entry is on exactly one rail*, which is
+ * true by construction of one `or` of two kind-scoped predicates and one split rather than
+ * by two statements agreeing with each other.
+ *
+ * ── The order is `upNextRead`'s `last_watch`, without the up-next fallback ────────────
+ *
+ * `lastWatch` is the same grouped, `ownedBy`-scoped subquery `upNextRead` builds — a
+ * rewatch is a second `watch` row (`CONTEXT.md`), so it has to be grouped before it can be
+ * joined without multiplying an entry. What is dropped is `upNextOrder`'s fallback to an
+ * unaired episode's air date: that exists so an unwatched title still has *some* position in
+ * Up next's queue, and every entry here has already watched something (a show *watching* or
+ * *caught up*, a film *finished*), so there is no "never watched" case to fall back for.
+ *
+ * **`desc nulls last`, spelled out.** Postgres defaults a `desc` order to nulls *first*,
+ * which would put every entry with only undated watches at the head of its rail — backwards
+ * from *most recent dated watch first*. The undated case is real (`CONTEXT.md`'s glossary:
+ * a watch with no date still counts), so it is not filtered out, only ordered after
+ * whatever a dated watch can say, tie-broken Title A–Z then entry id like every other
+ * state-group read in this file.
+ */
+export interface YouRails {
+  readonly shows: readonly LibraryStateGroupEntry[];
+  readonly films: readonly LibraryStateGroupEntry[];
+}
+
+export async function listYouRails(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<YouRails> {
+  const lastWatch = executor
+    .select({
+      libraryEntryId: watch.libraryEntryId,
+      watchedAt: sql<string | null>`max(${watch.watchedAt})`.as("watched_at"),
+    })
+    .from(watch)
+    .where(ownedBy(userId, watch))
+    .groupBy(watch.libraryEntryId)
+    .as("you_rails_last_watch");
+
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
+      kind: title.kind,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .leftJoin(lastWatch, eq(lastWatch.libraryEntryId, libraryEntry.id))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        or(
+          and(
+            eq(title.kind, "show" satisfies TitleKind),
+            or(
+              eq(libraryEntryState.state, "watching" satisfies LibraryState),
+              eq(libraryEntryState.state, "caught_up" satisfies LibraryState),
+            ),
+          ),
+          and(
+            eq(title.kind, "film" satisfies TitleKind),
+            eq(libraryEntryState.state, "finished" satisfies LibraryState),
+          ),
+        ),
+      ),
+    )
+    .orderBy(sql`${lastWatch.watchedAt} desc nulls last`, sql`lower(${title.name})`, libraryEntry.id);
+
+  const shows: LibraryStateGroupEntry[] = [];
+  const films: LibraryStateGroupEntry[] = [];
+  for (const row of rows) {
+    const entry: LibraryStateGroupEntry = {
+      libraryEntryId: row.libraryEntryId,
+      titleId: row.titleId,
+      titleName: row.titleName,
+      releaseYear: row.releaseYear,
+      posterPath: row.posterPath,
+      runtimeMins: row.runtimeMins,
+    };
+    (row.kind === "show" ? shows : films).push(entry);
+  }
+
+  return { shows, films };
+}
+
 /**
  * ── The Stats page's numbers ─────────────────────────────────────────────────────────
  *

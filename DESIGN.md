@@ -1439,9 +1439,13 @@ rails, no placeholder tabs, no "coming soon".
   offering; the handoff #245 makes binding draws it that way, and `SPEC.md` §7 carries the
   same amendment. The test is the sentence above and not the surface: *am I three from the
   end, or thirty* is the question that card exists to answer, so the number is **content**
-  there, where the same number over a rail of posters would be chrome. #223's list card
-  gains a count in the same pass for the same reason — a list you cannot tell full from
-  started is a list card that has not done its job.
+  there, where the same number over a rail of posters would be chrome.
+
+  **A second narrowing, #248's, in a separate pass and on a different card.** `/you`'s
+  lists rail — a new surface, not #223's own — carries its list card's title count, for the
+  same reason: a list you cannot tell full from started is a list card that has not done its
+  job. #223's own Lists rail on the library is untouched by either narrowing and still
+  carries no count, exactly as the worked example above describes.
 
   Two things this does **not** license, and they are the ones to check a new numeral
   against. The desktop rail tile is unchanged and still carries no count — it is a poster, a

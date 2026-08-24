@@ -74,6 +74,8 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     getTitleDetail: vi.fn(),
     accountStats: vi.fn(),
     accountFigures: vi.fn(),
+    listYouListCards: vi.fn(),
+    listYouRails: vi.fn(),
     getUnownedTitleDetail: vi.fn(),
   },
   /** The borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. Four
@@ -208,6 +210,8 @@ const {
   cachedUpcomingEpisodes,
   cachedUpNextRails,
   cachedWatchlistFilms,
+  cachedYouListCards,
+  cachedYouRails,
   invalidateFor,
   invalidateForOtherAccounts,
   serverDay,
@@ -264,6 +268,12 @@ const CACHED = {
    *  read above rather than under a fact of its own — `cache/tags.ts` argues why, and the
    *  bust assertions below hold both against the same tag as a result. */
   accountFigures: (userId: typeof mine) => cachedAccountFigures(userId),
+  /** Issue #248's lists rail on `/you`. Tagged `lists` alongside `listLists` and
+   *  `getListDetail`, so the bust assertions below hold all three against one tag. */
+  listYouListCards: (userId: typeof mine) => cachedYouListCards(userId),
+  /** Issue #248's shows and films rails on `/you`. Tagged `up-next` alongside the three
+   *  reads above it in this table that share that fact. */
+  listYouRails: (userId: typeof mine) => cachedYouRails(userId),
 } as const;
 
 /** What the fake behind `read` answers `userId` with. The library's is a list of rows,
@@ -1427,15 +1437,16 @@ describe("the reads that are cached, and the one that must never be", () => {
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
-  it("wraps exactly the fifteen reads it is meant to", () => {
+  it("wraps exactly the seventeen reads it is meant to", () => {
     // `\s*` because several of these are formatted across lines. A regex that only
     // matched the single-line spelling silently found five of them and passed.
     const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
 
     expect(cached).toEqual([
-      // `tags.ts` — the owned ten, in file order. #250 replaced two of #138's reads
+      // `tags.ts` — the owned twelve, in file order. #250 replaced two of #138's reads
       // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #251 added
-      // `listUpcomingEpisodes` beside it, under the same `up-next` tag.
+      // `listUpcomingEpisodes` beside it under the same `up-next` tag; and #248 added
+      // `listYouListCards` and `listYouRails`.
       "listLibraryEntries",
       "listUpNextRails",
       "listWatchlistFilms",
@@ -1447,6 +1458,8 @@ describe("the reads that are cached, and the one that must never be", () => {
       "accountStats",
       // #247's, and the ninth owned read.
       "accountFigures",
+      "listYouListCards",
+      "listYouRails",
       // `borrowed-facts.ts` — the five, in file order. `episodeSynopsis` is #253's, and
       // it sits second because it is written directly beneath the title-level synopsis
       // whose docblock covers everything the two share.

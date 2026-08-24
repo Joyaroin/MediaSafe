@@ -139,13 +139,16 @@ From the map, settled with Adham and not up for relitigation:
    > crew, watch providers, and the mirrored `title`/`episode` metadata are cached too, in
    > `cache/borrowed-facts.ts` beside the owned half and under the same two properties.
    >
-   > **Ten owned reads, five borrowed**, as of
-   > [#253](https://github.com/Joyaroin/MediaSafe/issues/253) — which adds an **episode's** own
-   > synopsis to the borrowed side, keyed by account like every other and tagged with its
-   > *show*, so that a mirror refresh expires it alongside that show's three title-level facts.
-   > (It read *nine and four* until this ticket; the tenth owned read is #247's `accountFigures`.
-   > Neither figure is worth trusting from here — `tests/cache-tags.test.ts` asserts the whole
-   > list against `cache/` itself, and that is the count that cannot go stale.)
+   > **Eleven owned reads, five borrowed**, as of
+   > [#248](https://github.com/Joyaroin/MediaSafe/issues/248) — which adds `/you`'s two rail reads,
+   > `listYouListCards` and `listYouRails`, both sharing an existing fact (`lists`, `up-next`) rather
+   > than declaring a new one. [#253](https://github.com/Joyaroin/MediaSafe/issues/253) adds an
+   > **episode's** own synopsis to the borrowed side, keyed by account like every other and tagged
+   > with its *show*, so that a mirror refresh expires it alongside that show's three title-level
+   > facts. (It read *nine and four* before #253, *ten and five* before #248; the tenth owned read
+   > was #247's `accountFigures`. None of these figures is worth trusting from here —
+   > `tests/cache-tags.test.ts` asserts the whole list against `cache/` itself, and that is the count
+   > that cannot go stale.)
    >
    > They differ in two ways, both decisions rather than details. An **owned** fact is correct until
    > a write says otherwise, so it carries a tag and no window. A **borrowed** fact changes when
@@ -755,8 +758,15 @@ What came in with them, and what did not:
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your
   lists standing.
-- **Still out**, named because a list is where each would look natural: sharing a list, list covers,
-  smart or rule-based lists, and nested lists.
+- **Still out**, named because a list is where each would look natural: sharing a list,
+  ~~list covers,~~ smart or rule-based lists, and nested lists.
+
+  **List covers shipped in [#248](https://github.com/Joyaroin/MediaSafe/issues/248),
+  2026-08-24.** A list card on `/you`'s lists rail draws up to four posters, taken in
+  list-membership order and filtered to titles TMDB has artwork for; a list with none —
+  because it holds no titles, or holds titles with no artwork — keeps its card and gets the
+  missing-artwork frame instead of vanishing from the rail. The other three items in this
+  bullet are untouched and still out.
 
 The rule above is unchanged by that. Nothing reserves space for what has not shipped — a Lists tab
 appears when there is a Lists page behind it.
@@ -850,6 +860,18 @@ Beyond this product's destination, and returning only as a fresh decision:
   *showing 10 of 62*, no badge — every one of those is still forbidden, by this line and by
   `DESIGN.md` §11's own. That rule cost nothing to keep because a figure printed beside a
   poster answers a question nobody asked while you were choosing what to watch tonight.
+
+  **Narrowed once more by [#248](https://github.com/Joyaroin/MediaSafe/issues/248),
+  2026-08-24, for one card and nothing beyond it.** A list card on `/you`'s lists rail
+  carries its title count — the same fact `app/(signed-in)/library/lists-rail.tsx`'s own
+  phone rail reads and withholds (issue #223), reversed here because a list card is not a
+  poster with a number tacked beside it: the whole of what it names *is* a list, and *how
+  many titles it holds* is a fact about the thing named rather than chrome over something
+  else. The library's lists rail is untouched — one poster-free row per list, still with no
+  count on it. A second, independent narrowing, [#250](https://github.com/Joyaroin/MediaSafe/issues/250)'s
+  episodes-remaining count on Up next's next-episode card (§8), landed separately — see that
+  entry for its own reasoning. Together the two are the whole of what has moved; every other
+  rail head and tile in the application keeps the ban exactly as it read before either.
 
   What falls is narrower and is the part that was never argued: **that the questions
   themselves are out of scope.** Watch time, episodes remaining, activity over time and the

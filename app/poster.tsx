@@ -31,6 +31,17 @@ function bucketFor(width: number): string {
   return fit === undefined ? "original" : `w${fit}`;
 }
 
+/**
+ * TMDB's own CDN URL for a poster at the smallest bucket that covers `width` — exported so
+ * a caller that needs the URL rather than this component's `<div className="poster">` box
+ * can still go through `bucketFor` rather than restating the size ladder. `you-list-card.tsx`
+ * is the first: a list card's four-poster collage crops each cover to a square cell, which
+ * `Poster`'s own `2/3`-ratio box cannot draw.
+ */
+export function posterSrc(posterPath: string, width: number): string {
+  return `https://image.tmdb.org/t/p/${bucketFor(width)}${posterPath}`;
+}
+
 export function Poster({
   posterPath,
   width,
