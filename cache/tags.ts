@@ -1,6 +1,7 @@
 import { revalidateTag, unstable_cache, updateTag } from "next/cache";
 
 import {
+  accountFigures,
   accountStats,
   getListDetail,
   getTitleDetail,
@@ -10,6 +11,7 @@ import {
   listLists,
   listUpNextRails,
   listWatchlist,
+  type AccountFigures,
   type AccountStats,
   type LibraryEntryRow,
   type LibraryStateGroupEntry,
@@ -234,6 +236,41 @@ export const CACHED_READS = {
    * that will not fall to zero is a streak that means nothing.
    */
   accountStats: { cachedAs: "stats", readsCurrentDate: true },
+  /**
+   * Issue #247's You page — the six figures, in one entry.
+   *
+   * **It shares `stats` rather than declaring a fact of its own.** The vocabulary's rule
+   * is the one this file states over the Up next rails: reads that go stale on the same
+   * writes share a fact, *because a vocabulary that let those be busted separately would
+   * let them be busted separately by mistake*. These two are the strongest case of it in
+   * the application — `accountFigures` reads the same two statements `accountStats` reads
+   * first, over the same rows, so there is no write in `INVALIDATES` that changes one and
+   * not the other. A second name would be a second list to keep in step, bought with
+   * nothing.
+   *
+   * The name outliving the page is deliberate rather than overlooked: `/stats` goes in
+   * issue #249, and renaming the fact is that ticket's to do once there is one page left
+   * to name it after. A rename here would touch every write row for no behaviour.
+   *
+   * **`readsCurrentDate` is true**, on this field's own stated line: *does this query
+   * touch a derived view, or an `air_date` comparison, at any depth?* `libraryTotals`
+   * selects from `library_entry_remaining` and `library_entry_state`, and both derive
+   * *released* from `air_date <= current_date`.
+   *
+   * It is worth recording that no figure this read **returns** is known to move at
+   * midnight: *shows completed* reads the `finished` branch of `library_entry_state`,
+   * which tests `in_production` and *every season-one-and-above episode watched* and no
+   * date at all, and the branches above it are date-free too. The clock reaches this
+   * statement through `episodes remaining` and the `caught_up` branch, neither of which
+   * You prints.
+   *
+   * That analysis is exactly why the field is `true` rather than `false`. It rests on the
+   * internal structure of a view in another file, so it is the kind of thing that is
+   * right today and quietly wrong after the next amendment to ADR-0001. This field's own
+   * docblock prices both mistakes: wrong in this direction costs one read a day, wrong in
+   * the other is a surface frozen at the day it was last written to.
+   */
+  accountFigures: { cachedAs: "stats", readsCurrentDate: true },
 } as const satisfies Record<string, CachedReadShape>;
 
 /** A read `cache/tags.ts` wraps, named by the function in `db/access.ts` that performs it. */
@@ -549,6 +586,31 @@ export function cachedLibraryEntryIdForTitle(
  */
 export function cachedAccountStats(userId: UserId): Promise<AccountStats> {
   const read = unstable_cache(accountStats, ["accountStats", userId, serverDay()], {
+    tags: [tagFor("stats", userId)],
+  });
+
+  return read(userId);
+}
+
+/**
+ * You's six figures — `you/page.tsx`'s one read (issue #247).
+ *
+ * The same shape as `cachedAccountStats` above, and deliberately so: one entry for the
+ * whole page, the account in the key, the day in the key, and no third argument because
+ * `/you` has no sort, no id and no controls.
+ *
+ * **The key is `accountFigures`, and the tag is `stats`.** Those are two different things
+ * and the difference is the point. The key is per read — sharing one with `accountStats`
+ * would serve a nine-figure object to a page expecting six — while the tag is per *fact*,
+ * and both reads answer the same fact about the same rows, so one `revalidateTag` drops
+ * both. `CACHED_READS`' entry argues why that is a sharing rather than an omission.
+ *
+ * `unstable_cache` stores resolved values only, so there is no cache state in which a
+ * database that is down comes back as an account that has watched nothing: a rejection
+ * passes through untouched and reaches the page's boundary.
+ */
+export function cachedAccountFigures(userId: UserId): Promise<AccountFigures> {
+  const read = unstable_cache(accountFigures, ["accountFigures", userId, serverDay()], {
     tags: [tagFor("stats", userId)],
   });
 

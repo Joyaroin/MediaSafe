@@ -4267,8 +4267,9 @@ const HAS_A_WATCH: SQL = sql`exists (
   select 1 from ${watch} w where w.library_entry_id = ${libraryEntry.id}
 )`;
 
-/** Titles, films and shows watched, episodes remaining, and titles with no release year —
- *  one row, and the only statement that touches `library_entry_remaining`. */
+/** Titles, films and shows watched, shows completed, episodes remaining, and titles with
+ *  no release year — one row, and the only statement that touches
+ *  `library_entry_remaining`. */
 async function libraryTotals(userId: UserId, executor: Executor) {
   const [row] = await executor
     .select({
@@ -4278,6 +4279,20 @@ async function libraryTotals(userId: UserId, executor: Executor) {
       )`.mapWith(Number),
       showsWatched: sql<number>`count(*) filter (
         where ${title.kind} = 'show' and ${HAS_A_WATCH}
+      )`.mapWith(Number),
+      /**
+       * **Shows completed** — issue #247's one new figure, and the only count here that
+       * is about *finishing* rather than about having watched anything.
+       *
+       * It is here rather than beside `stateCounts` because that statement groups by
+       * state and so cannot tell a finished film from a finished show, and the figure
+       * You reports is per kind. The state itself is still read off `library_entry_state`
+       * rather than restated — *finished* is ADR-0001's rule and `db/views.ts` is its one
+       * home, so this asks the view the question instead of re-deriving `in_production`
+       * and *every season-one-and-above episode watched* in a second place.
+       */
+      showsCompleted: sql<number>`count(*) filter (
+        where ${title.kind} = 'show' and ${libraryEntryState.state} = 'finished'
       )`.mapWith(Number),
       /**
        * `coalesce`, because `sum()` over no rows is `NULL` and an empty library's remainder
@@ -4298,6 +4313,14 @@ async function libraryTotals(userId: UserId, executor: Executor) {
       libraryEntryRemaining,
       eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
     )
+    /**
+     * One row per library entry, so this cannot multiply `sum(remaining)` above the way a
+     * join to `watch` would — which is the reason `HAS_A_WATCH` is a correlated `exists`
+     * and this is not. `left`, not `inner`, on the same principle: the view is total over
+     * `library_entry` today, and an inner join would silently drop an entry from *every*
+     * figure in this statement on the day it stopped being.
+     */
+    .leftJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
     .where(ownedBy(userId, libraryEntry));
 
   return row;
@@ -4648,6 +4671,93 @@ export async function accountStats(
     topDecades: decades,
     titlesWithoutReleaseYear: totals.titlesWithoutReleaseYear,
     streakDays: streak,
+    undatedWatches: watches.undatedWatches,
+  };
+}
+
+/**
+ * ── You's six figures ────────────────────────────────────────────────────────────────
+ *
+ * Issue #247. One read, `accountFigures`, and it is the whole of what `/you` puts on the
+ * glass.
+ *
+ * ── Why this is not `accountStats` ───────────────────────────────────────────────────
+ *
+ * You is not a smaller Stats and this is not a projection of one. `accountStats` makes
+ * eight statements to answer nine kinds of question — a streak, an activity window, two
+ * averages, the decades, the recently finished. You asks for six figures that describe a
+ * watching life, and **not one of them turns on a date**, so five of those eight
+ * statements would be work the page never renders. This makes two.
+ *
+ * That the two reads overlap is not a reason to share a function: `/stats` goes in issue
+ * #249, and a `accountStats` that You had been made to consume would have to be untangled
+ * from it on the way out. They share the two private statements underneath instead, which
+ * is where the SQL that must not drift actually lives.
+ *
+ * ── What it does not carry, and why that is the point ────────────────────────────────
+ *
+ * No streak, no averages, no activity. Those are the figures that made Stats a report
+ * rather than a page about the reader, and #245 removed them from the direction rather
+ * than moving them.
+ */
+export interface AccountFigures {
+  /** Every title in the library. You's empty branch turns on this and nothing else — the
+   *  same role it plays on Stats, and for the same reason: an account with nothing in it
+   *  has a real `0` for all six figures, and printing them is a page that looks like it is
+   *  reporting when there is nothing to report. */
+  readonly titles: number;
+  /** Films with at least one watch — *watched anything of*, not *finished*. */
+  readonly filmsWatched: number;
+  /** Shows with at least one watch, on the same reading. */
+  readonly showsWatched: number;
+  /**
+   * Shows in the derived `finished` state — issue #247's new figure, and the one that
+   * makes *finishing* legible beside *starting*. Films are excluded by the count itself
+   * rather than by the caller: `finished` is a state a film reaches on its first watch,
+   * so a per-kind filter is the only thing that keeps this from being *titles finished*.
+   */
+  readonly showsCompleted: number;
+  /** Watches carrying an episode — rewatches and specials included, exactly as on Stats. */
+  readonly episodesWatched: number;
+  /** Split, never summed. `CONTEXT.md`'s glossary reports film and television separately
+   *  and the page prints them that way. */
+  readonly watchTime: WatchTime;
+  /** Watches with no date. You's qualification line names this, **without** claiming the
+   *  watches are left out: no figure above turns on a date, and the glossary is explicit
+   *  that a watch with no date still counts. */
+  readonly undatedWatches: number;
+}
+
+/**
+ * Everything `/you` prints, in one object.
+ *
+ * Two statements, in sequence rather than concurrently: they share the one executor their
+ * caller passed, which inside a transaction is one connection.
+ *
+ * **No `try`, here or anywhere below it.** A failed read throws past the page into
+ * `app/(signed-in)/you/error.tsx`, which draws the inline read-failure treatment and a
+ * reference id. On a page made entirely of numbers that is the discipline that matters
+ * most: every failure has a plausible-looking zero waiting for it, and `AGENTS.md` opens
+ * on why `tvtracker` is the cautionary tale.
+ */
+export async function accountFigures(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<AccountFigures> {
+  const totals = await libraryTotals(userId, executor);
+  const watches = await watchTotals(userId, executor);
+
+  return {
+    titles: totals.titles,
+    filmsWatched: totals.filmsWatched,
+    showsWatched: totals.showsWatched,
+    showsCompleted: totals.showsCompleted,
+    episodesWatched: watches.episodesWatched,
+    watchTime: {
+      filmMinutes: watches.filmMinutes,
+      televisionMinutes: watches.televisionMinutes,
+      watchesWithoutRuntime: watches.watchesWithoutRuntime,
+    },
     undatedWatches: watches.undatedWatches,
   };
 }

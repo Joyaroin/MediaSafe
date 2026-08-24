@@ -47,6 +47,10 @@ const NAV_PAGES = [
   "app/(signed-in)/library/page.tsx",
   "app/(signed-in)/lists/page.tsx",
   "app/(signed-in)/stats/page.tsx",
+  /** Issue #247. Not on the bar yet — #249 points the fourth tab here and removes the
+   *  line above — but a screen the reader can reach by URL still slides, and wrapping it
+   *  now means that ticket changes one `href` rather than this file as well. */
+  "app/(signed-in)/you/page.tsx",
   "app/(signed-in)/settings/page.tsx",
 ];
 
