@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import { config } from "@/proxy";
 import {
   auditLoadingBoundaries,
+  auditModalSlots,
   auditRouteProtection,
   loadingBoundaryReader,
   matcherRunsOn,
   probeUrlFor,
   readBuildArtifacts,
+  slotDefaultReader,
+  withoutInterception,
 } from "./support/route-manifest";
 
 /**
@@ -114,12 +117,30 @@ describe("every route is behind the proxy matcher", () => {
    * The assumption `matcherRunsOn` makes, checked where it is made.
    *
    * It asks Next's matcher with an empty `nextConfig`, which is the same question the
-   * server asks only while there is no `basePath` and no rewrite. Add either and every
-   * answer above quietly starts being about a different application than the one running.
+   * server asks only while there is no `basePath` and no **authored** rewrite. Add either
+   * and every answer above quietly starts being about a different application than the one
+   * running.
+   *
+   * ── Why *authored*, since issue #254 ────────────────────────────────────────────────
+   *
+   * This used to read `rewriteCount === 0`, and the episode modal makes that false: an
+   * intercepting route is compiled as a rewrite, so the build now has one that nobody
+   * wrote. Loosening the assertion to *some rewrites are fine* would have been the wrong
+   * repair — it would exempt exactly the thing the check exists to notice.
+   *
+   * So the rewrites are read by shape instead of counted (`interceptionsIn`). A rewrite
+   * counts as the framework's own only if its destination carries an interception marker
+   * and its source is that same path with the marker taken out; everything else is
+   * authored, and authored is what must stay at zero. The interceptions themselves are not
+   * unchecked — they are asserted, by name and by URL, in the modal-slot audit below.
+   *
+   * The exemption is sound rather than convenient: `beforeFiles` is before the
+   * *filesystem*, not before middleware, so an interception rewrite cannot change which
+   * URLs the gate is asked about. What it changes is which component renders afterwards.
    */
   it("routes on the terms the matcher was asked about", () => {
     expect(built.assumptions.basePath).toBe("");
-    expect(built.assumptions.rewriteCount).toBe(0);
+    expect(built.assumptions.authoredRewriteCount).toBe(0);
   });
 });
 
@@ -424,11 +445,14 @@ describe("every dynamic surface has a loading boundary", () => {
  * than something proved once by hand and then deleted.
  */
 describe("the boundary check fails when a surface is left waiting", () => {
-  /** A page in the build, as the audit wants one, with no build behind it. */
+  /** A page in the build, as the audit wants one, with no build behind it. `slot` is
+   *  `null` — the implicit `children` slot, which is every page in this suite. The modal
+   *  audit's own fixtures below are where a named slot is written out. */
   const page = (route: string, segment: string, dynamic = true) => ({
     route,
     segment,
     dynamic,
+    slot: null,
   });
 
   /** A boundary reader over a hand-written set of segments. */
@@ -499,5 +523,255 @@ describe("the boundary check fails when a surface is left waiting", () => {
     );
 
     expect(audit.unbounded).toEqual(["/library/[entryId]"]);
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ * **The third audit — issue #254.** The parallel slot is there, and it intercepts.
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ *
+ * It lives in this file for the reason the loading-boundary audit does: same list, same
+ * question shape — *here is everything the build produced, and here is what one of them
+ * must be.* Failure lists kept apart, a named list with a reason, and a hand-built proof
+ * that it can fail.
+ *
+ * ── The failure it exists for is silent, and that is unusual even here ───────────────
+ *
+ * `@modal` and `(.)library` are both **invisible in the URL**. A slot adds no path segment
+ * and neither does a route group, so the address is `/library/…/episode/…` whichever render
+ * the reader gets. Delete `app/(signed-in)/@modal`, or misspell `(.)library` by a
+ * character, or move the slot to a layout only one of the two origins sits under, and: the
+ * build succeeds, the typechecker is happy, every existing test passes, and pressing an
+ * episode still shows the episode. It just **replaces the page the reader was on** instead
+ * of arriving over it, and takes their scroll position with it. Nothing throws, and nobody
+ * would find out from CI.
+ *
+ * The other side of it is worse and just as quiet: `default.tsx` going missing does not
+ * break the modal at all. It breaks `/library`, `/you`, `/settings` and every other
+ * signed-in surface, because a named slot with no `default` errors on every URL it cannot
+ * match — the modal being the only thing that still works.
+ *
+ * ── What it reads ───────────────────────────────────────────────────────────────────
+ *
+ * The interceptions and the pages come out of `next build` — the rewrite it compiled and
+ * the slot each page was compiled into. **Whether the slot has a `default` does not**, for
+ * the loading boundary's reason one convention over: a `default` serves no URL, so it is in
+ * no manifest. That is `slotDefaultReader`, the impure edge of this check.
+ */
+
+/**
+ * **Every route that opens as a modal, and the slot it opens in.**
+ *
+ * One entry, and the list is the point rather than its length: adding a modal is a line in
+ * a pull request with a name on it, exactly as adding a proxy exemption is. An interception
+ * that appears without one fails as `unnamed`.
+ */
+const MODAL_ROUTES = [
+  {
+    /**
+     * Episode detail — #245's *episode detail opens over the screen I was on, and Back
+     * returns me to exactly where I was scrolled*. Two origins reach it, a rail card on the
+     * landing screen and a row in a season list, and they share this one interception
+     * because the slot is on the layout they have in common.
+     */
+    route: "/library/[entryId]/episode/[episodeId]",
+    slot: "@modal",
+  },
+] as const;
+
+/** The route group the slot lives in. The slot is a directory inside it, and neither
+ *  contributes a path segment — which is the whole reason this has to be spelt out. */
+const SLOT_GROUP = "(signed-in)";
+
+describe("episode detail arrives as a modal over what you were looking at", () => {
+  const built = readBuildArtifacts(process.cwd());
+  const hasDefault = slotDefaultReader(process.cwd(), SLOT_GROUP);
+
+  it("intercepts exactly the routes named above, into the slots named for them", () => {
+    const audit = auditModalSlots(
+      built.pages,
+      built.assumptions.interceptions,
+      MODAL_ROUTES,
+      hasDefault,
+    );
+
+    // Five separate assertions rather than one on the whole object, so a failure names
+    // which of the five mistakes was made — matching the two audits above.
+    expect(audit.missing).toEqual([]);
+    expect(audit.unnamed).toEqual([]);
+    expect(audit.wrongSlot).toEqual([]);
+    expect(audit.withoutFullPage).toEqual([]);
+    expect(audit.withoutDefault).toEqual([]);
+  });
+
+  /**
+   * The slot, asserted positively.
+   *
+   * Every assertion above is a `toEqual([])`, and an empty list is also what a check that
+   * has stopped looking returns. This is the one that fails if `built.pages` came back
+   * empty, if the slot were renamed, or if the interception stopped compiling — three ways
+   * for the audit to pass while proving nothing.
+   */
+  it("compiles the intercepted render into the @modal slot", () => {
+    const intercepted = built.pages.filter((page) => page.slot === "@modal");
+
+    expect(intercepted.map((page) => page.segment)).toEqual([
+      "(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]",
+    ]);
+    expect(intercepted.map((page) => withoutInterception(page.route))).toEqual([
+      "/library/[entryId]/episode/[episodeId]",
+    ]);
+  });
+
+  /**
+   * **And the full page is still behind it** — #254's *opening the URL directly or
+   * refreshing renders the full page, not a modal over nothing.*
+   *
+   * The mechanism is the rewrite's `next-url` condition, and this asserts the condition
+   * rather than trusting the folder name: `next-url` is a header only a client-side
+   * navigation sends, so a typed address, a shared link and a refresh all miss the rewrite
+   * and land on the page. Read out of the build, so a framework change that dropped the
+   * condition — which would make every refresh render a dialog over a blank layout — fails
+   * here rather than in somebody's browser.
+   */
+  it("intercepts only a navigation from inside the application", () => {
+    const [rewrite, ...rest] = built.rewrites.beforeFiles;
+
+    expect(rest).toEqual([]);
+    expect(rewrite.has).toEqual([
+      { type: "header", key: "next-url", value: expect.any(String) },
+    ]);
+  });
+
+  /**
+   * The slot has a `default`, asserted on its own rather than only through the audit.
+   *
+   * This is the assertion whose failure means *the rest of the application is down*, not
+   * *the modal is broken*, and it reads better named than buried in a fifth empty list.
+   */
+  it("has a default, so every other signed-in route still renders", () => {
+    expect(hasDefault("@modal")).toBe(true);
+  });
+});
+
+/**
+ * **This check can fail too.** Same posture as the two failure suites above: hand-built
+ * inputs with no build behind them, so the evidence is permanent rather than something
+ * proved once by hand and then deleted.
+ */
+describe("the modal check fails when the slot goes missing", () => {
+  /** A page in the build, as this audit wants one. */
+  const modalPage = (route: string, segment: string, slot: string | null = null) => ({
+    route,
+    segment,
+    dynamic: true,
+    slot,
+  });
+
+  /** The full page, and its intercepted render in `@modal`. */
+  const FULL = modalPage(
+    "/library/[entryId]/episode/[episodeId]",
+    "(signed-in)/library/[entryId]/episode/[episodeId]",
+  );
+  const MODAL = modalPage(
+    "/(.)library/[entryId]/episode/[episodeId]",
+    "(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]",
+    "@modal",
+  );
+
+  const EXPECTED = [
+    { route: "/library/[entryId]/episode/[episodeId]", slot: "@modal" },
+  ] as const;
+
+  const withDefault = (slot: string) => slot === "@modal";
+
+  /**
+   * **The one this audit was written for.** The slot directory is gone; the route still
+   * builds, still serves, still shows the episode. Nothing else in the suite notices.
+   */
+  it("reports a modal route the build stopped intercepting", () => {
+    const audit = auditModalSlots([FULL], [], EXPECTED, withDefault);
+
+    expect(audit.missing).toEqual(["/library/[entryId]/episode/[episodeId]"]);
+  });
+
+  /** A modal appearing that nobody decided on — the exemption list's own discipline. */
+  it("reports an interception nothing names", () => {
+    const audit = auditModalSlots(
+      [FULL, MODAL, modalPage("/lists", "(signed-in)/lists")],
+      [],
+      [],
+      withDefault,
+    );
+
+    expect(audit.unnamed).toEqual(["/library/[entryId]/episode/[episodeId]"]);
+  });
+
+  /**
+   * The same failure reached from the other file: a rewrite the build compiled with no
+   * page filed behind it. Read from both so that half an interception is still caught.
+   */
+  it("reports an interception that compiled a rewrite and no page", () => {
+    const audit = auditModalSlots(
+      [FULL],
+      [{ route: "/lists/[listId]", intercepted: "/(.)lists/[listId]" }],
+      EXPECTED,
+      withDefault,
+    );
+
+    expect(audit.unnamed).toEqual(["/lists/[listId]"]);
+  });
+
+  /**
+   * The slot moved. This is the case that looks identical to the reader — no modal — and
+   * has a completely different fix from `missing`, which is why it is its own list.
+   */
+  it("reports an interception filed under a slot the layout does not render", () => {
+    const audit = auditModalSlots(
+      [
+        FULL,
+        modalPage(
+          "/(.)library/[entryId]/episode/[episodeId]",
+          "(signed-in)/@sheet/(.)library/[entryId]/episode/[episodeId]",
+          "@sheet",
+        ),
+      ],
+      [],
+      EXPECTED,
+      withDefault,
+    );
+
+    expect(audit.wrongSlot).toEqual(["/library/[entryId]/episode/[episodeId]"]);
+  });
+
+  /**
+   * **A modal over nothing.** The intercepted render is there and the page it falls back
+   * to is not, so a shared link or a refresh 404s — #254's own acceptance criterion,
+   * failing.
+   */
+  it("reports a modal with no full page behind it", () => {
+    const audit = auditModalSlots([MODAL], [], EXPECTED, withDefault);
+
+    expect(audit.withoutFullPage).toEqual(["/library/[entryId]/episode/[episodeId]"]);
+  });
+
+  /** The `default` deleted — the failure that takes the rest of the application with it. */
+  it("reports a slot with no default", () => {
+    const audit = auditModalSlots([FULL, MODAL], [], EXPECTED, () => false);
+
+    expect(audit.withoutDefault).toEqual(["/library/[entryId]/episode/[episodeId]"]);
+  });
+
+  /**
+   * And the marker itself, since every list above is keyed on reading it correctly. All
+   * four of Next's spellings, and a route that has none.
+   */
+  it("reads every interception marker the framework has", () => {
+    expect(withoutInterception("/(.)library/[entryId]")).toBe("/library/[entryId]");
+    expect(withoutInterception("/(..)photos/[id]")).toBe("/photos/[id]");
+    expect(withoutInterception("/(..)(..)photos/[id]")).toBe("/photos/[id]");
+    expect(withoutInterception("/(...)photos/[id]")).toBe("/photos/[id]");
+    expect(withoutInterception("/library/[entryId]")).toBe("/library/[entryId]");
   });
 });

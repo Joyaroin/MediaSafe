@@ -294,6 +294,20 @@ function CardBody({
           row. */}
       <Link
         href={`/library/${entry.libraryEntryId}/episode/${episodeId}`}
+        /**
+         * **The landing screen must not scroll when the modal opens** — issue #254.
+         *
+         * This press is intercepted into the layout's `@modal` slot, so the page under it
+         * is not replaced and is still the reader's place to come back to. Next's router
+         * scrolls to the top of the document on every navigation unless told otherwise,
+         * and it does not know this one only opened a dialog: the rail would slide to the
+         * top of the page behind the backdrop, and Back would return the reader to a
+         * screen they had scrolled away from.
+         *
+         * `scroll={false}` costs nothing on the other path. A direct load or a refresh
+         * lands on the full page with no history and nothing to preserve.
+         */
+        scroll={false}
         className="pressable block"
         /* The still is `aria-hidden` and the code line is three tokens, so this label is
            what a screen reader hears for the link. `titleName` first, because the series

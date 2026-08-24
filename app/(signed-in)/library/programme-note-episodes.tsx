@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import type { EpisodeDetail, LibraryState } from "@/db/access";
@@ -527,29 +528,76 @@ function EpisodeLine({
 
   return (
     <li className={`relative ${EPISODE_ROW}`}>
-      <span
-        className={episode.upNext && !watched ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
-        data-numeric
+      {/**
+       * **The row is a destination now** — issue #254, #245's story 63: *press an episode
+       * row in a season list and get the same page.* The same href the rail card carries,
+       * so both origins reach one route and one modal.
+       *
+       * ── What is inside the link, and what is emphatically not ──────────────────────
+       *
+       * The number and the name, and nothing else. `TRAILING` — the check, *Watched up to
+       * here*, *Rewatch*, *Unwatch* — stays a **sibling** of this link rather than a child
+       * of it, which is `SPEC.md`'s own rule for this row and #254's acceptance criterion:
+       * *a season row's check remains a separate target of at least 44px.* A control
+       * nested inside a link is a control every press of which is also a navigation, and
+       * the daily gesture is the one press in this application that must never turn into
+       * one. The check's own `44px` box is `RECORDING_HIT_BOX`'s and is untouched by this.
+       *
+       * `self-stretch -my-2 py-2` is what makes the link's own target the full height of
+       * the row rather than the height of one line of text. Both halves are needed and the
+       * second is the one that is easy to leave out: `EPISODE_ROW` is `min-h-11 py-2`, so
+       * `self-stretch` alone gives the link the row's **content** box — `44 - 16 = 28px`,
+       * comfortably under the floor — and the margin is what lets it back out into the
+       * row's own padding to reach `44`. This is `RECORDING_HIT_BOX`'s own `-my-2` trick
+       * (`watch-mark-motion.tsx`), used here for the identical reason, and the row's height
+       * is untouched by it because a negative margin takes up no space.
+       *
+       * **Re-measured, because `DESIGN.md` §6 says to re-measure if you touch this row** —
+       * and its own history says the first attempt does not pass. In Chromium against the
+       * compiled CSS, with the linked row and the row as it was rendered side by side in
+       * one document: identical at `420 / 375 / 340px` in all four states, name cell
+       * identical too, and the check's box `44.00 × 44.00` flush with the row's top edge.
+       * §6's *the fifth time was the row becoming a link* has the table.
+       *
+       * `scroll={false}` for `up-next-episode-card.tsx`'s reason, which matters more here:
+       * a season list is scrolled to wherever the reader was reading, and the router would
+       * otherwise send the page behind the backdrop to the top before the modal even
+       * opened.
+       *
+       * The label is the episode's **full** name rather than the two cells' text, because
+       * `E1 Brigade` read aloud does not say which season it is in — the same words the
+       * row's own controls already use (`season-grouping.ts`).
+       */}
+      <Link
+        href={`/library/${libraryEntryId}/episode/${episode.id}`}
+        scroll={false}
+        aria-label={fullName}
+        className="-my-2 flex min-w-0 flex-1 items-center gap-3 self-stretch py-2"
       >
-        E{episode.episodeNo}
-      </span>
-
-      {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
-          TMDB not having named it yet — not a licence to print the number a second time
-          in its place. */}
-      <span className={EPISODE_NAME_CELL}>
         <span
-          className={`block truncate ${
-            watched && phase === "settled"
-              ? WATCHED_NAME
-              : episode.upNext && !watched
-                ? "font-medium"
-                : ""
-          }`}
+          className={episode.upNext && !watched ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
+          data-numeric
         >
-          {episode.name === null ? "Not yet named" : episode.name}
+          E{episode.episodeNo}
         </span>
-      </span>
+
+        {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
+            TMDB not having named it yet — not a licence to print the number a second time
+            in its place. */}
+        <span className={EPISODE_NAME_CELL}>
+          <span
+            className={`block truncate ${
+              watched && phase === "settled"
+                ? WATCHED_NAME
+                : episode.upNext && !watched
+                  ? "font-medium"
+                  : ""
+            }`}
+          >
+            {episode.name === null ? "Not yet named" : episode.name}
+          </span>
+        </span>
+      </Link>
 
       <span className={TRAILING}>
         {/* The label first, then the controls — it is a fact about the row rather than
