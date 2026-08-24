@@ -90,11 +90,17 @@ export const SOLID_RECOVERY =
  *
  * ── Why the selection bar needed one ─────────────────────────────────────────────────
  *
- * Issue #199 gives the Library's selection bar a third control, and that bar cannot grow:
+ * Issue #199 gave the Library's selection bar a third control, and that bar cannot grow:
  * `app/phone-bar.ts` fixes it at the tab bar's `75px` precisely so the swap moves nothing
  * under it. A count, *Add to list*, *Abandon* and *Done* at the surface measure want more
  * than a 375px phone has between the bar's `22px` margins, so the count would clip on
- * every phone rather than on the narrow ones. This is the same failure #203 re-measured
+ * every phone rather than on the narrow ones.
+ *
+ * **The third control has since been retired** — nothing abandons a title any more — and
+ * this constant is not. The bar is back to a count, *Add to list* and *Done*, which fits at
+ * either measure; what does not come back is a reason to have two measures for one row.
+ * `selection-action-bar.tsx` keeps the compact pair and says so on its own docblock, and
+ * the paragraph below is the reason a call site cannot quietly undo that decision anyway. This is the same failure #203 re-measured
  * the episode row for, arriving from the other direction: there a fixed slot grew a row,
  * here a fixed row squeezed a label.
  *

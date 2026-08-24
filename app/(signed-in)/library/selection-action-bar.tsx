@@ -20,8 +20,12 @@ import { referenceFor } from "@/errors/reference";
 import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context";
 
 /**
- * The bar that takes the tab bar's place while the reader is choosing — issue #197, and
- * issue #199's second action beside the first.
+ * The bar that takes the tab bar's place while the reader is choosing — issue #197.
+ *
+ * It carried a second action for a while: issue #199's bulk *Abandon*, beside *Add to
+ * list*. Giving up on a title is not something this application offers any more — not here
+ * and not on title detail — so the bar is back to the two controls it was designed with.
+ * The state is not gone, only the ways in: `title-hero.tsx` carries that whole statement.
  *
  * ── Replaced, not stacked ────────────────────────────────────────────────────────────
  *
@@ -48,25 +52,29 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  * other reason to know either exists. One attribute and one CSS rule is the whole
  * mechanism, and it disappears with this component.
  *
- * ── Three controls in a row that cannot grow ─────────────────────────────────────────
+ * ── Two controls in a row that cannot grow ───────────────────────────────────────────
  *
  * The bar's height is not this file's to spend. `app/phone-bar.ts` fixes it at the tab
  * bar's own `44 + 8 + 22 + 1 = 75px` precisely so the swap moves nothing under it, and
  * `(signed-in)/layout.tsx` clears exactly that at the foot of every phone page — so a
- * second line for the count is not an option, however tempting it looks once there are
+ * second line for the count is not an option, however tempting it looked when there were
  * three controls beside it.
  *
- * What gives instead is the **status line's wording**, and only its wording. It read
- * *6 titles selected* while there were two controls; with three that sentence and
- * `Add to list`, `Abandon` and `Done` want more than a 375px phone has between the bar's
- * `22px` margins. So the line is now *6 selected* — the number and the verb, which is the
- * whole of what it was saying, since the things being counted are on screen wearing check
- * badges. The word it drops is the one `formatTitleCount` exists to pluralise, so that
+ * What gave instead was the **status line's wording**, and only its wording. It read
+ * *6 titles selected* while there were two controls; a third — `Add to list`, `Abandon`
+ * and `Done` — wanted more than a 375px phone has between the bar's `22px` margins. So the
+ * line became *6 selected*: the number and the verb, which is the whole of what it was
+ * saying, since the things being counted are on screen wearing check badges.
+ *
+ * **It stays that way now that the third control is gone**, and that is a decision rather
+ * than an oversight. The shorter line is the better line — it says the same thing in less
+ * space on the most cramped surface in the application — and reverting it would spend the
+ * room a removed button freed on a word that was never carrying anything. The word it drops is the one `formatTitleCount` exists to pluralise, so that
  * helper is no longer the right tool for this line and is not called on it; the picker's
  * heading below still asks it the question it answers well, *how do you name a count of
  * titles in a sentence.*
  *
- * The gap closes from `gap-3` to `gap-2`, and the three controls take the **compact
+ * The gap closes from `gap-3` to `gap-2`, and the controls take the **compact
  * measure** — `SOLID_RECOVERY_COMPACT` and `GHOST_RECOVERY_COMPACT`, `px-2.5 py-1` against
  * the surface-level `px-4 py-2`. That is the same treatment at a different measure, not a
  * second register: issue #203 established the ghost one for the episode row and this
@@ -89,19 +97,6 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  * The dialog below keeps the **surface** measure — its *Cancel* is still `GHOST_RECOVERY`.
  * The compact one earns its keep in a row that cannot grow, and a modal with a whole page
  * to itself is the opposite of that.
- *
- * ── Abandon sits beside Add to list, and Done still ends the row ─────────────────────
- *
- * Issue #199's own placement. It takes the ghost treatment against *Add to list*'s solid
- * one, because the two are not equals: adding is the action the mode was built for and
- * abandoning is the other thing you might do with the same selection.
- *
- * That leaves two ghost buttons next to each other, and the cost is worth naming: *Done*
- * and *Abandon* are told apart by their labels rather than by their register, on a bar
- * pressed with a thumb. It is accepted here rather than designed around because the
- * mis-tap is recoverable — an abandon is a column with a control that clears it on every
- * one of those titles (`abandon-control.tsx`), which is exactly the argument the ticket
- * uses to refuse a confirmation here and to keep one on removal, where nothing comes back.
  *
  * ── The picker, and what it does not offer ───────────────────────────────────────────
  *
@@ -154,17 +149,20 @@ export function SelectionActionBar() {
   if (selection === null || view === null) return null;
 
   /**
-   * A write of either kind is on the wire, so neither control is armed.
+   * The write is on the wire, so the control that starts it is not armed.
    *
-   * One flag over both of the store's, because the store refuses either press while either
-   * write is in flight (`bulk-selection.ts`) and a button that is refused should not look
-   * pressable. *Done* is deliberately left out of it: ending the mode is not a write, and a
-   * reader who has decided to leave should not be held there by a round trip they cannot
-   * see. A write already started still lands, still ends in its own toast if it is lost,
-   * and the store's identity check is what stops a late one clearing a selection that has
-   * moved on.
+   * It read across two flags while there were two writes, because the store refused either
+   * press while either was in flight. There is one of each now, and the name stays `busy`
+   * rather than collapsing into `view.adding` at the call sites: what the buttons want to
+   * know is *is this bar mid-write*, which is a question about the bar and not about the
+   * add.
+   *
+   * *Done* is deliberately left out of it: ending the mode is not a write, and a reader who
+   * has decided to leave should not be held there by a round trip they cannot see. A write
+   * already started still lands, still ends in its own toast if it is lost, and the store's
+   * identity check is what stops a late one clearing a selection that has moved on.
    */
-  const busy = view.adding || view.abandoning;
+  const busy = view.adding;
 
   function openPicker(): void {
     dialogRef.current?.showModal();
@@ -216,21 +214,6 @@ export function SelectionActionBar() {
             className={`${SOLID_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
           >
             {view.adding ? "Adding" : "Add to list"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void selection.abandon()}
-            disabled={busy}
-            // No confirmation, deliberately, and issue #199 is explicit about why the
-            // sibling control has one: removal's dialog reads a per-title footprint
-            // because a hundred-and-eighteen watches is a different decision from none.
-            // Abandoning destroys nothing and every one of these titles keeps a control
-            // that takes it back, so there is no number here worth stopping the reader to
-            // state — and a summary across six is the collapse that reasoning rejects.
-            className={`${GHOST_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
-          >
-            {view.abandoning ? "Abandoning" : "Abandon"}
           </button>
 
           <button

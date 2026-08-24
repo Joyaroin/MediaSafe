@@ -29,7 +29,7 @@ import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
  * `submit` is handed the outcome type directly; whether it wraps its own Server Action
  * call in a `try`/`catch` — the way `add-to-list-control.tsx`'s `createAndAdd` does, for
  * the request never reaching the server at all — is each caller's own call, the same
- * shape `catalogue-result.tsx`'s `add()` and `rating-control.tsx`'s `write()` already use.
+ * shape `catalogue-result.tsx`'s `add()` already uses.
  * This component only runs what it is given.
  */
 export type ListNameOutcome =

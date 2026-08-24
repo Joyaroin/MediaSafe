@@ -19,10 +19,26 @@ import {
 import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-add";
 
 /**
- * *Add to library*, and *Add — watched* beside it — issue #148's control and issue
- * #222's. Everything else title detail can do to a title is a thing you can only do to
- * one you have, so this is still the only door; it is now two presses wide, and both of
- * them lead through it.
+ * *Add to My Shows* / *Add to My Films*, and *Add — watched* beside it — issue #148's
+ * control and issue #222's. Everything else title detail can do to a title is a thing you
+ * can only do to one you have, so this is still the only door; it is now two presses wide,
+ * and both of them lead through it.
+ *
+ * ── The primary label names the kind, and only the primary label ────────────────────
+ *
+ * It read *Add to library* for both kinds. The library has been two modes since
+ * `kind-mode.ts` — Shows and Films, chosen on the library screen and on search — and a
+ * button that says *library* is naming the container while every screen around it names
+ * the half you are actually looking at. So the label says which half: `ADD_LABELS` below,
+ * the same `film | show` the row itself is keyed on.
+ *
+ * The sibling keeps *Add — watched* / *Add — watched all* unchanged, and so do both
+ * accessible names — those still say *to your library*, which is where the title goes and
+ * is a truer sentence read aloud than *to My Shows* would be. The two are deliberately not
+ * in step: the visible label answers *where does this land* on a screen that has kind on
+ * it everywhere, and the accessible one answers *what does this button do* to somebody who
+ * has neither the poster nor the mode control for context. `add-watched.ts` holds that
+ * pair.
  *
  * **The door is what is shared, and the destination is why.** Both writes end with this
  * account owning the title, so both navigate to the same place, raise the same toast when
@@ -65,6 +81,20 @@ import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-ad
  * The caller mounts this under a key of the title it is about, for the reason `page.tsx`
  * gives there: neither the ref nor `pending` may survive onto a different title.
  */
+
+/**
+ * The primary label, by kind — *My Shows* and *My Films*, `kind-mode.ts`'s own two words
+ * with the possessive the library screen's modes leave implicit.
+ *
+ * A `Record` rather than a ternary at the call site, for `library-state.ts`'s reason: a
+ * `TitleKind` that ever grew a third member would be a type error here rather than a
+ * button silently labelled with the wrong half of a conditional.
+ */
+const ADD_LABELS: Record<TitleKind, string> = {
+  show: "Add to My Shows",
+  film: "Add to My Films",
+};
+
 export function AddToLibraryControl({
   kind,
   tmdbId,
@@ -139,10 +169,14 @@ export function AddToLibraryControl({
      *
      * Measured in a real Chromium tab against the compiled CSS with Archivo loaded. Both
      * controls come out `34.2px` tall, which is the point of the paragraph above; the pair
-     * plus its gap is `256.6px` on a show and `241.2px` on a film, against `327px` of
-     * content width at a `375px` viewport and `292px` at `340px`. So it stays on one line
-     * on a phone, and `flex-wrap` is the backstop for a longer label — a name has no
-     * bearing on it, since neither label carries one — rather than the everyday case.
+     * plus its gap was `256.6px` on a show and `241.2px` on a film, against `327px` of
+     * content width at a `375px` viewport and `292px` at `340px`.
+     *
+     * **The primary label is longer now** — *Add to My Shows* against *Add to library* —
+     * so those two figures no longer hold and the pair is the likelier of the two to take
+     * a second line at `340px`. That is what `flex-wrap` was already the backstop for, and
+     * wrapping is the intended outcome rather than a squeezed label: this page has no
+     * fixed row for the pair to fit into, which is the whole reason the wrap is here.
      */
     <div className="mt-5 flex flex-wrap items-center gap-3">
       <button
@@ -158,7 +192,7 @@ export function AddToLibraryControl({
          */
         className={`code-line border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground ${IN_FLIGHT}`}
       >
-        Add to library
+        {ADD_LABELS[kind]}
       </button>
 
       {/**

@@ -9,9 +9,16 @@ import type { EpisodeDetail } from "@/db/access";
  * The restructured title detail, and the parts of it that would go wrong **quietly**.
  *
  * Most of this change is visible the moment the screen loads. These are not: a progress
- * bar that disagrees with the sentence beside it, a status menu that starts writing a
- * state instead of causing one, and a bulk mark that covers a different set of episodes
- * from the control it was modelled on.
+ * bar that disagrees with the sentence beside it, a control that starts writing a derived
+ * state instead of causing one, and a section that drifts out of the order the screen was
+ * argued into.
+ *
+ * ── Source text, not a render ────────────────────────────────────────────────────────
+ *
+ * `title-hero.tsx` imports React's `ViewTransition`, which the installed React does not
+ * export — Next supplies it at build time — so this component cannot be rendered under
+ * Vitest and never could be. `code()` below strips comments first, so every assertion is
+ * about what the file *does* rather than about what its docblocks happen to say.
  */
 
 function code(path: string): string {
@@ -21,7 +28,6 @@ function code(path: string): string {
 }
 
 const HERO = code("app/(signed-in)/library/title-hero.tsx");
-const ABANDON = code("app/(signed-in)/library/abandon-control.tsx");
 const CONTENT = code("app/(signed-in)/library/programme-note-content.tsx");
 
 function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
@@ -104,66 +110,144 @@ describe("the hero", () => {
   });
 });
 
-describe("the one state anybody sets by hand", () => {
+describe("the states, and what the hero may do with them", () => {
   /**
-   * The most important property on this screen, and it survived the hero being rebuilt
-   * twice. `CONTEXT.md`: four of the five states are derived from your watches and only
-   * *abandoned* is set by hand. Nothing here may write a state.
+   * The most important property on this screen, and it has survived the hero being rebuilt
+   * three times. `CONTEXT.md`: four of the five states are derived from your watches, and
+   * only *abandoned* was ever set by hand.
    *
-   * There was briefly a *Where this stands* menu in the hero offering *Mark everything
-   * watched* alongside *Give up on this*. It went — the label read as a settings control
-   * and it put the write anybody reaches for behind two presses — and `AbandonControl`
-   * took its place, which is what was there before the restructure.
+   * **Nothing sets it by hand any more.** `AbandonControl` is retired — no control here, no
+   * *Abandon* on the library's selection bar — so *abandoned* is a state nothing new can
+   * enter. The rows already in it are untouched: `abandoned_at`, the view's first branch
+   * and the `abandoned` member of `LibraryState` all stay, which is why the hero still has
+   * to be able to print the word.
    */
-  it("writes the abandon flag and never a derived state", () => {
-    expect(HERO).toContain("<AbandonControl");
-    expect(ABANDON).toMatch(/abandonAction|unabandonAction/);
-
-    for (const derived of ['"watching"', '"caught_up"', '"finished"', '"watchlist"']) {
-      expect(ABANDON).not.toContain(derived);
-      expect(HERO).not.toContain(`state={"${derived}"}`);
-    }
+  it("no longer carries the control that set a state by hand", () => {
+    expect(HERO).not.toContain("AbandonControl");
+    expect(HERO).not.toContain("abandonAction");
+    expect(HERO).not.toContain("unabandonAction");
   });
 
   /**
    * The hero reads the state to *print* it and never to set it — `STATE_LABELS` keyed by
    * `detail.state`, which is what the view computed in SQL.
+   *
+   * The one write in this component's subtree is a film's watched mark, and it reports the
+   * one state a film's watch can land on. `film-watch-row.tsx` carries why that literal is
+   * a certainty rather than a guess, and `tests/film-watch-row.test.ts` owns the row; what
+   * matters here is that the hero itself hands the row a callback rather than a state.
    */
   it("reads the state to print it", () => {
     expect(HERO).toMatch(/STATE_LABELS\[detail\.state\]/);
+    expect(HERO).not.toMatch(/state=\{"(watching|caught_up|finished|watchlist|abandoned)"\}/);
+  });
+
+  /**
+   * *Abandoned* has to stay printable, and the label table is what makes it so. A table
+   * that lost the key would not fail loudly — `STATE_LABELS` is a `Record<LibraryState, …>`
+   * so TypeScript catches a missing key, but this asserts the intent rather than relying on
+   * the compiler to be the only thing standing between an existing row and a blank line.
+   */
+  it("keeps a word for the state nothing can enter any more", () => {
+    const labels = code("app/(signed-in)/library/library-state.ts");
+    const chips = code("app/(signed-in)/library/library-filter-bar.tsx");
+
+    expect(labels).toContain('abandoned: { label: "Abandoned"');
+    expect(chips).toContain('abandoned: "Abandoned"');
   });
 });
 
 describe("the order of the screen", () => {
   /**
-   * Cast last, after the rating — which is why the streamed facts arrive as two nodes
-   * rather than one. A single `liveFacts` node could only place all three together, and
-   * the failure mode is silent: cast simply reappears in the middle.
+   * Cast last, below the watch providers — which is why the streamed facts arrive as three
+   * nodes rather than one. A single `liveFacts` node could only place them together, and
+   * the failure mode is silent: a section simply reappears in the middle.
+   *
+   * Three rather than the two this was written against, because the synopsis moved into
+   * the hero's card and the providers did not.
    */
-  it("places cast last, after the streamed facts", () => {
+  it("places the three streamed sections in the order the screen was argued into", () => {
+    const synopsis = CONTENT.indexOf("synopsis={synopsis}");
+    const providers = CONTENT.indexOf("{watchProviders}");
     const cast = CONTENT.indexOf("{cast}");
-    const facts = CONTENT.indexOf("{liveFacts}");
 
-    expect(facts).toBeGreaterThan(-1);
-    expect(cast).toBeGreaterThan(facts);
+    expect(synopsis).toBeGreaterThan(-1);
+    expect(providers).toBeGreaterThan(-1);
+    expect(cast).toBeGreaterThan(providers);
   });
 
   /**
-   * Your rating and *Remove from library* sit directly under the hero, above everything
-   * borrowed. They were at the foot, below the episode list; burying the rating under
-   * sixty episode rows made the one fact MediaSafe actually **owns** about a title the
-   * hardest thing on the page to reach.
+   * The synopsis goes to the **hero**, not to the page, and it goes there as a node.
+   *
+   * The whole point of moving it was that it belongs in the card with the poster it is a
+   * description of. A change that put it back on the page would still render a synopsis
+   * somewhere, in the right order, saying the right thing — which is exactly the kind of
+   * silent regression this file exists for.
    */
-  it("puts the owned things above the borrowed ones", () => {
-    const rating = CONTENT.indexOf("<RatingControl");
-    const remove = CONTENT.indexOf("<RemoveControl");
-    const facts = CONTENT.indexOf("{liveFacts}");
-    const episodes = CONTENT.indexOf("<ProgrammeNoteEpisodes");
+  it("hands the synopsis to the hero rather than drawing it on the page", () => {
+    expect(HERO).toContain("{synopsis}");
+    expect(CONTENT).toContain("synopsis={synopsis}");
+    // Not also loose on the page: the node can only be placed once, and two placements
+    // would be a React key nobody wrote and a section rendered twice.
+    expect(CONTENT).not.toMatch(/^\s*\{synopsis\}/m);
+  });
 
-    expect(rating).toBeGreaterThan(-1);
-    expect(rating).toBeLessThan(facts);
-    expect(remove).toBeLessThan(facts);
+  /**
+   * A film gets no episode card, and the guard is on the **card** rather than only inside
+   * the component it wraps.
+   *
+   * `ProgrammeNoteEpisodes` returns `null` for a film — `tests/programme-note.test.ts`
+   * asserts that directly — but a `null` inside a `<section className={…CARD…}>` is an
+   * empty card, not an absent one. The two guards are belt and braces and both are load
+   * bearing.
+   */
+  it("draws no episode card for a film", () => {
+    expect(CONTENT).toMatch(/detail\.kind === "film" \? null : \(/);
+  });
+
+  /**
+   * A film's watched mark is in the hero, and a show's is not.
+   *
+   * The row moved out of the episode list, where it had been the film branch of a
+   * component about episodes. `tests/film-watch-row.test.ts` owns what the row draws; this
+   * is the placement, which is the half a render of the row cannot see.
+   */
+  it("puts a film's watched mark in the hero, behind a kind check", () => {
+    expect(HERO).toContain("<FilmWatchRow");
+    expect(HERO).toMatch(/detail\.kind === "film" \? \(/);
+  });
+
+  /**
+   * *Remove from library* sits directly under the hero, above everything borrowed.
+   *
+   * It shared that card with the rating until the rating was retired, and it keeps the
+   * position rather than moving: the card is where a reader has learned to find it, and
+   * folding removal into the hero would put a destructive action in a group of additive
+   * ones.
+   */
+  it("keeps Remove under the hero, above the episodes and the borrowed sections", () => {
+    const remove = CONTENT.indexOf("<RemoveControl");
+    const episodes = CONTENT.indexOf("<ProgrammeNoteEpisodes");
+    const providers = CONTENT.indexOf("{watchProviders}");
+
+    expect(remove).toBeGreaterThan(-1);
     expect(remove).toBeLessThan(episodes);
+    expect(remove).toBeLessThan(providers);
+  });
+
+  /**
+   * There is no rating anywhere on this screen, for either kind.
+   *
+   * The control and its action are deleted, and this is the guard against either coming
+   * back by way of a half-finished revert. The **column** is untouched and deliberately so
+   * — `db/access.ts`'s `rateTitle`, the delete-account figure and the remove page's *Your
+   * rating* all still describe data this account really has — so the assertion is about
+   * the two surfaces, not about the word.
+   */
+  it("offers no way to rate a title", () => {
+    expect(CONTENT).not.toContain("RatingControl");
+    expect(CONTENT).not.toContain("onRated");
+    expect(HERO).not.toContain("RatingControl");
   });
 
   /**

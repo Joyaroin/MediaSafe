@@ -47,16 +47,19 @@ import {
  * only, never a `render` or `refetch` function — a function cannot cross from a Server
  * Component, so the closure is built on this side:
  *
- * - `live-title-facts-streamed.tsx`'s `LiveTitleFactsStreamed` — a **Server Component**,
- *   used by the phone route and the unowned-title page, the two surfaces that are real
- *   page renders. It wraps each of the three reads in its own `<Suspense>`, so the page
+ * - `live-title-facts-streamed.tsx`'s Server Components — used by the phone route and the
+ *   unowned-title page, the two surfaces that are real page renders. The unowned page
+ *   takes `LiveTitleFactsStreamed`, which draws synopsis and providers together; title
+ *   detail takes `SynopsisStreamed`, `WatchProvidersStreamed` and `CastStreamed`
+ *   separately, because its three sections land in three different places on the screen.
+ *   Either way each read gets its own `<Suspense>`, so the page
  *   shell (poster, title, episodes) ships the instant the mirrored read is done, and each
  *   live section streams in independently as its own TMDB call resolves — the property
  *   `DESIGN.md`'s own Suspense section reserves for exactly this shape: *"the mechanism
  *   to reach for if a future surface grows a region with its own async boundary."*
  *
- * - `LiveTitleFactsClientFetch` below — used by the desktop pane and the Up next sheet,
- *   neither of which navigates, so neither has a page render to stream behind. It fetches
+ * - `LiveTitleFactsClientFetch` below — used by the desktop pane, which does not navigate
+ *   and so has no page render to stream behind. It fetches
  *   once, on mount, through `titleLiveFactsAction` — one combined round trip for all
  *   three fields (concurrent on the server, `readLiveFacts` in `live-facts.ts`), not the
  *   three separate ones this used to fire before issue #218. The pane/sheet's own detail
@@ -78,13 +81,13 @@ import {
  * failed credits fetch cannot take the synopsis down with it.
  */
 /**
- * One fetch of a title's three live facts, shared by the two slots that draw them.
+ * One fetch of a title's three live facts, shared by the slots that draw them.
  *
- * The pane renders `LiveTitleFactsClientFetch` twice — once for the synopsis and providers
- * under the hero, once for the cast at the foot — and without this each instance would run
- * its own `titleLiveFactsAction`. Every fact behind that action is cached per account and
- * title, so a second call is cheap rather than wrong; it is still a second round trip for
- * a fact set already in hand, and a context is the smaller price.
+ * The pane renders `LiveTitleFactsClientFetch` three times — the synopsis inside the hero's
+ * card, the providers below the episode list, the cast at the foot — and without this each
+ * instance would run its own `titleLiveFactsAction`. Every fact behind that action is
+ * cached per account and title, so a second call is cheap rather than wrong; it is still a
+ * second round trip for a fact set already in hand, and a context is the smaller price.
  *
  * `null` while the fetch is in flight, which is what the slots draw placeholders for.
  */
@@ -128,51 +131,49 @@ export function LiveTitleFactsClientFetch({
   /**
    * Which of the three sections this instance draws.
    *
-   * Title detail puts cast **last**, after the rating, and the other two directly under
-   * the hero — so one component rendering all three in a row can no longer serve the
-   * screen. The pane renders this twice, once per slot.
+   * Three slots rather than the two this had, because the synopsis no longer travels with
+   * the watch providers: it renders **inside the hero's card**, directly under the
+   * poster row, and the providers keep a card of their own below it. A slot that drew
+   * both could only put them in the same place, which is the same argument `cast` was
+   * split out on — one node can only be placed once.
    *
-   * ── Twice, and still one request ────────────────────────────────────────────────────
+   * ── Three times, and still one request ──────────────────────────────────────────────
    *
-   * `LiveTitleFactsProvider` above does the fetch and both instances read it, so the
-   * second slot costs nothing. Rendering this twice without the provider would be two
-   * round trips for one fact set — cheap, since every fact behind
-   * `titleLiveFactsAction` is cached per account and title, and still two.
+   * `LiveTitleFactsProvider` above does the fetch and every instance reads it, so the
+   * second and third slots cost nothing. Rendering this three times without the provider
+   * would be three round trips for one fact set — cheap, since every fact behind
+   * `titleLiveFactsAction` is cached per account and title, and still three.
    */
-  slot: "facts" | "cast";
+  slot: "synopsis" | "providers" | "cast";
 }) {
   // `undefined` means there is no provider above this — see `LiveTitleFactsProvider`.
   const liveFacts = useContext(LiveTitleFactsContext);
 
   if (liveFacts === undefined) {
     throw new Error(
-      "LiveTitleFactsClientFetch renders inside LiveTitleFactsProvider, which owns the fetch both slots read.",
+      "LiveTitleFactsClientFetch renders inside LiveTitleFactsProvider, which owns the fetch every slot reads.",
     );
   }
 
   if (liveFacts === null) {
-    return slot === "cast" ? (
-      <LiveFactPlaceholder heading="Cast & crew" />
-    ) : (
-      <>
-        <LiveFactPlaceholder heading="Synopsis" />
-        <LiveFactPlaceholder heading="Watch providers" />
-      </>
-    );
+    // The synopsis waits inside the hero's card, so its placeholder does too — `nested`,
+    // for `LiveFactPlaceholder`'s own reason.
+    if (slot === "synopsis") return <LiveFactPlaceholder heading="Synopsis" nested />;
+    if (slot === "providers") return <LiveFactPlaceholder heading="Watch providers" />;
+    return <LiveFactPlaceholder heading="Cast & crew" />;
   }
 
-  if (slot === "cast") {
+  if (slot === "synopsis") {
+    return <SynopsisFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.synopsis} nested />;
+  }
+
+  if (slot === "providers") {
     return (
-      <CastAndCrewFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.castAndCrew} />
+      <WatchProvidersFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.watchProviders} />
     );
   }
 
-  return (
-    <>
-      <SynopsisFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.synopsis} />
-      <WatchProvidersFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.watchProviders} />
-    </>
-  );
+  return <CastAndCrewFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.castAndCrew} />;
 }
 
 /**
@@ -190,15 +191,24 @@ export function SynopsisFactSection({
   kind,
   tmdbId,
   initial,
+  nested = false,
 }: {
   kind: TitleKind;
   tmdbId: number;
   initial: Outcome<string | null>;
+  /**
+   * Drawn inside a card that already exists — title detail's hero, where the synopsis now
+   * sits under the poster row rather than in a card of its own. `LiveFactSection`'s own
+   * docblock carries what it changes; the unowned-title page passes nothing here and keeps
+   * the card, because that screen has no hero to sit inside.
+   */
+  nested?: boolean;
 }) {
   return (
     <LiveFactSection
       heading="Synopsis"
       initial={initial}
+      nested={nested}
       refetch={() => titleSynopsisAction(kind, tmdbId)}
       render={(overview) =>
         overview === null ? null : (
@@ -320,18 +330,48 @@ export function CastAndCrewFactSection({
 /** The pending placeholder for one section — `LiveTitleFactsClientFetch`'s own wait for
  *  its one combined fetch, and `LiveTitleFactsStreamed`'s `Suspense` fallback for each of
  *  its three. Same markup either way, so a reader cannot tell which mechanism is behind a
- *  given title from the loading frame alone. */
-export function LiveFactPlaceholder({ heading }: { heading: string }) {
+ *  given title from the loading frame alone.
+ *
+ *  `nested` for `LiveFactSection`'s reason below, and it has to be here as well as there:
+ *  the synopsis inside the hero waits in the hero's own card, and a placeholder that drew
+ *  a second card would make the wait a different shape from the answer. */
+export function LiveFactPlaceholder({
+  heading,
+  nested = false,
+}: {
+  heading: string;
+  nested?: boolean;
+}) {
   // Quiet, per `docs/design/v1-surfaces.md` §6's "loading" row for this screen: metadata
   // and episodes arriving is a normal moment of this page, not an event.
   return (
-    <div className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+    <div className={nested ? NESTED_SECTION : SECTION_CARD}>
       <p role="status" className="code-line text-dim">
         {heading}
       </p>
     </div>
   );
 }
+
+/**
+ * A live section's own card, and the same section drawn inside somebody else's.
+ *
+ * ── Why `nested` is a class swap and not a second component ──────────────────────────
+ *
+ * The synopsis is the one section that moved: it renders inside `TitleHero`'s card now,
+ * under the poster row, rather than in a card below it. Everything else about it is
+ * unchanged — the same heading, the same three phases, the same inline failure with the
+ * same sentence, the same reference id and the same *Try again*. That is exactly what
+ * `LiveFactSection` exists to keep identical (its own docblock), so the difference is the
+ * two lines it actually is — no card, no `--raised` ground on `--raised`, and the section
+ * rhythm swapped for the tighter gap a card's interior takes.
+ *
+ * `mt-5` rather than `PROGRAMME_NOTE_SECTION`'s `mt-7`: the hero's interior already spaces
+ * its own blocks at that step (the poster row to the controls beneath it), and a `1.75rem`
+ * gap inside a card reads as a gap *between* cards.
+ */
+const SECTION_CARD = `${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`;
+const NESTED_SECTION = "mt-5";
 
 type Phase<T> =
   | { readonly kind: "loading" }
@@ -371,8 +411,15 @@ export function LiveFactSection<T>({
   initial,
   refetch,
   render,
+  nested = false,
 }: {
   heading: string;
+  /**
+   * This section is drawn inside a card that already exists, so it draws none of its own —
+   * `NESTED_SECTION` above carries the whole argument. Only the synopsis passes it, and
+   * only on title detail, where it sits in the hero's card under the poster row.
+   */
+  nested?: boolean;
   /**
    * The uppercase line above the heading — `Canada` over *Watch providers*, and nothing
    * over the others.
@@ -418,12 +465,12 @@ export function LiveFactSection<T>({
   }
 
   if (phase.kind === "loading") {
-    return <LiveFactPlaceholder heading={heading} />;
+    return <LiveFactPlaceholder heading={heading} nested={nested} />;
   }
 
   if (phase.kind === "failed") {
     return (
-      <div className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+      <div className={nested ? NESTED_SECTION : SECTION_CARD}>
         <SectionHead heading={heading} eyebrow={eyebrow} />
         {/* `live-fact-copy.ts`, not prose written here: this sentence and the episode
             page's *no synopsis yet* must never converge, and while both were inline that
@@ -445,7 +492,7 @@ export function LiveFactSection<T>({
   if (content === null) return null;
 
   return (
-    <div className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+    <div className={nested ? NESTED_SECTION : SECTION_CARD}>
       <SectionHead heading={heading} eyebrow={eyebrow} />
       <div className="mt-3">{content}</div>
     </div>

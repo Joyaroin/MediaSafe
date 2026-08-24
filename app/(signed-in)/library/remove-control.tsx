@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 
 /**
  * The way a title leaves your library — issue #142, and the only entry point to the
@@ -11,9 +10,9 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
  *
  * Never a tile, never a rail, never a grid cell, never a swipe. That is the ticket's first
  * acceptance criterion and it is a rule about the whole repository rather than about this
- * render, so it is checked as one in `tests/remove-from-library-control.test.ts` — the shape
- * `tests/rating-control.test.ts` already uses for *the rating is on title detail and nowhere
- * else*. The reason is worth stating rather than inheriting: an action that destroys years
+ * render, so it is checked as one in `tests/remove-from-library-control.test.ts`, which
+ * walks every importer under `app/` rather than trusting a file list. The reason is worth
+ * stating rather than inheriting: an action that destroys years
  * of watches and cannot be undone must never sit under a gesture somebody makes while
  * scrolling.
  *
@@ -36,26 +35,35 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
  * exactly once, on the way to destroying something, and `remove-title-form.tsx` puts them
  * back on `/library` afterwards.
  *
- * ── Distinct from the abandon control, deliberately and in two ways ──────────────────
+ * ── Distinct from giving up on a title, which is a promise this still has to keep ────
  *
- * They used to sit near each other, and **the ticket existed to stop them reading as the
- * same thing** even so: abandoning keeps your history and is undone by watching the show
- * again, removing destroys your history and is undone by nothing. Issue #228 moves the
- * abandon control up beside the state line and leaves this one at the foot of the pane, so
- * the two are no longer adjacent — but the difference stays carried twice below, because a
- * reader who has seen one still has to tell the other apart from memory rather than from
- * position on the page.
+ * There was a control beside this one that abandoned a title, and **the ticket existed to
+ * stop the two reading as the same thing**: abandoning keeps your history and is undone by
+ * watching the show again, removing destroys your history and is undone by nothing.
  *
- * *In shape.* `AbandonControl` is one row — a text button with its reassurance set opposite,
- * on the same baseline. This is a block: the link on its own line with the consequence
- * underneath it. Two different constructs, so the eye does not read a pair of
- * interchangeable rows.
+ * That control is retired. The distinction is not: a title abandoned before it went is
+ * still abandoned, the library tile still tells its reader *watching it again clears this*,
+ * and this control still sits on the same screen promising the opposite. So the copy half
+ * below stands exactly as it was, and it is now the only place the contrast is drawn.
  *
- * The gap above is `PROGRAMME_NOTE_SECTION` and not a wider one written by hand. A first
- * draft of this control widened it to `mt-10` to push the two apart, which is `2.5rem`
- * against the `1.75rem` `DESIGN.md`'s Layout fixes for every block in this pane — buying a
- * distinction the shape and the copy already carry, at the price of the one section rhythm
- * on the surface. Distinctness is not a spacing problem here.
+ * The **shape** half went with the control. It said *that one is a row and this is a
+ * block, so the eye does not read a pair of interchangeable rows* — a comparison that
+ * needs two things to compare.
+ *
+ * **This control draws no gap of its own any more.** It rooted on `PROGRAMME_NOTE_SECTION`
+ * while it was the second thing in a card — the rating was above it — and that `1.75rem`
+ * was the rhythm between the two. The rating is retired and this is the card's only child,
+ * so the same class now measures a gap between this control and the card's own top padding,
+ * which is `2.75rem` of nothing above a one-line link.
+ *
+ * The rhythm did not go anywhere: the `<section>` in `programme-note-content.tsx` carries
+ * `PROGRAMME_NOTE_SECTION` itself, as every card on that surface does, so the gap *between*
+ * blocks is exactly what it was. What is gone is the second copy of it inside this one.
+ *
+ * That is not the hand-tuning an earlier draft was refused. That draft widened the gap to
+ * `mt-10` to push this control away from the abandon row, buying a distinction the shape
+ * and the copy already carry at the price of the one section rhythm on the surface — which
+ * is still the rule, and is why this drops to nothing rather than to some other number.
  *
  * *In copy.* The slot that holds *Watching it again clears it* on the abandon row holds
  * *Nothing brings them back* here. Same position in the sentence, opposite promise, and it
@@ -82,7 +90,7 @@ export function RemoveControl({
   readonly titleName: string;
 }) {
   return (
-    <div className={PROGRAMME_NOTE_SECTION}>
+    <div>
       <Link
         href={`/library/${libraryEntryId}/remove`}
         aria-label={`Remove ${titleName} from your library`}
@@ -91,8 +99,9 @@ export function RemoveControl({
         Remove from library ›
       </Link>
 
-      {/* The counterweight to the abandon row's reassurance, in the same voice and to the
-          opposite effect. It names both things the removal takes, because the confirmation
+      {/* The counterweight to the library tile's reassurance — *watching it again clears
+          this* — in the same voice and to the opposite effect. It names both things the
+          removal takes, because the confirmation
           is going to count them and a reader should not first learn what is at stake on the
           page that is about to destroy it. */}
       <p className="code-line mt-2 text-dim">

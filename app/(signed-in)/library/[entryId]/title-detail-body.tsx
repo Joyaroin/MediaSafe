@@ -1,7 +1,7 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedTitleDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
-import { CastStreamed, LiveTitleFactsStreamed } from "../live-title-facts-streamed";
+import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "../live-title-facts-streamed";
 import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
@@ -41,10 +41,15 @@ export async function TitleDetailBody({
     <>
       {overlaid ? null : <BackToLibraryBar />}
 
+      {/* Three streamed sections, three nodes: the synopsis renders inside the hero's card,
+          the providers in a card below the episodes, the cast last. They were two nodes
+          until the synopsis moved — `programme-note-content.tsx` has the argument, and
+          nothing about the streaming itself changed. */}
       <TitleDetailView
         detail={detail}
-        liveFacts={
-          <LiveTitleFactsStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
+        synopsis={<SynopsisStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />}
+        watchProviders={
+          <WatchProvidersStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
         }
         cast={<CastStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />}
       />

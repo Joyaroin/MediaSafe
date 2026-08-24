@@ -11,9 +11,13 @@ import { ProgrammeNoteContent } from "../programme-note-content";
  * The phone route's thin client shell around `ProgrammeNoteContent` — issue #87 gave that
  * component a way to report a changed `state`, and a page render (the server component
  * this wraps) has nowhere to hold that patch. This is the smallest client boundary that
- * does: seeded from the server's read, and updated only by the writes on the page itself
- * — `AbandonControl`'s, and issue #113's `RatingControl` — the same "patch in place,
- * re-read nothing else" contract `ProgrammeNotePane` holds on desktop.
+ * does: seeded from the server's read, and updated only by the one write on the page that
+ * changes a state — a film's watched mark (`film-watch-row.tsx`) — the same "patch in
+ * place, re-read nothing else" contract `ProgrammeNotePane` holds on desktop.
+ *
+ * It held two patches until recently. `AbandonControl` and `RatingControl` are both
+ * retired, so `onRated` is gone with the second of them and `onStateChange` has one caller
+ * left rather than two.
  *
  * The entry-id guard is carried here too, even though this route unmounts on a back press
  * where the pane never navigates. It costs one comparison, and it means the two callers
@@ -33,12 +37,15 @@ import { ProgrammeNoteContent } from "../programme-note-content";
  */
 export function TitleDetailView({
   detail,
-  liveFacts,
+  synopsis,
+  watchProviders,
   cast,
 }: {
   detail: TitleDetailRow;
-  /** The synopsis and the watch providers, already streamed on the server. */
-  liveFacts: ReactNode;
+  /** The synopsis, already streamed on the server — it renders inside the hero's card. */
+  synopsis: ReactNode;
+  /** The watch providers, streamed separately now that the two no longer sit together. */
+  watchProviders: ReactNode;
   /** Cast, streamed separately because title detail puts it last. */
   cast: ReactNode;
 }) {
@@ -47,14 +54,12 @@ export function TitleDetailView({
   return (
     <ProgrammeNoteContent
       detail={current}
-      liveFacts={liveFacts}
+      synopsis={synopsis}
+      watchProviders={watchProviders}
       cast={cast}
       posterTransitionName={groupPosterTransitionName(current.libraryEntryId)}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))
-      }
-      onRated={(libraryEntryId, rating) =>
-        setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, rating } : prev))
       }
     />
   );

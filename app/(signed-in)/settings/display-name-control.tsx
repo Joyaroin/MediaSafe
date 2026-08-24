@@ -37,11 +37,15 @@ import { authClient } from "@/lib/auth-client";
  *
  * ── The write, the toast, and the rollback ────────────────────────────────────────────
  *
- * Same shape as `library/rating-control.tsx`: a `latest` ref carries the newest attempted
- * name so a standing toast's *Try again* never resubmits a name the reader has since
- * changed, and `raised.current?.standing()` is what keeps a second failure from raising a
- * second toast while the first is still on screen (`AGENTS.md` — one toast per lost
- * write). `title: "Display name"` and no `episode`, matching the acceptance criterion
+ * A `latest` ref carries the newest attempted name, so a standing toast's *Try again*
+ * never resubmits a name the reader has since changed, and `raised.current?.standing()` is
+ * what keeps a second failure from raising a second toast while the first is still on
+ * screen (`AGENTS.md` — one toast per lost write).
+ *
+ * That pairing came from `library/rating-control.tsx`, which is retired; this file is where
+ * it is written down now, rather than cited from somewhere that no longer exists. Both
+ * halves matter and they are separate: `latest` is about *what* a retry sends, `standing()`
+ * about *whether* a second failure speaks. `title: "Display name"` and no `episode`, matching the acceptance criterion
  * exactly. A failure reverts the field to `committed` — the last name the server actually
  * confirmed — not to the `name` prop, which goes stale the moment one save succeeds.
  *

@@ -20,10 +20,13 @@ import type { UnownedEpisodeDetail } from "@/db/access";
  *     start drawing a mark, a rewatch or an *Up next* chip if it were ever pointed back at
  *     the owned component. The rendered markup is checked for the absence, not the
  *     component's props — a reader of this page sees markup.
- *  2. **The route imports none of the owned controls.** *No rating, no abandon, no remove,
- *     no unwatch* is a fact about the repository rather than about any one render, so it is
+ *  2. **The route imports none of the owned controls.** *No remove, no unwatch, no watch
+ *     mark* is a fact about the repository rather than about any one render, so it is
  *     checked as one — the shape `tests/remove-from-library-control.test.ts` established
- *     for *the remove control is on title detail and nowhere else*.
+ *     for *the remove control is on title detail and nowhere else*. The ticket's list also
+ *     named a rating and an abandon; both controls have since been retired outright, so
+ *     they are no longer in the list below — see its own comment for why a name that no
+ *     longer exists is worse than useless there.
  *
  * `UnownedEpisodes` imports two pure modules and nothing else — no action, no
  * `server-only` — which is what makes it renderable here at all. `tests/programme-note.test.ts`
@@ -104,8 +107,10 @@ describe("the unowned episode list", () => {
   });
 
   it("renders nothing at all for a film", () => {
-    // The owned page gives this slot to the film recording control (issue #90). Recording
-    // a watch is something you do to a title you have.
+    // Recording a watch is something you do to a title you have. The owned page gave this
+    // slot to the film recording control (issue #90) and has since moved that control to
+    // its hero card, so the owned episode component renders nothing for a film either —
+    // `tests/programme-note.test.ts` asserts that side in the same words.
     expect(render([], "film")).toBe("");
   });
 
@@ -131,13 +136,17 @@ describe("the unowned episode list", () => {
 describe("what the unowned route does not import", () => {
   /**
    * Every control that answers a question about *you*. The ticket names them: progress,
-   * state, up-next marking, the rating control, abandon, remove, unwatch. A refactor that
-   * reached for the owned components to save a file would look entirely ordinary in a
-   * diff, and would put a rating scale on a title nobody has rated.
+   * state, up-next marking, remove, unwatch. A refactor that reached for the owned
+   * components to save a file would look entirely ordinary in a diff, and would put a
+   * watch mark on a title nobody owns.
+   *
+   * **`rating-control` and `abandon-control` are deliberately not in this list.** Both
+   * modules are deleted. An entry naming a file that does not exist passes for ever and
+   * checks nothing — a green assertion about a module nobody could import is worse than no
+   * assertion, because it reads as coverage. What guards those two now is that there is
+   * nothing to import; if either ever returns, it is that ticket's job to add it back here.
    */
   const OWNED = [
-    "rating-control",
-    "abandon-control",
     "remove-control",
     "programme-note-content",
     "programme-note-episodes",
@@ -174,10 +183,10 @@ describe("what the unowned route does not import", () => {
 });
 
 describe("the one control the page carries", () => {
-  /**
-   * *It carries one **Add to library*** is the ticket's only criterion about something
-   * being present rather than absent, and it is checked at the source rather than in a
-   * render for the boundary `tests/programme-note.test.ts` names: the control imports
+   /**
+   * *It carries one add* is the ticket's only criterion about something being present
+   * rather than absent, and it is checked at the source rather than in a render for the
+   * boundary `tests/programme-note.test.ts` names: the control imports
    * `titles/actions.ts`, which imports `tmdb/catalogue.ts`, which is `server-only` and
    * throws on import outside Next's own build. `catalogue-result.tsx` — the same shape on
    * the search screen — carries no render test either.
@@ -219,12 +228,23 @@ describe("the one control the page carries", () => {
     expect(pageSource()?.source).toMatch(/titleName=\{detail\.name\}/);
   });
 
-  it("labels it in full, and says so to a screen reader too", () => {
+  it("labels it by kind, and says so to a screen reader too", () => {
     const control = routeSources().find(({ file }) =>
       file.endsWith("add-to-library-control.tsx"),
     );
 
-    expect(control?.source).toContain("Add to library");
+    /**
+     * *Add to library* until it named the half of the library the title lands in. The
+     * library has been two modes since `kind-mode.ts` — Shows and Films — and a button that
+     * says *library* names the container while every screen around it names the half.
+     *
+     * Both branches are asserted, not just the one a given render would take: this is a
+     * source read, so a ternary that lost a branch would still contain the other one and
+     * still pass a single `toContain`.
+     */
+    expect(control?.source).toContain("Add to My Shows");
+    expect(control?.source).toContain("Add to My Films");
+
     // Search's row can afford the one-word *Add* because the row is the context. A page
     // about one title has no row, so the visible label carries it.
     expect(control?.source).not.toMatch(/>\s*Add\s*</);

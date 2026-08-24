@@ -36,8 +36,8 @@ import { requireUserId } from "@/lib/session";
  * **Past the `catch`, and past the outcomes that wrote nothing.** A failed write changed
  * nothing, and neither did a duplicate name or an add of a title the list already held —
  * busting for either would throw away a correct entry and make a write that did not happen
- * look from the cache's side like one that did. `bulk-abandon-action.ts` already reads its
- * own count this way; these read `ok` and `added`.
+ * look from the cache's side like one that did. These read `ok` and `added` — the shape
+ * `bulk-abandon-action.ts` also used, before the bulk abandon it served was retired.
  */
 
 /**

@@ -17,9 +17,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }))
  * The display name control (issue #123) — Settings' Profile section, and the one place
  * `user.name` is written from.
  *
- * Same shape as `tests/rating-control.test.ts`: `renderToStaticMarkup` against the initial
- * render only, because `vitest.config.ts` runs with `environment: "node"` and no jsdom, so
- * there is no click-and-observe here — only what the first render could get wrong.
+ * `renderToStaticMarkup` against the initial render only, because `vitest.config.ts` runs
+ * with `environment: "node"` and no jsdom, so there is no click-and-observe here — only
+ * what the first render could get wrong. That is the shape every client-control test in
+ * this repository uses; `tests/rating-control.test.ts` was the file cited here for it until
+ * the control it covered was retired.
  * `SPEC.md` §7's acceptance criteria this covers:
  *
  *  1. **Capped at 24, refusing rather than truncating** — the native `maxlength`.

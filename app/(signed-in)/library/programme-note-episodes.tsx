@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import type { EpisodeDetail, LibraryState } from "@/db/access";
+import type { EpisodeDetail } from "@/db/access";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { CheckmarkIcon } from "./checkmark-icon";
@@ -44,42 +44,32 @@ import {
  * ── The film branch ────────────────────────────────────────────────────────────────────
  *
  * A film has no seasons, so this was `kind === "film" ? null : …` in full through #88 —
- * "the correct answer to a question a film was never asked", and also, per #90, "where
- * this control belongs": the film recording control replaces that `null` rather than
- * sitting beside it. `episodes` is still ignored for a film (there are none to ignore),
- * and no season heading, no "no episode data" line and no `<ol>` of one row's worth of
- * seasons ever renders here — only `FilmRow`, in the same `PROGRAMME_NOTE_SECTION` rhythm
- * a season heading would have used.
+ * "the correct answer to a question a film was never asked". #90 filled that `null` with
+ * the film recording control, on the grounds that a film's page had nothing else in this
+ * slot; it has moved on again, to `film-watch-row.tsx` and the hero's card, because *the
+ * slot at the foot of the page* turned out to be the wrong argument for a title's only
+ * action. So this is back to `null`, and the `kind` prop is what still says so.
+ *
+ * The `null` is belt to `ProgrammeNoteContent`'s braces: that component does not render
+ * this component's **card** for a film either, which is what keeps an empty card off the
+ * page. Returning `null` from inside a card would have drawn one.
+ *
+ * `state` and `onStateChange` went with the film row — they were the film branch's props
+ * and nothing else on this component ever read them. An episode's own mark reports through
+ * `use-watch-mark.ts` and needs no callback from here.
  */
 export function ProgrammeNoteEpisodes({
   kind,
   episodes,
   libraryEntryId,
   titleName,
-  state,
-  onStateChange,
 }: {
   kind: TitleKind;
   episodes: readonly EpisodeDetail[];
   libraryEntryId: string;
   titleName: string;
-  state: LibraryState;
-  onStateChange: (libraryEntryId: string, state: LibraryState) => void;
 }) {
-  if (kind === "film") {
-    return (
-      <div className={PROGRAMME_NOTE_SECTION}>
-        <ol>
-          <FilmRow
-            libraryEntryId={libraryEntryId}
-            titleName={titleName}
-            state={state}
-            onStateChange={onStateChange}
-          />
-        </ol>
-      </div>
-    );
-  }
+  if (kind === "film") return null;
 
   if (episodes.length === 0) {
     return (
@@ -386,10 +376,10 @@ const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
  * fully-settled paint), and settled-with-rewatch-and-unwatch: the `<li>` came back
  * `372 × 44px`, at `x 24 / y 51.44`, identical across all four, at a `420px` pane width.
  * Re-measured again at a `375px` pane (the phone width, minus the same `1.5rem` gutters):
- * `327 × 44px` before the press and after the mark settled, identical again. `FilmRow`
- * below reuses this exact `li` shape for the same reason — a row that resizes when it
- * succeeds is still a row that moves under a thumb still resting on it, whether the row is
- * an episode's or a film's.
+ * `327 × 44px` before the press and after the mark settled, identical again.
+ * `film-watch-row.tsx` reuses this exact `li` shape for the same reason — a row that
+ * resizes when it succeeds is still a row that moves under a thumb still resting on it,
+ * whether the row is an episode's or a film's.
  *
  * **Re-measured for issue #89** before the sweep existed, which put two more controls on
  * the row and so could have broken it: same method, against the compiled CSS in a real
@@ -453,9 +443,9 @@ const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
  * for the reason it always did — it records a watch, and the accent is what recording a
  * watch looks like — and it needed no override to keep it, since it already painted accent
  * before this ticket touched it. *Unwatch* is the one that changed: it used to be dim and
- * never accent, exactly as the abandon control was, and now takes the same `GHOST_RECOVERY`
- * as everything else in the batch — a knowing accent spend `remove-control.tsx` and
- * `abandon-control.tsx`'s own docblocks name too.
+ * never accent, exactly as the retired abandon control was, and now takes the same
+ * `GHOST_RECOVERY` as everything else in the batch — a knowing accent spend
+ * `remove-control.tsx`'s own docblock names too.
  *
  * Issue #203 keeps every word of that and changes the measure: the pair wears
  * `GHOST_RECOVERY_COMPACT`, `GHOST_RECOVERY` at `px-2.5 py-1` — the padding the row's own
@@ -671,76 +661,8 @@ function EpisodeLine({
 }
 
 /**
- * The film recording control — issue #90. A film has no episode list, so this is the row
- * that occupies its slot instead: the same `li` shape `EpisodeLine` measured, the same
- * sweep (issue #139), the same `use-watch-mark.ts` hook, driving `recordWatch` with a null
- * `episodeId` (`RecordWatchParams` was built to take one — issue #85). No `E1` chip and no
- * *Up next* label: neither concept exists for a film, and `DESIGN.md`'s Material Event
- * Rule is about the mark, not about carrying every piece of an episode row that a film has
- * no source for.
- *
- * A film is only ever *watchlist*, *finished* or *abandoned* (`CONTEXT.md`), and a watch
- * is the only write that reaches the second of those — so `state === "finished"` is
- * exactly "already watched" on mount, and a successful mark always lands on `finished` on
- * every path that can follow it (including an abandoned film: `recordWatch` clears
- * `abandoned_at` in the same transaction, `CONTEXT.md`'s "watching it again clears it").
- * That is why `onRecorded` here patches `state` to the literal `"finished"` instead of
- * re-reading the view the way `AbandonControl`'s `unabandonTitle` does — there is only one
- * state a film's watch can land on, so there is nothing this needs to ask the server to
- * resolve. `onStateChange` is `ProgrammeNoteContent`'s own prop, the same one
- * `AbandonControl` already reports through, so both the state line on this page and the
- * next full read agree.
- *
- * **No unwatch, and the reason has changed.** #90 gave one: an episode had none either, so
- * a film offering one would have invented a second rule. Issue #89 has since given the
- * episode row *Rewatch* and *Unwatch*, so that reason is gone and this is now a scope
- * statement instead — #89 is the watched **episode**, and a film's unwatch is nobody's
- * ticket yet. Nothing below is in the way of it: `unwatch` already takes a null
- * `episodeId` and is tested for a film, and `useWatchMark` already offers `unwatch` to any
- * row that wants to draw a control for it. What is missing is the decision and the
- * design, not the write.
- */
-function FilmRow({
-  libraryEntryId,
-  titleName,
-  state,
-  onStateChange,
-}: {
-  libraryEntryId: string;
-  titleName: string;
-  state: LibraryState;
-  onStateChange: (libraryEntryId: string, state: LibraryState) => void;
-}) {
-  const { watched, phase, attempt, settle } = useWatchMark({
-    initialWatched: state === "finished",
-    libraryEntryId,
-    episodeId: null,
-    titleName,
-    onRecorded: () => onStateChange(libraryEntryId, "finished"),
-  });
-
-  return (
-    <li className={`relative ${EPISODE_ROW}`}>
-      <span className="flex-1 text-item">
-        <span className={watched && phase === "settled" ? WATCHED_NAME : ""}>
-          {titleName}
-        </span>
-      </span>
-
-      {watched ? (
-        <span className="code-line text-dim">Watched</span>
-      ) : (
-        <MarkWatchedButton label={`Mark ${titleName} watched`} onClick={attempt} />
-      )}
-
-      {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}
-    </li>
-  );
-}
-
-/**
- * `EpisodeLine` and `FilmRow`'s one interactive element, identical either way — the same
- * border/press treatment `DESIGN.md`'s Material Event Rule reserves for a recording
+ * `EpisodeLine` and `FilmWatchRow`'s one interactive element, identical either way — the
+ * same border/press treatment `DESIGN.md`'s Material Event Rule reserves for a recording
  * control: it never turns blue, slides, or removes the row.
  *
  * A checkmark since issue #217, not the word *Strike it* — "a reader looking at an episode
@@ -752,9 +674,10 @@ function FilmRow({
  * it did before — `Mark ${fullName} watched` / `Mark ${titleName} watched` — so a screen
  * reader loses nothing the eye now gets for free.
  *
- * Exported since issue #228, for `up-next-row.tsx`'s dedicated row — the third caller
- * alongside the two above, and still one control rather than three that resemble each
- * other (`DESIGN.md` §7 names the show page as exactly this reuse).
+ * Exported since issue #228, for `up-next-row.tsx`'s dedicated row — and since the film
+ * row moved out of this file, for `film-watch-row.tsx` too. Three callers, one of them in
+ * this module and two outside it, and still one control rather than three that resemble
+ * each other (`DESIGN.md` §7 names the show page as exactly this reuse).
  */
 export function MarkWatchedButton({
   label,

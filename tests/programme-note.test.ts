@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ProgrammeNoteEpisodes } from "@/app/(signed-in)/library/programme-note-episodes";
-import type { EpisodeDetail, LibraryState } from "@/db/access";
+import type { EpisodeDetail } from "@/db/access";
 
 /**
  * The season/episode list (issue #58) — the row `DESIGN.md` calls out as carrying the
@@ -17,8 +17,11 @@ import type { EpisodeDetail, LibraryState } from "@/db/access";
  *     with no degrading surface — this is the surface it would degrade on if it ever did.
  *  2. **Missing and empty stay distinct.** A show with nothing mirrored says so; it does
  *     not render an empty season.
- *  3. **A film has no episode section at all** — not an empty one, and not a season
- *     heading either. Issue #90 gives that slot to the film recording control instead.
+ *  3. **A film has no episode section at all** — not an empty one, not a season heading,
+ *     and no control. Issue #90 gave that slot to the film recording control; the control
+ *     has since moved to the hero card, and `tests/film-watch-row.test.ts` owns it there.
+ *     What is left here is a component that renders nothing at all for a film, which is
+ *     what `programme-note-content.tsx` relies on when it declines to draw the card.
  *
  * ── Why this file stops at the episode list ───────────────────────────────────────────
  *
@@ -49,19 +52,13 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
   };
 }
 
-const episodes = (
-  list: EpisodeDetail[],
-  kind: "film" | "show" = "show",
-  state: LibraryState = "watchlist",
-) =>
+const episodes = (list: EpisodeDetail[], kind: "film" | "show" = "show") =>
   renderToStaticMarkup(
     createElement(ProgrammeNoteEpisodes, {
       kind,
       episodes: list,
       libraryEntryId: "entry-1",
       titleName: "Game of Thrones",
-      state,
-      onStateChange: () => {},
     }),
   );
 
@@ -190,41 +187,27 @@ describe("the episode list", () => {
     expect(markup).not.toContain("Season");
   });
 
-  it("renders no episode list, no no-episode-data line and no season for a film", () => {
-    const markup = episodes([], "film");
-
-    expect(markup).not.toContain("No episode data yet.");
-    expect(markup).not.toContain("Season");
-    expect(markup).not.toContain("Specials");
-    // Issue #224: a film renders no season selector at all — a control that answers a
-    // question a film was never asked (`programme-note-episodes.tsx`'s own words for the
-    // film branch, borrowed here for the same reason).
-    expect(markup).not.toContain("Choose a season");
-  });
-
-  it("carries the film recording control on an unwatched film, and not on a finished one", () => {
-    const markup = episodes([], "film", "watchlist");
-
-    expect(markup).toContain("Mark Game of Thrones watched");
-
-    const finishedMarkup = episodes([], "film", "finished");
-    expect(finishedMarkup).not.toContain("Mark Game of Thrones watched");
-    expect(finishedMarkup).toContain("Watched");
-  });
-
-  it("dims a finished film's own name and says so, the same as a watched episode", () => {
-    const markup = episodes([], "film", "finished");
-
-    // Scoped to the title's own element for the same reason as the episode assertion
-    // above — "text-dim" alone would also match the trailing *Watched* code line.
-    expect(markup).toMatch(/class="[^"]*\btext-dim\b[^"]*">Game of Thrones</);
-    expect(markup).not.toContain("line-through");
-  });
-
-  it("shows the film recording control for an abandoned, never-watched film too", () => {
-    const markup = episodes([], "film", "abandoned");
-
-    expect(markup).toContain("Mark Game of Thrones watched");
+  it("renders nothing at all for a film", () => {
+    /**
+     * The whole assertion, and deliberately only this one.
+     *
+     * It used to be five `not.toContain`s — no episode list, no *No episode data yet.*, no
+     * season heading, no *Specials*, no season selector — beside a render that still drew
+     * the film's own recording row. That row has moved to the hero
+     * (`app/(signed-in)/library/film-watch-row.tsx`), so this component now returns `null`
+     * for a film and every one of those five would pass against an empty string without
+     * checking anything.
+     *
+     * `toBe("")` is the honest form of the same rule, and it is stronger: it fails on
+     * *anything* this component might start drawing for a film, rather than on the five
+     * things somebody thought of. `tests/unowned-title-surface.test.ts` asserts the
+     * unowned episode list the same way for the same reason.
+     *
+     * It is also what `programme-note-content.tsx` depends on: that file declines to draw
+     * the card for a film, and a component that quietly grew a fragment here would put an
+     * empty card back on the page.
+     */
+    expect(episodes([], "film")).toBe("");
   });
 });
 
@@ -286,13 +269,6 @@ describe("the watched-up-to-here control", () => {
     );
     // Beside the row's own controls, not instead of them.
     expect(markup).toContain("Unwatch Season 1, Episode 2 — The Kingsroad");
-  });
-
-  it("never appears on a film", () => {
-    // A film has no episode list at all (`FilmRow`), so there is nothing for *up to here*
-    // to mean — and no row that could carry the control by accident.
-    expect(episodes([], "film", "watchlist")).not.toContain(MARK_THROUGH);
-    expect(episodes([], "film", "finished")).not.toContain(MARK_THROUGH);
   });
 
   it("never appears on a special itself", () => {

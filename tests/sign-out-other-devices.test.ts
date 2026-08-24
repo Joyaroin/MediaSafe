@@ -12,7 +12,7 @@ import { SignOutOtherDevicesButton } from "@/app/(signed-in)/settings/sign-out-o
  * its idle render, must not yet claim to have done it.
  *
  * `vitest.config.mts` runs in a Node environment with no jsdom, so — matching
- * `tests/rating-control.test.ts`, the established precedent for a client control that
+ * `tests/display-name-control.test.ts`, the surviving precedent for a client control that
  * writes through Better Auth or a server action — this checks the markup a first render
  * produces rather than simulating a press. What a press does is `authClient` talking to
  * Better Auth's own endpoint, which is exactly the boundary this repository does not mock

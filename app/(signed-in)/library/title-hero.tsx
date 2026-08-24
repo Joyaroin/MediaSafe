@@ -1,11 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
-import { AbandonControl } from "./abandon-control";
 import { AddToListControl } from "./add-to-list-control";
+import { FilmWatchRow } from "./film-watch-row";
 import { STATE_LABELS } from "./library-state";
 import { PROGRAMME_NOTE_CARD, PROGRAMME_NOTE_CARD_PAD } from "./programme-note-section";
 import { watchProgress } from "./progress-remaining";
@@ -27,16 +28,33 @@ import { titleMetaLine } from "./title-meta-line";
  *
  * ── What sits under the pair ────────────────────────────────────────────────────────
  *
- * `AbandonControl` and *Add to list*. There was briefly a *Where this stands* button here
- * instead, opening a dialog offering *Mark everything watched* and *Give up on this*. It
- * went: the label read as a settings control on a screen that has no settings, and it put
- * the one state write anybody reaches for behind two presses to keep company with one
- * almost nobody does.
+ * The synopsis, then a film's watched mark, then *Add to list*.
  *
- * **Marking a whole show watched in one press went with it**, and there is no other way to
- * do it — the season rows' *watched up to here* is the nearest thing, aimed at the last
- * episode. If that is worth having it wants a home of its own rather than a menu built
- * around it.
+ * **The synopsis is first because it is what the poster is a picture of.** It had a card
+ * of its own directly below this one, which read as a separate section about a separate
+ * thing; what it actually is, is the rest of the sentence the poster and the title start.
+ * It is full-width under the pair rather than beside the poster on purpose: this component
+ * renders at 420px in the pane, and the column beside the poster is roughly 200px of it
+ * with the state, the name, the meta line and the progress bar already in it. Prose in
+ * that column would set at about twenty characters a line.
+ *
+ * It arrives as a **node**, not as text — see `synopsis` on the props below.
+ *
+ * **A film's watched mark is here** rather than at the foot of the page
+ * (`film-watch-row.tsx` has the argument). A show's stays in the episode list, where it is
+ * one row of sixty rather than the only row there is.
+ *
+ * **What is no longer here: `AbandonControl`.** Giving up on a title is not a thing this
+ * application offers any more — no control here, and no *Abandon* on the library's
+ * selection bar. The state itself is not gone: a title abandoned before the controls were
+ * retired still reads *Abandoned* on the line above, and recording a watch still clears it
+ * (`CONTEXT.md`'s *"watching it again clears it"*, and `db/views.ts`'s first branch, both
+ * unchanged). It is a state nothing new can enter, deliberately, rather than a state that
+ * was deleted out from under the rows already in it.
+ *
+ * **Marking a whole show watched in one press** is still not offered anywhere — the season
+ * rows' *watched up to here* is the nearest thing, aimed at the last episode. If that is
+ * worth having it wants a home of its own.
  *
  * ── The bar takes the accent, and the state word gives it up ────────────────────────
  *
@@ -56,10 +74,21 @@ import { titleMetaLine } from "./title-meta-line";
  */
 export function TitleHero({
   detail,
+  synopsis,
   posterTransitionName,
   onStateChange,
 }: {
   detail: TitleDetailRow;
+  /**
+   * The synopsis section, already built by whichever surface holds this — streamed on the
+   * phone route, read from the pane's one client fetch on desktop. A node rather than a
+   * string for `ProgrammeNoteContent`'s reason: this component does not know, and must not
+   * learn, how a live fact arrives. It knows where it goes.
+   *
+   * It draws no card of its own (`nested`, in `live-title-facts.tsx`) — it is already
+   * inside this one.
+   */
+  synopsis: ReactNode;
   posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
 }) {
@@ -114,28 +143,37 @@ export function TitleHero({
         </div>
       </div>
 
-      {/* The controls, under the pair rather than beside the title: at 420px there is no
-          room for them on the poster's row, and a control that only fits on a phone is a
+      {/* The synopsis, full-width under the pair — see the docblock for why it is not in
+          the poster's column. It brings its own `mt-5` and renders nothing at all when
+          TMDB has no overview for this title, so an absent synopsis leaves no gap. */}
+      {synopsis}
+
+      {/* A film's one action, in the card with the state it changes. A show has an episode
+          list for this and does not draw it here — `film-watch-row.tsx`.
+
+          Keyed by entry: this component is not remounted on a selection change in the
+          desktop pane, and the row seeds its own `watched` from `state` at mount. Without
+          the key a new film would inherit the previous one's mark. */}
+      {detail.kind === "film" ? (
+        <div className="mt-4">
+          <FilmWatchRow
+            key={detail.libraryEntryId}
+            libraryEntryId={detail.libraryEntryId}
+            titleName={detail.name}
+            state={detail.state}
+            onStateChange={onStateChange}
+          />
+        </div>
+      ) : null}
+
+      {/* The one control under the pair, rather than beside the title: at 420px there is no
+          room for it on the poster's row, and a control that only fits on a phone is a
           control the pane would have to draw somewhere else.
 
-          `AbandonControl` rather than a menu. There was briefly a *Where this stands*
-          button here opening a dialog of state actions; it read as a settings control on a
-          screen with no settings, and it put the one write anybody reaches for — giving up
-          on something — behind two presses. This is the control that was here before the
-          restructure, in the place the restructure gave it. */}
-      <div className="mt-4">
-        <AbandonControl
-          libraryEntryId={detail.libraryEntryId}
-          titleName={detail.name}
-          abandoned={detail.state === "abandoned"}
-          onChanged={onStateChange}
-        />
-      </div>
-
-      {/* Keyed by `titleId` for its own docblock's reason: the desktop pane never remounts
+          Keyed by `titleId` for its own docblock's reason: the desktop pane never remounts
           on a selection change, so this key is what gives every title a clean picker
           instead of state this component would have to reset by hand. */}
-      <div className="mt-3">
+      <div className="mt-4">
         <AddToListControl key={detail.titleId} titleId={detail.titleId} titleName={detail.name} />
       </div>
     </section>

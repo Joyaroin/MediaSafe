@@ -123,7 +123,7 @@ export function ProgrammeNotePane() {
             </div>
           ) : null}
           {phase.kind === "loaded" ? (
-            /* The provider owns the one fetch; the two slots below read it. Keyed by
+            /* The provider owns the one fetch; the three slots below read it. Keyed by
                title so a selection change remounts it rather than reconciling an earlier
                title's answer into the new one. */
             <LiveTitleFactsProvider
@@ -133,11 +133,18 @@ export function ProgrammeNotePane() {
             >
             <ProgrammeNoteContent
               detail={phase.detail}
-              liveFacts={
+              synopsis={
                 <LiveTitleFactsClientFetch
                   kind={phase.detail.kind}
                   tmdbId={phase.detail.tmdbId}
-                  slot="facts"
+                  slot="synopsis"
+                />
+              }
+              watchProviders={
+                <LiveTitleFactsClientFetch
+                  kind={phase.detail.kind}
+                  tmdbId={phase.detail.tmdbId}
+                  slot="providers"
                 />
               }
               cast={
@@ -157,18 +164,6 @@ export function ProgrammeNotePane() {
                   // screen now.
                   prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
                     ? { kind: "loaded", detail: { ...prev.detail, state } }
-                    : prev,
-                )
-              }
-              onRated={(libraryEntryId: string, rating: number) =>
-                setPhase((prev) =>
-                  // The same guard, for the same reason — and it is the rating control's
-                  // rollback that depends on it: that control reads its previous value
-                  // back out of `detail.rating`, so patching this pane from a write that
-                  // belongs to a title the reader has already left would give the title
-                  // now on screen somebody else's number to roll back to.
-                  prev.kind === "loaded" && prev.detail.libraryEntryId === libraryEntryId
-                    ? { kind: "loaded", detail: { ...prev.detail, rating } }
                     : prev,
                 )
               }

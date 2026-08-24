@@ -18,12 +18,14 @@ import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *  1. **It is on title detail and nowhere else.** A tile, a rail, a grid cell or a swipe
  *     gaining this control is the ticket's own named failure — an irreversible action under
  *     a gesture made while scrolling — and it is a fact about the repository rather than
- *     about any render, so it is checked as one. `tests/rating-control.test.ts` established
- *     this shape for *the rating is on title detail and nowhere else*.
- *  2. **Abandon and remove carry different copy.** The two sit next to each other and the
- *     whole ticket exists to stop somebody destroying years of watches meaning to tidy up.
- *     A refactor that made the remove row echo the abandon row's reassurance would look
- *     completely ordinary in a diff.
+ *     about any render, so it is checked as one. `tests/unowned-title-surface.test.ts`
+ *     walks the import graph the same way, for the same kind of claim.
+ *  2. **Giving up and removing carry different copy.** They were adjacent controls when
+ *     this was written, and the whole ticket exists to stop somebody destroying years of
+ *     watches meaning to tidy up. The abandon control is retired, but the sentence it owned
+ *     is not: the library tile still tells a reader that *watching it again clears this*,
+ *     and a refactor that made the remove block echo that reassurance would look completely
+ *     ordinary in a diff.
  *  3. **A failed count offers no confirmation.** The route's boundary must have no form in
  *     it at all, rather than a form that is conditionally hidden.
  *
@@ -83,29 +85,35 @@ describe("the remove control", () => {
   });
 });
 
-describe("abandon and remove, which must not read as the same thing", () => {
-  it("promises the opposite of what the abandon row promises", () => {
+describe("giving up and removing, which must not read as the same thing", () => {
+  /**
+   * The comparison outlived the control it was written against.
+   *
+   * It read the reassurance out of `abandon-control.tsx`, which is deleted — nothing sets
+   * a title *abandoned* by hand any more. The **state** is not deleted, and neither is the
+   * promise attached to it: the library tile still says *Watching it again clears this* for
+   * a title already in it, which is now the only statement anywhere of the only way out. So
+   * the contrast is read from the tile instead, and it is the same contrast — a recoverable
+   * thing and an unrecoverable one, in the same voice, saying opposite things.
+   *
+   * The shape half of the old pair — *one is a row, the other is a block* — went with the
+   * control. Two constructs cannot be told apart when only one of them exists, and there is
+   * no surviving surface the contrast could honestly be repointed at.
+   */
+  it("promises the opposite of what the library tile promises", () => {
     const markup = render();
-    const abandon = sourceAt("app/(signed-in)/library/abandon-control.tsx");
+    const tile = sourceAt("app/(signed-in)/library/library-entry-cell.tsx");
 
-    // The abandon row's reassurance, read from the control that renders it rather than
-    // restated here — if that sentence is ever reworded, this fails and asks the question.
-    expect(abandon).toContain("Watching it again clears it");
+    // Read from the surface that renders it rather than restated here — if that sentence is
+    // ever reworded, this fails and asks the question.
+    expect(tile).toContain("Watching it again clears this");
 
     // The remove block's counterweight, in the same voice and to the opposite effect.
     expect(markup).toContain("Nothing brings them back");
-    expect(markup).not.toContain("Watching it again clears it");
+    expect(markup).not.toContain("Watching it again clears");
     // No in-app recovery is implied anywhere in it — `SPEC.md`'s caveat is that watches
     // this application recorded are restorable by no means at all.
     expect(markup).not.toMatch(/undo|restore|recover|trash|grace period/i);
-  });
-
-  it("is a block where the abandon control is a row, so the two do not read as a pair", () => {
-    const abandon = sourceAt("app/(signed-in)/library/abandon-control.tsx");
-    const remove = sourceAt("app/(signed-in)/library/remove-control.tsx");
-
-    expect(abandon).toContain("justify-between");
-    expect(remove).not.toContain("justify-between");
   });
 });
 

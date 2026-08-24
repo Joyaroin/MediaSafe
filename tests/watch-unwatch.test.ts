@@ -454,8 +454,8 @@ describe("unwatch", () => {
 
       const outcome = await unwatch(userId, { libraryEntryId: entryId, episodeId: null }, tx);
 
-      // No surface draws this yet — `FilmRow` offers no unwatch control — but the write
-      // does not know that, and a film's imported watch is not a different rule.
+      // No surface draws this yet — `film-watch-row.tsx` offers no unwatch control — but
+      // the write does not know that, and a film's imported watch is not a different rule.
       expect(outcome).toEqual({ removed: true });
       expect(await watchExists(tx, imported)).toBe(false);
     }));

@@ -31,13 +31,14 @@ import { ListTitleRow } from "./list-title-row";
  * the pointer's current row by one row height. `order` itself changes exactly once, on
  * release — `commit` below — which is also the one moment position numbers move.
  *
- * ── Optimistic, the same shape as `abandon-control.tsx` ───────────────────────────────
+ * ── Optimistic, in the shape every write on this surface uses ─────────────────────────
  *
  * `commit` reorders `order` — and renumbers every row's `position` to match — before the
  * write has answered, and `persist` puts the previous order back on failure, raising the
  * write-failure toast named for the title that moved. One raised failure is tracked in
- * `raised`, exactly as `abandon-control.tsx` tracks its own: a retry that fails again has
- * nothing new to say.
+ * `raised`, exactly as `add-to-list-control.tsx` tracks its own: a retry that fails again
+ * has nothing new to say. (`abandon-control.tsx` was the file this borrowed the shape from;
+ * it has since been retired, and the shape is unchanged.)
  *
  * ── The keyboard path ──────────────────────────────────────────────────────────────────
  *

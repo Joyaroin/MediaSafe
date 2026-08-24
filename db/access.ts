@@ -1636,8 +1636,9 @@ export interface MarkWatchedUpToOutcome {
  * abandoned title without giving it back.
  *
  * Recording that you *had* watched a show up to some point is a statement about the past.
- * Deciding you have not given up on it is `unabandonTitle`, which is a control the reader
- * presses on purpose. **The consequence is stated rather than hidden**: an abandoned show
+ * Deciding you have not given up on it is `unabandonTitle` — which no surface calls any
+ * more: the control that did was retired, and `recordWatch` clearing `abandoned_at` is now
+ * the only path out of the state. **The consequence is stated rather than hidden**: an abandoned show
  * marked up to its last episode still reads *abandoned* afterwards, because
  * `library_entry_state` tests `abandoned_at` first and outranks every derived answer.
  *
@@ -1813,8 +1814,13 @@ export interface AbandonTitlesOutcome {
  * promise all-or-nothing. Six sequential `UPDATE`s are six transactions, four of which can
  * commit before the fifth fails, and the reader is then left to work out which two of the
  * six they still have to give up on. One transaction makes partial success structurally
- * impossible, which is what lets `bulk-selection.ts` raise **one** toast for a lost
- * abandon rather than one per title.
+ * impossible, which is what let `bulk-selection.ts` raise **one** toast for a lost abandon
+ * rather than one per title.
+ *
+ * **Nothing calls this any more.** The library's bulk *Abandon* was retired with the
+ * single-title control, and the rows already abandoned are untouched — this function, its
+ * transaction and its filter are kept against the state coming back, not because anything
+ * presses them today. `tests/abandon.test.ts` is what still holds them honest.
  *
  * ── Already-abandoned entries are read, not overwritten ──────────────────────────────
  *

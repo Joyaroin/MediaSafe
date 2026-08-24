@@ -32,9 +32,9 @@ import { formatTitleCount } from "./title-count";
  * `<button>` (the delete control) inside an `<a>`, and the two are not the same gesture
  * anyway: one opens the list, the other destroys it.
  *
- * Issue #195 moved the delete control off `abandon-control.tsx`'s old vocabulary — a dim
- * underlined text button, never the accent — onto `GHOST_RECOVERY`, the register the whole
- * underline conversion reuses knowingly. It no longer avoids the accent; nothing here reads
+ * Issue #195 moved the delete control off the old quiet vocabulary — a dim underlined text
+ * button, never the accent, the register `abandon-control.tsx` shared before it was retired
+ * — onto `GHOST_RECOVERY`, the register the whole underline conversion reuses knowingly. It no longer avoids the accent; nothing here reads
  * as louder than the recording control for it, because `GHOST_RECOVERY` is an outline until
  * pressed, not a fill.
  */

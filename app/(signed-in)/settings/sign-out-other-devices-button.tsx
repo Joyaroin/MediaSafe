@@ -74,7 +74,9 @@ export function SignOutOtherDevicesButton() {
 
     if (error) {
       // One toast per lost write, not one per attempt (AGENTS.md) — but only while the
-      // reader can still see it, the same guard `RatingControl` and `AbandonControl` use.
+      // reader can still see it, the same guard `display-name-control.tsx` and
+      // `add-to-list-control.tsx` use. (`RatingControl` and `AbandonControl` were the two
+      // named here until both were retired; the guard is the same one they used.)
       if (raised.current?.standing()) return;
       raised.current = writeFailures.raise({
         title: "Sign out other devices",

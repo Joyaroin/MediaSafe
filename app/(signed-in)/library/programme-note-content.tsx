@@ -7,7 +7,6 @@ import {
   PROGRAMME_NOTE_CARD_PAD,
   PROGRAMME_NOTE_SECTION,
 } from "./programme-note-section";
-import { RatingControl } from "./rating-control";
 import { RemoveControl } from "./remove-control";
 import { TitleHero } from "./title-hero";
 import { UpNextRow } from "./up-next-row";
@@ -21,42 +20,42 @@ import { UpNextRow } from "./up-next-row";
  *
  * ── The order is the reading order — issue #228 ───────────────────────────────────────
  *
- * Title information; where the show stands, with the one control that can change it beside
- * it; progress and remaining; the up-next episode, markable on its own row; the season
- * chips and the episode list; then rating, *Add to list* and *Remove*, in that order, below
- * everything a reader came here more often to reach. The old order ran nearly the reverse
- * of how often each is reached for — giving up on a sixty-episode show meant scrolling
- * sixty episodes first, because the abandon control sat below all of them. It does not any
- * more: `AbandonControl` moved beside the state line, and `UpNextRow` gives the page's most
- * reached-for action a fixed row that does not depend on which season the chips below
- * happen to be showing (`up-next-row.tsx`'s own docblock has the argument for that one).
+ * Title information and the synopsis, in one card with the poster; *Remove*; the up-next
+ * episode, markable on its own row; the season chips and the episode list; and the
+ * borrowed sections — watch providers, then cast — last. The old order ran nearly the
+ * reverse of how often each is reached for. It does not any more: `UpNextRow` gives the
+ * page's most reached-for action a fixed row that does not depend on which season the
+ * chips below happen to be showing (`up-next-row.tsx`'s own docblock has the argument for
+ * that one), and a film's mark is in the hero card, which is the whole of that page's
+ * business in one block.
  *
- * ── `onStateChange`, and the two writes that report through it ───────────────────────
+ * ── What this page no longer offers ─────────────────────────────────────────────────
  *
- * `AbandonControl` (issue #87) is the one hand-set state in the model; `ProgrammeNoteEpisodes`'s
- * film row (issue #90) is the other caller, for the one state a film's watch can always
- * land on. Either way `onStateChange` is this component's entire surface for a landed
- * write: it patches `detail.state` in place, in whichever component is holding this one's
- * props (`ProgrammeNotePane` here, the phone route in
- * `app/(signed-in)/library/[entryId]/page.tsx`). Nothing else about the title changes when
- * either write lands, so nothing else is re-read.
+ * **A rating.** `RatingControl` and its action are gone, for both kinds. `rateTitle` and
+ * the `rating` column are not: the numbers already given are still stored, still counted
+ * on the delete-account page, and still named on the remove-confirmation page as something
+ * removal destroys. Nothing writes a new one.
  *
- * The entry id travels with both — `AbandonControl`'s own docblock explains why: this
- * component is never remounted on a title switch, so a write still in flight when the
- * caller moves on to a different entry must not patch the one now on screen.
+ * **Giving up on a title.** `AbandonControl` is gone from the hero and *Abandon* from the
+ * library's selection bar. `abandoned_at`, the view's first branch and the `abandoned`
+ * member of `LibraryState` all stay, so a title abandoned before the controls were retired
+ * still reads *Abandoned*, and recording a watch still clears it. `title-hero.tsx` carries
+ * the full statement of that.
  *
- * ── `onRated`, the second patch of the same kind ─────────────────────────────────────
+ * ── `onStateChange`, and the one write that still reports through it ─────────────────
  *
- * `RatingControl` (issue #113) reports a landed rating the way the two writes above
- * report a landed state, and for the same reason: this component is handed its title, it
- * does not own it, so the copy that has to change lives in the caller. It is a separate
- * prop rather than a widening of `onStateChange` because a rating is not a state — the
- * five states are derived and a rating is stored, and one callback carrying both would
- * be the first place in this codebase to blur that.
+ * `FilmWatchRow` (`film-watch-row.tsx`), for the one state a film's watch can always land
+ * on. It had two callers and now has one — `AbandonControl` was the other.
  *
- * The rating is on title detail and nowhere else — `SPEC.md` §7 — which is why this
- * component is the only one in the repository that imports `RatingControl`, and why the
- * grid's read does not carry a rating for a tile to accidentally draw.
+ * `onStateChange` is this component's entire surface for a landed write: it patches
+ * `detail.state` in place, in whichever component is holding this one's props
+ * (`ProgrammeNotePane` here, the phone route in
+ * `app/(signed-in)/library/[entryId]/title-detail-view.tsx`). Nothing else about the title
+ * changes when that write lands, so nothing else is re-read.
+ *
+ * The entry id travels with it: this component is never remounted on a title switch in the
+ * pane, so a write still in flight when the caller moves on to a different entry must not
+ * patch the one now on screen.
  *
  * ── `RemoveControl`, which reports nothing at all ───────────────────────────────────
  *
@@ -66,13 +65,14 @@ import { UpNextRow } from "./up-next-row";
  * there is no write here to land — which is also why it needs no entry-id guard of the kind
  * `AbandonControl`'s docblock explains.
  *
- * It is rendered **last of all**, below rating and list membership rather than beside the
- * abandon control the way it once sat — issue #228 moves *that* control up next to the
- * state line, on the reasoning that it is reached for far more often than removal is. The
- * two no longer share a row, but `remove-control.tsx` still carries why they must not read
- * as the same thing even in passing — a different shape, and a different promise in the
- * copy underneath each. The reason removal belongs on this shared component rather than on
- * the phone route is that the desktop pane is title detail too — a title removable on one
+ * It has a card to itself directly under the hero. It shared that card with the rating
+ * until the rating went, and it keeps the position rather than moving: the card is where a
+ * reader has learned to find it, and the alternative — putting a destructive action into
+ * the hero beside *Add to list* — is exactly the adjacency `remove-control.tsx` argues
+ * against. That file still carries why removal and the controls above it must not read as
+ * the same thing even in passing: a different shape, and a different promise in the copy
+ * underneath each. The reason removal belongs on this shared component rather than on the
+ * phone route is that the desktop pane is title detail too — a title removable on one
  * device and permanent on the other would be the same feature having two answers.
  *
  * TMDB's attribution is not here — it is pinned to the foot of whichever surface holds
@@ -101,38 +101,47 @@ import { UpNextRow } from "./up-next-row";
  * to the browser as two boundaries claiming the old name for a commit rather than one
  * leaving and another arriving.
  *
- * ── `liveFacts` is a node, not data (issue #218) ──────────────────────────────────────
+ * ── The live facts are nodes, not data (issue #218) — and now there are three ────────
  *
- * This component does not fetch, or even know, how the three live sections get their
- * data — it only knows where they sit in the layout. `library/[entryId]/page.tsx` and
- * `titles/[kind]/[tmdbId]/page.tsx` hand in `<LiveTitleFactsStreamed userId kind tmdbId />`, a
- * Server Component built server-side and passed down as an already-rendered element
+ * This component does not fetch, or even know, how the live sections get their data — it
+ * only knows where they sit in the layout. `library/[entryId]/title-detail-body.tsx` hands
+ * in Server Components built server-side and passed down as already-rendered elements
  * (React's own documented pattern for interleaving Server and Client Components); the
- * desktop pane and the Up next sheet hand in `<LiveTitleFactsClientFetch kind tmdbId />`
- * instead, since neither has a page render to stream the first behind
- * (`live-title-facts.tsx`'s top docblock carries the full reasoning for both). Either way
- * this component is identical for all four surfaces — issue #58's own promise — because
- * the difference lives entirely in what the caller passes, not in anything here.
+ * desktop pane hands in `<LiveTitleFactsClientFetch slot=… />` instead, since it has no
+ * page render to stream behind (`live-title-facts.tsx`'s top docblock carries the full
+ * reasoning for both). Either way this component is identical for both surfaces — issue
+ * #58's own promise — because the difference lives entirely in what the caller passes, not
+ * in anything here.
+ *
+ * **Three props rather than two**, because the synopsis moved into the hero's card and the
+ * watch providers did not. A node can be placed once; two sections that no longer sit
+ * together cannot arrive as one node. That is the same split, one section further on, that
+ * separated `cast` from the other two.
  */
 export function ProgrammeNoteContent({
   detail,
-  liveFacts,
+  synopsis,
+  watchProviders,
   cast,
   posterTransitionName,
   onStateChange,
-  onRated,
 }: {
   detail: TitleDetailRow;
-  /** The synopsis and the watch providers, streamed — see `live-title-facts-streamed.tsx`. */
-  liveFacts: ReactNode;
   /**
-   * Cast, streamed separately, because it goes **last** — after the rating rather than
-   * under the hero with the other two. One node could only put all three together.
+   * The synopsis, drawn **inside the hero's card** — handed straight through to
+   * `TitleHero`, which is the component that knows where in that card it goes. It carries
+   * no card of its own; see `nested` in `live-title-facts.tsx`.
+   */
+  synopsis: ReactNode;
+  /** The watch providers, in a card of their own below the hero. */
+  watchProviders: ReactNode;
+  /**
+   * Cast, streamed separately, because it goes **last** — below the episode list rather
+   * than under the hero with the other two.
    */
   cast: ReactNode;
   posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
-  onRated: (libraryEntryId: string, rating: number) => void;
 }) {
   // A film's `episodes` is always empty (`TitleDetailRow`'s own docblock), so this is
   // `undefined` for one there is never a fact to find.
@@ -141,15 +150,19 @@ export function ProgrammeNoteContent({
   /**
    * ── The order, and why it is this one ─────────────────────────────────────────────
    *
-   * Hero, then the two things you *own* about the title — your rating, and the control
-   * that destroys everything you own about it — then what the title is, where to watch
-   * it, what to watch next, the episodes, and the cast.
+   * Hero — poster, state, progress, what the title *is*, and a film's one action — then
+   * the control that destroys everything you own about it, then what to watch next, the
+   * episodes, where to watch it, and the cast.
    *
-   * The three streamed facts used to arrive as one node in that order. Cast belongs at the
-   * bottom and the other two at the top, so the group is now two nodes — `liveFacts` and
-   * `cast`. Nothing about the streaming changed: each read always had its own `Suspense`
-   * and always resolved independently; the group was an ordering, and the ordering now
-   * belongs to this file, which is the thing that knows the order.
+   * The three streamed facts used to arrive as one node in that order. They are three
+   * nodes now, placed by this file: the synopsis inside the hero, the providers below the
+   * episodes, the cast last. Nothing about the streaming changed — each read always had
+   * its own `Suspense` and always resolved independently; the group was an ordering, and
+   * the ordering belongs here, in the thing that knows the order.
+   *
+   * **Watch providers moved down** when the synopsis moved up. They were a pair under the
+   * hero and the pair is gone; of the two remaining borrowed sections, *where to watch it*
+   * is worth more than the cast and less than the episode you are actually here for.
    *
    * Cast is last, because it is the section you scroll to out of curiosity rather than to
    * do something with.
@@ -158,38 +171,27 @@ export function ProgrammeNoteContent({
     <div className="px-4 py-5">
       <TitleHero
         detail={detail}
+        synopsis={synopsis}
         posterTransitionName={posterTransitionName}
         onStateChange={onStateChange}
       />
 
-      {/* Your rating and *Remove from library*, directly under the hero.
-          
-          Both used to sit at the foot, below the episode list, on the argument that each
-          is reached for far less often than anything above it. The rating is genuinely
-          one of the few things MediaSafe *owns* about a title — everything between here
-          and the episodes is borrowed — and burying it under sixty episode rows made the
-          one owned fact the hardest thing on the page to reach.
+      {/* *Remove from library*, directly under the hero.
 
-          **Remove keeps its warning and loses its scroll.** The scroll was doing real
-          work: it destroys your watches and your rating and nothing brings them back.
-          What replaces that is the confirmation `RemoveControl` already owns, which is
-          the guard that was always the real one — the distance was only ever a second
-          line of defence, and it cost the rating its place. */}
+          It used to sit at the foot, below the episode list, on the argument that it is
+          reached for far less often than anything above it. **It keeps its warning and
+          loses its scroll**: the scroll was doing real work — removal destroys your
+          watches and nothing brings them back — but the guard that was always the real
+          one is the confirmation `RemoveControl` already owns, and the distance was only
+          ever a second line of defence.
+
+          It had the rating for company in this card until the rating was retired. A
+          one-control card is what that leaves, and it is the honest shape: the alternative
+          is folding removal into the hero next to *Add to list*, which puts a destructive
+          action in a group of additive ones. */}
       <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
-        <RatingControl
-          libraryEntryId={detail.libraryEntryId}
-          titleName={detail.name}
-          rating={detail.rating}
-          onRated={onRated}
-        />
-
-        <div className="mt-5">
-          <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
-        </div>
+        <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
       </section>
-
-      {/* Synopsis and watch providers — each its own card, each streamed. */}
-      {liveFacts}
 
       {/* The up-next episode, markable on its own row without picking a season first —
           issue #228, and `up-next-row.tsx`'s own docblock for why it is not simply the
@@ -215,17 +217,27 @@ export function ProgrammeNoteContent({
       {/* The season chips and the full episode list, kept as they are. The screen this
           follows replaces them with a grid of episode numbers and one expanded card —
           which shows numbers where `CONTEXT.md` says *an episode is never referred to by
-          number alone*, and hides which episodes are watched behind a selection. */}
-      <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
-        <ProgrammeNoteEpisodes
-          kind={detail.kind}
-          episodes={detail.episodes}
-          libraryEntryId={detail.libraryEntryId}
-          titleName={detail.name}
-          state={detail.state}
-          onStateChange={onStateChange}
-        />
-      </section>
+          number alone*, and hides which episodes are watched behind a selection.
+
+          **The card is a show's, not the page's.** A film's watched mark lives in the hero
+          now (`film-watch-row.tsx`), so `ProgrammeNoteEpisodes` has nothing to draw for
+          one — and a card wrapped around a component that renders nothing is an empty card,
+          not an absent one. The guard is here rather than only inside that component
+          because the card is this file's. */}
+      {detail.kind === "film" ? null : (
+        <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+          <ProgrammeNoteEpisodes
+            kind={detail.kind}
+            episodes={detail.episodes}
+            libraryEntryId={detail.libraryEntryId}
+            titleName={detail.name}
+          />
+        </section>
+      )}
+
+      {/* Where to watch it — its own card, streamed, and below the episodes since the
+          synopsis took its place at the top. */}
+      {watchProviders}
 
       {/* Cast, last of the borrowed facts and last of the cards: it is the section you
           scroll to out of curiosity rather than to do something with. */}

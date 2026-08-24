@@ -16,9 +16,14 @@ import { describe, expect, it } from "vitest";
  *  1. **No underlined text affordance survives under `app/`.** A repo-wide source scan, not
  *     a fixed file list — the fixed list is exactly what let this drift to fourteen in the
  *     first place. One file is named exempt below, with its own reason.
- *  2. **Element type held constant.** The eight controls that navigate are still `<Link>`;
- *     the six that act are still `<button>`. Looking like a button and being one are
+ *  2. **Element type held constant.** The seven controls that navigate are still `<Link>`;
+ *     the seven that act are still `<button>`. Looking like a button and being one are
  *     different facts, and this ticket changed only the first.
+ *
+ *     Two of the acting seven were `abandon-control.tsx`'s *Give up on this* and *Take it
+ *     back*, and they went when that control was retired. The count holds because the
+ *     selection bar's two took their place — it had none in this table, and its *Add to
+ *     list* is the ternary-labelled case `rendersAs` below is written to cope with.
  *
  * ── Why this reads source rather than rendering ───────────────────────────────────────
  *
@@ -184,9 +189,12 @@ describe("the check can fail", () => {
  *  attributes, and an arrow's own `>` would end a `[^>]*` class before the real tag close.
  *
  *  The gap around `label` itself excludes `<` rather than requiring pure whitespace —
- *  `abandon-control.tsx` renders its label from `{shown ? "Take it back" : "Give up on
- *  this"}`, not as bare text, and `[^<]` stays inside this one element's own children
- *  without being able to cross into a sibling or nested tag to find a false match. */
+ *  `selection-action-bar.tsx` renders its primary label from `{view.adding ? "Adding" :
+ *  "Add to list"}`, not as bare text, and `[^<]` stays inside this one element's own
+ *  children without being able to cross into a sibling or nested tag to find a false
+ *  match. (The example was `abandon-control.tsx`'s `{shown ? "Take it back" : "Give up on
+ *  this"}` until that control was retired; the shape it demonstrates is unchanged, and the
+ *  bar's own entry in the table below is now the row that exercises it.) */
 function rendersAs(source: string, tag: "button" | "Link", label: string): boolean {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`<${tag}[\\s\\S]*?>[^<]*?${escaped}[^<]*?<\\/${tag}>`).test(source);
@@ -217,8 +225,9 @@ const ACTING_CONTROLS = [
   { file: "app/(signed-in)/library/programme-note-episodes.tsx", label: "Unwatch" },
   { file: "app/(signed-in)/lists/list-row.tsx", label: "Delete" },
   { file: "app/(signed-in)/library/add-to-list-control.tsx", label: "Add to list" },
-  { file: "app/(signed-in)/library/abandon-control.tsx", label: "Give up on this" },
-  { file: "app/(signed-in)/library/abandon-control.tsx", label: "Take it back" },
+  // The bulk bar's two, and the ternary-labelled case `rendersAs` above is written for.
+  { file: "app/(signed-in)/library/selection-action-bar.tsx", label: "Add to list" },
+  { file: "app/(signed-in)/library/selection-action-bar.tsx", label: "Done" },
 ] as const;
 
 describe("the controls that navigate are still anchors", () => {

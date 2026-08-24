@@ -1,12 +1,7 @@
 "use server";
 
-import { cachedTitleDetail, invalidateFor } from "@/cache/tags";
-import {
-  abandonTitle,
-  unabandonTitle,
-  type LibraryState,
-  type TitleDetailRow,
-} from "@/db/access";
+import { cachedTitleDetail } from "@/cache/tags";
+import { type TitleDetailRow } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
 import type { CastAndCrew } from "@/tmdb/catalogue";
@@ -158,53 +153,4 @@ export async function titleLiveFactsAction(
   tmdbId: number,
 ): Promise<LiveFacts> {
   return readLiveFacts(await requireUserId(), kind, tmdbId);
-}
-
-/**
- * The abandon control's two writes (issue #87) — `AbandonControl` calls whichever one its
- * own current state says is next, and both report the same shape their sibling actions
- * above already established. `abandonAction`'s result is always `"abandoned"`;
- * `db/access.ts`'s `abandonTitle` needs no state back because that is the entire point of
- * `abandoned_at` outranking every derived rule. `unabandonAction` has no such certainty —
- * its outcome is read back from `unabandonTitle`, which reads it from the view rather
- * than guessing, so this file adds no second copy of the five-state rule either.
- *
- * Both bust their tags (issue #219), past the `catch` and on the success path only:
- * abandoning a title is a change of state, and state is the one thing beyond the poster
- * that the library grid groups and prints. Since #226 that is three tags rather than one —
- * the same state moves a title into the phone's ABANDONED group and changes what this very
- * pane prints — and this call site did not change to say so, because `INVALIDATES` is where
- * the count lives. The four reads above bust nothing: they are reads, and three of them are
- * TMDB rather than this database at all.
- */
-export type AbandonOutcome =
-  | { readonly ok: true; readonly state: LibraryState }
-  | { readonly ok: false; readonly reference: string | null };
-
-export async function abandonAction(libraryEntryId: string): Promise<AbandonOutcome> {
-  const userId = await requireUserId();
-
-  try {
-    await abandonTitle(userId, libraryEntryId);
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
-  }
-
-  invalidateFor("abandonTitle", userId);
-  return { ok: true, state: "abandoned" };
-}
-
-export async function unabandonAction(libraryEntryId: string): Promise<AbandonOutcome> {
-  const userId = await requireUserId();
-  let state: LibraryState;
-
-  try {
-    const outcome = await unabandonTitle(userId, libraryEntryId);
-    state = outcome.state;
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
-  }
-
-  invalidateFor("unabandonTitle", userId);
-  return { ok: true, state };
 }

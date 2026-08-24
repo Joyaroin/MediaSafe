@@ -10,15 +10,18 @@ import {
   addTitlesToListAction,
   type AddTitlesToListActionOutcome,
 } from "@/app/(signed-in)/lists/actions";
-import {
-  abandonTitlesAction,
-  type AbandonTitlesActionOutcome,
-} from "./bulk-abandon-action";
 
 /**
- * *These ones* — which library titles the reader has held and tapped, and the writes that
- * act on all of them at once. Issue #197 for the selection and the add, #199 for the
- * abandon beside it, with no React in either.
+ * *These ones* — which library titles the reader has held and tapped, and the write that
+ * acts on all of them at once. Issue #197, with no React in it.
+ *
+ * **It held two writes until recently.** Issue #199 put a bulk *Abandon* beside the add;
+ * giving up on a title is not something this application offers any more, so that write,
+ * its flag, its second toast handle and the `abandoned` bit it branched on are all gone
+ * from this file. The state itself is untouched — `abandoned_at`, `db/views.ts`'s first
+ * branch and the *Abandoned* the grid still draws for a title already in it all stay
+ * (`title-hero.tsx` carries the whole statement). Nothing new can enter it, here or
+ * anywhere.
  *
  * The directive above is the same safety boundary `watch-marks.ts` and
  * `errors/write-failure.ts` draw, for the same reason: everything below is state about
@@ -53,25 +56,6 @@ import {
  * failure legible — **one lost write, one toast**, naming every title that did not make
  * it, and never one toast per title.
  *
- * `abandon` below is the same shape over `abandonTitles`, and issue #199 asks for it in
- * the same words: *one transaction, all-or-nothing, so a failure leaves nothing changed
- * and raises exactly one toast rather than one per title.*
- *
- * ── Abandon over a set is not the toggle the single title has ────────────────────────
- *
- * `abandon-control.tsx` is a toggle because one title has one state and a press means
- * *the other one*. A toggle over six does not: issue #199 — *pressing one button and
- * having four go one way and two come back is not what anyone intends by selecting six
- * things.* So the store filters, and the rule is one direction only — the titles that are
- * not already abandoned are abandoned, and the ones that are are left alone. There is no
- * bulk un-abandon and this file is not where one would go if there were.
- *
- * That filter lives here rather than in `abandonTitles` alone for the reason every other
- * rule in this file does: it is a rule about *the selection*, which is the thing this
- * module owns and the thing `tests/bulk-selection.test.ts` can drive. `abandonTitles`
- * filters again on its own side, because a Server Action is a POST endpoint and a rule
- * only the browser enforces is not enforced.
- *
  * ── Selection order is the order they land in ────────────────────────────────────────
  *
  * `selected` is an array rather than a `Set` because the order is a fact the write uses:
@@ -98,31 +82,20 @@ import {
 /**
  * One title a cell can put in the selection.
  *
- * Four fields and deliberately not the whole `LibraryEntryRow`: `libraryEntryId` is what a
- * cell is keyed and toggled by and what an abandon is written against, `titleId` is what a
- * list membership is keyed on (`db/tables.ts` — a list holds titles, not library entries),
- * and `name` is what the toast prints if the write is lost. Nothing here needs a poster.
+ * Three fields and deliberately not the whole `LibraryEntryRow`: `libraryEntryId` is what
+ * a cell is keyed and toggled by, `titleId` is what a list membership is keyed on
+ * (`db/tables.ts` — a list holds titles, not library entries), and `name` is what the toast
+ * prints if the write is lost. Nothing here needs a poster.
+ *
+ * There was a fourth, `abandoned` — the one bit of the five-state model that reached the
+ * selection, because the bulk abandon was the one write that had to branch on it. That
+ * write is retired and the bit went with it. The grid still knows the state perfectly
+ * well; it is the cell's to draw, and `db/views.ts` is where it is derived.
  */
 export interface SelectableTitle {
   readonly libraryEntryId: string;
   readonly titleId: string;
   readonly name: string;
-  /**
-   * Whether this one is already given up on — the one bit of the five-state model that
-   * reaches the selection, because it is the one `abandon` has to branch on.
-   *
-   * A boolean rather than the `LibraryState` it came from, on purpose: the state line is
-   * the cell's to render and the four watching states are all the same answer to the only
-   * question asked here. Carrying the whole state would invite a second reader to derive
-   * something from it, and `db/views.ts` is where that is derived.
-   *
-   * It is a snapshot of what the grid was rendering when the title was selected, which is
-   * the same staleness every optimistic control in this app already lives with, and it
-   * costs nothing that matters: `abandonTitles` filters on the row's own `abandoned_at`
-   * inside the transaction, so a title abandoned on another device between the hold and
-   * the press is skipped by the write whatever this said.
-   */
-  readonly abandoned: boolean;
 }
 
 /** What the action bar and the cells render. */
@@ -137,38 +110,23 @@ export interface BulkSelectionView {
   readonly selected: readonly SelectableTitle[];
   /** A bulk add is on the wire. The bar's *Add to list* must not be pressed again. */
   readonly adding: boolean;
-  /**
-   * A bulk abandon is on the wire.
-   *
-   * Two flags rather than one `busy`, because the bar has two controls and each says what
-   * it is doing in its own label — but the store's guards read *both* for either write,
-   * and that asymmetry is deliberate. A press that lands ends the mode and empties the
-   * selection, so an abandon landing while an add is in flight would leave the add
-   * finishing against a selection that no longer exists; refusing the second press is
-   * cheaper to reason about than reconciling the two, and the reader loses nothing but the
-   * half-second they were already waiting.
-   */
-  readonly abandoning: boolean;
 }
 
 /**
- * Both writes, behind one interface, so `tests/bulk-selection.test.ts` can drive every
- * route to either without a server, a session or a database. Each method's shape is the
- * Server Action's own outcome rather than a parallel one: a fake that could answer
- * something the real caller cannot return would be a test of the fake.
+ * The write, behind an interface, so `tests/bulk-selection.test.ts` can drive every route
+ * to it without a server, a session or a database. The method's shape is the Server
+ * Action's own outcome rather than a parallel one: a fake that could answer something the
+ * real caller cannot return would be a test of the fake.
  *
- * One interface and not two, because there is one store and the guards below read across
- * both — a seam that let a test hand in an add without an abandon would be a seam the
- * store's own *not while the other one is in flight* rule could not be driven through.
+ * It carried two methods while the bulk abandon existed. One is what is left, and the
+ * interface stays an interface rather than collapsing into the function type: the seam is
+ * what makes the store testable, and that is true of one write as much as of two.
  */
 export interface BulkWriter {
   add(params: {
     readonly listId: string;
     readonly titleIds: readonly string[];
   }): Promise<AddTitlesToListActionOutcome>;
-  abandon(params: {
-    readonly libraryEntryIds: readonly string[];
-  }): Promise<AbandonTitlesActionOutcome>;
 }
 
 export interface BulkSelection {
@@ -188,14 +146,6 @@ export interface BulkSelection {
    * selection that is still intact.
    */
   addToList(listId: string): Promise<boolean>;
-  /**
-   * Give up on every selected title that is not already given up on, as one transaction —
-   * issue #199. Resolves to whether the reader's press was answered: `true` both for a
-   * write that landed and for a selection that was already entirely abandoned, since the
-   * library says the same thing after either, and `false` only for a press that was
-   * refused or lost.
-   */
-  abandon(): Promise<boolean>;
 }
 
 /**
@@ -207,7 +157,6 @@ export const NO_SELECTION: BulkSelectionView = {
   selecting: false,
   selected: [],
   adding: false,
-  abandoning: false,
 };
 
 /**
@@ -218,7 +167,7 @@ export const NO_SELECTION: BulkSelectionView = {
  * a change that was not one re-renders every subscriber, and this store's subscribers are
  * every cell in the bill. `errors/write-failure.ts`'s `remove()` guards the same way for
  * the same reason (*every no-op becomes a re-render*); the difference is only that a
- * selection has three fields rather than one array.
+ * selection has two flags and an array rather than one array.
  *
  * `selected` is compared element-wise rather than by identity because two of the routes
  * that reach `apply` build a fresh array to say nothing new — `end()` on an already-empty
@@ -229,7 +178,6 @@ function sameView(one: BulkSelectionView, other: BulkSelectionView): boolean {
   return (
     one.selecting === other.selecting &&
     one.adding === other.adding &&
-    one.abandoning === other.abandoning &&
     one.selected.length === other.selected.length &&
     one.selected.every((title, index) => title === other.selected[index])
   );
@@ -253,19 +201,6 @@ export function createBulkSelection({
    * there is at most one lost one to be holding.
    */
   let addFailure: WriteFailureHandle | null = null;
-
-  /**
-   * This selection's outstanding lost abandon, or `null` — a second handle, not a shared
-   * one, and the distinction is load-bearing (issue #199).
-   *
-   * The two writes can both be lost over the same selection: an add fails, its toast
-   * stands over a selection this store deliberately left intact, and the reader presses
-   * Abandon on that same selection and loses that too. Those are two lost writes about two
-   * different things, and *raise one toast per lost write* means two toasts — the rule
-   * `errors/write-failure.ts` states is about attempts at one write, never about
-   * collapsing two. Sharing one handle would have silenced whichever came second.
-   */
-  let abandonFailure: WriteFailureHandle | null = null;
 
   function apply(next: Partial<BulkSelectionView>): void {
     const merged = { ...view, ...next };
@@ -359,72 +294,6 @@ export function createBulkSelection({
     }
   }
 
-  /**
-   * One attempt at the bulk abandon — `attempt` above, over the other write.
-   *
-   * The two are the same seven steps and are still two functions, which is a choice rather
-   * than an oversight. What differs between them is not a value that could be a parameter:
-   * it is which flag marks the wire busy, which of the two handles above holds the toast,
-   * what the request carries, and which slice of the selection is written. A merged version
-   * would take all four as arguments — two of them setter closures, because a handle cannot
-   * be assigned through a parameter — and the result would be one function that reads like
-   * neither write while the rules each one exists to state got harder to find. Twenty
-   * duplicated lines is the cheaper of the two costs.
-   *
-   * Two arguments and not one, because the two sets are different questions and conflating
-   * them is precisely the bug this ticket exists to avoid. `selection` is everything the
-   * reader had chosen, and it is here only as an **identity** — the token that says whether
-   * the selection on screen is still the one this attempt was started against, exactly as
-   * `attempt` uses it. `pending` is the titles that were not already abandoned, and it is
-   * the only thing the write and the toast ever see: naming a title the write did not touch
-   * as one the reader lost would be a false sentence on the busiest surface in the app.
-   */
-  async function attemptAbandon(
-    selection: readonly SelectableTitle[],
-    pending: readonly SelectableTitle[],
-  ): Promise<boolean> {
-    apply({ abandoning: true });
-
-    const outcome = await sendAbandon(pending);
-
-    apply({ abandoning: false });
-
-    if (outcome.ok) {
-      abandonFailure?.resolve();
-      abandonFailure = null;
-
-      // The same identity test `attempt` makes, for the same reason: a *Try again* pressed
-      // long after the fact can land against a selection that has moved on since, and
-      // ending the mode then would take away titles the reader chose after this write was
-      // already lost.
-      if (view.selected === selection) settle([]);
-      return true;
-    }
-
-    if (!abandonFailure?.standing()) {
-      abandonFailure = failures.raise({
-        title: pending.map((title) => title.name).join(", "),
-        reference: outcome.reference,
-        retry: () => void attemptAbandon(selection, pending),
-      });
-    }
-
-    return false;
-  }
-
-  /** `add`'s sibling: the one failure `abandonTitlesAction` cannot report itself. */
-  async function sendAbandon(
-    titles: readonly SelectableTitle[],
-  ): Promise<AbandonTitlesActionOutcome> {
-    try {
-      return await writer.abandon({
-        libraryEntryIds: titles.map((title) => title.libraryEntryId),
-      });
-    } catch (error) {
-      return { ok: false, reference: referenceFor(error, { surface: "bulk-abandon" }) };
-    }
-  }
-
   return {
     subscribe(onChange) {
       listeners.add(onChange);
@@ -471,43 +340,9 @@ export function createBulkSelection({
       // empty `VALUES` list is not something to send and find out about.
       if (titles.length === 0) return Promise.resolve(false);
       // A second press while the first is on the wire is not a second write. It cannot be
-      // a retry either: this one has not failed yet. `abandoning` is refused for the reason
-      // `BulkSelectionView` gives: a landing abandon empties the selection this add is
-      // still holding.
-      if (view.adding || view.abandoning) return Promise.resolve(false);
+      // a retry either: this one has not failed yet.
+      if (view.adding) return Promise.resolve(false);
       return attempt(listId, titles);
-    },
-
-    abandon() {
-      const titles = view.selected;
-      // As `addToList`: unreachable from the bar, since an empty selection has already
-      // ended the mode, and refused anyway because this is a public route into a write.
-      if (titles.length === 0) return Promise.resolve(false);
-      if (view.adding || view.abandoning) return Promise.resolve(false);
-
-      // The ticket's rule, and the whole of it: *abandon applies only to the titles that
-      // are not already abandoned.*
-      const pending = titles.filter((title) => !title.abandoned);
-
-      if (pending.length === 0) {
-        /**
-         * Every selected title was already given up on, so there is nothing to write —
-         * *a selection where every title is already abandoned makes the action a no-op
-         * rather than a reversal.* The no-op is the **write**: nothing goes on the wire and
-         * nothing is un-abandoned, which is the reversal that sentence exists to forbid.
-         *
-         * The mode still ends, and that is a decision rather than an oversight.
-         * `addTitlesToListAction`'s `added: 0` already settles the same question the same
-         * way — a set that was entirely there before is a landed press, because *the list
-         * now says what I asked it to say* is the only thing the reader was asking. The
-         * alternative is a control that answers a press by doing visibly nothing, which
-         * reads as broken and teaches the reader to press it again.
-         */
-        settle([]);
-        return Promise.resolve(true);
-      }
-
-      return attemptAbandon(titles, pending);
     },
   };
 }
@@ -523,7 +358,6 @@ export function createLibraryBulkSelection(): BulkSelection {
   return createBulkSelection({
     writer: {
       add: ({ listId, titleIds }) => addTitlesToListAction(listId, titleIds),
-      abandon: ({ libraryEntryIds }) => abandonTitlesAction(libraryEntryIds),
     },
   });
 }

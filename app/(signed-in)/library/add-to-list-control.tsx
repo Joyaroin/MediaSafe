@@ -29,9 +29,10 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
  * it opens, so the press that opens it and the fetch that follows have to happen
  * together — a `<dialog>` fires no reliable "now open" event across browsers to hook a
  * second component into, and inventing one would be more machinery than the alternative:
- * `RatingControl` and `AbandonControl` are both single files for the same reason, and this
- * follows them rather than `list-row.tsx`'s split, which only fits a dialog with nothing
- * to load.
+ * a control that fetches on open is one file, trigger and dialog together. It follows that
+ * rather than `list-row.tsx`'s split, which only fits a dialog with nothing to load.
+ * (`RatingControl` and `AbandonControl` were the two precedents named here; both are
+ * retired, and the reason they were single files is the reason stated above.)
  *
  * ── Creating a list is the same action ────────────────────────────────────────────────
  *
