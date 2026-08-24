@@ -297,11 +297,17 @@ function CardBody({
       >
         {/* `EpisodeStill` is #253's, shared rather than re-cut — one answer to *what does
             a still look like, and what happens when there isn't one*. The `still` utility
-            holds the 16:9 ratio, so an episode with no frame keeps the card's shape. */}
+            holds the 16:9 ratio, so an episode with no frame keeps the card's shape rather
+            than collapsing it, which is #245's user story 48.
+
+            `--still-radius: 0` because the card already clips this frame at its own `16px`
+            corner; the utility's default `7px` would draw a notch inside it. Set through
+            the variable rather than as a competing class, for the reason `globals.css`
+            gives beside both this utility and `poster`. */}
         <EpisodeStill
           stillPath={stillPath}
           width={CARD_WIDTH}
-          className="w-full [border-radius:0]"
+          className="w-full [--still-radius:0]"
           aboveFold={aboveFold}
         />
 

@@ -157,6 +157,25 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
     );
   });
 
+  /**
+   * **The concatenation is memoised, and that is correctness-adjacent rather than tuning.**
+   *
+   * `useEntriesOnRail` takes this array into a `useCallback` dependency and hands the
+   * result to `useSyncExternalStore` as its `subscribe`. A fresh array per render is a
+   * fresh `subscribe` per render, which React answers by unsubscribing and resubscribing
+   * every listener — one per queued episode across the whole rail, on the order of eight
+   * hundred here, on every render including the one a press causes.
+   *
+   * Nothing on screen looks wrong when this regresses, which is exactly why it is pinned:
+   * the rail renders, the marks land, and the cost is invisible outside a profiler.
+   */
+  it("memoises the concatenation rather than rebuilding it each render", () => {
+    expect(source).toMatch(/const entries = useMemo\(/);
+    expect(source).toMatch(
+      /\[rails\.ongoing,\s*rails\.comingBack,\s*rails\.oldFriends\],/,
+    );
+  });
+
   it("names all three, so none can be dropped without this failing", () => {
     for (const rail of ["rails.ongoing", "rails.comingBack", "rails.oldFriends"]) {
       expect({ rail, present: source.includes(rail) }).toEqual({ rail, present: true });

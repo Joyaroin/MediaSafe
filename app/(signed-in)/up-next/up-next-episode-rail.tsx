@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import type { UpNextEntry } from "@/db/access";
 import { RailSection, FIRST_RUN } from "./up-next-phone-rail";
 import { UpNextEpisodeCard } from "./up-next-episode-card";
@@ -45,8 +47,26 @@ export function UpNextEpisodeRail({
   /**
    * The one line that makes the three orderings one rail. Written out rather than
    * `Object.values(rails)` so the sequence is a fact of this file and not of a key order.
+   *
+   * ── The memo is load-bearing, and it is not a micro-optimisation ────────────────────
+   *
+   * `useEntriesOnRail` takes this array into a `useCallback` dependency and hands the
+   * result to `useSyncExternalStore` as its `subscribe`. A fresh array every render is a
+   * fresh `subscribe` every render, and React answers that by **unsubscribing and
+   * resubscribing every listener** — which here is one per queued episode across every
+   * entry on the rail: up to `watching × UP_NEXT_QUEUE_DEPTH`, on the order of eight
+   * hundred on the committed library. Every render, including the one a press causes,
+   * during the one interaction where the main thread is least able to spare it.
+   *
+   * The three arrays are props from a server component and keep their identity across a
+   * client render, so this holds. `up-next-rail.tsx`'s `sameReach` note is the same class
+   * of problem found on the desktop's scroll path; the group this replaces never had it,
+   * because it passed `rails.ongoing` straight through and concatenated nothing.
    */
-  const entries = [...rails.ongoing, ...rails.comingBack, ...rails.oldFriends];
+  const entries = useMemo(
+    () => [...rails.ongoing, ...rails.comingBack, ...rails.oldFriends],
+    [rails.ongoing, rails.comingBack, rails.oldFriends],
+  );
 
   /**
    * The survivors, after any marks made since the page loaded. `stillOnRail` is the rule
