@@ -3551,6 +3551,131 @@ export async function listUpcomingEpisodes(
     .orderBy(episode.airDate, sql`lower(${title.name})`, episode.seasonNo, episode.episodeNo);
 }
 
+/**
+ * One card of Upcoming's second half — **a film you are waiting for** (issue #252).
+ *
+ * A poster, a name, the day it is released, and the days between here and there. Nothing
+ * else: no runtime, because a film's runtime is a fact about watching it and this card is
+ * about not being able to yet, and neither of the two facts the handoff draws beside the
+ * date — see below.
+ *
+ * ── `releaseDate` is not nullable here, for `UpcomingEpisode`'s exact reason ──────────
+ *
+ * `title.release_date` is a nullable column and an undated film is an ordinary thing for
+ * the catalogue to hold — a film announced but not yet scheduled is the common case for
+ * everything on a watchlist worth waiting for. It cannot reach this card: *waiting for* is
+ * a statement about a date, so the read's `is not null` is the whole reason this field is
+ * a `string`, and the countdown downstream needs no branch for a row it can never be
+ * handed. The cast below launders the null that predicate has already excluded; weaken the
+ * predicate and this type starts lying with no compiler error to say so, which is what
+ * `tests/upcoming-films.test.ts` is holding.
+ *
+ * ── The release type and the region are **deliberately absent** ──────────────────────
+ *
+ * The handoff draws `Sep 26 · Canada` and a `Theatrical` chip. Neither is built and the
+ * columns for them are not here. **This is a cost call rather than a policy one**, and
+ * #252 states it: both live in TMDB's release-dates endpoint, which is a separate
+ * catalogue request *per film*, so a list surface of them would be one request per card —
+ * the exact cost #246 moved the episode still into the mirror to avoid. They are also
+ * region-specific and they change, so mirroring them at add time would give a reader a
+ * chip that had been true once.
+ *
+ * Under #245's precedence rule the handoff would otherwise carry them, so this is a
+ * subtraction to revisit once Upcoming has been lived with — recorded here rather than
+ * left to be rediscovered as an omission.
+ */
+export interface UpcomingFilm {
+  /** Where the card navigates — the film's own page beneath its library entry. */
+  readonly libraryEntryId: string;
+  readonly titleName: string;
+  /** `null` where the catalogue has no artwork. `app/poster.tsx` holds the measure. */
+  readonly posterPath: string | null;
+  /** `YYYY-MM-DD`, never null — see above. */
+  readonly releaseDate: string;
+}
+
+/**
+ * **What you are waiting for: the watchlist films whose release date is still ahead** —
+ * issue #252, and `listUpcomingEpisodes`' sibling over the other half of one page.
+ *
+ * ── The membership is three predicates and none of them is a slice ───────────────────
+ *
+ * **Standing at Watchlist**, **a film**, and **dated**. The first two are
+ * `listWatchlistFilms`' own pair, held to deliberately rather than widened: this is the
+ * dated half of the rail one page over, so a film that leaves the watchlist leaves both at
+ * once and a reader paging sideways never finds the two disagreeing about what is on it.
+ * `satisfies` on both string columns for that read's reason — a typo in either would be an
+ * empty section rather than an error.
+ *
+ * The third is what makes the section mean anything. A watchlist film TMDB has not dated
+ * is not something you are *waiting for* on a page that counts down; it is on the films
+ * rail, undated, where it belongs. It is excluded by a predicate rather than by a `null`
+ * check downstream so that nothing has to decide what a card with no date would draw.
+ *
+ * Shows are out by `kind` and not by accident: a show's dates are its episodes' and they
+ * are the section above this one. A show's own `release_date` is the day its *first*
+ * episode went out, which for anything in a library is years in the past — a predicate on
+ * it would be quietly right for the wrong reason, and wrong the day a reader watchlists a
+ * series that has not premiered.
+ *
+ * ── The same day-wide window, for the same timezone reason ───────────────────────────
+ *
+ * `release_date >= current_date - 1`, which is `listUpcomingEpisodes`' window and that
+ * function's argument in full: no zone on earth is more than 24 hours from UTC, so a
+ * window opening a day early is a superset of *today or later* for every reader at every
+ * instant, and the narrowing to the reader's actual today happens once, in the reader's
+ * zone, in `upcoming-grouping.ts` — the same module that writes the countdown, so the film
+ * that is dropped and the words under the one beside it are decided against one day.
+ *
+ * It also keeps this read cacheable on `serverDay()` the way every clock-reading read here
+ * is, which a window bucketed in the reader's zone would not be.
+ *
+ * ── Ordered by what is nearest, and not capped ───────────────────────────────────────
+ *
+ * By release date first, because *what is coming next* is the whole question the section
+ * answers and the countdown under the first card is the smallest number on it. Then
+ * `lower(name)` and the entry id, so two films released on one day have a stable order and
+ * two identical loads give an identical section (`listWatchlistFilms`' expression, and its
+ * note on why it is repeated rather than imported).
+ *
+ * **No `LIMIT`**, for `listUpcomingEpisodes`' reason: the bound is a reader's own
+ * watchlist, the section is a horizontal rail whose bound is the scroll, and a cap here
+ * would be *showing 20 of 34* with the number filed off.
+ *
+ * Unguarded, like every read in this file. A failure throws to the route's `error.tsx`,
+ * which draws the read-failure treatment with a reference id — *nothing is coming* is
+ * exactly as plausible a lie here as it is over the episodes above.
+ */
+export async function listUpcomingFilms(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly UpcomingFilm[]> {
+  return executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleName: title.name,
+      posterPath: title.posterPath,
+      // Left as the `YYYY-MM-DD` text Postgres wrote, never a `Date`: a release date is a
+      // `date` column with no instant in it, and a `Date` here would silently acquire a
+      // timezone the column does not have (ADR-0003). `listUpcomingEpisodes` casts its
+      // `air_date` the same way over the same laundered null.
+      releaseDate: sql<string>`${title.releaseDate}`.as("release_date"),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        eq(libraryEntryState.state, "watchlist" satisfies LibraryState),
+        eq(title.kind, "film" satisfies TitleKind),
+        isNotNull(title.releaseDate),
+        sql`${title.releaseDate} >= current_date - 1`,
+      ),
+    )
+    .orderBy(title.releaseDate, sql`lower(${title.name})`, libraryEntry.id);
+}
+
 /** One row of a season/episode list — issue #58's title detail. */
 export interface EpisodeDetail {
   readonly id: string;
@@ -4614,66 +4739,36 @@ export async function listYouRails(
 }
 
 /**
- * ── The Stats page's numbers ─────────────────────────────────────────────────────────
+ * ── The figures You reports ──────────────────────────────────────────────────────────
  *
- * Issue #227. Everything below is one read, `accountStats`, and it is the whole of what
- * `/stats` puts on the glass.
+ * Issue #227 built this section for `/stats`, and issue #249 removed that page. What is
+ * left is the two statements `accountFigures` still makes — `libraryTotals` and
+ * `watchTotals` — and the shape they return between them. The six that went with the page
+ * (the streak, recently finished, monthly activity, the decade distribution and the five
+ * state counts) took their statements, their result types and their sizing constants with
+ * them rather than being left here for a caller that no longer exists; `SPEC.md` §9 has
+ * them back under *Specced, but later*.
  *
  * ── Computed in SQL, beside the derived views ────────────────────────────────────────
  *
- * The two counts that turn on ADR-0001's rules — **episodes remaining** and **the count
- * per derived state** — are read out of `library_entry_remaining` and
- * `library_entry_state` rather than recomputed here. That is the acceptance criterion and
- * it is worth saying why it is not merely tidiness: *a released episode is `season_no > 0
- * and air_date is not null and air_date <= current_date`* is a sentence that must have one
- * home, and `db/views.ts` is it. A `where e.season_no > 0` written in this section would
- * be a second copy of it, in a file with no migration and no diff to make a change to it
- * reviewable.
+ * *Finished* is read out of `library_entry_state` rather than recomputed here. That is not
+ * merely tidiness: *a released episode is `season_no > 0 and air_date is not null and
+ * air_date <= current_date`* is a sentence that must have one home, and `db/views.ts` is
+ * it. A `where e.season_no > 0` written in this section would be a second copy of it, in a
+ * file with no migration and no diff to make a change to it reviewable.
  *
  * Which is also why **nothing below applies either rule itself.** `episodesWatched` counts
  * watch rows and nothing else: a watch on a special is a thing you watched, and counting
- * it needs no opinion about season zero. So the page's two episode figures are not two
- * halves of one total and are not presented as one — `episodesWatched` is *how many times
- * you marked an episode*, rewatches and specials included, and `episodesRemaining` is *how
- * much of your shows is left*, which is a question about episodes rather than about
- * watches.
+ * it needs no opinion about season zero.
  *
- * ── Eight statements, and what that costs ────────────────────────────────────────────
+ * ── Two statements, and what that costs ──────────────────────────────────────────────
  *
  * `accountFootprint` makes its three counts in one statement, because the decision on that
  * screen turns on the three having been true at the same instant. This is the other case:
- * eight statements are eight snapshots, so a watch landing between the first and the last
- * can be inside one figure and outside another. That is accepted rather than overlooked —
- * a streak of 12 beside 341 episodes is the same page as a streak of 12 beside 342 — and
- * the alternative, one statement returning eight shapes, means JSON aggregation and a cast
- * per column, which trades a difference nobody can see for a type nobody checks.
- *
- * ── The reader's zone, on every day boundary ─────────────────────────────────────────
- *
- * `SPEC.md` §5: every day and year boundary is computed `AT TIME ZONE` the user's IANA
- * zone, never UTC, and **the zone is a read-time lens rather than a write-time stamp**. So
- * the four time-based reads below join `user` and bucket against `u.timezone`; changing
- * the zone re-buckets all history, which is the property that rule exists to buy. This is
- * the first code in the application to spend it — `lib/timezone.ts` has carried the column
- * since build step 1 for exactly this.
+ * two statements are two snapshots, so a watch landing between them can be inside one
+ * figure and outside the other. That is accepted rather than overlooked — 341 episodes
+ * beside 62 titles is the same page as 342 beside 62.
  */
-
-/** How many titles stand in one derived state. All five are always present, zero included:
- *  a state with no titles is a real answer and the page prints it. */
-export interface StateCount {
-  readonly state: LibraryState;
-  readonly titles: number;
-}
-
-/** One title on *recently finished*, and the local day its last watch landed on. */
-export interface FinishedTitle {
-  readonly libraryEntryId: string;
-  readonly name: string;
-  readonly releaseYear: number | null;
-  readonly posterPath: string | null;
-  /** `YYYY-MM-DD`, in the reader's own zone. */
-  readonly finishedOn: string;
-}
 
 /**
  * Watch time, split, and the number the split is incomplete by.
@@ -4689,86 +4784,32 @@ export interface WatchTime {
   readonly watchesWithoutRuntime: number;
 }
 
-/** One month of the activity window, `YYYY-MM` in the reader's zone. A month with nothing
- *  in it is a row with `0`, never a missing row — a gap has to read as a gap.
- *
- *  `filmWatches` and `episodeWatches` split the same `watches` total by kind — issue #229's
- *  *episodes over time* and *films over time* charts read those two, and *monthly activity*
- *  reads `watches` itself. Three charts, one query, so the three cannot disagree about what
- *  a month contains. */
-export interface ActivityMonth {
-  readonly month: string;
-  readonly watches: number;
-  readonly filmWatches: number;
-  readonly episodeWatches: number;
-}
-
-/** `1990`, and how many titles in the library were released in it. */
-export interface DecadeCount {
-  readonly decade: number;
-  readonly titles: number;
-}
-
-/** Everything `/stats` prints, in one object. */
-export interface AccountStats {
-  /** Every title in the library. The page's empty branch turns on this and nothing else. */
-  readonly titles: number;
-  readonly filmsWatched: number;
-  readonly showsWatched: number;
-  readonly episodesWatched: number;
-  readonly episodesRemaining: number;
-  readonly states: readonly StateCount[];
-  readonly recentlyFinished: readonly FinishedTitle[];
-  readonly watchTime: WatchTime;
-  /** `null` where there is no dated watch to average over — never `0`, which would say
-   *  *you watch nothing* about an account whose history simply carries no dates. */
-  readonly episodesPerWeek: number | null;
-  readonly episodesPerMonth: number | null;
-  readonly activity: readonly ActivityMonth[];
-  readonly topDecades: readonly DecadeCount[];
-  /** Titles the mirror has no release year for, and which no decade below counts. */
-  readonly titlesWithoutReleaseYear: number;
-  readonly streakDays: number;
-  /** Watches with no date. Every time-based section on the page names this number. */
-  readonly undatedWatches: number;
-}
-
-/** How many finished titles *recently finished* shows. */
-export const RECENTLY_FINISHED_SIZE = 6;
-
-/** How many months of activity the page reports, ending with the current one. */
-export const ACTIVITY_MONTHS = 12;
-
-/** How many decades *top decades* shows. */
-export const TOP_DECADES_SIZE = 5;
-
-/**
- * The mean Gregorian month, `365.2425 / 12`. *Average episodes per month* divides a run of
- * days by this rather than counting calendar months, so that an account four days old does
- * not report its four days as a month and a half.
- */
-const MEAN_DAYS_PER_MONTH = 30.436875;
-
 /**
  * Whether this library entry has ever been watched — the test behind *films watched* and
  * *shows watched*.
  *
- * **Watched, not finished.** The count per derived state already says how many titles are
- * *finished*; these two say how many you have watched anything of, which is the question
- * the other number does not answer. An abandoned film you saw half of is counted here, and
+ * **Watched, not finished.** *Shows completed*, in the same statement, says how many shows
+ * are *finished*; these two say how many titles you have watched anything of, which is the
+ * question that one does not answer. An abandoned film you saw half of is counted here, and
  * that is deliberate: you watched it, and abandoning it did not undo that.
  *
- * A correlated `exists` rather than a join, because the two counts sit in the same
- * statement as `sum(remaining)` and a join to `watch` would repeat each entry once per
- * watch and multiply that sum.
+ * A correlated `exists` rather than a join, because a join to `watch` would repeat each
+ * library entry once per watch and so multiply every count in this statement — the point
+ * being that one row per entry is what makes all four figures countable together.
  */
 const HAS_A_WATCH: SQL = sql`exists (
   select 1 from ${watch} w where w.library_entry_id = ${libraryEntry.id}
 )`;
 
-/** Titles, films and shows watched, shows completed, episodes remaining, and titles with
- *  no release year — one row, and the only statement that touches
- *  `library_entry_remaining`. */
+/** Titles, films watched, shows watched and shows completed — one row, and four of You's
+ *  six figures.
+ *
+ *  It carried two more columns until issue #249: `episodesRemaining`, summed off
+ *  `library_entry_remaining`, and `titlesWithoutReleaseYear`. Both existed for the Stats
+ *  page — the decade distribution named the second — and both went with it rather than
+ *  being left computed for nobody, taking the `library_entry_remaining` join with them.
+ *  A column nothing reads is a cost paid on every visit to `/you` and a claim about the
+ *  data that no test can go wrong. */
 async function libraryTotals(userId: UserId, executor: Executor) {
   const [row] = await executor
     .select({
@@ -4783,8 +4824,8 @@ async function libraryTotals(userId: UserId, executor: Executor) {
        * **Shows completed** — issue #247's one new figure, and the only count here that
        * is about *finishing* rather than about having watched anything.
        *
-       * It is here rather than beside `stateCounts` because that statement groups by
-       * state and so cannot tell a finished film from a finished show, and the figure
+       * It is a `filter` on this statement rather than a count grouped by state, because
+       * a grouped count cannot tell a finished film from a finished show, and the figure
        * You reports is per kind. The state itself is still read off `library_entry_state`
        * rather than restated — *finished* is ADR-0001's rule and `db/views.ts` is its one
        * home, so this asks the view the question instead of re-deriving `in_production`
@@ -4793,29 +4834,13 @@ async function libraryTotals(userId: UserId, executor: Executor) {
       showsCompleted: sql<number>`count(*) filter (
         where ${title.kind} = 'show' and ${libraryEntryState.state} = 'finished'
       )`.mapWith(Number),
-      /**
-       * `coalesce`, because `sum()` over no rows is `NULL` and an empty library's remainder
-       * is `0`. A film's entry has no row in the view at all (`db/views.ts`) and so
-       * contributes nothing through the left join, which is the right answer rather than a
-       * gap: *remaining* is a show concept.
-       */
-      episodesRemaining: sql<number>`coalesce(sum(${libraryEntryRemaining.remaining}), 0)`.mapWith(
-        Number,
-      ),
-      titlesWithoutReleaseYear: sql<number>`count(*) filter (
-        where ${title.releaseYear} is null
-      )`.mapWith(Number),
     })
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
-    .leftJoin(
-      libraryEntryRemaining,
-      eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
-    )
     /**
-     * One row per library entry, so this cannot multiply `sum(remaining)` above the way a
-     * join to `watch` would — which is the reason `HAS_A_WATCH` is a correlated `exists`
-     * and this is not. `left`, not `inner`, on the same principle: the view is total over
+     * One row per library entry, so nothing here can be double-counted the way a join to
+     * `watch` would double-count it — which is the reason `HAS_A_WATCH` is a correlated
+     * `exists` and this is not. `left`, not `inner`: the view is total over
      * `library_entry` today, and an inner join would silently drop an entry from *every*
      * figure in this statement on the day it stopped being.
      */
@@ -4823,32 +4848,6 @@ async function libraryTotals(userId: UserId, executor: Executor) {
     .where(ownedBy(userId, libraryEntry));
 
   return row;
-}
-
-/**
- * How many titles stand in each of the five states, read straight off the view.
- *
- * Grouped and then filled against `LIBRARY_STATES` rather than written as five
- * `filter (where state = …)` columns, for the reason `stateFrom` exists: the five are
- * declared once, a sixth the view learned to emit **throws** rather than being silently
- * dropped, and a state with no titles comes back as a real `0` instead of a missing key.
- */
-async function stateCounts(
-  userId: UserId,
-  executor: Executor,
-): Promise<readonly StateCount[]> {
-  const rows = await executor
-    .select({
-      state: libraryEntryState.state,
-      titles: sql<number>`count(*)`.mapWith(Number),
-    })
-    .from(libraryEntryState)
-    .where(ownedBy(userId, libraryEntryState))
-    .groupBy(libraryEntryState.state);
-
-  const counted = new Map(rows.map((row) => [stateFrom(row.state), row.titles]));
-
-  return LIBRARY_STATES.map((state) => ({ state, titles: counted.get(state) ?? 0 }));
 }
 
 /**
@@ -4896,302 +4895,23 @@ async function watchTotals(userId: UserId, executor: Executor) {
 }
 
 /**
- * The two averages' ingredients: how many **dated** episode watches there are, and how many
- * days they are spread over.
- *
- * The run is from the local day of the first dated watch through the reader's own today,
- * inclusive — so an account whose whole history is one evening reports that evening's
- * episodes over one day rather than over one week.
- *
- * **No dated watch at all returns no row**, and the caller turns that into `null` rather
- * than `0`. `group by u.timezone` is what makes that true: it is a grouped aggregate over
- * an empty set, which yields nothing, where an ungrouped one would yield a row of nulls.
- */
-async function episodeCadence(userId: UserId, executor: Executor) {
-  const rows = await executor
-    .select({
-      datedEpisodes: sql<number>`count(*) filter (
-        where ${watch.episodeId} is not null
-      )`.mapWith(Number),
-      days: sql<number>`(
-        (now() at time zone ${user.timezone})::date
-        - min((${watch.watchedAt} at time zone ${user.timezone})::date)
-      ) + 1`.mapWith(Number),
-    })
-    .from(watch)
-    .innerJoin(user, eq(user.id, watch.userId))
-    .where(and(ownedBy(userId, watch), isNotNull(watch.watchedAt)))
-    .groupBy(user.timezone);
-
-  return rows.at(0) ?? null;
-}
-
-/**
- * The streak: consecutive days **up to today** carrying at least one dated watch, in the
- * reader's zone — `CONTEXT.md`'s glossary entry, transcribed rather than reinterpreted.
- *
- * **Up to today means today.** A reader who has not watched anything today has a streak of
- * `0`, however long yesterday's run was. That is the glossary read literally, in the
- * register `db/views.ts` reads ADR-0001 in, and it is stated here because the obvious
- * kindness — let yesterday still count until midnight — is a different definition and
- * would have to be argued in the glossary rather than smuggled into a query.
- *
- * ── How the run is found ─────────────────────────────────────────────────────────────
- *
- * The distinct local days are numbered from today backwards. A day that is part of the
- * unbroken run sits exactly as many days before today as its own number, so `today - day =
- * rn - 1` selects the run and nothing after the first gap: past a missing day every
- * remaining row's distance from today exceeds its rank, permanently. No watch today makes
- * the very first row fail the test, which is the `0` the glossary asks for.
- *
- * Selected from `user` rather than from `watch`, so that an account with no watches at all
- * still returns a row — `count(*)` over nothing is `0`, and the streak of an account that
- * has never watched anything is `0` rather than absent.
- */
-async function streakDays(userId: UserId, executor: Executor): Promise<number> {
-  const localToday = sql`(now() at time zone ${user.timezone})::date`;
-
-  const [row] = await executor
-    .select({
-      days: sql<number>`(
-        select count(*)
-        from (
-          select day, row_number() over (order by day desc) as rn
-          from (
-            select distinct (${watch.watchedAt} at time zone ${user.timezone})::date as day
-            from ${watch}
-            where ${ownedBy(userId, watch)} and ${watch.watchedAt} is not null
-          ) local_days
-          where day <= ${localToday}
-        ) numbered
-        where ${localToday} - day = rn - 1
-      )`.mapWith(Number),
-    })
-    .from(user)
-    .where(eq(user.id, userId));
-
-  return row.days;
-}
-
-/**
- * Activity over time: `ACTIVITY_MONTHS` calendar months ending with the reader's current
- * one, each with the number of dated watches that fell in it.
- *
- * **Every month in the window is a row, including the empty ones.** `generate_series`
- * produces the window and the watches are joined onto it, rather than the months being
- * whatever the watches happened to land in — a reader who watched nothing in March should
- * see March at zero, and a query grouped over watch rows alone would simply not mention
- * it.
- *
- * The window and the bucketing both go through the reader's own zone, so a watch at 11pm on
- * the 31st belongs to the month the reader was in when they made it.
- *
- * ── Why the zone is a subquery here and a join everywhere else ───────────────────────
- *
- * `A, B left join C on …` parses as `A, (B left join C on …)`, so the `on` clause cannot
- * see a table named before the comma — an aliased `user` in the `from` would be in scope
- * for the window and out of scope for the bucketing, which is the half that decides which
- * month a watch lands in. `readerZone` is the same value reached the one way that is in
- * scope in both places. Postgres evaluates it once: it is correlated with nothing.
- */
-async function activityByMonth(
-  userId: UserId,
-  executor: Executor,
-): Promise<readonly ActivityMonth[]> {
-  const readerZone = sql`(select ${user.timezone} from ${user} where ${user.id} = ${userId})`;
-
-  const window = sql`generate_series(
-    date_trunc('month', now() at time zone ${readerZone})
-      - make_interval(months => ${ACTIVITY_MONTHS - 1}),
-    date_trunc('month', now() at time zone ${readerZone}),
-    interval '1 month'
-  ) as bucket`;
-
-  return await executor
-    .select({
-      month: sql<string>`to_char(bucket, 'YYYY-MM')`,
-      /** `count(watch.id)`, not `count(*)`: the left join leaves one all-null row for a
-       *  month with nothing in it, and `count(*)` would report that row as one watch. */
-      watches: sql<number>`count(${watch.id})`.mapWith(Number),
-      /** `watch.id` again rather than `*`, for the same reason and one more: the join's
-       *  all-null row has a null `episode_id` too, so `filter (where episode_id is null)`
-       *  would count it as a film watch on an empty month without this. */
-      filmWatches: sql<number>`count(${watch.id}) filter (
-        where ${watch.episodeId} is null
-      )`.mapWith(Number),
-      episodeWatches: sql<number>`count(${watch.id}) filter (
-        where ${watch.episodeId} is not null
-      )`.mapWith(Number),
-    })
-    .from(window)
-    .leftJoin(
-      watch,
-      and(
-        ownedBy(userId, watch),
-        isNotNull(watch.watchedAt),
-        sql`date_trunc('month', ${watch.watchedAt} at time zone ${readerZone}) = bucket`,
-      ),
-    )
-    .groupBy(sql`bucket`)
-    .orderBy(sql`bucket`);
-}
-
-/**
- * The decades the library's release years fall in, heaviest first.
- *
- * Every title in the library, watched or not — the question is what the shelf is made of,
- * which is not the same question as what has been watched off it. Titles the mirror has no
- * release year for are excluded here and counted separately, so the page can say how many
- * rather than quietly dropping them into a total that looks complete.
- *
- * Ties break toward the more recent decade, so the order is total and two loads of the same
- * library cannot swap two rows.
- */
-async function topDecades(
-  userId: UserId,
-  executor: Executor,
-): Promise<readonly DecadeCount[]> {
-  const decade = sql`(${title.releaseYear} / 10) * 10`;
-
-  return await executor
-    .select({
-      decade: sql<number>`${decade}`.mapWith(Number),
-      titles: sql<number>`count(*)`.mapWith(Number),
-    })
-    .from(libraryEntry)
-    .innerJoin(title, eq(title.id, libraryEntry.titleId))
-    .where(and(ownedBy(userId, libraryEntry), isNotNull(title.releaseYear)))
-    .groupBy(decade)
-    .orderBy(sql`count(*) desc`, sql`${decade} desc`)
-    .limit(TOP_DECADES_SIZE);
-}
-
-/**
- * The titles that most recently reached *finished*, by the date of their last dated watch.
- *
- * **Finished is the view's answer, not a second opinion.** The join to
- * `library_entry_state` is what makes that true — a film with a watch and a show whose
- * every episode is watched reach this list on ADR-0001's rules, and an abandoned title
- * never does however completely it was watched, because *abandoned* outranks every derived
- * state.
- *
- * **A finished title with no dated watch does not appear.** *Recently* is the whole claim
- * of the section, and a title with no date cannot be placed in the order — putting it at
- * the top or the bottom would be inventing a position for it. This is one of the sections
- * the page's undated sentence is about.
- */
-async function recentlyFinished(
-  userId: UserId,
-  executor: Executor,
-): Promise<readonly FinishedTitle[]> {
-  return await executor
-    .select({
-      libraryEntryId: libraryEntry.id,
-      name: title.name,
-      releaseYear: title.releaseYear,
-      posterPath: title.posterPath,
-      finishedOn: sql<string>`to_char(
-        max(${watch.watchedAt} at time zone ${user.timezone}), 'YYYY-MM-DD'
-      )`,
-    })
-    .from(libraryEntry)
-    .innerJoin(title, eq(title.id, libraryEntry.titleId))
-    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
-    .innerJoin(watch, eq(watch.libraryEntryId, libraryEntry.id))
-    .innerJoin(user, eq(user.id, libraryEntry.userId))
-    .where(
-      and(
-        ownedBy(userId, libraryEntry),
-        eq(libraryEntryState.state, "finished" satisfies LibraryState),
-        isNotNull(watch.watchedAt),
-      ),
-    )
-    .groupBy(
-      libraryEntry.id,
-      title.name,
-      title.releaseYear,
-      title.posterPath,
-      user.timezone,
-    )
-    /** Name breaks the tie, as everywhere else in this file, so the order is total. */
-    .orderBy(sql`max(${watch.watchedAt}) desc`, sql`lower(${title.name})`)
-    .limit(RECENTLY_FINISHED_SIZE);
-}
-
-/**
- * Everything the Stats page prints, for one account — issue #227.
- *
- * Unguarded, like every other read here. A failure throws into `/stats`'s own `error.tsx`
- * and the reader is told the page did not load; there is no branch in which a database that
- * is down comes back as a library with nothing in it. `SPEC.md` §3.2, and `AGENTS.md`'s
- * opening rule.
- *
- * The eight statements run in sequence rather than concurrently: they share the one
- * executor their caller passed, which inside a transaction is one connection, and issuing
- * them at once would interleave on it.
- */
-export async function accountStats(
-  userId: UserId,
-  executor: Executor = getDb(),
-): Promise<AccountStats> {
-  const totals = await libraryTotals(userId, executor);
-  const states = await stateCounts(userId, executor);
-  const watches = await watchTotals(userId, executor);
-  const cadence = await episodeCadence(userId, executor);
-  const streak = await streakDays(userId, executor);
-  const activity = await activityByMonth(userId, executor);
-  const decades = await topDecades(userId, executor);
-  const finished = await recentlyFinished(userId, executor);
-
-  return {
-    titles: totals.titles,
-    filmsWatched: totals.filmsWatched,
-    showsWatched: totals.showsWatched,
-    episodesWatched: watches.episodesWatched,
-    episodesRemaining: totals.episodesRemaining,
-    states,
-    recentlyFinished: finished,
-    watchTime: {
-      filmMinutes: watches.filmMinutes,
-      televisionMinutes: watches.televisionMinutes,
-      watchesWithoutRuntime: watches.watchesWithoutRuntime,
-    },
-    /**
-     * `null` rather than `0` when there is nothing dated to average. An account whose
-     * watches are entirely undated has not watched nothing — it has a history with no dates
-     * on it, and `0.0 episodes a week` would be the page asserting the first.
-     */
-    episodesPerWeek: cadence === null ? null : (cadence.datedEpisodes * 7) / cadence.days,
-    episodesPerMonth:
-      cadence === null
-        ? null
-        : (cadence.datedEpisodes * MEAN_DAYS_PER_MONTH) / cadence.days,
-    activity,
-    topDecades: decades,
-    titlesWithoutReleaseYear: totals.titlesWithoutReleaseYear,
-    streakDays: streak,
-    undatedWatches: watches.undatedWatches,
-  };
-}
-
-/**
  * ── You's six figures ────────────────────────────────────────────────────────────────
  *
  * Issue #247. One read, `accountFigures`, and it is the whole of what `/you` puts on the
  * glass.
  *
- * ── Why this is not `accountStats` ───────────────────────────────────────────────────
+ * ── Why this was never a projection of `accountStats` ────────────────────────────────
  *
- * You is not a smaller Stats and this is not a projection of one. `accountStats` makes
- * eight statements to answer nine kinds of question — a streak, an activity window, two
- * averages, the decades, the recently finished. You asks for six figures that describe a
- * watching life, and **not one of them turns on a date**, so five of those eight
- * statements would be work the page never renders. This makes two.
+ * You was not a smaller Stats. The read that fed `/stats` made eight statements to answer
+ * nine kinds of question — a streak, an activity window, two averages, the decades, the
+ * recently finished. You asks for six figures that describe a watching life, and **not one
+ * of them turns on a date**, so five of those eight statements would have been work the
+ * page never renders. This makes two.
  *
- * That the two reads overlap is not a reason to share a function: `/stats` goes in issue
- * #249, and a `accountStats` that You had been made to consume would have to be untangled
- * from it on the way out. They share the two private statements underneath instead, which
- * is where the SQL that must not drift actually lives.
+ * That the two reads overlapped was not a reason to share a function, and issue #249 is
+ * where that call paid: `/stats` went, and this read did not have to be untangled from
+ * anything on the way. The six statements that only Stats made went with it; the two this
+ * one makes stayed exactly where they were.
  *
  * ── What it does not carry, and why that is the point ────────────────────────────────
  *
@@ -5200,8 +4920,8 @@ export async function accountStats(
  * than moving them.
  */
 export interface AccountFigures {
-  /** Every title in the library. You's empty branch turns on this and nothing else — the
-   *  same role it plays on Stats, and for the same reason: an account with nothing in it
+  /** Every title in the library. You's empty branch turns on this and nothing else, for
+   *  the reason the retired Stats page turned on it too: an account with nothing in it
    *  has a real `0` for all six figures, and printing them is a page that looks like it is
    *  reporting when there is nothing to report. */
   readonly titles: number;
@@ -5216,7 +4936,7 @@ export interface AccountFigures {
    * so a per-kind filter is the only thing that keeps this from being *titles finished*.
    */
   readonly showsCompleted: number;
-  /** Watches carrying an episode — rewatches and specials included, exactly as on Stats. */
+  /** Watches carrying an episode — rewatches and specials included. */
   readonly episodesWatched: number;
   /** Split, never summed. `CONTEXT.md`'s glossary reports film and television separately
    *  and the page prints them that way. */

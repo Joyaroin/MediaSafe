@@ -9,11 +9,12 @@ import { NavTransition } from "../nav-transition";
 /**
  * You — the reader, and the six figures that describe a watching life (issue #247).
  *
- * **Reachable by URL, and not yet by the bar.** The phone's fourth tab and the desktop
- * sidebar's sixth still point at `/stats`; retiring that page and repointing both is
- * #249's, and doing it here would leave the bar pointing at a destination while the page
- * it replaces still existed beside it. The route is wrapped in `NavTransition` anyway, so
- * that the ticket which points the bar here changes one `href` rather than this file too.
+ * **The phone's fourth tab and the desktop sidebar's sixth entry, since issue #249.** They
+ * pointed at `/stats` when #247 built this page — reachable by URL and not yet by the bar,
+ * because repointing them while the page they replace still existed beside this one would
+ * have been two destinations answering one question. #249 deleted that page and moved both
+ * `href`s, and it moved exactly those: the `NavTransition` wrapper below was already here
+ * for that reason.
  *
  * ── The hero reads the session; the figures read the database ────────────────────────
  *
@@ -30,9 +31,10 @@ import { NavTransition } from "../nav-transition";
  *
  * ── One read, and one branch ─────────────────────────────────────────────────────────
  *
- * `cachedAccountFigures` is the whole of the page's data, cached and tagged through
- * `cache/tags.ts` under the same fact the Stats read carries, because no write changes one
- * without the other.
+ * `cachedAccountFigures` is the whole of the page's figures, cached and tagged through
+ * `cache/tags.ts` under the `you` fact. That fact was called `stats` and was shared with the
+ * Stats page's own read until #249; the rename is the only thing that changed, because the
+ * writes that make these figures wrong were never per-read.
  *
  * Past that there is one branch and it is the important one:
  *
@@ -49,8 +51,8 @@ import { NavTransition } from "../nav-transition";
  */
 
 /**
- * Never prerendered, for the reason `/library`, `/lists`, `/stats` and `/settings` all
- * carry this line: reading the session reads cookies, which makes the route dynamic only
+ * Never prerendered, for the reason `/library`, `/lists` and `/settings` all carry this
+ * line: reading the session reads cookies, which makes the route dynamic only
  * *after* the attempt — and without it `next build` starts a prerender, calls
  * `requireUserId()`, and resolves the pool against whatever `DATABASE_URL` the build
  * environment has.

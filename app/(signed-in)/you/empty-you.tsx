@@ -22,7 +22,8 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * values only. This is `AGENTS.md`'s opening rule on the surface where it is easiest to
  * get wrong: a page of numbers has an obvious-looking zero for every failure.
  *
- * The treatment is `empty-library.tsx`'s and `empty-stats.tsx`'s, deliberately unchanged —
+ * The treatment is `empty-library.tsx`'s, and was the retired Stats page's empty branch's
+ * too, deliberately unchanged —
  * centred, `text-bill-lg` in `text`, no border — because a reader meeting more than one of
  * them should recognise the same kind of moment rather than three different problems. The
  * words are this page's own: it is about the reader, so it says what there is nothing to

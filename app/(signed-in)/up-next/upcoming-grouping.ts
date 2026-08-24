@@ -12,9 +12,10 @@
  * So the zone and the day are **arguments**, and nothing in this file reads a clock.
  * `readerDay` turns an instant into a day in a named zone, `groupUpcoming` buckets against
  * a day it is handed, and `tests/upcoming-grouping.test.ts` drives both across a real
- * boundary in a non-UTC zone. This is the split `stats-figures.ts` and `season-grouping.ts`
- * already make — presentation vocabulary beside the read rather than inside the database —
- * and #245 asks for it here by name.
+ * boundary in a non-UTC zone. This is the split `season-grouping.ts` already makes —
+ * presentation vocabulary beside the read rather than inside the database — and #245 asks
+ * for it here by name. (The retired Stats page's own figures module was the other worked
+ * example until #249 deleted it with the page.)
  *
  * ── Two kinds of day, and they are not the same kind ─────────────────────────────────
  *
@@ -26,6 +27,16 @@
  * The **reader's today** is the opposite: an instant, made into a day by a zone, which is
  * `SPEC.md` §5's *the zone is a read-time lens*. It arrives here as a string of the same
  * shape, and comparing the two is then plain arithmetic over calendar days.
+ *
+ * ── The films below the episodes are counted here too (#252) ─────────────────────────
+ *
+ * A **release date** is the third thing of the same shape and the same kind as an air
+ * date: a catalogue `date` with no instant in it. #252 asks for the countdown words to
+ * come from this module by name, and the reason is the one above rather than tidiness —
+ * *In 1 day* and *Today* turn over at the reader's midnight exactly as *Today* and
+ * *Tomorrow* do, and a countdown computed against a second notion of the current day
+ * would be off by one for the same readers the grouping is careful not to be off by one
+ * for. One `today`, computed once in `page.tsx`, decides both halves of the page.
  */
 
 /** The bucket an upcoming row falls into, with the rows in the order they arrived. */
@@ -131,7 +142,7 @@ export function readerDay(zone: string, at: Date): string {
  *
  * ── An empty group is never emitted ──────────────────────────────────────────────────
  *
- * A day with nothing on it has no heading, which is `SPEC.md` §8's rule for a rail applied
+ * A day with nothing on it has no heading, which is `SPEC.md` §7's rule for a rail applied
  * to a group, and it is why the buckets are discovered from the rows rather than laid out
  * in advance. A page with no rows at all returns no groups, and the surface answers that
  * with the handoff's sentence rather than four empty headings.
@@ -184,4 +195,73 @@ function bucketFor(ahead: number, airDate: string): { label: string; key: string
     return { label: weekdayName(airDate), key: `weekday-${airDate}` };
   }
   return { label: "Later", key: "later" };
+}
+
+/** A film still to come, with the words that go under it — issue #252. */
+export interface AwaitedFilm<T> {
+  readonly film: T;
+  /** `Today`, `Tomorrow` or `In 12 days`. Never empty, and never a date — the card prints
+   *  the date on its own line above this one. */
+  readonly countdown: string;
+}
+
+/**
+ * **The films you are waiting for**, in the order they were read, each with its countdown.
+ *
+ * `groupUpcoming`'s shape at the other half of the page: rows already ordered by the read,
+ * a day handed in, and anything before that day dropped. The dropping is the same rule for
+ * the same reason — `listUpcomingFilms` reads a window a day wider than the server's own so
+ * that no reader's evening is missing from it, and narrowing that to the reader's actual
+ * today happens once, here, in the reader's zone.
+ *
+ * A film released **yesterday** is not something you are waiting for. It stays on the
+ * watchlist and stays on the films rail one page over, which is where a reader goes to
+ * watch it; a countdown that had run out would be this page answering *what can I watch
+ * now*, which is page one's question.
+ *
+ * Returned as a list of pairs rather than by mutating the rows: the film is the read's own
+ * object, untouched, and the words are beside it. A `countdown` field spliced onto a
+ * `UpcomingFilm` would make a database row and a rendering decision indistinguishable one
+ * import later.
+ */
+export function awaitedFilms<T extends { readonly releaseDate: string }>(
+  films: readonly T[],
+  today: string,
+): readonly AwaitedFilm<T>[] {
+  const now = calendarDay(today);
+  const waiting: AwaitedFilm<T>[] = [];
+
+  for (const film of films) {
+    const ahead = calendarDay(film.releaseDate) - now;
+    if (ahead < 0) continue;
+    waiting.push({ film, countdown: countdownInWords(ahead) });
+  }
+
+  return waiting;
+}
+
+/**
+ * How many days out, in words — the accent line the handoff draws under a film card.
+ *
+ * ── The day of release says *Today*, and does not say *In 0 days* ────────────────────
+ *
+ * Zero is the case worth writing a test for and the one an `In ${ahead} days` alone gets
+ * wrong: the day a film you have been waiting a year for is finally out, the card would
+ * read *In 0 days*. `Today` and `Tomorrow` are also the two words the headings directly
+ * above this section already use for the same two days, so a reader scanning down the page
+ * meets one vocabulary rather than two — and that shared vocabulary is most of why #252
+ * puts this function in this file rather than beside the card.
+ *
+ * Past days are not this function's to answer. `awaitedFilms` has dropped them before it
+ * calls, so there is no *Out now* or *2 days ago* branch here and there is not meant to be
+ * one: a card that reached this with a negative number would be a card that should not
+ * have been rendered, and inventing words for it would hide that.
+ *
+ * The plural is unconditional past one because the singular day is *Tomorrow* — `In 1 day`
+ * is unreachable, which is the only reason this can get away without a plural rule.
+ */
+function countdownInWords(ahead: number): string {
+  if (ahead === 0) return "Today";
+  if (ahead === 1) return "Tomorrow";
+  return `In ${ahead} days`;
 }

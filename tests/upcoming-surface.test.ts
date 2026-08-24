@@ -7,15 +7,16 @@ import { describe, expect, it } from "vitest";
 
 import { UpcomingNothing } from "@/app/(signed-in)/up-next/upcoming-nothing";
 import { UpcomingSurface } from "@/app/(signed-in)/up-next/upcoming-surface";
-import type { UpcomingEpisode } from "@/db/access";
+import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 
 /**
- * Upcoming, rendered — issue #251.
+ * Upcoming, rendered — issues #251 and #252.
  *
- * `tests/upcoming-episodes.test.ts` covers what the database returns and
- * `tests/upcoming-grouping.test.ts` covers what day a row falls under. This covers the
- * render, and only the parts whose failure nothing else would announce:
+ * `tests/upcoming-episodes.test.ts` and `tests/upcoming-films.test.ts` cover what the
+ * database returns and `tests/upcoming-grouping.test.ts` covers what day a row falls under
+ * and how many days away a film is. This covers the render, and only the parts whose
+ * failure nothing else would announce:
  *
  *  1. **No row shows a time of day, and no row says the time is unknown.** The handoff
  *     draws both and the catalogue can support neither, so this is the one place in #245
@@ -27,11 +28,22 @@ import { ReadFailure } from "@/errors/read-failure";
  *     fault that reads as a missing episode.
  *  4. **An unnamed episode is not numbered twice.** `CONTEXT.md`'s Named Episode Rule.
  *
+ * #252 adds the films under them, and three more of the same kind:
+ *
+ *  5. **No release-type chip and no region.** Both are drawn in the handoff and neither is
+ *     built, for a cost reason rather than a policy one — so an edit adding them back
+ *     would look like completing the screen rather than putting a catalogue request behind
+ *     every card.
+ *  6. **The sentence answers the whole page.** Each half is absent when it has nothing, and
+ *     *no release dates yet* is drawn only when **both** are — a reader with a dated film
+ *     and no dated episode must not be told there is nothing coming.
+ *  7. **A film with no poster gets the missing-artwork treatment**, not a collapsed card.
+ *
  * ── Why this renders where `tests/up-next-phone-rails.test.ts` reads source ──────────
  *
  * Because it can. Everything below is a server component over plain props — no store, no
  * router, no `useSyncExternalStore` — so `renderToStaticMarkup` gives the real markup, the
- * way `tests/library-surface.test.ts` and `tests/stats-surface.test.ts` already do. The
+ * way `tests/library-surface.test.ts` and `tests/you-surface.test.ts` already do. The
  * pager is the exception and is source-read at the foot of this file: it is a client
  * component over `ResizeObserver` and Motion, and what is worth asserting about it is
  * structural rather than visual.
@@ -67,8 +79,28 @@ function episodeOn(airDate: string, over: Partial<UpcomingEpisode> = {}): Upcomi
   };
 }
 
-function render(episodes: readonly UpcomingEpisode[], today = TODAY): string {
-  return renderToStaticMarkup(createElement(UpcomingSurface, { episodes, today }));
+function filmOn(releaseDate: string, over: Partial<UpcomingFilm> = {}): UpcomingFilm {
+  counter += 1;
+  return {
+    libraryEntryId: `film-entry-${counter}`,
+    titleName: "One Battle After Another",
+    posterPath: "/poster.jpg",
+    releaseDate,
+    ...over,
+  };
+}
+
+function render(
+  episodes: readonly UpcomingEpisode[],
+  films: readonly UpcomingFilm[] = [],
+  today = TODAY,
+): string {
+  return renderToStaticMarkup(createElement(UpcomingSurface, { episodes, films, today }));
+}
+
+/** The films half alone, for the cases that are only about it. */
+function renderFilms(films: readonly UpcomingFilm[], today = TODAY): string {
+  return render([], films, today);
 }
 
 describe("no row shows a time of day", () => {
@@ -212,6 +244,180 @@ describe("where a row goes", () => {
   });
 });
 
+describe("the films you are waiting for", () => {
+  /** The section, its head, the date and the countdown — the whole of what #252 draws. */
+  it("draws a dated film with its date and its countdown", () => {
+    const markup = renderFilms([filmOn("2026-09-05")]);
+
+    expect(markup).toContain("Upcoming movies");
+    expect(markup).toContain("One Battle After Another");
+    expect(markup).toContain("5 Sept 2026");
+    expect(markup).toContain("In 12 days");
+  });
+
+  /**
+   * The three the acceptance criteria name — one day, several days, and the day of
+   * release. Zero is the one an `In ${days} days` alone gets wrong, and it is the day a
+   * reader has been waiting for.
+   */
+  it("reads correctly at one day, several days and the day of release", () => {
+    expect(renderFilms([filmOn(TODAY)])).toContain(">Today<");
+    expect(renderFilms([filmOn("2026-08-25")])).toContain(">Tomorrow<");
+    expect(renderFilms([filmOn("2026-09-27")])).toContain("In 34 days");
+  });
+
+  /** *In 0 days* and *In 1 day* are the two the words above exist to prevent. */
+  it("never counts down in zeroes or in a singular day", () => {
+    const markup = renderFilms([filmOn(TODAY), filmOn("2026-08-25"), filmOn("2026-09-05")]);
+
+    expect(markup).not.toContain("In 0 days");
+    expect(markup).not.toContain("In 1 day");
+  });
+
+  /**
+   * A film released yesterday is not something you are waiting for — it is on the films
+   * rail one page over, which is where a reader goes to watch it. The read deliberately
+   * returns a day wider than the reader's own so no evening is missing from it, and this
+   * is where that extra day is spent.
+   */
+  it("drops a film whose release date has passed", () => {
+    const markup = renderFilms([
+      filmOn("2026-08-23", { titleName: "Already Out" }),
+      filmOn("2026-09-05", { titleName: "Still Coming" }),
+    ]);
+
+    expect(markup).toContain("Still Coming");
+    expect(markup).not.toContain("Already Out");
+  });
+
+  /**
+   * The countdown is the reader's, not the server's. The same list at the same instant
+   * reads *Today* for a reader whose day it already is and *Tomorrow* for one whose day it
+   * is not — which is the whole reason `today` is an argument to this component rather
+   * than a `new Date()` inside it.
+   */
+  it("counts down against the day it is handed rather than any clock", () => {
+    const film = filmOn("2026-08-25");
+
+    expect(render([], [film], "2026-08-25")).toContain(">Today<");
+    expect(render([], [film], "2026-08-24")).toContain(">Tomorrow<");
+  });
+
+  /**
+   * `Poster` holds the `2/3` measure through the `poster` utility, so a film TMDB has no
+   * artwork for keeps the card's measure and shows the ground — no glyph, no apology, and
+   * no card that has quietly shrunk to the height of its own text.
+   */
+  it("keeps the poster's frame when there is no poster", () => {
+    const withArt = renderFilms([filmOn("2026-09-05")]);
+    const without = renderFilms([filmOn("2026-09-05", { posterPath: null })]);
+
+    expect(withArt).toContain("<img");
+    expect(without).not.toContain("<img");
+    expect(without).toContain('class="poster ');
+    // And it still says everything it knows about the film.
+    expect(without).toContain("In 12 days");
+  });
+
+  /** A card navigates to the film's own page under its library entry, like every other
+   *  film card in the build. */
+  it("links to the film under its library entry", () => {
+    const film = filmOn("2026-09-05");
+
+    expect(renderFilms([film])).toContain(`href="/library/${film.libraryEntryId}"`);
+  });
+
+  /**
+   * **The subtraction, asserted.** The handoff draws `Theatrical` and `· Canada`; both are
+   * a catalogue request per film on a list surface and both go stale, so #252 leaves them
+   * out. Without this, an edit restoring them would read as completing the screen.
+   */
+  it("shows no release-type chip and no region", () => {
+    const markup = renderFilms([
+      filmOn(TODAY),
+      filmOn("2026-09-05"),
+      filmOn("2026-12-12"),
+    ]);
+
+    for (const word of ["Theatrical", "Digital", "Physical", "Limited", "Premiere"]) {
+      expect(markup).not.toContain(word);
+    }
+    // The date stands alone on its line: no `· Canada` and no region code after it.
+    expect(markup).toContain(">5 Sept 2026<");
+    expect(markup).not.toMatch(/\d{4}\s*·/);
+  });
+
+  /**
+   * **The accent, and only on the countdown.** `DESIGN.md` §3 rations the accent and amends
+   * itself for exactly this line; the amendment's second condition is that the date it
+   * counts to is *not* accented, so the two lines must not drift into matching. Nothing
+   * else about the card is chromatic — no chip, no badge, no check.
+   */
+  it("accents the countdown and leaves the date dim", () => {
+    const markup = renderFilms([filmOn("2026-09-05")]);
+
+    expect(markup).toMatch(/text-accent[^>]*>In 12 days</);
+    expect(markup).toMatch(/text-dim[^>]*>5 Sept 2026</);
+    expect(markup).not.toMatch(/text-accent[^>]*>5 Sept 2026</);
+  });
+
+  /** Soonest first, which is the read's order and is passed through rather than re-sorted
+   *  here — the countdown under the first card is the smallest number on the rail. */
+  it("keeps the read's order", () => {
+    const markup = renderFilms([
+      filmOn("2026-09-05", { titleName: "Nearest" }),
+      filmOn("2026-12-12", { titleName: "Furthest" }),
+    ]);
+
+    expect(markup.indexOf("Nearest")).toBeLessThan(markup.indexOf("Furthest"));
+  });
+});
+
+describe("the two halves, and the one sentence", () => {
+  /**
+   * The sentence is the page's and belongs to neither half. A reader with a dated film and
+   * no dated episode is not looking at an empty Upcoming, and telling them there is
+   * nothing coming while a countdown sits under it would be the page contradicting itself.
+   */
+  it("does not claim the page is empty when only the films half has anything", () => {
+    const markup = renderFilms([filmOn("2026-09-05")]);
+
+    expect(markup).not.toContain("No release dates yet");
+    expect(markup).toContain("In 12 days");
+  });
+
+  it("does not claim the page is empty when only the episodes half has anything", () => {
+    const markup = render([episodeOn(TODAY)]);
+
+    expect(markup).not.toContain("No release dates yet");
+    expect(markup).toContain("Severance");
+  });
+
+  /** And each half is absent rather than empty-headed — `SPEC.md` §8, per section. */
+  it("draws no head over a half that has nothing", () => {
+    expect(renderFilms([filmOn("2026-09-05")])).not.toContain("Upcoming episodes");
+    expect(render([episodeOn(TODAY)])).not.toContain("Upcoming movies");
+  });
+
+  /** Both empty is the one case the sentence is for. */
+  it("draws the sentence only when both halves are empty", () => {
+    const markup = render([], []);
+
+    expect(markup).toContain("No release dates yet");
+    expect(markup).not.toContain("Upcoming episodes");
+    expect(markup).not.toContain("Upcoming movies");
+  });
+
+  /** Episodes above, films under them — the handoff's order. */
+  it("draws the episodes above the films", () => {
+    const markup = render([episodeOn(TODAY)], [filmOn("2026-09-05")]);
+
+    expect(markup.indexOf("Upcoming episodes")).toBeLessThan(
+      markup.indexOf("Upcoming movies"),
+    );
+  });
+});
+
 describe("the pager", () => {
   const pager = sourceAt(PAGER);
 
@@ -309,7 +515,16 @@ describe("the page hands the pager both surfaces and one day", () => {
   it("draws Up next and Upcoming as the pager's two pages", () => {
     expect(page).toMatch(/<LandingPager/);
     expect(page).toMatch(/upNext=\{<UpNextPhoneRails rails=\{rails\} films=\{films\} \/>\}/);
-    expect(page).toMatch(/upcoming=\{<UpcomingSurface episodes=\{upcoming\} today=\{today\} \/>\}/);
+    expect(page).toMatch(
+      /<UpcomingSurface\s+episodes=\{upcoming\}\s+films=\{upcomingFilms\}\s+today=\{today\}\s*\/>/,
+    );
+  });
+
+  /** Both of Upcoming's reads go through the cache under the pager's own tag, so a write
+   *  on page one cannot leave page two describing a watchlist that has moved. */
+  it("reads both halves of Upcoming through the cache", () => {
+    expect(page).toContain("cachedUpcomingEpisodes(userId)");
+    expect(page).toContain("cachedUpcomingFilms(userId)");
   });
 
   /** The one clock on this route, read once, against the reader's own zone. A second

@@ -407,12 +407,28 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
-   * `/stats` — issue #227, and the surface with the most to wait on: `accountStats` makes
-   * eight statements, behind a tab a reader taps from anywhere. It arrives with a boundary
-   * rather than being converted later, and this is the floor that says so.
+   * **`/stats`, removed by #249, asserted as gone** — the same criterion one ticket later
+   * and for the same reason: *the route manifest reflects the removal and no longer lists
+   * the stats route*. A page restored by a merge fails here rather than shipping a
+   * destination the phone's fourth tab and the sidebar's sixth no longer lead to.
    */
-  it("finds the boundary on the Stats destination #227 adds", () => {
-    expect(hasBoundary("(signed-in)/stats")).toBe(true);
+  it("has no route left at /stats", () => {
+    expect(built.pages.map((one) => one.route)).not.toContain("/stats");
+    expect(built.routes).not.toContain("/stats");
+  });
+
+  /**
+   * `/you` — issue #247, and the phone's fourth tab since #249 retired `/stats` and
+   * repointed the slot here. It is a page made entirely of reads, behind a tab a reader
+   * taps from anywhere, so it arrives with a boundary rather than being converted later,
+   * and this is the floor that says so.
+   *
+   * The assertion this replaces named `(signed-in)/stats`, and #227's reasoning for it —
+   * *the surface with the most to wait on* — went with the eight statements behind it.
+   * Three concurrent reads are still three round trips under a fixed tab.
+   */
+  it("finds the boundary on the You destination #249 points the fourth tab at", () => {
+    expect(hasBoundary("(signed-in)/you")).toBe(true);
   });
 
   /**

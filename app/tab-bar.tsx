@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { LibraryIcon, SearchIcon, StatsIcon, UpNextIcon } from "./nav-icons";
+import { LibraryIcon, SearchIcon, UpNextIcon, YouIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 import { PHONE_BAR } from "./phone-bar";
 
@@ -67,28 +67,33 @@ import { PHONE_BAR } from "./phone-bar";
  * it said `54`, and both dependents had drifted to `49`.
  */
 /**
- * ── The fourth tab changed hands, and this is where that happened ────────────────────
+ * ── The fourth tab has changed hands twice, and this is where both happened ──────────
  *
- * Issue #227. **Lists is no longer a tab on the phone; Stats is.** The four are still four
- * — `SPEC.md` §9's tab budget is unchanged and no fifth was added — and the swap is the
- * back half of a decision the front half of which shipped in #223: the Lists rail sits
- * above the Library grid, so the phone still reaches every list in one tap from the tab it
- * already lands on, and the tab that used to do that job had nothing left to do.
+ * **Issue #227 spent it on Stats.** Lists stopped being a tab on the phone: #223 had put a
+ * rail of every list above the Library grid, so the phone already reached every list in one
+ * tap from a tab it lands on anyway, and the tab that used to do that job had nothing left
+ * to do. The four stayed four — `SPEC.md` §9's tab budget is unchanged and no fifth was
+ * ever added.
  *
- * **The Lists routes are untouched.** `/lists` and `/lists/[listId]` still exist, the rail
- * leads to them, the desktop sidebar still links to them, and a deep link into either
- * still works. This retires a *tab*, not a destination — and it is only done here, in this
- * ticket, because a tab is only worth adding once there is a page behind it, which is what
- * `/stats` now is.
+ * **Issue #249 spends it on You, and this time the page behind it is gone.** `/stats` is
+ * deleted outright: the direction #245 set asks for the six figures You reports rather than
+ * the nine Stats reported, so the destination is not demoted or folded in, it stops
+ * existing. A tab is a way to a page and lasts exactly as long as it is the way — the same
+ * sentence that let Stats have this slot is what takes it back.
  *
- * The desktop makes the opposite trade and keeps both, because it has the room:
- * `sidebar-nav.tsx` runs six destinations where this runs four.
+ * The desktop sidebar makes the same substitution in its own column and keeps Lists as
+ * well, because it has the room: `sidebar-nav.tsx` runs six destinations where this runs
+ * four. That asymmetry is #227's and is untouched here.
+ *
+ * **The Lists routes are still untouched**, as they have been since #227. `/lists` and
+ * `/lists/[listId]` exist, the rail leads to them, the sidebar links to them, and a deep
+ * link into either works. What #227 retired was a tab; what #249 retires is a page.
  */
 const TABS = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
-  { href: "/stats", label: "Stats", Icon: StatsIcon },
+  { href: "/you", label: "You", Icon: YouIcon },
 ] as const;
 
 /**
@@ -97,9 +102,8 @@ const TABS = [
  *
  * Derived from the two tabs' **positions in `TABS`**, not from history: the bar is a
  * horizontal row of four and the direction that means anything here is the one the reader
- * can see in front of them. A history-based direction would call *Stats → Up next*
- * "forward" whenever it happened to be a new entry, which is the opposite of what the row
- * shows.
+ * can see in front of them. A history-based direction would call *You → Up next* "forward"
+ * whenever it happened to be a new entry, which is the opposite of what the row shows.
  *
  * Three cases, and the third is the one that keeps Settings symmetrical:
  *
