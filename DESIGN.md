@@ -622,6 +622,52 @@ auth available to render the live page, so the re-measure ran against a standalo
 built from this file's own class strings rather than `npm run dev` directly — worth a second
 pass against the running app, though nothing in a fixed-pixel box model depends on that.
 
+### The fifth time was the row becoming a link, and it passed
+
+Issue #254 makes a season row a destination: the episode number and the name are wrapped in
+a `Link` to `library/[entryId]/episode/[episodeId]`, so pressing a row opens the episode
+modal. That is a new element in the middle of a row whose height is guaranteed, which is
+exactly the shape of change the four entries above were all written about, so it was
+measured before it was believed.
+
+**Two things make it geometry-neutral, and the second is the one that is easy to omit.**
+The link is `flex min-w-0 flex-1 items-center gap-3`, which is the arrangement the `<li>`
+itself was making over the same two children — same gap, same `flex-1`, so the row's own
+flex line is unchanged. And it is `self-stretch -my-2 py-2`, which is what gives the link
+the `44px` target rather than the row's `28px` content box: `EPISODE_ROW` is
+`min-h-11 py-2`, so `self-stretch` alone stops at `44 - 16`, and the negative margin lets
+the link back out into the row's own padding. This is `RECORDING_HIT_BOX`'s trick, and a
+negative margin takes up no space, so the row does not grow.
+
+**Measured in a real Chromium tab against the compiled CSS** (`.next/static/chunks/*.css`,
+`getBoundingClientRect`), with the linked row and the row as it was before rendered side by
+side in one document so the two are read off the same layout pass rather than two runs:
+
+| Pane width | State | Row, linked | Row, before |
+|---|---|---|---|
+| `420px` | unwatched · up-next | `372 × 45.00` | `372 × 45.00` |
+| `420px` | marking · settled | `372 × 44.00` | `372 × 44.00` |
+| `375px` | unwatched · up-next | `327 × 45.00` | `327 × 45.00` |
+| `375px` | marking · settled | `327 × 44.00` | `327 × 44.00` |
+| `340px` | unwatched · up-next | `292 × 45.00` | `292 × 45.00` |
+| `340px` | marking · settled | `292 × 44.00` | `292 × 44.00` |
+
+**Identical in every cell**, and the episode name beside it identical too — `120px`, `75px`
+and `40px` at the three widths, on both. The check's own box came back `44.00 × 44.00`,
+flush with the row's top edge, which is #254's *a season row's check remains a separate
+target of at least 44px* read off the glass rather than off a class string. The link's own
+box is `44.00px` in the two states that carry the check and `43.00px` in the two that do
+not.
+
+**The `45.00` is the harness, not the row, and it is why the comparison is the reading.**
+This harness serves the compiled stylesheet without the application's webfont, so
+`code-line`'s line box is a pixel taller here than in the app — which is why these figures
+sit a pixel above #139's `44` rather than on it. That is a property of the measuring
+instrument, and it moves both columns together; what the table establishes is that the link
+changes nothing, which is the only thing this ticket needed to know. A run inside the real
+app would be worth having before these numbers are quoted as absolutes, exactly as #217's
+own entry says of itself.
+
 ### Reduced motion costs the animation and never the event
 
 `prefers-reduced-motion: reduce` shortens `watch-sweep` to `1ms`. It does not remove it, and

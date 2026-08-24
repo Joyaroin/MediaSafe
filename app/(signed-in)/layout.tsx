@@ -41,16 +41,38 @@ import { TabBar } from "../tab-bar";
  * heard about it, so the last row of every phone screen sat five pixels under the
  * chrome. A custom property is the one form a Tailwind class can actually read, which is
  * what makes the shared source shared.
+ *
+ * ── The `@modal` slot, and why it is on this layout rather than a lower one ─────────
+ *
+ * Issue #254. `modal` is the `@modal` directory beside this file, handed in as a prop the
+ * way `children` is — a slot adds no path segment, exactly as the route group adds none,
+ * so `/library/…/episode/…` is still that URL while being rendered in here. It holds
+ * exactly one thing: episode detail, intercepted, over whatever the reader was looking at.
+ *
+ * It is on the **signed-in** layout and not on `library/[entryId]` because both origins
+ * have to share it. A rail card on the landing screen and a row in a season list are on
+ * two different pages under two different segments, and a slot mounted below the point
+ * where those two part company would be two slots, two dialogs and two ways to close one.
+ * This is the lowest layout both origins have in common.
+ *
+ * Rendered **last**, after the tab bar. Ordering in the flow is close to meaningless for a
+ * `showModal()` dialog — it paints in the browser's top layer, above everything on the
+ * page whatever the stacking context — but the reading order of this file should not imply
+ * otherwise, and a slot rendered between the sidebar and the page would suggest it takes
+ * part in the row's layout. It does not; `@modal/default.tsx` renders `null` on every
+ * route but one, and the intercepted page renders a dialog that is not in flow at all.
  */
 export default function SignedInLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  modal,
+}: Readonly<{ children: React.ReactNode; modal: React.ReactNode }>) {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[var(--tab-bar-height)] lg:flex-row lg:pb-0">
       <Masthead />
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       <TabBar />
+      {modal}
     </div>
   );
 }
