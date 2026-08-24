@@ -5,7 +5,7 @@ import { EpisodeDetailBody } from "./episode-detail-body";
  * entry that owns it, and the surface issue #254 presents as a modal over whatever the
  * reader was looking at. A direct load or a refresh lands exactly here, which is the whole
  * of this file's job now: the modal is the *intercepted* render of this route
- * (`app/(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]/page.tsx`), and an
+ * (`app/(signed-in)/@episode/(.)library/[entryId]/episode/[episodeId]/page.tsx`), and an
  * address typed, shared or refreshed reaches no interception at all.
  *
  * ── The episode itself moved one file over, and nothing else did ────────────────────

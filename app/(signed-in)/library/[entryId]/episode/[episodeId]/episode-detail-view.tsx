@@ -91,7 +91,7 @@ export function EpisodeDetailView({
   /** `episode-synopsis-streamed.tsx`, rendered on the server and handed down whole. */
   readonly synopsis: ReactNode;
   /**
-   * **This surface is drawn over another one** — the `@modal` slot's intercepted render
+   * **This surface is drawn over another one** — the `@episode` slot's intercepted render
    * (issue #254) rather than the page a direct load lands on.
    *
    * It changes exactly one thing: how *Previous* and *Next* navigate. `EpisodeRunControls`
@@ -326,7 +326,7 @@ function EpisodeRunControls({
   /**
    * ── Stepping the run inside the modal is not the same navigation (issue #254) ──────
    *
-   * On the page these are ordinary links and always were. In the `@modal` slot they are
+   * On the page these are ordinary links and always were. In the `@episode` slot they are
    * intercepted like every other soft navigation to this route, so the reader stays in one
    * dialog and its contents change — which is the behaviour wanted, and which arrives with
    * two problems the page does not have. Both are `false` by default, so nothing about the
@@ -341,7 +341,7 @@ function EpisodeRunControls({
    * for the identical reason; this was the hole left between them.
    *
    * The modal resets its own scroller on the way in, so the new episode still starts at its
-   * own top — `episode-modal.tsx` owns that, because the thing that scrolls there is a
+   * own top — `route-modal.tsx` owns that, because the thing that scrolls there is a
    * container inside a dialog and the router cannot reach it.
    *
    * **`replace`, because Back has to keep meaning *close this*.** #254 lists Back as one of

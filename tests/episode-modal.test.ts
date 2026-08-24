@@ -58,14 +58,14 @@ import {
 const codeOf = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-const MODAL = readFileSync("app/(signed-in)/@modal/episode-modal.tsx", "utf8");
-const SLOT_DEFAULT = readFileSync("app/(signed-in)/@modal/default.tsx", "utf8");
+const MODAL = readFileSync("app/(signed-in)/route-modal.tsx", "utf8");
+const SLOT_DEFAULT = readFileSync("app/(signed-in)/@episode/default.tsx", "utf8");
 const SLOT_LAYOUT = readFileSync(
-  "app/(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]/layout.tsx",
+  "app/(signed-in)/@episode/(.)library/[entryId]/episode/[episodeId]/layout.tsx",
   "utf8",
 );
 const SLOT_PAGE = readFileSync(
-  "app/(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]/page.tsx",
+  "app/(signed-in)/@episode/(.)library/[entryId]/episode/[episodeId]/page.tsx",
   "utf8",
 );
 const SIGNED_IN_LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
@@ -80,7 +80,7 @@ const FULL_PAGE = readFileSync(
   "utf8",
 );
 const SLOT_NOT_FOUND = readFileSync(
-  "app/(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]/not-found.tsx",
+  "app/(signed-in)/@episode/(.)library/[entryId]/episode/[episodeId]/not-found.tsx",
   "utf8",
 );
 const DETAIL_VIEW = readFileSync(
@@ -232,8 +232,27 @@ describe("the slot", () => {
   /** The layout has to render it, or the slot is compiled and never mounted — a modal
    *  that exists in the build and appears nowhere. */
   it("is rendered by the signed-in layout", () => {
-    expect(SIGNED_IN_LAYOUT).toMatch(/modal:\s*React\.ReactNode/);
-    expect(SIGNED_IN_LAYOUT).toMatch(/\{modal\}/);
+    expect(SIGNED_IN_LAYOUT).toMatch(/episode:\s*React\.ReactNode/);
+    expect(SIGNED_IN_LAYOUT).toMatch(/\{episode\}/);
+  });
+
+  /**
+   * The title sheet is rendered **before** the episode sheet, and this is the assertion
+   * that keeps it that way.
+   *
+   * Both are `showModal()` dialogs, so both are in the browser's top layer and no
+   * `z-index` decides which is in front. The top layer is ordered by the order
+   * `showModal()` was called in, which follows render order — so swapping these two lines
+   * would put a title sheet in front of the episode sheet opened from inside it, with
+   * nothing else in the codebase changing and nothing else failing.
+   */
+  it("renders the title slot before the episode slot", () => {
+    const title = SIGNED_IN_LAYOUT.indexOf("{title}");
+    const episode = SIGNED_IN_LAYOUT.indexOf("{episode}");
+
+    expect(title).toBeGreaterThan(-1);
+    expect(episode).toBeGreaterThan(-1);
+    expect(title).toBeLessThan(episode);
   });
 
   /** `null`, not `notFound()`: *no modal* is the honest content of this slot on every
@@ -250,8 +269,8 @@ describe("the slot", () => {
    * failed would drop a bare failure into the page's flow with no way out of it.
    */
   it("wraps every one of the segment's three renders in the dialog", () => {
-    expect(SLOT_LAYOUT).toMatch(/<EpisodeModal>\{children\}<\/EpisodeModal>/);
-    expect(codeOf(SLOT_PAGE)).not.toMatch(/EpisodeModal/);
+    expect(SLOT_LAYOUT).toMatch(/<RouteModal label="Episode detail">\{children\}<\/RouteModal>/);
+    expect(codeOf(SLOT_PAGE)).not.toMatch(/RouteModal/);
   });
 
   /**

@@ -1,5 +1,5 @@
 /**
- * The `@modal` slot when there is no modal — which is every route in this application but
+ * The `@episode` slot when there is no modal — which is every route in this application but
  * one, and every hard load of that one.
  *
  * ── This file is not optional, and its absence is not a quiet failure ────────────────

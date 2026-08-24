@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { EpisodeModal } from "../../../../episode-modal";
+import { RouteModal } from "../../../../../route-modal";
 
 /**
  * The intercepted route's frame — the dialog, drawn once for all three of its renders.
@@ -9,7 +9,7 @@ import { EpisodeModal } from "../../../../episode-modal";
  *
  * `(.)` is *intercept a segment at the same level*
  * (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/intercepting-routes.md`).
- * The level is counted in **route segments**, and neither `@modal` nor `(signed-in)` is
+ * The level is counted in **route segments**, and neither `@episode` nor `(signed-in)` is
  * one — a slot and a route group both contribute nothing to the URL. So this directory
  * sits at the same level as `app/(signed-in)/library`, and `(.)library/…` reaches it. It is
  * two directories further down the file system than the route it intercepts and zero
@@ -20,7 +20,7 @@ import { EpisodeModal } from "../../../../episode-modal";
  *
  * The same reason the full page's own `layout.tsx` holds its back bar, and the reason is
  * sharper here. Next wraps a segment's `page`, its `loading` **and** its `error` in that
- * segment's layout. Put `EpisodeModal` in `page.tsx` instead and the modal exists only on
+ * segment's layout. Put `RouteModal` in `page.tsx` instead and the modal exists only on
  * the render that succeeded: a read still in flight would show nothing at all until it
  * landed, and a read that failed would take the dialog off the screen and drop a bare
  * failure into the layout's flow — under the tab bar, with no backdrop, with no way out,
@@ -37,5 +37,5 @@ import { EpisodeModal } from "../../../../episode-modal";
  * described above, reached the slow way.
  */
 export default function InterceptedEpisodeLayout({ children }: { children: ReactNode }) {
-  return <EpisodeModal>{children}</EpisodeModal>;
+  return <RouteModal label="Episode detail">{children}</RouteModal>;
 }

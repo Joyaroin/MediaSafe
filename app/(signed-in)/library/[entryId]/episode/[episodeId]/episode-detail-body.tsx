@@ -14,14 +14,14 @@ import { EpisodeSynopsisStreamed } from "./episode-synopsis-streamed";
  * ── Why this is a component and not the body of `page.tsx` ───────────────────────────
  *
  * Issue #254 gives this route a second render: the intercepted one in the signed-in
- * layout's `@modal` slot, which shows the *same* episode from the same read over whatever
+ * layout's `@episode` slot, which shows the *same* episode from the same read over whatever
  * the reader was looking at. Two files rendering that from two copies of the same eight
  * lines is the arrangement where one of them quietly stops calling `notFound()`, or reads
  * a different cache entry, and the two surfaces begin disagreeing about an episode the
  * reader believes is one thing.
  *
  * So the split is: this file is *the episode*, `page.tsx` is *the page it is on* and
- * `@modal/(.)…/page.tsx` is *the dialog it arrives in*. Both of those are four lines long
+ * `@episode/(.)…/page.tsx` is *the dialog it arrives in*. Both of those are four lines long
  * and neither of them reads anything.
  *
  * Every argument for how this reads — one cache entry, authorisation through

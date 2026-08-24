@@ -194,6 +194,40 @@ export function withoutInterception(route: string): string {
 }
 
 /**
+ * A trailing **optional** catch-all — `[[...rest]]` — and only a trailing one.
+ *
+ * Optional, so the double brackets are required: `[...rest]` matches one segment or more
+ * and genuinely narrows a route, while `[[...rest]]` also matches *none* and therefore
+ * does not.
+ */
+const TRAILING_OPTIONAL_CATCH_ALL = /\/\[\[\.\.\.[^\]]+\]\]$/;
+
+/**
+ * The URL an intercepted render **shadows** — the one a hard load has to land on.
+ *
+ * For most interceptions this is just the route with its marker removed, and this function
+ * would not need to exist. It exists for the title sheet, whose intercepted segment is
+ * `(.)library/[entryId]/[[...rest]]` while the route it shadows is `/library/[entryId]`.
+ *
+ * ── Why that segment is written with a catch-all at all ─────────────────────────────
+ *
+ * So the title sheet keeps matching when an episode sheet opens *over* it at
+ * `/library/…/episode/…`, one segment deeper. Without it the segment stops matching there
+ * and the sheet survives only as slot state the router happens to be retaining, which
+ * `parallel-routes.md` promises for a soft navigation and for nothing else.
+ *
+ * An optional catch-all does not narrow what a route matches — `[[...rest]]` matches zero
+ * segments as happily as three — so trimming it here is not the audit being made lenient.
+ * It is the audit being told what URL the segment is *about*, which is the same URL it was
+ * about before the catch-all was added. A **required** `[...rest]` is deliberately not
+ * trimmed: that one would mean the sheet no longer opens at `/library/[entryId]` itself,
+ * which is a real change and should fail this audit as `missing`.
+ */
+export function shadowedRoute(route: string): string {
+  return withoutInterception(route).replace(TRAILING_OPTIONAL_CATCH_ALL, "");
+}
+
+/**
  * The interceptions the build compiled, read off its rewrites.
  *
  * A rewrite counts as one when all three hold: it is in `beforeFiles`, its destination
@@ -362,6 +396,40 @@ function slotOf(segment: string): string | null {
   return slots[0] ?? null;
 }
 
+/**
+ * The routes a reader can actually navigate to, out of every route the build compiled.
+ *
+ * ── Why this subtraction exists ──────────────────────────────────────────────────────
+ *
+ * A parallel slot's pages are compiled as routes and land in the routes manifest looking
+ * exactly like any other. They are not routes: a slot fills a *hole in a layout* at a URL
+ * that some other page owns, so nobody can navigate to one, and the proxy has nothing to
+ * gate. Auditing them for session protection asks a question they cannot answer.
+ *
+ * This became real with the two modal slots. Each closes itself on a soft navigation with
+ * a `[...catchAll]/page.tsx` that returns `null` — the file `parallel-routes.md` requires,
+ * without which an open dialog follows the reader to the next screen. Both compile to the
+ * route `/[...catchAll]`, and the protection audit reported two unprotected routes that no
+ * request will ever reach.
+ *
+ * **Only routes that exist *nowhere but* a slot are dropped.** `/` is compiled from
+ * `app/page.tsx` *and* from `@title/page.tsx` and `@episode/page.tsx`; it stays, because
+ * `children` owns it and a reader lands on it. That distinction is the whole function —
+ * a blunter "drop anything a slot compiled" would silently stop auditing the home page.
+ */
+function navigableRoutes(
+  routes: readonly string[],
+  appPaths: AppPathRoutesManifest,
+): string[] {
+  const owned = new Set(
+    Object.entries(appPaths)
+      .filter(([sourcePath]) => slotOf(sourcePath) === null)
+      .map(([, route]) => route),
+  );
+
+  return routes.filter((route) => owned.has(route));
+}
+
 /** Both manifests, read from one build. */
 export function readBuildArtifacts(repositoryRoot: string): BuildArtifacts {
   const routes = readManifest<RoutesManifest>(repositoryRoot, "routes-manifest.json");
@@ -390,10 +458,13 @@ export function readBuildArtifacts(repositoryRoot: string): BuildArtifacts {
   const interceptions = interceptionsIn(routes.rewrites);
 
   return {
-    routes: [
-      ...routes.staticRoutes.map((route) => route.page),
-      ...routes.dynamicRoutes.map((route) => route.page),
-    ],
+    routes: navigableRoutes(
+      [
+        ...routes.staticRoutes.map((route) => route.page),
+        ...routes.dynamicRoutes.map((route) => route.page),
+      ],
+      appPaths,
+    ),
     matcher: matchers.map((matcher) => matcher.originalSource),
     pages: pageRoutes(
       appPaths,
@@ -681,7 +752,7 @@ export function auditModalSlots(
   const intercepted = new Map(
     pages
       .filter((page) => isIntercepted(page.segment))
-      .map((page) => [withoutInterception(page.route), page]),
+      .map((page) => [shadowedRoute(page.route), page]),
   );
 
   const missing: string[] = [];
@@ -720,7 +791,10 @@ export function auditModalSlots(
      * rewrite but no page — and the reverse — is reported rather than halving the check.
      */
     unnamed: [
-      ...new Set([...intercepted.keys(), ...interceptions.map((one) => one.route)]),
+      ...new Set([
+        ...intercepted.keys(),
+        ...interceptions.map((one) => shadowedRoute(one.route)),
+      ]),
     ]
       .filter((route) => !named.has(route))
       .sort(),
