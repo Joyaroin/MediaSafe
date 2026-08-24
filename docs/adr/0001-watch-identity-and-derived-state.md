@@ -177,6 +177,51 @@ things around it that are not are listed here, newest last.
    still reads *abandoned* afterwards, because `library_entry_state` tests `abandoned_at` first and
    outranks every derived answer. A reader who wants it to read *finished* presses the abandon
    control to take it back, and the marks they just wrote are all still there.
+10. **An episode's still and a title's release date cross to the mirrored side** —
+    [#246](https://github.com/Joyaroin/MediaSafe/issues/246), 2026-08-23. *Metadata caching policy*
+    below put an episode's still on the *fetched live, never stored* side as an **additional image**,
+    and did not list a release date at all — it was reduced to `release_year` on the way in and the
+    rest of the date discarded. Both move, and the argument is the dividing line's own words:
+    **what a 472-row library render needs.**
+
+    The line has never been *detail pages versus everything else* by accident. It says everything
+    live "appears on a detail page, where one title means one call", and that is exactly what these
+    two are not. The rail of next episodes and the Upcoming screen are **list renders** — many
+    episodes, many titles, one screen — so fetching a still per card is one catalogue request per
+    card, on the screens that must feel fastest. That is *Refresh-on-read*, which
+    *Alternatives rejected* already rejected, arrived at from the other direction. And Upcoming has
+    to **order** titles by when they arrive, which a year cannot do: `release_year` is not a coarse
+    release date, it is a different fact, and no amount of it sorts two films released in the same
+    year. **Amendment 5 is the precedent** for a column landing ahead of its reader.
+
+    **Neither costs a new request.** Both are already in the show, season and film responses the
+    mirror fetches — `still_path` on every episode of `/tv/{id}/season/{n}`, `release_date` and
+    `first_air_date` on `/movie/{id}` and `/tv/{id}`. The fetching module is untouched; the mapping
+    gains two payload fields and two mapped values, both normalised through the same `""` → `NULL`
+    helpers every other borrowed field goes through.
+
+    **The release date supersedes nothing.** `release_year` stays, still derived from the same
+    payload field by the same function, and still what the library grid and the search results
+    print. Two columns from one fact is redundancy, and it is the same deliberate kind as
+    `watch.title_id`: the year is what almost every read wants and the date is what one screen needs
+    to sort by, and deriving the year in SQL on every library render to save a `smallint` is a worse
+    trade than storing both. **They cannot disagree, and that is structural rather than a
+    convention**: `releaseFrom` in `tmdb/mirror.ts` returns the pair from one field in one call, so
+    there is no second call site for a later edit to move out from under the first.
+
+    **A backdrop is still live**, and the phrase in the table is narrowed rather than deleted: an
+    episode's still is not an *additional* image, it is the only image that episode has, and a
+    backdrop remains a detail-page picture of a title that already has a poster.
+
+    Nullable, no backfill, filled by the sweep as it refreshes each title — amendment 5's mechanism
+    for amendment 5's reason: a one-off backfill script would be a second writer of global rows and
+    therefore a second definition of what a mirrored title contains. **NULL is ordinary here rather
+    than a gap waiting to be filled**: TMDB has no still for an unaired episode and no date for an
+    unannounced film, so an empty column is not a missing one, and the reader renders a placeholder
+    either way.
+
+    **Nothing renders either field yet**, which makes this verifiable rather than demoable and is
+    said plainly rather than left for someone to discover.
 
 ## Context
 
@@ -295,6 +340,8 @@ CREATE TABLE title (
     CHECK (external_id ~ '^(imdb:tt[0-9]+|tvdb:[0-9]+)$'),
   name                  text NOT NULL,
   release_year          smallint,
+  release_date          date,               -- amendment 10; the whole date behind the year,
+                                            -- which supersedes nothing: the year stays
   poster_path           text,
   in_production         boolean,      -- shows only; NULL for films
   runtime_mins          smallint,     -- films only
@@ -312,6 +359,8 @@ CREATE TABLE episode (
   name            text,
   air_date        date,
   runtime_mins    smallint,
+  still_path      text,                -- amendment 10; the rail of next episodes is a
+                                       -- list render, so this is not a detail-page image
 
   UNIQUE (title_id, season_no, episode_no),
   UNIQUE (id, title_id)               -- FK target for watch
@@ -579,15 +628,23 @@ TMDB fields are **borrowed, not owned** (#3), under a 6-month cache ceiling.
 
 | Mirrored in Postgres | Fetched live, never stored |
 |---|---|
-| name, kind, release year, poster path | synopsis / overview |
+| name, kind, release year, release date, poster path | synopsis / overview |
 | `in_production`, runtime | cast and crew |
-| every episode's number, name, air date | backdrops and additional images |
+| every episode's number, name, air date, still | backdrops |
 | `external_id` — one external id *(amendment 5)* | **watch providers** — region-specific and change weekly |
 
 The dividing line is **what a 472-row library render needs**. Everything mirrored is required either
 by a derived state or by the glossary rule that *an episode is never referred to by number alone* —
 which makes episode names load-bearing on ordinary list screens, not just detail pages. Everything
 live appears on a detail page, where one title means one call.
+
+**Amendment 10 moved two fields left on that test rather than around it.** The rail of next episodes
+and Upcoming are list renders, so a still fetched live is one catalogue request per card — which is
+*Refresh-on-read*, rejected below, reached from the other direction. And Upcoming orders titles by
+when they arrive, which `release_year` cannot do: two films released in the same year do not sort.
+Neither field costs a request, both arriving in responses the mirror already fetches. The right-hand
+column's *additional images* narrowed to *backdrops* in the same change: an episode's still is not an
+additional image, it is the only image that episode has.
 
 Posters are referenced by `poster_path` and served from TMDB's CDN. No image blobs are stored.
 Attribution is the logo-plus-notice requirement from #3 and is #11/#12's to place.

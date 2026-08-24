@@ -138,6 +138,7 @@ function showMirrorFixture(): TitleMirror {
     externalId: `tvdb:${tmdbId}`,
     name: `Mirrored ${tmdbId}`,
     releaseYear: 2015,
+    releaseDate: "2015-04-17",
     posterPath: "/poster.jpg",
     inProduction: false,
     runtimeMins: null,
@@ -149,6 +150,7 @@ function showMirrorFixture(): TitleMirror {
         name: "The First One",
         airDate: "2015-04-17",
         runtimeMins: 48,
+        stillPath: "/the-first-one.jpg",
       },
     ],
   };

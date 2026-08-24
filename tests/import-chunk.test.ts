@@ -65,6 +65,7 @@ function showMirror(
     externalId: `tvdb:${tmdbId}`,
     name: `Show ${tmdbId}`,
     releaseYear: 2011,
+    releaseDate: "2011-04-17",
     posterPath: "/poster.jpg",
     inProduction: false,
     runtimeMins: null,
@@ -75,6 +76,7 @@ function showMirror(
       name: `S${seasonNo}E${episodeNo}`,
       airDate: "2011-04-17",
       runtimeMins: 62,
+      stillPath: `/still-${seasonNo}-${episodeNo}.jpg`,
     })),
     ...overrides,
   };

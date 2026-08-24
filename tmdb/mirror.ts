@@ -23,12 +23,21 @@
  *
  * | Mirrored in Postgres | Fetched live, never stored |
  * | --- | --- |
- * | name, kind, release year, poster path | synopsis / overview |
+ * | name, kind, release year, release date, poster path | synopsis / overview |
  * | `in_production`, runtime | cast and crew |
- * | every episode's number, name, air date | backdrops and additional images |
+ * | every episode's number, name, air date, still | backdrops |
  * | one external id — IMDb, else TVDB | watch providers |
  *
- * The external id is the newest entry and the one that does not fit the dividing line the
+ * **The release date and the episode still are the newest entries** (amendment 10), and
+ * they fit the dividing line rather than straining it: the rail of next episodes and the
+ * Upcoming screen are *list* renders, and the ADR's test is what a 472-row library render
+ * needs. Neither costs a request — both arrive in the show, season and film responses
+ * this file is already handed. The release date **supersedes nothing**: `release_year`
+ * stays, derived from the same payload field by the same function.
+ *
+ * A backdrop is still a detail-page image and stays on the right.
+ *
+ * The external id is the other entry that does not fit the dividing line the
  * rest of the table follows — nothing renders it, and nothing reads it at all yet. It is
  * mirrored because TMDB publishes no successor id: a deleted or merged title answers 404
  * and nothing else, so the stored id is the only thing a vanished title can be re-found
@@ -171,6 +180,11 @@ export interface TmdbEpisodePayload {
   name?: string | null;
   air_date?: string | null;
   runtime?: number | null;
+  /**
+   * The episode's own image. Mirrored since amendment 10 — `null` on most specials and
+   * on anything unaired, which is exactly the case the rail renders a placeholder for.
+   */
+  still_path?: string | null;
 }
 
 export interface TmdbSeasonPayload {
@@ -279,6 +293,17 @@ export interface EpisodeMirror {
   /** `YYYY-MM-DD`, as TMDB sends it and as Postgres's `date` takes it. */
   readonly airDate: string | null;
   readonly runtimeMins: number | null;
+  /**
+   * The episode's own image, as a TMDB CDN path (`/wrGWe….jpg`) exactly like
+   * `posterPath` — no blob is stored, and no size is baked in here.
+   *
+   * **Amendment 10 moved this across ADR-0001's line**, on the ADR's own test: the rail
+   * of next episodes is a list render, and fetching a still per card is one catalogue
+   * request per card. It arrives in the season response the mirror already fetches.
+   *
+   * `null` is ordinary, not exceptional — unaired episodes and most specials have none.
+   */
+  readonly stillPath: string | null;
 }
 
 /** One `title` row and every `episode` row under it: everything one add writes. */
@@ -300,6 +325,15 @@ export interface TitleMirror {
   readonly externalId: ExternalId | null;
   readonly name: string;
   readonly releaseYear: number | null;
+  /**
+   * `YYYY-MM-DD` — a film's release date, a show's first air date.
+   *
+   * **Amendment 10, and it supersedes nothing.** `releaseYear` above is still derived
+   * from the same payload field by the same function and is still what the library grid
+   * and the search results print; this is the whole date, for Upcoming — a list render
+   * that has to *order* by it, which a year cannot do.
+   */
+  readonly releaseDate: string | null;
   readonly posterPath: string | null;
   /** Shows only; `null` for films. */
   readonly inProduction: boolean | null;
@@ -325,6 +359,26 @@ function releaseYearFrom(date: string | null | undefined): number | null {
 /** `""` → `null`. Postgres's `date` will not take an empty string, and neither will we. */
 function dateFrom(date: string | null | undefined): string | null {
   return date ? date : null;
+}
+
+/**
+ * The two columns one TMDB date field becomes: the whole date *(amendment 10)*, and the
+ * year ADR-0001 mirrored long before it.
+ *
+ * **One function rather than two calls at each mapper.** Two columns derived from one
+ * field can disagree, and the amendment says they cannot — so the thing that makes that
+ * true should be structure rather than a convention that `filmMirror` and `showMirror`
+ * both have to keep. Reading the field twice is how the year comes to be `2011` beside a
+ * date in `2012`: not today, but on the day somebody edits one call site.
+ *
+ * It takes the field rather than the payload because the two mappers read *different*
+ * fields — `release_date` on a film, `first_air_date` on a show — and which one is a
+ * title's release date is their decision, not this function's.
+ */
+function releaseFrom(
+  date: string | null | undefined,
+): Pick<TitleMirror, "releaseYear" | "releaseDate"> {
+  return { releaseYear: releaseYearFrom(date), releaseDate: dateFrom(date) };
 }
 
 /**
@@ -469,7 +523,8 @@ export function filmMirror(movie: TmdbMoviePayload): TitleMirror {
     // `/movie/{id}` carries `imdb_id` itself, and carries no TVDB id at all, so a film's
     // external id costs no request and has only one source to consider.
     externalId: externalIdFrom({ imdb_id: movie.imdb_id }),
-    releaseYear: releaseYearFrom(movie.release_date),
+    // The year and the whole date, from one field and in one call — see `releaseFrom`.
+    ...releaseFrom(movie.release_date),
     posterPath: textFrom(movie.poster_path),
     // Shows only. A film carrying it would be a film carrying a column that says nothing
     // about films, and `caught up` versus `finished` turns on that column.
@@ -496,7 +551,9 @@ export function showMirror(
     ...identity("show", show.id, show.name),
     // Null unless the request carried `SHOW_EXTERNAL_IDS_APPEND` — see the constant.
     externalId: externalIdFrom(show.external_ids),
-    releaseYear: releaseYearFrom(show.first_air_date),
+    // A show's release date is the day it first aired, and its year is that date's year:
+    // one field, one call, so the two columns cannot come apart.
+    ...releaseFrom(show.first_air_date),
     posterPath: textFrom(show.poster_path),
     inProduction: show.in_production ?? null,
     // Films only. TMDB's `episode_run_time` is a per-episode average of the show and is
@@ -563,6 +620,9 @@ function episodeMirrors(seasons: readonly TmdbSeasonPayload[]): EpisodeMirror[] 
         name: textFrom(episode.name),
         airDate: dateFrom(episode.air_date),
         runtimeMins: integerFrom(episode.runtime),
+        // `textFrom`, exactly as `posterPath` uses it: `""` is a path that would resolve
+        // to the CDN root and render broken, where `null` renders the placeholder.
+        stillPath: textFrom(episode.still_path),
       });
     }
   }

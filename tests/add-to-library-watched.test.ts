@@ -89,6 +89,7 @@ function showMirror(
     externalId: `tvdb:${tmdbId}`,
     name: `Show ${tmdbId}`,
     releaseYear: 2011,
+    releaseDate: "2011-04-17",
     posterPath: "/poster.jpg",
     inProduction: true,
     runtimeMins: null,
@@ -99,6 +100,7 @@ function showMirror(
       name: `S${one.seasonNo}E${one.episodeNo}`,
       airDate: one.airDate === undefined ? RELEASED : one.airDate,
       runtimeMins: 45,
+      stillPath: `/still-${one.seasonNo}-${one.episodeNo}.jpg`,
     })),
     ...overrides,
   };
@@ -112,6 +114,7 @@ function filmMirror(): TitleMirror {
     externalId: null,
     name: `Film ${tmdbId}`,
     releaseYear: 1977,
+    releaseDate: "1977-05-25",
     posterPath: "/film.jpg",
     inProduction: null,
     runtimeMins: 121,

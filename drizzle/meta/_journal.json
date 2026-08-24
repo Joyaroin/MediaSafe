@@ -57,6 +57,13 @@
       "when": 1787174996389,
       "tag": "0007_list-membership-drop-library-entry-id",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787542939649,
+      "tag": "0008_title-release-date-and-episode-still",
+      "breakpoints": true
     }
   ]
 }

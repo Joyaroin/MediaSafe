@@ -47,6 +47,7 @@ function showMirrorFixture(overrides: Partial<TitleMirror> = {}): TitleMirror {
     externalId: `tvdb:${tmdbId}`,
     name: `Show ${tmdbId}`,
     releaseYear: 2011,
+    releaseDate: "2011-04-17",
     posterPath: "/poster.jpg",
     inProduction: false,
     runtimeMins: null,
@@ -58,6 +59,7 @@ function showMirrorFixture(overrides: Partial<TitleMirror> = {}): TitleMirror {
         name: "Winter Is Coming",
         airDate: "2011-04-17",
         runtimeMins: 62,
+        stillPath: "/winter-is-coming.jpg",
       },
       {
         tmdbEpisodeId: nextNumber() + 900_000,
@@ -66,6 +68,9 @@ function showMirrorFixture(overrides: Partial<TitleMirror> = {}): TitleMirror {
         name: "The Kingsroad",
         airDate: "2011-04-24",
         runtimeMins: 56,
+        // The other half of the column, on the row beside it: TMDB has no still for
+        // plenty of episodes, and NULL is what the rail renders a placeholder for.
+        stillPath: null,
       },
     ],
     ...overrides,
@@ -82,6 +87,7 @@ function filmMirrorFixture(): TitleMirror {
     externalId: null,
     name: `Film ${tmdbId}`,
     releaseYear: 1977,
+    releaseDate: "1977-05-25",
     posterPath: "/film.jpg",
     inProduction: null,
     runtimeMins: 121,
@@ -225,6 +231,7 @@ describe("addTitleToLibrary", () => {
             name: "Lord Snow",
             airDate: "2011-05-01",
             runtimeMins: 58,
+            stillPath: "/lord-snow.jpg",
           },
         ],
       };

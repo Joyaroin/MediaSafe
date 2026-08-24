@@ -78,6 +78,18 @@ export const title = pgTable(
     externalId: text("external_id"),
     name: text("name").notNull(),
     releaseYear: smallint("release_year"),
+    /**
+     * The whole date behind `release_year` — a film's release, a show's first air.
+     *
+     * **Amendment 10, and it supersedes nothing**: `release_year` above stays, still
+     * derived from the same TMDB field by the same function, and still what the library
+     * grid prints. This column is here because Upcoming is a *list* render that has to
+     * order titles by when they arrive, and a year cannot order anything within itself.
+     *
+     * Nullable, and null is ordinary: TMDB dates neither an announced film nor a show it
+     * has no first air date for, and `tmdb/mirror.ts` reads its `""` as absent.
+     */
+    releaseDate: date("release_date"),
     posterPath: text("poster_path"),
     /** Shows only; NULL for films. `caught up` versus `finished` turns on this column. */
     inProduction: boolean("in_production"),
@@ -135,6 +147,19 @@ export const episode = pgTable(
     /** NULL where TMDB has not dated it. Never counts as released. */
     airDate: date("air_date"),
     runtimeMins: smallint("runtime_mins"),
+    /**
+     * This episode's own image, as a TMDB CDN path — `poster_path`'s shape exactly, and
+     * like it no blob is stored and no size is chosen here.
+     *
+     * **Amendment 10 moved it across ADR-0001's line.** It was an *additional image* and
+     * so fetched live; the rail of next episodes renders many at once, which made that
+     * one catalogue request per card. It arrives in the season response the mirror
+     * already fetches, so it costs nothing to store.
+     *
+     * NULL is ordinary rather than exceptional — unaired episodes and most specials have
+     * no still — and the reader renders a placeholder for it.
+     */
+    stillPath: text("still_path"),
   },
   (t) => [
     unique("episode_title_id_season_no_episode_no_key").on(
