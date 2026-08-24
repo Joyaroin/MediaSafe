@@ -25,7 +25,7 @@
  * | --- | --- |
  * | name, kind, release year, release date, poster path | synopsis / overview |
  * | `in_production`, runtime | cast and crew |
- * | every episode's number, name, air date, still | backdrops and other images |
+ * | every episode's number, name, air date, still | backdrops |
  * | one external id — IMDb, else TVDB | watch providers |
  *
  * **The release date and the episode still are the newest entries** (amendment 10), and
@@ -362,6 +362,26 @@ function dateFrom(date: string | null | undefined): string | null {
 }
 
 /**
+ * The two columns one TMDB date field becomes: the whole date *(amendment 10)*, and the
+ * year ADR-0001 mirrored long before it.
+ *
+ * **One function rather than two calls at each mapper.** Two columns derived from one
+ * field can disagree, and the amendment says they cannot — so the thing that makes that
+ * true should be structure rather than a convention that `filmMirror` and `showMirror`
+ * both have to keep. Reading the field twice is how the year comes to be `2011` beside a
+ * date in `2012`: not today, but on the day somebody edits one call site.
+ *
+ * It takes the field rather than the payload because the two mappers read *different*
+ * fields — `release_date` on a film, `first_air_date` on a show — and which one is a
+ * title's release date is their decision, not this function's.
+ */
+function releaseFrom(
+  date: string | null | undefined,
+): Pick<TitleMirror, "releaseYear" | "releaseDate"> {
+  return { releaseYear: releaseYearFrom(date), releaseDate: dateFrom(date) };
+}
+
+/**
  * `""` → `null`, so an unnamed episode is unnamed rather than named nothing.
  *
  * Exported: `tmdb/live-facts.ts` parses the same inconsistently-empty TMDB strings for
@@ -503,10 +523,8 @@ export function filmMirror(movie: TmdbMoviePayload): TitleMirror {
     // `/movie/{id}` carries `imdb_id` itself, and carries no TVDB id at all, so a film's
     // external id costs no request and has only one source to consider.
     externalId: externalIdFrom({ imdb_id: movie.imdb_id }),
-    releaseYear: releaseYearFrom(movie.release_date),
-    // The same field, kept whole. Both go through a normaliser rather than being read
-    // raw, because `""` is how TMDB spells *undated* and Postgres's `date` refuses it.
-    releaseDate: dateFrom(movie.release_date),
+    // The year and the whole date, from one field and in one call — see `releaseFrom`.
+    ...releaseFrom(movie.release_date),
     posterPath: textFrom(movie.poster_path),
     // Shows only. A film carrying it would be a film carrying a column that says nothing
     // about films, and `caught up` versus `finished` turns on that column.
@@ -533,10 +551,9 @@ export function showMirror(
     ...identity("show", show.id, show.name),
     // Null unless the request carried `SHOW_EXTERNAL_IDS_APPEND` — see the constant.
     externalId: externalIdFrom(show.external_ids),
-    releaseYear: releaseYearFrom(show.first_air_date),
-    // A show's release date is the day it first aired — the same field the year comes
-    // from, which is what keeps the two columns from being able to disagree.
-    releaseDate: dateFrom(show.first_air_date),
+    // A show's release date is the day it first aired, and its year is that date's year:
+    // one field, one call, so the two columns cannot come apart.
+    ...releaseFrom(show.first_air_date),
     posterPath: textFrom(show.poster_path),
     inProduction: show.in_production ?? null,
     // Films only. TMDB's `episode_run_time` is a per-episode average of the show and is

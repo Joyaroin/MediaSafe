@@ -355,6 +355,15 @@ describe("showMirror", () => {
     expect(only.stillPath).toBeNull();
   });
 
+  it("mirrors an episode whose response omits the still entirely", () => {
+    // Omitted is a third case beside `null` and `""`, and TMDB sends all three. None of
+    // them may fail the add: an episode with no picture is an ordinary row.
+    const [only] = showMirror(showPayload, [
+      { season_number: 1, episodes: [{ id: 1, season_number: 1, episode_number: 1 }] },
+    ]).episodes;
+    expect(only.stillPath).toBeNull();
+  });
+
   it("mirrors a show whose response omits the first air date entirely", () => {
     expect(showMirror({ id: 1399, name: "Game of Thrones" }, []).releaseDate).toBeNull();
   });

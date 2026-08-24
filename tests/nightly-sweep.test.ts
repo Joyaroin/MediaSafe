@@ -92,6 +92,14 @@ async function releaseDateOf(tx: Transaction, titleId: string): Promise<string |
   return row.releaseDate;
 }
 
+async function stillPathOf(tx: Transaction, titleId: string): Promise<string | null> {
+  const [row] = await tx
+    .select({ stillPath: episode.stillPath })
+    .from(episode)
+    .where(eq(episode.titleId, titleId));
+  return row.stillPath;
+}
+
 async function metadataRefreshedAtOf(tx: Transaction, titleId: string): Promise<Date> {
   const [row] = await tx
     .select({ metadataRefreshedAt: title.metadataRefreshedAt })
@@ -302,11 +310,41 @@ describe("refreshTitleMirror", () => {
       );
 
       expect(await releaseDateOf(tx, candidate.id)).toBe("2011-04-17");
-      const [mirrored] = await tx
-        .select({ stillPath: episode.stillPath })
-        .from(episode)
-        .where(eq(episode.titleId, candidate.id));
-      expect(mirrored.stillPath).toBe("/winter-is-coming.jpg");
+      expect(await stillPathOf(tx, candidate.id)).toBe("/winter-is-coming.jpg");
+    }));
+
+  it("clears a still TMDB has withdrawn rather than keeping a path it no longer serves", () =>
+    inTransaction(async (tx) => {
+      /**
+       * The other direction, and the one the `excluded.still_path` comment in
+       * `db/access.ts` exists to explain. `still_path` is borrowed like every column
+       * beside it, so the last thing TMDB said wins **including its silence** — a
+       * refresh that only ever filled the column in would leave the rail rendering a
+       * broken image against a path the CDN has stopped serving.
+       */
+      const candidate = await seedTitle(tx, { kind: "show" });
+      const tmdbEpisodeId = nextNumber() + 900_000;
+      const withStill = (stillPath: string | null) =>
+        mirrorFor(candidate.kind, candidate.tmdbId, {
+          episodes: [
+            {
+              tmdbEpisodeId,
+              seasonNo: 1,
+              episodeNo: 1,
+              name: "Winter Is Coming",
+              airDate: "2011-04-17",
+              runtimeMins: 62,
+              stillPath,
+            },
+          ],
+        });
+
+      await refreshTitleMirror(withStill("/winter-is-coming.jpg"), tx);
+      expect(await stillPathOf(tx, candidate.id)).toBe("/winter-is-coming.jpg");
+
+      // The same episode, refreshed a night later, with the still gone upstream.
+      await refreshTitleMirror(withStill(null), tx);
+      expect(await stillPathOf(tx, candidate.id)).toBeNull();
     }));
 });
 

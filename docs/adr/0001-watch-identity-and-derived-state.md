@@ -205,8 +205,9 @@ things around it that are not are listed here, newest last.
     print. Two columns from one fact is redundancy, and it is the same deliberate kind as
     `watch.title_id`: the year is what almost every read wants and the date is what one screen needs
     to sort by, and deriving the year in SQL on every library render to save a `smallint` is a worse
-    trade than storing both. They cannot disagree, because they are read from one field in one
-    place.
+    trade than storing both. **They cannot disagree, and that is structural rather than a
+    convention**: `releaseFrom` in `tmdb/mirror.ts` returns the pair from one field in one call, so
+    there is no second call site for a later edit to move out from under the first.
 
     **A backdrop is still live**, and the phrase in the table is narrowed rather than deleted: an
     episode's still is not an *additional* image, it is the only image that episode has, and a
@@ -627,12 +628,10 @@ TMDB fields are **borrowed, not owned** (#3), under a 6-month cache ceiling.
 
 | Mirrored in Postgres | Fetched live, never stored |
 |---|---|
-| name, kind, release year, poster path | synopsis / overview |
-| release date *(amendment 10)* | cast and crew |
-| `in_production`, runtime | backdrops — a detail-page picture of a title that has a poster |
-| every episode's number, name, air date | **watch providers** — region-specific and change weekly |
-| every episode's still *(amendment 10)* | |
-| `external_id` — one external id *(amendment 5)* | |
+| name, kind, release year, release date, poster path | synopsis / overview |
+| `in_production`, runtime | cast and crew |
+| every episode's number, name, air date, still | backdrops |
+| `external_id` — one external id *(amendment 5)* | **watch providers** — region-specific and change weekly |
 
 The dividing line is **what a 472-row library render needs**. Everything mirrored is required either
 by a derived state or by the glossary rule that *an episode is never referred to by number alone* —
