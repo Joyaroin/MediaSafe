@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as m from "motion/react-m";
 
 import { snappy } from "@/app/motion";
 import { KIND_MODES, type KindMode } from "./kind-mode";
@@ -60,7 +60,7 @@ export function KindModeControl({
                 `ChipGround` uses — so the selection travels rather than blinking. Its own
                 `layoutId`, because it must never animate towards a chip. */}
             {selected ? (
-              <motion.span
+              <m.span
                 layoutId="library-kind-mode"
                 className="absolute inset-0 rounded-full bg-ink"
                 transition={snappy}

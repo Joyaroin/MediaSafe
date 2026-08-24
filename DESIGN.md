@@ -79,7 +79,7 @@ section exists so a reader does not take a superseded absolute below as current.
 | §2's light palette | Replaced by the handoff's seven values, with `--ink` re-derived *below* the new `--text` so headings stay darker than the body. Its proposed `--well`, `--body` and `--rule-soft` are **not** declared — they resolve to `--raised`, `--text` and `--hair`. Dark keeps #134's values and is re-checked on both paths. | `app/globals.css` |
 | The accent is reserved for recording a watch | The accent marks **what is live, and the one primary action of a screen** — one per screen, never two. `Add`, `New list` and the Up next group labels are now vermilion; the selected tab deliberately is **not**. | `app/globals.css` |
 | The Hairline Rule — *structure is drawn, not spaced*; library cells divided by `1px` borders, no radius, no gaps | Library cells, search results and list rows are `--raised` cards on gaps, at `16–18px` radii. Still no shadow anywhere: the `--raised`/`--ground` tone step is the only lift. | `library-grid.tsx`, `catalogue-result.tsx`, `list-row.tsx` |
-| §5 — the phone masthead on a `1px` rule, contents in bordered cells; chrome at `95%`/`2px` blur | No borders at all on the masthead. Both pieces of chrome frost at `78%` under a `22px` blur. | `masthead.tsx`, `tab-bar.tsx` |
+| §5 — the phone masthead on a `1px` rule, contents in bordered cells; chrome at `95%`/`2px` blur | No borders at all on the masthead. **The blur is no longer a divergence: it went to turn 9's `78%`/`22px` and has come back to `95%`/`2px`.** §5's repaint reasoning is a performance rule and it names one radius for the whole product; turn 9's heavier recipe made a second, and put it on the two bars that are fixed over every scrolling phone screen — and, because `tab-bar.tsx` holds itself out of the root snapshot, re-blurred across every frame of every tab slide. The `frosted` utility is now the single radius and `sidebar.tsx` reads it rather than spelling the same pair by hand. | `masthead.tsx`, `tab-bar.tsx`, `sidebar.tsx`, `app/globals.css` |
 | Navigation — *active is inverted to bone/ink*, cells divided by hairlines | No inverted cell and no dividers. Active is icon and label in `--ink`, inactive `--dim`; the travelling `layoutId` block went with the inversion it animated. The library chips keep theirs. | `tab-bar.tsx` |
 | §4's type ramp as the whole case of sizes | The bill ramp still sets every surface the handoff did not draw. The four phone tabs use a second, `px`-based register declared beside it, plus a `label-line` utility for the uppercase 11px label register. | `app/globals.css` |
 | The library heading is a step *below* Search's | All four phone tabs share one 34px `screen-title`, and none of the four carries a hairline under it. | the four `*-heading.tsx` |
@@ -1529,13 +1529,43 @@ the app; all four of those absences are now present on purpose. What governs it:
   `bounce`, where `bounce ≈ 1 - dampingFraction`. `smooth` / `snappy` / `bouncy` carry
   `.smooth` / `.snappy` / `.bouncy`'s own values. Winding them past the platform's is how
   motion stops reading as physics and starts reading as a cartoon.
-- **Stagger is capped at the tenth child.** A 472-title library at 30ms a row would take
-  fourteen seconds to finish arriving; the cap holds any list under 300ms, which is where
-  stagger still reads as rhythm rather than as the page being slow.
+- **Stagger stops at the tenth child — the delay and the animation both.** A 472-title
+  library at 30ms a row would take fourteen seconds to finish arriving; the cap holds any
+  list under 300ms, which is where stagger still reads as rhythm rather than as the page
+  being slow. **The cap used to apply to the clock alone**: every child past the ninth
+  still ran `rise-in`, merely together, so the same library mounted 472 animations on every
+  arrival at the tab — 463 of them below the fold, none ever watched, all composited
+  against the tab slide running at that moment. Children past the tenth now carry
+  `animation: none` and are simply already there. Nothing on screen changed; the rows a
+  reader is looking at still rise.
+- **The library grid skips what is off screen.** `offscreen-skippable` puts
+  `content-visibility: auto` on the cell, so a browser lays out and paints the handful in
+  view rather than all 472. `contain-intrinsic-size: auto` is what keeps that safe — the
+  browser remembers each cell's measured height instead of trusting a guess, so the
+  scrollbar does not move under a thumb.
 
 **`motion` (framer-motion) is a dependency now**, chosen by Adham over a CSS-only
 approximation because interruptible spring physics is the load-bearing half of the brief
 and CSS cannot express it. It is the only runtime dependency this world's look rests on.
+
+**It is loaded lazily, and that is a rule and not a tuning.** `motion-provider.tsx` wraps
+the app in `LazyMotion`, every call site imports the *mini* components from
+`motion/react-m`, and the feature bundle is reached through a dynamic `import()` in
+`motion-features.ts` so the bundler gives it a chunk of its own. Without this the runtime
+sat in the first-load JS of **every** route, because the provider is in the root layout —
+so Settings, Import, Welcome and the error surfaces, none of which animate anything, each
+parsed an animation engine before they were interactive. `strict` on the provider is what
+keeps it that way: a `motion.*` component rendered anywhere in the tree throws, rather than
+quietly pulling the whole bundle back in. The bundle is `domMax` rather than the smaller
+`domAnimation` because `layoutId` is layout animation, and three surfaces depend on it.
+
+**The stagger and the press are CSS and have exactly one home.** `app/motion.ts` used to
+carry a `riseIn`, a `staggerDelay`, a `STAGGER_STEP`, a `STAGGER_CAP` and a `pressable`
+variant beside the springs — a second spelling of rules `globals.css` already states, with
+no importer between them, so the build always ran the CSS one while the numbers drifted
+apart (the cap was `10` in both places by luck, not by construction). The five are gone.
+What lives in `app/motion.ts` is what only Motion can express: the springs, for the things
+a finger can catch mid-flight.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what

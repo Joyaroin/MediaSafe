@@ -1,4 +1,4 @@
-import type { Transition, Variants } from "motion/react";
+import type { Transition } from "motion/react";
 
 /**
  * The motion vocabulary, in one module so that a duration typed at a call site is as
@@ -54,34 +54,26 @@ export const sheet: Transition = { type: "spring", duration: 0.45, bounce: 0.12 
 export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
 
 /**
- * A list that arrives as a list. The delay is capped hard: a per-index delay multiplies,
- * so a 60-item library grid at 40ms would take 2.4s to finish arriving — long past the
- * point where stagger reads as rhythm rather than as the page being slow. `0.03` with a
- * 10-item ceiling keeps the whole run under 300ms at any list length.
+ * ── The stagger and the press live in CSS, and deliberately not here ─────────────────
+ *
+ * There used to be a second half to this module: `riseIn`, `staggerDelay`, `STAGGER_STEP`,
+ * `STAGGER_CAP` and a `pressable` variant. Every one of them was a **second spelling of a
+ * rule this application already states somewhere else**, and none of the five had a single
+ * importer — so the version the build actually ran was always the other one, and these sat
+ * beside it drifting.
+ *
+ * `globals.css` says why the other one wins, in its own words at `@utility stagger-rise`:
+ * *kept in CSS rather than given to Motion on purpose … a spring buys interruptibility,
+ * and nothing can catch a grid that is appearing.* A declarative, uncatchable reveal is
+ * what a keyframe is for, and doing it in CSS costs no client boundary — the library cell
+ * and the rail tiles stay server components. The press is the same story: `.pressable` in
+ * `globals.css` is the one every call site wears.
+ *
+ * Two spellings of one rule is two places for the numbers to disagree, and they already
+ * had: the cap lived here as `STAGGER_CAP = 10` and there as `:nth-child(n + 10)`, with
+ * nothing holding the pair together. The rule now has one home.
+ *
+ * What stays here is what only Motion can express — the springs above, for the things a
+ * finger can catch mid-flight. That is the dividing line `DESIGN.md`'s motion section
+ * draws, and it is now also the line this file's exports fall on.
  */
-export const STAGGER_STEP = 0.03;
-export const STAGGER_CAP = 10;
-
-export function staggerDelay(index: number): number {
-  return Math.min(index, STAGGER_CAP) * STAGGER_STEP;
-}
-
-/**
- * The entrance every list item shares. `y` is small deliberately — 8px reads as the item
- * settling into place; 24px reads as the item flying in from somewhere it never was.
- * The default state is visible, so a failed script leaves content on screen.
- */
-export const riseIn: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  shown: (index: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { ...smooth, delay: staggerDelay(index) },
-  }),
-};
-
-/** Press feedback. Scale only — no colour change, because colour means something here. */
-export const pressable = {
-  whileTap: { scale: 0.97 },
-  transition: snappy,
-} as const;

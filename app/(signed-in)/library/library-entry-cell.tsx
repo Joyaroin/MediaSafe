@@ -116,7 +116,7 @@ export function LibraryEntryCell({
   const nextLine = NEXT_LINES[entry.state];
 
   return (
-    <li className="overflow-hidden rounded-[18px] bg-raised">
+    <li className="offscreen-skippable overflow-hidden rounded-[18px] bg-raised">
       <SelectableEntry
         title={{
           libraryEntryId: entry.libraryEntryId,

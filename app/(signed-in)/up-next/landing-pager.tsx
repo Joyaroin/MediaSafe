@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as m from "motion/react-m";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { smooth } from "@/app/motion";
@@ -216,7 +216,7 @@ export function LandingPager({
         onPointerCancel={onPointerCancel}
         onClickCapture={onClickCapture}
       >
-        <motion.div
+        <m.div
           className="flex w-[200%]"
           /* Pixels rather than percentages, which is what `width` is measured for: the
              page offset and the live drag have to add, and a `calc()` mixing the two
@@ -247,7 +247,7 @@ export function LandingPager({
               {index === 0 ? upNext : upcoming}
             </div>
           ))}
-        </motion.div>
+        </m.div>
       </div>
     </div>
   );
@@ -356,7 +356,7 @@ function PagerTabs({
 
                Read the amendment before copying this anywhere. It grants one rule under
                one pager label and explicitly grants nothing else. */
-            <motion.span
+            <m.span
               layoutId="pager-rule"
               transition={smooth}
               className="absolute inset-x-0 bottom-0 h-0.5 bg-accent"
