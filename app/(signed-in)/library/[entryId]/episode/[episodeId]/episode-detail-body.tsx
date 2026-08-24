@@ -33,9 +33,25 @@ import { EpisodeSynopsisStreamed } from "./episode-synopsis-streamed";
 export async function EpisodeDetailBody({
   entryId,
   episodeId,
+  overlaid = false,
 }: {
   readonly entryId: string;
   readonly episodeId: string;
+  /**
+   * **This is the modal's render, not the page's.**
+   *
+   * The one difference between the two surfaces, and it is passed rather than detected:
+   * a component that asked the router whether it happened to be inside a slot would be a
+   * component whose behaviour nobody can see from either call site. Both callers are four
+   * lines long and say which they are.
+   *
+   * It reaches exactly one control — *Previous* and *Next*, which must not scroll the page
+   * behind the backdrop and must not stack a history entry per episode.
+   * `EpisodeDetailView`'s `EpisodeRunControls` has the argument in full. Everything else
+   * about the episode is identical on both, which is why there is one component here and
+   * not two.
+   */
+  readonly overlaid?: boolean;
 }) {
   const userId = await requireUserId();
   const detail = await cachedTitleDetail(userId, entryId);
@@ -50,6 +66,7 @@ export async function EpisodeDetailBody({
         titleName={detail.name}
         episodes={detail.episodes}
         located={located}
+        overlaid={overlaid}
         synopsis={
           <EpisodeSynopsisStreamed
             userId={userId}

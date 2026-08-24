@@ -12,7 +12,7 @@ import {
   type DragRules,
 } from "@/app/gesture-rules";
 import { sheet } from "@/app/motion";
-import { GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 
 /**
  * The dialog episode detail arrives in — issue #254, and the only thing in this
@@ -30,12 +30,15 @@ import { GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
  * ── The native `<dialog>`, for the third time and for the same three things ──────────
  *
  * `delete-list-dialog.tsx` made the argument and `mark-up-to-dialog.tsx` followed it: the
- * backdrop, the **focus trap** and **Escape** come free from `showModal()`, and so does the
- * one thing a route-driven modal needs most — the platform **returns focus to the element
- * that was focused when the dialog opened**, which is the card or the row the reader
- * pressed. That is #245's story 51 for a keyboard, and it is not code here because it must
- * not be: a hand-rolled focus restore would be a second answer that drifts from the two
- * dialogs already shipped.
+ * backdrop, the **focus trap** and **Escape** come free from `showModal()`. So, on three of
+ * the four exits, does the thing a route-driven modal needs most — the platform **returns
+ * focus to the element that was focused when the dialog opened**, which is the card or the
+ * row the reader pressed, and that is #245's story 51 for a keyboard.
+ *
+ * **Three of the four**, and the fourth is Back. Focus restoration is a step of the *close
+ * the dialog* algorithm, and Back never runs it — the component simply unmounts. The
+ * `useEffect` below is that one gap closed by hand, and its docblock is the argument. It is
+ * the only thing in this file the platform was expected to do and does not.
  *
  * ── Every way out is `close()`, and `close()` is the only thing that navigates ───────
  *
@@ -51,6 +54,13 @@ import { GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
  *    the dialog inside it. `close` does not fire on unmount, so a back never produces a
  *    second `router.back()` — which is the loop this arrangement is easiest to write by
  *    accident.
+ *
+ * **One pop is enough because the modal is only ever one entry deep.** That is not free:
+ * *Previous* and *Next* inside the dialog are soft navigations to this same route, so they
+ * are intercepted too, and pushed they would put an entry on the history per episode —
+ * after which Back would step backwards through a run instead of dismissing, and would stop
+ * being one of the four exits at all. `EpisodeRunControls` in `episode-detail-view.tsx`
+ * replaces rather than pushes when it is drawn here, and carries the argument.
  *
  * `router.back()` rather than a push of the page underneath: the reader's place is the
  * whole point of the ticket, and only a history pop leaves the scroll position, the rail's
@@ -104,11 +114,41 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
   /** The exit is running. One-way: nothing re-opens a dialog that is on its way out. */
   const [leaving, setLeaving] = useState(false);
 
-  // Mounted *because* the route changed, so it opens itself rather than waiting to be told
-  // twice — `mark-up-to-dialog.tsx`'s own reason, one surface over. There is no state this
-  // could be conditioned on: the slot rendering at all is the condition.
+  /**
+   * Opened on mount, and **focus put back by hand on the one exit that is not `close()`.**
+   *
+   * Mounted *because* the route changed, so it opens itself rather than waiting to be told
+   * twice — `mark-up-to-dialog.tsx`'s own reason, one surface over. There is no state this
+   * could be conditioned on: the slot rendering at all is the condition.
+   *
+   * ── The Back path does not restore focus on its own, and this is the fix ────────────
+   *
+   * `showModal()` remembers the previously-focused element and refocuses it — but only as
+   * a step of **close the dialog**, which is the algorithm `close()` runs. The reader's own
+   * Back does not call `close()`: it changes the URL, the slot stops matching, and this
+   * component *unmounts*. Removing a dialog from the document drops it out of the top layer
+   * and runs none of the closing steps, so focus is left on `<body>` and a reader who
+   * arrived by keyboard is returned to the top of a page they were half way down.
+   *
+   * That is #254's *focus returns to the opener on close* failing on one of the four exits
+   * it names, and it fails silently — everything looks right. So the opener is captured
+   * here, **before** `showModal()` moves focus into the dialog, and put back on unmount if
+   * the dialog is still open. `dialog.open` is what tells the two apart: every `close()`
+   * path has already set it false and already restored focus, so this never fires twice.
+   *
+   * The element is still there to be focused because the page under the modal never
+   * unmounted — which is the whole property interception buys, used here for a second
+   * thing.
+   */
   useEffect(() => {
-    ref.current?.showModal();
+    const dialog = ref.current;
+    const opener = document.activeElement;
+
+    dialog?.showModal();
+
+    return () => {
+      if (dialog?.open && opener instanceof HTMLElement) opener.focus();
+    };
   }, []);
 
   /**
@@ -158,7 +198,13 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
    */
   const gesture = useRef<{ x: number; y: number; claimed: boolean | null } | null>(null);
 
+  /** Whether the gesture that just ended actually moved the sheet, so the click it is
+   *  about to generate can be swallowed. Cleared on the next press. */
+  const dragged = useRef(false);
+
   const onPointerDown = useCallback((event: React.PointerEvent) => {
+    dragged.current = false;
+
     /**
      * **Scrolled content owns its own drags.** An episode is taller than a phone, so the
      * sheet's body scrolls, and a thumb pulling down inside a body that is *not at its top*
@@ -189,6 +235,7 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
 
       from.claimed = claimsDrag(delta, DISMISS);
       if (from.claimed) {
+        dragged.current = true;
         /* Capture, so a pointer released over the backdrop or off the window still reaches
            `onPointerUp` here. Without it that release lands nowhere and the sheet stays
            parked mid-drag. */
@@ -226,6 +273,31 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
   const onPointerCancel = useCallback(() => {
     gesture.current = null;
     setDrag(0);
+  }, []);
+
+  /**
+   * **A swipe must not also be a press.**
+   *
+   * A drag that started on a control — *Previous*, *Next*, the mark control, *Watched up to
+   * here* — travelled and was released, and the browser fires a click on release like any
+   * other press. So a thumb that threw the sheet away would *also* navigate to the next
+   * episode, or **record a watch**: a write, from a gesture that meant *close this*, on the
+   * one surface in this application where the daily gesture and a dismissal share a pointer.
+   *
+   * Swallowed in the capture phase, before it reaches the control. Keyed to whether the
+   * sheet actually claimed the gesture, so an ordinary tap — which never latches `claimed`
+   * true — is untouched.
+   *
+   * This is `landing-pager.tsx`'s guard, held here for the rule its own docblock cites:
+   * `SPEC.md`'s *the check is its own target*, generalised — **a gesture must never be two
+   * things at once.** The pager needed it for navigation alone; this surface can lose a
+   * write to it, which is `SPEC.md` §3.3's territory.
+   */
+  const onClickCapture = useCallback((event: React.MouseEvent) => {
+    if (!dragged.current) return;
+    dragged.current = false;
+    event.preventDefault();
+    event.stopPropagation();
   }, []);
 
   return (
@@ -275,9 +347,33 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
+        onClickCapture={onClickCapture}
         className="relative flex max-h-[90dvh] flex-col overflow-hidden rounded-t-2xl bg-ground text-text sm:rounded-2xl"
       >
-        <div className="flex items-center justify-end px-6 pt-5 pb-2">
+        {/**
+         * **The header is the one place the swipe is guaranteed**, and `touch-none` is why.
+         *
+         * The pointer handlers are on the whole sheet, and on a mouse or a pen that is the
+         * whole story. A **touch** is different, and `landing-pager.tsx`'s *set no
+         * `touch-action` and let the browser do its thing* does not transfer: the pager's
+         * axis is horizontal and nothing on its page pans that way, whereas this sheet's
+         * drag axis is the browser's own scroll axis and the body directly below is
+         * `overflow-y-auto`. A downward touch there can be taken by the browser as a scroll
+         * gesture before these handlers see it, which arrives as `pointercancel` — handled,
+         * and handled as a spring-back, so the sheet simply does not dismiss.
+         *
+         * `touch-action: none` on this row takes the browser out of the decision for the
+         * strip the grabber sits in, which is the part of a sheet a reader reaches for to
+         * throw it away and the reason the grabber is drawn at all. It is set here rather
+         * than on the sheet, because on the sheet it would take the body's native scrolling
+         * with it — which is the trap the pager's docblock records hitting with `pan-y`.
+         *
+         * Everywhere else on the sheet the drag is best-effort: it works where the browser
+         * lets it, and springs back where the browser claims the touch. **Not confirmed on
+         * a real device** — this session had no way to run one — so if the swipe is ever
+         * reported as unreliable from the body, this comment is where to start.
+         */}
+        <div className="relative flex touch-none items-center justify-end px-6 pt-5 pb-2">
           {/* The grabber: a picture of *this can be dragged*, and nothing more. The target
               is the whole sheet, so it is `aria-hidden` and there is nothing here for a
               keyboard to land on that the close control is not already. */}
@@ -287,10 +383,27 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
           />
 
           {/* #245's story 53 — *a close control as well, so that the gesture is not the
-              only way out.* `GHOST_RECOVERY_COMPACT` is the register the other two dialogs'
-              quiet controls take since #203: nothing here is recovery, and nothing here is
-              the daily gesture either. */}
-          <button type="button" onClick={dismiss} className={GHOST_RECOVERY_COMPACT}>
+              only way out.*
+
+              `GHOST_RECOVERY`, which is what the application's other two dialogs give their
+              quiet control: `delete-list-dialog.tsx` and `mark-up-to-dialog.tsx` both wear
+              it on Cancel since #195 took the underline off all fourteen text affordances.
+              This is the third dialog and it follows them rather than reopening the
+              question. (`GHOST_RECOVERY_COMPACT` would have been wrong twice over — it is
+              the *episode row's* measure, chosen in #203 to fit `TRAILING`'s fixed slot,
+              and there is no fixed slot here.)
+
+              `min-h-11` on top, which the row's own controls do not need and this does. It
+              is the one non-gesture way out of a modal on a phone, and `GHOST_RECOVERY`'s
+              `code-line` inside `py-2` is about `34px` — under the `44px` floor every other
+              target in this application is held to. `selection-action-bar.tsx` sets the
+              precedent for adding the height beside the register rather than minting a
+              third button treatment to carry it. */}
+          <button
+            type="button"
+            onClick={dismiss}
+            className={`${GHOST_RECOVERY} inline-flex min-h-11 items-center`}
+          >
             Close
           </button>
         </div>

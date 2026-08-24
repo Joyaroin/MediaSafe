@@ -42,5 +42,5 @@ export default async function InterceptedEpisodePage({
 }) {
   const { entryId, episodeId } = await params;
 
-  return <EpisodeDetailBody entryId={entryId} episodeId={episodeId} />;
+  return <EpisodeDetailBody entryId={entryId} episodeId={episodeId} overlaid />;
 }

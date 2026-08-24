@@ -79,6 +79,18 @@ const FULL_PAGE = readFileSync(
   "app/(signed-in)/library/[entryId]/episode/[episodeId]/page.tsx",
   "utf8",
 );
+const SLOT_NOT_FOUND = readFileSync(
+  "app/(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]/not-found.tsx",
+  "utf8",
+);
+const DETAIL_VIEW = readFileSync(
+  "app/(signed-in)/library/[entryId]/episode/[episodeId]/episode-detail-view.tsx",
+  "utf8",
+);
+const BODY = readFileSync(
+  "app/(signed-in)/library/[entryId]/episode/[episodeId]/episode-detail-body.tsx",
+  "utf8",
+);
 
 describe("the dialog, and the three things it is chosen for", () => {
   /**
@@ -315,7 +327,169 @@ describe("the season row's check stays its own target", () => {
    * The link is the full height of the row rather than the height of one line of text.
    * `EPISODE_ROW`'s `min-h-11` is the `44px`; `self-stretch` is what hands it to the link.
    */
-  it("gives the link the row's full height", () => {
+  it("reaches the row's own padding for its height rather than stopping at the text", () => {
+    // The measurement itself is in DESIGN.md §6 ("the fifth time"), taken in Chromium
+    // against the compiled CSS: the link's box came back `44.00px`. What this guards is
+    // the pair of utilities that buys it — `self-stretch` alone stops at the row's
+    // `28px` content box, and the negative margin is the half that is easy to drop.
     expect(SEASON_ROWS).toMatch(/self-stretch/);
+    expect(SEASON_ROWS).toMatch(/-my-2/);
+  });
+});
+
+/**
+ * ── The four findings the two-axis review turned up, each with its own guard ─────────
+ *
+ * Every one of these was a silent failure in the first draft of this ticket: the code
+ * looked right, the build was green, and the suite above already passed. They are grouped
+ * together rather than filed under the sections they belong to, so that the next person to
+ * change this surface can see in one place what it has already got wrong once.
+ */
+describe("the four things the first draft got wrong", () => {
+  /**
+   * **A swipe was also a press.**
+   *
+   * A drag that starts on a control and travels still fires a click on release. On this
+   * surface the controls under the thumb include *Previous*, *Next*, the mark control and
+   * *Watched up to here* — so a thumb throwing the sheet away could also navigate, or
+   * **record a watch**: a write nobody asked for, which is `SPEC.md` §3.3's territory
+   * rather than a cosmetic slip. `landing-pager.tsx` already had this guard for
+   * navigation alone; the modal is the surface that can lose a write to it.
+   */
+  it("swallows the click a committed drag would otherwise fire", () => {
+    expect(MODAL).toMatch(/onClickCapture=\{onClickCapture\}/);
+    expect(MODAL).toMatch(/dragged\.current = true/);
+    expect(MODAL).toMatch(/event\.preventDefault\(\)/);
+    // Keyed to the latch, so an ordinary tap is untouched — a guard that swallowed every
+    // click would make the dialog's own controls inert, which is the opposite failure.
+    expect(MODAL).toMatch(/if \(!dragged\.current\) return;/);
+  });
+
+  /**
+   * **Back did not return focus.**
+   *
+   * The platform restores focus as a step of *close the dialog*, and Back runs none of it:
+   * it changes the URL, the slot stops matching, and the component unmounts with the dialog
+   * still open. Focus is left on `<body>`. #254 asks for focus to return to the opener, and
+   * Back is one of the four dismissals it names, so three-quarters was not the criterion.
+   */
+  it("puts focus back on the opener when Back unmounts it mid-open", () => {
+    expect(MODAL).toMatch(/const opener = document\.activeElement/);
+    expect(MODAL).toMatch(/if \(dialog\?\.open && opener instanceof HTMLElement\) opener\.focus\(\)/);
+
+    // Captured *before* `showModal()`, which moves focus into the dialog — after it, the
+    // opener recorded would be the dialog's own first focusable and the restore would be
+    // a no-op that looks like it works.
+    const captured = MODAL.indexOf("const opener = document.activeElement");
+    const opened = MODAL.indexOf("dialog?.showModal()");
+    expect(captured).toBeGreaterThan(-1);
+    expect(opened).toBeGreaterThan(captured);
+  });
+
+  /**
+   * **`notFound()` in a slot took the whole application with it.**
+   *
+   * `episode-detail-body.tsx` answers a stale or hand-edited episode id with `notFound()`,
+   * which is right — a read that succeeded and found nothing. But a slot with no
+   * `not-found.tsx` sends that to the application's own not-found page, so pressing a row
+   * with a stale id would **replace the library the reader was standing on** with a 404.
+   * The boundary lives inside the segment's layout, so the dialog, its backdrop and its
+   * four ways out are all still there around the miss.
+   */
+  it("draws a missing episode inside the dialog rather than over the application", () => {
+    expect(SLOT_NOT_FOUND).toMatch(/export default function/);
+    // Not the failure treatment: nothing went wrong, so there is no reference id and
+    // nothing to retry. `AGENTS.md`'s first rule, from the other side.
+    expect(codeOf(SLOT_NOT_FOUND)).not.toMatch(/ReadFailure/);
+    expect(codeOf(SLOT_NOT_FOUND)).not.toMatch(/referenceFor/);
+  });
+
+  /**
+   * **Previous and Next broke two criteria at once.**
+   *
+   * They are soft navigations to this same route, so they are intercepted like any other —
+   * and left as plain links they would scroll the page behind the backdrop to the top
+   * (losing *scroll position intact on return*) and push a history entry per episode
+   * (after which Back steps backwards through a run instead of dismissing, so it stops
+   * being one of the four exits).
+   *
+   * Both are conditional on `overlaid`, because both are *wrong* on the full page: there,
+   * `scroll={false}` would leave a reader who pressed Next at the foot of a different
+   * episode, and `replace` would make Back skip everything they had read.
+   */
+  it("steps the run without moving the page behind or stacking history", () => {
+    expect(DETAIL_VIEW).toMatch(/scroll=\{!overlaid\}/);
+    expect(DETAIL_VIEW).toMatch(/replace=\{overlaid\}/);
+    // Both links, not one — the pair is symmetrical and half a fix is the easy mistake.
+    expect(DETAIL_VIEW.match(/scroll=\{!overlaid\}/g)).toHaveLength(2);
+    expect(DETAIL_VIEW.match(/replace=\{overlaid\}/g)).toHaveLength(2);
+  });
+
+  /**
+   * And the flag is passed rather than detected, so which surface is which is visible at
+   * both call sites. The page says nothing and gets the default; the slot says `overlaid`.
+   */
+  it("tells the shared body which surface it is on, at the call site", () => {
+    expect(SLOT_PAGE).toMatch(/overlaid/);
+    expect(codeOf(FULL_PAGE)).not.toMatch(/overlaid/);
+    expect(BODY).toMatch(/overlaid = false/);
+  });
+});
+
+describe("the close control wears the register the other two dialogs wear", () => {
+  /**
+   * `delete-list-dialog.tsx` and `mark-up-to-dialog.tsx` both give their quiet control
+   * `GHOST_RECOVERY` — since #195 took the underline off all fourteen of the application's
+   * text affordances. This is the third dialog and it follows them.
+   *
+   * `GHOST_RECOVERY_COMPACT` is the **episode row's** measure, chosen in #203 to fit
+   * `TRAILING`'s fixed slot. There is no fixed slot here, and the first draft of this file
+   * used it anyway — with a comment claiming, wrongly, that the other two dialogs did.
+   */
+  it("is GHOST_RECOVERY, not the episode row's compact measure", () => {
+    expect(MODAL).toMatch(/GHOST_RECOVERY\b/);
+    expect(codeOf(MODAL)).not.toMatch(/GHOST_RECOVERY_COMPACT/);
+  });
+
+  /**
+   * And it clears the `44px` floor, which `GHOST_RECOVERY` on its own does not — a
+   * `code-line` inside `py-2` is about `34px`. It is the one non-gesture way out of a modal
+   * on a phone, so the height is added beside the register rather than by minting a third
+   * button treatment. `selection-action-bar.tsx` is the precedent.
+   */
+  it("is at least 44px tall", () => {
+    expect(MODAL).toMatch(/min-h-11/);
+  });
+});
+
+describe("the swipe on a touch screen", () => {
+  /**
+   * **The pager's *set no `touch-action`* does not transfer, and this is why.**
+   *
+   * That file's argument holds because its axis is horizontal and nothing on its page pans
+   * that way. Here the drag axis *is* the browser's own scroll axis, and the sheet's body
+   * is `overflow-y-auto` — so a downward touch can be taken as a scroll gesture before the
+   * pointer handlers see it and arrive as `pointercancel`, which springs back. `touch-none`
+   * on the header strip takes the browser out of that decision for the part of a sheet a
+   * reader actually reaches for, which is what the grabber is drawn to advertise.
+   *
+   * On the sheet itself it would be wrong — it would take the body's native scrolling with
+   * it, which is the trap `landing-pager.tsx` records hitting with `pan-y`.
+   */
+  it("guarantees the gesture on the header without disabling the body's scroll", () => {
+    expect(MODAL).toMatch(/touch-none/);
+
+    // Read off the `className` strings themselves rather than the file, so the prose above
+    // — which necessarily names both — cannot satisfy or break this. No single element may
+    // carry both: the one that scrolls must not be the one that takes the browser out of
+    // scrolling.
+    const classNames = [...codeOf(MODAL).matchAll(/className="([^"]*)"/g)].map((m) => m[1]);
+    expect(classNames.some((one) => one.includes("touch-none"))).toBe(true);
+    expect(classNames.some((one) => one.includes("overflow-y-auto"))).toBe(true);
+    expect(
+      classNames.filter(
+        (one) => one.includes("touch-none") && one.includes("overflow-y-auto"),
+      ),
+    ).toEqual([]);
   });
 });

@@ -69,6 +69,7 @@ export function EpisodeDetailView({
   episodes,
   located,
   synopsis,
+  overlaid = false,
 }: {
   readonly libraryEntryId: string;
   /**
@@ -89,6 +90,16 @@ export function EpisodeDetailView({
   readonly located: EpisodeInRun<EpisodeDetail>;
   /** `episode-synopsis-streamed.tsx`, rendered on the server and handed down whole. */
   readonly synopsis: ReactNode;
+  /**
+   * **This surface is drawn over another one** — the `@modal` slot's intercepted render
+   * (issue #254) rather than the page a direct load lands on.
+   *
+   * It changes exactly one thing: how *Previous* and *Next* navigate. `EpisodeRunControls`
+   * has the argument in full. Everything else on this surface is identical in both, which
+   * is the point of there being one component — so this is a single flag rather than a
+   * second view, and it defaults to the page, which is the surface that existed first.
+   */
+  readonly overlaid?: boolean;
 }) {
   /**
    * The server's list with the marks store laid over it — the input `coveredUpTo` must be
@@ -258,7 +269,11 @@ export function EpisodeDetailView({
         {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}
       </div>
 
-      <EpisodeRunControls libraryEntryId={libraryEntryId} located={located} />
+      <EpisodeRunControls
+        libraryEntryId={libraryEntryId}
+        located={located}
+        overlaid={overlaid}
+      />
 
       {confirming === null ? null : (
         /**
@@ -304,9 +319,47 @@ export function EpisodeDetailView({
 function EpisodeRunControls({
   libraryEntryId,
   located,
+  overlaid,
 }: {
   readonly libraryEntryId: string;
   readonly located: EpisodeInRun<EpisodeDetail>;
+  /**
+   * ── Stepping the run inside the modal is not the same navigation (issue #254) ──────
+   *
+   * On the page these are ordinary links and always were. In the `@modal` slot they are
+   * intercepted like every other soft navigation to this route, so the reader stays in one
+   * dialog and its contents change — which is the behaviour wanted, and which arrives with
+   * two problems the page does not have. Both are `false` by default, so nothing about the
+   * page changed when this was added.
+   *
+   * **`scroll={false}`, because the page behind must not move.** Next scrolls the document
+   * to the top on every navigation unless told otherwise, and it has no way to know this
+   * one only swapped the contents of a dialog. Without it, stepping to the next episode
+   * silently scrolls the *originating* page — the rail, the season list — to the top behind
+   * the backdrop, and #254's *its scroll position is intact on return* is lost to a control
+   * that never looked like it navigated anything. The two entry points already pass this
+   * for the identical reason; this was the hole left between them.
+   *
+   * The modal resets its own scroller on the way in, so the new episode still starts at its
+   * own top — `episode-modal.tsx` owns that, because the thing that scrolls there is a
+   * container inside a dialog and the router cannot reach it.
+   *
+   * **`replace`, because Back has to keep meaning *close this*.** #254 lists Back as one of
+   * the four dismissals. Pushed, each episode is another history entry, so a reader who
+   * pressed *Next* twice and then Back would land on the previous episode's modal, then the
+   * one before it — Back stops dismissing and starts stepping backwards through a run,
+   * which is not one of the four exits and is not what a dialog does. Replacing keeps the
+   * modal exactly one entry deep, so Back is a dismissal from any episode in the run, and
+   * `router.back()` on close returns to the surface the reader actually came from.
+   *
+   * Nothing is lost by replacing: forward and back through the run are these two controls,
+   * on the screen, which is the affordance #245's story 62 asked for.
+   *
+   * On the page both are wrong and neither is set. There, `scroll={false}` would leave a
+   * reader who pressed *Next* at the foot of the page looking at the foot of a different
+   * episode, and `replace` would make Back skip past every episode they had read.
+   */
+  readonly overlaid: boolean;
 }) {
   const { previous, next } = located;
 
@@ -323,6 +376,8 @@ function EpisodeRunControls({
       ) : (
         <Link
           href={episodePath(libraryEntryId, previous.id)}
+          scroll={!overlaid}
+          replace={overlaid}
           aria-label={`Previous episode: ${episodeFullName(previous)}`}
           className={GHOST_RECOVERY}
         >
@@ -335,6 +390,8 @@ function EpisodeRunControls({
       ) : (
         <Link
           href={episodePath(libraryEntryId, next.id)}
+          scroll={!overlaid}
+          replace={overlaid}
           aria-label={`Next episode: ${episodeFullName(next)}`}
           className={GHOST_RECOVERY}
         >
