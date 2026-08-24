@@ -53,9 +53,12 @@ export function UpcomingSurface({
   return (
     <section className="pt-[26px] pb-2">
       {/* The rail heads' register on page one, held here so the two pages read as one
-          screen: the label line in the accent, which `DESIGN.md` §3 allows as *the way
-          through this screen*. A heading and never a count — `SPEC.md` §7's *no counts,
-          anywhere* is narrowed by #245 to rail heads only, and this is one. */}
+          screen — `up-next-phone-rail.tsx`'s `RailSection` draws its own head exactly this
+          way, and its docblock carries the accent argument for both.
+
+          A heading and never a count: `SPEC.md` §7's *no counts on a rail head* is the
+          half of the old *no counts, anywhere* that #250 **kept** rather than narrowed,
+          and this head is squarely inside it. */}
       <div className="px-[22px] pb-1">
         <h2 className="label-line text-accent">Upcoming episodes</h2>
       </div>

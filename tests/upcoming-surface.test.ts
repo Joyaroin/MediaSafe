@@ -261,6 +261,46 @@ describe("the pager", () => {
     expect(pager).toContain("upNext: React.ReactNode");
     expect(pager).toContain("upcoming: React.ReactNode");
   });
+
+  /**
+   * **The rails inside page one keep their own swipes.** `up-next-phone-rail.tsx` scrolls
+   * horizontally, and `touch-action` is intersected down the whole ancestor chain — so a
+   * `touch-pan-y` on this track silently takes native horizontal scrolling away from both
+   * rails, which is #245's *both rails leave the next card peeking … so that it is obvious
+   * they scroll*, dead on touch. Nothing would throw and no other test would notice.
+   *
+   * Two halves, and each alone is insufficient: the track must not set `touch-action`, and
+   * the binding must refuse a gesture that began inside a horizontal scroller.
+   */
+  it("leaves the rails inside it their own horizontal scrolling", () => {
+    expect(pager).not.toContain("touch-pan-y");
+    expect(pager).not.toContain("touch-none");
+    expect(pager).toContain("overHorizontalScroller");
+    expect(pager).toContain("overflowX");
+  });
+
+  /**
+   * The claim is latched once per gesture, not re-derived per frame — a thumb on an arc
+   * would otherwise snap the page back to nothing mid-drag. The rules module takes it as
+   * an argument precisely so the latch is visible here.
+   */
+  it("latches whose gesture it is instead of re-asking every frame", () => {
+    expect(pager).toContain("claimed: boolean | null");
+    expect(pager).toContain("claimsDrag");
+  });
+
+  /** A pointer released off the track still has to reach `onPointerUp`, or the page parks
+   *  mid-drag until the next press. */
+  it("captures the pointer once the drag is real", () => {
+    expect(pager).toContain("setPointerCapture");
+  });
+
+  /** A drag that began on a row's `Link` must not also navigate on release — a gesture is
+   *  never two things at once. */
+  it("swallows the click a drag would otherwise generate", () => {
+    expect(pager).toContain("onClickCapture");
+    expect(pager).toContain("dragged");
+  });
 });
 
 describe("the page hands the pager both surfaces and one day", () => {
@@ -284,5 +324,27 @@ describe("the page hands the pager both surfaces and one day", () => {
    *  rails other than Up next's three (Upcoming)*, and #245 asked for a phone pager. */
   it("leaves the desktop's three rails alone", () => {
     expect(page).toMatch(/className="hidden lg:block"[\s\S]*<UpNextRailsSurface/);
+  });
+
+  /**
+   * **A failed read is never an empty page** — #251's *a failed read renders the inline
+   * read-failure treatment with a reference id*, which is this route's `error.tsx` and is
+   * only reached because nothing on the way to it catches.
+   *
+   * `cachedUpcomingEpisodes` throws through `unstable_cache`, `Promise.all` rejects on the
+   * first rejection, and there is no `try` here — so *no release dates yet* is reachable
+   * only from a read that succeeded. A `catch` returning `[]` anywhere on this path would
+   * turn a database that is down into a reader with nothing coming, which is the exact
+   * failure `AGENTS.md` opens on and the one `tvtracker` shipped for its whole life.
+   */
+  it("lets a failed read throw to the boundary rather than reading as nothing coming", () => {
+    // The statement forms, not the word: this page's docblock says *there is no `try`
+    // here* in prose, and an assertion that banned the word would ban saying so.
+    expect(page).not.toMatch(/\btry\s*\{/);
+    expect(page).not.toMatch(/\bcatch\s*[({]/);
+
+    const boundary = sourceAt("app/(signed-in)/up-next/error.tsx");
+    expect(boundary).toContain("<ReadFailure");
+    expect(boundary).toContain("referenceForBoundary");
   });
 });

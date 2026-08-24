@@ -3418,9 +3418,16 @@ export async function listWatchlistFilms(
  *
  * Every other episode type in this file carries `airDate: string | null`, because an
  * undated episode is an ordinary thing for the catalogue to hold. It cannot reach this
- * surface: *upcoming* **is** a statement about a date, so the read's `is not null` is what
- * makes the field non-null rather than a cast, and the grouping module downstream needs no
+ * surface: *upcoming* **is** a statement about a date, so the read's `is not null` is the
+ * whole reason this field is not nullable, and the grouping module downstream needs no
  * branch for a row it can never be handed.
+ *
+ * The column is nullable, so the select **does** cast — `sql<string>` over
+ * `episode.air_date`, which launders a null the `where` has already excluded. That is a
+ * cast standing on a predicate a few lines away rather than on nothing, and it is named
+ * here rather than left to be discovered: move or weaken that `is not null` and this type
+ * starts lying, with no compiler error to say so. `tests/upcoming-episodes.test.ts` is what
+ * holds the predicate.
  *
  * **There is no air time and there is no field for one.** TMDB publishes a `date` for an
  * episode and no time of day, so a *time unknown* state would be the only state that field
@@ -3437,7 +3444,7 @@ export interface UpcomingEpisode {
   readonly seasonNo: number;
   readonly episodeNo: number;
   /** `null` where TMDB has announced the episode without naming it. Never falls back to
-   *  a bare number — `CONTEXT.md`'s Named Episode Rule. */
+   *  a bare number — `CONTEXT.md`: *an episode is never referred to by number alone*. */
   readonly episodeName: string | null;
   /** `null` where the catalogue has no frame. `episode-still.tsx` holds the measure
    *  rather than collapsing the row. */

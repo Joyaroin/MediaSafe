@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { smooth } from "@/app/motion";
 import {
   DRAG_THRESHOLD_PX,
+  claimsDrag,
   dragOffset,
   releaseDrag,
   type DragRules,
@@ -88,34 +89,86 @@ export function LandingPager({
   const track = useRef<HTMLDivElement>(null);
   const width = useTrackWidth(track);
 
-  const start = useRef<{ x: number; y: number } | null>(null);
+  /**
+   * The gesture in progress, or `null` between gestures.
+   *
+   * `claimed` is the **latch**: `null` until the pointer has moved at all, then the one
+   * answer `claimsDrag` gave and the only one this gesture will ever get. Re-asking every
+   * frame is the bug it exists for — a thumb travelling along an arc puts in a frame or
+   * two where the vertical component wins, and the page would snap back to nothing and out
+   * again under the finger.
+   *
+   * A ref rather than state, because none of it is drawn. The one thing that *is* drawn is
+   * `drag`, and that is state.
+   */
+  const gesture = useRef<{ x: number; y: number; claimed: boolean | null } | null>(null);
+
+  /** Whether the gesture that just ended actually moved the pager, so the click it is
+   *  about to generate can be swallowed. Cleared on the next press. */
+  const dragged = useRef(false);
 
   const onPointerDown = useCallback((event: React.PointerEvent) => {
-    // A mouse press that is also a click on a link must stay a click, so nothing is
-    // captured until the pointer has actually moved (`claimsDrag` is what decides that).
-    start.current = { x: event.clientX, y: event.clientY };
+    dragged.current = false;
+
+    /**
+     * **A rail owns its own swipes.** Page one holds two horizontally scrolling rails
+     * (`up-next-phone-rail.tsx`), and a thumb dragging one of those is scrolling the rail,
+     * not paging. Nothing about a delta can tell the two apart — both are a horizontal
+     * drag on this axis — so the question is asked of the DOM instead, once, at the moment
+     * the pointer goes down: is there a horizontally scrollable element between the target
+     * and the track?
+     *
+     * This is the reason the track sets **no `touch-action`**. An earlier draft put
+     * `pan-y` on it, which is intersected down the whole ancestor chain and silently took
+     * native horizontal scrolling away from both rails — #245's *both rails leave the next
+     * card peeking … so that it is obvious they scroll*, dead on touch. With the default,
+     * a rail scrolls natively and this guard keeps the pager out of it; everywhere else
+     * there is no horizontal overflow to pan, so the browser does nothing and the pointer
+     * handlers below are the whole of the gesture.
+     */
+    if (overHorizontalScroller(event.target, track.current)) return;
+
+    // Nothing is captured yet: a press that turns out to be a tap on a link has to stay a
+    // click, and capture is taken below only once the drag is real.
+    gesture.current = { x: event.clientX, y: event.clientY, claimed: null };
   }, []);
 
   const onPointerMove = useCallback(
     (event: React.PointerEvent) => {
-      const from = start.current;
+      const from = gesture.current;
       if (from === null) return;
 
       const delta = { dx: event.clientX - from.x, dy: event.clientY - from.y };
-      setDrag(dragOffset(delta, rulesFor(page)));
+
+      if (from.claimed === null) {
+        // Nothing has moved yet, so there is nothing to decide. Deciding on a zero delta
+        // would latch *not ours* before the reader had done anything.
+        if (delta.dx === 0 && delta.dy === 0) return;
+
+        from.claimed = claimsDrag(delta, rulesFor(page));
+        if (from.claimed) {
+          dragged.current = true;
+          /* Capture, so a pointer released over the tab row, the nav bar or off the
+             window still reaches `onPointerUp` here. Without it that release lands
+             nowhere, and the track stays parked mid-drag until the next press. */
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+      }
+
+      setDrag(dragOffset(delta, rulesFor(page), from.claimed));
     },
     [page],
   );
 
   const onPointerUp = useCallback(
     (event: React.PointerEvent) => {
-      const from = start.current;
-      start.current = null;
+      const from = gesture.current;
+      gesture.current = null;
       setDrag(0);
       if (from === null) return;
 
       const delta = { dx: event.clientX - from.x, dy: event.clientY - from.y };
-      const outcome = releaseDrag(delta, rulesFor(page));
+      const outcome = releaseDrag(delta, rulesFor(page), from.claimed ?? false);
       // `-1` is a leftward drag, which goes forwards. The rules module speaks the axis's
       // language rather than the pager's, deliberately — see its own docblock.
       if (outcome.kind === "commit") setPage(outcome.direction === -1 ? 1 : 0);
@@ -123,11 +176,28 @@ export function LandingPager({
     [page],
   );
 
-  /** A pointer that leaves the window mid-drag never sends `pointerup`. Springing back is
+  /** A pointer the browser takes away mid-drag never sends `pointerup`. Springing back is
    *  the right answer: nothing was committed, so nothing changes. */
   const onPointerCancel = useCallback(() => {
-    start.current = null;
+    gesture.current = null;
     setDrag(0);
+  }, []);
+
+  /**
+   * A drag that started on a row or a card would otherwise **also** navigate: the pointer
+   * went down on a `Link`, travelled, and the browser fires a click on release like any
+   * other press. Swallowed in the capture phase, before it reaches the link.
+   *
+   * Keyed to whether the pager actually claimed the gesture, so an ordinary tap — which
+   * never latches `claimed` true — is untouched. This is the same *the check is its own
+   * target* instinct `SPEC.md` states for the season row, one level up: a gesture must
+   * never be two things at once.
+   */
+  const onClickCapture = useCallback((event: React.MouseEvent) => {
+    if (!dragged.current) return;
+    dragged.current = false;
+    event.preventDefault();
+    event.stopPropagation();
   }, []);
 
   return (
@@ -136,15 +206,15 @@ export function LandingPager({
 
       <div
         ref={track}
-        /* `pan-y` and not `none`: this surface owns the horizontal axis and the page still
-           owns the vertical one, which is the browser-level half of the rule
-           `claimsDrag` states in code. Without it a diagonal thumb both scrolls the page
-           and drags the pager. */
-        className="overflow-hidden touch-pan-y"
+        /* No `touch-action` override — `onPointerDown` above argues why at length. In
+           short: `pan-y` here is inherited by the two rails inside page one and takes
+           their native horizontal scrolling away. */
+        className="overflow-hidden"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
+        onClickCapture={onClickCapture}
       >
         <motion.div
           className="flex w-[200%]"
@@ -235,9 +305,10 @@ function PagerTabs({
     event.preventDefault();
     onPick(next);
     // Focus follows selection, which is what *the arrow key moved me* means to somebody
-    // who cannot see the rule move.
-    event.currentTarget.parentElement
-      ?.querySelectorAll<HTMLButtonElement>("[role=tab]")
+    // who cannot see the rule move. `currentTarget` is the tablist — this handler is on
+    // it rather than on each button — so the tabs are its own children.
+    event.currentTarget
+      .querySelectorAll<HTMLButtonElement>("[role=tab]")
       [next]?.focus();
   };
 
@@ -271,9 +342,20 @@ function PagerTabs({
         >
           {one.label}
           {index === page ? (
-            /* The handoff's 2px accent rule. `DESIGN.md` §3 rations the accent to
-               recording a watch and to the way through a screen; this is the second, and
-               the same role the rail heads beneath it already carry. */
+            /* The handoff's 2px accent rule.
+
+               **`DESIGN.md` §3 forbade this and was amended for it, by this ticket.**
+               *What the accent does not mean* rules out *navigation state, or the current
+               page*, and a rule under a selected label is close enough to both to need
+               settling rather than assuming. #245's stated default is that an older
+               document yields to the handoff in the same change as the code, so §3 now
+               carries the exception and the argument for why it is this shape only: the
+               type is `text`/`dim` exactly as the sidebar prescribes, a pager moves within
+               one screen rather than navigating between two, and the rule is the thing
+               that *moves* rather than a state painted onto something already visible.
+
+               Read the amendment before copying this anywhere. It grants one rule under
+               one pager label and explicitly grants nothing else. */
             <motion.span
               layoutId="pager-rule"
               transition={smooth}
@@ -291,6 +373,32 @@ function PagerTabs({
       />
     </div>
   );
+}
+
+/**
+ * **Is the pointer inside something that scrolls sideways of its own?**
+ *
+ * Walks from the pressed element up to the track and stops there. An element qualifies
+ * when it has more content than it can show *and* its own style says that overflow
+ * scrolls — both halves, because `overflow-x: auto` on a track that happens to hold two
+ * cards is not a scroller today and a rail with `overflow: hidden` never is.
+ *
+ * Page one's two rails are the whole reason this exists (`up-next-phone-rail.tsx`), and
+ * the alternative — telling the pager which selectors to avoid — would be this file
+ * knowing the class names of surfaces it only renders as opaque children.
+ */
+function overHorizontalScroller(target: EventTarget | null, track: HTMLElement | null): boolean {
+  let node = target instanceof Element ? target : null;
+
+  while (node !== null && node !== track) {
+    if (node.scrollWidth > node.clientWidth) {
+      const overflow = getComputedStyle(node).overflowX;
+      if (overflow === "auto" || overflow === "scroll") return true;
+    }
+    node = node.parentElement;
+  }
+
+  return false;
 }
 
 /**

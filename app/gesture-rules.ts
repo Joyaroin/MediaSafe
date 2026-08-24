@@ -103,6 +103,15 @@ function directionOf(distance: number): DragDirection {
  *
  * A pointer that has not moved is not a drag, and is not claimed — which is what leaves a
  * tap to be a tap.
+ *
+ * ── This is asked **once per gesture**, and the binding is what remembers ────────────
+ *
+ * It takes the delta so far, so asking it again a frame later can give a different answer:
+ * a thumb travelling along an arc puts in a frame or two where the vertical component
+ * wins, and a surface that re-asked every frame would snap back to nothing and out again
+ * mid-drag. So the two functions below take the answer rather than re-deriving it, and the
+ * binding **latches** it the first time the pointer has moved at all. Which way a gesture
+ * was going when it began is a fact about the gesture, not about its latest frame.
  */
 export function claimsDrag(drag: Drag, rules: DragRules): boolean {
   return Math.abs(alongAxis(drag, rules)) > Math.abs(acrossAxis(drag, rules));
@@ -125,9 +134,12 @@ export function claimsDrag(drag: Drag, rules: DragRules): boolean {
  *
  * There is no rubber-banding at the far edge. The commit is what ends the drag, and a
  * surface that stretched past its own threshold would be drawing a state it cannot hold.
+ *
+ * `claimed` is the binding's latched answer to `claimsDrag`, passed in rather than asked
+ * again — see that function's own note for why re-asking mid-drag is wrong.
  */
-export function dragOffset(drag: Drag, rules: DragRules): number {
-  if (!claimsDrag(drag, rules)) return 0;
+export function dragOffset(drag: Drag, rules: DragRules, claimed: boolean): number {
+  if (!claimed) return 0;
 
   const travelled = alongAxis(drag, rules);
   if (!rules.commits.includes(directionOf(travelled))) return 0;
@@ -154,9 +166,11 @@ export type DragOutcome =
  * `>=` and not `>`: the handoff names 40px as the threshold to cross, and a drag that
  * lands exactly on the named number crossing it is the reading a reader would give it.
  * The suite asserts both sides of that boundary so it cannot drift to the other one.
+ *
+ * `claimed` is the binding's latched answer, as above.
  */
-export function releaseDrag(drag: Drag, rules: DragRules): DragOutcome {
-  if (!claimsDrag(drag, rules)) return { kind: "cancel" };
+export function releaseDrag(drag: Drag, rules: DragRules, claimed: boolean): DragOutcome {
+  if (!claimed) return { kind: "cancel" };
 
   const travelled = alongAxis(drag, rules);
   if (Math.abs(travelled) < rules.threshold) return { kind: "cancel" };

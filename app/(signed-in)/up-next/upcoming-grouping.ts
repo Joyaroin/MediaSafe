@@ -31,8 +31,9 @@
 /** The bucket an upcoming row falls into, with the rows in the order they arrived. */
 export interface UpcomingGroup<T> {
   /**
-   * What the heading reads. A **name** and never a count: `SPEC.md` §7's *no counts,
-   * anywhere* is narrowed by #245 to rail heads only, and this is one.
+   * What the heading reads. A **name** and never a count — `SPEC.md` §7's *no counts on a
+   * rail head*, which #250 narrowed *from* the wider *no counts, anywhere* and which still
+   * stands over every head in the build. *Today* does not say how many.
    */
   readonly label: string;
   /** Stable across renders and across days for the same bucket, so React keys and
@@ -141,25 +142,30 @@ export function groupUpcoming<T extends { readonly airDate: string }>(
 ): readonly UpcomingGroup<T>[] {
   const now = calendarDay(today);
 
-  const groups: UpcomingGroup<T>[] = [];
+  /**
+   * Filled first, published second. An earlier draft pushed the group object as soon as it
+   * saw the bucket's first row and then kept writing into the array behind its own
+   * `readonly episodes` — which worked, and was a lie the type could not catch. The two
+   * passes cost one `map` over a list this page has already read from Postgres.
+   */
+  const order: { label: string; key: string }[] = [];
   const byKey = new Map<string, T[]>();
 
   for (const one of episodes) {
     const ahead = calendarDay(one.airDate) - now;
     if (ahead < 0) continue;
 
-    const { label, key } = bucketFor(ahead, one.airDate);
-    const existing = byKey.get(key);
-    if (existing) {
-      existing.push(one);
+    const bucket = bucketFor(ahead, one.airDate);
+    const held = byKey.get(bucket.key);
+    if (held) {
+      held.push(one);
     } else {
-      const held: T[] = [one];
-      byKey.set(key, held);
-      groups.push({ label, key, episodes: held });
+      byKey.set(bucket.key, [one]);
+      order.push(bucket);
     }
   }
 
-  return groups;
+  return order.map(({ label, key }) => ({ label, key, episodes: byKey.get(key) ?? [] }));
 }
 
 /**
