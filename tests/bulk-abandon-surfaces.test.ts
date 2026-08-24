@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -58,41 +58,54 @@ describe("the Library cell hands its own abandoned state to the selection", () =
   });
 });
 
-describe("an Up next tile hands its group's abandoned state to the selection", () => {
-  const source = sourceAt("app/(signed-in)/up-next/group-tile.tsx");
+/**
+ * **The two Up next entry points are gone, and their cases went with them** — #250.
+ *
+ * `group-tile.tsx` built a `SelectableTitle`, and the five group screens forwarded
+ * `abandoned` into it — `/up-next/abandoned` being the sharp one, the single screen made
+ * **entirely** of abandoned titles, where a surface that forgot the fact got every tile on
+ * it wrong. All seven files were deleted along with the five vertical groups.
+ *
+ * The phone's two rails are not selection surfaces at all: an episode card carries a check
+ * and a link, a film card carries a link, and neither ever builds a `SelectableTitle`. So
+ * #198's withdrawal of the hold from Up next is structural now rather than a rule anything
+ * has to keep, and the Library cell above is the one entry point left. Bulk Abandon reaches
+ * it from `/library`, whose status filters are also where the two states those groups
+ * showed remain reachable.
+ *
+ * The case below is what would catch a **new** surface arriving without the fact, which is
+ * the failure a file-by-file list cannot see — and it is why the list of surfaces this file
+ * used to keep is not simply shortened by two.
+ */
+describe("no other surface builds a selection without the abandoned fact", () => {
+  it("finds every SelectableTitle builder, and none of them omits it", () => {
+    const builders = sourceFiles(path.join(REPOSITORY_ROOT, "app")).filter((file) =>
+      // A file that only *types* against `SelectableTitle` — the context, the store —
+      // never writes an object literal for one, so it is not asked the question.
+      /title=\{\{|: SelectableTitle = \{/.test(readFileSync(file, "utf8")),
+    );
 
-  it("puts abandoned in the SelectableTitle it builds", () => {
-    expect(source).toMatch(/const title: SelectableTitle = \{[^}]*\babandoned,/);
-  });
-});
+    // A floor against the search quietly matching nothing and passing — the failure mode
+    // every `toEqual([])` in this repository is written to avoid.
+    expect(builders.length).toBeGreaterThan(0);
 
-describe("the group screens say which group they are", () => {
-  it("the Abandoned screen tells GroupScreen that it is the abandoned one", () => {
-    const source = sourceAt("app/(signed-in)/up-next/abandoned/page.tsx");
-    expect(source).toMatch(/<GroupScreen[^>]*\babandoned\b[^>]*\/>/);
-  });
-
-  it("GroupScreen forwards it to every tile", () => {
-    const source = sourceAt("app/(signed-in)/up-next/group-screen.tsx");
-    expect(source).toMatch(/<GroupTile\b[^>]*abandoned=\{abandoned\}/);
-  });
-
-  it("the four screens that are not the abandoned pile say nothing, and so are not it", () => {
-    // The prop defaults to `false`, so silence is the correct answer on these four — and
-    // asserting the silence is what stops a copy-paste from marking a watching group
-    // abandoned, which would make bulk Abandon skip every title on it.
-    for (const group of ["coming-back", "old-friends", "ongoing", "watchlist"]) {
-      const source = sourceAt(`app/(signed-in)/up-next/${group}/page.tsx`);
-      expect(source).not.toMatch(/<GroupScreen[^>]*\babandoned\b/);
+    for (const file of builders) {
+      const relative = path.relative(REPOSITORY_ROOT, file);
+      const supplies = /\babandoned,/.test(readFileSync(file, "utf8"));
+      expect({ file: relative, supplies }).toEqual({ file: relative, supplies: true });
     }
   });
 });
 
-describe("the home page's Abandoned group still says which group it is", () => {
-  it("passes abandoned to the fifth group and to no other", () => {
-    const source = sourceAt("app/(signed-in)/up-next/up-next-groups.tsx");
-    // The one bare `abandoned` prop, on the one `HomeGroup` whose href is the abandoned
-    // pile. #198 relied on it for the dim; #199 now relies on it for the write as well.
-    expect(source).toMatch(/href="\/up-next\/abandoned"[^>]*\babandoned\b[^>]*\/>/);
-  });
-});
+/** Every `.ts`/`.tsx` under a directory — `tests/remove-from-library-control.test.ts` has
+ *  the same walk for the same reason: a list of files goes stale, a walk does not. */
+function sourceFiles(root: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) found.push(...sourceFiles(full));
+    else if (/\.tsx?$/.test(entry.name)) found.push(full);
+  }
+  return found;
+}
+

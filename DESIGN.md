@@ -85,7 +85,7 @@ section exists so a reader does not take a superseded absolute below as current.
 | The library heading is a step *below* Search's | All four phone tabs share one 34px `screen-title`, and none of the four carries a hairline under it. | the four `*-heading.tsx` |
 | §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | Cards, fields, chips and pills carry 9–22px radii, and the poster's radius is a `--poster-radius` variable with three per-surface values (`14`/`10`/`9`) over a `7px` default. There is still **no radius scale** — these are per-surface measures, not a ramp. | `app/globals.css`, the four screens |
 | *A pill would be the first radius in the application* | Two pills: `Add` (17px) and `New list` (22px). | `catalogue-result.tsx`, `create-list-form.tsx` |
-| The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. | `home-group.tsx` and the four screens |
+| The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. The pairing itself still binds — #250's two rails hold `scroll-pl-[22px]` against `px-[22px]`. | `up-next/up-next-phone-rail.tsx` and the four screens |
 | §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 10; §10 now carries the corrected figure and the `grep` that settles it. | `app/globals.css` |
 
 Two things below are **not** superseded, and were checked rather than assumed:
@@ -214,7 +214,7 @@ copying whichever call site they happened to open:
 
 | Role | Where | Standing |
 |---|---|---|
-| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`); the Ongoing tile's mark and its *Undo* (`up-next/ongoing-tile.tsx`, #220) | the reserved meaning |
+| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`); the episode card's check and its *Undo* (`up-next/up-next-episode-card.tsx`, #220 → #250) | the reserved meaning |
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
 | **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
@@ -790,12 +790,14 @@ when it carries neither.
   one.**
 
 > **⚠️ And the hold has left this surface in exchange (#220).** A tile carrying
-> tap-to-open, tap-to-mark and hold-to-select is three meanings on one card, so
-> `up-next-groups.tsx` no longer mounts a `BulkSelectionProvider` — availability is a fact
-> about the tree, which is the device #197 chose so that withdrawing a gesture is a mount
-> rather than a media query. The **group screens behind *More* keep the hold unchanged**, as
-> do the Library grid and list detail rows. **The cost is recorded on #194**: bulk *Add to
-> list* and bulk *Abandon* are one navigation away from the home rather than on it.
+> tap-to-open, tap-to-mark and hold-to-select is three meanings on one card, so the phone's
+> Up next stopped mounting a `BulkSelectionProvider` — availability is a fact about the
+> tree, which is the device #197 chose so that withdrawing a gesture is a mount rather than
+> a media query. **#250 made that structural**: the five group screens that kept the hold
+> were deleted with the groups, and the two rails that replaced them build no selection at
+> all. The Library grid and list detail rows keep it unchanged. **The cost is recorded on
+> #194**: bulk *Add to list* and bulk *Abandon* are reached from `/library` and its status
+> filters rather than from the landing screen.
 
 ### Opening a title does not leave Up next
 
@@ -1366,11 +1368,26 @@ rails, no placeholder tabs, no "coming soon".
   not left standing as though it did. What survives is the part that was actually
   load-bearing, and it is the whole of what this bullet was ever written against: **a count
   may not appear as chrome on a surface the reader came to do something else on.** A rail
-  head, a tile, a chip, a list card, a heading over a grid — none of them gains a numeral,
-  and *showing 10 of 62* and *and 175 more* remain forbidden by name. #223's Lists rail is
+  head, a chip, a heading over a grid — none of them gains a numeral, and *showing 10 of 62*
+  and *and 175 more* remain forbidden by name. #223's Lists rail is
   the worked example and predates the narrowing: it carries no count, and the ticket rejected
   a capped vertical list partly because this rule left no honest way to write *and seven
   more*.
+
+  **Narrowed again by #250, and the words *not on a tile* came out with it.** The phone's
+  next-episodes card prints how many episodes of that show remain, beside the episode it is
+  offering; the handoff #245 makes binding draws it that way, and `SPEC.md` §7 carries the
+  same amendment. The test is the sentence above and not the surface: *am I three from the
+  end, or thirty* is the question that card exists to answer, so the number is **content**
+  there, where the same number over a rail of posters would be chrome. #223's list card
+  gains a count in the same pass for the same reason — a list you cannot tell full from
+  started is a list card that has not done its job.
+
+  Two things this does **not** license, and they are the ones to check a new numeral
+  against. The desktop rail tile is unchanged and still carries no count — it is a poster, a
+  name and a year (#137). And no head, on either device, gains one: the rule exists so that
+  the landing screen does not become a progress ledger, and a total over a rail is exactly
+  the ledger.
 
   A number is allowed where **the number is the content**. That is one destination, it is
   reached deliberately, and it is not passed through on the way to anything.

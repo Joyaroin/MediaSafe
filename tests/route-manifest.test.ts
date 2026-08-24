@@ -275,8 +275,9 @@ const NO_PENDING_STATE = [
  *
  * It held eleven routes — `/lists`, `/lists/[listId]`, `/settings`,
  * `/settings/delete-account`, `/titles/[kind]/[tmdbId]`, `/up-next` and its five phone
- * group screens — every one of them a surface that genuinely waits on data the reader came
- * to see, and every one of them left the previous screen frozen on the glass until its
+ * group screens, of which the five were deleted outright by
+ * [#250](https://github.com/Joyaroin/MediaSafe/issues/250) — every one of them a surface
+ * that genuinely waits on data the reader came to see, and every one of them left the previous screen frozen on the glass until its
  * queries resolved. Each got a `loading.tsx` of its own; `NO_PENDING_STATE` above is what
  * remains, by decision rather than by backlog.
  *
@@ -318,22 +319,40 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
-   * The eleven segments #181 converted, asserted the same way — a floor against the audit
-   * quietly passing rather than actually looking, on the batch this ticket is responsible
-   * for rather than the one before it.
+   * The six segments of #181's eleven that still exist, asserted the same way — a floor
+   * against the audit quietly passing rather than actually looking, on the batch that
+   * ticket is responsible for rather than the one before it.
    */
-  it("finds the boundary on every segment #181 converts", () => {
+  it("finds the boundary on every segment #181 converts that still exists", () => {
     expect(hasBoundary("(signed-in)/lists")).toBe(true);
     expect(hasBoundary("(signed-in)/lists/[listId]")).toBe(true);
     expect(hasBoundary("(signed-in)/settings")).toBe(true);
     expect(hasBoundary("(signed-in)/settings/delete-account")).toBe(true);
     expect(hasBoundary("(signed-in)/titles/[kind]/[tmdbId]")).toBe(true);
     expect(hasBoundary("(signed-in)/up-next")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/abandoned")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/coming-back")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/old-friends")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/ongoing")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/watchlist")).toBe(true);
+  });
+
+  /**
+   * **The five phone group screens #250 removed, asserted as gone.**
+   *
+   * The acceptance criterion is that *the route manifest reflects the five removed routes*,
+   * and the manifest here is the build's own rather than a list anybody maintains — so this
+   * reads what `next build` actually emitted. A `page.tsx` left behind, or a route restored
+   * by a merge, fails here rather than shipping five screens nothing links to.
+   *
+   * The two states those groups showed and the rails do not — watchlist and abandoned —
+   * stay reachable through the library's status filters, which are `/library`'s own
+   * controls and not routes of their own to assert.
+   */
+  it.each([
+    "/up-next/ongoing",
+    "/up-next/coming-back",
+    "/up-next/old-friends",
+    "/up-next/watchlist",
+    "/up-next/abandoned",
+  ])("has no route left at %s", (route) => {
+    expect(built.pages.map((one) => one.route)).not.toContain(route);
+    expect(built.routes).not.toContain(route);
   });
 
   /**

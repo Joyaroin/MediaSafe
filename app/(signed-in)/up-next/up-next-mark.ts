@@ -11,44 +11,45 @@ import {
   type WatchNaming,
   type WatchSubject,
 } from "@/app/(signed-in)/library/watch-marks";
-import type { OngoingEntry, QueuedEpisode, UpNextQueue } from "@/db/access";
+import type { QueuedEpisode, UpNextEntry, UpNextQueue } from "@/db/access";
 
 /**
- * An Ongoing tile's mark, over the marks store the episode row already writes through —
- * issue #220, which **reopens #138**.
+ * One next-episodes card's mark, over the marks store the episode row already writes
+ * through — issue #220, which **reopens #138**, widened from the Ongoing group to the
+ * whole rail by #250.
  *
  * ── What this is, and what it deliberately is not ────────────────────────────────────
  *
  * It is a *reading* of `watch-marks.ts`, and nothing else. The write, the idempotency key,
  * the rollback and the toast all stay there, keyed by **episode** rather than by surface —
- * which is the property this whole ticket leans on. A tile and a title sheet showing the
- * same episode share one mark, one key and one toast by construction, exactly as the
- * desktop TONIGHT row and the programme note once did (`watch-marks.ts`'s own docblock is
+ * which is the property this whole ticket leans on. A card on this rail and an episode row
+ * on a title page showing the same episode share one mark, one key and one toast by
+ * construction, exactly as the desktop TONIGHT row and the programme note once did (`watch-marks.ts`'s own docblock is
  * where that argument lives). #220's *one key per outstanding write, per episode rather
  * than per surface* is therefore not implemented here; it is inherited, and the tests are
  * what hold it.
  *
  * `use-watch-mark.ts` is the same idea for **one** episode, and this is not built on it
- * for one reason: a tile does not know which episode it is showing until it has read the
+ * for one reason: a card does not know which episode it is showing until it has read the
  * store, and a hook cannot be called once per queued episode when the queue's length is a
  * prop. So the subscription is taken over the whole run at once.
  *
- * ── The tile's position is derived, never stored ─────────────────────────────────────
+ * ── The card's position is derived, never stored ─────────────────────────────────────
  *
- * *Which episode is this tile showing* is **the first episode of its queue that the store
+ * *Which episode is this card showing* is **the first episode of its queue that the store
  * does not say is watched**. That is a derivation and not a counter, and the difference is
  * the whole of the optimism and the whole of the reversal:
  *
  * - a press marks `episodes[i]`, the store flips it to watched *before the server answers*,
- *   and the tile is showing `episodes[i + 1]` on the next render — the advance;
- * - the write fails, `watch-marks.ts` rolls that episode back, and the tile is showing
+ *   and the card is showing `episodes[i + 1]` on the next render — the advance;
+ * - the write fails, `watch-marks.ts` rolls that episode back, and the card is showing
  *   `episodes[i]` again — with the toast the store raised, which is the only thing on
  *   screen that says the watch was lost;
- * - *Undo* unwatches it, and the tile walks back by the same rule rather than by a second
+ * - *Undo* unwatches it, and the card walks back by the same rule rather than by a second
  *   one that could disagree with the first.
  *
  * A stored index would need every one of those three to remember to move it, and the one
- * that forgot would be a tile pointing at an episode the reader has already watched.
+ * that forgot would be a card pointing at an episode the reader has already watched.
  *
  * ── The seed is *unwatched*, and that is a fact rather than an assumption ────────────
  *
@@ -62,10 +63,10 @@ import type { OngoingEntry, QueuedEpisode, UpNextQueue } from "@/db/access";
  * How long *Undo* stands in the mark slot after a press — issue #220.
  *
  * **Six seconds, and it is a window on a fumble rather than a deadline on a decision.**
- * The scene it serves is #215's: a thumb landing on the wrong tile while a track is still
+ * The scene it serves is #215's: a thumb landing on the wrong card while a track is still
  * moving under it, noticed immediately or not at all. A reader who changes their mind
- * about a show tomorrow has the episode row's own *Unwatch*, one tap away in the sheet the
- * tile opens.
+ * about a show tomorrow has the episode row's own *Unwatch*, one tap away on the title's
+ * own page.
  *
  * **This is not the toast's timer, and the rule it would break does not apply here.**
  * `AGENTS.md`: *do not add a timer* is about the write-failure toast, because a notice of
@@ -76,18 +77,22 @@ import type { OngoingEntry, QueuedEpisode, UpNextQueue } from "@/db/access";
  */
 export const UNDO_WINDOW_MS = 6_000;
 
-/** What one Ongoing tile renders and presses. */
+/** What one next-episodes card renders and presses. */
 export interface UpNextMark {
   /**
-   * The episode a press would record, or `null` when this tile's run is spent — either
+   * The episode a press would record, or `null` when this card's run is spent — either
    * because the show has no released episode left (`finished`) or because the queue's cap
    * was reached (`UpNextQueue`'s own table).
    */
   readonly episode: QueuedEpisode | null;
   /**
-   * Nothing released is left on this title: **the tile leaves the group.**
+   * Nothing released is left on this title.
    *
-   * Distinct from `episode === null`, and the distinction is `UpNextQueue.more`. A tile
+   * **It is not on its own the question *does this card leave the rail*** — `stillOnRail`
+   * below is, and it adds the one branch this flag cannot carry: an entry that arrived
+   * with an empty run was never markable and stays regardless.
+   *
+   * Distinct from `episode === null`, and the distinction is `UpNextQueue.more`. A card
    * that has merely run out of *queue* is still a show with episodes to watch, and
    * removing it would be the surface claiming a show finished because a constant is four.
    */
@@ -95,7 +100,7 @@ export interface UpNextMark {
   /** A write against the episode above is on the wire — the control must not be pressed
    *  again while it is. */
   readonly pending: boolean;
-  /** The episode this tile has just recorded, while the reversal is still offered.
+  /** The episode this card has just recorded, while the reversal is still offered.
    *  `null` the moment the window closes, the reader marks again, or the write is rolled
    *  back — a failed mark has nothing to undo. */
   readonly undoable: QueuedEpisode | null;
@@ -128,7 +133,7 @@ function subjectOf(libraryEntryId: string, episode: QueuedEpisode): WatchSubject
 const UNWATCHED: WatchMarkView = { watched: false, phase: "unwatched", pending: false };
 
 /**
- * Where a tile stands in its own run: how far along it is, whether that episode's write is
+ * Where a card stands in its own run: how far along it is, whether that episode's write is
  * on the wire, and what the episode behind it is doing.
  *
  * The three travel together everywhere and are read together in one pass over the store,
@@ -136,7 +141,7 @@ const UNWATCHED: WatchMarkView = { watched: false, phase: "unwatched", pending: 
  */
 interface Position {
   /** How many of this run's episodes the store calls watched — so, the index of the one
-   *  the tile is showing. Equal to the run's length once it is spent. */
+   *  the card is showing. Equal to the run's length once it is spent. */
   readonly position: number;
   readonly pending: boolean;
   /** The **just-marked** episode's phase, which is the one the sweep plays over. */
@@ -206,11 +211,11 @@ function decode(snapshot: string): Position {
 }
 
 /**
- * What a tile shows, with no React in it — issue #220.
+ * What a card shows, with no React in it — issue #220.
  *
  * The hook below is this plus a subscription and the *Undo* window; every rule about
- * *which episode is this tile on* and *is it still in the group* is here, where
- * `tests/up-next-tile-mark.test.ts` drives it against a fake writer and a real store. That
+ * *which episode is this card on* and *is it still on the rail* is here, where
+ * `tests/up-next-card-mark.test.ts` drives it against a fake writer and a real store. That
  * split is the same one `watch-marks.ts` and `use-watch-mark.ts` already draw, and for the
  * same reason: this suite has no DOM, deliberately, so behaviour that only exists inside a
  * hook is behaviour nothing can assert.
@@ -220,7 +225,7 @@ export interface UpNextMarkReading {
   readonly episode: QueuedEpisode | null;
   /** The episode a press has already recorded — what *Undo* would reverse. */
   readonly marked: QueuedEpisode | null;
-  /** Nothing released is left: the tile leaves the group. */
+  /** Nothing released is left. `stillOnRail` is what turns this into *leaves the rail*. */
   readonly finished: boolean;
   readonly pending: boolean;
   readonly phase: WatchMarkPhase;
@@ -242,26 +247,44 @@ export function readUpNextMark(
 }
 
 /**
- * Whether this tile still belongs in the Ongoing group — the rule, written once.
+ * Whether this card still belongs on the next-episodes rail — the rule, written once.
  *
- * `ongoing-group.tsx` asks it of every entry so that a group whose last tile has been
- * marked away takes its heading with it, and `OngoingTile` asks it of itself so that the
- * tile stops rendering. Two callers, one rule: a group that disagreed with its own tiles
- * would leave a heading over an empty track, which §9 forbids as surely as a count would.
+ * `up-next-episode-rail.tsx` asks it of every entry so that a rail whose last card has
+ * been marked away takes its heading with it, and `up-next-episode-card.tsx` asks it of
+ * itself so that the card stops rendering. Two callers, one rule: a rail that disagreed
+ * with its own cards would leave a heading over an empty track, which `DESIGN.md`'s *an
+ * empty rail is absent* forbids as surely as a count would.
+ *
+ * ── The arrived-empty branch, and why it is not `finished` (#250) ────────────────────
+ *
+ * `finished` is *nothing released is left*, and it is true of two quite different cards.
+ * One ran out **under the reader's thumb** — they marked the last released episode, and
+ * the card has done its job. The other **arrived empty from the server**: every *coming
+ * back* entry, whose next episode is dated in the future and so is not released today
+ * (`listUpNextRails`'s `NOTHING_RELEASED`). That card has an episode to announce and
+ * belongs on the rail; taking it off would be this ticket's own named failure — the rail
+ * still rendering, still holding episodes, and quietly leaving shows out.
+ *
+ * The two are told apart by the **server** run, which is a prop and does not change
+ * between renders: an entry handed an empty run was never markable, so nothing the reader
+ * does can finish it, and it stays. An entry handed a non-empty run leaves when that run
+ * is spent. No client state is needed for the distinction, which is the whole reason it is
+ * expressible here rather than as a fourth field on `UpNextQueue`.
  */
-export function stillMarkable(
+export function stillOnRail(
   marks: WatchMarks,
   libraryEntryId: string,
   queue: UpNextQueue,
 ): boolean {
+  if (queue.episodes.length === 0) return true;
   return !readUpNextMark(marks, libraryEntryId, queue).finished;
 }
 
-/** Record a watch of `episode` from a tile. The key, the rollback and the toast are all
+/** Record a watch of `episode` from a card. The key, the rollback and the toast are all
  *  `watch-marks.ts`'s — this only chooses the subject and the naming. */
-export function markFromTile(
+export function markFromCard(
   marks: WatchMarks,
-  entry: Pick<OngoingEntry, "libraryEntryId" | "titleName">,
+  entry: Pick<UpNextEntry, "libraryEntryId" | "titleName">,
   episode: QueuedEpisode,
 ): Promise<void> {
   return marks.mark(
@@ -272,9 +295,9 @@ export function markFromTile(
 
 /** Take one back — the same store's `unwatch`, which removes every watch of that episode
  *  (#145) and raises its own toast, without a *Try again*, if the delete is lost. */
-export function undoFromTile(
+export function undoFromCard(
   marks: WatchMarks,
-  entry: Pick<OngoingEntry, "libraryEntryId" | "titleName">,
+  entry: Pick<UpNextEntry, "libraryEntryId" | "titleName">,
   episode: QueuedEpisode,
 ): Promise<void> {
   return marks.unwatch(
@@ -288,7 +311,7 @@ export function undoFromTile(
  *
  * `watch-marks.ts` subscribes per episode, so this is the composition of those — and the
  * unsubscribes are collected in order and run in order, because a listener left attached
- * to an episode a tile no longer shows is a re-render nobody asked for.
+ * to an episode a card no longer shows is a re-render nobody asked for.
  */
 function subscribeToQueue(
   marks: WatchMarks,
@@ -305,7 +328,7 @@ function subscribeToQueue(
 }
 
 /**
- * One Ongoing tile's mark — issue #220.
+ * One next-episodes card's mark — issue #220.
  *
  * `marks` is injectable for the reason every store in this build is: `watch-marks.ts` takes
  * its writer, its failure store and its key minter as arguments precisely so the behaviour
@@ -313,7 +336,7 @@ function subscribeToQueue(
  * would put this half of the behaviour out of that reach.
  */
 export function useUpNextMark(
-  entry: OngoingEntry,
+  entry: UpNextEntry,
   marks: WatchMarks = watchMarks,
 ): UpNextMark {
   const { libraryEntryId, queue } = entry;
@@ -334,14 +357,14 @@ export function useUpNextMark(
   const snapshot = useSyncExternalStore(subscribe, read, () => `0|0|unwatched`);
   /**
    * Derived from the snapshot rather than read out of the store a second time during
-   * render, so what the tile draws and what it re-rendered for are the same answer.
+   * render, so what the card draws and what it re-rendered for are the same answer.
    * `decode` is `encode`'s inverse and `readUpNextMark` composes both — the memo is what
    * keeps the objects stable between renders that changed nothing.
    */
   const { position, pending, phase } = useMemo(() => decode(snapshot), [snapshot]);
 
   /**
-   * The episode this tile last pressed, and the only piece of state that is *this tile's*
+   * The episode this card last pressed, and the only piece of state that is *this card's*
    * rather than the store's. It is not *whether an undo is offered* — that is derived
    * below — because a mark that failed rolls the position back and there is then nothing
    * to reverse, and a flag would have to be told about that separately.
@@ -357,7 +380,7 @@ export function useUpNextMark(
   const episode = queue.episodes[position] ?? null;
   const marked = position > 0 ? queue.episodes[position - 1] : null;
   /**
-   * Offered only while the episode behind the tile's position is the one this tile
+   * Offered only while the episode behind the card's position is the one this card
    * pressed. A rollback moves the position back and takes the offer with it; so does the
    * reader marking the next episode, which is what keeps one slot from offering to undo a
    * press two episodes ago.
@@ -373,12 +396,12 @@ export function useUpNextMark(
     mark() {
       if (episode === null) return;
       setPressed(episode.episodeId);
-      void markFromTile(marks, entry, episode);
+      void markFromCard(marks, entry, episode);
     },
     undo() {
       if (undoable === null) return;
       setPressed(null);
-      void undoFromTile(marks, entry, undoable);
+      void undoFromCard(marks, entry, undoable);
     },
     settle() {
       if (marked === null) return;
@@ -398,25 +421,25 @@ function namingFor(titleName: string, episode: QueuedEpisode): WatchNaming {
 }
 
 /**
- * The Ongoing group's surviving tiles — issue #220.
+ * The next-episodes rail's surviving cards — issue #220, widened to the whole rail by
+ * #250.
  *
- * Held by the group rather than by the tiles so that a group whose every tile has been
- * marked away renders nothing at all: `home-group.tsx` already drops a heading over an
- * empty group, and a client-side emptying has to reach the same answer. The rule is
- * `stillMarkable` above, asked once per entry, so this and the tile cannot disagree about
- * which tiles are gone.
+ * Held by the rail rather than by the cards so that a rail whose every card has been
+ * marked away renders nothing at all: an empty rail is absent, and a client-side emptying
+ * has to reach the same answer. The rule is `stillOnRail` above, asked once per entry, so
+ * this and the card cannot disagree about which cards are gone.
  *
- * **The all-five-empty state is not re-derived here.** `up-next-groups.tsx` decides
- * *you're caught up* from five reads that succeeded, on the server, and a library emptied
- * tile by tile between two loads keeps four absent groups and no sentence until the next
- * one. That is a stale empty state rather than a wrong one — every group it would speak
+ * **The nothing-at-all state is not re-derived here.** `up-next-rails.tsx` decides the
+ * screen's own sentence from two reads that succeeded, on the server, and a library
+ * emptied card by card between two loads keeps an absent rail and no sentence until the
+ * next one. That is a stale empty state rather than a wrong one — the rail it would speak
  * for is already absent — and reconstructing it in the browser would mean the phrase that
  * must never stand in for a failed read (`AGENTS.md`) having a second author.
  */
-export function useMarkableEntries(
-  entries: readonly OngoingEntry[],
+export function useEntriesOnRail(
+  entries: readonly UpNextEntry[],
   marks: WatchMarks = watchMarks,
-): readonly OngoingEntry[] {
+): readonly UpNextEntry[] {
   const subscribe = useCallback(
     (onChange: () => void) => {
       const offs = entries.map((entry) =>
@@ -433,7 +456,7 @@ export function useMarkableEntries(
   const read = useCallback(
     () =>
       entries
-        .filter((entry) => stillMarkable(marks, entry.libraryEntryId, entry.queue))
+        .filter((entry) => stillOnRail(marks, entry.libraryEntryId, entry.queue))
         .map((entry) => entry.libraryEntryId)
         .join(","),
     [marks, entries],

@@ -16,14 +16,14 @@ import {
  * Issue #197: *availability is decided by whether a selection provider sits above the cell
  * in the tree, not by a media query.* So `useBulkSelection()` answers `null` outside a
  * provider and a cell rendered there is exactly the cell it was before this ticket — no
- * hold, no badge, no toggle. That is the same nullable shape `up-next/title-sheet-context.ts`
- * uses and the opposite of `useLibrarySelection`, which throws: a library cell outside the
+ * hold, no badge, no toggle. That is the opposite of `useLibrarySelection`, which throws: a library cell outside the
  * programme note's provider is a mistake with no correct fallback, and a library cell
  * outside *this* one is the ordinary desktop case.
  *
  * ── Why the context is not in the provider's file ────────────────────────────────────
  *
- * `title-sheet-context.ts`'s reason, and it bites the same way here: the provider imports
+ * The same reason `up-next`'s deleted title-sheet context split itself in two, and it
+ * bites the same way here: the provider imports
  * `bulk-selection.ts`, which reaches `lists/actions.ts` and through it `db/access.ts` and
  * `server-only`. A cell needs to know *whether there is a selection and how to join it*
  * and nothing about how a list is written, so keeping the two apart is what stops

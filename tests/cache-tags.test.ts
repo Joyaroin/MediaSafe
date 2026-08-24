@@ -55,9 +55,9 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
   /**
    * Every read of `db/access.ts` that `cache/` wraps, faked — one `vi.fn()` apiece rather
    * than one shared spy, because *which* read the module reached for is half of what
-   * several assertions below are about. A `cachedWatchlist` that quietly called
-   * `listAbandoned` would satisfy a shared spy's call count and would be showing the
-   * reader the wrong group.
+   * several assertions below are about. A `cachedWatchlistFilms` that quietly called
+   * `listUpNextRails` would satisfy a shared spy's call count and would be showing the
+   * reader the wrong rail.
    *
    * `getUnownedTitleDetail` is in here with the owned reads because it is in the same
    * module and mocked the same way; what is different about it — a title-scoped tag and a
@@ -67,8 +67,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     listLibraryEntries: vi.fn(),
     libraryEntryIdForTitle: vi.fn(),
     listUpNextRails: vi.fn(),
-    listWatchlist: vi.fn(),
-    listAbandoned: vi.fn(),
+    listWatchlistFilms: vi.fn(),
     listLists: vi.fn(),
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
@@ -195,7 +194,6 @@ const {
   MIRRORS_SHARED_TITLE_ROWS,
   READS,
   UNCACHED_READS,
-  cachedAbandoned,
   cachedAccountStats,
   cachedLibraryEntries,
   cachedLibraryEntryIdForTitle,
@@ -203,7 +201,7 @@ const {
   cachedLists,
   cachedTitleDetail,
   cachedUpNextRails,
-  cachedWatchlist,
+  cachedWatchlistFilms,
   invalidateFor,
   invalidateForOtherAccounts,
   serverDay,
@@ -245,8 +243,7 @@ const CACHED = {
   libraryEntryIdForTitle: (userId: typeof mine) =>
     cachedLibraryEntryIdForTitle(userId, "show", 1399),
   listUpNextRails: (userId: typeof mine) => cachedUpNextRails(userId),
-  listWatchlist: (userId: typeof mine) => cachedWatchlist(userId),
-  listAbandoned: (userId: typeof mine) => cachedAbandoned(userId),
+  listWatchlistFilms: (userId: typeof mine) => cachedWatchlistFilms(userId),
   listLists: (userId: typeof mine) => cachedLists(userId),
   getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
   getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
@@ -655,7 +652,7 @@ describe("the surfaces reading one fact agree after a write", () => {
 
   /** *An undo from a tile is equally correct after a reload* — the same property, walked
    *  back. `unwatch` is a different write and owes its own bust. */
-  it("gives a reloaded Ongoing tile the episode an undo put back", async () => {
+  it("gives a reloaded episode card the episode an undo put back", async () => {
     reads.listUpNextRails.mockResolvedValue({ nextEpisode: "S01E05" });
     await cachedUpNextRails(mine);
 
@@ -666,17 +663,16 @@ describe("the surfaces reading one fact agree after a write", () => {
   });
 
   /**
-   * One write, four surfaces. The library grid, the rails, the title detail and the phone's
-   * WATCHLIST group all read the same entry row, so a mark that left any one of them
+   * One write, four surfaces. The library grid, the rails, the title detail and the
+   * phone's films rail all read the same entry row, so a mark that left any one of them
    * holding the old answer is the disagreement `SPEC.md` §3 constraint 1 existed to
    * forbid — restated for the cache that replaced it.
    */
-  it("leaves the grid, the rails, the groups and the title detail all agreeing", async () => {
+  it("leaves the grid, the rails, the films and the title detail all agreeing", async () => {
     await Promise.all([
       cachedLibraryEntries(mine),
       cachedUpNextRails(mine),
-      cachedWatchlist(mine),
-      cachedAbandoned(mine),
+      cachedWatchlistFilms(mine),
       cachedTitleDetail(mine, "entry-1"),
     ]);
     for (const read of Object.values(reads)) read.mockClear();
@@ -686,15 +682,13 @@ describe("the surfaces reading one fact agree after a write", () => {
     await Promise.all([
       cachedLibraryEntries(mine),
       cachedUpNextRails(mine),
-      cachedWatchlist(mine),
-      cachedAbandoned(mine),
+      cachedWatchlistFilms(mine),
       cachedTitleDetail(mine, "entry-1"),
     ]);
 
     expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
     expect(reads.listUpNextRails).toHaveBeenCalledTimes(1);
-    expect(reads.listWatchlist).toHaveBeenCalledTimes(1);
-    expect(reads.listAbandoned).toHaveBeenCalledTimes(1);
+    expect(reads.listWatchlistFilms).toHaveBeenCalledTimes(1);
     expect(reads.getTitleDetail).toHaveBeenCalledTimes(1);
   });
 
@@ -819,8 +813,8 @@ describe("a failed read is not an empty library", () => {
  * **The input these reads have that no write touches: today's date.**
  *
  * `db/views.ts` derives *released* from `air_date <= current_date`, and the three derived
- * views are what `listLibraryEntries`, `listUpNextRails`, `listWatchlist`, `listAbandoned`
- * and `getTitleDetail` are all built on. So an episode airing tonight moves a show from
+ * views are what `listLibraryEntries`, `listUpNextRails`, `listWatchlistFilms` and
+ * `getTitleDetail` are all built on. So an episode airing tonight moves a show from
  * COMING BACK to ONGOING, and a caught-up show back to watching, **with no write anywhere
  * in the system** — the clock alone did it.
  *
@@ -1346,17 +1340,16 @@ describe("the reads that are cached, and the one that must never be", () => {
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
-  it("wraps exactly the thirteen reads it is meant to", () => {
+  it("wraps exactly the twelve reads it is meant to", () => {
     // `\s*` because several of these are formatted across lines. A regex that only
-    // matched the single-line spelling silently found five of the thirteen and passed.
+    // matched the single-line spelling silently found five of the twelve and passed.
     const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
 
     expect(cached).toEqual([
-      // `tags.ts` — the owned nine, in file order.
+      // `tags.ts` — the owned eight, in file order.
       "listLibraryEntries",
       "listUpNextRails",
-      "listWatchlist",
-      "listAbandoned",
+      "listWatchlistFilms",
       "listLists",
       "getListDetail",
       "getTitleDetail",

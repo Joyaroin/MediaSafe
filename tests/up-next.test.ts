@@ -81,6 +81,8 @@ interface EpisodeSpec {
   /** `null` is TMDB not naming it — the case the *never numbered alone* rule turns on. */
   name?: string | null;
   airDate?: string | null;
+  runtimeMins?: number | null;
+  stillPath?: string | null;
 }
 
 interface ShowSpec {
@@ -128,6 +130,8 @@ async function seedShow(
         episodeNo: one.episodeNo,
         name: "name" in one ? one.name : `Episode ${one.seasonNo}-${one.episodeNo}`,
         airDate: one.airDate === undefined ? RELEASED : one.airDate,
+        runtimeMins: "runtimeMins" in one ? one.runtimeMins : null,
+        stillPath: "stillPath" in one ? one.stillPath : null,
       })
       .returning({ id: episode.id });
     episodeIds.push(inserted.id);
@@ -836,7 +840,7 @@ describe("listUpNextRails — what each rail contains", () => {
     });
   });
 
-  it("carries on a rail tile everything the tile renders", async () => {
+  it("carries on an entry everything a card renders", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       const show = await seedShow(tx, reader, {
@@ -844,7 +848,13 @@ describe("listUpNextRails — what each rail contains", () => {
         posterPath: "/severance.jpg",
         episodes: [
           { seasonNo: 2, episodeNo: 9, name: "Sweet Vitriol" },
-          { seasonNo: 2, episodeNo: 10, name: "Cold Harbor" },
+          {
+            seasonNo: 2,
+            episodeNo: 10,
+            name: "Cold Harbor",
+            runtimeMins: 76,
+            stillPath: "/cold-harbor.jpg",
+          },
           { seasonNo: 3, episodeNo: 1, name: "Unknown" },
         ],
       });
@@ -862,9 +872,20 @@ describe("listUpNextRails — what each rail contains", () => {
         episodeName: "Cold Harbor",
         seasonNo: 2,
         episodeNo: 10,
+        // Issue #250: the four facts the phone's episode card prints beside the name. The
+        // air date is the **episode's**, not the title's, and the runtime and still are the
+        // episode's own — #246 mirrored the still precisely so a rail of them is not one
+        // catalogue request per card.
+        airDate: RELEASED,
+        runtimeMins: 76,
+        stillPath: "/cold-harbor.jpg",
+        // `library_entry_remaining`, unmodified: three episodes, one watched. It counts the
+        // episode being offered, and the card is what subtracts that one
+        // (`episode-card-line.ts`).
+        remaining: 2,
         // Issue #220. Asserted whole here, rather than loosened to a matcher, because
-        // this case is *everything an Ongoing tile is handed* — the queue is now part of
-        // that and a tile cannot mark anything without it.
+        // this case is *everything a card is handed* — the queue is part of that and a
+        // card cannot mark anything without it.
         queue: {
           episodes: [
             {
@@ -1133,7 +1154,22 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
     });
   });
 
-  it("gives Coming back and Old friends no queue at all", async () => {
+  /**
+   * **#250 reversed the shape this used to assert.** Every card on the phone's rail carries
+   * a check, so every entry carries a run — Coming back included, which used to have none.
+   *
+   * What is asserted instead is the thing that makes Coming back's run *right* rather than
+   * merely present: it is **empty, with `more: false`**, and no query was run to discover
+   * that. `COMING_BACK`'s predicate is *the next episode's air date is in the future* and
+   * `upNextQueues` truncates at the first episode that is not released, so the two together
+   * determine the answer — `listUpNextRails` supplies `NOTHING_RELEASED` rather than paying
+   * for a query whose result the predicate already fixes.
+   *
+   * The pair matters, and `false` is the load-bearing half: it is *this show has nothing
+   * released left*, which is exactly true today. `true` would claim a run the read merely
+   * failed to fetch and would leave the card waiting for a refill no reload could produce.
+   */
+  it("gives Coming back an empty run rather than no run", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       const comingBack = await seedShow(tx, reader, {
@@ -1147,10 +1183,35 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       const rails = await listUpNextRails(reader, tx);
 
       expect(rails.comingBack).toHaveLength(1);
-      // Ongoing is the one group with a mark control, so it is the one group that pays
-      // for the queue. `in` rather than a value check: the absence is the assertion.
-      expect("queue" in rails.comingBack[0]).toBe(false);
-      for (const entry of rails.oldFriends) expect("queue" in entry).toBe(false);
+      expect(rails.comingBack[0].queue).toEqual({ episodes: [], more: false });
+    });
+  });
+
+  /**
+   * Old friends is *watching, everything not in Ongoing*, and #250 gave it a run for the
+   * same reason it gave one to Ongoing: its cards carry the same check. A rail whose cold
+   * shows could not be marked would be the ticket's own named failure wearing a different
+   * hat.
+   */
+  it("gives Old friends the same run Ongoing gets", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      for (let n = 0; n <= ONGOING_RAIL_SIZE; n += 1) {
+        const show = await seedShow(tx, reader, {
+          name: `Watching ${n}`,
+          episodes: [
+            { seasonNo: 1, episodeNo: 1 },
+            { seasonNo: 1, episodeNo: 2 },
+          ],
+        });
+        await markWatched(tx, show, 0, daysAgo(n + 1));
+      }
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(rails.oldFriends).toHaveLength(1);
+      expect(rails.oldFriends[0].queue.episodes).toHaveLength(1);
+      expect(rails.oldFriends[0].queue.more).toBe(false);
     });
   });
 });
