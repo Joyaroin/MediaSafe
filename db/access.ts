@@ -3278,6 +3278,39 @@ export interface EpisodeDetail {
   /** `null` where TMDB has not named it. Never falls back to a bare number. */
   readonly name: string | null;
   /**
+   * The three mirrored facts an episode's own page prints and a season row does not —
+   * issue #253, over the columns issue #246 put in the mirror.
+   *
+   * ── Why they are on this type rather than on a second one ────────────────────────
+   *
+   * The episode page is a projection of this read rather than a read of its own — its
+   * `page.tsx` argues that at length. A parallel `EpisodeDetailRow` carrying the same
+   * identity, the same `watched` and the same `upNext` plus three columns would be a
+   * second answer to *what is an episode* with nothing keeping it in step with this
+   * one, and the surface that noticed the drift would be the one printing a date beside
+   * a name read from a different row.
+   *
+   * The season list simply does not read them. That costs three columns on a query that
+   * already selects four from the same table and returns the same rows.
+   *
+   * `stillPath` is TMDB's `still_path` — a CDN path and never a URL, because ADR-0001
+   * stores no image blobs and `episode-still.tsx` is what turns one into a URL. `null`
+   * is TMDB having no frame for this episode: not an error, and not a missing read.
+   *
+   * `airDate` is the ISO `YYYY-MM-DD` string Postgres hands back for a `date` column,
+   * left as text rather than parsed. `db/views.ts` compares this column to
+   * `current_date` in SQL, nothing in the application does arithmetic on it, and a
+   * `Date` here would silently acquire a timezone the column does not have (ADR-0003).
+   * `null` where TMDB has not dated it, which is not the same as *not out yet* — and
+   * `episode-facts.ts` refuses to say either in the other's words.
+   *
+   * `runtimeMins` is this episode's own runtime, unrelated to `TitleDetailRow`'s, which
+   * is a film's. `null` where TMDB has published none.
+   */
+  readonly stillPath: string | null;
+  readonly airDate: string | null;
+  readonly runtimeMins: number | null;
+  /**
    * Struck, and now the whole of what the row needs to decide what to offer.
    *
    * #89 carried a second flag beside this one — `unwatchable`, *one of this episode's
@@ -3419,6 +3452,12 @@ export async function getTitleDetail(
       seasonNo: episode.seasonNo,
       episodeNo: episode.episodeNo,
       name: episode.name,
+      // The three columns #246 put in the mirror, read here for #253's episode page.
+      // `EpisodeDetail`'s own docblock holds the argument for their being on this row
+      // rather than on a second read beside it.
+      stillPath: episode.stillPath,
+      airDate: episode.airDate,
+      runtimeMins: episode.runtimeMins,
     })
     .from(episode)
     .where(eq(episode.titleId, row.titleId))
@@ -3440,6 +3479,9 @@ export async function getTitleDetail(
       seasonNo: one.seasonNo,
       episodeNo: one.episodeNo,
       name: one.name,
+      stillPath: one.stillPath,
+      airDate: one.airDate,
+      runtimeMins: one.runtimeMins,
       watched: watchedEpisodeIds.has(one.id),
       upNext: one.id === upNextEpisodeId,
     })),

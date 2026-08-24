@@ -662,6 +662,33 @@
   border-radius: var(--poster-radius, 7px);
 }
 
+/* The still (#253) — the frame at the top of an episode's page, over the `still_path`
+   column #246 put in the mirror. `app/(signed-in)/library/episode-still.tsx` is its
+   component and holds the argument; this is the poster's rule at the other ratio.
+
+   `16 / 9` rather than `2 / 3`: a still is a frame from the episode, so its ratio is the
+   broadcast one and not the printed one. Everything else is deliberately identical to
+   `poster` above — the same `raised` ground, the same `overflow: hidden`, the same
+   `relative` — because these are two crops of one treatment and not two treatments.
+
+   `background: var(--color-raised)` is the whole of the missing-artwork state, which #245
+   asks for as *a deliberate placeholder, so that a missing still does not collapse the
+   row*: the ratio holds the space and the ground fills it. No glyph goes in here, for the
+   reason `poster.tsx` refuses one.
+
+   One radius, no custom property. `poster` reads `--poster-radius` because three surfaces
+   draw a poster at three different radii; one surface draws a still, so a variable here
+   would be a knob with nothing on the other end of it. `7px` is `poster`'s own default,
+   so the two agree by default rather than by coincidence, and the day a second surface
+   wants a different one is the day this grows the variable. */
+@utility still {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-raised);
+  aspect-ratio: 16 / 9;
+  border-radius: 7px;
+}
+
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────
    A wash of the accent across the row it marks, scaling in from the left and fading out
    over the same run, so nothing accent-coloured is left once it settles — the row itself,

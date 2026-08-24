@@ -859,6 +859,36 @@ is describing the committed library.
   every surface that renders one renders the name beside it as real text, so an `alt` here
   would make a screen reader read every title twice.
 
+### The still — issue #253
+
+The frame at the top of an episode's page, over the `still_path` column issue #246 put in
+the mirror. **It is the poster's rule at the other ratio, not a second treatment.** Same
+`raised` ground, same `overflow: hidden`, same plain `<img>` for the same ADR-0001 reason,
+same `alt=""` and `aria-hidden` because the episode is named as real text directly beneath
+it. `app/(signed-in)/library/episode-still.tsx`, and the `still` utility beside `poster` in
+`app/globals.css`.
+
+Three things differ, and all three follow from what a still *is*:
+
+- **`16 / 9`, not `2 / 3`.** A still is a frame from the episode, so its ratio is the
+  broadcast one and not the printed one.
+- **Its own CDN ladder — `300 · 780`.** These are the sizes TMDB publishes for stills.
+  `154` and `342` are poster widths and answer with nothing here, so a shared constant
+  would have to be the union of two ladders and would be wrong for both.
+- **One radius, no custom property.** `poster` reads `--poster-radius` because three
+  surfaces draw a poster at three different radii. One surface draws a still, so a variable
+  would be a knob with nothing on the other end of it. It takes `poster`'s own `7px`
+  default, so the two agree by default rather than by coincidence.
+
+**The missing-artwork state is the frame, and nothing inside it.** Issue #245's user story
+48 asks for *a deliberate placeholder, so that a missing still does not collapse the row*,
+and it is worth being exact that this is the same answer §3 already gives for the poster
+rather than an exception to it: what was asked for is that the space is **held**, not that
+it is captioned, and holding it is what an `aspect-ratio` does. No glyph, no wordmark, no
+"no image" apology goes in the well — `app/poster.tsx` refuses one on the grounds that it
+*would be the only apology in a world that has none*, and nothing about an episode makes
+that less true.
+
 ### The morph
 
 Selecting a tile morphs its poster into the one on the surface that opens — the desktop

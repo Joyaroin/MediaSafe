@@ -37,6 +37,12 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     seasonNo: 1,
     episodeNo: 1,
     name: "Winter Is Coming",
+    // #253's three mirrored fields. Null by default, and the season list reads none of
+    // them: the episode page is where a still, a date and a runtime are printed, and this
+    // file's subject is the row that links to it.
+    stillPath: null,
+    airDate: null,
+    runtimeMins: null,
     watched: false,
     upNext: false,
     ...overrides,
