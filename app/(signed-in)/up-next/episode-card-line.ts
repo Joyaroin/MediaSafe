@@ -48,6 +48,22 @@ function pad(number: number): string {
  * or counting released episodes — would be a second answer to *how much is left* that
  * could disagree with the sort key ordering the very rail these cards sit on.
  *
+ * ── It counts unreleased episodes, and the prototype's mock does not ─────────────────
+ *
+ * `mediasafe-mobile.html`'s `remainingAfter` skips anything unreleased, so for a show with
+ * announced-but-unaired episodes this prints a larger number than the mock would. **The
+ * divergence is deliberate and the mock is not the authority here.** The handoff binds
+ * *appearance*; what the word *Remaining* counts is a domain question, and `CONTEXT.md`
+ * answers it — *how much of a show you have left* — with `db/views.ts` arguing the
+ * unreleased half at length, because *how much of the whole series is left* is a different
+ * question from *how much of it could I watch today*.
+ *
+ * The rail is what settles it. A **coming back** card's episode is unaired by definition
+ * (`COMING_BACK`), and on most such shows every remaining episode is. Counting released
+ * episodes only would print `+0 remaining` on precisely the cards whose entire reason for
+ * being on the rail is that there is more coming — the most confidently wrong number this
+ * line could carry.
+ *
  * **Zero is printed, not withheld.** `+0 remaining` is the most useful thing this line
  * ever says: the rule the count exists to serve is *am I three from the end or thirty*,
  * and *none* is the end. An absent line at zero would also be indistinguishable from a

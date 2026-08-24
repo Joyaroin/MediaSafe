@@ -56,6 +56,12 @@ const EPISODE_CARD = `${UP_NEXT}/up-next-episode-card.tsx`;
 const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
 const NOTHING = `${UP_NEXT}/up-next-nothing.tsx`;
 
+/** Every source file a docblock could legitimately be citing. Built once — the citation
+ *  check below asks it a question per reference. */
+const ALL_SOURCES = ["app", "db", "cache", "errors", "lib", "tmdb"].flatMap((directory) =>
+  sourceFiles(path.join(REPOSITORY_ROOT, directory)),
+);
+
 describe("the landing screen shows two rails and the five groups are gone", () => {
   it("renders the two rails under the phone's own breakpoint", () => {
     const page = sourceAt(PAGE);
@@ -140,6 +146,72 @@ describe("the landing screen shows two rails and the five groups are gone", () =
       const cites = gone.test(readFileSync(file, "utf8"));
       expect({ file: relative, cites }).toEqual({ file: relative, cites: false });
     }
+  });
+
+  /**
+   * **And the same again by *component name*, which is the spelling the two checks above
+   * miss.**
+   *
+   * They match a backticked *path*, and three stale references survived them by naming the
+   * component instead — `UpNextGroups` in this route's own `loading.tsx`, and `GroupTile`
+   * in `title-detail-view.tsx` and `programme-note-content.tsx`, the last two asserting a
+   * poster morph whose source this ticket deleted. A docblock that names a deleted export
+   * reads exactly as authoritatively as one that names a deleted file, and `CLAUDE.md` does
+   * not distinguish them: *the live system outranks any note about it*.
+   *
+   * Word-bounded, so `RailSection` — which genuinely descends from the deleted
+   * `GroupSection` and says so in the past tense — is not caught by a substring.
+   */
+  it("leaves no citation of the deleted group components by name either", () => {
+    const gone = /\b(UpNextGroups|GroupTile|GroupScreen|HomeGroup|OngoingTile|OngoingGroup|TitleSheetProvider)\b/;
+
+    for (const file of sourceFiles(path.join(REPOSITORY_ROOT, "app"))) {
+      const relative = path.relative(REPOSITORY_ROOT, file);
+      const cites = gone.test(readFileSync(file, "utf8"));
+      expect({ file: relative, cites }).toEqual({ file: relative, cites: false });
+    }
+  });
+
+  /**
+   * The counterpart failure: a citation of a file that never existed. `up-next-phone-rail.tsx`
+   * cited `up-next-film-card.tsx` — the film card is a local function inside
+   * `up-next-film-rail.tsx` — which no deletion check could catch, because there was
+   * nothing to delete. Every backticked `.tsx`/`.ts` path this ticket's own files cite must
+   * resolve.
+   */
+  it("cites only files that exist, from every file this ticket added", () => {
+    const mine = [
+      SURFACE,
+      RAIL_SECTION,
+      EPISODE_RAIL,
+      EPISODE_CARD,
+      FILM_RAIL,
+      NOTHING,
+      `${UP_NEXT}/episode-card-line.ts`,
+    ];
+
+    let checked = 0;
+
+    for (const file of mine) {
+      const source = sourceAt(file);
+      const cited = [...source.matchAll(/`([a-z0-9-]+\/)*([a-z0-9-]+\.tsx?)`/g)].map(
+        ([whole]) => whole.slice(1, -1),
+      );
+      checked += cited.length;
+
+      for (const reference of cited) {
+        // A bare basename is cited relative to nothing in particular, so the check is that
+        // some file of that name exists somewhere under `app/`, `db/` or `cache/`.
+        const basename = path.basename(reference);
+        const found = ALL_SOURCES.some((one) => path.basename(one) === basename);
+        expect({ file, reference, found }).toEqual({ file, reference, found: true });
+      }
+    }
+
+    // A floor, because a regex that matched nothing would pass every assertion above
+    // without looking at a single citation — the failure mode this repository writes
+    // `expect(...).toBeGreaterThan(0)` for everywhere else.
+    expect(checked).toBeGreaterThan(20);
   });
 });
 

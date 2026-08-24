@@ -91,7 +91,7 @@ export function UpNextEpisodeCard({
         stillPath={entry.stillPath}
         airDate={entry.airDate}
         runtimeMins={entry.runtimeMins}
-        remainingAfter={remainingAfter(entry.remaining, 0, false)}
+        remainingAfter={countAfterShown(entry.remaining, 0, false)}
         aboveFold={aboveFold}
         control={null}
         sweep={null}
@@ -177,7 +177,7 @@ function MarkableCard({
       stillPath={marked === 0 ? entry.stillPath : null}
       airDate={marked === 0 ? entry.airDate : null}
       runtimeMins={marked === 0 ? entry.runtimeMins : null}
-      remainingAfter={remainingAfter(entry.remaining, marked, spent)}
+      remainingAfter={countAfterShown(entry.remaining, marked, spent)}
       aboveFold={aboveFold}
       control={<MarkControl mark={mark} />}
       sweep={mark.phase === "marking" ? <WatchSweep onSettled={mark.settle} /> : null}
@@ -197,6 +197,11 @@ function indexOf(entry: UpNextEntry, episode: QueuedEpisode): number {
 /**
  * What is left of this show **after** the episode the card is drawing.
  *
+ * Named for what it computes rather than for the prop it fills. It used to be
+ * `remainingAfter`, which read `remainingAfter={remainingAfter(entry.remaining, …)}` at
+ * both call sites and put three near-identical names — the view's `remaining` field, this
+ * function, and `CardBody`'s prop — within one expression of each other.
+ *
  * `library_entry_remaining` counts every unwatched episode of the show (`db/views.ts`), so
  * the live remainder is that number less the marks made since the page loaded. Whether one
  * more comes off for the episode being drawn depends on which episode that is:
@@ -211,7 +216,7 @@ function indexOf(entry: UpNextEntry, episode: QueuedEpisode): number {
  * briefly make the two disagree, and a negative remainder is the one answer that is
  * certainly wrong.
  */
-function remainingAfter(remaining: number, marked: number, spent: boolean): number {
+function countAfterShown(remaining: number, marked: number, spent: boolean): number {
   const unwatched = Math.max(0, remaining - marked);
   return spent ? unwatched : Math.max(0, unwatched - 1);
 }

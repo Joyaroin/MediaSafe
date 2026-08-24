@@ -16,8 +16,9 @@
  * than the `<section>` precisely so it can bleed to the viewport edges — which is what
  * lets the trailing card be cut by the edge, and that overhang is the whole of *leave the
  * next card peeking*. `snap-x snap-mandatory` here and `snap-start` on each card
- * (`up-next-episode-card.tsx`, `up-next-film-card.tsx`) are two halves of one rule: a
- * scroll comes to rest on a whole card, on a flick as much as on a drag.
+ * (`up-next-episode-card.tsx`, and `FilmCard` inside `up-next-film-rail.tsx`) are two
+ * halves of one rule: a scroll comes to rest on a whole card, on a flick as much as on a
+ * drag.
  *
  * `gap-3` is the handoff's `12` for a rail, against the deleted groups' `14px` for a run of
  * bare posters — a card carries its own padding, so the space between two of them reads

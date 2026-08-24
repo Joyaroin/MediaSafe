@@ -21,8 +21,12 @@ import { ProgrammeNoteContent } from "../programme-note-content";
  * relying on a topology property to be safe.
  *
  * `posterTransitionName` is `group-poster-{id}` — issue #141, and the half of the morph
- * this route owns. `GroupTile` carries the other half; both name families and the reason
- * this one differs from the desktop pane's `rail-poster-{id}` are on
+ * this route owns. **It currently has no other half**: the phone's Up next group tile
+ * minted the matching name and #250 deleted it, so nothing produces `group-poster-{id}`
+ * any more and the browser runs no morph into this page. That is inert rather than broken,
+ * and `poster-transition-name.ts` carries the whole argument and the decision to leave the
+ * name standing for a future source rather than delete both halves. Both name families and
+ * the reason this one differs from the desktop pane's `rail-poster-{id}` are on
  * `programme-note-content.tsx`'s own docblock. Next's route navigations are transitions
  * on their own — Next's [View transitions guide](https://nextjs.org/docs/app/guides/view-transitions)
  * says so — so nothing here has to ask for one the way the desktop pane's `select` does.
