@@ -152,6 +152,9 @@ describe("catalogueResults", () => {
       name: "Star Wars",
       releaseYear: 1977,
       posterPath: "/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg",
+      // The **audience score** — TMDB's voters, not your rating. `CatalogueResult`'s own
+      // note has the argument for why the two carry different names.
+      audienceScore: 8.208,
     });
   });
 
@@ -162,6 +165,7 @@ describe("catalogueResults", () => {
       name: "Game of Thrones",
       releaseYear: 2011,
       posterPath: "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+      audienceScore: 8.438,
     });
   });
 
@@ -173,6 +177,7 @@ describe("catalogueResults", () => {
       name: "Star Wars: Andor - Season 3",
       releaseYear: null,
       posterPath: null,
+      audienceScore: null,
     });
   });
 

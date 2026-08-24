@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useRef, useState } from "react";
 
 import { referenceFor } from "@/errors/reference";
@@ -159,14 +161,32 @@ export function CatalogueResultRow({
           costs nothing on the wire. */}
       <Poster
         posterPath={result.posterPath}
+        name={result.name}
         width={52}
         className="w-[52px] shrink-0 [--poster-radius:9px]"
         aboveFold={aboveFold}
       />
 
       <div className="min-w-0 flex-1">
+        {/* The name is a link into catalogue detail — the thing this row could not do
+            until now.
+
+            A result had exactly one affordance, *Add*, so the only way to find out what a
+            title was before taking it into your library was to add it and look. That is
+            the wrong order for the one screen whose whole job is titles you have never
+            seen. `/titles/[kind]/[tmdbId]` already existed for an unowned title and is
+            intercepted into a dialog from here.
+
+            The **name** rather than the whole row: the row also carries *Add*, and a link
+            wrapping a button is neither a valid nesting nor an honest target — a press
+            near the edge would have to guess which of the two was meant. */}
         <h2 className="text-card font-semibold leading-tight tracking-[-0.012em] text-ink">
-          {result.name}
+          <Link
+            href={`/titles/${result.kind}/${result.tmdbId}`}
+            className="transition-opacity duration-[var(--dur-fast)] hover:opacity-80"
+          >
+            {result.name}
+          </Link>
         </h2>
         <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
           {/* The year and the kind, and nothing else. A synopsis here would be both the

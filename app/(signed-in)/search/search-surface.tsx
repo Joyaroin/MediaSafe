@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { DEFAULT_KIND_MODE, type KindMode } from "@/app/(signed-in)/library/kind-mode";
+import { KindModeControl } from "@/app/(signed-in)/library/kind-mode-control";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { catalogueKeyOf } from "@/tmdb/mirror";
@@ -59,7 +61,31 @@ type Phase =
   | { kind: "empty"; query: string }
   | { kind: "failed"; reference: string | null };
 
-export function SearchSurface() {
+export function SearchSurface({
+  rails,
+}: {
+  /**
+   * One *Because you watched* rail per mode, already rendered on the server.
+   *
+   * ── Why both arrive, rather than the one the reader is looking at ───────────────────
+   *
+   * The rail follows the mode, and the mode is client state — so a single rail chosen on
+   * the server would be the wrong one the moment anybody pressed *Films*. The two honest
+   * ways to fix that are to fetch on switch, or to render both and show one.
+   *
+   * Both, because fetching on switch would make this client component the thing that
+   * reaches TMDB, which is a fourth pattern for reading the catalogue in a codebase that
+   * has three — and it would put a spinner on a control whose whole job is to be
+   * instant. Each rail streams inside its own `Suspense` (`page.tsx`), so neither gates
+   * the field, and each is cached under its seed's tag (`cache/borrowed-facts.ts`), so
+   * the second one is not a second cost on any visit after the first.
+   *
+   * Optional, and each may be `null`: an account with no watches of a kind has no seed,
+   * and the rail is then absent rather than empty (`SPEC.md` §3).
+   */
+  rails?: Partial<Record<KindMode, React.ReactNode>>;
+}) {
+  const [mode, setMode] = useState<KindMode>(DEFAULT_KIND_MODE);
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 
@@ -92,12 +118,18 @@ export function SearchSurface() {
   );
 
   /** Ask, after `delayMs` of quiet, and ignore the answer if a newer ask has started. */
-  function ask(trimmed: string, delayMs: number) {
+  /**
+   * `asked` is passed rather than read from state inside the timeout, for the same reason
+   * `newestRequest` exists: by the time this fires the reader may have switched modes, and
+   * a request that resolves its own kind at fire time would search the new mode for a
+   * query typed under the old one.
+   */
+  function ask(asked: KindMode, trimmed: string, delayMs: number) {
     if (timer.current) clearTimeout(timer.current);
     const request = ++newestRequest.current;
 
     timer.current = setTimeout(async () => {
-      const outcome = await search(trimmed);
+      const outcome = await search(asked, trimmed);
       if (request !== newestRequest.current) return;
 
       if (!outcome.ok) {
@@ -128,7 +160,32 @@ export function SearchSurface() {
     }
 
     setPhase({ kind: "searching" });
-    ask(trimmed, DEBOUNCE_MS);
+    ask(mode, trimmed, DEBOUNCE_MS);
+  }
+
+  /**
+   * Switching mode re-asks the same question of the other kind, rather than clearing the
+   * field.
+   *
+   * The query is still the reader's — *Fargo* is a film and a show — and a mode switch is
+   * the fastest way to say *no, the other one*. Clearing it would make the control cost a
+   * retype. The results on screen are wrong the instant the mode changes, though, so this
+   * goes through `searching` rather than leaving the old kind's list sitting under the new
+   * label; `ask` at zero delay because a press is a decision, not a keystroke.
+   */
+  function changeMode(next: KindMode) {
+    setMode(next);
+
+    const trimmed = query.trim();
+    if (!trimmed) {
+      if (timer.current) clearTimeout(timer.current);
+      newestRequest.current += 1;
+      setPhase({ kind: "idle" });
+      return;
+    }
+
+    setPhase({ kind: "searching" });
+    ask(next, trimmed, 0);
   }
 
   /** *Try again*, from the failure treatment. The same query, asked again. */
@@ -142,12 +199,16 @@ export function SearchSurface() {
     setPhase({ kind: "searching" });
     // No debounce: a press is a decision, not a keystroke, and there is nothing to wait
     // for the reader to finish saying.
-    ask(trimmed, 0);
+    ask(mode, trimmed, 0);
   }
 
   return (
     <>
-      <SearchField value={query} onChange={onChange} />
+      <KindModeControl value={mode} onChange={changeMode} />
+
+      <div className="mt-3">
+        <SearchField mode={mode} value={query} onChange={onChange} />
+      </div>
 
       <div className="mt-8">
         {phase.kind === "idle" ? <NotYetTyped /> : null}
@@ -158,6 +219,15 @@ export function SearchSurface() {
         ) : null}
         {phase.kind === "results" ? <Results results={phase.results} /> : null}
       </div>
+
+      {/* Only under the resting state. The rail is what there is to look at when you have
+          not asked anything yet; once results, an empty answer or a failure is on screen,
+          a second list of titles underneath it competes with the answer to the question
+          the reader actually asked.
+
+          It is a Server Component handed down as a node, so this client component never
+          becomes the thing that fetches it — see `page.tsx`. */}
+      {phase.kind === "idle" ? rails?.[mode] : null}
     </>
   );
 }
@@ -170,9 +240,9 @@ export function SearchSurface() {
  * mid-flight — and that rejects here instead. Reported from the client, which is where
  * that failure actually happened, in the same shape `app/error.tsx` uses.
  */
-async function search(query: string): Promise<SearchOutcome> {
+async function search(kind: KindMode, query: string): Promise<SearchOutcome> {
   try {
-    return await searchCatalogueAction(query);
+    return await searchCatalogueAction(kind, query);
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search" }) };
   }
@@ -201,12 +271,22 @@ async function search(query: string): Promise<SearchOutcome> {
  * as one of the three things most often built wrong.
  */
 function SearchField({
+  mode,
   value,
   onChange,
 }: {
+  mode: KindMode;
   value: string;
   onChange: (value: string) => void;
 }) {
+  /**
+   * The field says which kind it is searching, because the control above it has already
+   * made that a question the reader can get wrong. Written out rather than interpolated
+   * from the mode's label: `CONTEXT.md` binds the words on screen, and a sentence built at
+   * runtime is a sentence nobody reviewed.
+   */
+  const label = mode === "film" ? "Search for a film" : "Search for a show";
+
   return (
     <label className="field-well flex h-11 items-center gap-2.5 px-3.5">
       {/* The filter field's bars, in the same rectilinear vocabulary as the press mark. A
@@ -226,11 +306,11 @@ function SearchField({
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Search the catalogue"
+        placeholder={label}
         autoComplete="off"
         // The label's own text is the placeholder, which a placeholder may not be on its
         // own — this is the accessible name, and it stays whatever the field says.
-        aria-label="Search the catalogue"
+        aria-label={label}
         className="w-full bg-transparent text-tile text-ink placeholder:text-dim focus:outline-none"
       />
     </label>

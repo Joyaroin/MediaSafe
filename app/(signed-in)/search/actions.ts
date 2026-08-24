@@ -9,7 +9,7 @@ import {
   libraryCatalogueKeys,
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
-import { searchCatalogue, titleMirror } from "@/tmdb/catalogue";
+import { searchCatalogueOfKind, titleMirror } from "@/tmdb/catalogue";
 import {
   catalogueKeyFrom,
   catalogueKeyOf,
@@ -76,7 +76,10 @@ export type AddOutcome =
  * for your own library, and this one has never seen your library except to answer *do you
  * have this*.
  */
-export async function searchCatalogueAction(query: string): Promise<SearchOutcome> {
+export async function searchCatalogueAction(
+  kind: TitleKind,
+  query: string,
+): Promise<SearchOutcome> {
   const userId = await requireUserId();
 
   try {
@@ -86,7 +89,18 @@ export async function searchCatalogueAction(query: string): Promise<SearchOutcom
     // answer is that nothing was asked, not that nothing matched.
     if (!trimmed) return { ok: true, results: [] };
 
-    const results = await searchCatalogue(trimmed);
+    /**
+     * One kind, chosen by the screen's Films/Shows mode, and therefore two endpoints
+     * rather than a filter over `/search/multi`.
+     *
+     * `tmdb/mirror.ts` argued for the multi-search when this field returned both kinds,
+     * and that argument was about ranking films and shows *against each other*. With a
+     * mode there is nothing to rank across: the reader has said which kind they want, and
+     * filtering a mixed response after the fact would return three results whenever
+     * seventeen of twenty were the other kind — and would hide the best film for a query
+     * behind twenty better-ranked shows.
+     */
+    const results = await searchCatalogueOfKind(kind, trimmed);
     const held = await libraryCatalogueKeys(userId, results);
 
     return {

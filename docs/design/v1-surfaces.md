@@ -95,6 +95,13 @@ Plus three surfaces that belong to no single screen, all mandated by
 **Not in v1, and no space reserved for them:** watchlist / upcoming / lists rails, discovery,
 recommendations, watch providers, stats, day streak, year in review, custom lists.
 
+> **Most of that list has since been built, and this line is kept rather than edited.** Watch
+> providers, stats, custom lists, the rails and — with the Films/Shows change — **recommendations**
+> are all shipped. The sentence records what v1 deliberately did not reserve space for, which is
+> still the reason each of them had to arrive with its own empty, zero-match and failed states
+> rather than filling a gap left waiting for it. Where a surface below describes a screen as it was
+> in v1 and the build has moved, the build is what ships and `DESIGN.md` is the live contract.
+
 ### Screen notes
 
 **1 — Sign in.** One control: *Continue with Google*. There is no password, no magic link and no

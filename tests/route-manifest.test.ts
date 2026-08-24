@@ -289,6 +289,21 @@ const NO_PENDING_STATE = [
    * boundary here would draw a second one for a read the route does not make.
    */
   "/search",
+  /**
+   * §9's first shape taken to its limit: **the modal slots' closers, which read nothing
+   * and render nothing.**
+   *
+   * `@title/[...catchAll]/page.tsx` and `@episode/[...catchAll]/page.tsx` both compile to
+   * this one route. Their entire body is `return null`, and they exist because
+   * `parallel-routes.md` requires a slot to *match* something that renders nothing in
+   * order to close on a soft navigation — without them an open dialog follows the reader
+   * to the next screen. A pending line for a component whose finished state is nothing at
+   * all would be a dim line flashing over an unrelated page.
+   *
+   * The slots' *intercepted* pages are a different matter and are not exempt: they read,
+   * so they each carry a `loading.tsx`, and it renders inside the sheet.
+   */
+  "/[...catchAll]",
 ] as const;
 
 /**
@@ -590,9 +605,39 @@ const MODAL_ROUTES = [
      * returns me to exactly where I was scrolled*. Two origins reach it, a rail card on the
      * landing screen and a row in a season list, and they share this one interception
      * because the slot is on the layout they have in common.
+     *
+     * The slot was `@modal` when it was the only one. It is `@episode` now that it is not.
      */
     route: "/library/[entryId]/episode/[episodeId]",
-    slot: "@modal",
+    slot: "@episode",
+  },
+  {
+    /**
+     * Title detail, over whatever the reader was looking at — the gap #254 left. Pressing
+     * a library cell pushed `/library/[entryId]` as a full route with a *Back to library*
+     * bar, so episode detail overlaid and title detail navigated away, in the same
+     * application, from cards that look alike.
+     *
+     * **A second slot rather than a second route in the first**, because these two nest: a
+     * title sheet with an episode sheet opened from inside it. One slot holds one route,
+     * so a shared slot would have rendered the episode *instead of* the title.
+     */
+    route: "/library/[entryId]",
+    slot: "@title",
+  },
+  {
+    /**
+     * Catalogue detail — a title you do **not** own, over a search result or a card in the
+     * *Because you watched* rail.
+     *
+     * **In `@title` rather than a third slot**, and that is the interesting part. Two slots
+     * exist because title and episode detail *nest*; nothing nests with this one. A
+     * catalogue title and a library title are mutually exclusive by construction — you are
+     * looking at something you own or something you are not — so they share a slot and
+     * this segment is a sibling of the library one inside it.
+     */
+    route: "/titles/[kind]/[tmdbId]",
+    slot: "@title",
   },
 ] as const;
 
@@ -629,15 +674,46 @@ describe("episode detail arrives as a modal over what you were looking at", () =
    * empty, if the slot were renamed, or if the interception stopped compiling — three ways
    * for the audit to pass while proving nothing.
    */
-  it("compiles the intercepted render into the @modal slot", () => {
-    const intercepted = built.pages.filter((page) => page.slot === "@modal");
+  it("compiles the intercepted renders into the slots named for them", () => {
+    const interceptedIn = (slot: string) =>
+      built.pages.filter((page) => page.slot === slot && page.route.includes("(."));
 
-    expect(intercepted.map((page) => page.segment)).toEqual([
-      "(signed-in)/@modal/(.)library/[entryId]/episode/[episodeId]",
+    expect(interceptedIn("@episode").map((page) => page.segment)).toEqual([
+      "(signed-in)/@episode/(.)library/[entryId]/episode/[episodeId]",
     ]);
-    expect(intercepted.map((page) => withoutInterception(page.route))).toEqual([
+    expect(interceptedIn("@episode").map((page) => withoutInterception(page.route))).toEqual([
       "/library/[entryId]/episode/[episodeId]",
     ]);
+
+    /**
+     * The optional catch-all is asserted, not incidental. `[[...rest]]` is what keeps the
+     * title sheet matched at `/library/…/episode/…`, one segment deeper than the route it
+     * intercepts — which is what lets the episode sheet stand *over* it rather than
+     * replacing it. Written as `[[...rest]]` it survives; written as `[entryId]` alone the
+     * segment stops matching, and the sheet lives on only as router state the framework
+     * happens to be keeping. Both build. Only one of them nests.
+     */
+    expect(interceptedIn("@title").map((page) => page.segment).sort()).toEqual([
+      "(signed-in)/@title/(.)library/[entryId]/[[...rest]]",
+      "(signed-in)/@title/(.)titles/[kind]/[tmdbId]",
+    ]);
+    expect(
+      interceptedIn("@title")
+        .map((page) => withoutInterception(page.route))
+        .sort(),
+    ).toEqual(["/library/[entryId]/[[...rest]]", "/titles/[kind]/[tmdbId]"]);
+
+    /**
+     * And the catalogue segment carries **no** catch-all, optional or otherwise.
+     *
+     * Its neighbour needs one so the title sheet keeps matching when an episode opens
+     * deeper. Nothing opens deeper than catalogue detail, so a catch-all here would match
+     * URLs that do not exist — and would quietly claim any route added under `/titles/…`
+     * later, which is a decision the person adding it should get to make.
+     */
+    expect(
+      interceptedIn("@title").map((page) => page.segment.includes("[[...")),
+    ).toEqual([true, false]);
   });
 
   /**
@@ -652,12 +728,16 @@ describe("episode detail arrives as a modal over what you were looking at", () =
    * here rather than in somebody's browser.
    */
   it("intercepts only a navigation from inside the application", () => {
-    const [rewrite, ...rest] = built.rewrites.beforeFiles;
+    // One rewrite per interception, and the count is asserted rather than assumed: a
+    // rewrite appearing without a `MODAL_ROUTES` entry behind it is the authored rewrite
+    // `RoutingAssumptions` exists to catch.
+    expect(built.rewrites.beforeFiles).toHaveLength(MODAL_ROUTES.length);
 
-    expect(rest).toEqual([]);
-    expect(rewrite.has).toEqual([
-      { type: "header", key: "next-url", value: expect.any(String) },
-    ]);
+    for (const rewrite of built.rewrites.beforeFiles) {
+      expect(rewrite.has).toEqual([
+        { type: "header", key: "next-url", value: expect.any(String) },
+      ]);
+    }
   });
 
   /**
@@ -667,7 +747,8 @@ describe("episode detail arrives as a modal over what you were looking at", () =
    * *the modal is broken*, and it reads better named than buried in a fifth empty list.
    */
   it("has a default, so every other signed-in route still renders", () => {
-    expect(hasDefault("@modal")).toBe(true);
+    expect(hasDefault("@episode")).toBe(true);
+    expect(hasDefault("@title")).toBe(true);
   });
 });
 

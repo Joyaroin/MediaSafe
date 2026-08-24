@@ -1,6 +1,10 @@
+import { Suspense } from "react";
+
 import { requireUserId } from "@/lib/session";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
+import { KIND_MODES } from "@/app/(signed-in)/library/kind-mode";
 import { NavTransition } from "../nav-transition";
+import { RecommendationRail } from "./recommendation-rail";
 import { SearchSurface } from "./search-surface";
 
 /**
@@ -44,7 +48,37 @@ export default async function SearchPage() {
    * a POST endpoint in its own right and cannot inherit a check that ran on a page render
    * minutes earlier.
    */
-  await requireUserId();
+  const userId = await requireUserId();
+
+  /**
+   * One rail per mode, each built here and handed down as an already-rendered node.
+   *
+   * ── This page never awaits them ─────────────────────────────────────────────────────
+   *
+   * `<RecommendationRail>` is an async Server Component *constructed* rather than called,
+   * so the read inside it does not gate this page's shell — the field is interactive while
+   * TMDB is still answering. That is issue #218's shape, the one
+   * `live-title-facts-streamed.tsx` uses for the three live facts, and it is why each rail
+   * sits inside its own `Suspense`.
+   *
+   * **No fallback.** The three live facts each show a placeholder because they are holes
+   * in a page that is otherwise complete, and a hole with nothing in it reads as missing.
+   * A rail is not a hole: it appears under the field or it does not, and reserving a strip
+   * of pending space for something that may turn out to be absent entirely — an account
+   * with no watches — would be `SPEC.md` §9's reserved space for a thing with nothing to
+   * act on. It arrives when it arrives.
+   *
+   * Built from `KIND_MODES` rather than written out twice, so a mode cannot be added to
+   * that list and silently get no rail.
+   */
+  const rails = Object.fromEntries(
+    KIND_MODES.map((mode) => [
+      mode.value,
+      <Suspense key={mode.value} fallback={null}>
+        <RecommendationRail userId={userId} mode={mode.value} />
+      </Suspense>,
+    ]),
+  );
 
   return (
     <NavTransition>
@@ -61,7 +95,7 @@ export default async function SearchPage() {
         </p>
 
         <div className="mt-4 flex-1">
-          <SearchSurface />
+          <SearchSurface rails={rails} />
         </div>
 
         <TmdbAttribution className="mt-12 pt-3" />

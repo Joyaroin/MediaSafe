@@ -1,9 +1,4 @@
-import { TmdbAttribution } from "@/app/tmdb-attribution";
-import { cachedTitleDetail } from "@/cache/tags";
-import { requireUserId } from "@/lib/session";
-import { LiveTitleFactsStreamed } from "../live-title-facts-streamed";
-import { BackToLibraryBar } from "./back-to-library-bar";
-import { TitleDetailView } from "./title-detail-view";
+import { TitleDetailBody } from "./title-detail-body";
 
 /**
  * Title detail, on the phone — a route you push and pop (issue #58, and the third of the
@@ -48,28 +43,10 @@ export default async function TitleDetailPage({
   params: Promise<{ entryId: string }>;
 }) {
   const { entryId } = await params;
-  const userId = await requireUserId();
-  const detail = await cachedTitleDetail(userId, entryId);
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <BackToLibraryBar />
-
-      <TitleDetailView
-        detail={detail}
-        liveFacts={
-          <LiveTitleFactsStreamed
-            userId={userId}
-            kind={detail.kind}
-            tmdbId={detail.tmdbId}
-          />
-        }
-      />
-
-      {/* Always on screen here, unlike the desktop pane's conditional footer: this route
-          only ever renders once the mirrored read above has already succeeded, so
-          borrowed data is on screen the moment there is a page to attribute it on. */}
-      <TmdbAttribution className="mt-4 px-6 py-3" />
+      <TitleDetailBody entryId={entryId} />
     </main>
   );
 }

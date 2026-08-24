@@ -112,6 +112,7 @@ function FilmCard({
       <Link href={`/library/${film.libraryEntryId}`} className="pressable group block">
         <Poster
           posterPath={film.posterPath}
+          name={film.titleName}
           width={FILM_WIDTH}
           className="w-full transition duration-150 group-hover:brightness-110 [--poster-radius:12px]"
           aboveFold={aboveFold}

@@ -15,17 +15,43 @@ import { sheet } from "@/app/motion";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 
 /**
- * The dialog episode detail arrives in — issue #254, and the only thing in this
- * application that is a modal over a *route* rather than over a page's own state.
+ * The dialog a *route* arrives in, rather than a page's own state — issue #254 built it
+ * for episode detail, and it now carries title detail too.
+ *
+ * ── Why this is one component and not two ────────────────────────────────────────────
+ *
+ * It was `EpisodeModal`, in `@modal/`, when episode detail was the only thing that
+ * overlaid. Nothing in it was ever about episodes: the sheet, the swipe-to-dismiss rules,
+ * the `showModal()` focus contract, the close control and the scroll reset are facts about
+ * *a route presented as a sheet*, and the one episode-shaped thing in the file was the
+ * hard-coded `aria-label`. That is now a prop, and the file is named for what it does.
+ *
+ * The alternative — copying it beside a `TitleModal` — would have forked the two hardest
+ * things here, the drag arbitration and the focus-restoration gap that Back leaves open.
+ * Two copies of that is two chances to fix a bug once.
  *
  * ── What is a route's problem and what is this file's ────────────────────────────────
  *
- * Nothing here decides *what* is on screen. The `@modal` slot on the signed-in layout and
- * the intercepted segment beside this file decide that
- * (`(.)library/[entryId]/episode/[episodeId]/page.tsx`), and the framework decides which of
- * the two renders of `/library/…/episode/…` a given arrival gets: intercepted for a press
- * inside the app, the full page for an address typed, shared or refreshed. This file owns
- * the dialog and the ways out of it, and is handed its contents already rendered.
+ * Nothing here decides *what* is on screen. The two slots on the signed-in layout —
+ * `@title` and `@episode` — and the intercepted segments inside them decide that, and the
+ * framework decides which of the two renders of a given URL an arrival gets: intercepted
+ * for a press inside the app, the full page for an address typed, shared or refreshed.
+ * This file owns the dialog and the ways out of it, and is handed its contents already
+ * rendered.
+ *
+ * ── Two of these can be on screen at once, and that is deliberate ───────────────────
+ *
+ * A title dialog opened from the library, with an episode dialog opened over it from the
+ * season grid inside it. They are two slots because one slot holds one route: the episode
+ * would otherwise *replace* the title rather than stand over it. `@title`'s intercepted
+ * segment carries an optional catch-all so that it still matches at the episode's deeper
+ * URL — proven in a throwaway probe before any of this was built, because
+ * `parallel-routes.md` promises only that an unmatched slot's *state* is kept on a soft
+ * navigation, and a dialog that exists only as retained router state is a dialog that
+ * vanishes the first time anything re-resolves.
+ *
+ * `showModal()` puts each in the browser's top layer in call order, so the episode lands
+ * over the title with no `z-index` anywhere, and Escape closes the topmost first.
  *
  * ── The native `<dialog>`, for the third time and for the same three things ──────────
  *
@@ -104,7 +130,18 @@ const DISMISS: DragRules = {
   commits: [1],
 };
 
-export function EpisodeModal({ children }: { children: React.ReactNode }) {
+export function RouteModal({
+  label,
+  children,
+}: {
+  /**
+   * The dialog's accessible name. Required rather than defaulted: there are two of
+   * these on screen at once now, and a shared default would announce them identically
+   * to the one reader who most needs them told apart.
+   */
+  label: string;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const ref = useRef<HTMLDialogElement | null>(null);
 
@@ -312,7 +349,7 @@ export function EpisodeModal({ children }: { children: React.ReactNode }) {
        * dangles on two of three renders is worse than a plain one on all three. Same rule
        * `back-to-title-bar.tsx` follows when it says *Show* rather than naming the show.
        */
-      aria-label="Episode detail"
+      aria-label={label}
       /**
        * The dialog is the frame and the sheet inside it is what moves, so this element
        * carries no ground and no padding of its own: a transform on the dialog would take

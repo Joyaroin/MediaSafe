@@ -145,6 +145,7 @@ export function LibraryEntryCell({
               surfaces. */}
           <Poster
             posterPath={entry.posterPath}
+            name={entry.name}
             width={BILL_POSTER_WIDTH}
             className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
             aboveFold={aboveFold}

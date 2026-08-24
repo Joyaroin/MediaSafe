@@ -12,6 +12,10 @@ import {
   ZeroMatches,
 } from "./library-filter-bar";
 import { BulkSelectionProvider } from "./bulk-selection-provider";
+import { FilmGroups } from "./film-groups";
+import { DEFAULT_KIND_MODE, type KindMode } from "./kind-mode";
+import { KindModeControl } from "./kind-mode-control";
+import { NothingOfThisKind } from "./nothing-of-this-kind";
 import { useIsSelecting } from "./bulk-selection-context";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
@@ -123,21 +127,51 @@ function LibraryColumn({
   // subscribing to every change would re-render all 472 cells on every tap
   // (`bulk-selection-context.ts`). It re-renders when the mode opens and when it closes.
   const selecting = useIsSelecting();
+  const [mode, setMode] = useState<KindMode>(DEFAULT_KIND_MODE);
   const [chip, setChip] = useState<Chip>("all");
   const [filterText, setFilterText] = useState("");
 
+  /**
+   * Everything of the current kind, before the chip and the filter narrow it.
+   *
+   * Kept apart from `visible` below because the two answer different questions, and the
+   * screen has to be able to tell them apart. *Nothing of this kind* is about this list
+   * being empty; *nothing under that filter* is about this list being non-empty and the
+   * narrowed one being empty. Computing only the second would leave no way to say which
+   * of the two happened.
+   */
+  const ofThisKind = useMemo(
+    () => entries.filter((entry) => entry.kind === mode),
+    [entries, mode],
+  );
+
   const visible = useMemo(() => {
     const needle = filterText.trim().toLowerCase();
-    return entries.filter((entry) => {
-      if (chip !== "all" && entry.state !== chip) return false;
+    return ofThisKind.filter((entry) => {
+      // The chips do not exist in Films mode — `FilmGroups` replaces them — so `chip` is
+      // whatever it was left on in Shows mode and must not narrow anything here.
+      if (mode === "show" && chip !== "all" && entry.state !== chip) return false;
       if (needle && !entry.name.toLowerCase().includes(needle)) return false;
       return true;
     });
-  }, [entries, chip, filterText]);
+  }, [ofThisKind, mode, chip, filterText]);
 
   function clearFilter() {
     setChip("all");
     setFilterText("");
+  }
+
+  /**
+   * Switching mode clears the filter text along with the chip.
+   *
+   * The alternative — carrying a half-typed name across — lands the reader on the other
+   * mode's screen already narrowed by something they typed about a different set of
+   * titles, most often on *Nothing under that filter*. Nothing is lost: the field is right
+   * there, and its content was about the screen they just left.
+   */
+  function changeMode(next: KindMode) {
+    setMode(next);
+    clearFilter();
   }
 
   return (
@@ -145,7 +179,12 @@ function LibraryColumn({
       <LibraryHeading>
         {selecting ? null : (
           <>
-            <LibraryChips value={chip} onChange={setChip} />
+            <KindModeControl value={mode} onChange={changeMode} />
+
+            {/* Shows only. Two of the six chips describe being part-way through a run of
+                episodes, which is not a thing a film can be (`CONTEXT.md`), and Films mode
+                shows all three of its states at once as groups instead. */}
+            {mode === "show" ? <LibraryChips value={chip} onChange={setChip} /> : null}
 
             {/* The filter field and the sort control share one row under the chips — turn
                 9's shape, and the reason `LibraryHeading` is a column now. The field takes
@@ -160,8 +199,17 @@ function LibraryColumn({
 
       {selecting ? null : <ListsRail lists={lists} />}
 
-      {visible.length === 0 ? (
+      {/* The order of these three matters, and it is the order of the questions.
+          *Is there anything of this kind at all* comes first, because a reader with no
+          films has not filtered anything — telling them to clear a filter they never set
+          is the confusion `SPEC.md` §3 is about. Only once there is something to narrow
+          can narrowing to nothing mean anything. */}
+      {ofThisKind.length === 0 ? (
+        <NothingOfThisKind mode={mode} />
+      ) : visible.length === 0 ? (
         <ZeroMatches onClear={clearFilter} />
+      ) : mode === "film" ? (
+        <FilmGroups entries={visible} />
       ) : (
         <LibraryGrid entries={visible} />
       )}

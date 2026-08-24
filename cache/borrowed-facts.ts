@@ -1,19 +1,21 @@
 import { revalidateTag, unstable_cache } from "next/cache";
 
 import {
+  findUnownedTitleDetail,
   getUnownedTitleDetail,
   type UnownedTitleDetailRow,
   type UserId,
 } from "@/db/access";
 import {
   episodeSynopsis,
+  recommendationsFor,
   titleCastAndCrew,
   titleSynopsis,
   titleWatchProviders,
   type CastAndCrew,
 } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
-import type { CatalogueKey, TitleKind } from "@/tmdb/mirror";
+import type { CatalogueKey, CatalogueResult, TitleKind } from "@/tmdb/mirror";
 
 /**
  * The read cache's other half: the facts a title page borrows from TMDB — issue #225.
@@ -265,6 +267,61 @@ export function cachedEpisodeSynopsis(
 }
 
 /** `cachedTitleSynopsis`'s docblock covers all three of these; this is the credits one. */
+/**
+ * *Because you watched* — what TMDB recommends off the title that seeded the rail.
+ *
+ * ── Tagged by the seed, keyed by the account, and the two are not the same thing ────
+ *
+ * The **tag** is the seed title's, `borrowed-facts:{kind}:{tmdbId}`, so this expires with
+ * every other borrowed fact about that title rather than on a clock of its own.
+ *
+ * The **key** carries the account, like every cache key in this application. That is not
+ * a judgement call: `eslint-rules/cache-key-carries-account.mjs` fails the build on a key
+ * without one, and `tests/cache-key-carries-account.test.ts` proves the rule bites. It
+ * costs a little here — two readers seeded off the same title fetch the same
+ * recommendations twice — and the invariant is worth more than the saving. One key shared
+ * across accounts is the shape that serves the first reader's data to everybody, and this
+ * codebase does not keep a list of the cases where that would have been fine.
+ *
+ * The six-hour window is the borrowed-fact window every read in this file uses.
+ * Recommendations move slower than that, so the practical hit rate is *until the seed
+ * changes* — which is what happens when you watch something new, and exactly when a rail
+ * called *Because you watched* should say something different.
+ */
+/**
+ * The mirrored title, or `null` when this database has never heard of it — catalogue
+ * detail's read, and tagged and windowed exactly like its throwing twin below.
+ *
+ * Two cached reads of what looks like one fact, and the difference is the whole reason
+ * the caller can keep `SPEC.md` §3: *not mirrored* comes back as a value and *the database
+ * did not answer* still throws. `db/access.ts`'s `findUnownedTitleDetail` has the argument.
+ */
+export function cachedFindUnownedTitleDetail(
+  userId: UserId,
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<UnownedTitleDetailRow | null> {
+  const read = unstable_cache(findUnownedTitleDetail, ["findUnownedTitleDetail", userId], {
+    tags: [borrowedTagFor(kind, tmdbId)],
+    revalidate: BORROWED_FACT_WINDOW_SECONDS,
+  });
+
+  return read(kind, tmdbId);
+}
+
+export function cachedRecommendations(
+  userId: UserId,
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<CatalogueResult[]> {
+  const read = unstable_cache(recommendationsFor, ["recommendationsFor", userId], {
+    tags: [borrowedTagFor(kind, tmdbId)],
+    revalidate: BORROWED_FACT_WINDOW_SECONDS,
+  });
+
+  return read(kind, tmdbId);
+}
+
 export function cachedTitleCastAndCrew(
   userId: UserId,
   kind: TitleKind,

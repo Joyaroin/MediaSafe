@@ -297,7 +297,7 @@ function CardBody({
         /**
          * **The landing screen must not scroll when the modal opens** — issue #254.
          *
-         * This press is intercepted into the layout's `@modal` slot, so the page under it
+         * This press is intercepted into the layout's `@episode` slot, so the page under it
          * is not replaced and is still the reader's place to come back to. Next's router
          * scrolls to the top of the document on every navigation unless told otherwise,
          * and it does not know this one only opened a dialog: the rail would slide to the

@@ -95,6 +95,8 @@ export interface TmdbSearchResultPayload {
   release_date?: string | null;
   first_air_date?: string | null;
   poster_path?: string | null;
+  /** TMDB's mean of its own users' votes, 0–10. See `CatalogueResult.audienceScore`. */
+  vote_average?: number | null;
 }
 
 export interface TmdbSearchPayload {
@@ -205,6 +207,27 @@ export interface CatalogueResult {
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /**
+   * The **audience score** — TMDB's own voters, 0–10, and `null` when nobody has voted.
+   *
+   * ── It is not a Rating, and the two must never be confused ──────────────────────────
+   *
+   * `CONTEXT.md` defines *Rating* as **one score you give a title**, held on your library
+   * entry, one per title and never one per watch — and names *score* and *stars* as
+   * avoid-words for it. This is a different number belonging to different people, and it
+   * is borrowed, so a refresh can replace it like every other borrowed fact.
+   *
+   * It carries its own name in the glossary for that reason, and the separation is kept by
+   * placement as well as by wording: the audience score appears only where you are judging
+   * something you do **not** own and have no opinion about yet — the recommendation rail
+   * and catalogue detail. It never appears on a library surface, where *rating* means
+   * yours, so the two never sit next to each other to be mistaken for one another.
+   *
+   * *Audience score* rather than *TMDB score*: the vendor's name appears nowhere in this
+   * application's copy except the attribution component, and ADR-0001's whole posture is
+   * that the catalogue is replaceable.
+   */
+  readonly audienceScore: number | null;
 }
 
 /**
@@ -452,6 +475,36 @@ function externalIdFrom(
  * would be a lie about what happened. A malformed row on the *add* path is the opposite
  * call, and `titleMirror` below throws.
  */
+/**
+ * Results from a **single-kind** search — `/search/tv` or `/search/movie`.
+ *
+ * ── Why this exists beside `catalogueResults`, which already did this job ───────────
+ *
+ * The search screen gained a Films/Shows mode, and a mode has to mean what it says: a
+ * field labelled *Search for a show* returning three results because the other seventeen
+ * were films would read as broken search. So the mode picks the endpoint rather than
+ * filtering `/search/multi` after the fact, which would also have hidden the top film
+ * whenever twenty shows outranked it.
+ *
+ * The reason this cannot simply call the function below is one field. `/search/multi`
+ * tags every result with `media_type`, and the per-kind endpoints do not — there is
+ * nothing to tag, since the endpoint *is* the answer. `catalogueResults` reads that tag
+ * to tell films from shows and to drop people; here the kind is known before the request
+ * goes out.
+ *
+ * Everything else is deliberately identical, and shared rather than re-derived:
+ * de-duplication by `(kind, tmdb_id)`, TMDB's own relevance order preserved through a
+ * `Map`, a malformed row dropped rather than thrown. `mirror.ts`'s note on that last
+ * choice applies here unchanged — one missing result is not a search that failed, and on
+ * this screen those are different states with different treatments.
+ */
+export function catalogueResultsOfKind(
+  kind: TitleKind,
+  payload: TmdbSearchPayload,
+): CatalogueResult[] {
+  return collectResults(payload, () => kind);
+}
+
 export function catalogueResults(payload: TmdbSearchPayload): CatalogueResult[] {
   /**
    * Keyed, and TMDB's own relevance order preserved — a `Map` iterates in insertion
@@ -464,10 +517,25 @@ export function catalogueResults(payload: TmdbSearchPayload): CatalogueResult[] 
    * offering to add what you now have. TMDB is not guaranteed to be free of repeats, and
    * the cost of assuming it is falls on the reader rather than on this function.
    */
+  return collectResults(payload, (result) => kindOf(result.media_type));
+}
+
+/**
+ * The loop both search shapes share: drop what has no kind, key by `(kind, tmdb_id)`,
+ * keep TMDB's order and the first appearance of each title.
+ *
+ * `kindFor` is the only difference between a multi-search and a per-kind one, so it is the
+ * only thing passed in. Returning `null` from it drops the row — which is how a `person`
+ * result disappears from a multi-search, and something a per-kind search never does.
+ */
+function collectResults(
+  payload: TmdbSearchPayload,
+  kindFor: (result: TmdbSearchResultPayload) => TitleKind | null,
+): CatalogueResult[] {
   const byKey = new Map<string, CatalogueResult>();
 
   for (const result of payload.results ?? []) {
-    const kind = kindOf(result.media_type);
+    const kind = kindFor(result);
     if (!kind) continue;
 
     const tmdbId = integerFrom(result.id);
@@ -486,6 +554,13 @@ export function catalogueResults(payload: TmdbSearchPayload): CatalogueResult[] 
         kind === "film" ? result.release_date : result.first_air_date,
       ),
       posterPath: textFrom(result.poster_path),
+      // `0` is TMDB's *nobody has voted*, not a title the audience scored zero, and a
+      // rail card reading `0.0` would be a confident statement about a title nobody has
+      // seen. Dropped to `null`, which is what the card renders nothing for.
+      audienceScore:
+        typeof result.vote_average === "number" && result.vote_average > 0
+          ? result.vote_average
+          : null,
     });
   }
 

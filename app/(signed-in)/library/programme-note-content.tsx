@@ -151,7 +151,13 @@ export function ProgrammeNoteContent({
         {/* Always the hero poster of whichever surface holds this component — the desktop
             pane's selected entry or the phone route's whole page — so it is always the
             visible one, never a below-the-fold instance among many (`app/poster.tsx`). */}
-        <Poster posterPath={detail.posterPath} width={382} className="w-full" aboveFold />
+        <Poster
+          posterPath={detail.posterPath}
+          name={detail.name}
+          width={382}
+          className="w-full"
+          aboveFold
+        />
       </ViewTransition>
 
       {/* `text-ink`, added by the palette audit (#255) — the owned half of the same pair

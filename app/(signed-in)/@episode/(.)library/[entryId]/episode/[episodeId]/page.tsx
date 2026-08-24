@@ -2,7 +2,7 @@ import { EpisodeDetailBody } from "@/app/(signed-in)/library/[entryId]/episode/[
 
 /**
  * Episode detail, **intercepted** — issue #254. The same route as
- * `library/[entryId]/episode/[episodeId]`, rendered into the signed-in layout's `@modal`
+ * `library/[entryId]/episode/[episodeId]`, rendered into the signed-in layout's `@episode`
  * slot when the reader reaches it by pressing something inside the application, and not at
  * all when they arrive by address: a typed URL, a shared link or a refresh is a hard
  * navigation, which no interception sees, so it lands on the full page.

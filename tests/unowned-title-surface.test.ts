@@ -162,11 +162,13 @@ describe("what the unowned route does not import", () => {
     // ticket leaves that alone; the way it leaves it alone is by not calling it from a
     // page whose whole premise is that there is no row.
     expect(owned.map(({ file }) => file)).toEqual([]);
-    // `cachedUnownedTitleDetail` since issue #225, which is `getUnownedTitleDetail`
-    // behind a title-tagged cache entry (`cache/borrowed-facts.ts`) and the same read.
-    // What this asserts is unchanged: one read of the borrowed half, on the unowned path.
+    // `cachedUnownedTitleDetail` since issue #225, and `cachedFindUnownedTitleDetail`
+    // since this screen started serving titles that are not mirrored at all — the same
+    // read, answering `null` for an absent row instead of throwing, so that a missing
+    // title stays distinguishable from a database that did not answer. What this asserts
+    // is unchanged: one read of the borrowed half, on the unowned path.
     expect(
-      routeSources().filter(({ source }) => /cachedUnownedTitleDetail/.test(source)).length,
+      routeSources().filter(({ source }) => /cachedFindUnownedTitleDetail/.test(source)).length,
     ).toBe(1);
   });
 });
@@ -184,10 +186,19 @@ describe("the one control the page carries", () => {
    * somewhere further down the page would be two ways into a library from a page whose
    * whole premise is that there is one.
    */
+  /**
+   * The screen's content, which is no longer `page.tsx`.
+   *
+   * It moved to `unowned-title-body.tsx` when the dialog that intercepts this route
+   * arrived: there are two renders of this URL and there is one screen, so the screen is
+   * written once and both render it — the same split `title-detail-body.tsx` and
+   * `episode-detail-body.tsx` already use. `page.tsx` is now the route wrapper and
+   * nothing else, so a check pointed at it would be checking an empty file and passing.
+   */
   const pageSource = () =>
-    routeSources().find(({ file }) => file.endsWith("[tmdbId]/page.tsx"));
+    routeSources().find(({ file }) => file.endsWith("unowned-title-body.tsx"));
 
-  it("renders exactly one AddToLibraryControl, on the page itself", () => {
+  it("renders exactly one AddToLibraryControl, in the shared body", () => {
     const page = pageSource();
     expect(page).toBeDefined();
 

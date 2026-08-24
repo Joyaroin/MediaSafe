@@ -88,6 +88,36 @@ section exists so a reader does not take a superseded absolute below as current.
 | The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. The pairing itself still binds — #250's two rails hold `scroll-pl-[22px]` against `px-[22px]`. | `up-next/up-next-phone-rail.tsx` and the four screens |
 | §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 11 — 10 after the redesign, and an eleventh (`still`) with issue #253. §10 carries the current figure and the `grep` that settles it. | `app/globals.css` |
 
+### Amended again by the Films/Shows mode
+
+The library and search gained a **mode**, and three things in the table above move with it.
+
+| Stated above | Now | Where |
+| --- | --- | --- |
+| *A pill would be the first radius in the application*, and then: two pills, `Add` and `New list` | Three shapes, and the third is a **track**: a fully-rounded raised rail with a fully-rounded `--ink` thumb sliding inside a `3px` inset. Still no radius *scale* — this is a per-surface measure like the others, and its reason is below. | `library/kind-mode-control.tsx` |
+| The accent marks what is live and the one primary action, one per screen | Unchanged, and this control is the case that tested it. The reference draws its selected segment in the accent; it is `--ink` here, because the library already spends its accent on the Watching chip's live label and a screen cannot have two. | `library/kind-mode-control.tsx` |
+| The library heading is one 34px `screen-title`, then chips, then the filter row | The mode control sits **above** the chips, and in Films mode the chips are not drawn at all. | `library/library-heading.tsx`, `library/library-surface.tsx` |
+
+**Why it is a segmented control and not two more chips.** `chip.tsx` would have carried it for
+free, and for a *filter* that would have been right — a chip row says *narrow what you are looking
+at*, and every chip in it is independent. This is not that. Choosing Films **replaces the screen**:
+the chips disappear, the flat grid becomes three headed groups, and the empty state changes. A
+control that switches between two screens should not wear the costume of a control that filters
+one, and at this size shape is the only thing that could say so.
+
+**Two new registers below the mode.** Films mode draws its three group headings in the existing
+`label-line` register — the uppercase 11px label §0 already declares — rather than a `bill-title`
+step, because they name regions of one screen and a heading competing with the 34px screen title
+would read as three screens. The recommendation rail on search reuses `label-line` in the accent,
+which is §7's existing treatment for a rail head.
+
+**A poster with no artwork now draws the title's initials.** §12 recorded *no artwork is not an
+error and gets no placeholder*; the second half of that still binds and there is no broken-image
+mark anywhere. What changed is that a bare rectangle is fine in a grid where the name is written
+beside it and useless in a rail of titles you have never heard of, where the poster is what
+identifies. Up to three letters, scaled off the rendered width, `aria-hidden` like the image it
+stands in for. `app/poster.tsx`.
+
 Two things below are **not** superseded, and were checked rather than assumed:
 
 - **Empty, zero-match and failed stay structurally separate**, with the same heading step
