@@ -65,6 +65,12 @@ import { EpisodeSynopsisStreamed } from "./episode-synopsis-streamed";
  * mirrored read above is all that gates the shell, and TMDB gates one section of it.
  * `[entryId]/page.tsx` hands `LiveTitleFactsStreamed` down the same way.
  */
+
+/**
+ * Never prerendered and never revalidated on a timer: every render is this account's, and
+ * the read behind it is cached in `cache/` where the key carries the account and the day
+ * (`cachedTitleDetail`). `[entryId]/page.tsx` declares the same for the same reason.
+ */
 export const dynamic = "force-dynamic";
 
 export default async function EpisodePage({

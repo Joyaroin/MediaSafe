@@ -13,10 +13,10 @@ import { PendingLine } from "@/app/pending-line";
  * came for.
  *
  * §9's formula is *`loading.tsx` renders what the segment's `error.tsx` already renders,
- * less the failure*. Both of them render exactly this: nothing but the pending line. The
- * back bar the two used to have to draw for themselves is `layout.tsx`'s now, and is
- * already on screen around this — see that file for why the bar moved there rather than
- * being pasted into three renders.
+ * less the failure*. What `error.tsx` renders above its failure is **nothing** — the back
+ * bar is `layout.tsx`'s and is already on screen around both of them — so subtracting the
+ * failure leaves the pending line and nothing else. See `layout.tsx` for why the bar moved
+ * there rather than being pasted into three renders.
  *
  * **No still frame, and no `<h1>`.** The episode's name is the thing being waited for, so
  * it cannot be printed. And §9's second reason for having no skeleton applies exactly to

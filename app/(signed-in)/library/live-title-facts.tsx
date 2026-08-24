@@ -8,7 +8,7 @@ import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
 import { EPISODE_SYNOPSIS_ABSENT, LIVE_FACT_FAILURE } from "./live-fact-copy";
-import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+import { PROGRAMME_NOTE_SECTION, SYNOPSIS_PROSE } from "./programme-note-section";
 import type { LiveFacts } from "./live-facts";
 import {
   episodeSynopsisAction,
@@ -31,10 +31,13 @@ import {
  *
  * `LiveFactSection` below no longer fetches on its own account — it renders whatever
  * `initial: Outcome<T>` it is handed, and only makes a request of its own when a reader
- * clicks *Try again* on a section that failed. Two components feed it, through the three
- * fixed `*FactSection` wrappers further down (`SynopsisFactSection` and its two
- * siblings) — fixed rather than generic at that boundary because what crosses it is
- * `initial`, `kind` and `tmdbId` only, never a `render`/`fetcher` function:
+ * clicks *Try again* on a section that failed. Two components feed it, through the fixed
+ * `*FactSection` wrappers further down — three title-level ones, plus
+ * `EpisodeSynopsisFactSection`, which issue #253 added for the episode page and which is
+ * fed by that route rather than by either component below. They are fixed rather than
+ * generic at that boundary because what crosses it is `initial` and the read's identity
+ * only, never a `render` or `refetch` function — a function cannot cross from a Server
+ * Component, so the closure is built on this side:
  *
  * - `live-title-facts-streamed.tsx`'s `LiveTitleFactsStreamed` — a **Server Component**,
  *   used by the phone route and the unowned-title page, the two surfaces that are real
@@ -112,14 +115,15 @@ export function LiveTitleFactsClientFetch({
 }
 
 /**
- * The three sections, each a fixed (non-generic) instantiation of `LiveFactSection` below
- * — `heading`, `fetcher` and `render` hard-coded rather than threaded in. Exported so
- * `live-title-facts-streamed.tsx`'s three async Server Components can each render one
- * directly, handing it nothing but `initial` (a plain `Outcome<T>`, already resolved) and
- * `kind`/`tmdbId` — all three serialisable across the server/client boundary. A `render`
- * or `fetcher` function is not: passing one as a prop from a Server Component would need
- * it to cross the network, which is why it lives inside this client module instead of
- * being threaded in from outside it.
+ * The sections, each a fixed (non-generic) instantiation of `LiveFactSection` below —
+ * `heading`, `refetch` and `render` hard-coded rather than threaded in. Exported so the
+ * async Server Components in `live-title-facts-streamed.tsx` and (for the episode page,
+ * issue #253) `episode-synopsis-streamed.tsx` can each render one directly, handing it
+ * nothing but `initial` (a plain `Outcome<T>`, already resolved) and the numbers that
+ * identify the read — all serialisable across the server/client boundary. A `render` or
+ * `refetch` function is not: passing one as a prop from a Server Component would need it
+ * to cross the network, which is why the closure is built inside this client module
+ * instead of being threaded in from outside it.
  */
 export function SynopsisFactSection({
   kind,
@@ -137,7 +141,7 @@ export function SynopsisFactSection({
       refetch={() => titleSynopsisAction(kind, tmdbId)}
       render={(overview) =>
         overview === null ? null : (
-          <p className="max-w-[68ch] text-note leading-relaxed text-dim">{overview}</p>
+          <p className={SYNOPSIS_PROSE}>{overview}</p>
         )
       }
     />
@@ -198,11 +202,11 @@ export function EpisodeSynopsisFactSection({
           // Plainly worded and plainly attributed: it is TMDB that has not written one,
           // not MediaSafe that has lost it. `SPEC.md` §6's rule that every user-facing
           // string is a plain sentence, on a state that is not an error at all.
-          <p className="max-w-[68ch] text-note leading-relaxed text-dim">
+          <p className={SYNOPSIS_PROSE}>
             {EPISODE_SYNOPSIS_ABSENT}
           </p>
         ) : (
-          <p className="max-w-[68ch] text-note leading-relaxed text-dim">{overview}</p>
+          <p className={SYNOPSIS_PROSE}>{overview}</p>
         )
       }
     />

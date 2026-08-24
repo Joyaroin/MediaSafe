@@ -62,10 +62,8 @@ export function EpisodeStill({
          * stored, so `next/image` would put Vercel's metered optimiser between the two —
          * the spend `SPEC.md` §3.8's £5/month ceiling exists to keep out. `app/poster.tsx`
          * makes the same call for the same reason and carries the longer argument.
-         *
-         * eslint-disable-next-line @next/next/no-img-element -- See the note above.
          */
-        // eslint-disable-next-line @next/next/no-img-element
+        // eslint-disable-next-line @next/next/no-img-element -- See the note above.
         <img
           className="block h-full w-full object-cover"
           src={`https://image.tmdb.org/t/p/${bucketFor(width)}${stillPath}`}

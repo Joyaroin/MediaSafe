@@ -292,7 +292,7 @@ const EPISODE = { seasonNo: 2, episodeNo: 4 } as const;
  * The five borrowed reads of one title, all of them, in one call.
  *
  * Not folded into `CACHED` above, and that is the point rather than an oversight: every
- * entry in that table is keyed and tagged by account, and these four are tagged by title.
+ * entry in that table is keyed and tagged by account, and these five are tagged by title.
  * A table that held both would have to carry the difference as a flag, and the difference
  * is the whole subject of `cache/borrowed-facts.ts`.
  */

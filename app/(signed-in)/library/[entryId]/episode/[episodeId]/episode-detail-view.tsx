@@ -33,8 +33,8 @@ import {
  * the store rather than from the server's copy — `mark-up-to.ts`'s `withLiveWatched`
  * carries the bug that rule exists to fix, and it is exactly as live here as it is on the
  * season list. So the boundary would have to be drawn somewhere below the heading anyway,
- * and drawing it around a `<p>` and two `<h1>`s to keep four static lines on the server
- * buys nothing a reader can see.
+ * and drawing it around the still, two `<p>`s and one `<h1>` to keep four static lines on
+ * the server buys nothing a reader can see.
  *
  * `synopsis` is the exception, and it is the whole reason this takes a `ReactNode`: it is
  * an **already-rendered Server Component** handed down from `page.tsx`
@@ -71,9 +71,17 @@ export function EpisodeDetailView({
   synopsis,
 }: {
   readonly libraryEntryId: string;
-  /** The **series** name. `CONTEXT.md` reserves *title* for the thing in your library, and
-   *  on this page the thing with a name is the episode — so the show is named as what it
-   *  is to this surface: the programme this instalment belongs to. */
+  /**
+   * The show's name — `CONTEXT.md`'s **Title**, *a film or a show as it exists in the
+   * world*, which is exactly what this is: a borrowed fact, replaceable by a refresh.
+   *
+   * The prop keeps that word because that is what the value is and because every mark on
+   * this page passes it straight to `WatchNaming.title`, which the lost-write toast reads.
+   * What the *page* calls it on the glass is **the series**, which is the word #253 uses —
+   * a label above an episode is naming the programme this instalment belongs to, and
+   * *title* on a page whose subject already has a title of its own would be two things
+   * called the same thing one line apart.
+   */
   readonly titleName: string;
   /** Every episode of the show, in `getTitleDetail`'s order. See the docblock above. */
   readonly episodes: readonly EpisodeDetail[];
@@ -120,9 +128,11 @@ export function EpisodeDetailView({
 
   return (
     <div className="px-6 py-5">
-      {/* `640` is the CDN size this asks for, not a measure: the frame is fluid to the
-          column and capped, so a phone downloads the same `w780` bucket a desktop does
-          and neither downloads `original`. `EpisodeStill` picks the bucket from it. */}
+      {/* `640` is the measure — `max-w-[40rem]` at the root font size, which is the
+          widest this frame is ever drawn. The frame is fluid below that, so a phone draws
+          it narrower; the *width* is what `EpisodeStill` sizes the download from, and it
+          resolves through `STILL_BUCKETS` to `w780`, the smallest TMDB still that covers
+          640 without upscaling. One bucket for every viewport, and never `original`. */}
       <EpisodeStill
         stillPath={episode.stillPath}
         width={640}
@@ -148,7 +158,15 @@ export function EpisodeDetailView({
           state line, and a dimmed `<h1>` reads as a disabled page. What says *watched*
           on this surface is the control group below, which offers *Rewatch* and
           *Unwatch* instead of a mark. */}
-      <h1 className="screen-title mt-1 text-bill-lg text-ink">
+      {/* `bill-title`, not `screen-title`. `app/globals.css` keeps the two apart on
+          purpose — *`screen-title` is **not** `bill-title` at a bigger step … the two
+          never appear on the same surface*: `screen-title` is the four phone destinations'
+          own register, and `bill-title` is what the bill's names are set in. This page is
+          one tap under title detail, whose `<h2>` is `bill-title text-bill-xl`, so it is a
+          bill surface and takes the bill's cut one step down. Pairing `screen-title` with
+          `text-bill-lg` — which the first draft did — would have been a third register
+          nobody declared, on the one surface where nobody would look for it. */}
+      <h1 className="bill-title mt-1 text-bill-lg text-ink">
         {episode.name === null ? "Not yet named" : episode.name}
       </h1>
 
