@@ -3519,8 +3519,24 @@ export interface UpcomingEpisode {
   /** `null` where TMDB has announced the episode without naming it. Never falls back to
    *  a bare number — `CONTEXT.md`: *an episode is never referred to by number alone*. */
   readonly episodeName: string | null;
-  /** `null` where the catalogue has no frame. `episode-still.tsx` holds the measure
-   *  rather than collapsing the row. */
+  /**
+   * The **show's** poster, and the reason this row carries one at all.
+   *
+   * `stillPath` below is the episode's own frame, and for an episode that has not aired
+   * TMDB nearly always has none — a still is a screenshot of something nobody has seen. So
+   * the upcoming list, which is *only ever* unaired episodes, drew an empty box on every
+   * row while Up next (aired episodes) drew a frame on each of its own.
+   *
+   * The poster is the fact that identifies an upcoming episode anyway: what you are
+   * waiting for is the show. `title` is already joined here for `titleName`, so this is
+   * one column rather than a read.
+   */
+  readonly posterPath: string | null;
+  /**
+   * The episode's own frame, kept on the type though the upcoming row no longer draws it:
+   * it is a real fact about the episode and the day TMDB publishes stills ahead of air, a
+   * surface that wants one has it. See `posterPath` above for why this row does not.
+   */
   readonly stillPath: string | null;
   /** `YYYY-MM-DD`, never null — see above. */
   readonly airDate: string;
@@ -3599,6 +3615,7 @@ export async function listUpcomingEpisodes(
       seasonNo: episode.seasonNo,
       episodeNo: episode.episodeNo,
       episodeName: episode.name,
+      posterPath: title.posterPath,
       stillPath: episode.stillPath,
       // `date` comes back as the `YYYY-MM-DD` text Postgres wrote, and is left as text:
       // nothing does arithmetic on an air date, and a `Date` here would silently acquire
