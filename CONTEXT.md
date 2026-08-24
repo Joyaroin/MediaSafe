@@ -157,7 +157,18 @@ separates it from discovery.
 _Avoid_: suggestion, for you, because you watched
 
 **Upcoming**:
-The next air dates for shows in your library you have not abandoned.
+The future air dates of episodes of shows you are **watching or caught up on**, grouped by day in
+your own timezone. Never a time of day — the catalogue holds an air date and no air time, so there
+is no *time unknown* state to reach.
+
+**Narrowed by [#251](https://github.com/Joyaroin/MediaSafe/issues/251)**, which is the change that
+built it. This entry read *the next air dates for shows in your library you have not abandoned*
+until then, and *not abandoned* is four of the five states: it would have put a show you have never
+started, and a show you finished last year, on the page that answers *what is coming that I am
+waiting for*. The definition is narrowed rather than the code widened, in the same commit, because
+an older document losing to what shipped is #245's stated default and a glossary describing a
+surface nobody built is worse than no glossary.
+
 _Avoid_: schedule, calendar, coming soon
 
 **Watch provider**:
