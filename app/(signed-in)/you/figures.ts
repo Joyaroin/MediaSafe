@@ -129,9 +129,9 @@ export function initialsFrom(name: string): string {
  * otherwise. The same glossary entry: *a watch with no date still counts: this is derived
  * from what you watched, not when.* The retired Stats page's own note said *not counted
  * here*, which is true of a streak and of an activity window and is false of every figure
- * on this page — copying it across would have been the page's one dishonest sentence. It is still named,
- * because the ticket asks for it named and because a reader who imported a library with
- * dateless watches should learn that from the page rather than wonder.
+ * on this page — copying it across would have been the page's one dishonest sentence. It
+ * is still named, because the ticket asks for it named and because a reader who imported a
+ * library with dateless watches should learn that from the page rather than wonder.
  *
  * `null` when there is nothing to name, so the page renders no line at all rather than a
  * disclaimer with nothing to disclaim.

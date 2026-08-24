@@ -68,6 +68,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     libraryEntryIdForTitle: vi.fn(),
     listUpNextRails: vi.fn(),
     listWatchlistFilms: vi.fn(),
+    listUpcomingEpisodes: vi.fn(),
     listLists: vi.fn(),
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
@@ -204,6 +205,7 @@ const {
   cachedListDetail,
   cachedLists,
   cachedTitleDetail,
+  cachedUpcomingEpisodes,
   cachedUpNextRails,
   cachedWatchlistFilms,
   cachedYouListCards,
@@ -251,6 +253,9 @@ const CACHED = {
     cachedLibraryEntryIdForTitle(userId, "show", 1399),
   listUpNextRails: (userId: typeof mine) => cachedUpNextRails(userId),
   listWatchlistFilms: (userId: typeof mine) => cachedWatchlistFilms(userId),
+  /** Issue #251's Upcoming — the landing pager's second page, tagged `up-next` with the
+   *  two rails on its first, so one bust reaches the whole surface a reader pages across. */
+  listUpcomingEpisodes: (userId: typeof mine) => cachedUpcomingEpisodes(userId),
   listLists: (userId: typeof mine) => cachedLists(userId),
   getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
   getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
@@ -529,7 +534,7 @@ describe("every write busts its tags", () => {
       [`up-next:${yours}`, "max"],
       [`lists:${yours}`, "max"],
       [`title-detail:${yours}`, "max"],
-      // The mirror carries `runtime_mins`, which of the owned surfaces only `/you` reads.
+      // The mirror carries `runtime_mins`, which `/you` sums into its watch times.
       [`you:${yours}`, "max"],
     ]);
     expect(cacheState.updated).toEqual([]);
@@ -1439,11 +1444,15 @@ describe("the reads that are cached, and the one that must never be", () => {
 
     expect(cached).toEqual([
       // `tags.ts` — the owned reads, in file order. #250 replaced two of #138's reads
-      // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #248 adds
-      // two more, `listYouListCards` and `listYouRails`.
+      // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #251 added
+      // `listUpcomingEpisodes` beside it under the same `up-next` tag; #248 added
+      // `listYouListCards` and `listYouRails`; and #249 retired `accountStats`. The count
+      // is deliberately not written out here — it has drifted twice already, and the list
+      // below is the assertion.
       "listLibraryEntries",
       "listUpNextRails",
       "listWatchlistFilms",
+      "listUpcomingEpisodes",
       "listLists",
       "getListDetail",
       "getTitleDetail",

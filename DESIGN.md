@@ -250,6 +250,31 @@ it before #134 and each lost it deliberately:
 accent means live action.* A navigation rail that paints the current page in the accent has
 spent the one colour that means *this was marked* on a fact the reader could already see.
 
+**Amended by [#251](https://github.com/Joyaroin/MediaSafe/issues/251) for one shape, and the
+narrowness is the point.** The landing screen's two-page pager draws a **2px accent rule under
+the selected label**, which the handoff #245 makes binding specifies in as many words and which
+the row above would otherwise forbid as *the current page*. The handoff wins, under #245's
+stated default that an older document yields to the current direction in the same change as
+the code — and the exception is written here rather than left as a contradiction somebody
+finds later.
+
+What the amendment covers is **a rule under a pager label, and nothing else**. Three things
+keep it from reopening the rule it sits inside:
+
+- **The type is not accented.** `landing-pager.tsx` paints the selected label `text` and the
+  unselected one `dim` — exactly the treatment the sidebar row above prescribes. The accent is
+  a 2px rule beneath it, not the word.
+- **A pager is not navigation.** Nothing is reached, no route changes, and Back does not undo
+  it: the two pages are one screen the reader is moving *within*. The sidebar and the tab bar
+  are navigation and are untouched — neither gains an accent, and `sidebar-nav.tsx`'s sentence
+  stands exactly as written.
+- **It is the thing that moves.** The rule slides between the labels as the page changes, so
+  it is drawing the movement rather than labelling a state the reader could already see —
+  which is the specific complaint the paragraph above makes about a painted current page.
+
+**No second pager gets it by default.** If another arrives, it argues from here rather than
+citing this as precedent, the way §12 requires of the rating scale.
+
 **Selection is the sharp edge of this.** The rule above says the accent is not selection,
 and `up-next-tile.tsx` obeys it — but `rating-control.tsx` paints the chosen cell
 `bg-accent text-accent-ink`, which is selection in the accent. Both are shipped. §12 is

@@ -5,8 +5,8 @@ import { referenceForBoundary } from "@/errors/reference";
 import { YouHeading } from "./you-heading";
 
 /**
- * You did not load — same shape as `stats/error.tsx`, `lists/error.tsx` and
- * `library/error.tsx`, for the same reason: `AGENTS.md` places a failed region inline,
+ * You did not load — same shape as `lists/error.tsx` and `library/error.tsx`, for the
+ * same reason: `AGENTS.md` places a failed region inline,
  * replacing that region, and the root boundary would swallow which surface failed.
  *
  * This is the boundary the whole page's error discipline points at. Every figure on `/you`

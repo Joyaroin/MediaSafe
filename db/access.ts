@@ -3406,6 +3406,151 @@ export async function listWatchlistFilms(
     .orderBy(sql`lower(${title.name})`, libraryEntry.id);
 }
 
+/**
+ * One row of Upcoming — issue #251.
+ *
+ * Everything the handoff's compact row prints and nothing else: the still, the series, the
+ * season and episode, the episode's name, and the date. `libraryEntryId` is not printed —
+ * it is what the row navigates through, since an episode's own route lives beneath its
+ * owning library entry (#254).
+ *
+ * ── `airDate` is not nullable here, and that is the read's doing ─────────────────────
+ *
+ * Every other episode type in this file carries `airDate: string | null`, because an
+ * undated episode is an ordinary thing for the catalogue to hold. It cannot reach this
+ * surface: *upcoming* **is** a statement about a date, so the read's `is not null` is the
+ * whole reason this field is not nullable, and the grouping module downstream needs no
+ * branch for a row it can never be handed.
+ *
+ * The column is nullable, so the select **does** cast — `sql<string>` over
+ * `episode.air_date`, which launders a null the `where` has already excluded. That is a
+ * cast standing on a predicate a few lines away rather than on nothing, and it is named
+ * here rather than left to be discovered: move or weaken that `is not null` and this type
+ * starts lying, with no compiler error to say so. `tests/upcoming-episodes.test.ts` is what
+ * holds the predicate.
+ *
+ * **There is no air time and there is no field for one.** TMDB publishes a `date` for an
+ * episode and no time of day, so a *time unknown* state would be the only state that field
+ * ever reached — #245 says so where it refuses to draw one, `episode-facts.ts` says it one
+ * surface over, and the absence is recorded here so that nobody adds the column to fill
+ * the gap the handoff's mock leaves.
+ */
+export interface UpcomingEpisode {
+  readonly episodeId: string;
+  /** Where the row navigates — the episode's route is beneath its library entry. */
+  readonly libraryEntryId: string;
+  /** The series, as the row's first line. */
+  readonly titleName: string;
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  /** `null` where TMDB has announced the episode without naming it. Never falls back to
+   *  a bare number — `CONTEXT.md`: *an episode is never referred to by number alone*. */
+  readonly episodeName: string | null;
+  /** `null` where the catalogue has no frame. `episode-still.tsx` holds the measure
+   *  rather than collapsing the row. */
+  readonly stillPath: string | null;
+  /** `YYYY-MM-DD`, never null — see above. */
+  readonly airDate: string;
+}
+
+/**
+ * **What is coming: the future-dated episodes of the shows you are actually watching** —
+ * issue #251.
+ *
+ * ── The membership is two predicates and neither is a slice ──────────────────────────
+ *
+ * **Watching or caught up**, from `library_entry_state`. This is deliberately narrower
+ * than `CONTEXT.md`'s Upcoming entry was — *the next air dates for shows in your library
+ * you have not abandoned* — and the glossary is amended in the same change rather than
+ * left describing something else. What drops out is watchlist and finished: a show you
+ * have not started is not something you are waiting for the next episode of, and a show
+ * you have finished has no next episode by definition unless it comes back, at which point
+ * its state moves on its own.
+ *
+ * `satisfies LibraryState` on both states rather than bare strings: `state` is a `text`
+ * column, so a typo would be an empty page rather than an error — silent, on the predicate
+ * that decides what this whole surface contains.
+ *
+ * `season_no > 0` is `db/views.ts`'s own domain for *released*, kept so that *upcoming* is
+ * the exact complement of it over the same set of episodes rather than a second, wider
+ * idea of what an episode is.
+ *
+ * ── The window is a day wider than the server's day, on purpose ──────────────────────
+ *
+ * `air_date >= current_date - 1`, where every other clock-reading query in this file
+ * compares to `current_date` alone. **The extra day is a timezone, not a fudge.** No zone
+ * on earth is more than 24 hours from UTC, so a window opening one day early is a superset
+ * of *today or later* for every reader at every instant — including the reader in Honolulu
+ * for whom the server's yesterday is still this evening, who is exactly the reader a bare
+ * `>= current_date` shows an empty *Today* to.
+ *
+ * The narrowing to the reader's actual day happens once, in the reader's own zone, in
+ * `upcoming-grouping.ts` — which is where the labels are written too, so the row that is
+ * dropped and the heading it would have sat under are decided by one function against one
+ * day. The alternative was a day boundary computed here in SQL and a second one computed
+ * there for the labels: two clocks, and eventually one of them wrong by one day for one
+ * reader, forever, with every row on screen looking entirely correct.
+ *
+ * That also keeps this read cacheable the way every other one is. `cache/tags.ts` keys the
+ * clock-reading reads on `serverDay()`, which is UTC because `current_date` is; a query
+ * bucketed in the reader's zone would turn over at a midnight the key does not, which is
+ * worse than no key part at all (`serverDay`'s own docblock argues that).
+ *
+ * ── Ordered, and not capped ──────────────────────────────────────────────────────────
+ *
+ * By date first, because the page is a calendar and the groups come out of the read's own
+ * order; then by title and by `(season_no, episode_no)`, so two episodes airing on one day
+ * have a stable order and two loads give the same page. `lower(name)` for the tie-break is
+ * `listWatchlistFilms`' expression, repeated rather than imported for the reason #138 gave.
+ *
+ * **No `LIMIT`.** The bound is the catalogue's: TMDB mirrors the episodes it has announced,
+ * which for a show in production is a handful ahead of today and for everything else is
+ * none. A cap here would be *showing 20 of 34* with the number filed off, on a surface
+ * whose whole content is *what is still to come* — and `up-next-phone-rail.tsx` refuses the
+ * same thing one screen over for the same reason.
+ *
+ * Unguarded, like every read in this file. A failure throws to the route's `error.tsx`,
+ * which draws the read-failure treatment with a reference id — *nothing is coming* is
+ * exactly as plausible a lie as *you're caught up* was, and this is the screen `AGENTS.md`
+ * was written about.
+ */
+export async function listUpcomingEpisodes(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly UpcomingEpisode[]> {
+  return executor
+    .select({
+      episodeId: episode.id,
+      libraryEntryId: libraryEntry.id,
+      titleName: title.name,
+      seasonNo: episode.seasonNo,
+      episodeNo: episode.episodeNo,
+      episodeName: episode.name,
+      stillPath: episode.stillPath,
+      // `date` comes back as the `YYYY-MM-DD` text Postgres wrote, and is left as text:
+      // nothing does arithmetic on an air date, and a `Date` here would silently acquire
+      // a timezone the column does not have (ADR-0003).
+      airDate: sql<string>`${episode.airDate}`.as("air_date"),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .innerJoin(episode, eq(episode.titleId, title.id))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        inArray(libraryEntryState.state, [
+          "watching" satisfies LibraryState,
+          "caught_up" satisfies LibraryState,
+        ]),
+        gt(episode.seasonNo, 0),
+        isNotNull(episode.airDate),
+        sql`${episode.airDate} >= current_date - 1`,
+      ),
+    )
+    .orderBy(episode.airDate, sql`lower(${title.name})`, episode.seasonNo, episode.episodeNo);
+}
+
 /** One row of a season/episode list — issue #58's title detail. */
 export interface EpisodeDetail {
   readonly id: string;
@@ -4518,14 +4663,14 @@ export interface WatchTime {
  * Whether this library entry has ever been watched — the test behind *films watched* and
  * *shows watched*.
  *
- * **Watched, not finished.** The count per derived state already says how many titles are
- * *finished*; these two say how many you have watched anything of, which is the question
- * the other number does not answer. An abandoned film you saw half of is counted here, and
+ * **Watched, not finished.** *Shows completed*, in the same statement, says how many shows
+ * are *finished*; these two say how many titles you have watched anything of, which is the
+ * question that one does not answer. An abandoned film you saw half of is counted here, and
  * that is deliberate: you watched it, and abandoning it did not undo that.
  *
- * A correlated `exists` rather than a join, because the two counts sit in the same
- * statement as `sum(remaining)` and a join to `watch` would repeat each entry once per
- * watch and multiply that sum.
+ * A correlated `exists` rather than a join, because a join to `watch` would repeat each
+ * library entry once per watch and so multiply every count in this statement — the point
+ * being that one row per entry is what makes all four figures countable together.
  */
 const HAS_A_WATCH: SQL = sql`exists (
   select 1 from ${watch} w where w.library_entry_id = ${libraryEntry.id}

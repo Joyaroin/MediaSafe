@@ -386,6 +386,17 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
+   * **`/stats`, removed by #249, asserted as gone** — the same criterion one ticket later
+   * and for the same reason: *the route manifest reflects the removal and no longer lists
+   * the stats route*. A page restored by a merge fails here rather than shipping a
+   * destination the phone's fourth tab and the sidebar's sixth no longer lead to.
+   */
+  it("has no route left at /stats", () => {
+    expect(built.pages.map((one) => one.route)).not.toContain("/stats");
+    expect(built.routes).not.toContain("/stats");
+  });
+
+  /**
    * `/you` — issue #247, and the phone's fourth tab since #249 retired `/stats` and
    * repointed the slot here. It is a page made entirely of reads, behind a tab a reader
    * taps from anywhere, so it arrives with a boundary rather than being converted later,
@@ -397,17 +408,6 @@ describe("every dynamic surface has a loading boundary", () => {
    */
   it("finds the boundary on the You destination #249 points the fourth tab at", () => {
     expect(hasBoundary("(signed-in)/you")).toBe(true);
-  });
-
-  /**
-   * And the removal itself, asserted rather than left to the absence of a test. #249
-   * deleted `/stats`; a manifest that still listed it would mean the page had come back,
-   * and a route with no way in — or a tab with no route — is exactly what this file exists
-   * to catch before a reader does.
-   */
-  it("has no route left at /stats", () => {
-    expect(built.pages.map((one) => one.route)).not.toContain("/stats");
-    expect(built.routes).not.toContain("/stats");
   });
 
   /**

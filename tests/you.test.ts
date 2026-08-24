@@ -23,12 +23,11 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *    amendment, so the assertions below fix the *behaviour* the view defines — a show still
  *    in production is not completed however much of it you have watched.
  *
- * The watch-time and count assertions used to be thinner on purpose, because
- * the Stats page's own suite held the two statements underneath against a seeded library
- * and a
- * second copy here would have been the very thing this file is about not making. **Issue
- * #249 deleted that file with the page it tested**, so the cases over `libraryTotals` that
- * were not about a figure Stats alone reported are carried down here instead — *counts the
+ * The watch-time and count assertions used to be thinner on purpose, because the Stats
+ * page's own suite held the two statements underneath against a seeded library and a second
+ * copy here would have been the very thing this file is about not making. **Issue #249
+ * deleted that suite with the page it tested**, so the cases over `libraryTotals` that were
+ * not about a figure Stats alone reported are carried down here instead — *counts the
  * titles it has watched, by kind* and *counts episode watches including specials*. They are
  * the only two of #227's that outlived it: the rest asserted the streak, the activity
  * window, the averages, the decades, the recently finished and the five state counts, all

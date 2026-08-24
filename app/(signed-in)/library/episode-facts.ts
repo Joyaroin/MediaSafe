@@ -26,10 +26,10 @@
  * episode went out, the same day for every reader on earth.
  *
  * That sibling is gone: issue #249 deleted `/stats` and the pure-figures module beside it,
- * exactly as the closing line below predicted. The reasoning is kept in the past tense rather than
- * cut, because it is the argument for why this function exists at all — and had #247 taken
- * the import the note refused, this file would have needed rewriting on the day the page
- * went instead of nothing happening to it.
+ * exactly as the closing line below predicted. The reasoning is kept in the past tense
+ * rather than cut, because it is the argument for why this function exists at all — and had
+ * #247 taken the import the note refused, this file would have needed rewriting on the day
+ * the page went instead of nothing happening to it.
  *
  * `timeZone: "UTC"` on both, and for the same mechanical reason rather than the same
  * semantic one: `new Date(y, m, d)` reads the *server's* zone, so a date built and
