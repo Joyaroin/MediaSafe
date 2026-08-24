@@ -3551,6 +3551,131 @@ export async function listUpcomingEpisodes(
     .orderBy(episode.airDate, sql`lower(${title.name})`, episode.seasonNo, episode.episodeNo);
 }
 
+/**
+ * One card of Upcoming's second half — **a film you are waiting for** (issue #252).
+ *
+ * A poster, a name, the day it is released, and the days between here and there. Nothing
+ * else: no runtime, because a film's runtime is a fact about watching it and this card is
+ * about not being able to yet, and neither of the two facts the handoff draws beside the
+ * date — see below.
+ *
+ * ── `releaseDate` is not nullable here, for `UpcomingEpisode`'s exact reason ──────────
+ *
+ * `title.release_date` is a nullable column and an undated film is an ordinary thing for
+ * the catalogue to hold — a film announced but not yet scheduled is the common case for
+ * everything on a watchlist worth waiting for. It cannot reach this card: *waiting for* is
+ * a statement about a date, so the read's `is not null` is the whole reason this field is
+ * a `string`, and the countdown downstream needs no branch for a row it can never be
+ * handed. The cast below launders the null that predicate has already excluded; weaken the
+ * predicate and this type starts lying with no compiler error to say so, which is what
+ * `tests/upcoming-films.test.ts` is holding.
+ *
+ * ── The release type and the region are **deliberately absent** ──────────────────────
+ *
+ * The handoff draws `Sep 26 · Canada` and a `Theatrical` chip. Neither is built and the
+ * columns for them are not here. **This is a cost call rather than a policy one**, and
+ * #252 states it: both live in TMDB's release-dates endpoint, which is a separate
+ * catalogue request *per film*, so a list surface of them would be one request per card —
+ * the exact cost #246 moved the episode still into the mirror to avoid. They are also
+ * region-specific and they change, so mirroring them at add time would give a reader a
+ * chip that had been true once.
+ *
+ * Under #245's precedence rule the handoff would otherwise carry them, so this is a
+ * subtraction to revisit once Upcoming has been lived with — recorded here rather than
+ * left to be rediscovered as an omission.
+ */
+export interface UpcomingFilm {
+  /** Where the card navigates — the film's own page beneath its library entry. */
+  readonly libraryEntryId: string;
+  readonly titleName: string;
+  /** `null` where the catalogue has no artwork. `app/poster.tsx` holds the measure. */
+  readonly posterPath: string | null;
+  /** `YYYY-MM-DD`, never null — see above. */
+  readonly releaseDate: string;
+}
+
+/**
+ * **What you are waiting for: the watchlist films whose release date is still ahead** —
+ * issue #252, and `listUpcomingEpisodes`' sibling over the other half of one page.
+ *
+ * ── The membership is three predicates and none of them is a slice ───────────────────
+ *
+ * **Standing at Watchlist**, **a film**, and **dated**. The first two are
+ * `listWatchlistFilms`' own pair, held to deliberately rather than widened: this is the
+ * dated half of the rail one page over, so a film that leaves the watchlist leaves both at
+ * once and a reader paging sideways never finds the two disagreeing about what is on it.
+ * `satisfies` on both string columns for that read's reason — a typo in either would be an
+ * empty section rather than an error.
+ *
+ * The third is what makes the section mean anything. A watchlist film TMDB has not dated
+ * is not something you are *waiting for* on a page that counts down; it is on the films
+ * rail, undated, where it belongs. It is excluded by a predicate rather than by a `null`
+ * check downstream so that nothing has to decide what a card with no date would draw.
+ *
+ * Shows are out by `kind` and not by accident: a show's dates are its episodes' and they
+ * are the section above this one. A show's own `release_date` is the day its *first*
+ * episode went out, which for anything in a library is years in the past — a predicate on
+ * it would be quietly right for the wrong reason, and wrong the day a reader watchlists a
+ * series that has not premiered.
+ *
+ * ── The same day-wide window, for the same timezone reason ───────────────────────────
+ *
+ * `release_date >= current_date - 1`, which is `listUpcomingEpisodes`' window and that
+ * function's argument in full: no zone on earth is more than 24 hours from UTC, so a
+ * window opening a day early is a superset of *today or later* for every reader at every
+ * instant, and the narrowing to the reader's actual today happens once, in the reader's
+ * zone, in `upcoming-grouping.ts` — the same module that writes the countdown, so the film
+ * that is dropped and the words under the one beside it are decided against one day.
+ *
+ * It also keeps this read cacheable on `serverDay()` the way every clock-reading read here
+ * is, which a window bucketed in the reader's zone would not be.
+ *
+ * ── Ordered by what is nearest, and not capped ───────────────────────────────────────
+ *
+ * By release date first, because *what is coming next* is the whole question the section
+ * answers and the countdown under the first card is the smallest number on it. Then
+ * `lower(name)` and the entry id, so two films released on one day have a stable order and
+ * two identical loads give an identical section (`listWatchlistFilms`' expression, and its
+ * note on why it is repeated rather than imported).
+ *
+ * **No `LIMIT`**, for `listUpcomingEpisodes`' reason: the bound is a reader's own
+ * watchlist, the section is a horizontal rail whose bound is the scroll, and a cap here
+ * would be *showing 20 of 34* with the number filed off.
+ *
+ * Unguarded, like every read in this file. A failure throws to the route's `error.tsx`,
+ * which draws the read-failure treatment with a reference id — *nothing is coming* is
+ * exactly as plausible a lie here as it is over the episodes above.
+ */
+export async function listUpcomingFilms(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly UpcomingFilm[]> {
+  return executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleName: title.name,
+      posterPath: title.posterPath,
+      // Left as the `YYYY-MM-DD` text Postgres wrote, never a `Date`: a release date is a
+      // `date` column with no instant in it, and a `Date` here would silently acquire a
+      // timezone the column does not have (ADR-0003). `listUpcomingEpisodes` casts its
+      // `air_date` the same way over the same laundered null.
+      releaseDate: sql<string>`${title.releaseDate}`.as("release_date"),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        eq(libraryEntryState.state, "watchlist" satisfies LibraryState),
+        eq(title.kind, "film" satisfies TitleKind),
+        isNotNull(title.releaseDate),
+        sql`${title.releaseDate} >= current_date - 1`,
+      ),
+    )
+    .orderBy(title.releaseDate, sql`lower(${title.name})`, libraryEntry.id);
+}
+
 /** One row of a season/episode list — issue #58's title detail. */
 export interface EpisodeDetail {
   readonly id: string;

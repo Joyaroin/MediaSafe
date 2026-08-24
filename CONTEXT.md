@@ -157,9 +157,10 @@ separates it from discovery.
 _Avoid_: suggestion, for you, because you watched
 
 **Upcoming**:
-The future air dates of episodes of shows you are **watching or caught up on**, grouped by day in
-your own timezone. Never a time of day — the catalogue holds an air date and no air time, so there
-is no *time unknown* state to reach.
+What is still to come, in two halves. The future air dates of episodes of shows you are **watching
+or caught up on**, grouped by day in your own timezone; and the **watchlist films whose release date
+is still ahead**, each with a countdown in the same days. Never a time of day — the catalogue holds
+an air date and no air time, so there is no *time unknown* state to reach.
 
 **Narrowed by [#251](https://github.com/Joyaroin/MediaSafe/issues/251)**, which is the change that
 built it. This entry read *the next air dates for shows in your library you have not abandoned*
@@ -168,6 +169,20 @@ started, and a show you finished last year, on the page that answers *what is co
 waiting for*. The definition is narrowed rather than the code widened, in the same commit, because
 an older document losing to what shipped is #245's stated default and a glossary describing a
 surface nobody built is worse than no glossary.
+
+**Widened to admit films by [#252](https://github.com/Joyaroin/MediaSafe/issues/252)**, which built
+the second half — and the two movements are not in tension. #251 narrowed *which shows*, on the
+grounds that what you are waiting for is what you keep up with; #252 admits films on exactly that
+reading, since a watchlist film with a date ahead of it is the purest case of a thing you are
+waiting for. **Watchlist is the whole membership for a film**, where it is excluded for a show: a
+show you have not started has no next episode you are waiting for, and a film you have not seen is
+nothing but that.
+
+A film's countdown carries **no release type and no region** — no *Theatrical*, no *Canada*. That
+is a cost call rather than a definition: both are a catalogue request per film on a list surface,
+and both are region-specific and change, so a mirrored chip would be one that had been true once.
+Recorded here because the handoff draws them, and a reader of this entry should not conclude the
+build simply forgot.
 
 _Avoid_: schedule, calendar, coming soon
 
