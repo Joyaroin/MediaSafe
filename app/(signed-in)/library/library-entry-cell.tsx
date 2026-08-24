@@ -39,7 +39,7 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * pairing is the only place the poster is modified. Both halves are here and nowhere else
  * — one without the other reads as a rendering fault rather than as a state.
  *
- * `.55` since turn 9, up from `.45`, and the same number `group-tile.tsx` now uses on the
+ * `.55` since turn 9, up from `.45`, and the same number the phone's deleted group tile used on the
  * Up next Abandoned group — the handoff names this cell as the surface that already dims
  * a poster and asks that the two not be left different by accident.
  */

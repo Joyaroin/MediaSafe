@@ -2578,10 +2578,28 @@ function stateFrom(value: string): LibraryState {
  * never *degrade* to the number, and nothing this read could invent would help them keep
  * it.
  *
- * There is no remainder here, and no count of anything. The remainder is a sort key
- * below, not a fact either card prints — `DESIGN.md`'s Up next card is a poster, a code
- * line, a title, an episode name and a control, and the wireframe's "▓▓▓░ 12" meter did
- * not survive into it.
+ * ── The remainder is here now, and that is an amendment rather than a slip (#250) ────
+ *
+ * It used to say *there is no remainder here, and no count of anything* — the remainder
+ * was a sort key and nothing else. The phone's next-episodes card prints it, so the read
+ * carries it, and `SPEC.md` §7 is amended in the same change rather than this quietly
+ * disagreeing with it. The rule that narrowed to survive is *a count may not appear as
+ * chrome on a surface the reader came to do something else on*; a number saying whether
+ * you are three from the end or thirty is the content of the card it sits on, which is
+ * what the wireframe's "▓▓▓░ 12" meter never was.
+ *
+ * **It is `library_entry_remaining`'s number, unmodified.** Episodes of the show with no
+ * watch — unreleased ones included, which is `db/views.ts`'s definition and `CONTEXT.md`'s
+ * — and so it counts the episode this entry is offering. The card subtracts that one
+ * itself (`episode-card-line.ts`), because *what is left after this* is a rendering
+ * question and *how much of this show is unwatched* is the domain's.
+ *
+ * ── The still, the runtime and the air date arrived with the card (#246, #250) ───────
+ *
+ * All three are borrowed and all three are mirrored — `still_path` by amendment 10 of
+ * #246, precisely so a rail of landscape cards is not one catalogue request per card.
+ * Each is `null` where TMDB has nothing, and no surface degrades to a placeholder for any
+ * of them.
  */
 export interface UpNextEntry {
   readonly libraryEntryId: string;
@@ -2608,6 +2626,29 @@ export interface UpNextEntry {
   readonly episodeName: string | null;
   readonly seasonNo: number;
   readonly episodeNo: number;
+  /**
+   * Borrowed, and `null` where TMDB has not dated the episode. **Not the same fact as
+   * *released***: the rail deliberately carries undated and future-dated episodes, since
+   * *coming back* is the state whose whole content is an episode that has not aired
+   * (`COMING_BACK`).
+   */
+  readonly airDate: string | null;
+  /** Borrowed. The episode's own runtime, not the title's. */
+  readonly runtimeMins: number | null;
+  /** Borrowed (#246). The episode's own image, as a TMDB CDN path. */
+  readonly stillPath: string | null;
+  /** `library_entry_remaining`, unmodified — see this interface's own docblock. */
+  readonly remaining: number;
+  /**
+   * The run of released episodes this card can mark without another read — issue #220,
+   * widened from the Ongoing group to every next-episodes card by #250.
+   *
+   * **Empty is a fact and not a gap.** A card whose next episode has not aired gets an
+   * empty run by construction, which is what makes it the *unreleased episode, no toggle*
+   * state rather than a card missing a control. `listUpNextRails` is where that is
+   * arranged, and `up-next-episode-card.tsx` is where it is read.
+   */
+  readonly queue: UpNextQueue;
 }
 
 /**
@@ -2738,7 +2779,8 @@ interface UpNextRead {
   readonly rows: (where: SQL, limit: number | null) => Promise<UpNextRow[]>;
 }
 
-/** One row of the shared read: everything any Up next rail renders. */
+/** One row of the shared read: everything any Up next rail renders, bar the queue — which
+ *  is a second read, keyed by the entry ids this one chooses. */
 interface UpNextRow {
   readonly libraryEntryId: string;
   readonly titleId: string;
@@ -2749,6 +2791,10 @@ interface UpNextRow {
   readonly episodeName: string | null;
   readonly seasonNo: number;
   readonly episodeNo: number;
+  readonly airDate: string | null;
+  readonly runtimeMins: number | null;
+  readonly stillPath: string | null;
+  readonly remaining: number;
 }
 
 /**
@@ -2828,6 +2874,14 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           episodeName: episode.name,
           seasonNo: libraryEntryUpNext.seasonNo,
           episodeNo: libraryEntryUpNext.episodeNo,
+          airDate: episode.airDate,
+          runtimeMins: episode.runtimeMins,
+          stillPath: episode.stillPath,
+          /* Already joined, and joined for the sort rather than for this — `upNextOrder`'s
+             *closest to finishing* tiebreak reads the same column. Selecting it costs
+             nothing beyond the column, and reading it from anywhere else would be a second
+             answer to how much of a show is left. */
+          remaining: libraryEntryRemaining.remaining,
         })
         .from(libraryEntry)
         .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -2853,8 +2907,15 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
   };
 }
 
-/** The shared read's row as the entry every surface is handed. */
-function upNextEntry(row: UpNextRow): UpNextEntry {
+/**
+ * The shared read's row, plus its run of markable episodes, as the entry every surface is
+ * handed.
+ *
+ * The queue is a parameter rather than a lookup here because the two reads that produce it
+ * differ by rail: `WATCHING`'s entries get `upNextQueues`' answer, and `COMING_BACK`'s get
+ * `NOTHING_RELEASED` without a query being run for them (`listUpNextRails`).
+ */
+function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
   return {
     libraryEntryId: row.libraryEntryId,
     titleId: row.titleId,
@@ -2865,6 +2926,11 @@ function upNextEntry(row: UpNextRow): UpNextEntry {
     episodeName: row.episodeName,
     seasonNo: row.seasonNo,
     episodeNo: row.episodeNo,
+    airDate: row.airDate,
+    runtimeMins: row.runtimeMins,
+    stillPath: row.stillPath,
+    remaining: row.remaining,
+    queue,
   };
 }
 
@@ -2987,16 +3053,31 @@ export interface QueuedEpisode {
  * been reached. `more` separates the two, and the read pays for it by fetching one row
  * past the cap rather than by counting the rest of the show.
  *
- * | `episodes` | `more` | What the tile does |
+ * | `episodes` | `more` | What the card does |
  * |---|---|---|
  * | non-empty | either | offers the mark on `episodes[0]` |
- * | empty | `false` | leaves the group — nothing released is left |
+ * | empty | `false` | see below — the answer depends on when it went empty |
  * | empty | `true` | stays, with no control, until the next load refills the run |
  *
  * The last row is the cap showing through, and it is reachable only by marking
- * `UP_NEXT_QUEUE_DEPTH` episodes of one show from one tile without this page being loaded
- * again in between. It renders as a tile that is momentarily not markable rather than as a
- * tile that claims a show is finished, which is the direction this has to fail in.
+ * `UP_NEXT_QUEUE_DEPTH` episodes of one show from one card without this page being loaded
+ * again in between. It renders as a card that is momentarily not markable rather than as a
+ * card that claims a show is finished, which is the direction this has to fail in.
+ *
+ * ── The middle row got a second reading in #250, and the two must not be conflated ───
+ *
+ * *Empty, and nothing more released* means one thing when the run **ran out under the
+ * reader's thumb** — they marked the last released episode, and the card has done its job
+ * and leaves the rail — and quite another when it **arrived empty from the server**, which
+ * is every *coming back* entry: a caught-up show whose next episode airs on a date TMDB
+ * has published. That card must stay, show the dated episode it is announcing, and offer
+ * no control.
+ *
+ * The two are told apart by *when*, not by the pair, and the distinguishing fact is the
+ * server render: an empty run in the props is the second reading, an empty run reached by
+ * marking is the first. `up-next-episode-card.tsx` is where that split is made, and it is
+ * made there rather than by a fourth field here because it is a fact about the render and
+ * not about the show.
  */
 export interface UpNextQueue {
   readonly episodes: readonly QueuedEpisode[];
@@ -3005,18 +3086,7 @@ export interface UpNextQueue {
 }
 
 /**
- * An Ongoing tile's entry — issue #220, and the only rail entry that carries a queue.
- *
- * Ongoing is the one group with a mark control (`up-next-groups.tsx`), so it is the one
- * group that pays for the second read. Coming back, Old friends, Watchlist and Abandoned
- * stay exactly the shape they were.
- */
-export interface OngoingEntry extends UpNextEntry {
-  readonly queue: UpNextQueue;
-}
-
-/**
- * How far ahead one Ongoing tile is read — issue #220.
+ * How far ahead one card is read — issue #220.
  *
  * **Four, and it caps a burst rather than estimating an evening.** The run only has to
  * outlast the presses made between two loads of this page, and the scene the mark exists
@@ -3024,10 +3094,12 @@ export interface OngoingEntry extends UpNextEntry {
  * one tap. Four covers a double bill and the fumble either side of it, and
  * `UpNextQueue.more` is what keeps a fifth press honest rather than wrong.
  *
- * The cost is what bounds it. ONGOING holds at most `ONGOING_RAIL_SIZE` entries, so this
- * read returns at most `12 × 5` rows — the depth, plus the one row that answers `more` —
- * on a page that already makes three reads. Reading the whole show instead would be the
- * same query returning several hundred episodes nobody is going to press tonight.
+ * The cost is what bounds it. Since #250 the run is read for every *watching* entry
+ * rather than for `ONGOING_RAIL_SIZE` of them, so this returns at most *watching* × 5 rows
+ * — the depth, plus the one row that answers `more`. Reading the whole show instead would
+ * be the same query returning several hundred episodes per entry that nobody is going to
+ * press tonight, which is the thing the depth exists to refuse. `listUpNextRails` states
+ * the widened cost in full.
  *
  * Exported for the tests, which have to prove the cap and its `more` flag hold at exactly
  * this number.
@@ -3137,8 +3209,21 @@ async function upNextQueues(
   return queues;
 }
 
+/**
+ * The three orderings, still three arrays — issue #137, and #250 did **not** collapse
+ * them into one.
+ *
+ * The phone concatenates them into a single next-episodes rail and the desktop draws them
+ * as three, which is exactly why the read keeps them apart: the concatenation is a
+ * rendering decision (`up-next-episode-rail.tsx` holds the one line that makes it), and a
+ * read that had already flattened them would put the *ongoing, then coming back, then old
+ * friends* rule somewhere no surface could see it and the desktop could not undo.
+ *
+ * All three are the same shape since #250. Ongoing used to be the only one carrying a
+ * queue, because it was the only group with a mark.
+ */
 export interface UpNextRails {
-  readonly ongoing: readonly OngoingEntry[];
+  readonly ongoing: readonly UpNextEntry[];
   readonly comingBack: readonly UpNextEntry[];
   readonly oldFriends: readonly UpNextEntry[];
 }
@@ -3165,55 +3250,103 @@ export async function listUpNextRails(
     read.rows(COMING_BACK, null),
   ]);
 
-  const ongoing = watching.slice(0, ONGOING_RAIL_SIZE).map(upNextEntry);
-
   /**
-   * The third read, and the only one of the three that is sequential — issue #220. It
-   * takes the entry ids the slice above chose, so it cannot be overlapped with the reads
-   * that produce them.
+   * The third read, and the only one of the three that is sequential — issue #220,
+   * widened by #250. It takes the entry ids the reads above produced, so it cannot be
+   * overlapped with them.
    *
-   * It runs on every load of this page, including a desktop one, for the reason `page.tsx`
-   * states at length about the two reads that already do: **the server does not know the
-   * viewport**, and #136 deleted this build's only `matchMedia` branch deliberately. The
-   * cost is bounded by `UP_NEXT_QUEUE_DEPTH`'s own docblock rather than by a guess about
-   * who is looking.
+   * ── It is asked of every *watching* entry now, not of the first twelve ─────────────
+   *
+   * #220 needed a run for the Ongoing group alone, because Ongoing was the one group with
+   * a mark. #250's next-episodes rail is ongoing, coming back and old friends
+   * concatenated, and **every card on it carries the check** — so every card needs the run
+   * that lets it advance optimistically, and a queue read bounded to the first twelve
+   * would leave every cold show's check unable to move.
+   *
+   * **The cost, stated.** `ONGOING_RAIL_SIZE × (UP_NEXT_QUEUE_DEPTH + 1)` becomes
+   * *watching* × the same, which on the committed library is 199 entries rather than 12 —
+   * one query returning at most ~1000 narrow rows instead of ~60. It is one round trip
+   * either way, the window function scans the same join, and it replaces the two reads
+   * (`listWatchlist`, `listAbandoned`) this ticket deletes. It runs on a desktop load too,
+   * for the reason `page.tsx` states at length: **the server does not know the viewport.**
+   *
+   * ── `COMING_BACK` is not asked, and that is provable rather than assumed ───────────
+   *
+   * That predicate is *caught up ∧ the next episode's air date is in the future*, and
+   * `upNextQueues` truncates a run at the first episode that is not released — `air_date
+   * <= current_date`. A future air date fails that on the first row, every time, so the
+   * answer for every coming-back entry is the empty run, and asking for it would be paying
+   * for a query whose result the predicate already determines. `NOTHING_RELEASED` below is
+   * that answer written down once.
    */
   const queues = await upNextQueues(
     userId,
-    ongoing.map((entry) => entry.libraryEntryId),
+    watching.map((row) => row.libraryEntryId),
     executor,
   );
 
+  /**
+   * `UpNextQueue` is a shape every entry has, so a missing key is not one of the answers:
+   * a card branching on `undefined` would be a fourth case beside the three `UpNextQueue`
+   * already enumerates.
+   *
+   * `upNextQueues` writes a key for every id it is handed, so this fallback is unreachable
+   * — and it is written **`more: true`** rather than `more: false` for the direction it
+   * would fail in if that ever stopped being true. An empty run with `more: false` is
+   * *this show has nothing released left*, which takes the card off the rail; with
+   * `more: true` it is *this read has nothing to offer yet*, which keeps the card and
+   * offers no control. A bug should never be able to tell a reader a show finished.
+   */
+  const watchingEntry = (row: UpNextRow): UpNextEntry =>
+    upNextEntry(row, queues.get(row.libraryEntryId) ?? { episodes: [], more: true });
+
   return {
-    /**
-     * `OngoingEntry` is a shape every Ongoing tile has, so a missing key is not one of the
-     * answers: a tile branching on `undefined` would be a fourth case beside the three
-     * `UpNextQueue` already enumerates.
-     *
-     * `upNextQueues` writes a key for every id it is handed, so this fallback is
-     * unreachable — and it is written **`more: true`** rather than `more: false` for the
-     * direction it would fail in if that ever stopped being true. An empty run with
-     * `more: false` is *this show has nothing released left*, which takes the tile out of
-     * the group; with `more: true` it is *this read has nothing to offer yet*, which keeps
-     * the tile and offers no control. A bug should never be able to tell a reader a show
-     * finished.
-     */
-    ongoing: ongoing.map((entry) => ({
-      ...entry,
-      queue: queues.get(entry.libraryEntryId) ?? { episodes: [], more: true },
-    })),
-    comingBack: comingBack.map(upNextEntry),
-    oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(upNextEntry),
+    ongoing: watching.slice(0, ONGOING_RAIL_SIZE).map(watchingEntry),
+    comingBack: comingBack.map((row) => upNextEntry(row, NOTHING_RELEASED)),
+    oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(watchingEntry),
   };
 }
 
 /**
- * One entry of the phone's WATCHLIST or ABANDONED group (issue #138) — a poster, a name
- * and a year, the same three facts a rail tile carries and nothing `upNextRead` above
- * would even have: neither state has an episode after it worth pointing at, so there is
- * no `library_entry_up_next` row to join for either — and, for a watchlist film, never
- * could be (`UpNextRow`'s own note on why a film has no such row). Joining that view
- * anyway would silently drop every watchlist and abandoned film off both groups.
+ * The run of a title with nothing released left to mark — every *coming back* entry's
+ * queue, by construction rather than by query (`listUpNextRails`).
+ *
+ * **`more: false` is the load-bearing half.** It is the pair that says *this show has
+ * nothing released left*, which is exactly true of a caught-up show whose next episode
+ * airs in the future: there is nothing to mark today. `more: true` would claim a run the
+ * read merely failed to fetch, and would leave the card waiting for a refill that no
+ * reload could ever produce.
+ *
+ * Frozen at module scope so every coming-back entry shares one object rather than minting
+ * one per row, the same reason `up-next-mark.ts` freezes its `UNWATCHED` view.
+ */
+const NOTHING_RELEASED: UpNextQueue = Object.freeze({
+  episodes: Object.freeze([]),
+  more: false,
+});
+
+/**
+ * One card of the landing screen's films rail (#250) — a poster, a name, a year and a
+ * runtime.
+ *
+ * ── Why this joins no `library_entry_up_next`, and never could ───────────────────────
+ *
+ * A film has no episode after it to point at, so it has no row in that view — and, for a
+ * watchlist title, no watches to have produced one anyway (`UpNextRow`'s own note).
+ * Joining it here would silently empty this rail rather than narrow it, which is the
+ * failure mode this comment exists to keep out.
+ *
+ * `library_entry_remaining` is not joined either, and for the same kind of reason: that
+ * view is `where t.kind = 'show'`, so it has no row for any film. **A film carries no
+ * remainder**, which is `CONTEXT.md`'s *Remaining is a show concept* holding here rather
+ * than being restated — and it is why a film card prints a year and a runtime where an
+ * episode card prints a count.
+ *
+ * Extends `LibraryStateGroupEntry` (#138's shape) with the runtime the handoff's film card
+ * draws. The provider line that card also draws is **not** here: a watch provider is a
+ * borrowed live fact fetched per title (`live-title-facts.tsx`), and a rail of them would
+ * be one catalogue request per card — the exact cost #246 moved the episode still into the
+ * mirror to avoid.
  */
 export interface LibraryStateGroupEntry {
   readonly libraryEntryId: string;
@@ -3221,22 +3354,35 @@ export interface LibraryStateGroupEntry {
   readonly titleName: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /** Borrowed. `null` where TMDB has not published one. */
+  readonly runtimeMins: number | null;
 }
 
 /**
- * **WATCHLIST and ABANDONED's membership: `library_entry_state`, filtered to one state.**
+ * **The films rail's membership: standing at Watchlist, and a film** — issue #250.
  *
- * Reused by both — `state` is the one thing they differ on — rather than two near-copies
- * of the same three-table join. Ordered Title A–Z, `orderByFor`'s own default tiebreak
- * (`db/library-sort.ts`'s vocabulary does not reach this reader, so the expression is
- * repeated rather than imported): neither group has a §7 order of its own to inherit, and
- * a filter-and-slice screen showing up to two hundred titles needs a stable one more than
- * it needs a chosen one.
+ * Both halves are predicates and neither is a slice: `library_entry_state` decides the
+ * first and `title.kind` the second, so a show on the watchlist and a film being watched
+ * are each out by a rule rather than by a `LIMIT` that happened not to reach them.
+ *
+ * `satisfies`, not bare strings: `state` and `kind` are both `text` columns, so a typo in
+ * either would be an empty rail rather than an error — silent, on the two predicates that
+ * decide what this rail contains.
+ *
+ * Ordered Title A–Z with the entry id underneath it. This rail has no §7 order to inherit
+ * — there is no watch to be recent and no next episode to be dated — and a stable order is
+ * what makes *two identical loads give an identical order* true of two films that share a
+ * name. The expression is repeated rather than imported for the reason #138 gave:
+ * `db/library-sort.ts`'s vocabulary does not reach this reader.
+ *
+ * **This replaces `listWatchlist` and `listAbandoned`.** #250 deletes the phone's five
+ * vertical groups, which were their only callers; both states stay reachable through the
+ * library's status filters, which already carry all five and read through
+ * `listLibraryEntries`.
  */
-async function listByState(
+export async function listWatchlistFilms(
   userId: UserId,
-  state: LibraryState,
-  executor: Executor,
+  executor: Executor = getDb(),
 ): Promise<readonly LibraryStateGroupEntry[]> {
   return executor
     .select({
@@ -3245,28 +3391,19 @@ async function listByState(
       titleName: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
     })
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
     .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
-    .where(and(ownedBy(userId, libraryEntry), eq(libraryEntryState.state, state)))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        eq(libraryEntryState.state, "watchlist" satisfies LibraryState),
+        eq(title.kind, "film" satisfies TitleKind),
+      ),
+    )
     .orderBy(sql`lower(${title.name})`, libraryEntry.id);
-}
-
-/** The phone home's WATCHLIST group, and the screen `more ›` on it opens. */
-export async function listWatchlist(
-  userId: UserId,
-  executor: Executor = getDb(),
-): Promise<readonly LibraryStateGroupEntry[]> {
-  return listByState(userId, "watchlist", executor);
-}
-
-/** The phone home's ABANDONED group, and the screen `more ›` on it opens. */
-export async function listAbandoned(
-  userId: UserId,
-  executor: Executor = getDb(),
-): Promise<readonly LibraryStateGroupEntry[]> {
-  return listByState(userId, "abandoned", executor);
 }
 
 /** One row of a season/episode list — issue #58's title detail. */
@@ -3277,6 +3414,39 @@ export interface EpisodeDetail {
   readonly episodeNo: number;
   /** `null` where TMDB has not named it. Never falls back to a bare number. */
   readonly name: string | null;
+  /**
+   * The three mirrored facts an episode's own page prints and a season row does not —
+   * issue #253, over the columns issue #246 put in the mirror.
+   *
+   * ── Why they are on this type rather than on a second one ────────────────────────
+   *
+   * The episode page is a projection of this read rather than a read of its own — its
+   * `page.tsx` argues that at length. A parallel `EpisodeDetailRow` carrying the same
+   * identity, the same `watched` and the same `upNext` plus three columns would be a
+   * second answer to *what is an episode* with nothing keeping it in step with this
+   * one, and the surface that noticed the drift would be the one printing a date beside
+   * a name read from a different row.
+   *
+   * The season list simply does not read them. That costs three columns on a query that
+   * already selects four from the same table and returns the same rows.
+   *
+   * `stillPath` is TMDB's `still_path` — a CDN path and never a URL, because ADR-0001
+   * stores no image blobs and `episode-still.tsx` is what turns one into a URL. `null`
+   * is TMDB having no frame for this episode: not an error, and not a missing read.
+   *
+   * `airDate` is the ISO `YYYY-MM-DD` string Postgres hands back for a `date` column,
+   * left as text rather than parsed. `db/views.ts` compares this column to
+   * `current_date` in SQL, nothing in the application does arithmetic on it, and a
+   * `Date` here would silently acquire a timezone the column does not have (ADR-0003).
+   * `null` where TMDB has not dated it, which is not the same as *not out yet* — and
+   * `episode-facts.ts` refuses to say either in the other's words.
+   *
+   * `runtimeMins` is this episode's own runtime, unrelated to `TitleDetailRow`'s, which
+   * is a film's. `null` where TMDB has published none.
+   */
+  readonly stillPath: string | null;
+  readonly airDate: string | null;
+  readonly runtimeMins: number | null;
   /**
    * Struck, and now the whole of what the row needs to decide what to offer.
    *
@@ -3419,6 +3589,12 @@ export async function getTitleDetail(
       seasonNo: episode.seasonNo,
       episodeNo: episode.episodeNo,
       name: episode.name,
+      // The three columns #246 put in the mirror, read here for #253's episode page.
+      // `EpisodeDetail`'s own docblock holds the argument for their being on this row
+      // rather than on a second read beside it.
+      stillPath: episode.stillPath,
+      airDate: episode.airDate,
+      runtimeMins: episode.runtimeMins,
     })
     .from(episode)
     .where(eq(episode.titleId, row.titleId))
@@ -3440,6 +3616,9 @@ export async function getTitleDetail(
       seasonNo: one.seasonNo,
       episodeNo: one.episodeNo,
       name: one.name,
+      stillPath: one.stillPath,
+      airDate: one.airDate,
+      runtimeMins: one.runtimeMins,
       watched: watchedEpisodeIds.has(one.id),
       upNext: one.id === upNextEpisodeId,
     })),

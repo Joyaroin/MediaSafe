@@ -1,0 +1,57 @@
+import Link from "next/link";
+
+import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+
+/**
+ * The landing screen with **nothing on it at all** — issue #250, and the handoff's own
+ * named state rather than a blank page.
+ *
+ * ── Why this is not `UpNextEmpty`, which is three feet away ─────────────────────────
+ *
+ * They answer different questions and #245 settled that both are true at once. `SPEC.md`
+ * says an empty rail is simply *absent*; the handoff draws a named empty state for the
+ * landing screen, with copy. Both were built: **an individual empty rail is absent**
+ * (`up-next-episode-rail.tsx`, `up-next-film-rail.tsx` each render `null`), and **a screen
+ * with nothing on it at all gets a sentence**.
+ *
+ * The two sentences belong to two devices asking two questions. `UpNextEmpty`'s *you're
+ * caught up* answers the desktop's — nothing watching and nothing dated to come back,
+ * across three rails. This answers the phone's, which is a different set: no next episode
+ * **and** no film on the watchlist. A library whose only content is three unwatched films
+ * shows the desktop's sentence and this one's rail, honestly and at the same moment;
+ * `page.tsx` has carried a paragraph about the two devices disagreeing since #138 and this
+ * does not change it.
+ *
+ * ── The copy is the prototype's, verbatim ───────────────────────────────────────────
+ *
+ * *Nothing queued for tonight* / *Add a show and its next episode turns up here* /
+ * *Search the catalogue* — `docs/design/prototypes/mediasafe-mobile.html`'s states column,
+ * which the handoff draws and #245 makes binding. It is deliberately not
+ * `empty-library.tsx`'s *The bill is blank* and deliberately not `UpNextEmpty`'s *you're
+ * caught up*: `docs/design/v1-surfaces.md` §6 says these read differently and must not
+ * share copy, and there are now three of them.
+ *
+ * Reachable **only from reads that succeeded**. A failure throws past this into the
+ * route's `error.tsx`, which draws the read-failure treatment with a reference id. This is
+ * the surface `AGENTS.md`'s rule bites hardest on, and *nothing queued for tonight* is
+ * exactly as plausible a lie as *you're caught up* was.
+ *
+ * Centred, `text-bill-lg` in `text`, no border — `UpNextEmpty`'s and `empty-library.tsx`'s
+ * shape, and the opposite of `errors/read-failure.tsx`'s left-aligned `accent` treatment,
+ * so the two can never be mistaken for each other.
+ */
+export function UpNextNothing() {
+  return (
+    <section className="px-[22px] py-16 text-center">
+      <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
+
+      <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+        Add a show and its next episode turns up here.
+      </p>
+
+      <Link href="/search" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>
+        Search the catalogue
+      </Link>
+    </section>
+  );
+}

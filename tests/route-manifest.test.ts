@@ -275,8 +275,9 @@ const NO_PENDING_STATE = [
  *
  * It held eleven routes — `/lists`, `/lists/[listId]`, `/settings`,
  * `/settings/delete-account`, `/titles/[kind]/[tmdbId]`, `/up-next` and its five phone
- * group screens — every one of them a surface that genuinely waits on data the reader came
- * to see, and every one of them left the previous screen frozen on the glass until its
+ * group screens, of which the five were deleted outright by
+ * [#250](https://github.com/Joyaroin/MediaSafe/issues/250) — every one of them a surface
+ * that genuinely waits on data the reader came to see, and every one of them left the previous screen frozen on the glass until its
  * queries resolved. Each got a `loading.tsx` of its own; `NO_PENDING_STATE` above is what
  * remains, by decision rather than by backlog.
  *
@@ -318,22 +319,70 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
-   * The eleven segments #181 converted, asserted the same way — a floor against the audit
-   * quietly passing rather than actually looking, on the batch this ticket is responsible
-   * for rather than the one before it.
+   * The episode page — issue #253, the fourth segment under the library and the one most
+   * exposed to the inheritance problem this audit is about: without its own boundary a
+   * reader tapping an episode would be shown `[entryId]`'s pending render, which is the
+   * *title's* surface standing in for an episode's. `DESIGN.md` §9 treats that as a
+   * heading naming the wrong screen rather than a cosmetic slip, and *own segment, never
+   * inherited* is the clause of this audit that catches it.
+   *
+   * The route is also the one this ticket adds to the manifest, so this is the assertion
+   * that fails if it stops being built at all — the audits above are all `toEqual([])`,
+   * and an empty list is what a check that has stopped looking returns too.
    */
-  it("finds the boundary on every segment #181 converts", () => {
+  it("finds the boundary on the episode page #253 adds", () => {
+    expect(hasBoundary("(signed-in)/library/[entryId]/episode/[episodeId]")).toBe(true);
+  });
+
+  /**
+   * And the route itself is in the build, behind the matcher like everything else.
+   *
+   * It needs no exemption and gets none: `EXEMPT` above is the three routes a reader may
+   * reach with no session, and an episode of a title in *your* library is the opposite of
+   * that. Asserted positively rather than left to `audit.unprotected` being empty, for the
+   * reason the boundary floor above exists — so that a route silently dropped from the
+   * build fails here instead of passing three emptiness checks.
+   */
+  it("builds the episode route, beneath the entry that owns it", () => {
+    expect(built.routes).toContain("/library/[entryId]/episode/[episodeId]");
+    expect(matcherRunsOn(built.matcher, "/library/entry-1/episode/episode-9")).toBe(true);
+  });
+
+  /**
+   * The six segments of #181's eleven that still exist, asserted the same way — a floor
+   * against the audit quietly passing rather than actually looking, on the batch that
+   * ticket is responsible for rather than the one before it. #250 deleted the other five.
+   */
+  it("finds the boundary on every segment #181 converts that still exists", () => {
     expect(hasBoundary("(signed-in)/lists")).toBe(true);
     expect(hasBoundary("(signed-in)/lists/[listId]")).toBe(true);
     expect(hasBoundary("(signed-in)/settings")).toBe(true);
     expect(hasBoundary("(signed-in)/settings/delete-account")).toBe(true);
     expect(hasBoundary("(signed-in)/titles/[kind]/[tmdbId]")).toBe(true);
     expect(hasBoundary("(signed-in)/up-next")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/abandoned")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/coming-back")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/old-friends")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/ongoing")).toBe(true);
-    expect(hasBoundary("(signed-in)/up-next/watchlist")).toBe(true);
+  });
+
+  /**
+   * **The five phone group screens #250 removed, asserted as gone.**
+   *
+   * The acceptance criterion is that *the route manifest reflects the five removed routes*,
+   * and the manifest here is the build's own rather than a list anybody maintains — so this
+   * reads what `next build` actually emitted. A `page.tsx` left behind, or a route restored
+   * by a merge, fails here rather than shipping five screens nothing links to.
+   *
+   * The two states those groups showed and the rails do not — watchlist and abandoned —
+   * stay reachable through the library's status filters, which are `/library`'s own
+   * controls and not routes of their own to assert.
+   */
+  it.each([
+    "/up-next/ongoing",
+    "/up-next/coming-back",
+    "/up-next/old-friends",
+    "/up-next/watchlist",
+    "/up-next/abandoned",
+  ])("has no route left at %s", (route) => {
+    expect(built.pages.map((one) => one.route)).not.toContain(route);
+    expect(built.routes).not.toContain(route);
   });
 
   /**

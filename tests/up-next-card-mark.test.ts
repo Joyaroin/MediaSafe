@@ -7,16 +7,17 @@ import type {
 } from "@/app/(signed-in)/library/watch-action";
 import { createWatchMarks } from "@/app/(signed-in)/library/watch-marks";
 import {
-  markFromTile,
+  markFromCard,
   readUpNextMark,
-  stillMarkable,
-  undoFromTile,
+  stillOnRail,
+  undoFromCard,
 } from "@/app/(signed-in)/up-next/up-next-mark";
-import type { OngoingEntry, QueuedEpisode } from "@/db/access";
+import type { QueuedEpisode, UpNextEntry } from "@/db/access";
 import { createWriteFailureStore } from "@/errors/write-failure";
 
 /**
- * Marking tonight's episode from an Ongoing tile — issue #220, which **reopens #138**.
+ * Marking tonight's episode from a next-episodes card — issue #220, which **reopens
+ * #138**, widened from the Ongoing group to the whole rail by #250.
  *
  * ── Why this is here and not in a rendered component ─────────────────────────────────
  *
@@ -31,9 +32,9 @@ import { createWriteFailureStore } from "@/errors/write-failure";
  *
  * The idempotency key, the rollback and the toast are `watch-marks.ts`'s, and
  * `tests/watch-marks.test.ts` covers them against the episode row. What this file adds is
- * that **the tile is a second surface on that same machinery** — one key per outstanding
+ * that **the card is a second surface on that same machinery** — one key per outstanding
  * write reused across retries, one toast per lost write, keyed by episode rather than by
- * surface — plus the one thing that is genuinely new: the tile's position in its own
+ * surface — plus the one thing that is genuinely new: the card's position in its own
  * queue, which is derived from the store rather than counted.
  */
 
@@ -48,10 +49,7 @@ function episodeAt(seasonNo: number, episodeNo: number, name: string | null = nu
   };
 }
 
-function entryWith(
-  episodes: readonly QueuedEpisode[],
-  more = false,
-): OngoingEntry {
+function entryWith(episodes: readonly QueuedEpisode[], more = false): UpNextEntry {
   return {
     libraryEntryId: "entry-1",
     titleId: "title-1",
@@ -62,12 +60,16 @@ function entryWith(
     episodeName: episodes[0]?.episodeName ?? null,
     seasonNo: episodes[0]?.seasonNo ?? 1,
     episodeNo: episodes[0]?.episodeNo ?? 1,
+    airDate: "2015-02-08",
+    runtimeMins: 47,
+    stillPath: "/still.jpg",
+    remaining: episodes.length,
     queue: { episodes, more },
   };
 }
 
 /**
- * The same harness `tests/watch-marks.test.ts` uses, minus the parts a tile never
+ * The same harness `tests/watch-marks.test.ts` uses, minus the parts a card never
  * reaches: no promise is resolved until a test says so, so *while the write is still in
  * flight* is a state this file can express.
  */
@@ -120,7 +122,7 @@ describe("an Ongoing tile's mark", () => {
     const { marks, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
     // The advance, with the write still on the wire — this is the whole of *optimistic*.
@@ -136,7 +138,7 @@ describe("an Ongoing tile's mark", () => {
     const { marks, failures, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: true });
     await settle();
@@ -152,7 +154,7 @@ describe("an Ongoing tile's mark", () => {
     const { marks, failures, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: false, reference: "sentry-1" });
     await settle();
@@ -169,7 +171,7 @@ describe("an Ongoing tile's mark", () => {
     const { marks, failures, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2, "Mijo"), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: false, reference: "sentry-1" });
     await settle();
@@ -188,7 +190,7 @@ describe("an Ongoing tile's mark", () => {
       episodeAt(2, 5),
     ]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: false, reference: null });
     await settle();
@@ -200,7 +202,7 @@ describe("an Ongoing tile's mark", () => {
     const { marks, failures, recorded, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: false, reference: null });
     await settle();
@@ -223,7 +225,7 @@ describe("an Ongoing tile's mark", () => {
     const { marks, failures, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: false, reference: null });
     await settle();
@@ -247,7 +249,7 @@ describe("an Ongoing tile's mark", () => {
     // The tile presses, and then the title sheet it opened presses the same episode while
     // the first write is still on the wire. The store is keyed by episode rather than by
     // surface, so the second press joins the first write rather than starting a second.
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     void marks.mark(subject, { title: TITLE_NAME, episode: "Season 1, Episode 2" });
     await settle();
@@ -260,12 +262,12 @@ describe("an Ongoing tile's mark", () => {
     const { marks, removed, answerRecord, answerRemove } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: true });
     await settle();
 
-    void undoFromTile(marks, entry, entry.queue.episodes[0]);
+    void undoFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
     expect(removed).toEqual([
@@ -287,72 +289,109 @@ describe("an Ongoing tile's mark", () => {
     const { marks, recorded, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3), episodeAt(1, 4)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: true });
     await settle();
 
     const advanced = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
-    void markFromTile(marks, entry, advanced.episode!);
+    void markFromCard(marks, entry, advanced.episode!);
     await settle();
 
-    // Two episodes, two writes, two keys — the tile's advance is not a retry.
+    // Two episodes, two writes, two keys — the card's advance is not a retry.
     expect(recorded).toEqual(["key-1", "key-2"]);
     expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
       "episode-1-4",
     );
   });
 
-  it("takes the tile out of the group when the last released episode is marked", async () => {
+  /**
+   * **The branch #250 added, and the one this ticket says is easy to get wrong.**
+   *
+   * Every *coming back* entry arrives with an empty run and `more: false`
+   * (`listUpNextRails`'s `NOTHING_RELEASED`): its next episode is dated in the future, so
+   * nothing of it is released and nothing of it is markable. That is exactly the pair
+   * `finished` reads as *nothing released is left*, so a rail filtering on `finished`
+   * alone would drop every caught-up show off the surface silently — the rail would still
+   * render, still hold episodes, and quietly leave shows out.
+   *
+   * `stillOnRail` is what separates *ran out under the reader's thumb* from *arrived empty
+   * from the server*, and the distinguishing fact is the run in the props, which never
+   * changes between renders.
+   */
+  it("keeps a card whose run arrived empty, even though it reads as finished", () => {
+    const { marks } = harness();
+    const comingBack = entryWith([]);
+
+    expect(readUpNextMark(marks, comingBack.libraryEntryId, comingBack.queue).finished).toBe(
+      true,
+    );
+    expect(stillOnRail(marks, comingBack.libraryEntryId, comingBack.queue)).toBe(true);
+  });
+
+  /** Nothing the reader can do takes an arrived-empty card off the rail, because there is
+   *  nothing on it to press. The rule is stable rather than merely true on first render. */
+  it("keeps an arrived-empty card there however the store changes around it", async () => {
+    const { marks } = harness();
+    const comingBack = entryWith([]);
+    const other = entryWith([episodeAt(1, 2)]);
+
+    void markFromCard(marks, other, other.queue.episodes[0]);
+    await settle();
+
+    expect(stillOnRail(marks, comingBack.libraryEntryId, comingBack.queue)).toBe(true);
+  });
+
+  it("takes the card off the rail when the last released episode is marked", async () => {
     const { marks, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2)]);
 
-    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(true);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
-    // Optimistically, before the server has answered — the tile leaves at the same moment
+    // Optimistically, before the server has answered — the card leaves at the same moment
     // it would have advanced.
     const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
     expect(reading.finished).toBe(true);
     expect(reading.episode).toBeNull();
-    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(false);
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(false);
 
     answerRecord[0]({ ok: true });
     await settle();
-    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(false);
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(false);
   });
 
-  it("puts a tile that left the group back when the write is lost", async () => {
+  it("puts a card that left the rail back when the write is lost", async () => {
     const { marks, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2)]);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
     answerRecord[0]({ ok: false, reference: null });
     await settle();
 
-    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(true);
     expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode?.episodeId).toBe(
       "episode-1-2",
     );
   });
 
-  it("keeps a tile whose queue ran out but whose show has not", async () => {
+  it("keeps a card whose queue ran out but whose show has not", async () => {
     const { marks } = harness();
     // `more` is the difference between *this show is finished* and *this read stopped at
     // the cap*, and getting it backwards would take a tile off a show with fifty episodes
     // left.
     const entry = entryWith([episodeAt(1, 2)], true);
 
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
     const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
     expect(reading.finished).toBe(false);
     expect(reading.episode).toBeNull();
-    expect(stillMarkable(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(true);
   });
 
   it("holds the control while its own write is on the wire", async () => {
@@ -364,7 +403,7 @@ describe("an Ongoing tile's mark", () => {
     // must not offer a control over a write it cannot see.
     void marks.mark(subject, { title: TITLE_NAME, episode: "Season 1, Episode 3" });
     await settle();
-    void markFromTile(marks, entry, entry.queue.episodes[0]);
+    void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
     // Position two: both episodes read watched, so the run is spent.

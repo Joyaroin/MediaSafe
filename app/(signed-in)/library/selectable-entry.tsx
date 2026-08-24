@@ -31,7 +31,7 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  * server-rendered branch, so resizing past the breakpoint mid-session changes which one a
  * click does without a reload.
  *
- * ── The hold — issue #197, shared with `group-tile.tsx` since #198 ───────────────────
+ * ── The hold — issue #197, and this file's alone again since #250 ───────────────────
  *
  * `use-hold-to-select.ts` owns the timer, the slop and the swallowed click; this file owns
  * only what a landed tap or a swallowed click does next, which is the one part that

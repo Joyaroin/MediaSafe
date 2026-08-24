@@ -6,11 +6,10 @@ import {
   getListDetail,
   getTitleDetail,
   libraryEntryIdForTitle,
-  listAbandoned,
   listLibraryEntries,
   listLists,
   listUpNextRails,
-  listWatchlist,
+  listWatchlistFilms,
   listYouListCards,
   listYouRails,
   type AccountFigures,
@@ -102,9 +101,9 @@ import type { TitleKind } from "@/tmdb/mirror";
  * page is an aggregate over those same owned rows.
  *
  * A *fact* rather than a *read*, because several functions can answer one fact and they
- * must not be able to disagree about it. `listUpNextRails`, `listWatchlist` and
- * `listAbandoned` are the phone's five groups and the desktop's three rails, drawn from
- * the same entries, so they share `up-next` and one bust reaches all of them. `listLists`
+ * must not be able to disagree about it. `listUpNextRails` and `listWatchlistFilms` are
+ * the phone's two rails and the desktop's three, drawn from the same entries, so they
+ * share `up-next` and one bust reaches all of them. `listLists`
  * and `getListDetail` share `lists` for the same reason: adding a title to a list changes
  * that list's count on one surface and its rows on the other, and a vocabulary that let
  * those be busted separately would let them be busted separately by mistake.
@@ -201,7 +200,7 @@ interface CachedReadShape {
  *
  * ── Why `readsCurrentDate` is written down rather than inferred ──────────────────────
  *
- * It cannot be inferred: `listWatchlist` contains no date at all, and reaches
+ * It cannot be inferred: `listWatchlistFilms` contains no date at all, and reaches
  * `current_date` two joins away through `library_entry_state`. Getting it wrong in the
  * cautious direction costs one read a day; getting it wrong the other way is a surface
  * frozen at the day it was last written to. So it is a field somebody fills in, and the
@@ -219,8 +218,7 @@ export const CACHED_READS = {
    *  derived view, so no clock: an add or a remove is the only thing that changes it. */
   libraryEntryIdForTitle: { cachedAs: "library", readsCurrentDate: false },
   listUpNextRails: { cachedAs: "up-next", readsCurrentDate: true },
-  listWatchlist: { cachedAs: "up-next", readsCurrentDate: true },
-  listAbandoned: { cachedAs: "up-next", readsCurrentDate: true },
+  listWatchlistFilms: { cachedAs: "up-next", readsCurrentDate: true },
   listLists: { cachedAs: "lists", readsCurrentDate: false },
   getListDetail: { cachedAs: "lists", readsCurrentDate: false },
   /** Its episode rows carry a `released` flag read straight off `air_date <=
@@ -287,13 +285,14 @@ export const CACHED_READS = {
    */
   listYouListCards: { cachedAs: "lists", readsCurrentDate: false },
   /**
-   * Issue #248's shows and films rails on `/you`. Shares `up-next` with `listUpNextRails`,
-   * `listWatchlist` and `listAbandoned`: all four are `library_entry_state`, filtered to
-   * different states of the same account, and busted by the same writes.
+   * Issue #248's shows and films rails on `/you`. Shares `up-next` with `listUpNextRails`
+   * and `listWatchlistFilms`: all three are `library_entry_state`, filtered to different
+   * states of the same account, and busted by the same writes.
    *
-   * `readsCurrentDate` is `true` for `listWatchlist`'s own reason — `library_entry_state`
-   * derives *watching* and *caught up* from `air_date <= current_date`, so the clock alone
-   * can move a title between this rail and Up next's with no write anywhere.
+   * `readsCurrentDate` is `true` for `listWatchlistFilms`'s own reason — `library_entry_state`
+   * derives *watching*, *caught up* and *finished* from `air_date <= current_date` and
+   * episode-watch coverage, so the clock alone can move a title between this rail and Up
+   * next's with no write anywhere.
    */
   listYouRails: { cachedAs: "up-next", readsCurrentDate: true },
 } as const satisfies Record<string, CachedReadShape>;
@@ -447,10 +446,11 @@ export function cachedLibraryEntries(
 }
 
 /**
- * Up next's three rails, and the phone's first three groups — one read, both devices
- * (`up-next/page.tsx`), and the read behind #220's Ongoing tile.
+ * Up next's three orderings — one read, both devices (`up-next/page.tsx`): the desktop's
+ * three rails, and since #250 the phone's single next-episodes rail, which is the three of
+ * them concatenated. It is also the read behind every card's mark.
  *
- * **This is the read the ticket is sharpest about.** A mark from a tile advances the tile
+ * **This is the read the ticket is sharpest about.** A mark from a card advances the card
  * optimistically in the browser, so the screen is right immediately; without `recordWatch`
  * busting `up-next`, a reload would hand back the rail from before the mark and offer the
  * reader the episode they had just watched. The optimism and the bust are two halves of
@@ -466,25 +466,22 @@ export function cachedUpNextRails(userId: UserId): Promise<UpNextRails> {
   return read(userId);
 }
 
-/** The phone's WATCHLIST group, and the screen `more ›` opens on it. Tagged `up-next`
- *  with the rails: it is the same account's entries, filtered to one state. */
-export function cachedWatchlist(
+/**
+ * The landing screen's films rail (#250). Tagged `up-next` with the rails: it is the same
+ * account's entries, filtered to one state and one kind.
+ *
+ * It replaces `cachedWatchlist` and `cachedAbandoned`, whose five vertical groups this
+ * ticket deleted. Both states are still reachable, through the library's status filters,
+ * which read through `listLibraryEntries` and are tagged `library`.
+ */
+export function cachedWatchlistFilms(
   userId: UserId,
 ): Promise<readonly LibraryStateGroupEntry[]> {
-  const read = unstable_cache(listWatchlist, ["listWatchlist", userId, serverDay()], {
-    tags: [tagFor("up-next", userId)],
-  });
-
-  return read(userId);
-}
-
-/** The phone's ABANDONED group, and its own screen. `cachedWatchlist`'s twin. */
-export function cachedAbandoned(
-  userId: UserId,
-): Promise<readonly LibraryStateGroupEntry[]> {
-  const read = unstable_cache(listAbandoned, ["listAbandoned", userId, serverDay()], {
-    tags: [tagFor("up-next", userId)],
-  });
+  const read = unstable_cache(
+    listWatchlistFilms,
+    ["listWatchlistFilms", userId, serverDay()],
+    { tags: [tagFor("up-next", userId)] },
+  );
 
   return read(userId);
 }

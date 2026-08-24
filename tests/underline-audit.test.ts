@@ -212,7 +212,6 @@ const NAVIGATING_CONTROLS = [
 ] as const;
 
 const ACTING_CONTROLS = [
-  { file: "app/(signed-in)/up-next/title-sheet.tsx", label: "Close" },
   { file: "app/(signed-in)/lists/delete-list-dialog.tsx", label: "Cancel" },
   { file: "app/(signed-in)/library/programme-note-episodes.tsx", label: "Rewatch" },
   { file: "app/(signed-in)/library/programme-note-episodes.tsx", label: "Unwatch" },

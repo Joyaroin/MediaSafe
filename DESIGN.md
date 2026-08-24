@@ -85,8 +85,8 @@ section exists so a reader does not take a superseded absolute below as current.
 | The library heading is a step *below* Search's | All four phone tabs share one 34px `screen-title`, and none of the four carries a hairline under it. | the four `*-heading.tsx` |
 | §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | Cards, fields, chips and pills carry 9–22px radii, and the poster's radius is a `--poster-radius` variable with three per-surface values (`14`/`10`/`9`) over a `7px` default. There is still **no radius scale** — these are per-surface measures, not a ramp. | `app/globals.css`, the four screens |
 | *A pill would be the first radius in the application* | Two pills: `Add` (17px) and `New list` (22px). | `catalogue-result.tsx`, `create-list-form.tsx` |
-| The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. | `home-group.tsx` and the four screens |
-| §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 10; §10 now carries the corrected figure and the `grep` that settles it. | `app/globals.css` |
+| The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. The pairing itself still binds — #250's two rails hold `scroll-pl-[22px]` against `px-[22px]`. | `up-next/up-next-phone-rail.tsx` and the four screens |
+| §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 11 — 10 after the redesign, and an eleventh (`still`) with issue #253. §10 carries the current figure and the `grep` that settles it. | `app/globals.css` |
 
 Two things below are **not** superseded, and were checked rather than assumed:
 
@@ -214,7 +214,7 @@ copying whichever call site they happened to open:
 
 | Role | Where | Standing |
 |---|---|---|
-| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`); the Ongoing tile's mark and its *Undo* (`up-next/ongoing-tile.tsx`, #220) | the reserved meaning |
+| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`); the episode card's check and its *Undo* (`up-next/up-next-episode-card.tsx`, #220 → #250) | the reserved meaning |
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
 | **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
@@ -790,12 +790,14 @@ when it carries neither.
   one.**
 
 > **⚠️ And the hold has left this surface in exchange (#220).** A tile carrying
-> tap-to-open, tap-to-mark and hold-to-select is three meanings on one card, so
-> `up-next-groups.tsx` no longer mounts a `BulkSelectionProvider` — availability is a fact
-> about the tree, which is the device #197 chose so that withdrawing a gesture is a mount
-> rather than a media query. The **group screens behind *More* keep the hold unchanged**, as
-> do the Library grid and list detail rows. **The cost is recorded on #194**: bulk *Add to
-> list* and bulk *Abandon* are one navigation away from the home rather than on it.
+> tap-to-open, tap-to-mark and hold-to-select is three meanings on one card, so the phone's
+> Up next stopped mounting a `BulkSelectionProvider` — availability is a fact about the
+> tree, which is the device #197 chose so that withdrawing a gesture is a mount rather than
+> a media query. **#250 made that structural**: the five group screens that kept the hold
+> were deleted with the groups, and the two rails that replaced them build no selection at
+> all. The Library grid and list detail rows keep it unchanged. **The cost is recorded on
+> #194**: bulk *Add to list* and bulk *Abandon* are reached from `/library` and its status
+> filters rather than from the landing screen.
 
 ### Opening a title does not leave Up next
 
@@ -858,6 +860,36 @@ is describing the committed library.
 - **`alt=""` and `aria-hidden`.** The poster is never the only place a title is named —
   every surface that renders one renders the name beside it as real text, so an `alt` here
   would make a screen reader read every title twice.
+
+### The still — issue #253
+
+The frame at the top of an episode's page, over the `still_path` column issue #246 put in
+the mirror. **It is the poster's rule at the other ratio, not a second treatment.** Same
+`raised` ground, same `overflow: hidden`, same plain `<img>` for the same ADR-0001 reason,
+same `alt=""` and `aria-hidden` because the episode is named as real text directly beneath
+it. `app/(signed-in)/library/episode-still.tsx`, and the `still` utility beside `poster` in
+`app/globals.css`.
+
+Three things differ, and all three follow from what a still *is*:
+
+- **`16 / 9`, not `2 / 3`.** A still is a frame from the episode, so its ratio is the
+  broadcast one and not the printed one.
+- **Its own CDN ladder — `300 · 780`.** These are the sizes TMDB publishes for stills.
+  `154` and `342` are poster widths and answer with nothing here, so a shared constant
+  would have to be the union of two ladders and would be wrong for both.
+- **One radius, no custom property.** `poster` reads `--poster-radius` because three
+  surfaces draw a poster at three different radii. One surface draws a still, so a variable
+  would be a knob with nothing on the other end of it. It takes `poster`'s own `7px`
+  default, so the two agree by default rather than by coincidence.
+
+**The missing-artwork state is the frame, and nothing inside it.** Issue #245's user story
+48 asks for *a deliberate placeholder, so that a missing still does not collapse the row*,
+and it is worth being exact that this is the same answer §3 already gives for the poster
+rather than an exception to it: what was asked for is that the space is **held**, not that
+it is captioned, and holding it is what an `aspect-ratio` does. No glyph, no wordmark, no
+"no image" apology goes in the well — `app/poster.tsx` refuses one on the grounds that it
+*would be the only apology in a world that has none*, and nothing about an episode makes
+that less true.
 
 ### The morph
 
@@ -1200,14 +1232,19 @@ leaves pending only the facts it genuinely did not have.
 
 The previous file's real value was partly in naming what it had **no** token for, so that
 the next ticket would not add one and call it an oversight fix. The same list, for the world
-that shipped. `app/globals.css` is **33 `@theme` declarations and 10 `@utility` rules**, and
+that shipped. `app/globals.css` is **33 `@theme` declarations and 11 `@utility` rules**, and
 that is the whole of the system.
 
 (It was 25 and 6 before the linen redesign. The eight new declarations are `--color-ink`
-and the seven-step phone register; the four new rules are `screen-title`, `label-line`,
-`field-well` and `frosted`. This number has now been wrong three times — §11's own closing
-note records the previous two — which is the standing argument for counting it from the
-file rather than reading it here. `grep -c '^@utility' app/globals.css` is the check.)
+and the seven-step phone register; the four rules the redesign added are `screen-title`,
+`label-line`, `field-well` and `frosted`, and the eleventh is `still`, issue #253's — §8
+argues it, and it is the poster's rule at the broadcast ratio rather than a new idea.
+
+This number has now been wrong **four** times — §11's own closing note records the first
+two, and this ticket is the fourth — which is the standing argument for counting it from
+the file rather than reading it here. `grep -c '^@utility' app/globals.css` is the check,
+and it is the check because the count read off this line was wrong again the moment a
+rule was added without anyone looking here.)
 
 **There is no spacing scale.** No `--space-*`, no `--gutter`, no rhythm unit. Spacing is
 Tailwind's own default steps at the call site. A named scale would be a fifth thing to keep
@@ -1366,11 +1403,30 @@ rails, no placeholder tabs, no "coming soon".
   not left standing as though it did. What survives is the part that was actually
   load-bearing, and it is the whole of what this bullet was ever written against: **a count
   may not appear as chrome on a surface the reader came to do something else on.** A rail
-  head, a tile, a chip, a list card, a heading over a grid — none of them gains a numeral,
-  and *showing 10 of 62* and *and 175 more* remain forbidden by name. #223's Lists rail is
+  head, a chip, a heading over a grid — none of them gains a numeral, and *showing 10 of 62*
+  and *and 175 more* remain forbidden by name. #223's Lists rail is
   the worked example and predates the narrowing: it carries no count, and the ticket rejected
   a capped vertical list partly because this rule left no honest way to write *and seven
   more*.
+
+  **Narrowed again by #250, and the words *not on a tile* came out with it.** The phone's
+  next-episodes card prints how many episodes of that show remain, beside the episode it is
+  offering; the handoff #245 makes binding draws it that way, and `SPEC.md` §7 carries the
+  same amendment. The test is the sentence above and not the surface: *am I three from the
+  end, or thirty* is the question that card exists to answer, so the number is **content**
+  there, where the same number over a rail of posters would be chrome.
+
+  **A second narrowing, #248's, in a separate pass and on a different card.** `/you`'s
+  lists rail — a new surface, not #223's own — carries its list card's title count, for the
+  same reason: a list you cannot tell full from started is a list card that has not done its
+  job. #223's own Lists rail on the library is untouched by either narrowing and still
+  carries no count, exactly as the worked example above describes.
+
+  Two things this does **not** license, and they are the ones to check a new numeral
+  against. The desktop rail tile is unchanged and still carries no count — it is a poster, a
+  name and a year (#137). And no head, on either device, gains one: the rule exists so that
+  the landing screen does not become a progress ledger, and a total over a rail is exactly
+  the ledger.
 
   A number is allowed where **the number is the content**. That is one destination, it is
   reached deliberately, and it is not passed through on the way to anything.

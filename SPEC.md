@@ -137,8 +137,18 @@ From the map, settled with Adham and not up for relitigation:
    > **Extended 2026-08-23 — borrowed facts join them, and they carry a window**
    > ([#225](https://github.com/Joyaroin/MediaSafe/issues/225)). Title detail's synopsis, cast and
    > crew, watch providers, and the mirrored `title`/`episode` metadata are cached too, in
-   > `cache/borrowed-facts.ts` beside the owned half and under the same two properties. Nine owned
-   > reads, four borrowed.
+   > `cache/borrowed-facts.ts` beside the owned half and under the same two properties.
+   >
+   > **Eleven owned reads, five borrowed**, as of
+   > [#248](https://github.com/Joyaroin/MediaSafe/issues/248) — which adds `/you`'s two rail reads,
+   > `listYouListCards` and `listYouRails`, both sharing an existing fact (`lists`, `up-next`) rather
+   > than declaring a new one. [#253](https://github.com/Joyaroin/MediaSafe/issues/253) adds an
+   > **episode's** own synopsis to the borrowed side, keyed by account like every other and tagged
+   > with its *show*, so that a mirror refresh expires it alongside that show's three title-level
+   > facts. (It read *nine and four* before #253, *ten and five* before #248; the tenth owned read
+   > was #247's `accountFigures`. None of these figures is worth trusting from here —
+   > `tests/cache-tags.test.ts` asserts the whole list against `cache/` itself, and that is the count
+   > that cannot go stale.)
    >
    > They differ in two ways, both decisions rather than details. An **owned** fact is correct until
    > a write says otherwise, so it carries a tag and no window. A **borrowed** fact changes when
@@ -383,7 +393,26 @@ Four things about it that are rules and not implementation:
   is not an empty rail**: it renders the read-failure treatment with a reference id (`AGENTS.md`),
   because *you're all caught up* is a plausible lie and this is the one surface where a database that
   is down would read as a life well managed.
-- **No counts, anywhere.** Not on a rail head, not on a tile, not on the page (§9).
+- **No counts on a rail head.** Not a size, not a remainder, not a numeral standing in for either
+  — and no *showing 10 of 62*, no *"and 175 more"* anywhere at all (§9).
+
+  **Narrowed by [#250](https://github.com/Joyaroin/MediaSafe/issues/250), from *no counts,
+  anywhere — not on a rail head, not on a tile, not on the page*.** The phone's next-episodes card
+  prints **how many episodes of that show remain** beside the episode it is offering, and the
+  handoff #245 makes binding draws it that way. The two are in genuine conflict and the card wins.
+
+  The line the rule now holds is the one it was always load-bearing for: **a count may not appear
+  as chrome on a surface the reader came to do something else on.** A rail head, a chip, a badge, a
+  heading over a grid — none of them gains a numeral. A number is allowed where **the number is
+  part of the content**, and *am I three from the end of this show, or thirty* is the question the
+  card exists to answer; the rule was written to stop the landing screen becoming a progress
+  ledger, and one honest remainder does the opposite of that. `DESIGN.md`'s permanent exclusions
+  carry the same narrowing, which [#227](https://github.com/Joyaroin/MediaSafe/issues/227) had
+  already begun for `/stats`.
+
+  The desktop rail tile is **unchanged and still carries no count** — it is a poster, a name and a
+  year, and #137's *no count, no badge, no state label, no episode name* still describes it
+  exactly.
 
 ### Library — sort
 
@@ -839,8 +868,10 @@ Beyond this product's destination, and returning only as a fresh decision:
   poster with a number tacked beside it: the whole of what it names *is* a list, and *how
   many titles it holds* is a fact about the thing named rather than chrome over something
   else. The library's lists rail is untouched — one poster-free row per list, still with no
-  count on it — and every other rail head and tile in the application keeps the ban exactly
-  as it read before this.
+  count on it. A second, independent narrowing, [#250](https://github.com/Joyaroin/MediaSafe/issues/250)'s
+  episodes-remaining count on Up next's next-episode card (§8), landed separately — see that
+  entry for its own reasoning. Together the two are the whole of what has moved; every other
+  rail head and tile in the application keeps the ban exactly as it read before either.
 
   What falls is narrower and is the part that was never argued: **that the questions
   themselves are out of scope.** Watch time, episodes remaining, activity over time and the

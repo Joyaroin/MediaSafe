@@ -37,6 +37,12 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     seasonNo: 1,
     episodeNo: 1,
     name: "Winter Is Coming",
+    // #253's three mirrored fields. Null by default, and the season list reads none of
+    // them: the episode page is where a still, a date and a runtime are printed, and this
+    // file's subject is the row that links to it.
+    stillPath: null,
+    airDate: null,
+    runtimeMins: null,
     watched: false,
     upNext: false,
     ...overrides,
@@ -353,9 +359,14 @@ describe("the watched-up-to-here control", () => {
      * is decided — so this fails for exactly the reason it names: one of the three grew
      * its own episode list.
      */
+    /**
+     * Two surfaces since #250, which deleted the phone's title sheet along with the five
+     * vertical groups that were its only callers. The property is unchanged and is if
+     * anything easier to hold with one fewer: every surface that shows a title's note draws
+     * the shared component rather than growing an episode list of its own.
+     */
     const surfaces = [
       "app/(signed-in)/library/programme-note.tsx",
-      "app/(signed-in)/up-next/title-sheet.tsx",
       "app/(signed-in)/library/[entryId]/title-detail-view.tsx",
     ];
 
