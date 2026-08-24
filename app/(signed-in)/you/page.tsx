@@ -1,4 +1,4 @@
-import { cachedAccountFigures } from "@/cache/tags";
+import { cachedAccountFigures, cachedYouListCards, cachedYouRails } from "@/cache/tags";
 import { requireAvatarUrl, requireDisplayName, requireUserId } from "@/lib/session";
 import { EmptyYou } from "./empty-you";
 import { YouHeading } from "./you-heading";
@@ -67,8 +67,23 @@ export default async function YouPage() {
    * stores a resolved value and lets a rejection through untouched, so there is no cache
    * state in which a database that is down comes back as an account that has watched
    * nothing.
+   *
+   * Three independent reads, overlapped — `listUpNextRails`'s own reason for its two
+   * concurrent statements: none takes another's rows, so there is nothing to serialise
+   * them for. A failure in any one of the three still throws past this component into
+   * `error.tsx`, `Promise.all` included: it rejects on the first rejection, exactly as a
+   * single `await` would have.
+   *
+   * The lists rail and the shows/films rails are read whether or not the library is
+   * empty — `figures.titles === 0` decides the six-figure branch below and nothing about
+   * a list, which can hold titles the reader's library never has (`SPEC.md` §9: *a list
+   * holds anything in the catalogue, not only what you own*).
    */
-  const figures = await cachedAccountFigures(userId);
+  const [figures, lists, rails] = await Promise.all([
+    cachedAccountFigures(userId),
+    cachedYouListCards(userId),
+    cachedYouRails(userId),
+  ]);
 
   return (
     <NavTransition>
@@ -76,7 +91,11 @@ export default async function YouPage() {
         <YouHeading />
         <YouHero displayName={displayName} avatarUrl={avatarUrl} />
 
-        {figures.titles === 0 ? <EmptyYou /> : <YouSurface figures={figures} />}
+        {figures.titles === 0 ? (
+          <EmptyYou />
+        ) : (
+          <YouSurface figures={figures} lists={lists} shows={rails.shows} films={rails.films} />
+        )}
       </main>
     </NavTransition>
   );

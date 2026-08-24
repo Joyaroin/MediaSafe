@@ -10,15 +10,19 @@ import {
   listLists,
   listUpNextRails,
   listWatchlistFilms,
+  listYouListCards,
+  listYouRails,
   type AccountFigures,
   type AccountStats,
   type LibraryEntryRow,
   type LibraryStateGroupEntry,
+  type ListCard,
   type ListDetailRow,
   type ListSummary,
   type TitleDetailRow,
   type UpNextRails,
   type UserId,
+  type YouRails,
 } from "@/db/access";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
 import type { TitleKind } from "@/tmdb/mirror";
@@ -269,6 +273,28 @@ export const CACHED_READS = {
    * the other is a surface frozen at the day it was last written to.
    */
   accountFigures: { cachedAs: "stats", readsCurrentDate: true },
+  /**
+   * Issue #248's lists rail on `/you`. Shares `lists` with `listLists` and
+   * `getListDetail` rather than declaring its own fact: it reads the identical name and
+   * `titleCount` those two already answer, plus the covers, so a write that changes one
+   * changes all three.
+   *
+   * `readsCurrentDate` is `false` on `getListDetail`'s own reasoning — `list`,
+   * `list_membership` and `title.poster_path` are stored columns, and nothing here joins
+   * a derived view or compares an `air_date`.
+   */
+  listYouListCards: { cachedAs: "lists", readsCurrentDate: false },
+  /**
+   * Issue #248's shows and films rails on `/you`. Shares `up-next` with `listUpNextRails`
+   * and `listWatchlistFilms`: all three are `library_entry_state`, filtered to different
+   * states of the same account, and busted by the same writes.
+   *
+   * `readsCurrentDate` is `true` for `listWatchlistFilms`'s own reason — `library_entry_state`
+   * derives *watching*, *caught up* and *finished* from `air_date <= current_date` and
+   * episode-watch coverage, so the clock alone can move a title between this rail and Up
+   * next's with no write anywhere.
+   */
+  listYouRails: { cachedAs: "up-next", readsCurrentDate: true },
 } as const satisfies Record<string, CachedReadShape>;
 
 /** A read `cache/tags.ts` wraps, named by the function in `db/access.ts` that performs it. */
@@ -608,6 +634,31 @@ export function cachedAccountStats(userId: UserId): Promise<AccountStats> {
 export function cachedAccountFigures(userId: UserId): Promise<AccountFigures> {
   const read = unstable_cache(accountFigures, ["accountFigures", userId, serverDay()], {
     tags: [tagFor("stats", userId)],
+  });
+
+  return read(userId);
+}
+
+/**
+ * You's lists rail — issue #248. One entry per account, no second argument: `/you` reads
+ * every list's card in one visit, the same shape `cachedLists` already takes for the
+ * unfiltered destination.
+ */
+export function cachedYouListCards(userId: UserId): Promise<readonly ListCard[]> {
+  const read = unstable_cache(listYouListCards, ["listYouListCards", userId], {
+    tags: [tagFor("lists", userId)],
+  });
+
+  return read(userId);
+}
+
+/**
+ * You's shows and films rails — issue #248. `cachedUpNextRails`'s own shape: the day is in
+ * the key because the query it wraps reads `current_date` through `library_entry_state`.
+ */
+export function cachedYouRails(userId: UserId): Promise<YouRails> {
+  const read = unstable_cache(listYouRails, ["listYouRails", userId, serverDay()], {
+    tags: [tagFor("up-next", userId)],
   });
 
   return read(userId);
