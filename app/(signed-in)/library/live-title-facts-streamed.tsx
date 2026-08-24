@@ -63,16 +63,44 @@ export function LiveTitleFactsStreamed({
       >
         <WatchProvidersBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
       </Suspense>
-
-      <Suspense key={`cast-crew:${forTitle}`} fallback={<LiveFactPlaceholder heading="Cast & crew" />}>
-        <CastAndCrewBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
-      </Suspense>
     </>
   );
 }
 
 /** One title, and the account whose cache entry of it this is. The three boundaries take
  *  the same three things, so they say so once. */
+/**
+ * Cast, streamed on its own — the third of the three live facts, split out of the group.
+ *
+ * ── Why it is a second component rather than a third child of the first ─────────────
+ *
+ * Title detail puts cast **last**, after the rating, and the other two immediately under
+ * the hero. They cannot be one node any more: a caller handing `ProgrammeNoteContent` a
+ * single `liveFacts` could only place all three together.
+ *
+ * Nothing else changes. It is the same read, the same `Suspense`, the same independent
+ * stream — the group was never a fetching unit, only an ordering one, and this is that
+ * ordering being decided by the screen instead of by the group.
+ */
+export function CastStreamed({
+  userId,
+  kind,
+  tmdbId,
+}: {
+  userId: UserId;
+  kind: TitleKind;
+  tmdbId: number;
+}) {
+  return (
+    <Suspense
+      key={`cast-crew:${kind}:${tmdbId}`}
+      fallback={<LiveFactPlaceholder heading="Cast & crew" />}
+    >
+      <CastAndCrewBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
+    </Suspense>
+  );
+}
+
 interface BoundaryProps {
   readonly userId: UserId;
   readonly kind: TitleKind;

@@ -30,6 +30,7 @@ import {
   type TmdbShowPayload,
 } from "./mirror";
 import { findRequestFor, type TmdbFindPayload } from "./reconcile";
+import { WATCH_PROVIDER_REGION } from "./region";
 
 /**
  * The calls to TMDB. **Deliberately untested**, and this paragraph is the decision rather
@@ -457,12 +458,11 @@ export async function titleCastAndCrew(
 }
 
 /**
- * MediaSafe is single-account and has no `user`-level region today, so this is a fixed
- * default rather than a preference read from anywhere. `tmdb/live-facts.ts`'s
- * `watchProvidersFrom` takes the region as a parameter for exactly this reason — the day
- * a region setting exists, this is the one line that changes.
+ * The region providers are read for — `tmdb/region.ts`, which is where it moved when the
+ * screen started printing it. That file has the reasoning; this import is what keeps one
+ * copy of the value.
  */
-const WATCH_PROVIDER_REGION = "CA";
+
 
 export async function titleWatchProviders(
   kind: TitleKind,

@@ -30,3 +30,45 @@ export const PROGRAMME_NOTE_SECTION = "mt-7";
  * can come to be set three widths.
  */
 export const SYNOPSIS_PROSE = "max-w-[68ch] text-note leading-relaxed text-dim";
+
+/**
+ * The card every block of title detail now sits in.
+ *
+ * ── Grouping, not outlining ─────────────────────────────────────────────────────────
+ *
+ * The screen this restructure follows draws a `1px` border around each block. This does
+ * not, and the difference is `DESIGN.md` §0: the linen redesign put `--raised` *below*
+ * `--ground`, and the whole point of that inversion is that **a card no longer needs a
+ * line around it to read as a card**. Library cells, search results and list rows already
+ * work this way. A bordered card here would be the only outlined surface in the
+ * application, and every other card would look unfinished beside it.
+ *
+ * So the grouping is taken and the border is not: the tone step separates a block from
+ * the page, and the gap between blocks separates them from each other.
+ *
+ * `18px` is the top of the 16–18px range §0 records for cards. These are the largest
+ * cards in the application — a whole section each, rather than one row — so they take the
+ * top of the range rather than the middle.
+ *
+ * `overflow-hidden` matters more than it looks: two of these hold horizontally scrolling
+ * tracks (providers, cast) that bleed to the card's edge, and without it a track's first
+ * card would square off the corner it sits in.
+ */
+export const PROGRAMME_NOTE_CARD = "overflow-hidden rounded-[18px] bg-raised";
+
+/**
+ * The padding inside a card — separate from the card itself because the two tracks do not
+ * take it. A provider or cast rail runs to the card's own edge so that scrolling looks
+ * like scrolling rather than like a list that stops short; its heading above it does take
+ * the padding, which is what keeps the two aligned.
+ */
+export const PROGRAMME_NOTE_CARD_PAD = "px-4 py-4";
+
+/**
+ * The eyebrow above a card's heading — `CANADA`, `WATCHING`.
+ *
+ * `label-line` is the uppercase 11px register `DESIGN.md` §0 declares, and `--dim` rather
+ * than the accent: §0 allows one accent per screen and title detail spends it on the
+ * progress bar, which is the most literal *what is live* on the page.
+ */
+export const PROGRAMME_NOTE_EYEBROW = "label-line text-dim";

@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
+import { Poster } from "@/app/poster";
 import { ReferenceLine } from "@/errors/reference-line";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
+import { WATCH_PROVIDER_REGION_NAME } from "@/tmdb/region";
 import type { TitleKind } from "@/tmdb/mirror";
 import { EPISODE_SYNOPSIS_ABSENT, LIVE_FACT_FAILURE } from "./live-fact-copy";
-import { PROGRAMME_NOTE_SECTION, SYNOPSIS_PROSE } from "./programme-note-section";
+import {
+  PROGRAMME_NOTE_CARD,
+  PROGRAMME_NOTE_CARD_PAD,
+  PROGRAMME_NOTE_EYEBROW,
+  PROGRAMME_NOTE_SECTION,
+  SYNOPSIS_PROSE,
+} from "./programme-note-section";
 import type { LiveFacts } from "./live-facts";
 import {
   episodeSynopsisAction,
@@ -69,25 +77,34 @@ import {
  * failure covering all three, and *fails inline within its own section* only holds if a
  * failed credits fetch cannot take the synopsis down with it.
  */
-export function LiveTitleFactsClientFetch({
+/**
+ * One fetch of a title's three live facts, shared by the two slots that draw them.
+ *
+ * The pane renders `LiveTitleFactsClientFetch` twice — once for the synopsis and providers
+ * under the hero, once for the cast at the foot — and without this each instance would run
+ * its own `titleLiveFactsAction`. Every fact behind that action is cached per account and
+ * title, so a second call is cheap rather than wrong; it is still a second round trip for
+ * a fact set already in hand, and a context is the smaller price.
+ *
+ * `null` while the fetch is in flight, which is what the slots draw placeholders for.
+ */
+const LiveTitleFactsContext = createContext<LiveFacts | null | undefined>(undefined);
+
+export function LiveTitleFactsProvider({
   kind,
   tmdbId,
+  children,
 }: {
   kind: TitleKind;
   tmdbId: number;
+  children: React.ReactNode;
 }) {
   const [liveFacts, setLiveFacts] = useState<LiveFacts | null>(null);
-  // The newest request's sequence number, so a slower answer to a title the reader has
-  // since moved on from cannot land after a newer one already has — the same guard
-  // `search-surface.tsx` and `programme-note.tsx` use for the same reason.
+  // The newest request's sequence number — the guard `search-surface.tsx` and
+  // `programme-note.tsx` use, for the same reason: a slower answer to a title the reader
+  // has moved on from must not land after a newer one.
   const newestRequest = useRef(0);
 
-  // Only ever sets state inside the `.then()` callback, never synchronously in the effect
-  // body — the shape `search-surface.tsx` names the alternative to as a cascading render.
-  // Deps are this component's whole identity; a title switch remounts it (this component
-  // is keyed by title at its call sites, `programme-note.tsx` and
-  // `[entryId]/title-detail-view.tsx`), so
-  // there is no earlier title's answer for this effect to reconcile against.
   useEffect(() => {
     const request = ++newestRequest.current;
     titleLiveFactsAction(kind, tmdbId).then((facts) => {
@@ -96,13 +113,57 @@ export function LiveTitleFactsClientFetch({
     });
   }, [kind, tmdbId]);
 
+  return (
+    <LiveTitleFactsContext.Provider value={liveFacts}>{children}</LiveTitleFactsContext.Provider>
+  );
+}
+
+export function LiveTitleFactsClientFetch({
+  kind,
+  tmdbId,
+  slot,
+}: {
+  kind: TitleKind;
+  tmdbId: number;
+  /**
+   * Which of the three sections this instance draws.
+   *
+   * Title detail puts cast **last**, after the rating, and the other two directly under
+   * the hero — so one component rendering all three in a row can no longer serve the
+   * screen. The pane renders this twice, once per slot.
+   *
+   * ── Twice, and still one request ────────────────────────────────────────────────────
+   *
+   * `LiveTitleFactsProvider` above does the fetch and both instances read it, so the
+   * second slot costs nothing. Rendering this twice without the provider would be two
+   * round trips for one fact set — cheap, since every fact behind
+   * `titleLiveFactsAction` is cached per account and title, and still two.
+   */
+  slot: "facts" | "cast";
+}) {
+  // `undefined` means there is no provider above this — see `LiveTitleFactsProvider`.
+  const liveFacts = useContext(LiveTitleFactsContext);
+
+  if (liveFacts === undefined) {
+    throw new Error(
+      "LiveTitleFactsClientFetch renders inside LiveTitleFactsProvider, which owns the fetch both slots read.",
+    );
+  }
+
   if (liveFacts === null) {
-    return (
+    return slot === "cast" ? (
+      <LiveFactPlaceholder heading="Cast & crew" />
+    ) : (
       <>
         <LiveFactPlaceholder heading="Synopsis" />
         <LiveFactPlaceholder heading="Watch providers" />
-        <LiveFactPlaceholder heading="Cast & crew" />
       </>
+    );
+  }
+
+  if (slot === "cast") {
+    return (
+      <CastAndCrewFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.castAndCrew} />
     );
   }
 
@@ -110,7 +171,6 @@ export function LiveTitleFactsClientFetch({
     <>
       <SynopsisFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.synopsis} />
       <WatchProvidersFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.watchProviders} />
-      <CastAndCrewFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.castAndCrew} />
     </>
   );
 }
@@ -228,6 +288,9 @@ export function WatchProvidersFactSection({
       // `CONTEXT.md`'s glossary is "Watch provider", and lists "where to watch" itself in
       // that entry's own `_Avoid_` line — this is the term, not a paraphrase of it.
       heading="Watch providers"
+      // The region the list is actually for. Without it a Canadian set of services is
+      // silently offered to everyone as *where you can watch this* — see `tmdb/region.ts`.
+      eyebrow={WATCH_PROVIDER_REGION_NAME}
       initial={initial}
       refetch={() => titleWatchProvidersAction(kind, tmdbId)}
       render={(providers) => <WatchProviders providers={providers} />}
@@ -262,7 +325,7 @@ export function LiveFactPlaceholder({ heading }: { heading: string }) {
   // Quiet, per `docs/design/v1-surfaces.md` §6's "loading" row for this screen: metadata
   // and episodes arriving is a normal moment of this page, not an event.
   return (
-    <div className={PROGRAMME_NOTE_SECTION}>
+    <div className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
       <p role="status" className="code-line text-dim">
         {heading}
       </p>
@@ -304,11 +367,21 @@ function outcomeToPhase<T>(outcome: Outcome<T>): Phase<T> {
  */
 export function LiveFactSection<T>({
   heading,
+  eyebrow,
   initial,
   refetch,
   render,
 }: {
   heading: string;
+  /**
+   * The uppercase line above the heading — `Canada` over *Watch providers*, and nothing
+   * over the others.
+   *
+   * Optional, because only one section has a fact worth stating before its own name. A
+   * prop rather than something the provider section draws for itself, so the eyebrow, the
+   * heading and the card padding stay in one place and cannot come apart.
+   */
+  eyebrow?: string;
   initial: Outcome<T>;
   /**
    * What *Try again* runs — a thunk, closed over whatever identifies this read.
@@ -350,8 +423,8 @@ export function LiveFactSection<T>({
 
   if (phase.kind === "failed") {
     return (
-      <div className={PROGRAMME_NOTE_SECTION}>
-        <p className="code-line text-dim">{heading}</p>
+      <div className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+        <SectionHead heading={heading} eyebrow={eyebrow} />
         {/* `live-fact-copy.ts`, not prose written here: this sentence and the episode
             page's *no synopsis yet* must never converge, and while both were inline that
             was a property nothing could check — this module's import graph is
@@ -372,10 +445,32 @@ export function LiveFactSection<T>({
   if (content === null) return null;
 
   return (
-    <div className={PROGRAMME_NOTE_SECTION}>
-      <p className="code-line text-dim">{heading}</p>
+    <div className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+      <SectionHead heading={heading} eyebrow={eyebrow} />
       <div className="mt-3">{content}</div>
     </div>
+  );
+}
+
+/**
+ * A card's head — the optional eyebrow, then the heading.
+ *
+ * The heading steps up from `code-line` to a real one now that each section is a card
+ * rather than a labelled run of text: inside a card the heading is the card's name, and a
+ * dim monospace line reads as metadata about the content rather than as the thing it is
+ * called. `text-bill-sm` sits well below the hero's title, which is what keeps the page
+ * reading as one screen with sections rather than several stacked screens.
+ */
+function SectionHead({ heading, eyebrow }: { heading: string; eyebrow?: string }) {
+  return (
+    <>
+      {eyebrow === undefined ? null : (
+        <p className={PROGRAMME_NOTE_EYEBROW}>{eyebrow}</p>
+      )}
+      <h3 className={`bill-title text-bill-sm text-ink${eyebrow === undefined ? "" : " mt-1"}`}>
+        {heading}
+      </h3>
+    </>
   );
 }
 
@@ -385,32 +480,115 @@ export function LiveFactSection<T>({
  * the same way `CastAndCrewLine` below already renders its own two rows, says the same
  * thing without drawing a box around each name.
  */
+/**
+ * Where to watch: one card per service, on a track that scrolls.
+ *
+ * ── The logos were already here ─────────────────────────────────────────────────────
+ *
+ * `WatchProvider.logoPath` has been on the type since the section was built and nothing
+ * ever drew it — the list was a line of names joined by separators. A service is a
+ * *logo* to most people long before it is a word, and this is the one section on the page
+ * where recognition beats reading.
+ *
+ * ── Streaming only, still ───────────────────────────────────────────────────────────
+ *
+ * The screen this follows shows *Buy* alongside *Stream*. `tmdb/live-facts.ts` reads
+ * `flatrate`, `free` and `ads` and refuses `buy` and `rent` — *"a transaction MediaSafe
+ * has no record of and no view onto"* — and drawing nicer cards changes nothing about
+ * that. Every card here says **Stream** because every provider here is one.
+ */
 function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) {
   if (providers.length === 0) {
     return <p className="text-item text-dim">Nothing listed for streaming.</p>;
   }
 
   return (
-    <p className="text-item text-dim">{providers.map((provider) => provider.name).join(" · ")}</p>
+    <>
+      <ul className="-mx-4 flex gap-2.5 overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {providers.map((provider) => (
+          <li
+            key={provider.id}
+            className="flex w-[168px] shrink-0 items-center gap-2.5 rounded-2xl bg-ground px-2.5 py-2.5"
+          >
+            {provider.logoPath === null ? null : (
+              /* eslint-disable-next-line @next/next/no-img-element -- the artwork is
+                 served from TMDB's CDN by ADR-0001, exactly as `app/poster.tsx` argues;
+                 `next/image` would route it through Vercel's metered optimiser. */
+              <img
+                src={`https://image.tmdb.org/t/p/w92${provider.logoPath}`}
+                alt=""
+                aria-hidden="true"
+                width={36}
+                height={36}
+                loading="lazy"
+                decoding="async"
+                className="h-9 w-9 shrink-0 rounded-[10px] object-cover"
+              />
+            )}
+
+            <div className="min-w-0">
+              <p className="truncate text-meta font-medium text-ink">{provider.name}</p>
+              <p className="text-meta text-dim">Stream</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* TMDB's provider data is JustWatch's, and their terms ask for the credit. It sits
+          beside the logos it is about rather than in the page-foot attribution, which
+          covers everything else borrowed and stays where it is. */}
+      <p className="mt-3 text-meta text-dim">Data by JustWatch</p>
+    </>
   );
 }
 
+/**
+ * Cast as faces, crew as a line.
+ *
+ * ── Why only the cast gets cards ────────────────────────────────────────────────────
+ *
+ * You recognise a performer by their face and you want to know which part they played;
+ * `profilePath` and `character` were both in the `/credits` response this already fetches,
+ * and the second was mapped and never printed. A director is a name — TMDB's photographs
+ * of crew are sparse and a rail of grey rectangles with initials would be worse than the
+ * line the crew has always been.
+ */
 function CastAndCrewLine({ credit }: { credit: CastAndCrew }) {
   if (credit.cast.length === 0 && credit.crew.length === 0) {
     return <p className="text-item text-dim">Nothing listed.</p>;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {credit.crew.length === 0 ? null : (
         <p className="text-item text-dim">
           {credit.crew.map((one) => `${one.name} (${one.job})`).join(" · ")}
         </p>
       )}
+
       {credit.cast.length === 0 ? null : (
-        <p className="text-item text-dim">
-          {credit.cast.map((one) => one.name).join(" · ")}
-        </p>
+        <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {credit.cast.map((one) => (
+            <li key={one.id} className="w-[104px] shrink-0">
+              {/* `Poster` rather than a bare `img`: it already owns the CDN bucket, the
+                  lazy/eager decision and — the reason it is right here — the initials
+                  fallback for a performer TMDB has no photograph of, which is a great
+                  many of them. Its `2/3` ratio suits a portrait as well as a poster. */}
+              <Poster
+                posterPath={one.profilePath}
+                name={one.name}
+                width={104}
+                className="w-full [--poster-radius:12px]"
+              />
+
+              <p className="mt-2 truncate text-meta font-medium text-ink">{one.name}</p>
+
+              {one.character === null ? null : (
+                <p className="truncate text-meta text-dim">{one.character}</p>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -57,3 +57,34 @@ export function progressLine(episodes: readonly EpisodeDetail[]): string {
 export function remainingLine(episodes: readonly EpisodeDetail[]): string {
   return plural(remainingCount(episodes), "episode");
 }
+
+/**
+ * How far through a show you are, as two numbers — what the progress bar draws and what
+ * *"16 of 32 episodes watched"* says.
+ *
+ * ── The denominator is the same one `remainingCount` uses ───────────────────────────
+ *
+ * Specials are excluded (`seasonNo > 0`), exactly as they are above and for the reason
+ * ADR-0001 gives: they are mirrored and markable, and they are not part of *caught up* or
+ * *finished*. A bar that counted them would sit short of full on a show you have finished,
+ * which is the one thing a progress bar must never do.
+ *
+ * Unreleased episodes **are** counted, which is deliberate and is the existing behaviour
+ * this borrows rather than a new decision: `remainingCount` counts them, so *"Remaining —
+ * 12 episodes"* and a bar drawn from a different denominator would disagree on the same
+ * screen about the same show. The bar therefore reads *how much of this show exists that
+ * you have not seen*, not *how much of what has aired*.
+ */
+export interface WatchProgress {
+  readonly watched: number;
+  readonly total: number;
+}
+
+export function watchProgress(episodes: readonly EpisodeDetail[]): WatchProgress {
+  const counted = episodes.filter((one) => one.seasonNo > 0);
+
+  return {
+    watched: counted.filter((one) => one.watched).length,
+    total: counted.length,
+  };
+}

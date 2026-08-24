@@ -1,12 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-
 import type { LibraryState } from "@/db/access";
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
-import { referenceFor } from "@/errors/reference";
-import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
-import { abandonAction, unabandonAction, type AbandonOutcome } from "./title-detail-actions";
+import { useAbandon } from "./use-abandon";
 
 /**
  * The one hand-set state in the model, and the way back out of it — issue #87.
@@ -64,45 +60,25 @@ export function AbandonControl({
   readonly abandoned: boolean;
   readonly onChanged: (libraryEntryId: string, state: LibraryState) => void;
 }) {
-  const [optimistic, setOptimistic] = useState<boolean | null>(null);
-  const shown = optimistic ?? abandoned;
-  const raised = useRef<WriteFailureHandle | null>(null);
-
-  // A declaration, not a `useCallback`: it is handed to the toast as `retry`, and a
-  // `const` cannot be referenced inside its own initialiser. `libraryEntryId` and
-  // `titleName` are read from this render's props at the point the press happens, so a
-  // write already in flight when the caller moves on to a different entry still resolves
-  // against the entry it was actually asked to change.
-  async function attempt(): Promise<void> {
-    const wasAbandoned = shown;
-    setOptimistic(!wasAbandoned);
-
-    const outcome = await write(wasAbandoned, libraryEntryId);
-
-    if (outcome.ok) {
-      raised.current?.resolve();
-      raised.current = null;
-      setOptimistic(null);
-      onChanged(libraryEntryId, outcome.state);
-      return;
-    }
-
-    setOptimistic(null);
-
-    if (raised.current) return;
-    raised.current = writeFailures.raise({
-      title: titleName,
-      reference: outcome.reference,
-      retry: () => void attempt(),
-    });
-  }
+  /**
+   * The write moved to `use-abandon.ts` when the hero's *Where this stands* menu became a
+   * second place to press it. Everything it used to do here it still does — the optimistic
+   * flip, one toast per lost write, `resolve()` on the write that lands — and it now does
+   * it once for both callers rather than twice.
+   */
+  const { abandoned: shown, pending, toggle } = useAbandon({
+    libraryEntryId,
+    titleName,
+    abandoned,
+    onChanged,
+  });
 
   return (
     <div className="flex items-baseline justify-between gap-4">
       <button
         type="button"
-        onClick={() => void attempt()}
-        disabled={optimistic !== null}
+        onClick={toggle}
+        disabled={pending}
         aria-label={shown ? `Take back giving up on ${titleName}` : `Give up on ${titleName}`}
         className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
       >
@@ -116,12 +92,4 @@ export function AbandonControl({
       )}
     </div>
   );
-}
-
-async function write(abandoned: boolean, libraryEntryId: string): Promise<AbandonOutcome> {
-  try {
-    return abandoned ? await unabandonAction(libraryEntryId) : await abandonAction(libraryEntryId);
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
-  }
 }

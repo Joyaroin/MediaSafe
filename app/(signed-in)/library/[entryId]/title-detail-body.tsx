@@ -1,7 +1,7 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedTitleDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
-import { LiveTitleFactsStreamed } from "../live-title-facts-streamed";
+import { CastStreamed, LiveTitleFactsStreamed } from "../live-title-facts-streamed";
 import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
@@ -46,6 +46,7 @@ export async function TitleDetailBody({
         liveFacts={
           <LiveTitleFactsStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
         }
+        cast={<CastStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />}
       />
 
       {/* Always on screen, unlike the desktop pane's conditional footer: nothing here
