@@ -625,6 +625,20 @@ const MODAL_ROUTES = [
     route: "/library/[entryId]",
     slot: "@title",
   },
+  {
+    /**
+     * Catalogue detail — a title you do **not** own, over a search result or a card in the
+     * *Because you watched* rail.
+     *
+     * **In `@title` rather than a third slot**, and that is the interesting part. Two slots
+     * exist because title and episode detail *nest*; nothing nests with this one. A
+     * catalogue title and a library title are mutually exclusive by construction — you are
+     * looking at something you own or something you are not — so they share a slot and
+     * this segment is a sibling of the library one inside it.
+     */
+    route: "/titles/[kind]/[tmdbId]",
+    slot: "@title",
+  },
 ] as const;
 
 /** The route group the slot lives in. The slot is a directory inside it, and neither
@@ -679,12 +693,27 @@ describe("episode detail arrives as a modal over what you were looking at", () =
      * segment stops matching, and the sheet lives on only as router state the framework
      * happens to be keeping. Both build. Only one of them nests.
      */
-    expect(interceptedIn("@title").map((page) => page.segment)).toEqual([
+    expect(interceptedIn("@title").map((page) => page.segment).sort()).toEqual([
       "(signed-in)/@title/(.)library/[entryId]/[[...rest]]",
+      "(signed-in)/@title/(.)titles/[kind]/[tmdbId]",
     ]);
-    expect(interceptedIn("@title").map((page) => withoutInterception(page.route))).toEqual([
-      "/library/[entryId]/[[...rest]]",
-    ]);
+    expect(
+      interceptedIn("@title")
+        .map((page) => withoutInterception(page.route))
+        .sort(),
+    ).toEqual(["/library/[entryId]/[[...rest]]", "/titles/[kind]/[tmdbId]"]);
+
+    /**
+     * And the catalogue segment carries **no** catch-all, optional or otherwise.
+     *
+     * Its neighbour needs one so the title sheet keeps matching when an episode opens
+     * deeper. Nothing opens deeper than catalogue detail, so a catch-all here would match
+     * URLs that do not exist — and would quietly claim any route added under `/titles/…`
+     * later, which is a decision the person adding it should get to make.
+     */
+    expect(
+      interceptedIn("@title").map((page) => page.segment.includes("[[...")),
+    ).toEqual([true, false]);
   });
 
   /**

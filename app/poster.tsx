@@ -44,12 +44,22 @@ export function posterSrc(posterPath: string, width: number): string {
 
 export function Poster({
   posterPath,
+  name,
   width,
   className,
   aboveFold = false,
 }: {
   /** TMDB's `poster_path`, or `null` when TMDB has no artwork for this title. */
   posterPath: string | null;
+  /**
+   * The title's name, used **only** when there is no artwork — see the note below the
+   * `img` for what it draws and why that is not a placeholder glyph.
+   *
+   * Optional, so a call site that has no name to give renders the quiet rectangle this
+   * component always drew. Every surface that shows a poster also shows the name as real
+   * text, so passing it costs nothing and is the right default.
+   */
+  name?: string;
   /** The CSS pixel width this call site renders the poster at, for CDN sizing only. */
   width: number;
   /** The measure. Every surface fixes its own width or height — never both, so the
@@ -90,10 +100,62 @@ export function Poster({
         />
       )}
       {/*
-        No artwork is not an error and gets no placeholder: `poster`'s own ground colour
-        is already a quiet rectangle, and a "no image" glyph would be the only apology in
-        a world that has none.
+        ── No artwork, and what stands in for it ─────────────────────────────────────
+
+        This used to read: *no artwork is not an error and gets no placeholder — a "no
+        image" glyph would be the only apology in a world that has none.* The second half
+        of that still binds and always will. There is no broken-image mark here, no camera
+        icon and no grey "poster unavailable" panel.
+
+        What changed is the first half. A bare rectangle is fine in a grid where the name
+        is written beside it, and it is not fine in a rail of titles you have never heard
+        of, where the poster is doing the identifying. So the fallback is the **name**,
+        set in the title's own initials — not a picture of a missing picture, but the one
+        fact about the title this component already has, drawn large enough to tell two
+        cards apart.
+
+        `aria-hidden`, like the `img` above and for the identical reason: the name is real
+        text on every surface that renders a poster, and reading it twice helps nobody.
       */}
+      {posterPath === null && name ? (
+        <span
+          aria-hidden="true"
+          className="flex h-full w-full items-center justify-center px-2 text-center text-dim"
+          // Scaled off the rendered width rather than a type step: this stands in for an
+          // image, so it should fill its box the way the image would, at any of the five
+          // sizes the application draws a poster at.
+          style={{ fontSize: Math.max(11, Math.round(width * 0.28)) }}
+        >
+          {initialsOf(name)}
+        </span>
+      ) : null}
     </div>
   );
+}
+
+/**
+ * A title's initials, for the poster that has no artwork.
+ *
+ * Up to three, from the first letters of its words — *The Great Pottery Throw Down* is
+ * `TGP` rather than `TGPTD`, because a fourth letter starts to be unreadable in the
+ * smallest box this is drawn in and stops being a mark you recognise at a glance.
+ *
+ * Articles are **not** dropped. *The Bear* is `TB`, not `B`: this is a visual key, not a
+ * sort key, and `db/access.ts` is the only place that has an opinion about how a title
+ * alphabetises. A title of one word gives one letter, which is correct — `I` for *I,
+ * Claudius* is what the eye has to go on and inventing a second letter from the middle of
+ * a word would be worse.
+ *
+ * Non-alphanumeric leading characters are skipped, so *…And the Bag's in the River* keys
+ * off `A`. A name with nothing alphanumeric in it at all gives an empty string, and the
+ * caller then draws the quiet rectangle it always drew.
+ */
+export function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, "").charAt(0))
+    .filter((letter) => letter.length > 0)
+    .slice(0, 3)
+    .join("")
+    .toUpperCase();
 }

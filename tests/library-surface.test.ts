@@ -12,6 +12,7 @@ import {
   ZeroMatches,
 } from "@/app/(signed-in)/library/library-filter-bar";
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
+import type { TitleKind } from "@/tmdb/mirror";
 import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 
@@ -65,6 +66,9 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
     name: "Severance",
     releaseYear: 2022,
     posterPath: "/severance.jpg",
+    // A show by default, because *Severance* is one and because the chip-and-grid screen
+    // these fixtures were written for is the Shows mode. A film fixture overrides it.
+    kind: "show" as TitleKind,
     state: "watching" as LibraryState,
     upNext: { episodeName: "Hands" },
     ...overrides,

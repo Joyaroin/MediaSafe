@@ -2,6 +2,7 @@ import {
   and,
   asc,
   eq,
+  desc,
   exists,
   gt,
   gte,
@@ -2391,6 +2392,61 @@ export interface UpNext {
 }
 
 /** One cell of the library grid, and everything it prints. */
+/**
+ * The title one *Because you watched* rail is about — the most recently watched title of
+ * one kind, or `null` when this account has never watched one.
+ *
+ * ── Why the most recent, and why per kind ───────────────────────────────────────────
+ *
+ * *Recent* rather than *most watched* or *most recently finished*: the rail's heading is a
+ * sentence about something you did, and the truest answer to *because you watched what?*
+ * is the last thing. It also moves — a rail seeded off a title you finished a year ago
+ * would be a rail that never changes.
+ *
+ * Per kind because the search screen has a Films/Shows mode and the rail follows it.
+ * TMDB's recommendation endpoints are per kind anyway (`/tv/{id}/recommendations` returns
+ * shows), so a mode-blind seed would offer show recommendations under a field labelled
+ * *Search for a film*.
+ *
+ * ── `null` is a real answer here, and not an empty list ─────────────────────────────
+ *
+ * A new account has watched nothing, and there is genuinely no title for the rail to be
+ * about. That is not a failed read and it is not an empty rail — the caller renders no
+ * rail at all. `SPEC.md` §3's separation is why this returns `null` rather than an empty
+ * array that a caller could mistake for *TMDB recommended nothing*, which is a different
+ * state with a different cause.
+ *
+ * ── The ordering is deliberately not `watched_at` alone ─────────────────────────────
+ *
+ * `watch.watchedAt` is nullable — an imported watch may carry no timestamp at all
+ * (`CONTEXT.md`'s undated watch). `NULLS LAST` keeps a dated watch ahead of an undated
+ * one, and `created_at` breaks the tie underneath, so an account whose every watch arrived
+ * undated from an import still gets a stable, sensible seed rather than an arbitrary row.
+ */
+export interface WatchedSeed {
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly name: string;
+}
+
+export async function mostRecentlyWatchedTitle(
+  userId: UserId,
+  kind: TitleKind,
+  executor: Executor = getDb(),
+): Promise<WatchedSeed | null> {
+  const [row] = await executor
+    .select({ kind: title.kind, tmdbId: title.tmdbId, name: title.name })
+    .from(watch)
+    .innerJoin(title, eq(title.id, watch.titleId))
+    .where(and(ownedBy(userId, watch), eq(title.kind, kind)))
+    .orderBy(sql`${watch.watchedAt} desc nulls last`, desc(watch.createdAt))
+    .limit(1);
+
+  if (row === undefined) return null;
+
+  return { kind: kindFrom(row.kind), tmdbId: row.tmdbId, name: row.name };
+}
+
 export interface LibraryEntryRow {
   readonly libraryEntryId: string;
   readonly titleId: string;
@@ -2398,6 +2454,19 @@ export interface LibraryEntryRow {
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /**
+   * Film or show — borrowed, and read from `title` rather than kept beside the entry.
+   *
+   * `db/tables.ts` refuses this as a *column* on `library_entry` and that refusal stands:
+   * denormalising it would need a `UNIQUE (id, kind)` on `title` that nothing else wants.
+   * This is the join the query already makes, selected one field wider.
+   *
+   * It is here because the library screen became two screens. The Films/Shows control is
+   * a mode rather than a filter, and the grouping under it differs by kind — so the
+   * surface has to be able to tell a film from a show, and until now nothing handed to it
+   * could.
+   */
+  readonly kind: TitleKind;
   readonly state: LibraryState;
   readonly upNext: UpNext | null;
 }
@@ -2507,6 +2576,7 @@ export async function listLibraryEntries(
       name: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      kind: title.kind,
       state: libraryEntryState.state,
       upNextEpisodeId: libraryEntryUpNext.episodeId,
       upNextEpisodeName: episode.name,
@@ -2532,6 +2602,9 @@ export async function listLibraryEntries(
     name: row.name,
     releaseYear: row.releaseYear,
     posterPath: row.posterPath,
+    // Parsed, not cast — `kindFrom`'s own note: a column Drizzle types as `string` is a
+    // promise nothing at the type level checks.
+    kind: kindFrom(row.kind),
     state: stateFrom(row.state),
     /**
      * The episode id, not the name, is what says whether anything is next — the name is
@@ -4001,6 +4074,40 @@ export async function getUnownedTitleDetail(
   tmdbId: number,
   executor: Executor = getDb(),
 ): Promise<UnownedTitleDetailRow> {
+  const row = await findUnownedTitleDetail(kind, tmdbId, executor);
+
+  if (row === null) {
+    throw new Error(`No ${kind} with TMDB id ${tmdbId} is mirrored.`);
+  }
+
+  return row;
+}
+
+/**
+ * The same read, with **absence as an answer rather than an error**.
+ *
+ * ── Why both exist ──────────────────────────────────────────────────────────────────
+ *
+ * `getUnownedTitleDetail` above throws when the row is not there, and that is right for
+ * the caller issue #148 built it for: a title sitting in one of your lists, where the
+ * membership guarantees the mirror row. A missing row there is a broken invariant.
+ *
+ * Catalogue detail reached from a search result or the *Because you watched* rail has no
+ * such guarantee — it is a title TMDB knows about and this database has never heard of, so
+ * *not mirrored* is the ordinary case and not a fault.
+ *
+ * **The distinction is the point, and it is why that caller does not simply catch.** A
+ * `try`/`catch` around the throwing version cannot tell *this row does not exist* from
+ * *the database did not answer*, so a Postgres outage would fall through to the catalogue,
+ * render the title from TMDB, and look completely fine — which is `SPEC.md` §3's failure
+ * wearing a different hat. Here a missing row returns `null` and a failed read still
+ * throws, so the two stay apart at the only place that can tell them apart.
+ */
+export async function findUnownedTitleDetail(
+  kind: TitleKind,
+  tmdbId: number,
+  executor: Executor = getDb(),
+): Promise<UnownedTitleDetailRow | null> {
   const [row] = await executor
     .select({
       titleId: title.id,
@@ -4014,9 +4121,7 @@ export async function getUnownedTitleDetail(
     .from(title)
     .where(and(eq(title.kind, kind), eq(title.tmdbId, tmdbId)));
 
-  if (!row) {
-    throw new Error(`No ${kind} with TMDB id ${tmdbId} is mirrored.`);
-  }
+  if (!row) return null;
 
   const episodeRows = await executor
     .select({

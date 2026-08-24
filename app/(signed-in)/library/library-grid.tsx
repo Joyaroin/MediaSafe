@@ -100,13 +100,25 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  */
 const FIRST_ROW = 4;
 
-export function LibraryGrid({ entries }: { entries: readonly LibraryEntryRow[] }) {
+export function LibraryGrid({
+  entries,
+  labelledBy = LIBRARY_HEADING_ID,
+}: {
+  entries: readonly LibraryEntryRow[];
+  /**
+   * The heading this list sits under. Defaults to the screen title, which is the whole
+   * truth in Shows mode — one grid, one heading.
+   *
+   * Films mode draws three grids under three group headings, and each has to name its own
+   * or a screen reader is told three times that this list is *The library* and never which
+   * part of it. The default is what keeps the common case honest: a caller that passes
+   * nothing gets the screen heading, so this cannot silently become unlabelled.
+   */
+  labelledBy?: string;
+}) {
   return (
     <ol
-      // The heading this list is under, taken from the heading itself rather than passed
-      // in: there is one library heading, and a prop would let a caller point the list at
-      // something else without anything noticing.
-      aria-labelledby={LIBRARY_HEADING_ID}
+      aria-labelledby={labelledBy}
       // `px-[14px]` and not the page's `22px`: the cell's own `14px` padding is inside
       // the card, so a `14px` list gutter is what puts the card's *edge* on 22px. Turn
       // 9's rule for every list that carries cards, and the reason the search results

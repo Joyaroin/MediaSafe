@@ -14,6 +14,7 @@ import {
 } from "./live-facts";
 import {
   catalogueResults,
+  catalogueResultsOfKind,
   filmMirror,
   seasonNumbers,
   SHOW_EXTERNAL_IDS_APPEND,
@@ -180,6 +181,121 @@ export async function searchCatalogue(query: string): Promise<CatalogueResult[]>
   });
 
   return catalogueResults(payload);
+}
+
+/**
+ * The facts a catalogue title's *detail* screen needs, for a title this database has never
+ * mirrored — one request, and no write.
+ *
+ * ── Why this exists beside `titleMirror` ────────────────────────────────────────────
+ *
+ * `titleMirror` is the **add** path: it fetches a show's every season so the episode names
+ * ADR-0001 stores are there to store, at a cost of one request per season. That is the
+ * right price for taking a title into your library and the wrong one for glancing at it,
+ * which is what catalogue detail now is — a card in a recommendation rail is pressed to
+ * find out what something *is*, most often to then not add it.
+ *
+ * ── And why it exists beside `getUnownedTitleDetail` ────────────────────────────────
+ *
+ * That read answers from the `title` table and throws when the row is not there, which is
+ * correct for where it came from: issue #148 built it for a title sitting in one of your
+ * lists, and a list membership guarantees the mirror row exists. Catalogue detail reached
+ * from search or a rail has no such guarantee — the title is one TMDB knows about and this
+ * database has never heard of — so a read that requires a mirror row cannot serve it.
+ *
+ * No episodes come back, and that is deliberate rather than a gap: episodes cost a request
+ * per season, and `UnownedEpisodes` (issue #148) is inert anyway. What the screen loses by
+ * not listing them is a list you cannot press; what it would cost to have them is a
+ * fan-out of requests on a glance.
+ */
+export interface CatalogueSummary {
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly runtimeMins: number | null;
+}
+
+export async function catalogueSummary(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<CatalogueSummary> {
+  if (kind === "film") {
+    const movie = await get<TmdbMoviePayload>(`/movie/${tmdbId}`);
+    const mirror = filmMirror(movie);
+
+    return {
+      kind,
+      tmdbId,
+      name: mirror.name,
+      releaseYear: mirror.releaseYear,
+      posterPath: mirror.posterPath,
+      runtimeMins: mirror.runtimeMins,
+    };
+  }
+
+  // `/tv/{id}` alone — no `append_to_response` and no seasons. The external ids the add
+  // path appends are a fact about a row being written; nothing is being written here.
+  const show = await get<TmdbShowPayload>(`/tv/${tmdbId}`);
+  const mirror = showMirror(show, []);
+
+  return {
+    kind,
+    tmdbId,
+    name: mirror.name,
+    releaseYear: mirror.releaseYear,
+    posterPath: mirror.posterPath,
+    runtimeMins: mirror.runtimeMins,
+  };
+}
+
+/**
+ * The catalogue, searched by name, within **one kind** — `/search/tv` or `/search/movie`.
+ *
+ * The Films/Shows mode on the search screen chooses which. Two endpoints rather than a
+ * filter over `/search/multi`: a mode that returns three results because seventeen were
+ * the other kind reads as broken search, and a film ranked twenty-first in a multi-search
+ * would never appear even when it is the best film for the query.
+ *
+ * `searchCatalogue` below is kept and still serves nothing filtering by kind. The two are
+ * one mapping under the hood (`catalogueResultsOfKind` and `catalogueResults` share
+ * `collectResults`), so they cannot drift on de-duplication or ordering.
+ */
+export async function searchCatalogueOfKind(
+  kind: TitleKind,
+  query: string,
+): Promise<CatalogueResult[]> {
+  const payload = await get<TmdbSearchPayload>(
+    kind === "film" ? "/search/movie" : "/search/tv",
+    { query, include_adult: "false", page: "1" },
+  );
+
+  return catalogueResultsOfKind(kind, payload);
+}
+
+/**
+ * What TMDB recommends off one title you have watched — the *Because you watched* rail.
+ *
+ * Same kind as the seed, because that is what the endpoints give: `/tv/{id}/recommendations`
+ * returns shows and `/movie/{id}/recommendations` returns films. The rail follows the
+ * search screen's mode, which is what makes that a feature rather than a limitation — the
+ * rail and the field below it are about the same kind of thing.
+ *
+ * Malformed rows are dropped rather than thrown, following `catalogueResults`' reasoning:
+ * one missing card in a rail is not a rail that failed, and a failed rail has its own
+ * treatment on that screen.
+ */
+export async function recommendationsFor(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<CatalogueResult[]> {
+  const payload = await get<TmdbSearchPayload>(
+    `/${kind === "film" ? "movie" : "tv"}/${tmdbId}/recommendations`,
+    { page: "1" },
+  );
+
+  return catalogueResultsOfKind(kind, payload);
 }
 
 /**

@@ -72,6 +72,7 @@ export function ListTitleRow({
 
       <Poster
         posterPath={title.posterPath}
+        name={title.name}
         width={56}
         className="w-14 shrink-0"
         aboveFold={aboveFold}

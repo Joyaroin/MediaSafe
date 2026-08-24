@@ -354,6 +354,12 @@ export type BorrowedFact =
  */
 export const BORROWED_READS = {
   getUnownedTitleDetail: "title-mirror",
+  /**
+   * The same fact, read so that *absent* is a value rather than a throw — catalogue detail
+   * reached from search or the recommendation rail, where a title nobody has ever added is
+   * the ordinary case. Same tag as its twin, because it is the same mirror.
+   */
+  findUnownedTitleDetail: "title-mirror",
 } as const satisfies Record<string, BorrowedFact>;
 
 /**
@@ -372,6 +378,8 @@ export const BORROWED_READS = {
  * left with it rather than becoming a false one.
  */
 export const UNCACHED_READS = {
+  mostRecentlyWatchedTitle:
+    "The Because you watched rail's seed: one indexed row, ordered and limited in SQL. The expensive half of that rail is the TMDB call it feeds, and that is cached in borrowed-facts.ts under the seed's own tag. Caching this as well would add a second place for the rail to disagree with the library about what you last watched, to save a lookup that costs less than the cache read.",
   accountFootprint:
     "Read once, on the delete-account confirmation, by a reader who is about to make it wrong. Caching a count somebody is reading in order to destroy buys nothing and adds a way for the number and the deletion to disagree.",
   accountsHoldingTitles:

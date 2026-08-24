@@ -1473,11 +1473,21 @@ describe("the reads that are cached, and the one that must never be", () => {
       "accountFigures",
       "listYouListCards",
       "listYouRails",
-      // `borrowed-facts.ts` — the five, in file order. `episodeSynopsis` is #253's, and
+      // `borrowed-facts.ts` — the six, in file order. `episodeSynopsis` is #253's, and
       // it sits second because it is written directly beneath the title-level synopsis
-      // whose docblock covers everything the two share.
+      // whose docblock covers everything the two share. `recommendationsFor` is the
+      // *Because you watched* rail's, and it is the first entry here that is not a fact
+      // about a title you own — it is a fact about a title you watched, tagged under that
+      // seed so it expires when the rest of the borrowed facts about it do.
       "titleSynopsis",
       "episodeSynopsis",
+      // The mirror, read twice: throwing for a list row, where a missing row is a broken
+      // invariant, and nullable for catalogue detail, where a title nobody has ever added
+      // is the ordinary case. Same fact, same tag, two contracts — and the pair is what
+      // lets that caller keep `SPEC.md` §3 without a `catch` that cannot tell a missing
+      // row from a database that did not answer.
+      "findUnownedTitleDetail",
+      "recommendationsFor",
       "titleCastAndCrew",
       "titleWatchProviders",
       "getUnownedTitleDetail",

@@ -31,8 +31,18 @@ _Avoid_: ep, instalment, chapter
 
 **Rating**:
 One score you give a title, held on the library entry and overwritten whenever you change your
-mind. There is one per title and never one per watch.
+mind. There is one per title and never one per watch. Always **yours** — the borrowed number is
+an *audience score* and is a different word on purpose.
 _Avoid_: score, stars, review, favourite
+
+**Audience score**:
+What other people thought of a title, borrowed from the catalogue and replaced by a refresh like
+every other borrowed fact. It is never yours, it is never stored, and it appears **only where you
+are judging something you do not own** — catalogue detail and the recommendation rail. A library
+surface shows your *rating* and never this, so the two can never sit side by side to be mistaken
+for one another. Not named after the catalogue that supplies it: the vendor's name appears nowhere
+in this application's copy except the attribution, and the catalogue is replaceable (ADR-0001).
+_Avoid_: rating, your rating, stars, TMDB score, popularity
 
 **List**:
 A named group of titles you curate by hand. Films and shows may sit in the same list, and so may
@@ -104,6 +114,17 @@ _Avoid_: wrapped, recap, annual stats
 Four of these five are derived from your watches. Only *abandoned* is set by hand, because it is
 the only one your watches cannot tell you. A film is only ever on your watchlist, finished, or
 abandoned.
+
+**That last sentence now shapes a screen.** The library and search carry a Films/Shows **mode**,
+and it is the one place this application makes a title's kind a mode rather than a fact about a
+row. In Films mode the state chips are gone — two of the six describe being part-way through a run
+of episodes, which no film can be — and the three states above become three headed groups instead.
+The reach is deliberately short: **the library and search, and nowhere else.** Up next, Lists and
+Stats still mix films and shows, so the application answers *is kind a mode* two different ways
+depending on the tab. That is a real inconsistency, and it is written down here rather than left to
+be discovered. [#252](https://github.com/Joyaroin/MediaSafe/issues/252) widened Up next to admit
+films on the grounds that what you are waiting for is what you keep up with; nothing here narrows
+that.
 
 **Watchlist**:
 The part of your library you have not started — library entries with no watches. Derived, not
