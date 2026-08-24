@@ -9,7 +9,7 @@ import { PHONE_BAR } from "./phone-bar";
 
 /**
  * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
- * widened to four by issue #146, and redrawn by the linen redesign's turn 9.
+ * widened to four by issue #146, and redrawn by the linen redesign's turn 9 (`docs/design/prototypes/mediasafe-phone-up-next.html`).
  *
  * ── What turn 9 changed, and what it took away ────────────────────────────────────────
  *

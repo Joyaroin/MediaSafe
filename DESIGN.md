@@ -47,11 +47,29 @@ below**. Everything in sections 1–12 was written for the Catalogue Wall's ligh
 ground (`#eeede6` on `#f7f5ed`), and most of what changed follows from that one inversion: a
 card no longer needs a line around it to read as a card.
 
-**On the name this section used to use.** It said `design_handoff_phone_linen`, turn 9, which
-named no path and pointed at no committed file. Turn 9 was an *earlier exploration board*, now
-committed as `mediasafe-phone-up-next.html`; the handoff that landed after it carries a
-different token table, and until issue #255 the stylesheet held turn 9's approximations in all
-seven values. The values below are the handoff's own.
+### The two documents, and what "turn 9" means
+
+Both are committed, and **these are the only two paths any source comment should cite.**
+
+| Cited as | Path | What it is |
+| --- | --- | --- |
+| **the handoff** | `docs/design/prototypes/mediasafe-mobile-handoff.md`, drawn at `mediasafe-mobile.html` | The current direction. Eight mobile screens, and the token table §2 adopts. |
+| **turn 9** | `docs/design/prototypes/mediasafe-phone-up-next.html` | The *earlier exploration board* that led to it. Turn 9 is its chosen direction — linen and vermilion — and it is what redrew the four phone tabs. |
+
+**Roughly fifty comments across twenty files say "turn 9" and mean that second path.** They
+are left reading as prose rather than each carrying the path inline, because this table is
+the definition and repeating a 52-character path fifty times inside ruled docblocks would
+cost more than it buys. What was not acceptable was the state #255 found: the term defined
+nowhere, the document in the repository not at all, and the stylesheet citing it as
+`design_handoff_phone_linen` — a name that named nothing. **A citation needs one place that
+resolves it, and this is that place.**
+
+The distinction matters because the two disagree. Turn 9 was the palette *direction*; the
+handoff is the table that landed after it, and until #255 the stylesheet held turn 9's
+approximations in all seven values. Where a comment credits turn 9 with a measure — a
+gutter, a radius, a field height — it is describing what that board drew and is still
+accurate. Where one credits it with a **colour**, it is out of date: §2's values are the
+handoff's.
 
 The stylesheet is still the single declaration site and still wins (see above). This
 section exists so a reader does not take a superseded absolute below as current.
@@ -1396,7 +1414,14 @@ rails, no placeholder tabs, no "coming soon".
   of a trade rather than a pure addition, and the note is corrected here rather than left to
   contradict `app/tab-bar.tsx`.
 - **No theme picker**, no in-product light/dark control, and no alternate palette. The
-  system setting decides (§2).
+  system setting decides (§2). **Amended by the theme control, and recorded here by #255.**
+  A picker shipped, `SPEC.md` §9 carries the reversal, and §2 above was rewritten to
+  describe the three states the stylesheet actually declares. This bullet is corrected in
+  place rather than left standing, because a prohibition the code has already broken stops
+  being a rule and starts being a trap for whoever reads it next — which is what it was
+  when #255 found it still contradicting its own §2. **No alternate palette survives it**,
+  and that half was never in question: light and dark are the two, and the picker chooses
+  between them rather than adding a third.
 - **No multi-select, no select-all, no bulk edit** on any surface. **Amended by #194.**
   That parent ships two ways to act on more than one thing, so the line no longer describes
   the build and is not left standing as though it did. What survives it is narrower and is

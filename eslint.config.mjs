@@ -226,13 +226,17 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // The committed design prototypes (issue #255). `mediasafe-mobile.html` and the
-    // exploration board beside it each load `./support.js`, the design tool's own canvas
-    // runtime — vendored so the boards actually open from the repository rather than
-    // being cited against a path that holds nothing. It is third-party reference material,
-    // not application code: it renders with `ReactDOM.render` and assigns to `module`, and
-    // linting it means CI fails on somebody else's file. Nothing imports it.
-    "docs/design/prototypes/**",
+    // The design tool's own canvas runtime (issue #255). `mediasafe-mobile.html` and the
+    // exploration board beside it each load `./support.js`, vendored so the boards
+    // actually open from the repository rather than being cited against a path that holds
+    // nothing. It is third-party reference material, not application code: it renders with
+    // `ReactDOM.render` and assigns to `module`, so linting it means CI failing on
+    // somebody else's file. Nothing imports it.
+    //
+    // **The one file, not the directory.** `docs/design/prototypes/**` was the first
+    // spelling and it ignores too much: the prototypes are `.html` and `.js` today, and a
+    // `.tsx` one dropped in there later would go unlinted with nothing to say it had.
+    "docs/design/prototypes/support.js",
   ]),
   {
     // SPEC.md §3.2 — no `catch` returns `[]` — and SPEC.md §3.1's amendment — no cache

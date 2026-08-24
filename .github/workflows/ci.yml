@@ -20,13 +20,24 @@
 # Postgres and the WebSocket proxy in front of it (`vitest.config.mts`), which is two
 # service containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set.
 #
-# Two files are the exception, and they are exceptions for the same reason: neither needs
-# a database. `tests/route-manifest.test.ts` reads two files `next build` just wrote and
-# compares them; `tests/fixture-archive.test.ts` reads the committed archives and nothing
-# else. Both enforce properties *of a pull request* — constraint 5, *no unauthenticated
-# route may ever be added*, and #60's *the rescue archive is intact and nothing loads
-# it* — and a check that cannot run on a pull request is a check that is not enforcing
-# anything. That is why these two run here and the rest of the suite does not.
+# Four files are the exception, and they are exceptions for the same reason: none of them
+# needs a database.
+#
+#   - `tests/route-manifest.test.ts` reads two files `next build` just wrote and compares
+#     them — constraint 5, *no unauthenticated route may ever be added*.
+#   - `tests/fixture-archive.test.ts` reads the committed archives and nothing else —
+#     #60's *the rescue archive is intact and nothing loads it*.
+#   - `tests/tvtracker-conversion.test.ts` runs the pure import mapping over that archive.
+#   - `tests/palette.test.ts` reads the stylesheet, `DESIGN.md` and the committed design
+#     handoff, and asserts the three agree — #255.
+#
+# Each enforces a property *of a pull request*, and **a check that cannot run on a pull
+# request is a check that is not enforcing anything.** That is the whole admission rule,
+# and it is why these four run here and the rest of the suite does not.
+#
+# The count in this paragraph said *two* while three steps were already below it, which is
+# the drift the rule itself is about. Corrected when the fourth arrived (#255); it is a
+# count, so it goes stale the moment a step is added without reading this.
 
 name: CI
 
@@ -135,6 +146,24 @@ jobs:
       - name: Conversion mapping
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:conversion
+
+      # The palette (#255), on the admission rule this file states above: it needs neither
+      # the database nor the build, only `app/globals.css`, `DESIGN.md` and the committed
+      # handoff, and it enforces a property *of a pull request*.
+      #
+      # It is here because the alternative was a lie in three files. `globals.css`,
+      # `DESIGN.md` and the suite's own docblock all claimed a drifted token would "fail
+      # CI", while `npm test` does not run here and the file was reachable only by someone
+      # running the full local suite with Docker up. That is the habit-not-a-check failure
+      # the *Fixture archive* step above exists to avoid, and this ticket had written it
+      # into the very stylesheet whose one-declaration-site argument it was making.
+      #
+      # What it would have caught is not hypothetical: the seven values had already drifted
+      # from the handoff, and `DESIGN.md`'s own table had been two palettes out of date
+      # since #134, unread by anything.
+      - name: Palette
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:palette
 
       # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather

@@ -15,9 +15,19 @@
    which still supplies the dark values below. The bone/ink/vermilion letterpress world #134
    replaced is gone from the type ramp and the utilities as well.
 
-   **`DESIGN.md` is written from this file rather than the other way round** (issue #144).
-   This stylesheet is the single declaration site for every token; `DESIGN.md` explains and
-   constrains what is declared here; the handoff is what both answer to.
+   **`DESIGN.md` is written from this file rather than the other way round** (issue #144),
+   and it *outranks any prototype*, the handoff included — its own Precedence line, and
+   unchanged by #255. What the handoff is, is the **source of these seven values**, which is
+   a narrower claim than authority: `DESIGN.md` decides what a token is for and what may be
+   drawn with it, and the handoff decides what `--ground` is set to. Where the two would
+   genuinely disagree, issue #245's Precedence section is what settles it, by amending the
+   older document in the same commit as the code rather than by either one silently winning.
+
+   This stylesheet is the single declaration site for every token, and `tests/palette.test.ts`
+   is what keeps that true in all three places the values could drift: it reads the seven out
+   of the committed handoff, out of this file, and out of `DESIGN.md`'s §2 table, and fails if
+   any of them disagrees. That table used to be a third copy nothing checked, and it had been
+   wrong since #134 — two palettes out of date by the time #255 read it.
 
    The colour tokens are declared once — `--ground`, `--raised`, `--hair`, `--text`,
    `--dim`, `--accent`, `--accent-ink` — as plain custom properties on `:root`,

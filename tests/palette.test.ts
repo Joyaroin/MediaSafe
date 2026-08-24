@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -38,6 +38,7 @@ const HANDOFF = readFileSync(
   join(ROOT, "docs/design/prototypes/mediasafe-mobile-handoff.md"),
   "utf8",
 );
+const DESIGN_DOC = readFileSync(join(ROOT, "DESIGN.md"), "utf8");
 
 /** The seven the handoff supplies. `--ink` is ours and is asserted separately. */
 const HANDOFF_TOKENS = [
@@ -104,6 +105,92 @@ describe("the seven tokens carry the handoff's values", () => {
 
   it.each(HANDOFF_TOKENS)("--%s matches, and is declared once", (token) => {
     expect(declaredOnce(token)).toBe(fromHandoff.get(token));
+  });
+
+  /**
+   * `DESIGN.md`'s §2 table is the third place these seven appear, and until #255 nothing
+   * read it — so it had gone on quoting #134's Catalogue Wall values through two palette
+   * changes, describing a `#ffffff` raised step against a `#f6f5f3` ground that no build
+   * had produced in months. A table nobody checks is not documentation of the palette, it
+   * is a second palette, and it is the exact drift this ticket exists to end.
+   */
+  const fromDesignDoc = new Map(
+    [...DESIGN_DOC.matchAll(/^\|\s*`--([a-z-]+)`\s*\|[^|]*\|\s*`(#[0-9a-f]{6})`\s*\|/gim)].map(
+      ([, name, hex]) => [name, hex.toLowerCase()] as const,
+    ),
+  );
+
+  it("finds the seven in DESIGN.md's own table", () => {
+    for (const token of HANDOFF_TOKENS) {
+      expect(fromDesignDoc.get(token), `DESIGN.md §2 must list --${token}`).toMatch(
+        /^#[0-9a-f]{6}$/,
+      );
+    }
+  });
+
+  it.each(HANDOFF_TOKENS)("DESIGN.md's --%s agrees with the stylesheet", (token) => {
+    expect(fromDesignDoc.get(token)).toBe(declaredOnce(token));
+  });
+});
+
+describe("every design path a comment cites resolves to a committed file", () => {
+  /**
+   * The failure #255 exists to end, made mechanical.
+   *
+   * `globals.css` cited the palette's source as `design_handoff_phone_linen` — not a path,
+   * not a file, nothing a reader could open — and because nothing checked, all seven values
+   * drifted from the document that name was gesturing at. The parent spec names this as
+   * the thing `tvtracker` already carries a dozen times.
+   *
+   * So: anything shaped like a path into `docs/design/` or `design/` must exist. This
+   * cannot stop somebody writing a bare name again, but it does stop a *path* from rotting
+   * — including the moment one of these prototypes is renamed and fifty comments quietly
+   * stop resolving.
+   */
+  // `app/globals.css` is already in `sourceFiles()`; only `DESIGN.md` has to be added.
+  const citingFiles = [join(ROOT, "DESIGN.md"), ...sourceFiles()];
+  const cited = new Set<string>();
+
+  for (const path of citingFiles) {
+    for (const [, reference] of readFileSync(path, "utf8").matchAll(
+      /`((?:docs\/)?design\/[\w./-]+\.(?:md|html|js))`/g,
+    )) {
+      cited.add(reference);
+    }
+  }
+
+  it("finds the citations it means to check", () => {
+    // Without this the assertion below passes by matching nothing at all — which is how a
+    // sweep quietly stops being one.
+    expect(cited.size).toBeGreaterThanOrEqual(3);
+    expect([...cited]).toContain("docs/design/prototypes/mediasafe-mobile-handoff.md");
+  });
+
+  it("resolves every one of them", () => {
+    const dangling = [...cited].filter((reference) => !existsSync(join(ROOT, reference)));
+
+    expect(dangling).toEqual([]);
+  });
+
+  it("keeps the pathless name out of every file that is not explaining it", () => {
+    /**
+     * `design_handoff_phone_linen` is the string the stylesheet used to cite the palette
+     * by. Two files are allowed to say it — `globals.css`, whose docblock explains what
+     * replaced it, and `DESIGN.md`'s glossary — because naming the discarded term is how
+     * a reader who meets it in an old branch finds out what it meant.
+     *
+     * Everywhere else it is a citation, and a citation to a name is what this whole
+     * ticket is about. The exemption is two files rather than "comments", because there
+     * is no mechanical difference between explaining a bad citation and making one, and
+     * a rule that cannot tell them apart should name its exceptions instead of guessing.
+     */
+    const explaining = new Set(["app/globals.css", "DESIGN.md"]);
+    const offenders = citingFiles
+      .map(relative)
+      .filter((path) => !explaining.has(path))
+      .filter((path) => readFileSync(join(ROOT, path), "utf8").includes("design_handoff_phone_linen"));
+
+    expect(offenders).toEqual([]);
   });
 });
 
@@ -193,37 +280,71 @@ describe("both dark paths", () => {
     );
   });
 });
-
 /**
- * Every file the palette can reach — what ships, and only that.
+ * The directories that ship, walked from their own roots.
  *
- * `tests` is skipped for the same reason `docs` and `design` are: a suite that asserts
- * *"the markup contains no shadow"* has the word in a regex, and a sweep that counted it
- * would report this file for containing the rule it enforces.
+ * **Rooted, not filtered.** The first draft walked the repository root with a skip-list
+ * and no `.claude` entry in it, so it swept `.claude/worktrees/` — 2107 files from
+ * twenty-one sibling branches, against 228 real ones. Every sweep below was auditing
+ * other people's work-in-progress, and the "did we find anything" guard passed on the
+ * strength of it. Naming the three directories that render is the fix: a skip-list is a
+ * claim about everything that exists, and this repository grows directories.
  */
+const SHIPPING_DIRECTORIES = ["app", "errors", "lib"];
+
 function sourceFiles(): string[] {
   const found: string[] = [];
-  const skip = new Set([
-    "node_modules",
-    ".next",
-    ".git",
-    "docs",
-    "design",
-    "drizzle",
-    "fixtures",
-    "tests",
-  ]);
 
-  (function walk(dir: string) {
+  function walk(dir: string) {
     for (const name of readdirSync(dir)) {
-      if (skip.has(name)) continue;
       const path = join(dir, name);
       if (statSync(path).isDirectory()) walk(path);
       else if (/\.(tsx?|css)$/.test(name)) found.push(path);
     }
-  })(ROOT);
+  }
 
+  for (const dir of SHIPPING_DIRECTORIES) walk(join(ROOT, dir));
   return found;
+}
+
+/**
+ * Source with comments blanked — block and line, and length preserved so an offset still
+ * points at the right line.
+ *
+ * Every sweep reads this. This repository comments at length *about the rules it keeps*,
+ * so a sweep over raw text finds the explanation and reports it as the breach: the first
+ * draft of the shadow sweep named thirteen files, every one of them a comment saying the
+ * design casts no shadow. `tests/underline-audit.test.ts` strips for the same reason and
+ * says so in the same words.
+ */
+function code(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+    .replace(/\/\/[^\n]*/g, (line) => " ".repeat(line.length));
+}
+
+/** Every whitespace-separated token of every string literal — where a class list can be. */
+function classTokens(source: string): Array<{ token: string; index: number }> {
+  const out: Array<{ token: string; index: number }> = [];
+
+  // Single quotes as well as double and backtick. Leaving `'…'` out was a false pass
+  // waiting to happen — nothing in the linter makes a class list pick its quote.
+  for (const match of source.matchAll(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g)) {
+    const body = match[1] ?? match[2] ?? match[3] ?? "";
+    for (const token of body.split(/\s+/)) {
+      if (token) out.push({ token, index: match.index ?? 0 });
+    }
+  }
+
+  return out;
+}
+
+function lineOf(source: string, index: number): number {
+  return source.slice(0, index).split("\n").length;
+}
+
+function relative(path: string): string {
+  return path.slice(ROOT.length + 1);
 }
 
 describe("no drop shadow appears anywhere", () => {
@@ -237,22 +358,38 @@ describe("no drop shadow appears anywhere", () => {
    */
   const files = sourceFiles();
 
-  it("finds the source tree it means to sweep", () => {
-    expect(files.length).toBeGreaterThan(50);
+  it("sweeps the shipping tree and nothing else", () => {
+    // Both halves matter. Too few means the walk broke and every sweep below is vacuous;
+    // too many means it has escaped into `.claude/worktrees` again, which is exactly how
+    // this started.
+    expect(files.length).toBeGreaterThan(100);
+    expect(files.length).toBeLessThan(600);
+
+    // Relative, not absolute. The repository's own worktrees live *under*
+    // `.claude/worktrees/`, so when this suite runs inside one every absolute path
+    // contains the string and the guard reads as a permanent failure — which is what the
+    // first version of this line did.
+    expect(files.map(relative).filter((path) => path.startsWith(".claude"))).toEqual([]);
+    expect(
+      files.map(relative).every((path) => SHIPPING_DIRECTORIES.some((d) => path.startsWith(d))),
+    ).toBe(true);
   });
 
   it("has no non-inset box-shadow", () => {
     const offenders: string[] = [];
 
     for (const path of files) {
-      readFileSync(path, "utf8")
-        .split("\n")
-        .forEach((line, i) => {
-          const shadow = /box-shadow:\s*([^;]+)/.exec(line);
-          if (shadow && !shadow[1].includes("inset")) {
-            offenders.push(`${path.slice(ROOT.length + 1)}:${i + 1} — ${line.trim()}`);
-          }
-        });
+      const source = readFileSync(path, "utf8");
+
+      // Matched against the whole file rather than line by line: a declaration wrapped
+      // across two lines is still one declaration, and a line-based scan reads the tail
+      // of it as ordinary text and lets it through.
+      for (const match of code(source).matchAll(/box-shadow\s*:\s*([^;}]+)/g)) {
+        if (match[1].includes("inset")) continue;
+        offenders.push(
+          `${relative(path)}:${lineOf(source, match.index ?? 0)} — ${match[1].trim()}`,
+        );
+      }
     }
 
     expect(offenders).toEqual([]);
@@ -262,31 +399,48 @@ describe("no drop shadow appears anywhere", () => {
     const offenders: string[] = [];
 
     /**
-     * Class lists only. The first draft of this swept raw lines and reported thirteen
-     * files, every one of them a *comment* explaining that the design casts no shadow —
-     * including two in this file. Prose about a rule is not a breach of it, so the sweep
-     * reads string literals, which is where a class list can actually be.
+     * `(?:[\w-]+:)*` is the half the first draft was missing, and it made the sweep a
+     * decoration rather than a check: `hover:shadow-md` and `md:shadow-lg` are exactly
+     * how a shadow would arrive in a Tailwind codebase, and neither matched.
+     *
+     * `shadow-none` is excluded because it removes one.
      */
+    const SHADOW = /^(?:[\w-]+:)*(?:drop-shadow|shadow)(?:-.+)?$/;
+
     for (const path of files) {
       const source = readFileSync(path, "utf8");
-      const lineOf = (index: number) => source.slice(0, index).split("\n").length;
+      const stripped = code(source);
 
-      const literals = path.endsWith(".css")
-        ? // Strip `/* … */` before looking, then treat what is left as one list: a
-          // utility can only reach CSS through `@apply`.
-          [[source.replace(/\/\*[\s\S]*?\*\//g, ""), 0] as const]
-        : [...source.matchAll(/"([^"\n]*)"|`([^`]*)`/g)].map(
-            (m) => [m[1] ?? m[2] ?? "", m.index ?? 0] as const,
-          );
+      const tokens = path.endsWith(".css")
+        ? // A utility can only reach CSS through `@apply`, so the whole stripped file is
+          // one list rather than a set of literals to find.
+          stripped.split(/\s+/).map((token) => ({ token, index: 0 }))
+        : classTokens(stripped);
 
-      for (const [literal, index] of literals) {
-        for (const token of literal.split(/[\s]+/)) {
-          if (!/^(?:drop-shadow|shadow)(?:-.*)?$/.test(token)) continue;
-          // `shadow-[inset_0_0_0_1px_var(--color-hair)]` is a hairline ring drawn
-          // inside the box — the same thing `field-well` does with `box-shadow: inset`.
-          if (token.includes("inset")) continue;
-          offenders.push(`${path.slice(ROOT.length + 1)}:${lineOf(index)} — ${token}`);
-        }
+      for (const { token, index } of tokens) {
+        if (!SHADOW.test(token)) continue;
+        // `shadow-[inset_0_0_0_1px_var(--color-hair)]` is a hairline ring drawn inside
+        // the box — the same thing `field-well` does with `box-shadow: inset`.
+        if (token.includes("inset") || token.endsWith("shadow-none")) continue;
+        offenders.push(`${relative(path)}:${lineOf(source, index)} — ${token}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("the three names the handoff proposes never reach a class list either", () => {
+  // Asserted over the source tree as well as the stylesheet. Checking only `globals.css`
+  // left the case that actually matters unguarded: a component reaching for `bg-well`
+  // does not need the token declared to be wrong, it needs only to have been written.
+  it.each(["bg-well", "text-body", "border-rule-soft"])("%s is used nowhere", (utility) => {
+    const offenders: string[] = [];
+
+    for (const path of sourceFiles()) {
+      const source = readFileSync(path, "utf8");
+      for (const { token, index } of classTokens(code(source))) {
+        if (token === utility) offenders.push(`${relative(path)}:${lineOf(source, index)}`);
       }
     }
 
@@ -298,37 +452,78 @@ describe("no heading renders lighter than the body beneath it", () => {
   /**
    * The token relationship is asserted above; this is the call-site half of the same
    * criterion. A heading is only as dark as the utility it carries, and the audit found
-   * three that carried the wrong one — including the two largest headings in the
-   * application, which were drawn at the body colour while every smaller screen title
-   * was inked.
+   * three carrying the wrong one — including the two largest headings in the
+   * application, drawn at the body colour while every smaller screen title was inked.
    *
-   * `text-dim` on a heading is the failure this names. The label register is a separate
-   * question and deliberately out of it: `code-line`/`label-line` heads are 10.5px
-   * uppercase furniture, not a heading over prose, and they were `--dim` before this
-   * change too.
+   * **Properties, not a list of the three that were fixed.** A fixed list is what let
+   * the underline drift to fourteen occurrences before anyone counted
+   * (`tests/underline-audit.test.ts`, which says so in its own docblock), and it would
+   * have caught none of these three, because none of them was on anybody's list.
+   *
+   * The label register is deliberately outside this. `code-line`/`label-line` heads are
+   * 10.5px uppercase furniture rather than a heading over prose, and they were `--dim`
+   * before this change as well — a real question, but not this ticket's.
    */
-  const headings: Array<[string, string]> = [
-    ["app/(signed-in)/titles/[kind]/[tmdbId]/page.tsx", "bill-title mt-5 text-bill-xl text-ink"],
-    ["app/(signed-in)/library/programme-note-content.tsx", "bill-title mt-5 text-bill-xl text-ink"],
-    ["app/(signed-in)/lists/[listId]/list-title-row.tsx", "bill-title text-bill-md text-ink"],
-  ];
-
-  it.each(headings)("%s inks its title heading", (path, className) => {
-    expect(readFileSync(join(ROOT, path), "utf8")).toContain(className);
-  });
-
-  it("no bill-title or screen-title heading is dimmed", () => {
-    const offenders: string[] = [];
+  const inClassLists = (predicate: (token: string) => boolean) => {
+    const hits: Array<{ path: string; source: string; index: number }> = [];
 
     for (const path of sourceFiles()) {
-      readFileSync(path, "utf8")
-        .split("\n")
-        .forEach((line, i) => {
-          if (!/\b(?:bill-title|screen-title)\b/.test(line)) return;
-          if (!/\btext-dim\b/.test(line)) return;
-          offenders.push(`${path.slice(ROOT.length + 1)}:${i + 1} — ${line.trim()}`);
-        });
+      const source = readFileSync(path, "utf8");
+      for (const match of code(source).matchAll(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g)) {
+        const body = match[1] ?? match[2] ?? match[3] ?? "";
+        const tokens = body.split(/\s+/).filter(Boolean);
+        if (tokens.some(predicate)) {
+          hits.push({ path, source, index: match.index ?? 0 });
+        }
+      }
     }
+
+    return hits;
+  };
+
+  const classListsWith = (needle: string) =>
+    inClassLists((token) => token === needle).map(({ path, source, index }) => ({
+      where: `${relative(path)}:${lineOf(source, index)}`,
+      tokens: (code(source).slice(index).match(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/) ?? [""])[0]
+        .split(/\s+/)
+        .map((token) => token.replace(/["'`]/g, "")),
+    }));
+
+  it("finds the heading registers it means to check", () => {
+    // The registers exist and are used; without this the three properties below pass by
+    // finding nothing at all.
+    expect(classListsWith("screen-title").length).toBeGreaterThanOrEqual(4);
+    expect(classListsWith("text-bill-xl").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("inks every screen title", () => {
+    const offenders = classListsWith("screen-title")
+      .filter(({ tokens }) => !tokens.includes("text-ink"))
+      .map(({ where }) => where);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("inks every heading at the largest step in the ramp", () => {
+    // `text-bill-xl` is 2.4rem — the biggest type the application sets. Both uses were
+    // drawn at `--text` until #255, which is the inversion `--ink` exists to prevent.
+    const offenders = classListsWith("text-bill-xl")
+      .filter(({ tokens }) => !tokens.includes("text-ink"))
+      .map(({ where }) => where);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("dims no heading in either register", () => {
+    const offenders = inClassLists(
+      (token) => token === "bill-title" || token === "screen-title",
+    )
+      .filter(({ path, source, index }) => {
+        const literal = code(source).slice(index).match(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/);
+        void path;
+        return (literal?.[0] ?? "").split(/\s+/).some((t) => t.replace(/["'`]/g, "") === "text-dim");
+      })
+      .map(({ path, source, index }) => `${relative(path)}:${lineOf(source, index)}`);
 
     expect(offenders).toEqual([]);
   });
@@ -343,23 +538,25 @@ describe("the contrast the palette actually ships", () => {
     }
   });
 
-  it("records that --dim does not, so the regression cannot go quiet", () => {
+  it("holds --dim to a floor it currently sits on, and never lets it get lighter", () => {
     /**
-     * **This is a documented failure, not a passing bar.** The handoff's `--dim`
-     * (`#929086`) is 2.93:1 on `--ground`, down from the 3.32:1 it replaced — below AA
-     * for normal text (4.5:1) and now below the large-text floor (3:1) as well. It
-     * carries the metadata line at 12–13px.
+     * `--dim` is the weakest thing in the palette. The handoff's `#929086` is 2.93:1 on
+     * `--ground`, down from the 3.32:1 it replaced — below AA for normal text (4.5:1)
+     * and now below the large-text floor (3:1) too, while carrying the metadata line at
+     * 12–13px. It is adopted as given because #255's first criterion is fidelity to the
+     * handoff's table, and the argument for that sits at the declaration site.
      *
-     * It is adopted as given because #255's first criterion is fidelity to the
-     * handoff's table, and darkening one value while claiming to have adopted it would
-     * leave the stylesheet un-diffable against the document it cites. This assertion
-     * pins the number so that the day someone fixes it, this test fails and makes them
-     * say so — and so that nobody re-derives the value by accident in the meantime.
+     * **A floor, not a window.** The first draft asserted `< 3.0` as well, to pin the
+     * number — which would have failed the day somebody darkened `--dim` to fix exactly
+     * the problem the comment complains about. A test that blocks its own remedy is
+     * worse than no test. Drift *back* toward the light is what this catches; drift
+     * toward legibility is what it is supposed to allow.
+     *
+     * Nothing is lost by dropping the ceiling: `--dim` is already pinned to the
+     * handoff's own value by the seven-token comparison above, so a change in either
+     * direction still has to be deliberate and still has to update the document.
      */
-    const onGround = contrast(declaredOnce("dim"), declaredOnce("ground"));
-
-    expect(onGround).toBeGreaterThan(2.9);
-    expect(onGround).toBeLessThan(3.0);
+    expect(contrast(declaredOnce("dim"), declaredOnce("ground"))).toBeGreaterThanOrEqual(2.9);
   });
 
   it("keeps type on the accent legible, which the accent-ink pairing exists for", () => {

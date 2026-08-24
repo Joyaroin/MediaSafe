@@ -318,7 +318,10 @@ function SheetLoading({ entry }: { entry: TitleSheetEntry }) {
         />
       </ViewTransition>
       <div className="min-w-0 flex-1">
-        <h2 className="bill-title text-bill-md text-text">{entry.titleName}</h2>
+        {/* `text-ink` (#255) — the same register and the same shape as
+            `lists/[listId]/list-title-row.tsx`: a `bill-title text-bill-md` name over a
+            `code-line text-dim` meta line. Both carried the body colour; both are inked. */}
+        <h2 className="bill-title text-bill-md text-ink">{entry.titleName}</h2>
         {entry.releaseYear === null ? null : (
           <p className="code-line mt-1 text-dim" data-numeric>
             {entry.releaseYear}
