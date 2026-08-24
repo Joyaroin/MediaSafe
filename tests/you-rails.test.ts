@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  abandonTitle,
   addTitleToList,
   asUserId,
   createList,
@@ -208,7 +209,7 @@ describe("listYouListCards", () => {
 });
 
 describe("listYouRails", () => {
-  it("holds a show at watching and a film at watching, split by kind", async () => {
+  it("holds a watching show and a finished film, split by kind", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
@@ -216,20 +217,22 @@ describe("listYouRails", () => {
       const showEntry = await addToLibrary(tx, reader, show);
       await recordWatch(tx, reader, show, showEntry, { episodeId: show.episodeIds[0] });
 
+      // A film has no episode-watch progress to be "watching" against; any watch at all
+      // resolves it straight to *finished* (`db/views.ts`, `CONTEXT.md`: "a film is only
+      // ever on your watchlist, finished, or abandoned"). The films rail reads *finished*
+      // for exactly that reason — it is the one state a watched film can occupy.
       const film = await seedTitle(tx, { kind: "film", name: "A Film" });
-      // A film has no episode-watch progress to be "watching" against; it is only ever
-      // *finished* or *watchlist* (`db/views.ts`). This film is left unwatched on purpose,
-      // and asserted absent below — the rail's honest membership, not a placeholder case.
-      void film;
+      const filmEntry = await addToLibrary(tx, reader, film);
+      await recordWatch(tx, reader, film, filmEntry);
 
       const rails = await listYouRails(reader, tx);
 
       expect(rails.shows.map((entry) => entry.titleName)).toEqual(["A Show"]);
-      expect(rails.films).toEqual([]);
+      expect(rails.films.map((entry) => entry.titleName)).toEqual(["A Film"]);
     });
   });
 
-  it("holds a caught-up show, and leaves out a finished film", async () => {
+  it("holds a caught-up show, and leaves out a watchlist film", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
@@ -244,14 +247,46 @@ describe("listYouRails", () => {
         await recordWatch(tx, reader, show, showEntry, { episodeId });
       }
 
-      const film = await seedTitle(tx, { kind: "film", name: "Finished film" });
-      const filmEntry = await addToLibrary(tx, reader, film);
-      await recordWatch(tx, reader, film, filmEntry);
+      const film = await seedTitle(tx, { kind: "film", name: "Unwatched film" });
+      await addToLibrary(tx, reader, film);
 
       const rails = await listYouRails(reader, tx);
 
       expect(rails.shows.map((entry) => entry.titleName)).toEqual(["Caught up show"]);
       expect(rails.films).toEqual([]);
+    });
+  });
+
+  it("leaves out an abandoned film", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      const film = await seedTitle(tx, { kind: "film", name: "Abandoned film" });
+      const filmEntry = await addToLibrary(tx, reader, film);
+      await recordWatch(tx, reader, film, filmEntry);
+      await abandonTitle(reader, filmEntry, tx);
+
+      const rails = await listYouRails(reader, tx);
+
+      expect(rails.films).toEqual([]);
+    });
+  });
+
+  it("orders the films rail by most recent dated watch first", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      const older = await seedTitle(tx, { kind: "film", name: "Older film" });
+      const olderEntry = await addToLibrary(tx, reader, older);
+      await recordWatch(tx, reader, older, olderEntry, { watchedAt: new Date("2024-01-01") });
+
+      const newer = await seedTitle(tx, { kind: "film", name: "Newer film" });
+      const newerEntry = await addToLibrary(tx, reader, newer);
+      await recordWatch(tx, reader, newer, newerEntry, { watchedAt: new Date("2024-06-01") });
+
+      const rails = await listYouRails(reader, tx);
+
+      expect(rails.films.map((entry) => entry.titleName)).toEqual(["Newer film", "Older film"]);
     });
   });
 

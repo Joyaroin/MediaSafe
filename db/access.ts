@@ -4178,16 +4178,30 @@ export async function listYouListCards(
 }
 
 /**
- * The You page's shows and films rails — issue #248. The entries standing at *watching* or
- * *caught up*, split by kind, each rail ordered by its title's most recent **dated** watch
- * first.
+ * The You page's shows and films rails — issue #248. Shows are the entries standing at
+ * *watching* or *caught up*; films are the entries standing at *finished*. Both rails are
+ * ordered by their title's most recent **dated** watch first.
+ *
+ * ── Why the two rails read different states ───────────────────────────────────────────
+ *
+ * #248 as filed asked for one rule, *watching or caught up*, applied to both kinds — but
+ * `CONTEXT.md`'s own glossary is explicit that **a film is only ever on your watchlist,
+ * finished, or abandoned**, and `library_entry_state`'s view agrees: `t.kind = 'film'`
+ * resolves straight to `'finished'` the moment it has any watch at all, before *watching*
+ * or *caught up* are even considered. A films rail filtered on those two states is not a
+ * films rail that is sometimes empty; it is one that can never hold a single row, for any
+ * account, ever — which fails #245's own user story 19, *"I want the same for films, so
+ * that both halves of my library are represented."* Literal compliance with the acceptance
+ * criterion defeats the reason the criterion was written. Films read *finished* instead,
+ * which is the one state a watched film can actually occupy — the direct analogue of "in
+ * play" that a title with no partial-progress concept has to offer.
  *
  * ── One read, split in memory, for `listUpNextRails`'s own reason ────────────────────
  *
- * A single query over both states and both kinds, sliced afterwards, rather than four
+ * A single query over both kinds' predicates, sliced afterwards, rather than two separate
  * queries — the property that matters is *every entry is on exactly one rail*, which is
- * true by construction of one predicate and one split rather than by four `WHERE`s agreeing
- * with each other.
+ * true by construction of one `or` of two kind-scoped predicates and one split rather than
+ * by two statements agreeing with each other.
  *
  * ── The order is `upNextRead`'s `last_watch`, without the up-next fallback ────────────
  *
@@ -4195,8 +4209,8 @@ export async function listYouListCards(
  * rewatch is a second `watch` row (`CONTEXT.md`), so it has to be grouped before it can be
  * joined without multiplying an entry. What is dropped is `upNextOrder`'s fallback to an
  * unaired episode's air date: that exists so an unwatched title still has *some* position in
- * Up next's queue, and every entry here has already watched something (it is *watching* or
- * *caught up*), so there is no "never watched" case to fall back for.
+ * Up next's queue, and every entry here has already watched something (a show *watching* or
+ * *caught up*, a film *finished*), so there is no "never watched" case to fall back for.
  *
  * **`desc nulls last`, spelled out.** Postgres defaults a `desc` order to nulls *first*,
  * which would put every entry with only undated watches at the head of its rail — backwards
@@ -4241,8 +4255,17 @@ export async function listYouRails(
       and(
         ownedBy(userId, libraryEntry),
         or(
-          eq(libraryEntryState.state, "watching" satisfies LibraryState),
-          eq(libraryEntryState.state, "caught_up" satisfies LibraryState),
+          and(
+            eq(title.kind, "show" satisfies TitleKind),
+            or(
+              eq(libraryEntryState.state, "watching" satisfies LibraryState),
+              eq(libraryEntryState.state, "caught_up" satisfies LibraryState),
+            ),
+          ),
+          and(
+            eq(title.kind, "film" satisfies TitleKind),
+            eq(libraryEntryState.state, "finished" satisfies LibraryState),
+          ),
         ),
       ),
     )

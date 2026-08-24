@@ -90,8 +90,8 @@ export function YouSurface({
   readonly figures: AccountFigures;
   /** Issue #248's lists rail — up to four covers per card, in list-membership order. */
   readonly lists: readonly ListCard[];
-  /** Issue #248's shows and films rails — Watching or Caught up, most recent dated watch
-   *  first (`db/access.ts`'s `listYouRails`). */
+  /** Issue #248's shows and films rails — shows Watching or Caught up, films Finished,
+   *  each most recent dated watch first (`db/access.ts`'s `listYouRails`). */
   readonly shows: readonly LibraryStateGroupEntry[];
   readonly films: readonly LibraryStateGroupEntry[];
 }) {

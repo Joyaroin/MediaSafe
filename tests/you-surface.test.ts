@@ -247,13 +247,13 @@ describe("the lists, shows and films rails — issue #248", () => {
   it("renders the shows and films rails under their own labels", () => {
     const markup = render(figures(), {
       shows: [titleEntry({ titleName: "A Watching Show" })],
-      films: [titleEntry({ titleName: "A Watchlist Film" })],
+      films: [titleEntry({ titleName: "A Finished Film" })],
     });
 
     expect(markup).toContain(">Shows<");
     expect(markup).toContain("A Watching Show");
     expect(markup).toContain(">Films<");
-    expect(markup).toContain("A Watchlist Film");
+    expect(markup).toContain("A Finished Film");
   });
 
   it("renders no shows rail and no films rail when both are empty", () => {
