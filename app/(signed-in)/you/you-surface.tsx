@@ -1,5 +1,7 @@
-import type { AccountFigures } from "@/db/access";
+import type { AccountFigures, LibraryStateGroupEntry, ListCard } from "@/db/access";
 import { qualification, watchTimeInWords } from "./figures";
+import { YouListsRail } from "./you-lists-rail";
+import { YouTitleRail } from "./you-title-rail";
 
 /**
  * The six figures that describe a watching life — issue #247.
@@ -79,7 +81,20 @@ function Section({
   );
 }
 
-export function YouSurface({ figures }: { readonly figures: AccountFigures }) {
+export function YouSurface({
+  figures,
+  lists,
+  shows,
+  films,
+}: {
+  readonly figures: AccountFigures;
+  /** Issue #248's lists rail — up to four covers per card, in list-membership order. */
+  readonly lists: readonly ListCard[];
+  /** Issue #248's shows and films rails — Watching or Caught up, most recent dated watch
+   *  first (`db/access.ts`'s `listYouRails`). */
+  readonly shows: readonly LibraryStateGroupEntry[];
+  readonly films: readonly LibraryStateGroupEntry[];
+}) {
   /**
    * One line for the whole page rather than one per section — issue #247's *one quiet
    * line*. Stats repeated its note under each of four time-based sections because a reader
@@ -119,17 +134,27 @@ export function YouSurface({ figures }: { readonly figures: AccountFigures }) {
       </Section>
 
       {/*
-        And nothing else. `figures.titles` is read by this page and deliberately not
-        printed by it: it decides the empty branch in `page.tsx` and is not a seventh
-        figure. #245 is explicit that the figures the reader asked for are the whole of
-        what You reports, and a page that reports six things plus one more is a page that
-        has started drifting back towards the nine it replaced.
+        Nothing else joins the *figures* — `figures.titles` is read by this page and
+        deliberately not printed by it: it decides the empty branch in `page.tsx` and is
+        not a seventh figure. #245 is explicit that the figures the reader asked for are
+        the whole of what You reports numerically, and a page that reports six things plus
+        one more is a page that has started drifting back towards the nine it replaced.
       */}
       {qualifies === null ? null : (
         <p className="px-[22px] pt-1 pb-2 text-item leading-relaxed text-dim lg:px-10">
           {qualifies}
         </p>
       )}
+
+      {/*
+        Then the three rails — issue #248, and not a figure among them: a list, a show and
+        a film are things You leads to, not counts of them. Each is `YouRail`'s own
+        absence when it has nothing (no heading, no reserved space), so there is no branch
+        here beyond simply rendering all three.
+      */}
+      <YouListsRail lists={lists} />
+      <YouTitleRail label="Shows" entries={shows} />
+      <YouTitleRail label="Films" entries={films} />
     </div>
   );
 }

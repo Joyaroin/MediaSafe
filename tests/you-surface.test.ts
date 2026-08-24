@@ -6,7 +6,7 @@ import { EmptyYou } from "@/app/(signed-in)/you/empty-you";
 import { watchTimeInWords } from "@/app/(signed-in)/you/figures";
 import { YouHero } from "@/app/(signed-in)/you/you-hero";
 import { YouSurface } from "@/app/(signed-in)/you/you-surface";
-import type { AccountFigures } from "@/db/access";
+import type { AccountFigures, LibraryStateGroupEntry, ListCard } from "@/db/access";
 
 /**
  * You as the reader meets it — issue #247.
@@ -44,8 +44,37 @@ function figures(overrides: Partial<AccountFigures> = {}): AccountFigures {
   };
 }
 
-const render = (figuresIn: AccountFigures) =>
-  renderToStaticMarkup(createElement(YouSurface, { figures: figuresIn }));
+function listCard(overrides: Partial<ListCard> = {}): ListCard {
+  return { id: "list-1", name: "Comfort shows", titleCount: 3, posterPaths: [], ...overrides };
+}
+
+function titleEntry(overrides: Partial<LibraryStateGroupEntry> = {}): LibraryStateGroupEntry {
+  return {
+    libraryEntryId: "entry-1",
+    titleId: "title-1",
+    titleName: "A Show",
+    releaseYear: 2020,
+    posterPath: null,
+    ...overrides,
+  };
+}
+
+const render = (
+  figuresIn: AccountFigures,
+  rails: {
+    lists?: readonly ListCard[];
+    shows?: readonly LibraryStateGroupEntry[];
+    films?: readonly LibraryStateGroupEntry[];
+  } = {},
+) =>
+  renderToStaticMarkup(
+    createElement(YouSurface, {
+      figures: figuresIn,
+      lists: rails.lists ?? [],
+      shows: rails.shows ?? [],
+      films: rails.films ?? [],
+    }),
+  );
 
 describe("the six figures", () => {
   const markup = render(figures());
@@ -180,6 +209,70 @@ describe("the hero", () => {
 
     expect(markup).toContain("bg-raised");
     expect(markup).toContain("rounded-full");
+  });
+});
+
+describe("the lists, shows and films rails — issue #248", () => {
+  it("renders a list card's name and title count", () => {
+    const markup = render(figures(), {
+      lists: [listCard({ name: "Comfort shows", titleCount: 12 })],
+    });
+
+    expect(markup).toContain("Comfort shows");
+    expect(markup).toContain("12 titles");
+  });
+
+  it("gives a list with no covered posters the missing-artwork frame", () => {
+    const markup = render(figures(), { lists: [listCard({ posterPaths: [] })] });
+
+    expect(markup).toContain("No artwork");
+  });
+
+  it("draws a poster cell for a covered list and no missing-artwork frame", () => {
+    const markup = render(figures(), {
+      lists: [listCard({ posterPaths: ["/one.jpg", "/two.jpg"] })],
+    });
+
+    expect(markup).toContain("/one.jpg");
+    expect(markup).toContain("/two.jpg");
+    expect(markup).not.toContain("No artwork");
+  });
+
+  it("renders no lists rail at all when the account has no lists", () => {
+    const markup = render(figures(), { lists: [] });
+
+    expect(markup).not.toContain(">Lists<");
+  });
+
+  it("renders the shows and films rails under their own labels", () => {
+    const markup = render(figures(), {
+      shows: [titleEntry({ titleName: "A Watching Show" })],
+      films: [titleEntry({ titleName: "A Watchlist Film" })],
+    });
+
+    expect(markup).toContain(">Shows<");
+    expect(markup).toContain("A Watching Show");
+    expect(markup).toContain(">Films<");
+    expect(markup).toContain("A Watchlist Film");
+  });
+
+  it("renders no shows rail and no films rail when both are empty", () => {
+    const markup = render(figures(), { shows: [], films: [] });
+
+    expect(markup).not.toContain(">Shows<");
+    expect(markup).not.toContain(">Films<");
+  });
+
+  it("links a title tile to its library entry, not a title page", () => {
+    const markup = render(figures(), { shows: [titleEntry({ libraryEntryId: "entry-42" })] });
+
+    expect(markup).toContain('href="/library/entry-42"');
+  });
+
+  it("links a list card to its own list", () => {
+    const markup = render(figures(), { lists: [listCard({ id: "list-42" })] });
+
+    expect(markup).toContain('href="/lists/list-42"');
   });
 });
 

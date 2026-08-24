@@ -729,8 +729,15 @@ What came in with them, and what did not:
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your
   lists standing.
-- **Still out**, named because a list is where each would look natural: sharing a list, list covers,
-  smart or rule-based lists, and nested lists.
+- **Still out**, named because a list is where each would look natural: sharing a list,
+  ~~list covers,~~ smart or rule-based lists, and nested lists.
+
+  **List covers shipped in [#248](https://github.com/Joyaroin/MediaSafe/issues/248),
+  2026-08-24.** A list card on `/you`'s lists rail draws up to four posters, taken in
+  list-membership order and filtered to titles TMDB has artwork for; a list with none —
+  because it holds no titles, or holds titles with no artwork — keeps its card and gets the
+  missing-artwork frame instead of vanishing from the rail. The other three items in this
+  bullet are untouched and still out.
 
 The rule above is unchanged by that. Nothing reserves space for what has not shipped — a Lists tab
 appears when there is a Lists page behind it.
@@ -824,6 +831,16 @@ Beyond this product's destination, and returning only as a fresh decision:
   *showing 10 of 62*, no badge — every one of those is still forbidden, by this line and by
   `DESIGN.md` §11's own. That rule cost nothing to keep because a figure printed beside a
   poster answers a question nobody asked while you were choosing what to watch tonight.
+
+  **Narrowed once more by [#248](https://github.com/Joyaroin/MediaSafe/issues/248),
+  2026-08-24, for one card and nothing beyond it.** A list card on `/you`'s lists rail
+  carries its title count — the same fact `app/(signed-in)/library/lists-rail.tsx`'s own
+  phone rail reads and withholds (issue #223), reversed here because a list card is not a
+  poster with a number tacked beside it: the whole of what it names *is* a list, and *how
+  many titles it holds* is a fact about the thing named rather than chrome over something
+  else. The library's lists rail is untouched — one poster-free row per list, still with no
+  count on it — and every other rail head and tile in the application keeps the ban exactly
+  as it read before this.
 
   What falls is narrower and is the part that was never argued: **that the questions
   themselves are out of scope.** Watch time, episodes remaining, activity over time and the

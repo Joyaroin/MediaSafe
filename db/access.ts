@@ -4114,6 +4114,156 @@ export async function reorderListMembership(
   });
 }
 
+/** How many posters a list card draws before it stops, in membership order. */
+const LIST_CARD_POSTERS = 4;
+
+export interface ListCard extends ListSummary {
+  /**
+   * Up to `LIST_CARD_POSTERS` posters, in list-membership order, filtered to the titles
+   * TMDB has artwork for — issue #248. **Four posters, not four slots**: a member with no
+   * poster is skipped rather than drawn as a gap, so the array is short only when the list
+   * itself does not have four covered titles to offer.
+   *
+   * Empty exactly when the card falls back to the missing-artwork frame — a list with no
+   * titles and a list whose titles all lack artwork are the same case from here, and
+   * `you-list-card.tsx` tests exactly the one thing that unifies them: this array's length.
+   */
+  readonly posterPaths: readonly string[];
+}
+
+/**
+ * The You page's lists rail — issue #248, and `listLists`'s own row plus the covers #248
+ * reverses SPEC's *list covers: still out* over.
+ *
+ * ── Two statements, not a window function ─────────────────────────────────────────────
+ *
+ * `listLists` is called for the row every other lists surface already reads — the name and
+ * `titleCount`, unchanged. The posters are a second, flat statement: every membership this
+ * account owns with a covered title, ordered by list then position, capped to four **in
+ * JavaScript** rather than with a `row_number() over (partition by …)` window. A personal
+ * library is small enough that the plainer query is the honest trade — `getListDetail` and
+ * `getTitleDetail` already prefer several simple statements combined in code over one
+ * clever one, for the same reason.
+ *
+ * ── `ownedBy` on the membership, not the list ─────────────────────────────────────────
+ *
+ * `list_membership` carries its own `user_id` (`reorderListMembership` reads it the same
+ * way), so this scopes there directly rather than joining `list` a second time only to
+ * scope through it.
+ */
+export async function listYouListCards(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly ListCard[]> {
+  const lists = await listLists(userId, executor);
+  if (lists.length === 0) return [];
+
+  const posterRows = await executor
+    .select({ listId: listMembership.listId, posterPath: title.posterPath })
+    .from(listMembership)
+    .innerJoin(title, eq(title.id, listMembership.titleId))
+    .where(and(ownedBy(userId, listMembership), isNotNull(title.posterPath)))
+    .orderBy(asc(listMembership.listId), asc(listMembership.position));
+
+  const postersByList = new Map<string, string[]>();
+  for (const row of posterRows) {
+    const posters = postersByList.get(row.listId) ?? [];
+    if (posters.length < LIST_CARD_POSTERS) {
+      posters.push(row.posterPath as string);
+      postersByList.set(row.listId, posters);
+    }
+  }
+
+  return lists.map((list) => ({ ...list, posterPaths: postersByList.get(list.id) ?? [] }));
+}
+
+/**
+ * The You page's shows and films rails — issue #248. The entries standing at *watching* or
+ * *caught up*, split by kind, each rail ordered by its title's most recent **dated** watch
+ * first.
+ *
+ * ── One read, split in memory, for `listUpNextRails`'s own reason ────────────────────
+ *
+ * A single query over both states and both kinds, sliced afterwards, rather than four
+ * queries — the property that matters is *every entry is on exactly one rail*, which is
+ * true by construction of one predicate and one split rather than by four `WHERE`s agreeing
+ * with each other.
+ *
+ * ── The order is `upNextRead`'s `last_watch`, without the up-next fallback ────────────
+ *
+ * `lastWatch` is the same grouped, `ownedBy`-scoped subquery `upNextRead` builds — a
+ * rewatch is a second `watch` row (`CONTEXT.md`), so it has to be grouped before it can be
+ * joined without multiplying an entry. What is dropped is `upNextOrder`'s fallback to an
+ * unaired episode's air date: that exists so an unwatched title still has *some* position in
+ * Up next's queue, and every entry here has already watched something (it is *watching* or
+ * *caught up*), so there is no "never watched" case to fall back for.
+ *
+ * **`desc nulls last`, spelled out.** Postgres defaults a `desc` order to nulls *first*,
+ * which would put every entry with only undated watches at the head of its rail — backwards
+ * from *most recent dated watch first*. The undated case is real (`CONTEXT.md`'s glossary:
+ * a watch with no date still counts), so it is not filtered out, only ordered after
+ * whatever a dated watch can say, tie-broken Title A–Z then entry id like every other
+ * state-group read in this file.
+ */
+export interface YouRails {
+  readonly shows: readonly LibraryStateGroupEntry[];
+  readonly films: readonly LibraryStateGroupEntry[];
+}
+
+export async function listYouRails(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<YouRails> {
+  const lastWatch = executor
+    .select({
+      libraryEntryId: watch.libraryEntryId,
+      watchedAt: sql<string | null>`max(${watch.watchedAt})`.as("watched_at"),
+    })
+    .from(watch)
+    .where(ownedBy(userId, watch))
+    .groupBy(watch.libraryEntryId)
+    .as("you_rails_last_watch");
+
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      kind: title.kind,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .leftJoin(lastWatch, eq(lastWatch.libraryEntryId, libraryEntry.id))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        or(
+          eq(libraryEntryState.state, "watching" satisfies LibraryState),
+          eq(libraryEntryState.state, "caught_up" satisfies LibraryState),
+        ),
+      ),
+    )
+    .orderBy(sql`${lastWatch.watchedAt} desc nulls last`, sql`lower(${title.name})`, libraryEntry.id);
+
+  const shows: LibraryStateGroupEntry[] = [];
+  const films: LibraryStateGroupEntry[] = [];
+  for (const row of rows) {
+    const entry: LibraryStateGroupEntry = {
+      libraryEntryId: row.libraryEntryId,
+      titleId: row.titleId,
+      titleName: row.titleName,
+      releaseYear: row.releaseYear,
+      posterPath: row.posterPath,
+    };
+    (row.kind === "show" ? shows : films).push(entry);
+  }
+
+  return { shows, films };
+}
+
 /**
  * ── The Stats page's numbers ─────────────────────────────────────────────────────────
  *
