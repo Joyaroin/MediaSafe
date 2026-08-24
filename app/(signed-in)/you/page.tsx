@@ -1,0 +1,83 @@
+import { cachedAccountFigures } from "@/cache/tags";
+import { requireAvatarUrl, requireDisplayName, requireUserId } from "@/lib/session";
+import { EmptyYou } from "./empty-you";
+import { YouHeading } from "./you-heading";
+import { YouHero } from "./you-hero";
+import { YouSurface } from "./you-surface";
+import { NavTransition } from "../nav-transition";
+
+/**
+ * You — the reader, and the six figures that describe a watching life (issue #247).
+ *
+ * **Reachable by URL, and not yet by the bar.** The phone's fourth tab and the desktop
+ * sidebar's sixth still point at `/stats`; retiring that page and repointing both is
+ * #249's, and doing it here would leave the bar pointing at a destination while the page
+ * it replaces still existed beside it. The route is wrapped in `NavTransition` anyway, so
+ * that the ticket which points the bar here changes one `href` rather than this file too.
+ *
+ * ── The hero reads the session; the figures read the database ────────────────────────
+ *
+ * Two different sources, and the difference is why a failed read still renders a page with
+ * a name on it in every case but the boundary's. `requireDisplayName` and
+ * `requireAvatarUrl` come off the session Better Auth already resolved for this request —
+ * no query, and nothing that can be down separately from the app itself.
+ *
+ * The name is read on the server rather than through `DisplayNameCell`, which the masthead
+ * and the sidebar both use. That component exists because those two live in a **layout**,
+ * which the client Router Cache keeps across navigations, so a name saved in Settings had
+ * no way of reaching them. This is a page segment: it is refetched on every navigation to
+ * it, so the server's own read is already the current one.
+ *
+ * ── One read, and one branch ─────────────────────────────────────────────────────────
+ *
+ * `cachedAccountFigures` is the whole of the page's data, cached and tagged through
+ * `cache/tags.ts` under the same fact the Stats read carries, because no write changes one
+ * without the other.
+ *
+ * Past that there is one branch and it is the important one:
+ *
+ *  - **`titles` is zero** → the library is genuinely empty, and `EmptyYou` says so in a
+ *    sentence. Not a grid of zeroes: every figure really is `0`, and printing them would
+ *    be a page that looks like it is reporting when there is nothing to report.
+ *  - **The read failed** → `accountFigures` throws, this component never renders, and
+ *    `error.tsx` draws the read-failure treatment with a reference id in its place.
+ *
+ * There is no third path, and specifically no `try` here or in `db/access.ts` that could
+ * turn the second into the first. On a page made entirely of numbers that collapse is
+ * unusually easy to make and unusually hard to see: every failure has a plausible-looking
+ * zero waiting for it. `AGENTS.md` opens on why `tvtracker` is the cautionary tale.
+ */
+
+/**
+ * Never prerendered, for the reason `/library`, `/lists`, `/stats` and `/settings` all
+ * carry this line: reading the session reads cookies, which makes the route dynamic only
+ * *after* the attempt — and without it `next build` starts a prerender, calls
+ * `requireUserId()`, and resolves the pool against whatever `DATABASE_URL` the build
+ * environment has.
+ */
+export const dynamic = "force-dynamic";
+
+export default async function YouPage() {
+  const userId = await requireUserId();
+  const displayName = await requireDisplayName();
+  const avatarUrl = await requireAvatarUrl();
+
+  /**
+   * Unguarded, deliberately, and still unguarded through the cache: `unstable_cache`
+   * stores a resolved value and lets a rejection through untouched, so there is no cache
+   * state in which a database that is down comes back as an account that has watched
+   * nothing.
+   */
+  const figures = await cachedAccountFigures(userId);
+
+  return (
+    <NavTransition>
+      <main className="flex w-full flex-1 flex-col">
+        <YouHeading />
+        <YouHero displayName={displayName} avatarUrl={avatarUrl} />
+
+        {figures.titles === 0 ? <EmptyYou /> : <YouSurface figures={figures} />}
+      </main>
+    </NavTransition>
+  );
+}

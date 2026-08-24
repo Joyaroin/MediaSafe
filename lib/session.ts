@@ -139,6 +139,30 @@ export async function requireDisplayName(): Promise<string> {
 }
 
 /**
+ * The avatar the identity provider gave this account, or `null` where it gave none —
+ * You's hero, issue #247.
+ *
+ * Same shape as `requireDisplayName` above, and reading `session.user.image` off the
+ * session Better Auth already resolved for the same reason: it is a column on the user row
+ * `getSession()` returns whole, so a second query for one string would be a round trip
+ * bought with nothing.
+ *
+ * **`null` is a real answer rather than a missing one**, which is why this is not a
+ * `string` with an empty default. Google returns a picture for most accounts and none for
+ * some, `auth-schema.ts` declares the column nullable to match, and the hero draws
+ * initials for the second case. A `""` here would reach an `<img src="">`, which browsers
+ * resolve against the current page and re-request — a broken picture where the ticket
+ * asks for a legible fallback.
+ */
+export async function requireAvatarUrl(): Promise<string | null> {
+  const session = await currentSession();
+
+  if (!session) redirect("/sign-in");
+
+  return session.user.image ?? null;
+}
+
+/**
  * The current zone for Settings' Profile section — `SPEC.md` §7, issue #126. Same shape
  * as `requireDisplayName` above: reads `session.user.timezone` straight off the session
  * Better Auth already resolved, rather than a second query through `db/access.ts`.

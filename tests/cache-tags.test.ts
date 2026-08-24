@@ -73,6 +73,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
     accountStats: vi.fn(),
+    accountFigures: vi.fn(),
     getUnownedTitleDetail: vi.fn(),
   },
   /** The three borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. */
@@ -196,6 +197,7 @@ const {
   READS,
   UNCACHED_READS,
   cachedAbandoned,
+  cachedAccountFigures,
   cachedAccountStats,
   cachedLibraryEntries,
   cachedLibraryEntryIdForTitle,
@@ -253,6 +255,10 @@ const CACHED = {
   /** Issue #227. It takes no second argument at all — `/stats` has no controls — so it is
    *  the one entry here whose call is the whole of its signature. */
   accountStats: (userId: typeof mine) => cachedAccountStats(userId),
+  /** Issue #247. Also signature-complete in one argument, and tagged `stats` alongside the
+   *  read above rather than under a fact of its own — `cache/tags.ts` argues why, and the
+   *  bust assertions below hold both against the same tag as a result. */
+  accountFigures: (userId: typeof mine) => cachedAccountFigures(userId),
 } as const;
 
 /** What the fake behind `read` answers `userId` with. The library's is a list of rows,
@@ -1346,13 +1352,13 @@ describe("the reads that are cached, and the one that must never be", () => {
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
-  it("wraps exactly the thirteen reads it is meant to", () => {
+  it("wraps exactly the fourteen reads it is meant to", () => {
     // `\s*` because several of these are formatted across lines. A regex that only
-    // matched the single-line spelling silently found five of the thirteen and passed.
+    // matched the single-line spelling silently found five of them and passed.
     const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
 
     expect(cached).toEqual([
-      // `tags.ts` — the owned nine, in file order.
+      // `tags.ts` — the owned ten, in file order.
       "listLibraryEntries",
       "listUpNextRails",
       "listWatchlist",
@@ -1362,6 +1368,7 @@ describe("the reads that are cached, and the one that must never be", () => {
       "getTitleDetail",
       "libraryEntryIdForTitle",
       "accountStats",
+      "accountFigures",
       // `borrowed-facts.ts` — the four.
       "titleSynopsis",
       "titleCastAndCrew",
