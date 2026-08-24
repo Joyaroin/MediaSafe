@@ -85,7 +85,8 @@ export function LiveTitleFactsClientFetch({
   // Only ever sets state inside the `.then()` callback, never synchronously in the effect
   // body — the shape `search-surface.tsx` names the alternative to as a cascading render.
   // Deps are this component's whole identity; a title switch remounts it (this component
-  // is keyed by title at its call site in `programme-note.tsx`/`title-sheet.tsx`), so
+  // is keyed by title at its call sites, `programme-note.tsx` and
+  // `[entryId]/title-detail-view.tsx`), so
   // there is no earlier title's answer for this effect to reconcile against.
   useEffect(() => {
     const request = ++newestRequest.current;

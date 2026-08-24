@@ -46,6 +46,7 @@ export function EpisodeStill({
   stillPath,
   width,
   className,
+  aboveFold = false,
 }: {
   /** TMDB's `still_path`, or `null` when the catalogue has no frame for this episode. */
   stillPath: string | null;
@@ -53,6 +54,22 @@ export function EpisodeStill({
   width: number;
   /** The measure. The `still` utility fixes the ratio, so a call site sets one side. */
   className: string;
+  /**
+   * This instance is on screen without scrolling — **the surface rendering it is what
+   * knows**, exactly as `app/poster.tsx` argues for the identical prop.
+   *
+   * It arrived with #250, which gave this component a second call site of a very different
+   * shape: the episode page renders one frame as its hero, and the phone's next-episodes
+   * rail renders one per card over a rail that can hold every watching title. Eager was
+   * hard-coded here while there was only the first, and stating it as a fact about *this
+   * instance* rather than about the component is what lets both be right.
+   *
+   * **The default is `false`, matching `Poster`'s**, and that direction is deliberate: a
+   * call site that forgets the prop costs one visible blank on a frame somebody scrolled
+   * to, where the other default would put two hundred requests on the wire at page load.
+   * The hero passes it explicitly.
+   */
+  aboveFold?: boolean;
 }) {
   return (
     <div className={`still ${className}`}>
@@ -69,10 +86,8 @@ export function EpisodeStill({
           src={`https://image.tmdb.org/t/p/${bucketFor(width)}${stillPath}`}
           alt=""
           aria-hidden="true"
-          // The one frame above the fold on the surface that renders it — this is the
-          // first thing on the page, unlike a poster in a grid of 462.
-          loading="eager"
-          fetchPriority="high"
+          loading={aboveFold ? "eager" : "lazy"}
+          fetchPriority={aboveFold ? "high" : undefined}
           decoding="async"
         />
       )}

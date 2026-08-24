@@ -676,17 +676,26 @@
    row*: the ratio holds the space and the ground fills it. No glyph goes in here, for the
    reason `poster.tsx` refuses one.
 
-   One radius, no custom property. `poster` reads `--poster-radius` because three surfaces
-   draw a poster at three different radii; one surface draws a still, so a variable here
-   would be a knob with nothing on the other end of it. `7px` is `poster`'s own default,
-   so the two agree by default rather than by coincidence, and the day a second surface
-   wants a different one is the day this grows the variable. */
+   **The variable this said it would grow, grown (#250).** It read *one radius, no custom
+   property … the day a second surface wants a different one is the day this grows the
+   variable*, and that day is the phone's next-episodes card: the still is flush with the
+   top of a `16px` card that already clips it, so its own `7px` would draw a notch inside
+   the card's corner. It wants `0`.
+
+   Read through a custom property rather than overridden at the call site, which is
+   `--poster-radius`'s reason restated and is not a style preference: `still` and a
+   `[border-radius:0]` beside it are two utilities setting one property, and which one wins
+   is decided by the order Tailwind **emits** them in, not by the order they appear in the
+   `class` attribute. A variable the call site sets has no ordering question in it.
+
+   `7px` stays the default, so the episode page's hero is untouched and still agrees with
+   `poster` by default rather than by coincidence. */
 @utility still {
   position: relative;
   overflow: hidden;
   background: var(--color-raised);
   aspect-ratio: 16 / 9;
-  border-radius: 7px;
+  border-radius: var(--still-radius, 7px);
 }
 
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────

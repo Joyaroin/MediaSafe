@@ -390,7 +390,26 @@ Four things about it that are rules and not implementation:
   is not an empty rail**: it renders the read-failure treatment with a reference id (`AGENTS.md`),
   because *you're all caught up* is a plausible lie and this is the one surface where a database that
   is down would read as a life well managed.
-- **No counts, anywhere.** Not on a rail head, not on a tile, not on the page (§9).
+- **No counts on a rail head.** Not a size, not a remainder, not a numeral standing in for either
+  — and no *showing 10 of 62*, no *"and 175 more"* anywhere at all (§9).
+
+  **Narrowed by [#250](https://github.com/Joyaroin/MediaSafe/issues/250), from *no counts,
+  anywhere — not on a rail head, not on a tile, not on the page*.** The phone's next-episodes card
+  prints **how many episodes of that show remain** beside the episode it is offering, and the
+  handoff #245 makes binding draws it that way. The two are in genuine conflict and the card wins.
+
+  The line the rule now holds is the one it was always load-bearing for: **a count may not appear
+  as chrome on a surface the reader came to do something else on.** A rail head, a chip, a badge, a
+  heading over a grid — none of them gains a numeral. A number is allowed where **the number is
+  part of the content**, and *am I three from the end of this show, or thirty* is the question the
+  card exists to answer; the rule was written to stop the landing screen becoming a progress
+  ledger, and one honest remainder does the opposite of that. `DESIGN.md`'s permanent exclusions
+  carry the same narrowing, which [#227](https://github.com/Joyaroin/MediaSafe/issues/227) had
+  already begun for `/stats`.
+
+  The desktop rail tile is **unchanged and still carries no count** — it is a poster, a name and a
+  year, and #137's *no count, no badge, no state label, no episode name* still describes it
+  exactly.
 
 ### Library — sort
 

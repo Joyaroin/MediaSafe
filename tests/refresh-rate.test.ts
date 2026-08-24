@@ -47,7 +47,7 @@ function sourceAt(relativePath: string): string {
 }
 
 const RAIL = "app/(signed-in)/up-next/up-next-rail.tsx";
-const TITLE_SHEET = "app/(signed-in)/up-next/title-sheet.tsx";
+const EPISODE_CARD = "app/(signed-in)/up-next/up-next-episode-card.tsx";
 const GLOBALS = "app/globals.css";
 
 describe("the rail does not re-render on every scroll event", () => {
@@ -73,10 +73,18 @@ describe("the rail does not re-render on every scroll event", () => {
 });
 
 describe("nothing animates a backdrop filter", () => {
-  it("keeps the phone sheet's scrim unfrosted", () => {
-    // §5: new frosted surfaces are not free, and this one would be repainted at every
-    // step of its own opacity animation across the whole viewport.
-    expect(sourceAt(TITLE_SHEET)).not.toMatch(/backdrop-blur/);
+  /**
+   * **The case moved with the surface.** It used to name `title-sheet.tsx`'s scrim, whose
+   * opacity animated across the whole viewport; #250 deleted that file along with the five
+   * vertical groups that were its only callers.
+   *
+   * The episode card is where the rule now bites. `watch-sweep` animates `opacity` and
+   * `transform` over the card it marks (`globals.css`), so a frosted card would be a
+   * backdrop filter repainted at every step of that animation — the identical cost on a
+   * smaller box, and one that repeats per card on a rail.
+   */
+  it("keeps the episode card, which the sweep animates over, unfrosted", () => {
+    expect(sourceAt(EPISODE_CARD)).not.toMatch(/backdrop-blur/);
   });
 
   /**

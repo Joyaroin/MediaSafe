@@ -359,9 +359,14 @@ describe("the watched-up-to-here control", () => {
      * is decided — so this fails for exactly the reason it names: one of the three grew
      * its own episode list.
      */
+    /**
+     * Two surfaces since #250, which deleted the phone's title sheet along with the five
+     * vertical groups that were its only callers. The property is unchanged and is if
+     * anything easier to hold with one fewer: every surface that shows a title's note draws
+     * the shared component rather than growing an episode list of its own.
+     */
     const surfaces = [
       "app/(signed-in)/library/programme-note.tsx",
-      "app/(signed-in)/up-next/title-sheet.tsx",
       "app/(signed-in)/library/[entryId]/title-detail-view.tsx",
     ];
 

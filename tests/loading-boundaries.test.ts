@@ -10,18 +10,15 @@ import ListDetailLoading from "@/app/(signed-in)/lists/[listId]/loading";
 import DeleteAccountLoading from "@/app/(signed-in)/settings/delete-account/loading";
 import SettingsLoading from "@/app/(signed-in)/settings/loading";
 import UnownedTitleLoading from "@/app/(signed-in)/titles/[kind]/[tmdbId]/loading";
-import AbandonedGroupLoading from "@/app/(signed-in)/up-next/abandoned/loading";
-import ComingBackGroupLoading from "@/app/(signed-in)/up-next/coming-back/loading";
-import OldFriendsGroupLoading from "@/app/(signed-in)/up-next/old-friends/loading";
-import OngoingGroupLoading from "@/app/(signed-in)/up-next/ongoing/loading";
-import WatchlistGroupLoading from "@/app/(signed-in)/up-next/watchlist/loading";
 
 /**
- * The eleven surfaces [#181](https://github.com/Joyaroin/MediaSafe/issues/181) converts.
+ * The surfaces [#181](https://github.com/Joyaroin/MediaSafe/issues/181) converts — eleven
+ * when it was written, six since [#250](https://github.com/Joyaroin/MediaSafe/issues/250)
+ * deleted the phone's five group screens along with the groups that linked to them.
  *
  * `tests/library-pending.test.ts` already owns `PendingLine` itself and the argument for
  * why pending must not read as empty or failed; this file does not repeat that case by
- * case. What is asserted here is what is specific to each of these eleven — the right
+ * case. What is asserted here is what is specific to each of them — the right
  * heading renders immediately, the right boundary owns each segment rather than an
  * ancestor's speaking for it, and every surface that could offer a destructive action
  * offers none while its read is still pending.
@@ -94,33 +91,15 @@ describe("An unowned title's detail", () => {
   });
 });
 
-describe("The five phone group screens", () => {
-  const cases: [string, React.ComponentType, string][] = [
-    ["Ongoing", OngoingGroupLoading, "Ongoing"],
-    ["Coming back", ComingBackGroupLoading, "Coming back"],
-    ["Old friends", OldFriendsGroupLoading, "Old friends"],
-    ["Watchlist", WatchlistGroupLoading, "Watchlist"],
-    ["Abandoned", AbandonedGroupLoading, "Abandoned"],
-  ];
-
-  /**
-   * Each screen prints its own literal label, not the *Tonight* heading `up-next/error.tsx`
-   * would otherwise inherit down from — the identical failure mode
-   * `library/[entryId]/loading.tsx`'s own docblock names for a route below a converted one.
-   */
-  it.each(cases)("%s paints its own label, not Tonight", (_name, Component, label) => {
-    const pending = markupOf(createElement(Component));
-
-    expect(pending).toContain(label);
-    expect(pending).not.toContain("Tonight");
-    expect(pending).toContain('role="status"');
-  });
-
-  it("no two of the five share the same label", () => {
-    const labels = new Set(cases.map(([, , label]) => label));
-    expect(labels.size).toBe(cases.length);
-  });
-});
+/**
+ * **The five phone group screens are gone, and their cases went with them** — #250 deleted
+ * `/up-next/{ongoing,coming-back,old-friends,watchlist,abandoned}` along with the five
+ * vertical groups that were the only links into them. The property they held — *a route
+ * below a converted one paints its own label rather than inheriting the ancestor's* — is
+ * still held here by `lists/[listId]` and by `library/[entryId]`, which are the routes that
+ * still have an ancestor to inherit from. `tests/route-manifest.test.ts` is what proves the
+ * five are really gone rather than merely unlinked.
+ */
 
 /**
  * `up-next/loading.tsx` cannot be rendered here the way the rest of this file's

@@ -30,8 +30,10 @@ import { UpNextHeading } from "./up-next-heading";
  * `listUpNextRails` returns one value for all three groups, so they cannot resolve
  * separately and a boundary around one would be a boundary around nothing. One dim line
  * under the *Tonight* heading is the whole of what is pending on the left, on both
- * devices — `UpNextGroups` and `UpNextRailsSurface` are two renders of the one read this
- * boundary is standing in for, not two reads with two states to draw.
+ * devices — `UpNextPhoneRails` and `UpNextRailsSurface` are two renders of the one read
+ * this boundary is standing in for, not two reads with two states to draw. (#250 replaced
+ * the phone's five vertical groups with two rails; it did not change how many reads are
+ * behind them, which is why this file did not otherwise move.)
  */
 export default function UpNextLoading() {
   return (

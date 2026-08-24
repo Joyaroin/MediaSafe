@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   asUserId,
-  listAbandoned,
-  listWatchlist,
+  listWatchlistFilms,
   type LibraryStateGroupEntry,
   type UserId,
 } from "@/db/access";
@@ -12,17 +11,24 @@ import { libraryEntry, title, user, watch } from "@/db/schema";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * `listWatchlist` and `listAbandoned` (issue #138) — the phone home's fourth and fifth
- * groups, and the two states the desktop rails never show.
+ * `listWatchlistFilms` (issue #250) — the landing screen's second rail, and the one read
+ * behind it.
+ *
+ * It replaces `listWatchlist` and `listAbandoned` (#138), whose phone groups #250 deleted.
+ * Everything those two proved about *watchlist* membership is still proved here, because it
+ * is the same `library_entry_state` predicate; what is new is the second predicate, and it
+ * is the one worth the file: **a film, and not a show.** Get that wrong and the rail still
+ * renders, still holds cards, and offers a reader a television series under the words
+ * *Films to watch*.
  *
  * ── Why this is not `up-next.test.ts` ─────────────────────────────────────────────────
  *
- * Neither group carries `SPEC.md` §7's ordering — that rule is about *up next*, and
- * nothing here has one; a watchlist title has no progress to be up next from, and an
- * abandoned one is excluded from Up next entirely. So this file checks a different,
- * smaller thing: which titles each group holds, ordered Title A–Z, and that a film — which
- * `up-next.test.ts`'s membership never has to reason about, because no film is ever
- * *watching* or *caught up* — is not silently dropped by a query that assumed a show.
+ * This rail carries no `SPEC.md` §7 ordering — that rule is about *up next*, and a
+ * watchlist film has neither a watch to be recent nor a next episode to be dated. So this
+ * file checks a different, smaller thing: which titles the rail holds, ordered Title A–Z,
+ * and that a **film** — which `up-next.test.ts`'s membership never has to reason about,
+ * because no film is ever *watching* or *caught up* — is not silently dropped by a query
+ * that assumed a show.
  *
  * ── No network, and nothing mocked ───────────────────────────────────────────────────
  *
@@ -30,7 +36,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * `up-next.test.ts` and `library-grid.test.ts` do.
  */
 
-setUpTestDatabase("mediasafe_library_state_groups_test");
+setUpTestDatabase("mediasafe_watchlist_films_test");
 
 let counter = 0;
 const nextNumber = () => ++counter;
@@ -52,21 +58,28 @@ interface EntrySpec {
   kind?: "film" | "show";
   releaseYear?: number | null;
   posterPath?: string | null;
+  runtimeMins?: number | null;
   abandonedAt?: Date;
 }
 
 /** A library entry with no episodes — nothing here needs one to be *watchlist*. */
-async function seedEntry(tx: Transaction, userId: UserId, spec: EntrySpec = {}): Promise<Entry> {
+async function seedEntry(
+  tx: Transaction,
+  userId: UserId,
+  spec: EntrySpec = {},
+): Promise<Entry> {
   const number = nextNumber();
+  const kind = spec.kind ?? "film";
   const [row] = await tx
     .insert(title)
     .values({
-      kind: spec.kind ?? "show",
+      kind,
       tmdbId: number,
       name: spec.name ?? `Title ${number}`,
       releaseYear: "releaseYear" in spec ? spec.releaseYear : 2019,
       posterPath: "posterPath" in spec ? spec.posterPath : `/poster-${number}.jpg`,
-      runtimeMins: spec.kind === "film" ? 104 : null,
+      runtimeMins:
+        "runtimeMins" in spec ? spec.runtimeMins : kind === "film" ? 104 : null,
     })
     .returning({ id: title.id });
 
@@ -94,32 +107,43 @@ function names(entries: readonly LibraryStateGroupEntry[]): string[] {
   return entries.map((entry) => entry.titleName);
 }
 
-describe("listWatchlist", () => {
-  it("holds a show and a film with no watches at all", async () => {
+describe("listWatchlistFilms", () => {
+  it("holds a film with no watches at all", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedEntry(tx, reader, { name: "Unstarted film", kind: "film" });
+
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Unstarted film"]);
+    });
+  });
+
+  /**
+   * The predicate this file exists for. A show on the watchlist is a real and common thing
+   * — it is what *added, never started* means for television — and it belongs on the
+   * library's status filters, not under *Films to watch*.
+   */
+  it("leaves out a show on the watchlist, however unstarted", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       await seedEntry(tx, reader, { name: "Unstarted show", kind: "show" });
       await seedEntry(tx, reader, { name: "Unstarted film", kind: "film" });
 
-      expect(names(await listWatchlist(reader, tx))).toEqual([
-        "Unstarted film",
-        "Unstarted show",
-      ]);
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Unstarted film"]);
     });
   });
 
-  it("leaves out a title the moment it has any watch", async () => {
+  it("leaves out a film the moment it has any watch", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       const started = await seedEntry(tx, reader, { name: "Started" });
       await markWatched(tx, started);
       await seedEntry(tx, reader, { name: "Unstarted" });
 
-      expect(names(await listWatchlist(reader, tx))).toEqual(["Unstarted"]);
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Unstarted"]);
     });
   });
 
-  it("leaves out an abandoned title that has never been watched", async () => {
+  it("leaves out an abandoned film that has never been watched", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       // No watches at all, but abandoned outranks *watchlist* — the same precedence
@@ -127,7 +151,7 @@ describe("listWatchlist", () => {
       await seedEntry(tx, reader, { name: "Given up cold", abandonedAt: new Date() });
       await seedEntry(tx, reader, { name: "Unstarted" });
 
-      expect(names(await listWatchlist(reader, tx))).toEqual(["Unstarted"]);
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Unstarted"]);
     });
   });
 
@@ -138,17 +162,23 @@ describe("listWatchlist", () => {
       await seedEntry(tx, reader, { name: "Mine" });
       await seedEntry(tx, stranger, { name: "Theirs" });
 
-      expect(names(await listWatchlist(reader, tx))).toEqual(["Mine"]);
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Mine"]);
     });
   });
 
-  it("answers an account with nothing on the watchlist with an empty array", async () => {
+  /**
+   * An empty array here is what makes the rail *absent* rather than *broken*: it is
+   * reachable only from a query that succeeded and found nothing, and a read that fails
+   * throws past every rail into the route's `error.tsx` (`AGENTS.md`).
+   */
+  it("answers an account with no watchlist films with an empty array", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       const started = await seedEntry(tx, reader, { name: "Started" });
       await markWatched(tx, started);
+      await seedEntry(tx, reader, { name: "A show nobody started", kind: "show" });
 
-      expect(await listWatchlist(reader, tx)).toEqual([]);
+      expect(await listWatchlistFilms(reader, tx)).toEqual([]);
     });
   });
 
@@ -162,86 +192,60 @@ describe("listWatchlist", () => {
       await seedEntry(tx, reader, { name: "Bell" });
       await seedEntry(tx, reader, { name: "Bell" });
 
-      const first = await listWatchlist(reader, tx);
-      const second = await listWatchlist(reader, tx);
+      const first = await listWatchlistFilms(reader, tx);
+      const second = await listWatchlistFilms(reader, tx);
 
       expect(first).toEqual(second);
       expect(names(first)).toEqual(["anvil", "Bell", "Bell", "Zebra"]);
     });
   });
 
-  it("carries everything a group tile renders, and nothing an episode would", async () => {
+  /**
+   * The whole row, asserted as a whole. The runtime is the field #250 added — the film
+   * card's `year · runtime` line needs it — and asserting the object rather than the one
+   * key is what would catch a column quietly arriving beside it.
+   */
+  it("carries everything a film card renders, and nothing an episode would", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       const entry = await seedEntry(tx, reader, {
-        name: "Person of Interest",
-        releaseYear: 2011,
-        posterPath: "/poi.jpg",
+        name: "Arrival",
+        kind: "film",
+        releaseYear: 2016,
+        posterPath: "/arrival.jpg",
+        runtimeMins: 116,
       });
 
-      const [row] = await listWatchlist(reader, tx);
+      const [row] = await listWatchlistFilms(reader, tx);
 
       expect(row).toEqual({
         libraryEntryId: entry.entryId,
         titleId: entry.titleId,
-        titleName: "Person of Interest",
-        releaseYear: 2011,
-        posterPath: "/poi.jpg",
+        titleName: "Arrival",
+        releaseYear: 2016,
+        posterPath: "/arrival.jpg",
+        runtimeMins: 116,
       });
     });
   });
-});
 
-describe("listAbandoned", () => {
-  it("holds a title given up on with no watches at all", async () => {
+  /** Both absences are the answer rather than an error, and `titleMetaLine` drops the part
+   *  it does not have rather than placeholding it (`up-next-film-rail.tsx`). */
+  it("carries the absences TMDB really has", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
-      await seedEntry(tx, reader, { name: "Given up cold", abandonedAt: new Date() });
-
-      expect(names(await listAbandoned(reader, tx))).toEqual(["Given up cold"]);
-    });
-  });
-
-  it("holds a title given up on after watching some of it", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const abandoned = await seedEntry(tx, reader, {
-        name: "Given up part-way",
-        abandonedAt: new Date(),
+      await seedEntry(tx, reader, {
+        name: "Undated",
+        releaseYear: null,
+        posterPath: null,
+        runtimeMins: null,
       });
-      await markWatched(tx, abandoned);
 
-      expect(names(await listAbandoned(reader, tx))).toEqual(["Given up part-way"]);
-    });
-  });
+      const [row] = await listWatchlistFilms(reader, tx);
 
-  it("leaves out a title with no `abandoned_at`, however untouched it is", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      await seedEntry(tx, reader, { name: "Unstarted" });
-
-      expect(await listAbandoned(reader, tx)).toEqual([]);
-    });
-  });
-
-  it("returns this account's entries and never another account's", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const stranger = await seedUser(tx, "stranger");
-      await seedEntry(tx, reader, { name: "Mine", abandonedAt: new Date() });
-      await seedEntry(tx, stranger, { name: "Theirs", abandonedAt: new Date() });
-
-      expect(names(await listAbandoned(reader, tx))).toEqual(["Mine"]);
-    });
-  });
-
-  it("orders Title A–Z", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      await seedEntry(tx, reader, { name: "Zebra", abandonedAt: new Date() });
-      await seedEntry(tx, reader, { name: "anvil", abandonedAt: new Date() });
-
-      expect(names(await listAbandoned(reader, tx))).toEqual(["anvil", "Zebra"]);
+      expect(row.releaseYear).toBeNull();
+      expect(row.posterPath).toBeNull();
+      expect(row.runtimeMins).toBeNull();
     });
   });
 });

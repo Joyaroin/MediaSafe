@@ -8,7 +8,8 @@ import type { BulkSelection, SelectableTitle } from "./bulk-selection";
  * The hold gesture itself — issue #197, and since #198 shared rather than copied a second
  * time.
  *
- * `selectable-entry.tsx` had this as its own state and its own three handlers; `group-tile.tsx`
+ * `selectable-entry.tsx` had this as its own state and its own three handlers; the phone's
+ * group tile
  * needed the identical thing against a track that scrolls instead of a grid that does not,
  * and the first pass at #198 typed the whole state machine out again rather than moving it —
  * the two-axis review of #198 named that duplication and this is the fix. Nothing about the
@@ -88,7 +89,7 @@ export const HOLDABLE = "select-none [-webkit-touch-callout:none]";
  * the caret … they use brightness and border weight off `--text`, so a colour spent on
  * focus state is not a colour that also means 'this was marked'"* — and the collision it
  * guards against is not hypothetical at either call site: the bill paints **Watching** in
- * the accent inside the very cell this ring would sit in, and `home-group.tsx`'s heading is
+ * the accent inside the very cell this ring would sit in, and a group heading was
  * Up next's one accent role on the screen a group tile sits on. An accent ring around either
  * would be two accent roles at once, which the rule names as the exact failure it exists to
  * prevent.

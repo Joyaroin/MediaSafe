@@ -87,9 +87,11 @@ import { UpNextRow } from "./up-next-row";
  * ── `posterTransitionName`, the morph's second half ───────────────────────────────────
  *
  * Issue #141. Each caller hands this the same name its own source tile carries —
- * `rail-poster-{id}` from `programme-note.tsx`'s `loading` frame on desktop,
- * `group-poster-{id}` from the phone route's `GroupTile` — so this poster is what the
- * browser morphs the tile into. The two callers use different name families on purpose:
+ * `rail-poster-{id}` from `programme-note.tsx`'s `loading` frame on desktop, and
+ * `group-poster-{id}` from the phone route, whose source tile #250 deleted (see
+ * `poster-transition-name.ts`: that family has a destination and no source until something
+ * mints the name again) — so this poster is what the browser morphs the tile into where
+ * there is still a tile to morph. The two callers use different name families on purpose:
  * the desktop pane and the phone route can both be showing the same title at once (a
  * reader on desktop who also opens the phone route in another tab), and a name shared
  * across them would pair the wrong two elements.

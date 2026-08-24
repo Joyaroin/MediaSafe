@@ -133,10 +133,14 @@ export function EpisodeDetailView({
           it narrower; the *width* is what `EpisodeStill` sizes the download from, and it
           resolves through `STILL_BUCKETS` to `w780`, the smallest TMDB still that covers
           640 without upscaling. One bucket for every viewport, and never `original`. */}
+      {/* `aboveFold`, stated rather than defaulted: this is the first thing on the page,
+          unlike the same component on a rail of next-episode cards (#250), where all but
+          the first two are lazy. */}
       <EpisodeStill
         stillPath={episode.stillPath}
         width={640}
         className="w-full max-w-[40rem]"
+        aboveFold
       />
 
       {/* The series, in the label register (#253's own words). It is the quietest thing
