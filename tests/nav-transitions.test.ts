@@ -46,10 +46,10 @@ const NAV_PAGES = [
   "app/(signed-in)/search/page.tsx",
   "app/(signed-in)/library/page.tsx",
   "app/(signed-in)/lists/page.tsx",
-  "app/(signed-in)/stats/page.tsx",
-  /** Issue #247. Not on the bar yet — #249 points the fourth tab here and removes the
-   *  line above — but a screen the reader can reach by URL still slides, and wrapping it
-   *  now means that ticket changes one `href` rather than this file as well. */
+  /** Issue #247, and the phone's fourth tab since #249 pointed it here and deleted the
+   *  `/stats` line that used to sit above this one. #247's own note said wrapping the
+   *  page before it was on the bar would leave that ticket changing one `href` rather
+   *  than this file as well, and that is what happened. */
   "app/(signed-in)/you/page.tsx",
   "app/(signed-in)/settings/page.tsx",
 ];
@@ -210,7 +210,8 @@ describe("both directions are drawn, and only on the phone", () => {
   it("never reaches the desktop, because only phone chrome tags a navigation", () => {
     // `sidebar-nav.tsx` carries five primary destinations *and* its own Settings link —
     // an overlapping set rather than the same one since #227, which retired the phone's
-    // Lists tab and gave the desktop Stats without taking Lists away.
+    // Lists tab and gave the desktop a sixth destination without taking Lists away. #249
+    // repointed that sixth from Stats to You on both devices; the overlap is unchanged.
     // If it ever attaches a type the desktop starts sliding too, and this stops being a
     // phone change.
     const sidebar = readFileSync("app/sidebar-nav.tsx", "utf8");

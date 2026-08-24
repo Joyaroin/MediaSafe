@@ -148,9 +148,10 @@ function FilmCard({
 /**
  * `"2026-09-26"` → `"26 Sept 2026"`.
  *
- * A **fourth sibling of the same three lines**, and deliberately not a caller of any of the
- * other three. The reason is the one `episode-facts.ts` and `stats-figures.ts` already
- * record about each other and it is a vocabulary refusal, not a signature one: **a film's
+ * A **third sibling of the same three lines**, and deliberately not a caller of either of
+ * the others. The reason is the one `episode-facts.ts` already records about the Stats
+ * page's own day formatter, which #249 deleted with the page — a vocabulary refusal, not a
+ * signature one: **a film's
  * release date is not a special case of an episode's air date.** Importing
  * `episode-card-line.ts`'s would make it one, and the next edit to that function — made for
  * a rail card, by somebody who has never opened this file — would silently move a date on

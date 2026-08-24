@@ -1451,8 +1451,10 @@ rails, no placeholder tabs, no "coming soon".
 
 - **No counts.** Not on a rail head, not on a tile, not on the page. No *showing 10 of 62*,
   no *"and 175 more"*, no numeral standing in for a size. **Narrowed by #227.** The line no
-  longer describes the build — `/stats` is a page whose every element is a count — and it is
-  not left standing as though it did. What survives is the part that was actually
+  longer described the build — `/stats` was a page whose every element was a count — and it
+  was not left standing as though it did. #249 deleted that page and `/you` is the
+  destination made of figures now; the narrowing stands unchanged, because it was never
+  about *which* destination the numbers live on. What survives is the part that was actually
   load-bearing, and it is the whole of what this bullet was ever written against: **a count
   may not appear as chrome on a surface the reader came to do something else on.** A rail
   head, a chip, a heading over a grid — none of them gains a numeral, and *showing 10 of 62*
@@ -1489,13 +1491,25 @@ rails, no placeholder tabs, no "coming soon".
   chrome and was never argued about the questions themselves, so the questions got a
   destination and the chrome rule stayed — see the bullet above, which is where it now lives.
 
+  **#249 took most of the ground back, and this bullet is not un-struck for it.** `/stats`
+  is deleted; the **day streak**, monthly activity, the decade distribution, recently
+  finished and the five state counts are back under `SPEC.md` §9's *Specced, but later*, and
+  #229's charts are closed won't-do rather than built — so *no charts* and *no day streak*
+  describe the build again today. The strike-through stays because the withdrawal was a
+  decision about the **rule**, not a report on the build: #227's argument — that the ban was
+  never about the questions — is still the one that holds, and `/you` still ships six figures
+  under it. A rule that flickered back on because a page was deleted would have to flicker
+  off again the day one is added, which is what a permanent exclusion must never do.
+
   What survives here is narrower and is about **this world's drawing**, which is the part
-  `DESIGN.md` owns: a figure on that page is type, set in the ramp §4 already declares, in
-  `--ink` and `--dim`. **No accent on a figure** — §3 rations vermilion to recording a watch,
-  and a page made of quantities is the easiest place in the application to spend it by
-  accident. **No decorative colour on a chart** when charts arrive (#229): §2's *no coloured
-  category, no coloured chart* is untouched by this. And **year in review is still out**, on
-  `SPEC.md` §9's own grounds rather than on this bullet's — it needs a year of dated watches.
+  `DESIGN.md` owns: a figure on a page of figures is type, set in the ramp §4 already
+  declares, in `--ink` and `--dim`. **No accent on a figure** — §3 rations vermilion to
+  recording a watch, and a page made of quantities is the easiest place in the application to
+  spend it by accident. **No decorative colour on a chart** if charts ever arrive: §2's *no
+  coloured category, no coloured chart* is untouched by any of this, and it now has no
+  pending ticket behind it — #229 specced four charts for the page #249 deleted and is closed
+  won't-do. And **year in review is still out**, on `SPEC.md` §9's own grounds rather than on
+  this bullet's — it needs a year of dated watches.
 - **No rating on a tile.** A tile is a poster, a name and a year. Ratings live on the
   programme note.
 - **No sort on Up next.** The order is the rails' own, and it is not a control.
@@ -1514,11 +1528,11 @@ rails, no placeholder tabs, no "coming soon".
   where they were — #223 added a second way in, not a replacement for the destination.
 
   **The last clause is corrected by #227**, which is the ticket after this one in the same
-  parent: the phone's Lists **tab** is gone, spent on Stats, and the rail is now the phone's
-  way in rather than its second one. The destination is untouched — `/lists`,
-  `/lists/[listId]` and the desktop sidebar entry are all still there — so the sentence this
-  bullet is actually about (*their own destination on both devices, not a rail on Up next*)
-  survives exactly as it did. What has changed is that #223 turned out to be the first half
+  parent: the phone's Lists **tab** is gone, spent on Stats — and on You since #249 retired
+  Stats — and the rail is now the phone's way in rather than its second one. The destination
+  is untouched — `/lists`, `/lists/[listId]` and the desktop sidebar entry are all still
+  there — so the sentence this bullet is actually about (*their own destination on both
+  devices, not a rail on Up next*) survives exactly as it did. What has changed is that #223 turned out to be the first half
   of a trade rather than a pure addition, and the note is corrected here rather than left to
   contradict `app/tab-bar.tsx`.
 - **No theme picker**, no in-product light/dark control, and no alternate palette. The

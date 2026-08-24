@@ -16,14 +16,20 @@
 /**
  * `"2026-03-01"` → `"1 March 2026"`.
  *
- * ── A deliberate sibling of `stats-figures.ts`'s `dayInWords`, not a caller of it ─────
+ * ── A deliberate sibling of the retired Stats page's `dayInWords`, not a caller ──────
  *
- * The two run the same three lines and answer different questions, which is the same
- * relationship `markUpToCount` records with `formatTitleCount`. `dayInWords` formats a day
- * that `db/access.ts` has **already bucketed into the reader's own zone**, and its docblock
- * turns on that: it *must not re-interpret it in another one*. This formats a plain
- * catalogue date that was never in a zone and never will be — the day TMDB says an episode
- * went out, the same day for every reader on earth.
+ * The two ran the same three lines and answered different questions, which is the same
+ * relationship `markUpToCount` records with `formatTitleCount`. `dayInWords` formatted a
+ * day that `db/access.ts` had **already bucketed into the reader's own zone**, and its
+ * docblock turned on that: it *must not re-interpret it in another one*. This formats a
+ * plain catalogue date that was never in a zone and never will be — the day TMDB says an
+ * episode went out, the same day for every reader on earth.
+ *
+ * That sibling is gone: issue #249 deleted `/stats` and the pure-figures module beside it,
+ * exactly as the closing line below predicted. The reasoning is kept in the past tense
+ * rather than cut, because it is the argument for why this function exists at all — and had
+ * #247 taken the import the note refused, this file would have needed rewriting on the day
+ * the page went instead of nothing happening to it.
  *
  * `timeZone: "UTC"` on both, and for the same mechanical reason rather than the same
  * semantic one: `new Date(y, m, d)` reads the *server's* zone, so a date built and
@@ -31,7 +37,8 @@
  * formatting in UTC is what keeps the string equal to the column (ADR-0003's rule that the
  * clock is an input, applied to a value that has no clock in it at all).
  *
- * Importing the stats one would couple this page to a surface issue #245 removes outright.
+ * Importing the stats one would have coupled this page to a surface issue #245 removed
+ * outright — which #249 then did.
  */
 export function airDateInWords(airDate: string): string {
   const [year, month, day] = airDate.split("-").map(Number);
@@ -43,7 +50,8 @@ export function airDateInWords(airDate: string): string {
     // Building the instant in UTC and then formatting it in the *server's* zone printed
     // `2026-03-01` as *28 February 2026* on a machine west of UTC — the exact slip the
     // paragraph above describes, caught by `tests/episode-facts.test.ts` rather than in
-    // production. `stats-figures.ts`'s `dayInWords` carries this line for the same reason.
+    // production. The Stats page's `dayInWords` carried this line for the same reason, for
+    // as long as that page existed.
     timeZone: "UTC",
   });
 }

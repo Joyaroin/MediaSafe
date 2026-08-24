@@ -43,7 +43,7 @@ import { ReadFailure } from "@/errors/read-failure";
  *
  * Because it can. Everything below is a server component over plain props — no store, no
  * router, no `useSyncExternalStore` — so `renderToStaticMarkup` gives the real markup, the
- * way `tests/library-surface.test.ts` and `tests/stats-surface.test.ts` already do. The
+ * way `tests/library-surface.test.ts` and `tests/you-surface.test.ts` already do. The
  * pager is the exception and is source-read at the foot of this file: it is a client
  * component over `ResizeObserver` and Motion, and what is worth asserting about it is
  * structural rather than visual.

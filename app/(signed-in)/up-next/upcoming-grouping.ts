@@ -12,9 +12,10 @@
  * So the zone and the day are **arguments**, and nothing in this file reads a clock.
  * `readerDay` turns an instant into a day in a named zone, `groupUpcoming` buckets against
  * a day it is handed, and `tests/upcoming-grouping.test.ts` drives both across a real
- * boundary in a non-UTC zone. This is the split `stats-figures.ts` and `season-grouping.ts`
- * already make — presentation vocabulary beside the read rather than inside the database —
- * and #245 asks for it here by name.
+ * boundary in a non-UTC zone. This is the split `season-grouping.ts` already makes —
+ * presentation vocabulary beside the read rather than inside the database — and #245 asks
+ * for it here by name. (The retired Stats page's own figures module was the other worked
+ * example until #249 deleted it with the page.)
  *
  * ── Two kinds of day, and they are not the same kind ─────────────────────────────────
  *

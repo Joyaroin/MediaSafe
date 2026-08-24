@@ -10,8 +10,8 @@ import {
   ListsIcon,
   SearchIcon,
   SettingsIcon,
-  StatsIcon,
   UpNextIcon,
+  YouIcon,
 } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 
@@ -52,25 +52,27 @@ import { isCurrentRoute } from "./nav-route";
  * nothing to apply uniformly, the same reasoning `tab-bar.tsx` gives for *Up next*.
  * *Settings* gets the pushed-route treatment for real, for `/settings/delete-account`.
  *
- * ── Stats is the fifth here, and the sixth destination overall ───────────────────────
+ * ── The fifth row here, and the sixth destination overall ────────────────────────────
  *
- * Issue #227, and it is added rather than swapped in — which is the whole difference
- * between this column and the phone's row. `tab-bar.tsx` had a budget of four and had to
- * retire Lists to make room; a column has no such budget, and `SPEC.md` §6's constraint 6
- * licenses *two genuinely different layouts, not one that stretches*, so the desktop keeps
- * **Lists and Stats both**. A sidebar that dropped Lists to mirror the phone would be
- * copying a constraint it does not have.
+ * **Issue #227 added it, as Stats.** It was added rather than swapped in — the whole
+ * difference between this column and the phone's row. `tab-bar.tsx` had a budget of four
+ * and had to retire Lists to make room; a column has no such budget, and `SPEC.md` §6's
+ * constraint 6 licenses *two genuinely different layouts, not one that stretches*, so the
+ * desktop kept Lists and Stats both. A sidebar that dropped Lists to mirror the phone
+ * would have been copying a constraint it does not have.
  *
- * Appended rather than slotted next to Library, so that no existing destination moves. A
- * reader who reaches for the fourth row of this column has been reaching for it since #136
- * and should still find Lists there.
+ * **Issue #249 repoints it at You**, because `/stats` is deleted rather than moved. The
+ * row itself does not move and Lists is still the fourth: what changed is the destination
+ * behind the fifth, so a reader who reaches for the fourth row of this column has been
+ * reaching for it since #136 and still finds Lists there. The desktop keeps six
+ * destinations, exactly as it did the day before.
  */
 const PRIMARY = [
   { href: "/up-next", label: "Up next", Icon: UpNextIcon },
   { href: "/library", label: "Library", Icon: LibraryIcon },
   { href: "/search", label: "Search", Icon: SearchIcon },
   { href: "/lists", label: "Lists", Icon: ListsIcon },
-  { href: "/stats", label: "Stats", Icon: StatsIcon },
+  { href: "/you", label: "You", Icon: YouIcon },
 ] as const;
 
 const SETTINGS = { href: "/settings", label: "Settings", Icon: SettingsIcon } as const;

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   initialsFrom,
+  plural,
   qualification,
   watchTimeInWords,
 } from "@/app/(signed-in)/you/figures";
@@ -10,8 +11,14 @@ import {
  * The pure half of You — issue #247.
  *
  * Everything here is a function over numbers and strings, so all of it runs without a
- * database and without a browser, exactly as the suite around `stats-figures.ts` does for
- * the page You replaces. The surface itself is rendered in `tests/you-surface.test.ts`.
+ * database and without a browser, exactly as the suite around the Stats page's own figures
+ * module did for the page You replaces. The surface itself is rendered in
+ * `tests/you-surface.test.ts`.
+ *
+ * `plural` is asserted here since issue #249, which retired `/stats` and with it the module
+ * holding the copy that used to carry these cases. It is not You's alone
+ * any more: `library/progress-remaining.ts` imports it from this file now that the other
+ * copy is gone, so the irregular noun below is a shared contract rather than a local one.
  *
  * ── What is worth asserting on a page made of figures ────────────────────────────────
  *
@@ -23,10 +30,26 @@ import {
  *  - a qualification that names one incompleteness and silently drops the other;
  *  - a qualification printed when there is nothing to qualify, which teaches a reader to
  *    skip the line on the day it means something;
- *  - the undated watches described as *not counted here*, which is true on Stats and false
- *    on You — every figure on this page counts them (`CONTEXT.md`, Watch time: *a watch
- *    with no date still counts*).
+ *  - the undated watches described as *not counted here*, which was true on the retired
+ *    Stats page and is false on You — every figure on this page counts them
+ *    (`CONTEXT.md`, Watch time: *a watch with no date still counts*).
  */
+
+describe("the plural `s`, and the noun English does not pluralise regularly", () => {
+  it("pluralises a regular noun on the count", () => {
+    expect(plural(1, "day")).toBe("1 day");
+    expect(plural(2, "day")).toBe("2 days");
+  });
+
+  it("takes the irregular plural as an argument rather than guessing it", () => {
+    expect(plural(1, "watch", "watches")).toBe("1 watch");
+    expect(plural(2, "watch", "watches")).toBe("2 watches");
+  });
+
+  it("groups thousands, so a real history reads as a number rather than a run of digits", () => {
+    expect(plural(1_156, "watch", "watches")).toBe("1,156 watches");
+  });
+});
 
 describe("watch time, in months, days and hours", () => {
   it("is `none` at zero rather than a measurement of nothing", () => {

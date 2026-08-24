@@ -77,10 +77,13 @@ export function remainingInWords(remainingAfter: number): string {
 /**
  * `12 Mar 2026`, or `null` where TMDB has not dated the episode.
  *
- * **A shorter register than `stats-figures.ts`'s `dayInWords`, and the measure is why.**
- * That function writes `1 March 2026` for a page whose whole content is figures; this one
- * shares a 262px card's last line with a runtime, and the long month is what makes that
- * line wrap. The parsing is identical and deliberately so — an `air_date` is a `date`
+ * **A shorter register than `library/episode-facts.ts`'s `airDateInWords`, and the measure
+ * is why.** That function writes `1 March 2026` onto a detail screen with a line to spare;
+ * this one shares a 262px card's last line with a runtime, and the long month is what makes
+ * that line wrap. (The register this was first weighed against was the retired Stats page's
+ * own day formatter, deleted with `/stats` by issue #249; the comparison outlived it because
+ * the two survivors make exactly the same trade against each other.) The parsing is identical
+ * across both and deliberately so — an `air_date` is a `date`
  * column with no instant in it, so it is read in UTC and must not be re-interpreted in the
  * reader's zone on the way to being printed (`db/views.ts` argues this at length for the
  * comparison; it holds just as hard for the rendering).

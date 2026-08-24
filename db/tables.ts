@@ -272,7 +272,11 @@ export const watch = pgTable(
     unique("watch_user_id_source_source_key_key").on(t.userId, t.source, t.sourceKey),
     index("watch_library_entry_id_idx").on(t.libraryEntryId),
     index("watch_episode_id_idx").on(t.episodeId),
-    // Streak and year in review, both of which ignore undated watches entirely.
+    // Streak and year in review, both of which ignore undated watches entirely. Neither
+    // ships today: #227 built the streak, #249 retired it with `/stats`, and both are back
+    // under SPEC.md §9's *Specced, but later*. The index stays — it is the same cheap bet
+    // build step 1 placed, and dropping it would be a migration spent on the assumption
+    // that no dated figure ever returns.
     index("watch_user_id_watched_at_idx")
       .on(t.userId, t.watchedAt)
       .where(sql`${t.watchedAt} is not null`),

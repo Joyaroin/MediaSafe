@@ -13,8 +13,8 @@ import {
  * *Today* has to mean the reader's today, and a grouping that is wrong by one timezone is
  * wrong forever and looks entirely correct. So the cases below are not *does it bucket* —
  * that would pass on a broken module — they are **a real day boundary in a non-UTC zone,
- * crossed in both directions**. `tests/server-day.test.ts` and `tests/stats-figures.test.ts`
- * are the prior art: a day is a claim about a zone, so it is asserted against one.
+ * crossed in both directions**. `tests/server-day.test.ts` is the prior art: a day is a
+ * claim about a zone, so it is asserted against one.
  *
  * No clock is read here because none is read there: `readerDay` takes the instant and
  * `groupUpcoming` takes the day, which is exactly what makes 23:30 in Auckland a case a
