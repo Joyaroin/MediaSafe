@@ -84,6 +84,14 @@ async function seedEpisode(tx: Transaction, titleId: string, airDate: string): P
   });
 }
 
+async function releaseDateOf(tx: Transaction, titleId: string): Promise<string | null> {
+  const [row] = await tx
+    .select({ releaseDate: title.releaseDate })
+    .from(title)
+    .where(eq(title.id, titleId));
+  return row.releaseDate;
+}
+
 async function metadataRefreshedAtOf(tx: Transaction, titleId: string): Promise<Date> {
   const [row] = await tx
     .select({ metadataRefreshedAt: title.metadataRefreshedAt })
@@ -104,6 +112,7 @@ function mirrorFor(
     externalId: null,
     name: `Refreshed ${tmdbId}`,
     releaseYear: 2020,
+    releaseDate: "2020-01-01",
     posterPath: null,
     inProduction: kind === "show" ? false : null,
     runtimeMins: kind === "film" ? 100 : null,
@@ -260,6 +269,44 @@ describe("refreshTitleMirror", () => {
 
       const after = await metadataRefreshedAtOf(tx, candidate.id);
       expect(after.getTime()).toBeGreaterThan(before.getTime());
+    }));
+
+  it("fills in the release date and the episode still on a title that had neither", () =>
+    inTransaction(async (tx) => {
+      /**
+       * The backfill, and the reason ADR-0001 amendment 10 ships no backfill migration.
+       * `seedTitle` writes the pre-amendment row exactly — `release_date` NULL, no
+       * episodes — and the sweep is what fills both columns as it reaches each title,
+       * which is amendment 5's mechanism reused for amendment 5's reason: a one-off
+       * script would be a second writer of rows every account reads.
+       */
+      const candidate = await seedTitle(tx, { kind: "show" });
+      expect(await releaseDateOf(tx, candidate.id)).toBeNull();
+
+      await refreshTitleMirror(
+        mirrorFor(candidate.kind, candidate.tmdbId, {
+          releaseDate: "2011-04-17",
+          episodes: [
+            {
+              tmdbEpisodeId: nextNumber() + 900_000,
+              seasonNo: 1,
+              episodeNo: 1,
+              name: "Winter Is Coming",
+              airDate: "2011-04-17",
+              runtimeMins: 62,
+              stillPath: "/winter-is-coming.jpg",
+            },
+          ],
+        }),
+        tx,
+      );
+
+      expect(await releaseDateOf(tx, candidate.id)).toBe("2011-04-17");
+      const [mirrored] = await tx
+        .select({ stillPath: episode.stillPath })
+        .from(episode)
+        .where(eq(episode.titleId, candidate.id));
+      expect(mirrored.stillPath).toBe("/winter-is-coming.jpg");
     }));
 });
 

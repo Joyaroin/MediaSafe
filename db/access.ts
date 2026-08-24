@@ -294,6 +294,7 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
       externalId: mirror.externalId,
       name: mirror.name,
       releaseYear: mirror.releaseYear,
+      releaseDate: mirror.releaseDate,
       posterPath: mirror.posterPath,
       inProduction: mirror.inProduction,
       runtimeMins: mirror.runtimeMins,
@@ -310,6 +311,7 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
         externalId: sql`excluded.external_id`,
         name: sql`excluded.name`,
         releaseYear: sql`excluded.release_year`,
+        releaseDate: sql`excluded.release_date`,
         posterPath: sql`excluded.poster_path`,
         inProduction: sql`excluded.in_production`,
         runtimeMins: sql`excluded.runtime_mins`,
@@ -333,6 +335,7 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
         name: one.name,
         airDate: one.airDate,
         runtimeMins: one.runtimeMins,
+        stillPath: one.stillPath,
       })),
     )
     .onConflictDoUpdate({
@@ -344,6 +347,10 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
         name: sql`excluded.name`,
         airDate: sql`excluded.air_date`,
         runtimeMins: sql`excluded.runtime_mins`,
+        // Borrowed like every column beside it, so the last thing TMDB said wins —
+        // including a still it has since withdrawn, which becomes NULL rather than
+        // leaving the mirror pointing at a path the CDN no longer serves.
+        stillPath: sql`excluded.still_path`,
       },
     })
     .returning({ id: episode.id, tmdbEpisodeId: episode.tmdbEpisodeId });

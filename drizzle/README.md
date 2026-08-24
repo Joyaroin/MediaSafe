@@ -17,6 +17,7 @@ One history, from one tool, in one order:
 | `0005_title-reconciliation.sql` | `title_reconciliation`, the record of a repointed title (#116) |
 | `0006_list-membership-title.sql` | `list_membership` repoints from `library_entry` to `title` (#143) |
 | `0007_list-membership-drop-library-entry-id.sql` | Drops `list_membership.library_entry_id`, expand-contract's leftover from 0006 (#150) |
+| `0008_title-release-date-and-episode-still.sql` | `title.release_date` and `episode.still_path` — ADR-0001 amendment 10 (#246) |
 
 **Name the file after what it brings.** drizzle-kit generates a random tag —
 `0005_noisy_maddog` — and the file is renamed, along with its `tag` in `meta/_journal.json`,

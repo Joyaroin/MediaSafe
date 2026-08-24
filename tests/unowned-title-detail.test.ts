@@ -148,6 +148,7 @@ function mirrorOf(kind: "film" | "show", tmdbId: number): TitleMirror {
     externalId: null,
     name: `Title ${tmdbId}`,
     releaseYear: 2019,
+    releaseDate: "2019-04-14",
     posterPath: "/poster.jpg",
     inProduction: kind === "show" ? true : null,
     runtimeMins: kind === "film" ? 100 : null,

@@ -68,6 +68,7 @@ function episodeMirror(tmdbEpisodeId: number): EpisodeMirror {
     name: `Episode ${tmdbEpisodeId}`,
     airDate: "2008-01-20",
     runtimeMins: 58,
+    stillPath: `/episode-${tmdbEpisodeId}.jpg`,
   };
 }
 
@@ -78,6 +79,7 @@ function survivorMirror(episodes: readonly EpisodeMirror[]): TitleMirror {
     externalId: TVDB,
     name: "Breaking Bad",
     releaseYear: 2008,
+    releaseDate: "2008-01-20",
     posterPath: null,
     inProduction: false,
     runtimeMins: null,

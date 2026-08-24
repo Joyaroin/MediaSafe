@@ -157,6 +157,7 @@ function episodeMirror(tmdbEpisodeId: number, episodeNo: number): EpisodeMirror 
     name: `Episode ${episodeNo}`,
     airDate: "2008-01-20",
     runtimeMins: 45,
+    stillPath: `/episode-${episodeNo}.jpg`,
   };
 }
 
@@ -167,6 +168,7 @@ function survivorMirror(tmdbId: number, episodes: readonly EpisodeMirror[]): Tit
     externalId: EVIDENCE,
     name: `Survivor ${tmdbId}`,
     releaseYear: 2008,
+    releaseDate: "2008-01-20",
     posterPath: null,
     inProduction: false,
     runtimeMins: null,

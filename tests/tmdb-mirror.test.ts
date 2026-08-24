@@ -76,8 +76,13 @@ const NEVER_STORED = [
   "overview",
   "synopsis",
   "tagline",
+  /**
+   * `backdrop_path` and not `still_path`. Both were here until amendment 10, which moved
+   * an episode's still across the line on the ADR's own test — *what a 472-row library
+   * render needs* — because the next-episodes rail is a list render and the alternative
+   * is one catalogue request per card. A backdrop is still a detail-page image and stays.
+   */
   "backdrop_path",
-  "still_path",
   "credits",
   "cast",
   "crew",
@@ -212,6 +217,9 @@ describe("filmMirror", () => {
       tmdbId: 11,
       name: "Star Wars",
       releaseYear: 1977,
+      // Amendment 10. Beside the year, not instead of it: the year is still derived from
+      // the same payload field by the same function, and nothing reads this column yet.
+      releaseDate: "1977-05-25",
       posterPath: "/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg",
       // `/movie/{id}` carries `imdb_id` itself. A film has no TVDB id to fall back to,
       // so this branch is the only one a film can take.
@@ -241,6 +249,21 @@ describe("filmMirror", () => {
     expect(
       filmMirror({ id: 11, title: "Star Wars", imdb_id: "" }).externalId,
     ).toBeNull();
+  });
+
+  it("reads TMDB's empty-string release date as absent, not as a date", () => {
+    // The same `""`-for-nothing habit the year already guards against, now on a column
+    // Postgres's `date` would reject outright. `dateFrom` is what both go through.
+    const undated = filmMirror({ id: 11, title: "Star Wars", release_date: "" });
+    expect(undated.releaseDate).toBeNull();
+    // And the year it derives from the same field is still null, not zero.
+    expect(undated.releaseYear).toBeNull();
+  });
+
+  it("mirrors a film whose response omits the release date entirely", () => {
+    // Omitted is a different case from `""` and TMDB sends both. Neither may fail the
+    // add: a film nobody has dated is an ordinary row, not a malformed one.
+    expect(filmMirror({ id: 11, title: "Star Wars" }).releaseDate).toBeNull();
   });
 
   it("throws rather than mirroring a title with no name", () => {
@@ -274,6 +297,9 @@ describe("showMirror", () => {
     expect(show.tmdbId).toBe(1399);
     expect(show.name).toBe("Game of Thrones");
     expect(show.releaseYear).toBe(2011);
+    // Amendment 10. A show's release date is its first air date — the same field the year
+    // is derived from, kept whole rather than truncated on the way in.
+    expect(show.releaseDate).toBe("2011-04-17");
     expect(show.posterPath).toBe("/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg");
     expect(show.inProduction).toBe(false);
     // IMDb where TMDB has one — and TMDB has one for this show alongside a TVDB id, so
@@ -307,7 +333,30 @@ describe("showMirror", () => {
       name: "Winter Is Coming",
       airDate: "2011-04-17",
       runtimeMins: 62,
+      // Amendment 10. The next-episodes rail is a list render, so this is the same kind
+      // of fact as the episode's name: needed by a screen that shows many at once.
+      stillPath: "/wrGWeW4WKxnaeA8sxJb2T9O6ryo.jpg",
     });
+  });
+
+  it("reads an episode TMDB has no still for as absent, not as a path", () => {
+    // Both of this fixture's specials send `still_path: null` — the ordinary case for a
+    // promotional clip, and the one the rail has to render a placeholder for.
+    const special = show.episodes.find((episode) => episode.tmdbEpisodeId === 977213);
+    expect(special?.stillPath).toBeNull();
+  });
+
+  it("reads TMDB's empty-string still as absent, not as a path", () => {
+    // `""` is a path that resolves to TMDB's CDN root, so storing it would render a
+    // broken image rather than the placeholder an absent still gets.
+    const [only] = showMirror(showPayload, [
+      { season_number: 1, episodes: [{ id: 1, season_number: 1, episode_number: 1, still_path: "" }] },
+    ]).episodes;
+    expect(only.stillPath).toBeNull();
+  });
+
+  it("mirrors a show whose response omits the first air date entirely", () => {
+    expect(showMirror({ id: 1399, name: "Game of Thrones" }, []).releaseDate).toBeNull();
   });
 
   it("keeps specials, at season 0", () => {
