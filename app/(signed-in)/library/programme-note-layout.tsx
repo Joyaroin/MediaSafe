@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useCallback, useMemo, useState } from "react";
 
 import { LibrarySelectionProvider } from "./library-selection";
 import { ProgrammeNotePane } from "./programme-note";
@@ -39,18 +39,57 @@ export function ProgrammeNoteLayout({ children }: { children: React.ReactNode })
     posterPath: string | null;
   } | null>(null);
 
-  function select(entryId: string, posterPath: string | null = null) {
+  /**
+   * **Stable across every render this component will ever have.** `select` used to be a
+   * plain function declaration and the value below a fresh object literal, which meant the
+   * context handed every consumer a new identity on *any* re-render of this component —
+   * not merely on the one thing consumers care about, which is the selection changing.
+   *
+   * Today that costs nothing, because a selection change is the only thing that re-renders
+   * this component. It is pinned anyway because the next piece of state added here — and
+   * this is the layout two whole surfaces are built on — would otherwise fan out silently
+   * to every cell in a 472-title grid and every tile in the rails, with nothing on screen
+   * and no test saying so.
+   */
+  const select = useCallback((entryId: string, posterPath: string | null = null) => {
     startTransition(() => setSelection({ entryId, posterPath }));
-  }
+  }, []);
+
+  /**
+   * ── Why this is a memoised context and not an external store ────────────────────────
+   *
+   * `bulk-selection-context.ts` solves what looks like the identical problem one file over
+   * — *a tap re-renders the cell whose badge changed instead of all 472 of them* — by
+   * putting a stable store object in the context and letting each cell subscribe to its own
+   * boolean through `useSyncExternalStore`. The obvious move is to do the same here. It is
+   * the wrong move, and the reason is the morph.
+   *
+   * `select` wraps its write in `startTransition` because **a regular `setState` never
+   * activates a `<ViewTransition>`, only a Transition does** — that is #141's whole reason
+   * for this function existing, and the poster morph is what it buys. An external store
+   * does not participate in that: React cannot defer a `useSyncExternalStore` update, so
+   * the subscribers would render at synchronous priority, outside the Transition, and the
+   * `<ViewTransition>` would have nothing to activate on. The morph would simply stop
+   * happening — silently, and on the one interaction it was built for.
+   *
+   * So the two selections are deliberately implemented differently, and the difference is
+   * not an oversight: bulk selection has no transition to preserve and can have the cheaper
+   * fan-out; this one has a morph and pays a shallow re-render for it. The re-render *is*
+   * shallow — `SelectableEntry` renders `{children}`, and those children are server-rendered
+   * elements whose identity does not change, so React skips the poster and the cell body
+   * and re-runs the wrapper alone.
+   */
+  const value = useMemo(
+    () => ({
+      selectedEntryId: selection?.entryId ?? null,
+      selectedPosterPath: selection?.posterPath ?? null,
+      select,
+    }),
+    [selection, select],
+  );
 
   return (
-    <LibrarySelectionProvider
-      value={{
-        selectedEntryId: selection?.entryId ?? null,
-        selectedPosterPath: selection?.posterPath ?? null,
-        select,
-      }}
-    >
+    <LibrarySelectionProvider value={value}>
       <main className="flex w-full flex-1 flex-col lg:flex-row">
         {children}
         <ProgrammeNotePane />

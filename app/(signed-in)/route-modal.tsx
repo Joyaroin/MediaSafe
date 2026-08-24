@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as m from "motion/react-m";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -366,7 +366,7 @@ export function RouteModal({
        */
       className="mx-auto mt-auto mb-0 max-h-[90dvh] w-full max-w-[560px] bg-transparent p-0 backdrop:bg-ground/80 sm:my-auto"
     >
-      <motion.div
+      <m.div
         /* Up from the bottom edge, which is the direction the swipe sends it back. */
         initial={{ y: "100%" }}
         animate={leaving ? { y: "100%" } : { y: drag }}
@@ -452,7 +452,7 @@ export function RouteModal({
         <div ref={body} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
-      </motion.div>
+      </m.div>
     </dialog>
   );
 }

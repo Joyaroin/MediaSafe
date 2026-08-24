@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import * as m from "motion/react-m";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -91,7 +91,7 @@ const NOT_CURRENT =
  *  replaces, so the marker lands exactly where the old static border sat. */
 function CurrentMarker() {
   return (
-    <motion.span
+    <m.span
       layoutId="sidebar-current"
       className="absolute -left-0.5 top-0 h-full w-0.5 bg-text"
       transition={smooth}

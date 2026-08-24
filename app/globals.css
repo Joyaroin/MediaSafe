@@ -417,6 +417,36 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* ── The 300ms that was never in any of this app's own animations ──────────────────
+
+     A touch browser cannot know whether a tap is a tap or the first half of a double-tap
+     to zoom, so historically it waited to find out before dispatching `click`. Every
+     control in this application inherited that wait, and it is **larger than the entire
+     tab transition** — `--dur-base` is 220ms. No amount of tuning the curves is visible
+     underneath it, which is why this rule is in `base` and not on a component: the delay
+     was on everything, so the fix is too.
+
+     `manipulation` keeps panning and pinch-zoom — the two gestures a reader actually uses
+     on a list of posters — and gives up only double-tap-to-zoom, on controls where it was
+     never meaningful. Elements that need to own a gesture outright still say so at the
+     call site: `route-modal.tsx`'s grabber sets `touch-none`, and it is a class, so it
+     wins over this. `landing-pager.tsx` deliberately sets nothing and is a `div`, so this
+     rule does not reach it either.
+
+     The tap highlight goes with it. It is a grey rectangle the platform paints over the
+     element's own bounds on press, and this app already answers a press properly — the
+     `pressable` scale below is instant and shaped like the thing it is on. */
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* Browser surfaces carry the design too. Selection, the caret and the focus ring used
      to be painted in the accent; they now use brightness — the brightest neutral against
      the ground — so the accent stays reserved for recording a watch. */
@@ -529,12 +559,32 @@
   }
 }
 
-/* The phone's two pieces of fixed chrome, at turn 9's own recipe — `78%` of the ground
-   under a `22px` blur, against the near-opaque `95%`/`2px` issue #136 gave them. One
-   utility so they cannot drift into two frostings. */
+/* The app's static chrome, at the one blur radius §5's repaint reasoning allows.
+
+   **This value came back down from turn 9's `78%`/`22px`, and the reason is the rule
+   §5 states in as many words: *there is exactly one blur radius in the product. A second
+   one is a second performance profile to reason about.*** Turn 9 gave the phone's two
+   fixed bars a heavier, genuinely-translucent recipe and left `blur(2px)` standing on the
+   sidebar and the rail arrows, so the product carried two — and the heavy one was on the
+   two surfaces that are on screen on *every* phone screen, fixed over content that
+   scrolls.
+
+   A backdrop filter re-samples its own radius of everything behind it, on every frame it
+   is composited over moving content. At `22px` that is an 11× wider sample than the
+   budget §5 set, paid on every scroll and — because `tab-bar.tsx` holds itself out of the
+   root snapshot with its own `view-transition-name` — on every frame of every tab slide.
+
+   What the frosting buys is unchanged and is all §5 ever claimed for it: type scrolling
+   underneath **greys rather than disappears**. At `95%` over `ground` the chrome is
+   effectively opaque and the blur is doing the small amount of work that is left.
+
+   One utility, one radius, and the sidebar now reads it rather than spelling the same
+   pair by hand. The rail arrows keep `bg-ground/80` at the same `2px`: they sit over
+   moving artwork rather than over type, which is the one place §5 sanctions a second
+   *opacity* — never a second radius. */
 @utility frosted {
-  background: color-mix(in srgb, var(--color-ground) 78%, transparent);
-  backdrop-filter: blur(22px);
+  background: color-mix(in srgb, var(--color-ground) 95%, transparent);
+  backdrop-filter: blur(2px);
 }
 
 @utility code-line {
@@ -561,10 +611,12 @@
    the length of its own delay and then snaps back to 0 to start animating, which reads
    as a flash rather than a stagger.
 
-   The delay is capped at the tenth child, and everything past it starts together. A
+   The run stops at the tenth child, and everything past it is simply already there. A
    library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
    arriving; the cap keeps the whole run under 300ms at any length, which is the point
-   where stagger still reads as rhythm instead of as the page being slow. */
+   where stagger still reads as rhythm instead of as the page being slow — and it now
+   costs ten animations rather than 472, which is the same rule applied to the count as
+   well as to the clock. See the `nth-child(n + 10)` rule at the foot of this utility. */
 @utility stagger-rise {
   & > * {
     animation: rise-in var(--dur-slow) var(--ease-press) backwards;
@@ -596,9 +648,44 @@
   & > *:nth-child(9) {
     animation-delay: 240ms;
   }
+  /* **The tenth child is where the animation stops, not merely where the delay does.**
+
+     This used to read `animation-delay: 270ms` — every child past the ninth still ran
+     `rise-in`, just together. The delay was capped and the *count* was not, so a 472-title
+     library mounted 472 animations on every arrival at the tab: 463 of them on rows below
+     the fold, none of them ever watched, all of them composited against the 220ms tab
+     slide that is running at the same moment.
+
+     The cap the docblock above describes — *the whole run under 300ms at any list length*
+     — is unchanged, and so is what a reader sees: the rows they are looking at rise, the
+     rest are already there. `animation: none` rather than a `0s` duration, so no animation
+     instance is created at all. */
   & > *:nth-child(n + 10) {
-    animation-delay: 270ms;
+    animation: none;
   }
+}
+
+/* ── Rows the reader has not reached ─────────────────────────────────────────────────
+
+   `content-visibility: auto` lets the browser skip layout, paint and compositing for a
+   cell that is outside the viewport, and pick it up again as it approaches. The library
+   grid is the surface that needs it: it is unpaginated and unvirtualized by design —
+   `library-grid.tsx` maps every entry — so a 472-title library is 472 cells of layout on
+   every arrival at the tab, of which a phone shows about five.
+
+   **`auto` in `contain-intrinsic-size` is what makes this safe.** The bare form takes a
+   fixed guess and a wrong guess moves the scrollbar under the reader's thumb; `auto`
+   makes the browser *remember the size it actually measured* the first time the cell was
+   rendered and use that from then on, so the guess below is only ever the first-paint
+   estimate. `127px` is that estimate honestly derived: a `66px` poster at the `2/3` ratio
+   `app/poster.tsx` draws is `99px`, inside the cell's own `p-3.5` twice over.
+
+   Not applied to the rails. A horizontal track shows most of its own children and scrolls
+   on the other axis, so there is nothing worth skipping and the containment would only
+   cost. */
+@utility offscreen-skippable {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 127px;
 }
 
 @keyframes rise-in {
@@ -985,12 +1072,23 @@
   }
 }
 
+/* `translate` and `scale` are separate properties here rather than one `transform`, which
+   is what lets the two nav animations compose without either restating the other's value.
+
+   **The scale is a depth cue and is deliberately tiny.** `0.985` is under two percent —
+   far too small to read as a zoom, and just enough that the arriving screen resolves
+   *towards* the reader rather than sliding in flat. It costs nothing: a view-transition
+   snapshot is already a texture on the compositor, so scaling it is the same work as
+   moving it, and it never touches layout. Paired with the slide it is what makes a tab
+   change read as a change of place instead of a change of contents. */
 @keyframes nav-slide {
   from {
     translate: var(--nav-slide);
+    scale: 0.985;
   }
   to {
     translate: 0;
+    scale: 1;
   }
 }
 

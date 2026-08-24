@@ -29,12 +29,14 @@ import { Wordmark } from "./press-mark";
  *
  * ── Frosted, and why that costs nothing extra here ───────────────────────────────────
  *
- * `bg-ground/95 backdrop-blur-[2px]` — `masthead.tsx`'s own recipe, reused rather than
- * the mock's heavier `blur(22px)`. Issue #136's Glass section is explicit that frosting is
- * a performance rule, not a taste one, because a backdrop filter repaints everything
- * behind it; reusing the lighter, already-shipped value keeps every piece of frosted
- * chrome in the build — this rail, the phone masthead, the phone tab bar — paying the
- * same small cost rather than introducing a second, heavier one.
+ * The `frosted` utility, read rather than spelled out. This rail used to carry
+ * `bg-ground/95 backdrop-blur-[2px]` by hand while the phone's chrome carried turn 9's
+ * heavier `78%`/`22px` under the same name — which is precisely the drift issue #136's
+ * Glass section forbids, because frosting is a performance rule and not a taste one: a
+ * backdrop filter repaints everything behind it, at its own radius, every frame it is
+ * composited over moving content. The utility is now the single radius, and every piece
+ * of frosted chrome in the build — this rail, the phone masthead, the phone tab bar —
+ * pays the same small cost by construction rather than by everyone remembering to.
  *
  * Hidden below `lg` — the phone reaches *Up next*, *Search*, *Library* and *Lists* through
  * `tab-bar.tsx`'s four tabs, and *Settings* through `masthead.tsx`'s icon instead.
@@ -43,7 +45,7 @@ export async function Sidebar() {
   const displayName = await currentDisplayName();
 
   return (
-    <aside className="hidden w-[196px] shrink-0 flex-col border-r border-hair bg-ground/95 backdrop-blur-[2px] lg:sticky lg:top-0 lg:flex lg:h-screen">
+    <aside className="frosted hidden w-[196px] shrink-0 flex-col border-r border-hair lg:sticky lg:top-0 lg:flex lg:h-screen">
       <div className="border-b border-hair px-4 py-4">
         <Wordmark markClassName="h-5 w-5" />
       </div>
