@@ -1,6 +1,13 @@
 import { ProgrammeNoteLayout } from "@/app/(signed-in)/library/programme-note-layout";
-import { cachedUpNextRails, cachedWatchlistFilms } from "@/cache/tags";
-import { requireUserId } from "@/lib/session";
+import {
+  cachedUpcomingEpisodes,
+  cachedUpNextRails,
+  cachedWatchlistFilms,
+} from "@/cache/tags";
+import { requireTimezone, requireUserId } from "@/lib/session";
+import { LandingPager } from "./landing-pager";
+import { UpcomingSurface } from "./upcoming-surface";
+import { readerDay } from "./upcoming-grouping";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextPhoneRails } from "./up-next-rails";
 import { UpNextRailsSurface } from "./up-next-rails-surface";
@@ -17,11 +24,14 @@ import { NavTransition } from "../nav-transition";
  * other caller are gone with that change; watchlist and abandoned stay reachable through
  * the library's status filters, which already carry all five states.
  *
- * ── Two reads and two renders, and the cost of that, stated ───────────────────────────
+ * ── Three reads and two renders, and the cost of that, stated ─────────────────────────
  *
  * `listUpNextRails` answers both devices — the phone's single next-episodes rail is the
  * desktop's three concatenated, from the same read, in the same order — and
- * `listWatchlistFilms` answers only the phone's second rail. Both run on every load because
+ * `listWatchlistFilms` answers only the phone's second rail. **#251 adds a third**,
+ * `listUpcomingEpisodes`, which answers only the phone's second *page* and is paid for on
+ * a desktop load that will never draw it — the same trade, one read wider. All run on
+ * every load because
  * **the server does not know the viewport** — #136 deleted the one `matchMedia` branch this
  * build ever had, deliberately, so which surface renders is a Tailwind fact and not a
  * server one. `hidden lg:block` and `lg:hidden` below are the same device the deleted
@@ -75,20 +85,48 @@ export default async function UpNextPage() {
   const userId = await requireUserId();
 
   /**
-   * Concurrent, not sequential. None of the three reads takes any part of another's
-   * result, so awaiting them one after another bought nothing and cost two extra round
-   * trips to Neon in front of the first byte of this page — on a driver where a round
-   * trip is a WebSocket message and not a local socket write.
+   * Concurrent, not sequential. None of these takes any part of another's result, so
+   * awaiting them one after another bought nothing and cost three extra round trips to
+   * Neon in front of the first byte of this page — on a driver where a round trip is a
+   * WebSocket message and not a local socket write.
+   *
+   * The fourth is not a read of this database at all: `requireTimezone()` takes the zone
+   * off the session, which #251 needs before it can say what *Today* means. It joins the
+   * three here rather than being awaited beside them for the same reason they are
+   * together — it takes nothing from them, and nothing takes anything from it.
    *
    * `Promise.all` rejects on the first rejection, which is the behaviour this page's
-   * error discipline already asks for: any one of the three failing throws into
+   * error discipline already asks for: any one of the four failing throws into
    * `error.tsx` exactly as it did when they ran in series. Nothing here catches, and the
    * unguarded reads above the `AGENTS.md` rule protects are still unguarded.
    */
-  const [rails, films] = await Promise.all([
+  const [rails, films, upcoming, zone] = await Promise.all([
     cachedUpNextRails(userId),
     cachedWatchlistFilms(userId),
+    cachedUpcomingEpisodes(userId),
+    requireTimezone(),
   ]);
+
+  /**
+   * **The one clock this route reads, read once** — issue #251.
+   *
+   * `upcoming-grouping.ts` takes the reader's zone and the reader's day as arguments and
+   * reads no clock itself, which is what makes *Today means my today* a thing a test can
+   * state. Somebody has to look at the actual time for that, and it is here: one instant,
+   * one zone, one day, handed down.
+   *
+   * `requireTimezone()` reads `user.timezone` off the session — the column `lib/timezone.ts`
+   * fills at signup and Settings' control changes, and which `SPEC.md` §5 makes the
+   * read-time lens for every day boundary in the application. It is `NOT NULL`, so there is
+   * no "or else" branch here and there is not meant to be one.
+   *
+   * **Deliberately outside the cache.** `cachedUpcomingEpisodes` returns a window a day
+   * wider than the server's own day, which is the same set of rows for this account at
+   * every hour; *Today* and *Tomorrow* are words whose truth turns over at the reader's
+   * midnight, which is not the midnight `serverDay()` keys on. So the rows are cached and
+   * the day is not.
+   */
+  const today = readerDay(zone, new Date());
 
   return (
     <NavTransition>
@@ -98,9 +136,20 @@ export default async function UpNextPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           <UpNextHeading />
 
-          {/* The phone's two rails, which answer their own empty case. */}
+          {/* The phone's two-page pager: the two rails, and Upcoming beside them. Each
+              page answers its own empty case; a failure in either read throws past both
+              into `error.tsx`.
+
+              **The desktop does not get this.** `SPEC.md`'s *Specced, but later* still
+              carries *desktop rails other than Up next's three (Upcoming)*, and #245 asks
+              for a phone pager rather than a second desktop rail — so the gate below is
+              the same `lg:hidden` the phone's rails already sat behind, and the desktop's
+              three rails are untouched. */}
           <div className="lg:hidden">
-            <UpNextPhoneRails rails={rails} films={films} />
+            <LandingPager
+              upNext={<UpNextPhoneRails rails={rails} films={films} />}
+              upcoming={<UpcomingSurface episodes={upcoming} today={today} />}
+            />
           </div>
 
           {/* The desktop's three rails, which answer their own empty case. */}

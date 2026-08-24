@@ -8,6 +8,7 @@ import {
   libraryEntryIdForTitle,
   listLibraryEntries,
   listLists,
+  listUpcomingEpisodes,
   listUpNextRails,
   listWatchlistFilms,
   listYouListCards,
@@ -20,6 +21,7 @@ import {
   type ListDetailRow,
   type ListSummary,
   type TitleDetailRow,
+  type UpcomingEpisode,
   type UpNextRails,
   type UserId,
   type YouRails,
@@ -219,6 +221,18 @@ export const CACHED_READS = {
   libraryEntryIdForTitle: { cachedAs: "library", readsCurrentDate: false },
   listUpNextRails: { cachedAs: "up-next", readsCurrentDate: true },
   listWatchlistFilms: { cachedAs: "up-next", readsCurrentDate: true },
+  /**
+   * Issue #251's Upcoming — page two of the same pager, so the same `up-next` fact.
+   *
+   * **`readsCurrentDate` is true twice over**, which is worth stating because this read is
+   * the one that would be most quietly wrong without it. It selects through
+   * `library_entry_state`, so a show moving from watching to caught up moves what it
+   * returns; and its own `where` compares `air_date` to `current_date`, so tonight's
+   * episode leaves this page for the next-episodes rail at midnight with no write anywhere.
+   * Without the day in the key, a reader who wrote nothing for a week would be shown last
+   * week's *Today*.
+   */
+  listUpcomingEpisodes: { cachedAs: "up-next", readsCurrentDate: true },
   listLists: { cachedAs: "lists", readsCurrentDate: false },
   getListDetail: { cachedAs: "lists", readsCurrentDate: false },
   /** Its episode rows carry a `released` flag read straight off `air_date <=
@@ -480,6 +494,34 @@ export function cachedWatchlistFilms(
   const read = unstable_cache(
     listWatchlistFilms,
     ["listWatchlistFilms", userId, serverDay()],
+    { tags: [tagFor("up-next", userId)] },
+  );
+
+  return read(userId);
+}
+
+/**
+ * Upcoming's episodes (#251) — the landing screen's second page, tagged `up-next` with the
+ * two rails on its first.
+ *
+ * One tag across the pager is the property rather than an economy: marking an episode from
+ * a card can move a show from watching to caught up, which changes both what the rail
+ * offers and what this page lists, and a reader who paged sideways expecting the two to
+ * agree would find they did not if this carried a fact of its own.
+ *
+ * **The rows are cached; the grouping is not, and must not be.** What this returns is a
+ * window a day wider than the server's own day (`listUpcomingEpisodes` argues why), which
+ * is the same set of rows for every reader of this account whatever hour it is. *Today*
+ * and *Tomorrow* are then written per request against the reader's zone in
+ * `upcoming-grouping.ts`. Caching a heading would be caching a word whose truth turns over
+ * at a midnight this key does not.
+ */
+export function cachedUpcomingEpisodes(
+  userId: UserId,
+): Promise<readonly UpcomingEpisode[]> {
+  const read = unstable_cache(
+    listUpcomingEpisodes,
+    ["listUpcomingEpisodes", userId, serverDay()],
     { tags: [tagFor("up-next", userId)] },
   );
 
