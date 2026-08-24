@@ -141,7 +141,7 @@ export function readerDay(zone: string, at: Date): string {
  *
  * ── An empty group is never emitted ──────────────────────────────────────────────────
  *
- * A day with nothing on it has no heading, which is `SPEC.md` §8's rule for a rail applied
+ * A day with nothing on it has no heading, which is `SPEC.md` §7's rule for a rail applied
  * to a group, and it is why the buckets are discovered from the rows rather than laid out
  * in advance. A page with no rows at all returns no groups, and the surface answers that
  * with the handoff's sentence rather than four empty headings.

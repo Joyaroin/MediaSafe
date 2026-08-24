@@ -347,6 +347,20 @@ describe("the films you are waiting for", () => {
     expect(markup).not.toMatch(/\d{4}\s*·/);
   });
 
+  /**
+   * **The accent, and only on the countdown.** `DESIGN.md` §3 rations the accent and amends
+   * itself for exactly this line; the amendment's second condition is that the date it
+   * counts to is *not* accented, so the two lines must not drift into matching. Nothing
+   * else about the card is chromatic — no chip, no badge, no check.
+   */
+  it("accents the countdown and leaves the date dim", () => {
+    const markup = renderFilms([filmOn("2026-09-05")]);
+
+    expect(markup).toMatch(/text-accent[^>]*>In 12 days</);
+    expect(markup).toMatch(/text-dim[^>]*>5 Sept 2026</);
+    expect(markup).not.toMatch(/text-accent[^>]*>5 Sept 2026</);
+  });
+
   /** Soonest first, which is the read's order and is passed through rather than re-sorted
    *  here — the countdown under the first card is the smallest number on the rail. */
   it("keeps the read's order", () => {

@@ -1,5 +1,5 @@
 import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
-import { awaitedFilms, groupUpcoming } from "./upcoming-grouping";
+import { awaitedFilms, groupUpcoming, type UpcomingGroup } from "./upcoming-grouping";
 import { UpcomingFilms } from "./upcoming-films";
 import { UpcomingNothing } from "./upcoming-nothing";
 import { UpcomingRow } from "./upcoming-row";
@@ -30,7 +30,8 @@ import { UpcomingRow } from "./upcoming-row";
  * (`listUpcomingFilms`) and their own section (`upcoming-films.tsx`), and what lands here
  * is the one thing neither half can decide alone: **whether the page is empty**.
  *
- * Each section is absent on nothing, which is `SPEC.md` §8 — no heading over no rows. But
+ * Each section is absent on nothing, which is `SPEC.md` §7's *an empty rail is absent* — no
+ * heading over no rows. But
  * *no release dates yet* is a claim about the whole page, and a reader with three dated
  * episodes and no dated film is not looking at an empty Upcoming. So the sentence is drawn
  * here, from both counts, and neither section is allowed to draw one of its own. **The
@@ -68,15 +69,13 @@ export function UpcomingSurface({
 
   if (groups.length === 0 && awaited.length === 0) return <UpcomingNothing />;
 
+  /* `pb-2` on the wrapper rather than a node of its own: the foot of a page that scrolls
+     under a pager, held here now that either section can be the last thing on it. */
   return (
-    <>
+    <div className="pb-2">
       <UpcomingEpisodes groups={groups} />
       <UpcomingFilms films={awaited} />
-
-      {/* The foot of a page that scrolls under a pager — the space the two sections used
-          to end on, now that either of them can be the last thing on screen. */}
-      <div className="pb-2" />
-    </>
+    </div>
   );
 }
 
@@ -90,7 +89,7 @@ export function UpcomingSurface({
 function UpcomingEpisodes({
   groups,
 }: {
-  groups: ReturnType<typeof groupUpcoming<UpcomingEpisode>>;
+  groups: readonly UpcomingGroup<UpcomingEpisode>[];
 }) {
   if (groups.length === 0) return null;
 
