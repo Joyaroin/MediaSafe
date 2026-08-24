@@ -141,8 +141,9 @@ export function ProgrammeNoteContent({
   /**
    * ── The order, and why it is this one ─────────────────────────────────────────────
    *
-   * Hero, then what the title *is*, then where to watch it, then what to watch next, then
-   * the episodes, then the things you do once you have watched.
+   * Hero, then the two things you *own* about the title — your rating, and the control
+   * that destroys everything you own about it — then what the title is, where to watch
+   * it, what to watch next, the episodes, and the cast.
    *
    * The three streamed facts used to arrive as one node in that order. Cast belongs at the
    * bottom and the other two at the top, so the group is now two nodes — `liveFacts` and
@@ -150,9 +151,8 @@ export function ProgrammeNoteContent({
    * and always resolved independently; the group was an ordering, and the ordering now
    * belongs to this file, which is the thing that knows the order.
    *
-   * Remove is last, behind everything, under its warning. It destroys your watches and
-   * your rating and nothing brings them back — the scroll is doing real work, and the
-   * screen this restructure follows puts it a thumb's width from *Mark watched*.
+   * Cast is last, because it is the section you scroll to out of curiosity rather than to
+   * do something with.
    */
   return (
     <div className="px-4 py-5">
@@ -161,6 +161,32 @@ export function ProgrammeNoteContent({
         posterTransitionName={posterTransitionName}
         onStateChange={onStateChange}
       />
+
+      {/* Your rating and *Remove from library*, directly under the hero.
+          
+          Both used to sit at the foot, below the episode list, on the argument that each
+          is reached for far less often than anything above it. The rating is genuinely
+          one of the few things MediaSafe *owns* about a title — everything between here
+          and the episodes is borrowed — and burying it under sixty episode rows made the
+          one owned fact the hardest thing on the page to reach.
+
+          **Remove keeps its warning and loses its scroll.** The scroll was doing real
+          work: it destroys your watches and your rating and nothing brings them back.
+          What replaces that is the confirmation `RemoveControl` already owns, which is
+          the guard that was always the real one — the distance was only ever a second
+          line of defence, and it cost the rating its place. */}
+      <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
+        <RatingControl
+          libraryEntryId={detail.libraryEntryId}
+          titleName={detail.name}
+          rating={detail.rating}
+          onRated={onRated}
+        />
+
+        <div className="mt-5">
+          <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
+        </div>
+      </section>
 
       {/* Synopsis and watch providers — each its own card, each streamed. */}
       {liveFacts}
@@ -201,25 +227,10 @@ export function ProgrammeNoteContent({
         />
       </section>
 
-      <section className={`${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
-        <RatingControl
-          libraryEntryId={detail.libraryEntryId}
-          titleName={detail.name}
-          rating={detail.rating}
-          onRated={onRated}
-        />
-      </section>
-
       {/* Cast, last of the borrowed facts and last of the cards: it is the section you
           scroll to out of curiosity rather than to do something with. */}
       {cast}
 
-      {/* Not in a card. Everything above is something to read or a thing you do to the
-          title; this is the one action that destroys what MediaSafe owns about it, and
-          giving it the same treatment as the rating would file it as one more setting. */}
-      <div className={PROGRAMME_NOTE_SECTION}>
-        <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
-      </div>
     </div>
   );
 }
