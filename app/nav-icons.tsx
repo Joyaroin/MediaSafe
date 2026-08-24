@@ -67,20 +67,31 @@ export function ListsIcon({ className }: { className?: string }) {
 }
 
 /**
- * Three columns of rising height — issue #227's own drawing, and the sixth in this file.
+ * A head over a pair of shoulders — issue #249's own drawing, and the sixth in this file.
  *
- * It is bars rather than a curve for the reason the header gives: *a magnifier would be the
- * only curve in the application*, and a line chart's glyph would be the second. Three
- * rectangles sharing a baseline are the same vocabulary `SearchIcon` and `ListsIcon` are
- * drawn in, and they say *a comparison of quantities* without borrowing a shape from a
- * chart this ticket does not ship.
+ * It replaces `StatsIcon`, the three rising columns #227 drew, at both call sites at once:
+ * `/stats` is gone, and the phone's fourth tab and the sidebar's fifth primary row both
+ * lead to You now. The bars went with the page rather than being kept for a destination
+ * that no longer reports anything — an icon with no route behind it is the placeholder
+ * `SPEC.md` §9 forbids, one glyph smaller.
+ *
+ * **A square head, not a round one**, which is the whole design problem here. Every avatar
+ * mark in the world is a circle over an arc, and a circle would be the second curve in an
+ * application whose one rule about glyphs is that *a magnifier would be the only curve in
+ * it*. So the head is a square and the shoulders are a wider rectangle beneath it —
+ * `LibraryIcon`'s cells and `SettingsIcon`'s rules are the same vocabulary, and the shape
+ * still reads as a person because the proportion does the work the curve usually does.
+ *
+ * The gap between the two is `4` units at this viewBox, wide enough to survive being drawn
+ * at `19px` on the tab bar and `16px` in the sidebar without the two shapes fusing into one
+ * blob — the failure that would make this glyph unreadable at exactly the two sizes it is
+ * ever drawn at.
  */
-export function StatsIcon({ className }: { className?: string }) {
+export function YouIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="2" y="14" width="5" height="8" fill="currentColor" />
-      <rect x="9.5" y="8" width="5" height="14" fill="currentColor" />
-      <rect x="17" y="2" width="5" height="20" fill="currentColor" />
+      <rect x="8" y="2" width="8" height="8" fill="currentColor" />
+      <rect x="3" y="14" width="18" height="8" fill="currentColor" />
     </svg>
   );
 }

@@ -2,7 +2,6 @@ import { revalidateTag, unstable_cache, updateTag } from "next/cache";
 
 import {
   accountFigures,
-  accountStats,
   getListDetail,
   getTitleDetail,
   libraryEntryIdForTitle,
@@ -13,7 +12,6 @@ import {
   listYouListCards,
   listYouRails,
   type AccountFigures,
-  type AccountStats,
   type LibraryEntryRow,
   type LibraryStateGroupEntry,
   type ListCard,
@@ -97,8 +95,14 @@ import type { TitleKind } from "@/tmdb/mirror";
  * Issue #226 added three: the reader pays for up next, the lists and the title detail on
  * every navigation, and all three are **owned** — rows this account wrote, or derived from
  * them — so a write is the only thing that can make them wrong. Issue #227 added the
- * fifth, `stats`, which is the same category one step further out: every figure on that
- * page is an aggregate over those same owned rows.
+ * fifth, which is the same category one step further out: the figures on it are aggregates
+ * over those same owned rows.
+ *
+ * **That fifth fact was called `stats` until issue #249**, and #227's own entry for it
+ * said the rename was #249's to make *once there is one page left to name it after*. There
+ * is: `/stats` is deleted and `/you` is the only reader of the fact, so it is `you` now.
+ * The rename is the whole of the churn — every write that busted `stats` busts `you`, in
+ * the same rows, and no read changed hands.
  *
  * A *fact* rather than a *read*, because several functions can answer one fact and they
  * must not be able to disagree about it. `listUpNextRails` and `listWatchlistFilms` are
@@ -120,7 +124,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * and `docs/adr/0003-the-clock-is-an-input-not-a-window.md` is why the day in some of the
  * keys below is not one.
  */
-export type CachedRead = "library" | "up-next" | "lists" | "title-detail" | "stats";
+export type CachedRead = "library" | "up-next" | "lists" | "title-detail" | "you";
 
 /**
  * An account and a fact — the shape every **owned** tag has. (`borrowedTagFor`, in
@@ -225,46 +229,25 @@ export const CACHED_READS = {
    *  current_date`, so the season grid changes at midnight even when nothing was written. */
   getTitleDetail: { cachedAs: "title-detail", readsCurrentDate: true },
   /**
-   * Issue #227's Stats page — the whole of it, in one entry.
-   *
-   * **`readsCurrentDate` is emphatically true**, and this read reaches the clock by both
-   * routes this field exists to catch. It selects from `library_entry_state` and
-   * `library_entry_remaining`, so the count per derived state and the episodes remaining
-   * move at midnight exactly as Up next's do; and four of its eight statements consult
-   * `now()` directly, for the streak, the two averages and the activity window. The
-   * streak is the sharpest case in the application: it is *consecutive days up to
-   * **today***, so without the day in the key a reader who watched something yesterday
-   * would be shown yesterday's streak for as long as they wrote nothing — and a streak
-   * that will not fall to zero is a streak that means nothing.
-   */
-  accountStats: { cachedAs: "stats", readsCurrentDate: true },
-  /**
-   * Issue #247's You page — the six figures, in one entry.
-   *
-   * **It shares `stats` rather than declaring a fact of its own.** The vocabulary's rule
-   * is the one this file states over the Up next rails: reads that go stale on the same
-   * writes share a fact, *because a vocabulary that let those be busted separately would
-   * let them be busted separately by mistake*. These two are the strongest case of it in
-   * the application — `accountFigures` reads the same two statements `accountStats` reads
-   * first, over the same rows, so there is no write in `INVALIDATES` that changes one and
-   * not the other. A second name would be a second list to keep in step, bought with
-   * nothing.
-   *
-   * The name outliving the page is deliberate rather than overlooked: `/stats` goes in
-   * issue #249, and renaming the fact is that ticket's to do once there is one page left
-   * to name it after. A rename here would touch every write row for no behaviour.
+   * Issue #247's You page — the six figures, in one entry, and since issue #249 the only
+   * read of the `you` fact. It shared the fact with `accountStats` until then, on the
+   * vocabulary's own rule: reads that go stale on the same writes share a fact, *because a
+   * vocabulary that let those be busted separately would let them be busted separately by
+   * mistake*. `/stats` is gone and its read went with it, so the sharing is now history
+   * rather than a constraint — but the write rows below are unchanged, because they were
+   * never per-read in the first place.
    *
    * **`readsCurrentDate` is true**, on this field's own stated line: *does this query
    * touch a derived view, or an `air_date` comparison, at any depth?* `libraryTotals`
-   * selects from `library_entry_remaining` and `library_entry_state`, and both derive
-   * *released* from `air_date <= current_date`.
+   * joins `library_entry_state`, which derives *released* from `air_date <= current_date`.
    *
    * It is worth recording that no figure this read **returns** is known to move at
    * midnight: *shows completed* reads the `finished` branch of `library_entry_state`,
    * which tests `in_production` and *every season-one-and-above episode watched* and no
    * date at all, and the branches above it are date-free too. The clock reaches this
-   * statement through `episodes remaining` and the `caught_up` branch, neither of which
-   * You prints.
+   * statement only through the `caught_up` branch, which You does not print. (#249 removed
+   * the second route it used to reach it by: `episodesRemaining`, summed off
+   * `library_entry_remaining` for the Stats page, went when that page did.)
    *
    * That analysis is exactly why the field is `true` rather than `false`. It rests on the
    * internal structure of a view in another file, so it is the kind of thing that is
@@ -272,7 +255,7 @@ export const CACHED_READS = {
    * docblock prices both mistakes: wrong in this direction costs one read a day, wrong in
    * the other is a surface frozen at the day it was last written to.
    */
-  accountFigures: { cachedAs: "stats", readsCurrentDate: true },
+  accountFigures: { cachedAs: "you", readsCurrentDate: true },
   /**
    * Issue #248's lists rail on `/you`. Shares `lists` with `listLists` and
    * `getListDetail` rather than declaring its own fact: it reads the identical name and
@@ -584,48 +567,30 @@ export function cachedLibraryEntryIdForTitle(
 }
 
 /**
- * Every figure on the Stats page — `stats/page.tsx`'s one read (issue #227).
+ * You's six figures — `you/page.tsx`'s one read (issue #247).
  *
- * ── One entry over eight statements ──────────────────────────────────────────────────
+ * ── One entry over two statements ────────────────────────────────────────────────────
  *
- * `accountStats` makes eight queries and returns one object (`db/access.ts`), so this is
- * one cache entry for the whole page rather than one per figure. That is what makes the
+ * One cache entry for the whole page rather than one per figure. That is what makes the
  * page cheap — a reader who navigates away and back pays nothing — and it is also what
- * keeps the figures on it consistent with each other for as long as the entry lives,
- * which eight separately-keyed reads would not.
+ * keeps the six figures consistent with each other for as long as the entry lives, which
+ * two separately-keyed reads would not.
  *
- * ── The day is in the key, and it is load-bearing here ───────────────────────────────
+ * ── The day is in the key ────────────────────────────────────────────────────────────
  *
- * `CACHED_READS`' own entry argues it: two of the eight statements read the derived views
- * and four consult `now()`. The streak is the case that would embarrass this page without
- * it — *consecutive days up to today* is a figure that must be allowed to fall to zero at
- * midnight, and no write does that.
+ * `CACHED_READS`' own entry argues it: `libraryTotals` selects from
+ * `library_entry_remaining` and `library_entry_state`, and both derive *released* from
+ * `air_date <= current_date`, so the read touches the clock even though no figure it
+ * returns is known to move at midnight.
  *
  * ── No argument beyond the account ───────────────────────────────────────────────────
  *
- * Unlike the library and title detail, this read takes no second parameter: `/stats` has
- * no sort, no id and no controls. So there is exactly one entry per account per day.
- */
-export function cachedAccountStats(userId: UserId): Promise<AccountStats> {
-  const read = unstable_cache(accountStats, ["accountStats", userId, serverDay()], {
-    tags: [tagFor("stats", userId)],
-  });
-
-  return read(userId);
-}
-
-/**
- * You's six figures — `you/page.tsx`'s one read (issue #247).
+ * Unlike the library and title detail, this read takes no second parameter: `/you` has no
+ * sort, no id and no controls. So there is exactly one entry per account per day.
  *
- * The same shape as `cachedAccountStats` above, and deliberately so: one entry for the
- * whole page, the account in the key, the day in the key, and no third argument because
- * `/you` has no sort, no id and no controls.
- *
- * **The key is `accountFigures`, and the tag is `stats`.** Those are two different things
- * and the difference is the point. The key is per read — sharing one with `accountStats`
- * would serve a nine-figure object to a page expecting six — while the tag is per *fact*,
- * and both reads answer the same fact about the same rows, so one `revalidateTag` drops
- * both. `CACHED_READS`' entry argues why that is a sharing rather than an omission.
+ * **The key is `accountFigures` and the tag is `you`.** Those are two different things: a
+ * key is per read, a tag is per *fact*, and this is the one read of that fact since
+ * issue #249 retired `/stats`.
  *
  * `unstable_cache` stores resolved values only, so there is no cache state in which a
  * database that is down comes back as an account that has watched nothing: a rejection
@@ -633,7 +598,7 @@ export function cachedAccountStats(userId: UserId): Promise<AccountStats> {
  */
 export function cachedAccountFigures(userId: UserId): Promise<AccountFigures> {
   const read = unstable_cache(accountFigures, ["accountFigures", userId, serverDay()], {
-    tags: [tagFor("stats", userId)],
+    tags: [tagFor("you", userId)],
   });
 
   return read(userId);
@@ -735,29 +700,29 @@ export function cachedYouRails(userId: UserId): Promise<YouRails> {
 export const INVALIDATES = {
   /** A new entry, in `watchlist`, mirroring the shared title on the way in — the grid, the
    *  phone's WATCHLIST group, every list row for that title, and its own detail page. */
-  addTitleToLibrary: ["library", "up-next", "lists", "title-detail", "stats"],
-  addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail", "stats"],
-  applyImportChunk: ["library", "up-next", "lists", "title-detail", "stats"],
-  recordWatch: ["library", "up-next", "title-detail", "stats"],
-  unwatch: ["library", "up-next", "title-detail", "stats"],
-  markWatchedUpTo: ["library", "up-next", "title-detail", "stats"],
-  abandonTitle: ["library", "up-next", "title-detail", "stats"],
-  abandonTitles: ["library", "up-next", "title-detail", "stats"],
-  unabandonTitle: ["library", "up-next", "title-detail", "stats"],
+  addTitleToLibrary: ["library", "up-next", "lists", "title-detail", "you"],
+  addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail", "you"],
+  applyImportChunk: ["library", "up-next", "lists", "title-detail", "you"],
+  recordWatch: ["library", "up-next", "title-detail", "you"],
+  unwatch: ["library", "up-next", "title-detail", "you"],
+  markWatchedUpTo: ["library", "up-next", "title-detail", "you"],
+  abandonTitle: ["library", "up-next", "title-detail", "you"],
+  abandonTitles: ["library", "up-next", "title-detail", "you"],
+  unabandonTitle: ["library", "up-next", "title-detail", "you"],
   /**
-   * **The one write that changes three surfaces and no figure on `/stats`.** Rating is the
+   * **The one write that changes three surfaces and no figure on `/you`.** Rating is the
    * single fact a library entry carries that no aggregate reads — not a count, not a
-   * decade, not a minute — so `stats` is absent here on purpose rather than by omission,
-   * and `tests/cache-tags.test.ts` is what keeps that a decision somebody made.
+   * minute — so `you` is absent here on purpose rather than by omission, and
+   * `tests/cache-tags.test.ts` is what keeps that a decision somebody made.
    */
   rateTitle: ["library", "up-next", "title-detail"],
   /** The membership survives the entry (#133), so the list rows change too. */
-  removeTitleFromLibrary: ["library", "up-next", "lists", "title-detail", "stats"],
-  deleteAccount: ["library", "up-next", "lists", "title-detail", "stats"],
+  removeTitleFromLibrary: ["library", "up-next", "lists", "title-detail", "you"],
+  deleteAccount: ["library", "up-next", "lists", "title-detail", "you"],
   /** `mirrorTitle`: the name, poster and year on every surface, and the episode rows the
    *  derived views are built from. */
-  refreshTitleMirror: ["library", "up-next", "lists", "title-detail", "stats"],
-  repointTitle: ["library", "up-next", "lists", "title-detail", "stats"],
+  refreshTitleMirror: ["library", "up-next", "lists", "title-detail", "you"],
+  repointTitle: ["library", "up-next", "lists", "title-detail", "you"],
   /** Writes `user.import_offer_answered_at`, which no cached read selects. */
   markImportOfferAnswered: [],
   /** `list` and `list_membership`, which only the two list reads join. */

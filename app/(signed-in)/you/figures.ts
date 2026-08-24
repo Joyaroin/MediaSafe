@@ -1,17 +1,19 @@
 /**
  * How You turns its figures into words — issue #247, and every function here is pure.
  *
- * The split is `stats-figures.ts`'s, for the reason that file gives: nothing here reads a
- * row, so all of it is exercised without a database and without a browser
- * (`tests/you-figures.test.ts`), and what is left in the surface is layout.
+ * The split is the retired Stats page's, for the reason that page's own figures module
+ * gave: nothing here reads a row, so all of it is exercised without a database and without a
+ * browser (`tests/you-figures.test.ts`), and what is left in the surface is layout.
  *
- * ── Why this is not `stats-figures.ts` ───────────────────────────────────────────────
+ * ── The duplication `plural` was, and is not any more ────────────────────────────────
  *
- * You replaces Stats rather than sitting beside it — issue #249 removes `/stats` and that
- * module with it. Importing from a file this ticket's sibling deletes would make the
- * deletion a rewrite of this page, so the two small things You needs from it are here
- * instead. `plural` is the whole of the duplication and it is nine lines; it goes when
- * Stats does, and nothing is left pointing at a deleted module in the meantime.
+ * #247 copied `plural` out of the Stats page's figures module rather than importing it,
+ * because You replaced Stats rather than sitting beside it, and importing from a module its
+ * sibling ticket would delete would have made that deletion a rewrite of this page. The note
+ * said the copy goes when Stats does. **Issue #249 is that day**, and it went the other way
+ * round: the page and its module are gone, and this is now the only `plural` in the
+ * application. `library/progress-remaining.ts` imports it from here — the one caller the
+ * deleted module had that was not Stats itself.
  *
  * ── One rule runs through all of it ──────────────────────────────────────────────────
  *
@@ -29,8 +31,11 @@ const MINUTES_PER_HOUR = 60;
 const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24;
 
 /**
- * A month, in minutes, over the mean Gregorian month of `365.2425 / 12` days — the same
- * constant `db/access.ts` averages against, so *a month* means one thing in the codebase.
+ * A month, in minutes, over the mean Gregorian month of `365.2425 / 12` days. It was the
+ * same constant `db/access.ts` averaged *episodes per month* against until issue #249
+ * retired that figure with the Stats page; this is the only place the mean now lives, and
+ * the arithmetic is spelled out above so it stays a stated definition rather than a
+ * remembered one.
  *
  * A mean rather than a calendar month, because watch time is a duration and not a span
  * between two dates: there is no month it could be *the length of*. February would make
@@ -122,9 +127,9 @@ export function initialsFrom(name: string): string {
  *
  * **A watch with no date is missing from nothing here**, and the sentence must not imply
  * otherwise. The same glossary entry: *a watch with no date still counts: this is derived
- * from what you watched, not when.* Stats' `undatedNote` says *not counted here*, which is
- * true of a streak and of an activity window and is false of every figure on this page —
- * copying it across would have been the page's one dishonest sentence. It is still named,
+ * from what you watched, not when.* The retired Stats page's own note said *not counted
+ * here*, which is true of a streak and of an activity window and is false of every figure
+ * on this page — copying it across would have been the page's one dishonest sentence. It is still named,
  * because the ticket asks for it named and because a reader who imported a library with
  * dateless watches should learn that from the page rather than wonder.
  *

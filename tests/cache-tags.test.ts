@@ -71,7 +71,6 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     listLists: vi.fn(),
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
-    accountStats: vi.fn(),
     accountFigures: vi.fn(),
     listYouListCards: vi.fn(),
     listYouRails: vi.fn(),
@@ -200,7 +199,6 @@ const {
   READS,
   UNCACHED_READS,
   cachedAccountFigures,
-  cachedAccountStats,
   cachedLibraryEntries,
   cachedLibraryEntryIdForTitle,
   cachedListDetail,
@@ -256,12 +254,10 @@ const CACHED = {
   listLists: (userId: typeof mine) => cachedLists(userId),
   getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
   getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
-  /** Issue #227. It takes no second argument at all — `/stats` has no controls — so it is
-   *  the one entry here whose call is the whole of its signature. */
-  accountStats: (userId: typeof mine) => cachedAccountStats(userId),
-  /** Issue #247. Also signature-complete in one argument, and tagged `stats` alongside the
-   *  read above rather than under a fact of its own — `cache/tags.ts` argues why, and the
-   *  bust assertions below hold both against the same tag as a result. */
+  /** Issue #247, and since #249 the only read of the `you` fact. It takes no second
+   *  argument at all — `/you` has no controls — so it is the one entry here whose call is
+   *  the whole of its signature. It shared the fact with the retired `/stats` page's read
+   *  until #249 deleted that page; `cache/tags.ts` carries the rename. */
   accountFigures: (userId: typeof mine) => cachedAccountFigures(userId),
   /** Issue #248's lists rail on `/you`. Tagged `lists` alongside `listLists` and
    *  `getListDetail`, so the bust assertions below hold all three against one tag. */
@@ -380,7 +376,8 @@ describe("every key carries an account", () => {
   });
 
   /**
-   * The same assertion for all eight, so a new cached read cannot arrive with a key that
+   * The same assertion for every entry in `CACHED`, so a new cached read cannot arrive
+   * with a key that
    * names its entity and not its reader. `CACHED_READS` is the module's own table of what
    * each read is called and which tag it carries; this holds the calls against it.
    */
@@ -439,7 +436,7 @@ describe("every key carries an account", () => {
 
   /**
    * Issue #226's *two accounts cannot see each other's up next, lists or title detail
-   * under any cache state*, asked of all eight rather than of the library alone — because
+   * under any cache state*, asked of every cached read rather than of the library alone — because
    * the ticket adds seven reads and the leak it forbids is a property of each key, not of
    * the module as a whole.
    *
@@ -499,8 +496,8 @@ describe("every write busts its tags", () => {
       `library:${mine}`,
       `up-next:${mine}`,
       `title-detail:${mine}`,
-      // #227: a watch is what every figure on `/stats` is made of.
-      `stats:${mine}`,
+      // #227, repointed by #249: a watch is what every figure on `/you` is made of.
+      `you:${mine}`,
     ]);
     await cachedLibraryEntries(mine);
     await cachedLibraryEntries(yours);
@@ -532,8 +529,8 @@ describe("every write busts its tags", () => {
       [`up-next:${yours}`, "max"],
       [`lists:${yours}`, "max"],
       [`title-detail:${yours}`, "max"],
-      // The mirror carries `runtime_mins` and `release_year`, which only `/stats` reads.
-      [`stats:${yours}`, "max"],
+      // The mirror carries `runtime_mins`, which of the owned surfaces only `/you` reads.
+      [`you:${yours}`, "max"],
     ]);
     expect(cacheState.updated).toEqual([]);
   });
@@ -551,7 +548,7 @@ describe("every write busts its tags", () => {
       `up-next:${yours}`,
       `lists:${yours}`,
       `title-detail:${yours}`,
-      `stats:${yours}`,
+      `you:${yours}`,
     ]);
   });
 
@@ -593,14 +590,17 @@ describe("every write busts its tags", () => {
 });
 
 /**
- * Issue #227's own criterion: *every read on this page is cached and tagged through the tag
- * module, and every watch write busts them.*
+ * Issue #227's own criterion, inherited by You when issue #249 retired the Stats page it
+ * was written for: *every read on this page is cached and tagged through the tag module,
+ * and every watch write busts them.*
  *
- * The Stats page is the one surface in the application whose entire content is derived from
- * `watch`, so a watch write that failed to bust it would leave a reader looking at a figure
- * their own action had just made wrong — with no expiry behind the entry to heal it.
+ * You is the one surface in the application whose entire content is derived from `watch`
+ * and the library rows behind it, so a watch write that failed to bust it would leave a
+ * reader looking at a figure their own action had just made wrong — with no expiry behind
+ * the entry to heal it. The five writes are unchanged from #227's list: the fact was
+ * renamed, and nothing about which writes reach it was.
  */
-describe("the Stats page's figures follow the watches they are made of", () => {
+describe("You's figures follow the watches they are made of", () => {
   it("gives the reader figures their own watch landed in, whichever write made it", async () => {
     for (const write of [
       "recordWatch",
@@ -613,15 +613,15 @@ describe("the Stats page's figures follow the watches they are made of", () => {
       cacheState.tags.clear();
       cacheState.stale.clear();
       cacheState.updated.length = 0;
-      reads.accountStats.mockClear();
+      reads.accountFigures.mockClear();
 
-      await cachedAccountStats(mine);
+      await cachedAccountFigures(mine);
       invalidateFor(write, mine);
-      await cachedAccountStats(mine);
+      await cachedAccountFigures(mine);
 
       expect(
-        reads.accountStats,
-        `${write} did not bust the stats tag`,
+        reads.accountFigures,
+        `${write} did not bust the you tag`,
       ).toHaveBeenCalledTimes(2);
     }
   });
@@ -634,31 +634,31 @@ describe("the Stats page's figures follow the watches they are made of", () => {
    */
   it("leaves the figures standing when only a rating changed", async () => {
     await cachedLibraryEntries(mine);
-    await cachedAccountStats(mine);
+    await cachedAccountFigures(mine);
     reads.listLibraryEntries.mockClear();
-    reads.accountStats.mockClear();
+    reads.accountFigures.mockClear();
 
     invalidateFor("rateTitle", mine);
 
     await cachedLibraryEntries(mine);
-    await cachedAccountStats(mine);
+    await cachedAccountFigures(mine);
     expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
-    expect(reads.accountStats).not.toHaveBeenCalled();
+    expect(reads.accountFigures).not.toHaveBeenCalled();
   });
 
   /**
-   * Abandoning moves a title between two of the five derived states, so the count per state
-   * changes with no watch written at all. It is the write most likely to be forgotten here,
-   * because nothing about it looks like a watch.
+   * Abandoning moves a title between two of the five derived states, so *shows completed*
+   * can change with no watch written at all. It is the write most likely to be forgotten
+   * here, because nothing about it looks like a watch.
    */
-  it("moves the count per state when a title is abandoned", async () => {
-    await cachedAccountStats(mine);
-    reads.accountStats.mockClear();
+  it("moves the figures when a title is abandoned", async () => {
+    await cachedAccountFigures(mine);
+    reads.accountFigures.mockClear();
 
     invalidateFor("abandonTitle", mine);
 
-    await cachedAccountStats(mine);
-    expect(reads.accountStats).toHaveBeenCalledTimes(1);
+    await cachedAccountFigures(mine);
+    expect(reads.accountFigures).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1438,7 +1438,7 @@ describe("the reads that are cached, and the one that must never be", () => {
     const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
 
     expect(cached).toEqual([
-      // `tags.ts` — the owned eleven, in file order. #250 replaced two of #138's reads
+      // `tags.ts` — the owned reads, in file order. #250 replaced two of #138's reads
       // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #248 adds
       // two more, `listYouListCards` and `listYouRails`.
       "listLibraryEntries",
@@ -1448,8 +1448,7 @@ describe("the reads that are cached, and the one that must never be", () => {
       "getListDetail",
       "getTitleDetail",
       "libraryEntryIdForTitle",
-      "accountStats",
-      // #247's, and the ninth owned read.
+      // #247's. #249 retired `accountStats`, which used to sit above it.
       "accountFigures",
       "listYouListCards",
       "listYouRails",

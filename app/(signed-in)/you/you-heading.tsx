@@ -1,12 +1,13 @@
 /**
  * The You destination's own head — issue #247, and the same three-caller shape
- * `stats-heading.tsx`, `lists-heading.tsx` and `library-heading.tsx` have: the populated
+ * `lists-heading.tsx` and `library-heading.tsx` have — and the retired Stats page's own
+ * heading had before #249 deleted it: the populated
  * screen, the empty one, and the failure boundary all render it, so a read that fails is
  * visibly *You, which did not load* rather than a bare error on a blank page.
  *
  * Turn 9's `screen-title` at 34px in `--ink`, on the 22px gutter, with no hairline under
- * it — level with the four phone tabs, which is what this destination becomes when #249
- * retires Stats and points the bar here.
+ * it — level with the four phone tabs, the fourth of which this destination became when
+ * #249 retired Stats and pointed the bar here.
  *
  * ── Why the page is titled at all, when the hero already names the reader ────────────
  *

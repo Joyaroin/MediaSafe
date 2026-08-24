@@ -220,8 +220,10 @@ breaks:
 - **No `watched_through`, no `watched_count`, no `watch_status`.** The five states, progress and up
   next are SQL views evaluated on every read.
 - **Every day and year boundary is computed `AT TIME ZONE` the user's IANA zone**, never UTC.
-  **The zone is a read-time lens, not a write-time stamp** — the streak query joins `u.timezone` on
-  every past watch, so changing it re-buckets all history.
+  **The zone is a read-time lens, not a write-time stamp** — a query that buckets by day joins
+  `u.timezone` on every past watch, so changing it re-buckets all history. (The worked example
+  here was the streak query until #249 retired it with `/stats`; the rule is unchanged, and the
+  next dated figure to ship inherits it.)
   ([#28](https://github.com/Joyaroin/MediaSafe/issues/28) established this and found it written down
   nowhere; it is written down here.)
 
@@ -408,7 +410,9 @@ Four things about it that are rules and not implementation:
   card exists to answer; the rule was written to stop the landing screen becoming a progress
   ledger, and one honest remainder does the opposite of that. `DESIGN.md`'s permanent exclusions
   carry the same narrowing, which [#227](https://github.com/Joyaroin/MediaSafe/issues/227) had
-  already begun for `/stats`.
+  already begun for `/stats` — a page [#249](https://github.com/Joyaroin/MediaSafe/issues/249)
+  has since deleted, which narrows the exclusion no further: the rule about counts on *this*
+  surface never depended on there being another one.
 
   The desktop rail tile is **unchanged and still carries no count** — it is a poster, a name and a
   year, and #137's *no count, no badge, no state label, no episode name* still describes it
@@ -747,10 +751,18 @@ What came in with them, and what did not:
   put a rail of every list above the phone's Library grid, so the phone reaches every list in
   one tap from a tab it already lands on, and the tab that used to do that job had nothing
   left to do. #227 spent it on **Stats**, which had no way in at all. The desktop sidebar
-  makes the opposite trade and keeps both — six destinations now, Up next, Library, Search,
-  Lists, Stats, a rule, then Settings — because §6's constraint 6 licenses *two genuinely
+  makes the opposite trade and keeps both — six destinations, Up next, Library, Search,
+  Lists, a fifth, a rule, then Settings — because §6's constraint 6 licenses *two genuinely
   different layouts, not one that stretches*, and the tab budget being solved here is one the
   desktop does not have.
+
+  **That fifth destination is You, not Stats, since
+  [#249](https://github.com/Joyaroin/MediaSafe/issues/249), 2026-08-24.** `/stats` is deleted
+  — the route, the page and the heading — and the phone's fourth tab and the sidebar's sixth
+  entry both point at `/you` instead. The counts above are unchanged by it: four tabs and six
+  desktop destinations, exactly as #227 left them. What changed is what the last one leads
+  to, and #245's direction is why — the six figures You reports are the ones this product is
+  about, and the nine Stats reported are not.
 
   **`/lists` and `/lists/[listId]` are untouched.** The rail leads to them, the sidebar links
   to them, deep links keep working. A tab was retired; a destination was not.
@@ -776,16 +788,36 @@ only place it has been: a **Stats** tab appeared on the day there was a Stats pa
 Lists tab went the day the rail left it nothing to do. A tab is a way to a page, and it lasts exactly
 as long as it is the way.
 
+**#249 is the same sentence collecting on Stats itself.** The page went, so the tab went with
+it — repointed at You rather than left leading nowhere, which is the failure the rule exists to
+prevent. A tab that outlives its page is a dead tab, and a dead tab is worse than a tab that
+never existed: the reader learns the product is broken rather than that the feature is absent.
+
 ### Specced, but later
 
 Desktop rails other than Up next's three (Upcoming) · discovery by genre · recommendations ·
-upcoming air dates · watch providers · ~~stats~~ · ~~day streak~~ · year in review.
+upcoming air dates · watch providers · stats · day streak · year in review.
 
 **Stats and the day streak left this list by
-[#227](https://github.com/Joyaroin/MediaSafe/issues/227), 2026-08-23**, and they are struck
-rather than deleted because a thing that simply vanished from a *later* list reads as a thing
-nobody ever deferred. Both now ship, on a **Stats** destination — the phone's fourth tab and
-the desktop sidebar's sixth entry — reporting only what the data actually supports.
+[#227](https://github.com/Joyaroin/MediaSafe/issues/227), 2026-08-23**, struck rather than
+deleted because a thing that simply vanished from a *later* list reads as a thing nobody ever
+deferred. Both shipped on a **Stats** destination — the phone's fourth tab and the desktop
+sidebar's sixth entry — reporting only what the data actually supported.
+
+**Both are back on this list, un-struck, by
+[#249](https://github.com/Joyaroin/MediaSafe/issues/249), 2026-08-24**, and the un-striking is
+the same argument run in reverse: a thing that left twice should read as a thing that left
+twice, and a permanent strike-through would say it shipped and stayed. #249 deletes `/stats`
+outright. #245's direction asks for the six figures You reports rather than the nine Stats
+reported, so the figures that go back under *later* are the ones You does not print — **the day
+streak, recently finished, monthly activity, the decade distribution and the five state
+counts**. They are deferred again rather than forbidden: nothing here says a streak is a bad
+idea, only that this product does not have a surface for one, and the schema still carries the
+index it would be read from.
+
+[#229](https://github.com/Joyaroin/MediaSafe/issues/229), which specced four charts for that
+page, is closed **won't-do** rather than implemented — it is a design for a surface that will
+not exist.
 
 Two of this section's neighbours are load-bearing on that and did **not** move.
 **Discovery by genre stays**, and so does any genre statistic: there is no genre column, no
@@ -801,8 +833,10 @@ desktop still reaches both only through Library's own chips (*Library — filter
 Year in review cannot be v1 by definition — it needs a year of data. Real episode names are not
 separately scheduled; they are a property of every episode surface and ship with it.
 
-*(The schema carries a streak index anyway — §5. It is load-bearing now: `watch_user_id_watched_at_idx`
-is what the streak query reads, and #227 is where the bet placed in build step 1 paid.)*
+*(The schema carries a streak index anyway — §5. `watch_user_id_watched_at_idx` was load-bearing
+for exactly one page's lifetime: #227 is where the bet placed in build step 1 paid, and #249 took
+the reader of it away again. The index stays — it is the same bet, still cheap, and dropping it
+would be a migration spent on the assumption that no dated figure ever ships.)*
 
 ### Out of scope entirely
 
@@ -1001,10 +1035,11 @@ document will ever find, which is the drift this section exists to stop.
   is stale for the same reason: nothing sits above that column on desktop any more, and the pane is
   `top: 0` now (`programme-note.tsx`). The Phone section of Navigation is unaffected by any of
   this — the phone's fourth tab is Lists (#146), and it still reaches Settings through the
-  masthead's icon rather than a fifth one. **The tab named there is Stats since
-  [#227](https://github.com/Joyaroin/MediaSafe/issues/227)** (§9); the half of the sentence
+  masthead's icon rather than a fifth one. **The tab named there was Stats from
+  [#227](https://github.com/Joyaroin/MediaSafe/issues/227) and is You since
+  [#249](https://github.com/Joyaroin/MediaSafe/issues/249)** (§9); the half of the sentence
   this correction is about — four tabs, Settings through the masthead and never a fifth tab —
-  is unchanged.
+  is unchanged by either.
 - **`DESIGN.md`'s Motion section claimed motion exists in exactly one place.** [#141](https://github.com/Joyaroin/MediaSafe/issues/141)
   adds a second: the poster that carries a reader from a tile into title detail, on both the
   phone's route push and the desktop's panel swap, morphed via React's `<ViewTransition>`

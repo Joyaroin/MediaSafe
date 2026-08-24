@@ -1,5 +1,5 @@
 import type { EpisodeDetail } from "@/db/access";
-import { plural } from "@/app/(signed-in)/stats/stats-figures";
+import { plural } from "@/app/(signed-in)/you/figures";
 import { episodeFullName } from "./season-grouping";
 
 /**
