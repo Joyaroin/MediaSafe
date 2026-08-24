@@ -229,6 +229,10 @@ describe("listYouRails", () => {
 
       expect(rails.shows.map((entry) => entry.titleName)).toEqual(["A Show"]);
       expect(rails.films.map((entry) => entry.titleName)).toEqual(["A Film"]);
+      // `seedTitle` gives every film a runtime and every show none — `title.runtime_mins`
+      // is a film-only mirrored fact (`title-meta-line.ts`).
+      expect(rails.shows[0].runtimeMins).toBeNull();
+      expect(rails.films[0].runtimeMins).toBe(104);
     });
   });
 

@@ -4424,6 +4424,7 @@ export async function listYouRails(
       titleName: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
       kind: title.kind,
     })
     .from(libraryEntry)
@@ -4459,6 +4460,7 @@ export async function listYouRails(
       titleName: row.titleName,
       releaseYear: row.releaseYear,
       posterPath: row.posterPath,
+      runtimeMins: row.runtimeMins,
     };
     (row.kind === "show" ? shows : films).push(entry);
   }

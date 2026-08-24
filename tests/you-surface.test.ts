@@ -55,6 +55,7 @@ function titleEntry(overrides: Partial<LibraryStateGroupEntry> = {}): LibrarySta
     titleName: "A Show",
     releaseYear: 2020,
     posterPath: null,
+    runtimeMins: null,
     ...overrides,
   };
 }
@@ -267,6 +268,17 @@ describe("the lists, shows and films rails — issue #248", () => {
     const markup = render(figures(), { shows: [titleEntry({ libraryEntryId: "entry-42" })] });
 
     expect(markup).toContain('href="/library/entry-42"');
+  });
+
+  it("prints a film's runtime beside its year, and a show's year alone", () => {
+    const markup = render(figures(), {
+      shows: [titleEntry({ releaseYear: 2019, runtimeMins: 45 })],
+      films: [titleEntry({ releaseYear: 2021, runtimeMins: 104 })],
+    });
+
+    expect(markup).toContain("2021 · 104 min");
+    expect(markup).toContain(">2019<");
+    expect(markup).not.toContain("2019 · 45 min");
   });
 
   it("links a list card to its own list", () => {

@@ -153,8 +153,8 @@ export function YouSurface({
         here beyond simply rendering all three.
       */}
       <YouListsRail lists={lists} />
-      <YouTitleRail label="Shows" entries={shows} />
-      <YouTitleRail label="Films" entries={films} />
+      <YouTitleRail label="Shows" kind="show" entries={shows} />
+      <YouTitleRail label="Films" kind="film" entries={films} />
     </div>
   );
 }
