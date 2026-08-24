@@ -319,9 +319,39 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
+   * The episode page — issue #253, the fourth segment under the library and the one most
+   * exposed to the inheritance problem this audit is about: without its own boundary a
+   * reader tapping an episode would be shown `[entryId]`'s pending render, which is the
+   * *title's* surface standing in for an episode's. `DESIGN.md` §9 treats that as a
+   * heading naming the wrong screen rather than a cosmetic slip, and *own segment, never
+   * inherited* is the clause of this audit that catches it.
+   *
+   * The route is also the one this ticket adds to the manifest, so this is the assertion
+   * that fails if it stops being built at all — the audits above are all `toEqual([])`,
+   * and an empty list is what a check that has stopped looking returns too.
+   */
+  it("finds the boundary on the episode page #253 adds", () => {
+    expect(hasBoundary("(signed-in)/library/[entryId]/episode/[episodeId]")).toBe(true);
+  });
+
+  /**
+   * And the route itself is in the build, behind the matcher like everything else.
+   *
+   * It needs no exemption and gets none: `EXEMPT` above is the three routes a reader may
+   * reach with no session, and an episode of a title in *your* library is the opposite of
+   * that. Asserted positively rather than left to `audit.unprotected` being empty, for the
+   * reason the boundary floor above exists — so that a route silently dropped from the
+   * build fails here instead of passing three emptiness checks.
+   */
+  it("builds the episode route, beneath the entry that owns it", () => {
+    expect(built.routes).toContain("/library/[entryId]/episode/[episodeId]");
+    expect(matcherRunsOn(built.matcher, "/library/entry-1/episode/episode-9")).toBe(true);
+  });
+
+  /**
    * The six segments of #181's eleven that still exist, asserted the same way — a floor
    * against the audit quietly passing rather than actually looking, on the batch that
-   * ticket is responsible for rather than the one before it.
+   * ticket is responsible for rather than the one before it. #250 deleted the other five.
    */
   it("finds the boundary on every segment #181 converts that still exists", () => {
     expect(hasBoundary("(signed-in)/lists")).toBe(true);

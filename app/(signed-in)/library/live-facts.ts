@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  cachedEpisodeSynopsis,
   cachedTitleCastAndCrew,
   cachedTitleSynopsis,
   cachedTitleWatchProviders,
@@ -12,8 +13,14 @@ import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
 
 /**
- * The three live-only reads of title detail — synopsis, cast and crew, watch providers —
- * issue #218. They used to fire from the browser after `LiveTitleFacts` mounted, one
+ * The live-only reads of title detail — synopsis, cast and crew, watch providers, and
+ * since issue #253 one episode's own synopsis beside them, which is the one read here
+ * that no title-level surface makes; `readEpisodeSynopsis`'s own docblock is why it is a
+ * fourth function rather than a fourth field of `LiveFacts`. Everything below about the
+ * cache, the `catch` and the account is common to all four.
+ *
+ * The original three are issue #218. They used to fire from the browser after
+ * `LiveTitleFacts` mounted, one
  * `useEffect` per section, each its own client round trip to a Server Action. That made the
  * page paint and then make three trips to TMDB. This module is what runs instead: the same
  * three reads, concurrently, on the server, before there is a page to send.
@@ -71,6 +78,39 @@ export function readSynopsis(
   tmdbId: number,
 ): Promise<Outcome<string | null>> {
   return outcomeOf(() => cachedTitleSynopsis(userId, kind, tmdbId), "title-synopsis");
+}
+
+/**
+ * One episode's own synopsis — issue #253, and the fourth read this module wraps.
+ *
+ * ── It is a fourth read, not a fourth field of `LiveFacts` ──────────────────────────
+ *
+ * `readLiveFacts` below runs three concurrently because one surface shows all three at
+ * once. No surface shows this one beside them: an episode page carries a synopsis and
+ * deliberately carries neither watch providers nor cast, because both are title-level
+ * facts already on the title page and each would be another live read on a surface
+ * reached by tapping a card (issue #253, and #245's own wording). So this joins the file
+ * rather than the tuple, taking the same `Outcome` treatment for the same reason — a
+ * failed synopsis is data the section renders, not a throw that takes the page.
+ *
+ * ── Its own `surface`, so a failure says which read it was ──────────────────────────
+ *
+ * `title-synopsis` and `episode-synopsis` are two different requests to two different
+ * TMDB endpoints, and the reference id a reader is shown is the Sentry event id
+ * (`errors/reference.ts`). Reusing the title's tag would make the two indistinguishable
+ * in the one place the distinction is worth having — the report you open when a reader
+ * quotes the id.
+ */
+export function readEpisodeSynopsis(
+  userId: UserId,
+  tmdbId: number,
+  seasonNo: number,
+  episodeNo: number,
+): Promise<Outcome<string | null>> {
+  return outcomeOf(
+    () => cachedEpisodeSynopsis(userId, tmdbId, seasonNo, episodeNo),
+    "episode-synopsis",
+  );
 }
 
 export function readCastAndCrew(

@@ -14,6 +14,7 @@ import type { WatchProvider } from "@/tmdb/live-facts";
 import type { TitleKind } from "@/tmdb/mirror";
 import {
   readCastAndCrew,
+  readEpisodeSynopsis,
   readLiveFacts,
   readSynopsis,
   readWatchProviders,
@@ -93,6 +94,34 @@ export async function titleSynopsisAction(
   tmdbId: number,
 ): Promise<Outcome<string | null>> {
   return readSynopsis(await requireUserId(), kind, tmdbId);
+}
+
+/**
+ * One episode's own synopsis — issue #253's *Try again*, the fourth of these and the only
+ * one that is not about a title.
+ *
+ * Everything the three above say applies unchanged: it requires a session (a Server Action
+ * is a POST endpoint anyone can call, and *no unauthenticated route may ever be added*
+ * carves out no exception for one that touches no owned row), it passes the account down
+ * because every cache key in this application carries one, and it busts nothing because it
+ * is a read.
+ *
+ * **It authorises the session, not the episode.** Deliberately, and it is the same call
+ * the three above make: what comes back is a public TMDB synopsis for an episode of a show
+ * the catalogue already serves to anyone on the unowned title page. There is nothing here
+ * that a reader could learn about another reader's library, so there is no library entry to
+ * check this against — and asking for one would mean this action taking an owned id purely
+ * to authorise a fact that is not owned.
+ *
+ * No `kind`: `episodeSynopsis` takes none, because a film has no episodes and TMDB has no
+ * endpoint to fork to. `tmdb/catalogue.ts`'s own docblock is where that lives.
+ */
+export async function episodeSynopsisAction(
+  tmdbId: number,
+  seasonNo: number,
+  episodeNo: number,
+): Promise<Outcome<string | null>> {
+  return readEpisodeSynopsis(await requireUserId(), tmdbId, seasonNo, episodeNo);
 }
 
 export async function titleCastAndCrewAction(

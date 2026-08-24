@@ -86,7 +86,7 @@ section exists so a reader does not take a superseded absolute below as current.
 | §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | Cards, fields, chips and pills carry 9–22px radii, and the poster's radius is a `--poster-radius` variable with three per-surface values (`14`/`10`/`9`) over a `7px` default. There is still **no radius scale** — these are per-surface measures, not a ramp. | `app/globals.css`, the four screens |
 | *A pill would be the first radius in the application* | Two pills: `Add` (17px) and `New list` (22px). | `catalogue-result.tsx`, `create-list-form.tsx` |
 | The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. The pairing itself still binds — #250's two rails hold `scroll-pl-[22px]` against `px-[22px]`. | `up-next/up-next-phone-rail.tsx` and the four screens |
-| §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 10; §10 now carries the corrected figure and the `grep` that settles it. | `app/globals.css` |
+| §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 11 — 10 after the redesign, and an eleventh (`still`) with issue #253. §10 carries the current figure and the `grep` that settles it. | `app/globals.css` |
 
 Two things below are **not** superseded, and were checked rather than assumed:
 
@@ -861,6 +861,36 @@ is describing the committed library.
   every surface that renders one renders the name beside it as real text, so an `alt` here
   would make a screen reader read every title twice.
 
+### The still — issue #253
+
+The frame at the top of an episode's page, over the `still_path` column issue #246 put in
+the mirror. **It is the poster's rule at the other ratio, not a second treatment.** Same
+`raised` ground, same `overflow: hidden`, same plain `<img>` for the same ADR-0001 reason,
+same `alt=""` and `aria-hidden` because the episode is named as real text directly beneath
+it. `app/(signed-in)/library/episode-still.tsx`, and the `still` utility beside `poster` in
+`app/globals.css`.
+
+Three things differ, and all three follow from what a still *is*:
+
+- **`16 / 9`, not `2 / 3`.** A still is a frame from the episode, so its ratio is the
+  broadcast one and not the printed one.
+- **Its own CDN ladder — `300 · 780`.** These are the sizes TMDB publishes for stills.
+  `154` and `342` are poster widths and answer with nothing here, so a shared constant
+  would have to be the union of two ladders and would be wrong for both.
+- **One radius, no custom property.** `poster` reads `--poster-radius` because three
+  surfaces draw a poster at three different radii. One surface draws a still, so a variable
+  would be a knob with nothing on the other end of it. It takes `poster`'s own `7px`
+  default, so the two agree by default rather than by coincidence.
+
+**The missing-artwork state is the frame, and nothing inside it.** Issue #245's user story
+48 asks for *a deliberate placeholder, so that a missing still does not collapse the row*,
+and it is worth being exact that this is the same answer §3 already gives for the poster
+rather than an exception to it: what was asked for is that the space is **held**, not that
+it is captioned, and holding it is what an `aspect-ratio` does. No glyph, no wordmark, no
+"no image" apology goes in the well — `app/poster.tsx` refuses one on the grounds that it
+*would be the only apology in a world that has none*, and nothing about an episode makes
+that less true.
+
 ### The morph
 
 Selecting a tile morphs its poster into the one on the surface that opens — the desktop
@@ -1202,14 +1232,19 @@ leaves pending only the facts it genuinely did not have.
 
 The previous file's real value was partly in naming what it had **no** token for, so that
 the next ticket would not add one and call it an oversight fix. The same list, for the world
-that shipped. `app/globals.css` is **33 `@theme` declarations and 10 `@utility` rules**, and
+that shipped. `app/globals.css` is **33 `@theme` declarations and 11 `@utility` rules**, and
 that is the whole of the system.
 
 (It was 25 and 6 before the linen redesign. The eight new declarations are `--color-ink`
-and the seven-step phone register; the four new rules are `screen-title`, `label-line`,
-`field-well` and `frosted`. This number has now been wrong three times — §11's own closing
-note records the previous two — which is the standing argument for counting it from the
-file rather than reading it here. `grep -c '^@utility' app/globals.css` is the check.)
+and the seven-step phone register; the four rules the redesign added are `screen-title`,
+`label-line`, `field-well` and `frosted`, and the eleventh is `still`, issue #253's — §8
+argues it, and it is the poster's rule at the broadcast ratio rather than a new idea.
+
+This number has now been wrong **four** times — §11's own closing note records the first
+two, and this ticket is the fourth — which is the standing argument for counting it from
+the file rather than reading it here. `grep -c '^@utility' app/globals.css` is the check,
+and it is the check because the count read off this line was wrong again the moment a
+rule was added without anyone looking here.)
 
 **There is no spacing scale.** No `--space-*`, no `--gutter`, no rhythm unit. Spacing is
 Tailwind's own default steps at the call site. A named scale would be a fifth thing to keep

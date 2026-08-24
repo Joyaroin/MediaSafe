@@ -21,6 +21,12 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     seasonNo: 2,
     episodeNo: 4,
     name: "The Long Night",
+    // #253's three mirrored fields, null by default and overridable like everything else
+    // here. `UpNextRow` reads none of them — it is the season list's row, not the episode
+    // page — so a default of null is the row rendering exactly what it always did.
+    stillPath: null,
+    airDate: null,
+    runtimeMins: null,
     watched: false,
     upNext: true,
     ...overrides,

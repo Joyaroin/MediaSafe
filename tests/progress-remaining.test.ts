@@ -6,6 +6,7 @@ import {
   remainingCount,
   remainingLine,
 } from "@/app/(signed-in)/library/progress-remaining";
+import type { EpisodeDetail } from "@/db/access";
 
 /**
  * Issue #228: progress and remaining, read from the same `episodes`
@@ -14,11 +15,22 @@ import {
  * second definition of the one those views already evaluate server-side.
  */
 
-const ep = (seasonNo: number, episodeNo: number, watched: boolean) => ({
+/**
+ * `stillPath`, `airDate` and `runtimeMins` are `null` on every episode here and are never
+ * read by anything under test — issue #253 put them on `EpisodeDetail` for the episode
+ * page, and progress and remaining are counts over `(seasonNo, episodeNo, watched)` that
+ * no artwork or runtime could change. They are written out rather than cast away so that
+ * this factory keeps producing a real `EpisodeDetail`, and a field added to that type in
+ * future still fails here rather than being absorbed by an `as`.
+ */
+const ep = (seasonNo: number, episodeNo: number, watched: boolean): EpisodeDetail => ({
   id: `${seasonNo}-${episodeNo}`,
   seasonNo,
   episodeNo,
   name: `Episode ${episodeNo}`,
+  stillPath: null,
+  airDate: null,
+  runtimeMins: null,
   watched,
   upNext: false,
 });

@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
+import { EpisodeStill } from "@/app/(signed-in)/library/episode-still";
 import {
   RECORDING_GLYPH,
   WatchSweep,
 } from "@/app/(signed-in)/library/watch-mark-motion";
-import { Still } from "@/app/still";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { QueuedEpisode, UpNextEntry } from "@/db/access";
 import {
@@ -55,16 +55,21 @@ import { queuedEpisodeFullName, useUpNextMark, type UpNextMark } from "./up-next
  *
  * ── Tapping the card ────────────────────────────────────────────────────────────────
  *
- * The title's own page, until #254 gives an episode one. The check is a sibling of the
- * link rather than a control inside it, so a thumb on the check is never also a
- * navigation — `SPEC.md`'s own rule for the season row's check, held here.
+ * **Episode detail** — `library/[entryId]/episode/[episodeId]`. #250 was written expecting
+ * to link to the title until an episode had a page of its own; #253 built that page first,
+ * so the card goes straight there and the interim never happened.
+ *
+ * The check is a sibling of the link rather than a control inside it, so a thumb on the
+ * check is never also a navigation — `SPEC.md`'s own rule for the season row's check, held
+ * here.
  */
 export function UpNextEpisodeCard({
   entry,
   aboveFold = false,
 }: {
   entry: UpNextEntry;
-  /** This card is in the rail's first visible run — the rail's to say (`app/still.tsx`). */
+  /** This card is in the rail's first visible run — the rail's to say
+   *  (`library/episode-still.tsx`). */
   aboveFold?: boolean;
 }) {
   if (entry.queue.episodes.length === 0) {
@@ -80,8 +85,10 @@ export function UpNextEpisodeCard({
     return (
       <CardBody
         entry={entry}
+        episodeId={entry.episodeId}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
+        stillPath={entry.stillPath}
         airDate={entry.airDate}
         runtimeMins={entry.runtimeMins}
         remainingAfter={remainingAfter(entry.remaining, 0, false)}
@@ -147,20 +154,27 @@ function MarkableCard({
   return (
     <CardBody
       entry={entry}
+      episodeId={showing.episodeId}
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       /**
-       * The **entry's** air date and runtime, and only while the card is still on the head
-       * of its run.
+       * The **entry's** still, air date and runtime, and only while the card is still on
+       * the head of its run.
        *
-       * `QueuedEpisode` carries neither — #220 read four facts per queued episode because
-       * a mark control needs a name and nothing else, and widening it would be a second
-       * read of every show's next four episodes for two lines of metadata only ever
-       * correct for the first of them. So once the card has advanced, the honest answer is
-       * that this surface does not know: printing the first episode's date beside the
-       * second episode's name would be worse than printing neither, and
-       * `episodeMetaLine` renders no line at all rather than a placeholder.
+       * `QueuedEpisode` carries none of the three — #220 read four facts per queued episode
+       * because a mark control needs a name and nothing else, and widening it would be a
+       * second read of every show's next four episodes for metadata only ever correct for
+       * the first of them. So once the card has advanced, the honest answer is that this
+       * surface does not know.
+       *
+       * All three are dropped together rather than only the two text ones, and the still is
+       * the one worth arguing: a frame from the episode just watched, sitting above the
+       * name of the episode on offer, is a **wrong** picture rather than a missing one, and
+       * a card is mostly picture. `EpisodeStill` holds the frame's measure and shows the
+       * `raised` ground for it, `episodeMetaLine` renders no line at all — so the card
+       * keeps its shape and says less, which is the direction this has to fail in.
        */
+      stillPath={marked === 0 ? entry.stillPath : null}
       airDate={marked === 0 ? entry.airDate : null}
       runtimeMins={marked === 0 ? entry.runtimeMins : null}
       remainingAfter={remainingAfter(entry.remaining, marked, spent)}
@@ -226,8 +240,10 @@ const CARD = "w-[262px] shrink-0 snap-start";
  */
 function CardBody({
   entry,
+  episodeId,
   code,
   episodeName,
+  stillPath,
   airDate,
   runtimeMins,
   remainingAfter,
@@ -236,8 +252,12 @@ function CardBody({
   sweep,
 }: {
   entry: UpNextEntry;
+  /** The episode the card is drawing, which is what it links to — not `entry.episodeId`,
+   *  which is only the head of the run and is stale the moment a mark lands. */
+  episodeId: string;
   code: string;
   episodeName: string | null;
+  stillPath: string | null;
   airDate: string | null;
   runtimeMins: number | null;
   remainingAfter: number;
@@ -259,16 +279,31 @@ function CardBody({
     <li className={`${CARD} relative overflow-hidden rounded-2xl bg-raised`}>
       {/* The whole card bar the check. A `Link` rather than a button: this is a
           destination, and `SPEC.md`'s *a destination is a destination* is why a film card
-          navigates too. */}
+          navigates too.
+
+          **Episode detail, not the title.** #250 was written expecting to link to the
+          title until an episode had a page of its own; #253 built that page first
+          (`library/[entryId]/episode/[episodeId]`), so the card goes straight there — which
+          is what the ticket asked for, one issue earlier than it expected. The route is
+          keyed by both ids, so it is reached the same way from here and from a season
+          row. */}
       <Link
-        href={`/library/${entry.libraryEntryId}`}
+        href={`/library/${entry.libraryEntryId}/episode/${episodeId}`}
         className="pressable block"
         /* The still is `aria-hidden` and the code line is three tokens, so this label is
            what a screen reader hears for the link. `titleName` first, because the series
            is what a reader is choosing between. */
         aria-label={`${entry.titleName} — ${code}${episodeName === null ? "" : `, ${episodeName}`}`}
       >
-        <Still stillPath={entry.stillPath} width={CARD_WIDTH} aboveFold={aboveFold} />
+        {/* `EpisodeStill` is #253's, shared rather than re-cut — one answer to *what does
+            a still look like, and what happens when there isn't one*. The `still` utility
+            holds the 16:9 ratio, so an episode with no frame keeps the card's shape. */}
+        <EpisodeStill
+          stillPath={stillPath}
+          width={CARD_WIDTH}
+          className="w-full [border-radius:0]"
+          aboveFold={aboveFold}
+        />
 
         <div className="px-[14px] pt-3 pb-1">
           <p className="label-line text-dim">{entry.titleName}</p>

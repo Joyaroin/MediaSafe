@@ -137,8 +137,15 @@ From the map, settled with Adham and not up for relitigation:
    > **Extended 2026-08-23 — borrowed facts join them, and they carry a window**
    > ([#225](https://github.com/Joyaroin/MediaSafe/issues/225)). Title detail's synopsis, cast and
    > crew, watch providers, and the mirrored `title`/`episode` metadata are cached too, in
-   > `cache/borrowed-facts.ts` beside the owned half and under the same two properties. Nine owned
-   > reads, four borrowed.
+   > `cache/borrowed-facts.ts` beside the owned half and under the same two properties.
+   >
+   > **Ten owned reads, five borrowed**, as of
+   > [#253](https://github.com/Joyaroin/MediaSafe/issues/253) — which adds an **episode's** own
+   > synopsis to the borrowed side, keyed by account like every other and tagged with its
+   > *show*, so that a mirror refresh expires it alongside that show's three title-level facts.
+   > (It read *nine and four* until this ticket; the tenth owned read is #247's `accountFigures`.
+   > Neither figure is worth trusting from here — `tests/cache-tags.test.ts` asserts the whole
+   > list against `cache/` itself, and that is the count that cannot go stale.)
    >
    > They differ in two ways, both decisions rather than details. An **owned** fact is correct until
    > a write says otherwise, so it carries a tag and no window. A **borrowed** fact changes when

@@ -36,6 +36,12 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     seasonNo: 1,
     episodeNo: 1,
     name: "Winter Is Coming",
+    // The three mirrored facts #253 put on `EpisodeDetail` for the episode page. Null
+    // throughout: the rule under test is *above season zero, at or before this episode,
+    // not already watched*, and no still, date or runtime is part of that sentence.
+    stillPath: null,
+    airDate: null,
+    runtimeMins: null,
     watched: false,
     upNext: false,
     ...overrides,
