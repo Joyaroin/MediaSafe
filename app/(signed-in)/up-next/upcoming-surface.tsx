@@ -1,5 +1,11 @@
 import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
-import { awaitedFilms, groupUpcoming, type UpcomingGroup } from "./upcoming-grouping";
+import {
+  awaitedFilms,
+  groupUpcoming,
+  nextPerTitle,
+  type UpcomingGroup,
+  type UpcomingTitle,
+} from "./upcoming-grouping";
 import { UpcomingFilms } from "./upcoming-films";
 import { UpcomingNothing } from "./upcoming-nothing";
 import { UpcomingRow } from "./upcoming-row";
@@ -64,7 +70,15 @@ export function UpcomingSurface({
   /** The reader's own day, `YYYY-MM-DD`, from `page.tsx`. */
   today: string;
 }) {
-  const groups = groupUpcoming(episodes, today);
+  /**
+   * Collapsed to one entry per show **before** grouping by day, so a show lands on the day
+   * of its next episode rather than on every day it has one announced.
+   *
+   * The order matters. Grouping first and collapsing inside each day would still show
+   * *JoJo's Bizarre Adventure* nine times — once per week it airs — which is the bug
+   * exactly. Collapsing first is what makes this a list of shows.
+   */
+  const groups = groupUpcoming(nextPerTitle(episodes), today);
   const awaited = awaitedFilms(films, today);
 
   if (groups.length === 0 && awaited.length === 0) return <UpcomingNothing />;
@@ -89,7 +103,7 @@ export function UpcomingSurface({
 function UpcomingEpisodes({
   groups,
 }: {
-  groups: readonly UpcomingGroup<UpcomingEpisode>[];
+  groups: readonly UpcomingGroup<UpcomingTitle<UpcomingEpisode>>[];
 }) {
   if (groups.length === 0) return null;
 

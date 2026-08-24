@@ -265,3 +265,65 @@ function countdownInWords(ahead: number): string {
   if (ahead === 1) return "Tomorrow";
   return `In ${ahead} days`;
 }
+
+/**
+ * One entry per **show**, not one per episode — the soonest thing coming, and how much
+ * else is announced behind it.
+ *
+ * ── The bug this fixes ──────────────────────────────────────────────────────────────
+ *
+ * `listUpcomingEpisodes` returns every future-dated episode of every show you are
+ * watching, and the surface drew a row for each. A show with a whole season announced —
+ * an anime dropping weekly for three months — filled the entire screen with itself: nine
+ * rows of *JoJo's Bizarre Adventure*, same poster, same name, differing only in a number
+ * and a date.
+ *
+ * That is a list about episodes. This screen answers *what am I waiting for*, and the
+ * answer is a show. So a show appears once, dated by the next episode of it, and the rest
+ * of the season becomes a count.
+ *
+ * ── The soonest, and why no sorting happens here ────────────────────────────────────
+ *
+ * `listUpcomingEpisodes` orders by `air_date` and then by season and episode, so the first
+ * row seen for a show *is* its soonest. A `Map` keeps insertion order, so the whole
+ * function is one pass and the query's ordering survives into the groups — re-sorting here
+ * would be a second opinion about order, free to disagree with the one in SQL.
+ *
+ * Keyed by `libraryEntryId` rather than by title name: two entries could share a name, and
+ * the id is what the row navigates through anyway.
+ */
+/**
+ * The soonest episode itself, widened by a count — rather than `{ next, more }`.
+ *
+ * Flat because everything downstream already knows how to read an episode: `groupUpcoming`
+ * buckets on `airDate` and `UpcomingRow` draws the fields. A wrapper would have made both
+ * reach through `.next` for every one of them, to hold a number.
+ */
+export type UpcomingTitle<T> = T & {
+  /**
+   * How many further episodes of this show are already announced — `0` when the next one
+   * is the only thing dated.
+   *
+   * A count and not a list: the row says *what is coming and roughly how much*, and a
+   * reader who wants the rest opens the show. `SPEC.md` §7's *no counts on a rail head* is
+   * about headings, and is untouched by a count inside a row.
+   */
+  readonly more: number;
+};
+
+export function nextPerTitle<T extends { readonly libraryEntryId: string }>(
+  episodes: readonly T[],
+): readonly UpcomingTitle<T>[] {
+  const byEntry = new Map<string, { next: T; more: number }>();
+
+  for (const one of episodes) {
+    const seen = byEntry.get(one.libraryEntryId);
+    if (seen === undefined) {
+      byEntry.set(one.libraryEntryId, { next: one, more: 0 });
+      continue;
+    }
+    seen.more += 1;
+  }
+
+  return [...byEntry.values()].map(({ next, more }) => ({ ...next, more }));
+}

@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { nextPerTitle } from "@/app/(signed-in)/up-next/upcoming-grouping";
 import { UpcomingNothing } from "@/app/(signed-in)/up-next/upcoming-nothing";
 import { UpcomingSurface } from "@/app/(signed-in)/up-next/upcoming-surface";
 import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
@@ -579,5 +580,95 @@ describe("the page hands the pager both surfaces and one day", () => {
     const boundary = sourceAt("app/(signed-in)/up-next/error.tsx");
     expect(boundary).toContain("<ReadFailure");
     expect(boundary).toContain("referenceForBoundary");
+  });
+});
+
+/** How many episode rows the surface drew — one `<li>` each, counted by the link inside
+ *  it, which no other part of this screen renders. */
+function rowCount(markup: string): number {
+  return (markup.match(/href="\/library\/[^"]*\/episode\//g) ?? []).length;
+}
+
+describe("one row per show, not one per episode", () => {
+  /**
+   * **The bug this suite exists for.**
+   *
+   * `listUpcomingEpisodes` returns every future-dated episode of every show you are
+   * watching. The surface drew a row for each, so a show with a season already scheduled
+   * — an anime dropping weekly for three months — filled the whole screen with itself:
+   * nine rows of the same name, the same poster, differing only in a number and a date.
+   *
+   * It is the kind of thing that reads as *working* on a library of four titles and only
+   * shows up on a real one, which is why it is asserted rather than looked at.
+   */
+  it("draws a show once however many episodes it has announced", () => {
+    const markup = render([
+      episodeOn(TODAY, { titleName: "JoJo's Bizarre Adventure", libraryEntryId: "jojo" }),
+      episodeOn("2026-08-31", { titleName: "JoJo's Bizarre Adventure", libraryEntryId: "jojo" }),
+      episodeOn("2026-09-07", { titleName: "JoJo's Bizarre Adventure", libraryEntryId: "jojo" }),
+    ]);
+
+    // Rows, not name occurrences: the title appears in the `aria-label` as well as the
+    // visible line, so counting the name counts each row twice.
+    expect(rowCount(markup)).toBe(1);
+  });
+
+  /** Two shows are two rows — the collapse is per show and not a cap on the list. */
+  it("still draws every show", () => {
+    const markup = render([
+      episodeOn(TODAY, { titleName: "Severance", libraryEntryId: "sev" }),
+      episodeOn(TODAY, { titleName: "The Bear", libraryEntryId: "bear" }),
+    ]);
+
+    expect(markup).toContain("Severance");
+    expect(markup).toContain("The Bear");
+  });
+
+  /**
+   * The row keeps the **soonest** episode and counts the rest. The query orders by air
+   * date, so the first row seen for a show is its soonest — this asserts the collapse
+   * preserves that rather than keeping whichever it happened to see last.
+   */
+  it("keeps the soonest episode and counts what is behind it", () => {
+    const collapsed = nextPerTitle([
+      episodeOn(TODAY, { libraryEntryId: "jojo", episodeNo: 2 }),
+      episodeOn("2026-08-31", { libraryEntryId: "jojo", episodeNo: 3 }),
+      episodeOn("2026-09-07", { libraryEntryId: "jojo", episodeNo: 4 }),
+    ]);
+
+    expect(collapsed).toHaveLength(1);
+    expect(collapsed[0]?.episodeNo).toBe(2);
+    expect(collapsed[0]?.more).toBe(2);
+  });
+
+  /** A show with one episode dated says nothing about a remainder that does not exist. */
+  it("says nothing about a remainder when there is none", () => {
+    const markup = render([episodeOn(TODAY, { libraryEntryId: "one" })]);
+
+    expect(markup).not.toContain("remaining");
+  });
+
+  it("says how many are behind it when there are", () => {
+    const markup = render([
+      episodeOn(TODAY, { libraryEntryId: "jojo", episodeNo: 2 }),
+      episodeOn("2026-08-31", { libraryEntryId: "jojo", episodeNo: 3 }),
+    ]);
+
+    expect(markup).toContain("+1 remaining");
+  });
+
+  /**
+   * Collapsing has to happen **before** the day grouping, or a show still appears once per
+   * day it airs — which is the bug, arrived at by a different route. This is the ordering
+   * assertion: three episodes on three different days, one row.
+   */
+  it("collapses across days, not within them", () => {
+    const markup = render([
+      episodeOn(TODAY, { titleName: "Severance", libraryEntryId: "sev" }),
+      episodeOn("2026-08-25", { titleName: "Severance", libraryEntryId: "sev" }),
+      episodeOn("2026-09-20", { titleName: "Severance", libraryEntryId: "sev" }),
+    ]);
+
+    expect(rowCount(markup)).toBe(1);
   });
 });
