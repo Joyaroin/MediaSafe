@@ -1,6 +1,7 @@
 import { ProgrammeNoteLayout } from "@/app/(signed-in)/library/programme-note-layout";
 import {
   cachedUpcomingEpisodes,
+  cachedUpcomingFilms,
   cachedUpNextRails,
   cachedWatchlistFilms,
 } from "@/cache/tags";
@@ -24,14 +25,23 @@ import { NavTransition } from "../nav-transition";
  * other caller are gone with that change; watchlist and abandoned stay reachable through
  * the library's status filters, which already carry all five states.
  *
- * ── Three reads and two renders, and the cost of that, stated ─────────────────────────
+ * ── Four reads and two renders, and the cost of that, stated ──────────────────────────
  *
  * `listUpNextRails` answers both devices — the phone's single next-episodes rail is the
  * desktop's three concatenated, from the same read, in the same order — and
- * `listWatchlistFilms` answers only the phone's second rail. **#251 adds a third**,
- * `listUpcomingEpisodes`, which answers only the phone's second *page* and is paid for on
- * a desktop load that will never draw it — the same trade, one read wider. All run on
- * every load because
+ * `listWatchlistFilms` answers only the phone's second rail. **#251 added a third**,
+ * `listUpcomingEpisodes`, and **#252 a fourth**, `listUpcomingFilms`; both answer only the
+ * phone's second *page* and are paid for on a desktop load that will never draw either —
+ * the same trade, two reads wider.
+ *
+ * The fourth is the one to be honest about, because it is the closest this page comes to
+ * asking one question twice: `listWatchlistFilms` and `listUpcomingFilms` are the same
+ * watchlist at two widths, one undated and complete, one dated and ahead of today. They
+ * are not folded into one read that both surfaces filter, because the two rails want
+ * different columns (a runtime against a release date) and different orders (A–Z against
+ * soonest-first), and a single read wide enough for both would carry every column and be
+ * sorted for neither. One extra query on a page that already makes three, against two
+ * surfaces that stay independently correct. All run on every load because
  * **the server does not know the viewport** — #136 deleted the one `matchMedia` branch this
  * build ever had, deliberately, so which surface renders is a Tailwind fact and not a
  * server one. `hidden lg:block` and `lg:hidden` below are the same device the deleted
@@ -90,20 +100,22 @@ export default async function UpNextPage() {
    * Neon in front of the first byte of this page — on a driver where a round trip is a
    * WebSocket message and not a local socket write.
    *
-   * The fourth is not a read of this database at all: `requireTimezone()` takes the zone
-   * off the session, which #251 needs before it can say what *Today* means. It joins the
-   * three here rather than being awaited beside them for the same reason they are
-   * together — it takes nothing from them, and nothing takes anything from it.
+   * The last is not a read of this database at all: `requireTimezone()` takes the zone
+   * off the session, which #251 needs before it can say what *Today* means and #252 needs
+   * before it can say how many days away *the 26th* is. It joins the four here rather than
+   * being awaited beside them for the same reason they are together — it takes nothing
+   * from them, and nothing takes anything from it.
    *
    * `Promise.all` rejects on the first rejection, which is the behaviour this page's
-   * error discipline already asks for: any one of the four failing throws into
+   * error discipline already asks for: any one of the five failing throws into
    * `error.tsx` exactly as it did when they ran in series. Nothing here catches, and the
    * unguarded reads above the `AGENTS.md` rule protects are still unguarded.
    */
-  const [rails, films, upcoming, zone] = await Promise.all([
+  const [rails, films, upcoming, upcomingFilms, zone] = await Promise.all([
     cachedUpNextRails(userId),
     cachedWatchlistFilms(userId),
     cachedUpcomingEpisodes(userId),
+    cachedUpcomingFilms(userId),
     requireTimezone(),
   ]);
 
@@ -148,7 +160,9 @@ export default async function UpNextPage() {
           <div className="lg:hidden">
             <LandingPager
               upNext={<UpNextPhoneRails rails={rails} films={films} />}
-              upcoming={<UpcomingSurface episodes={upcoming} today={today} />}
+              upcoming={
+                <UpcomingSurface episodes={upcoming} films={upcomingFilms} today={today} />
+              }
             />
           </div>
 

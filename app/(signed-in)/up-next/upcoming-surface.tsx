@@ -1,5 +1,6 @@
-import type { UpcomingEpisode } from "@/db/access";
-import { groupUpcoming } from "./upcoming-grouping";
+import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
+import { awaitedFilms, groupUpcoming, type UpcomingGroup } from "./upcoming-grouping";
+import { UpcomingFilms } from "./upcoming-films";
 import { UpcomingNothing } from "./upcoming-nothing";
 import { UpcomingRow } from "./upcoming-row";
 
@@ -22,36 +23,78 @@ import { UpcomingRow } from "./upcoming-row";
  * out. `page.tsx` is the one place on this route that reads a clock, and it reads it once,
  * against `requireTimezone()`.
  *
- * ── Films are #252's and their absence here is deliberate ───────────────────────────
+ * ── The films arrived in #252, and this component is what adds the halves up ────────
  *
  * The handoff draws *Upcoming movies* under these rows — the watchlist films whose release
- * date is still ahead, with a countdown. That is a separate ticket over a separate read,
- * and it lands as a second section beside this one. Nothing here reserves space for it: an
- * empty section is exactly what `SPEC.md` §8 forbids, and #245's *nothing upcoming gets the
- * handoff's sentence* is answered by this page having no rows rather than by it having no
- * films.
+ * date is still ahead, with a countdown. #252 built them over their own read
+ * (`listUpcomingFilms`) and their own section (`upcoming-films.tsx`), and what lands here
+ * is the one thing neither half can decide alone: **whether the page is empty**.
+ *
+ * Each section is absent on nothing, which is `SPEC.md` §7's *an empty rail is absent* — no
+ * heading over no rows. But
+ * *no release dates yet* is a claim about the whole page, and a reader with three dated
+ * episodes and no dated film is not looking at an empty Upcoming. So the sentence is drawn
+ * here, from both counts, and neither section is allowed to draw one of its own. **The
+ * order is the handoff's** — episodes first, films under them — and neither half reserves
+ * space for the other, so a page with only films starts at the films.
+ *
+ * The two halves narrow their own reads to the reader's today, against the same `today`
+ * this component is handed: `groupUpcoming` drops what has aired and `awaitedFilms` drops
+ * what has come out. Both reads deliberately return a day more than either needs
+ * (`db/access.ts` argues why), so *empty* here means *empty in the reader's zone* rather
+ * than *empty in UTC* — which is the difference between the sentence being true and the
+ * sentence being true for whoever wrote it.
  *
  * ── Empty and failed, kept apart ────────────────────────────────────────────────────
  *
- * No groups is the handoff's sentence (`UpcomingNothing`), and it is reachable only from a
- * read that succeeded. A failure throws past this into the route's `error.tsx`, which draws
- * the inline read-failure treatment with a reference id. This is the screen `AGENTS.md`'s
- * rule was written about, one page along from where it was written.
+ * Nothing on either half is the handoff's sentence (`UpcomingNothing`), and it is reachable
+ * only from reads that succeeded. A failure throws past this into the route's `error.tsx`,
+ * which draws the inline read-failure treatment with a reference id. This is the screen
+ * `AGENTS.md`'s rule was written about, one page along from where it was written — and
+ * #252 doubles the surface it applies to: a films section absent because the database is
+ * down reads exactly like a watchlist with nothing dated on it.
  */
 export function UpcomingSurface({
   episodes,
+  films,
   today,
 }: {
   episodes: readonly UpcomingEpisode[];
+  films: readonly UpcomingFilm[];
   /** The reader's own day, `YYYY-MM-DD`, from `page.tsx`. */
   today: string;
 }) {
   const groups = groupUpcoming(episodes, today);
+  const awaited = awaitedFilms(films, today);
 
-  if (groups.length === 0) return <UpcomingNothing />;
+  if (groups.length === 0 && awaited.length === 0) return <UpcomingNothing />;
+
+  /* `pb-2` on the wrapper rather than a node of its own: the foot of a page that scrolls
+     under a pager, held here now that either section can be the last thing on it. */
+  return (
+    <div className="pb-2">
+      <UpcomingEpisodes groups={groups} />
+      <UpcomingFilms films={awaited} />
+    </div>
+  );
+}
+
+/**
+ * The episodes half, lifted out of the surface unchanged when #252 gave it a sibling.
+ *
+ * Absent on nothing rather than empty-headed, which is what lets the films below stand
+ * alone for a reader who keeps a watchlist and is between series. The sentence for *both*
+ * halves empty is the surface's, above.
+ */
+function UpcomingEpisodes({
+  groups,
+}: {
+  groups: readonly UpcomingGroup<UpcomingEpisode>[];
+}) {
+  if (groups.length === 0) return null;
 
   return (
-    <section className="pt-[26px] pb-2">
+    <section className="pt-[26px]">
       {/* The rail heads' register on page one, held here so the two pages read as one
           screen — `up-next-phone-rail.tsx`'s `RailSection` draws its own head exactly this
           way, and its docblock carries the accent argument for both.

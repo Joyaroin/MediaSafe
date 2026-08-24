@@ -69,6 +69,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     listUpNextRails: vi.fn(),
     listWatchlistFilms: vi.fn(),
     listUpcomingEpisodes: vi.fn(),
+    listUpcomingFilms: vi.fn(),
     listLists: vi.fn(),
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
@@ -208,6 +209,7 @@ const {
   cachedLists,
   cachedTitleDetail,
   cachedUpcomingEpisodes,
+  cachedUpcomingFilms,
   cachedUpNextRails,
   cachedWatchlistFilms,
   cachedYouListCards,
@@ -258,6 +260,10 @@ const CACHED = {
   /** Issue #251's Upcoming — the landing pager's second page, tagged `up-next` with the
    *  two rails on its first, so one bust reaches the whole surface a reader pages across. */
   listUpcomingEpisodes: (userId: typeof mine) => cachedUpcomingEpisodes(userId),
+  /** Issue #252's half of that page. Tagged `up-next` beside `listWatchlistFilms`, which
+   *  is the same watchlist read at another width — one bust has to reach both, or a
+   *  removed film keeps a countdown running on the page next door. */
+  listUpcomingFilms: (userId: typeof mine) => cachedUpcomingFilms(userId),
   listLists: (userId: typeof mine) => cachedLists(userId),
   getListDetail: (userId: typeof mine) => cachedListDetail(userId, "list-1"),
   getTitleDetail: (userId: typeof mine) => cachedTitleDetail(userId, "entry-1"),
@@ -1437,20 +1443,22 @@ describe("the reads that are cached, and the one that must never be", () => {
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
-  it("wraps exactly the seventeen reads it is meant to", () => {
+  it("wraps exactly the eighteen reads it is meant to", () => {
     // `\s*` because several of these are formatted across lines. A regex that only
     // matched the single-line spelling silently found five of them and passed.
     const cached = [...source.matchAll(/unstable_cache\(\s*(\w+),/g)].map(([, name]) => name);
 
     expect(cached).toEqual([
-      // `tags.ts` — the owned twelve, in file order. #250 replaced two of #138's reads
+      // `tags.ts` — the owned thirteen, in file order. #250 replaced two of #138's reads
       // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #251 added
-      // `listUpcomingEpisodes` beside it under the same `up-next` tag; and #248 added
-      // `listYouListCards` and `listYouRails`.
+      // `listUpcomingEpisodes` beside it under the same `up-next` tag, #252 added
+      // `listUpcomingFilms` beside that one; and #248 added `listYouListCards` and
+      // `listYouRails`.
       "listLibraryEntries",
       "listUpNextRails",
       "listWatchlistFilms",
       "listUpcomingEpisodes",
+      "listUpcomingFilms",
       "listLists",
       "getListDetail",
       "getTitleDetail",
