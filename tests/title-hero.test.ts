@@ -21,7 +21,7 @@ function code(path: string): string {
 }
 
 const HERO = code("app/(signed-in)/library/title-hero.tsx");
-const MENU = code("app/(signed-in)/library/state-actions-dialog.tsx");
+const ABANDON = code("app/(signed-in)/library/abandon-control.tsx");
 const CONTENT = code("app/(signed-in)/library/programme-note-content.tsx");
 
 function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
@@ -104,40 +104,33 @@ describe("the hero", () => {
   });
 });
 
-describe("the status menu causes states rather than setting them", () => {
+describe("the one state anybody sets by hand", () => {
   /**
-   * The single most important property in this change. `CONTEXT.md`: four of the five
-   * states are derived from watches and only *abandoned* is set by hand. A menu that
-   * wrote a state would let the library claim you finished a show you have no watches
-   * for, and every figure derived from watches would disagree with it.
+   * The most important property on this screen, and it survived the hero being rebuilt
+   * twice. `CONTEXT.md`: four of the five states are derived from your watches and only
+   * *abandoned* is set by hand. Nothing here may write a state.
+   *
+   * There was briefly a *Where this stands* menu in the hero offering *Mark everything
+   * watched* alongside *Give up on this*. It went — the label read as a settings control
+   * and it put the write anybody reaches for behind two presses — and `AbandonControl`
+   * took its place, which is what was there before the restructure.
    */
-  it("writes watches and the abandon flag, and never a state", () => {
-    expect(MENU).toContain("watchMarks.markUpTo");
-    expect(MENU).toContain("onAbandon");
+  it("writes the abandon flag and never a derived state", () => {
+    expect(HERO).toContain("<AbandonControl");
+    expect(ABANDON).toMatch(/abandonAction|unabandonAction/);
 
-    // No state is assigned, and none of the four derived ones is even named as a value.
     for (const derived of ['"watching"', '"caught_up"', '"finished"', '"watchlist"']) {
-      expect(MENU).not.toContain(derived);
+      expect(ABANDON).not.toContain(derived);
+      expect(HERO).not.toContain(`state={"${derived}"}`);
     }
   });
 
   /**
-   * *Mark everything watched* is *watched up to here* aimed at the end of the show, and it
-   * reuses that function rather than re-deriving the filter. Two definitions of which
-   * episodes a bulk mark covers would be free to disagree about specials or about an
-   * episode already watched — and the disagreement would surface as a count that does not
-   * match what lands.
+   * The hero reads the state to *print* it and never to set it — `STATE_LABELS` keyed by
+   * `detail.state`, which is what the view computed in SQL.
    */
-  it("reuses coveredUpTo rather than writing a second coverage rule", () => {
-    expect(MENU).toContain("coveredUpTo");
-    expect(MENU).not.toMatch(/episodes\.filter\([^)]*!one\.watched/);
-  });
-
-  /** Two entries. The round trip back to Watchlist needs a bulk unwatch that does not
-   *  exist, and inventing one here would destroy watches irrecoverably with no
-   *  confirmation of its own. */
-  it("offers no third entry", () => {
-    expect(MENU).not.toContain("Unwatch everything");
+  it("reads the state to print it", () => {
+    expect(HERO).toMatch(/STATE_LABELS\[detail\.state\]/);
   });
 });
 
@@ -147,25 +140,44 @@ describe("the order of the screen", () => {
    * rather than one. A single `liveFacts` node could only place all three together, and
    * the failure mode is silent: cast simply reappears in the middle.
    */
-  it("places cast after the rating, in its own slot", () => {
-    const rating = CONTENT.indexOf("<RatingControl");
+  it("places cast last, after the streamed facts", () => {
     const cast = CONTENT.indexOf("{cast}");
     const facts = CONTENT.indexOf("{liveFacts}");
 
     expect(facts).toBeGreaterThan(-1);
-    expect(rating).toBeGreaterThan(facts);
-    expect(cast).toBeGreaterThan(rating);
+    expect(cast).toBeGreaterThan(facts);
   });
 
   /**
-   * Remove is last and is deliberately **not** in a card. It destroys watches and ratings
-   * irrecoverably; giving it the same treatment as the rating would file it as one more
-   * setting, and the screen this restructure follows puts it a thumb's width from *Mark
-   * watched*.
+   * Your rating and *Remove from library* sit directly under the hero, above everything
+   * borrowed. They were at the foot, below the episode list; burying the rating under
+   * sixty episode rows made the one fact MediaSafe actually **owns** about a title the
+   * hardest thing on the page to reach.
    */
-  it("leaves Remove at the foot and out of a card", () => {
+  it("puts the owned things above the borrowed ones", () => {
+    const rating = CONTENT.indexOf("<RatingControl");
     const remove = CONTENT.indexOf("<RemoveControl");
-    expect(remove).toBeGreaterThan(CONTENT.indexOf("{cast}"));
-    expect(CONTENT.slice(remove - 220, remove)).not.toContain("PROGRAMME_NOTE_CARD");
+    const facts = CONTENT.indexOf("{liveFacts}");
+    const episodes = CONTENT.indexOf("<ProgrammeNoteEpisodes");
+
+    expect(rating).toBeGreaterThan(-1);
+    expect(rating).toBeLessThan(facts);
+    expect(remove).toBeLessThan(facts);
+    expect(remove).toBeLessThan(episodes);
+  });
+
+  /**
+   * Remove lost its scroll and keeps the guard that was always the real one.
+   *
+   * The control writes nothing: it is a `Link` to `/library/[entryId]/remove`, a whole
+   * confirmation route with its own form. The distance down the page was a second line of
+   * defence in front of that, and moving the control up costs a scroll rather than the
+   * confirmation — which is why this asserts on the destination and not on the position.
+   */
+  it("still leads to the confirmation route rather than writing anything", () => {
+    const remove = code("app/(signed-in)/library/remove-control.tsx");
+
+    expect(remove).toContain("/remove`");
+    expect(remove).not.toMatch(/removeTitleAction|onClick=/);
   });
 });

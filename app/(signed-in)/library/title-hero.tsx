@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { AbandonControl } from "./abandon-control";
 import { AddToListControl } from "./add-to-list-control";
 import { STATE_LABELS } from "./library-state";
 import { PROGRAMME_NOTE_CARD, PROGRAMME_NOTE_CARD_PAD } from "./programme-note-section";
 import { watchProgress } from "./progress-remaining";
-import { StateActionsDialog } from "./state-actions-dialog";
 import { titleMetaLine } from "./title-meta-line";
-import { useAbandon } from "./use-abandon";
 
 /**
  * The head of title detail: the poster beside what you need to know, rather than above it.
@@ -27,6 +24,19 @@ import { useAbandon } from "./use-abandon";
  *
  * So the poster shrinks to a thumbnail and the space buys the three facts that were
  * scattered: the state, how far through you are, and the controls that change it.
+ *
+ * ── What sits under the pair ────────────────────────────────────────────────────────
+ *
+ * `AbandonControl` and *Add to list*. There was briefly a *Where this stands* button here
+ * instead, opening a dialog offering *Mark everything watched* and *Give up on this*. It
+ * went: the label read as a settings control on a screen that has no settings, and it put
+ * the one state write anybody reaches for behind two presses to keep company with one
+ * almost nobody does.
+ *
+ * **Marking a whole show watched in one press went with it**, and there is no other way to
+ * do it — the season rows' *watched up to here* is the nearest thing, aimed at the last
+ * episode. If that is worth having it wants a home of its own rather than a menu built
+ * around it.
  *
  * ── The bar takes the accent, and the state word gives it up ────────────────────────
  *
@@ -53,18 +63,7 @@ export function TitleHero({
   posterTransitionName: string;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const abandon = useAbandon({
-    libraryEntryId: detail.libraryEntryId,
-    titleName: detail.name,
-    abandoned: detail.state === "abandoned",
-    onChanged: onStateChange,
-  });
-
-  // The optimistic flip has to reach the word as well as the control, or giving up on a
-  // title leaves *Watching* on screen until the server answers.
-  const state = STATE_LABELS[abandon.abandoned ? "abandoned" : detail.state];
+  const state = STATE_LABELS[detail.state];
   const meta = titleMetaLine(detail);
 
   /**
@@ -115,36 +114,30 @@ export function TitleHero({
         </div>
       </div>
 
-      {/* The two controls, under the pair rather than beside the title: at 420px there is
-          no room for them on the poster's row, and a control that only fits on a phone is
-          a control the pane would have to draw somewhere else. */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          disabled={abandon.pending}
-          aria-label={`Where ${detail.name} stands`}
-          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
-        >
-          Where this stands
-        </button>
+      {/* The controls, under the pair rather than beside the title: at 420px there is no
+          room for them on the poster's row, and a control that only fits on a phone is a
+          control the pane would have to draw somewhere else.
 
-        {/* Keyed by `titleId` for its own docblock's reason: the desktop pane never
-            remounts on a selection change, so this key is what gives every title a clean
-            picker instead of state this component would have to reset by hand. */}
-        <AddToListControl key={detail.titleId} titleId={detail.titleId} titleName={detail.name} />
-      </div>
-
-      {menuOpen ? (
-        <StateActionsDialog
+          `AbandonControl` rather than a menu. There was briefly a *Where this stands*
+          button here opening a dialog of state actions; it read as a settings control on a
+          screen with no settings, and it put the one write anybody reaches for — giving up
+          on something — behind two presses. This is the control that was here before the
+          restructure, in the place the restructure gave it. */}
+      <div className="mt-4">
+        <AbandonControl
           libraryEntryId={detail.libraryEntryId}
           titleName={detail.name}
-          state={abandon.abandoned ? "abandoned" : detail.state}
-          episodes={detail.episodes}
-          onAbandon={abandon.toggle}
-          onClosed={() => setMenuOpen(false)}
+          abandoned={detail.state === "abandoned"}
+          onChanged={onStateChange}
         />
-      ) : null}
+      </div>
+
+      {/* Keyed by `titleId` for its own docblock's reason: the desktop pane never remounts
+          on a selection change, so this key is what gives every title a clean picker
+          instead of state this component would have to reset by hand. */}
+      <div className="mt-3">
+        <AddToListControl key={detail.titleId} titleId={detail.titleId} titleName={detail.name} />
+      </div>
     </section>
   );
 }

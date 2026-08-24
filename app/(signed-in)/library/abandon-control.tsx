@@ -1,8 +1,12 @@
 "use client";
 
+import { useRef, useState } from "react";
+
 import type { LibraryState } from "@/db/access";
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
-import { useAbandon } from "./use-abandon";
+import { referenceFor } from "@/errors/reference";
+import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
+import { abandonAction, unabandonAction, type AbandonOutcome } from "./title-detail-actions";
 
 /**
  * The one hand-set state in the model, and the way back out of it — issue #87.
@@ -61,17 +65,49 @@ export function AbandonControl({
   readonly onChanged: (libraryEntryId: string, state: LibraryState) => void;
 }) {
   /**
-   * The write moved to `use-abandon.ts` when the hero's *Where this stands* menu became a
-   * second place to press it. Everything it used to do here it still does — the optimistic
-   * flip, one toast per lost write, `resolve()` on the write that lands — and it now does
-   * it once for both callers rather than twice.
+   * The write lived in a `use-abandon.ts` hook for exactly as long as there were two
+   * places to press it — this control and the hero's *Where this stands* menu. That menu
+   * is gone, so the hook had one caller and a docblock explaining a second that no longer
+   * existed. It is back here, unchanged:
+   *
+   * - **The optimistic flip**, so the state moves under the thumb rather than after a
+   *   round trip, and reverts if the write is lost.
+   * - **One toast per lost write, not one per attempt** (`AGENTS.md`) — `raised` holds the
+   *   handle, and a retry that fails again finds it standing and adds nothing.
+   * - **`resolve()` on the write that lands**, including a retry landing after a failure.
+   * - **`attempt` as a declaration**, because it is handed to the toast as its own `retry`
+   *   and a `const` cannot be referenced inside its own initialiser.
    */
-  const { abandoned: shown, pending, toggle } = useAbandon({
-    libraryEntryId,
-    titleName,
-    abandoned,
-    onChanged,
-  });
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const shown = optimistic ?? abandoned;
+  const pending = optimistic !== null;
+  const raised = useRef<WriteFailureHandle | null>(null);
+
+  async function attempt(): Promise<void> {
+    const wasAbandoned = shown;
+    setOptimistic(!wasAbandoned);
+
+    const outcome = await write(wasAbandoned, libraryEntryId);
+
+    if (outcome.ok) {
+      raised.current?.resolve();
+      raised.current = null;
+      setOptimistic(null);
+      onChanged(libraryEntryId, outcome.state);
+      return;
+    }
+
+    setOptimistic(null);
+
+    if (raised.current) return;
+    raised.current = writeFailures.raise({
+      title: titleName,
+      reference: outcome.reference,
+      retry: () => void attempt(),
+    });
+  }
+
+  const toggle = () => void attempt();
 
   return (
     <div className="flex items-baseline justify-between gap-4">
@@ -92,4 +128,12 @@ export function AbandonControl({
       )}
     </div>
   );
+}
+
+async function write(abandoned: boolean, libraryEntryId: string): Promise<AbandonOutcome> {
+  try {
+    return abandoned ? await unabandonAction(libraryEntryId) : await abandonAction(libraryEntryId);
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "abandon" }) };
+  }
 }
