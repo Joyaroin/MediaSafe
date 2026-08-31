@@ -756,7 +756,8 @@ The same rule holds everywhere motion exists:
   animation cannot ship without a reduced-motion path: there is no call site to forget.
 - **The staggered entrance** keeps its opacity fade and drops its `8px` rise, and every
   child's delay collapses to zero. The list still arrives; it stops travelling to get here.
-- **The press** stops scaling and keeps its colour change.
+- **The press** drops both of its halves — the 100ms compression and the pop keyframe —
+  and keeps its colour change. Pressed is still pressed; it stops moving to get there.
 
 **The event always happens. Only the animation is negotiable.**
 
@@ -1800,18 +1801,21 @@ transition token* — an accurate description of a build whose entire vocabulary
 easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
 the app; all four of those absences are now present on purpose. What governs it:
 
-- **Four duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
-  (`380ms`), `--dur-press` (`425ms`) — and four easings: `--ease-press` (unchanged, the
-  arrival curve, and misnamed — it is not the press), `--ease-out-quart`,
-  `--ease-in-out-soft`, and `--spring-press`.
+- **Five duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
+  (`380ms`), `--dur-press` (`100ms`), `--dur-pop` (`260ms`) — and three easings:
+  `--ease-press` (unchanged, the arrival curve, and misnamed — it is not the press),
+  `--ease-out-quart` and `--ease-in-out-soft`.
 
-  **This said *three and three* until #270, and the fourth of each arrived together
-  because they are one value.** `--spring-press` is a spring, and a spring's shape is
-  meaningless without the time it settles over: replaying it at `--dur-fast` is not this
-  spring played briskly, it is a spring with a different response. `425ms` is not a taste
-  in the ramp above — it is where `snappy`'s own oscillation falls under a thousandth,
-  computed rather than chosen, which is why it sits outside the three-step scale instead
-  of being rounded into it.
+  **This said *four and four* until #281, and the fourth easing has been removed rather
+  than retuned.** That entry read: *`--spring-press` is a spring, and a spring's shape is
+  meaningless without the time it settles over … `425ms` is not a taste in the ramp above
+  — it is where `snappy`'s own oscillation falls under a thousandth.* All of that was true
+  and none of it moved anything on screen, because a transition's easing scales the delta
+  between two values rather than a value — see the press's own reversal below. The spring
+  was not deleted; it became the `press-pop` keyframe's 33 stops, which is the one place a
+  number the endpoints do not contain can be named. `--dur-press` is now the compression
+  alone, and it is `100ms` because that is shorter than a tap: the press's two directions
+  are two mechanisms and each carries its own clock.
 - **Exits run at `--dur-fast` against entrances at `--dur-base` or slower.** Arriving is
   where the character lives; leaving is where impatience does.
 
@@ -1851,6 +1855,17 @@ the app; all four of those absences are now present on purpose. What governs it:
   fine, because nothing was catching a press anyway. The dividing line above is unchanged:
   it still decides *where the animation is authored*. It no longer also decides *whether
   the thing may be a spring*.
+
+  **#281 keeps that and adds the half of it #270 got wrong, again as a reversal.** A
+  *transition* still cannot be a spring the way that paragraph meant, because **its easing
+  scales the delta between the two values it is given, not the values themselves**. A curve
+  peaking at `1.0062` over a `0.97 → 1` release peaks at `1.00019` on screen: 0.05px on a
+  rail card, 0.008px on the checkmark. So the sentence *a CSS transition can carry a
+  spring's exact shape* is true and useless on its own — it carries the shape and discards
+  the amplitude. A **keyframe** names values, so it can reach a number neither endpoint
+  contains, and that is what the press's pop is. The rule stands with one word changed: a
+  press stays a CSS *transition or keyframe*, and which of the two is decided by whether the
+  motion has to name a value nothing else does.
 - **The springs are transcribed, not invented.** SwiftUI describes a spring as a *response*
   and a *damping fraction*; Motion accepts the same perceptual pair as `duration` and
   `bounce`, where `bounce ≈ 1 - dampingFraction`. `smooth` / `snappy` / `bouncy` carry
@@ -1898,20 +1913,48 @@ a finger can catch mid-flight.
 sentence above is still true — the press is in `globals.css` and nowhere else — but *what
 only Motion can express* was doing work it cannot do. It was read as *the press is in CSS
 because a press does not deserve a spring*, and the honest version is narrower: **Motion is
-what only Motion can express, and that is interruptibility, not spring shape.**
-`.pressable`'s timing function is now `--spring-press`, which is `snappy` — response
-`0.30`, damping fraction `0.85` — sampled into a `linear()` curve, so a control animated in
-CSS and one animated by Motion are the same spring rather than two dialects of one
-vocabulary. What kept the press in CSS is the half of the old argument that was always
-load-bearing and is untouched by this: every tile, cell and row wearing `pressable` stays a
-server component, a rail of them adds no per-frame JavaScript, and the earlier
-performance pass's savings are kept whole.
+what only Motion can express, and that is interruptibility, not spring shape.** What kept
+the press in CSS is the half of the old argument that was always load-bearing and is
+untouched by any of this: every tile, cell and row wearing `pressable` stays a server
+component, a rail of them adds no per-frame JavaScript, and the earlier performance pass's
+savings are kept whole.
 
-The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts`
-imports `snappy`, recomputes all 33 samples from the closed form for a damped oscillator's
-step response, and fails if either side moves — the discipline `tests/palette.test.ts`
-exists to enforce, applied here before the drift rather than after it, because 33 numbers
-in a stylesheet are the definitive example of a value nobody can check by eye.
+**#281 reversed the mechanism under that, and this too is recorded rather than
+overwritten.** The paragraph here read:
+
+> `.pressable`'s timing function is now `--spring-press`, which is `snappy` — response
+> `0.30`, damping fraction `0.85` — sampled into a `linear()` curve, so a control animated
+> in CSS and one animated by Motion are the same spring rather than two dialects of one
+> vocabulary.
+
+Every clause of that was true of the source and false of the screen. A transition's easing
+scales the **delta** between its two values, so `1.0062` applied to a `0.97 → 1` release
+landed at `1.00019` — 0.019% above rest, 0.05px on a rail card, 0.008px on the recording
+checkmark. The press was an exact spring nobody could see, and one `transition` governing
+both directions made it slow as well: at `425ms`, a tap shorter than a quarter-second never
+reached full compression and eased back from halfway.
+
+**The press is two mechanisms now.** A `transition` compresses it — `--dur-press`, 100ms,
+`--ease-out-quart`, `1 → 0.96` — and is deliberately *not* the spring, because a spring's
+long settle is the thing being fixed. A `@keyframes press-pop` carries the release past rest
+to `1.012` and settles it over `--dur-pop`, run on the `data-popped` mark the one delegated
+listener sets when a release qualified as a tap. `select-land` already proved the pattern
+and was the one press in the product that visibly popped.
+
+**The spring was re-pointed, not deleted.** `press-pop`'s 33 stops are the same `snappy`
+step response `--spring-press` held, from the same closed form, so the CSS press and a
+Motion-animated surface are still one spring. What changed is what the numbers are
+*attached* to: the shape is derived, and the two sizes it travels between are declared in
+the stylesheet rather than falling out of a delta nobody computed.
+
+The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts` imports
+`snappy`, recomputes all 33 stops from the closed form for a damped oscillator's step
+response, and fails if either side moves — the discipline `tests/palette.test.ts` exists to
+enforce, applied here before the drift rather than after it, because 33 numbers in a
+stylesheet are the definitive example of a value nobody can check by eye. **And it now
+asserts the pop exceeds the resting value**, which is the assertion #270's suite lacked:
+fidelity to a source and visible effect are two properties, the old suite proved the first,
+and the press shipped a release without the second.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what

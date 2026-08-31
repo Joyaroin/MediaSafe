@@ -6,43 +6,68 @@ import { describe, expect, it } from "vitest";
 import { snappy } from "@/app/motion";
 
 /**
- * The press's spring, asserted against the spring it claims to come from — issue #270.
+ * The press, asserted against the spring it claims to come from — issues #270 and #281.
  *
  * The press is CSS and stays CSS: it costs no client boundary and no per-frame JavaScript,
- * and `DESIGN.md`'s motion section holds why. What changed is that its timing function is
- * no longer an ease-out that arrives and stops. It is `app/motion.ts`'s `snappy`,
- * transcribed into a `linear()` easing curve, so a control animated in CSS and a control
- * animated by Motion are the same spring.
+ * and `DESIGN.md`'s motion section holds why. What it is made of changed in #281.
  *
- * Two spellings of one rule is two places for the numbers to disagree, and this
- * application has been bitten by exactly that twice (`app/motion.ts`'s own note on the
- * stagger cap; `tests/palette.test.ts`'s seven drifted colours). A curve pasted into a
- * stylesheet is the worst case of it: 33 numbers nobody can check by eye, next to a
- * comment claiming a provenance nothing verifies.
+ * ── What #270 shipped, and why this file did not catch it ────────────────────────────
  *
- * So this file does what `tests/palette.test.ts` does. It reads `app/globals.css` as text
- * and recomputes the curve from the **source the stylesheet cites** — `snappy`, imported
- * here, not copied — using the closed form for a damped harmonic oscillator's step
- * response. If either side moves, this fails.
+ * #270 made `.pressable`'s timing function `app/motion.ts`'s `snappy`, transcribed into a
+ * `linear()` curve, and this suite recomputed all 33 samples from the source spring. The
+ * transcription was exact and the assertions below proved it. They proved the wrong
+ * property. **A CSS transition's easing scales the delta between two values, not the value
+ * itself**, so a curve peaking at `1.0062` applied to a `0.97 → 1` release lands at
+ * `1.00019` — 0.019% above rest, 0.05px on a rail card and 0.008px on the checkmark the
+ * product is built around. A mathematically exact spring whose spring is unobservable.
  *
- * ── The derivation ────────────────────────────────────────────────────────────────────
+ * Fidelity to a source is not the same property as visible effect. This file now asserts
+ * the second one directly, and that assertion — **the pop exceeds the resting value** — is
+ * the one that would have failed on what shipped.
  *
- * SwiftUI describes a spring as a *response* and a *damping fraction*; Motion accepts the
- * same pair as `duration` and `bounce`, where `bounce ≈ 1 - dampingFraction`
- * (`app/motion.ts`). `snappy` is `.snappy`: response `0.30`, damping fraction `0.85`.
+ * ── The press #281 built ─────────────────────────────────────────────────────────────
+ *
+ * Two mechanisms, because one transition governing both directions is what made the press
+ * feel mushy — a tap shorter than the release never reached full compression:
+ *
+ *  - **the compression** is a `transition` on `transform`, `--dur-press` (100ms), an
+ *    ease-out, `1 → 0.96`. Deliberately *not* the spring: a spring's long settle is the
+ *    cause of the mushiness being fixed, and a quarter-second is longer than a tap;
+ *  - **the pop** is a `@keyframes`, `--dur-pop` (260ms), run on the `data-popped` mark
+ *    `app/motion-provider.tsx` sets when a release qualifies. A keyframe *names values*
+ *    rather than scaling a delta, which is the only mechanism that can reach a number the
+ *    transition's two endpoints do not contain. `select-land` already proves the pattern.
+ *
+ * ── Where the pop's stops come from, and what is derived versus chosen ───────────────
+ *
+ * The same closed form the 33 `linear()` samples came from, so the CSS press and a
+ * Motion-animated surface stay one spring rather than two hand-picked feels. SwiftUI
+ * describes a spring as a *response* and a *damping fraction*; Motion accepts the same pair
+ * as `duration` and `bounce`, where `bounce ≈ 1 - dampingFraction` (`app/motion.ts`).
+ * `snappy` is `.snappy`: response `0.30`, damping fraction `0.85`.
  *
  *   ωₙ = 2π / response          the undamped natural frequency
  *   ω_d = ωₙ √(1 − ζ²)          the damped frequency it actually oscillates at
  *   x(t) = 1 − e^(−ζωₙt) · (cos ω_d t + (ζωₙ/ω_d) · sin ω_d t)
  *
- * `x` is the unit step response — the fraction of the distance travelled at time `t`,
- * which is exactly what an easing function's output is. A `linear()` curve is that
- * function sampled at even intervals; the browser interpolates between the samples.
+ * `x` is the unit step response — the fraction of the distance travelled at `t`. Sampled
+ * at 33 even intervals over the settle, it is the *shape* of the pop: when it leaves, where
+ * it turns over, how it comes to rest.
  *
- * The one number the physics does not give is where to stop, because a spring settles
- * asymptotically and a CSS transition has to end. The envelope of the oscillation is
- * `e^(−ζωₙt) / √(1 − ζ²)`, so the settle time is where that falls under one part in a
- * thousand — a tenth of a percent of a 3% press is a hundredth of a pixel.
+ * **The two amplitudes are the register's, not the spring's, and that is the whole of the
+ * correction.** A 0.85-damped spring released from `0.96` overshoots to `1.00025` — which
+ * is exactly what shipped and exactly what nobody could see. So the curve is normalised to
+ * the two numbers #279 names: the rise runs `0.96 → 1.012` scaled by the curve's own peak,
+ * the settle runs `1.012 → 1` scaled by the curve's own excess above rest. Both pieces meet
+ * at the peak, where the step response's slope is zero, so the join is not a corner. What is
+ * derived is every stop's *value in time*; what is chosen is how far it travels — and the
+ * choosing is visible in the stylesheet as two numbers rather than hidden in a delta.
+ *
+ * Two spellings of one rule is two places for the numbers to disagree, and this application
+ * has been bitten by exactly that twice (`app/motion.ts`'s own note on the stagger cap;
+ * `tests/palette.test.ts`'s seven drifted colours). So this file does what
+ * `tests/palette.test.ts` does: it reads `app/globals.css` as text and recomputes the stops
+ * from the source the stylesheet cites — `snappy`, imported here, not copied.
  */
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
@@ -55,10 +80,10 @@ const CSS = readFileSync(path.join(REPOSITORY_ROOT, "app/globals.css"), "utf8");
  */
 const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, (block) => " ".repeat(block.length));
 
-/** How far off target the spring may be before the transition is allowed to end. */
+/** How far off target the spring may be before the curve is allowed to stop. */
 const SETTLED = 0.001;
 
-/** Samples in the emitted curve. 33 stops over the settle: one every ~13ms. */
+/** Samples in the pop keyframe. 33 stops over the settle, as the `linear()` curve had. */
 const STOPS = 33;
 
 /** `snappy`, read as the perceptual pair it was transcribed from. */
@@ -83,6 +108,32 @@ const settleMs = Math.ceil(
   (Math.log(1 / Math.sqrt(1 - damping * damping) / SETTLED) / decay) * 1000,
 );
 
+/** When the step response first turns over, and how far past rest it is when it does —
+ *  the closed form `1 + e^(−πζ/√(1−ζ²))` the sampled curve knows nothing about. */
+const peakTime = Math.PI / dampedFrequency;
+const peakExcess = Math.exp((-Math.PI * damping) / Math.sqrt(1 - damping * damping));
+
+/** The press's three sizes. #279's surface register, which is also the default and the
+ *  quieter of the two it names. */
+const COMPRESS = 0.96;
+const REST = 1;
+const POP = 1.012;
+
+/** The pop keyframe's stop `index`, recomputed from `snappy` — the header's derivation. */
+function popStop(index: number): number {
+  // A spring settles asymptotically and an animation has to end. The last stop is rest
+  // exactly: a keyframe that finished at 1.0022 would leave the control fractionally
+  // scaled for as long as the mark stays on it.
+  if (index === STOPS - 1) return REST;
+
+  const t = (index / (STOPS - 1)) * (settleMs / 1000);
+  const x = travelled(t);
+
+  return t <= peakTime
+    ? COMPRESS + (x / (1 + peakExcess)) * (POP - COMPRESS)
+    : REST + ((x - 1) / peakExcess) * (POP - REST);
+}
+
 /** Every declaration of a custom property, so a second one is a failure and not a shadow. */
 function declaredOnce(name: string): string {
   const all = [...CSS_CODE.matchAll(new RegExp(`^\\s*${name}:\\s*([^;]+);`, "gm"))];
@@ -97,67 +148,153 @@ function pressableUtility(): string {
   return match![0];
 }
 
-describe("the press is the spring app/motion.ts already names", () => {
-  it("times the press with a linear() curve and not an ease", () => {
-    const curve = declaredOnce("--spring-press");
-    expect(curve.startsWith("linear("), `--spring-press is ${curve}`).toBe(true);
-    expect(curve).not.toMatch(/cubic-bezier|ease-out|steps\(/);
+/** The body of a named `@keyframes` block. */
+function keyframesBlock(name: string): string {
+  const match = CSS_CODE.match(new RegExp(`@keyframes ${name} \\{[\\s\\S]*?\\n\\}`));
+  expect(match, `globals.css must declare \`@keyframes ${name}\``).not.toBeNull();
+  return match![0];
+}
+
+/** The pop's stops, in the order the keyframe declares them. */
+function popStops(): { at: number; scale: number }[] {
+  return [
+    ...keyframesBlock("press-pop").matchAll(
+      /([\d.]+)%\s*\{\s*transform:\s*scale\(([\d.]+)\)/g,
+    ),
+  ].map((stop) => ({ at: Number(stop[1]), scale: Number(stop[2]) }));
+}
+
+/** The rule that runs the pop, keyed off the mark the delegated listener sets. */
+function popRule(): string {
+  const match = CSS_CODE.match(/\.pressable\[data-popped="true"\]\s*\{[\s\S]*?\n\}/);
+  expect(match, "globals.css must run the pop off `data-popped`").not.toBeNull();
+  return match![0];
+}
+
+describe("the compression answers the finger", () => {
+  /**
+   * **Updated from *runs for as long as the spring takes to settle*.** That assertion was
+   * true of #270's press and is the mushiness #281 removes: one transition governed both
+   * directions, so a tap shorter than `425ms` never reached full compression and started
+   * easing back from wherever it had got to. `settleMs` is still recomputed here rather
+   * than written down, because *the compression is not the spring's settle* is only a
+   * property if the spring's settle is a live number.
+   */
+  it("compresses in a tenth of a second, which is shorter than a tap", () => {
+    expect(declaredOnce("--dur-press")).toBe("100ms");
+    expect(settleMs).toBeGreaterThan(400);
+  });
+
+  /**
+   * **Updated from *times the press with a linear() curve and not an ease*.** The reversal
+   * is deliberate and #281 states it: a spring's long settle is the cause of the feel being
+   * fixed, so the compression is explicitly not the spring. What carries the spring now is
+   * the pop, as named values in a keyframe rather than as an easing over a delta.
+   */
+  it("is timed with an ease-out and not with a spring", () => {
+    const easing = declaredOnce("--ease-out-quart");
+    const [x1, y1] = easing.replace(/^cubic-bezier\(|\)$/g, "").split(",").map(Number);
+
+    // An ease-out leaves fast: its first control point sits above the diagonal.
+    expect(easing.startsWith("cubic-bezier("), `--ease-out-quart is ${easing}`).toBe(true);
+    expect(y1).toBeGreaterThan(x1);
+
+    expect(pressableUtility()).toMatch(/transform\s+var\(--dur-press\)\s+var\(--ease-out-quart\)/);
+    expect(pressableUtility()).not.toMatch(/linear\(/);
+  });
+
+  /** The scale a finger actually gets, on the utility every tappable surface wears. The
+   *  mark the delegated listener sets and the platform's own `:active` are one rule, so
+   *  there is no second opinion about what *pressed* means. */
+  it("presses the surface to 0.96, marked or native", () => {
+    const pressed = pressableUtility().match(/&:active[\s\S]*?\{[\s\S]*?\}/);
+    expect(pressed, "`pressable` must still scale under a press").not.toBeNull();
+    expect(pressed![0]).toMatch(/transform:\s*scale\(0\.96\)/);
+    expect(pressableUtility()).toMatch(/&\[data-pressed="true"\]/);
+  });
+});
+
+describe("the release pops past rest", () => {
+  /**
+   * **The assertion #270 did not have.** Its curve was transcribed perfectly and reached
+   * `1.00019` on screen, because a transition's easing scales the delta between two values
+   * and neither of them was above rest. A keyframe names the value, so this is checkable at
+   * all — and it is checked against the resting size, not against a copy of the number.
+   */
+  it("exceeds the resting value by an amount a screenshot would show", () => {
+    const peak = Math.max(...popStops().map((stop) => stop.scale));
+
+    expect(peak).toBeGreaterThan(REST);
+    // #270 shipped 1.00019 — 0.05px on a rail card. A percent is the floor of visible.
+    expect(peak).toBeGreaterThanOrEqual(1.01);
+    expect(Math.abs(peak - POP)).toBeLessThan(5e-4);
+  });
+
+  /** A keyframe and not a transition, run off the mark the one delegated listener sets on
+   *  a release that qualified (`app/motion-provider.tsx`, issue #280). */
+  it("runs a keyframe on the release mark, over roughly a quarter second", () => {
+    expect(declaredOnce("--dur-pop")).toBe("260ms");
+    expect(popRule()).toMatch(/animation:\s*press-pop\s+var\(--dur-pop\)/);
+    // The stops are the spring; a second easing over them would be a second opinion.
+    expect(popRule()).toMatch(/animation:[^;]*\blinear\b/);
   });
 
   it("carries snappy's own step response, sample for sample", () => {
-    const stops = declaredOnce("--spring-press")
-      .replace(/^linear\(|\)$/g, "")
-      .split(",")
-      .map((stop) => Number(stop.trim()));
+    const stops = popStops();
 
     expect(stops).toHaveLength(STOPS);
-    for (const stop of stops) expect(Number.isFinite(stop)).toBe(true);
-
-    // Evenly spaced, which is what lets `linear()` omit the input positions.
     stops.forEach((stop, index) => {
-      const expected =
-        index === STOPS - 1 ? 1 : travelled((index / (STOPS - 1)) * (settleMs / 1000));
+      // Evenly spaced in time, which is what makes the samples a curve rather than a list.
+      expect(stop.at).toBeCloseTo((index * 100) / (STOPS - 1), 5);
       expect(
-        Math.abs(stop - expected),
-        `stop ${index} is ${stop}, and snappy is at ${expected.toFixed(4)} there`,
+        Math.abs(stop.scale - popStop(index)),
+        `stop ${index} is ${stop.scale}, and snappy puts it at ${popStop(index).toFixed(4)}`,
       ).toBeLessThanOrEqual(5e-5);
     });
 
-    // Starts where the press starts and ends exactly on target — a transition that ends
-    // at 0.9998 leaves the control fractionally scaled for as long as the finger is off.
-    expect(stops[0]).toBe(0);
-    expect(stops[STOPS - 1]).toBe(1);
+    // Starts where the compression left the control and ends exactly at rest.
+    expect(stops[0].scale).toBe(COMPRESS);
+    expect(stops[STOPS - 1].scale).toBe(REST);
   });
 
-  it("runs for as long as the spring takes to settle", () => {
-    // A spring curve replayed over `--dur-fast` is not this spring; it is this spring's
-    // shape at three times the speed, which is a different perceptual pair.
-    expect(declaredOnce("--dur-press")).toBe(`${settleMs}ms`);
-  });
+  /** The pop's shape is the spring's, so the peak has to fall where the spring's does —
+   *  two thirds through, rather than at the halfway a keyframe picked by eye would put it
+   *  (`select-land`, the other press in this stylesheet, turns over at 55%). */
+  it("turns over where the spring turns over", () => {
+    const stops = popStops();
+    const peak = Math.max(...stops.map((stop) => stop.scale));
 
-  it("overshoots by the amount a 0.85-damped spring overshoots, and no more", () => {
-    // The peak of a second-order step response is `1 + e^(−πζ/√(1−ζ²))`, which is a
-    // closed form the sampled curve knows nothing about. A trace, and the platform's own
-    // trace: `.snappy` is what a pointer touches, and winding it past that is where
-    // motion stops reading as physics (`app/motion.ts`).
-    const stops = declaredOnce("--spring-press")
-      .replace(/^linear\(|\)$/g, "")
-      .split(",")
-      .map((stop) => Number(stop.trim()));
-    const peak = Math.max(...stops);
-    const theoretical = 1 + Math.exp((-Math.PI * damping) / Math.sqrt(1 - damping * damping));
+    // The top is a short plateau because the stops are written to four decimals, so the
+    // turnover is the middle of it rather than whichever sample is listed first.
+    const plateau = stops.filter((stop) => stop.scale === peak);
+    const peakAt = plateau.reduce((total, stop) => total + stop.at, 0) / plateau.length;
 
-    expect(peak).toBeGreaterThan(1);
-    expect(Math.abs(peak - theoretical)).toBeLessThan(0.001);
-  });
-
-  it("is what the shared press utility is actually timed with", () => {
-    // The curve existing as a token proves nothing. `pressable` is the utility every
-    // tappable surface in the application wears, and the transform is the press.
-    expect(pressableUtility()).toMatch(
-      /transform\s+var\(--dur-press\)\s+var\(--spring-press\)/,
+    expect(Math.abs(peakAt - (peakTime / (settleMs / 1000)) * 100)).toBeLessThan(
+      100 / (STOPS - 1),
     );
-    expect(pressableUtility()).toMatch(/&:active\s*\{[\s\S]*?transform:\s*scale\(0\.97\)/);
+  });
+});
+
+describe("the stylesheet keeps no motion token nothing consumes", () => {
+  /**
+   * #281 re-points the press's spring rather than deleting it: the 33 `linear()` samples
+   * became the pop keyframe's stops, and `--spring-press` went with them. A curve left
+   * behind that nothing reads is the drift this file exists to prevent, arriving as
+   * abandonment rather than as disagreement.
+   */
+  it("reads every duration, easing and spring it declares", () => {
+    const declared = [...CSS_CODE.matchAll(/^\s*(--(?:dur|ease|spring)-[a-z-]+):/gm)].map(
+      (match) => match[1],
+    );
+
+    expect(declared.length).toBeGreaterThan(0);
+    for (const token of declared) {
+      expect(CSS_CODE, `${token} is declared and never read`).toContain(`var(${token})`);
+    }
+  });
+
+  it("has no `linear()` press curve left over", () => {
+    expect(CSS_CODE).not.toContain("--spring-press");
   });
 });
 
@@ -187,7 +324,8 @@ describe("the press answers the gesture the product is built around", () => {
 
   it("costs no client boundary and no per-frame JavaScript", () => {
     // The whole reason the press is in CSS. `watch-mark-motion.tsx` is class strings a
-    // server component renders, and the spring must not have dragged it over the line.
+    // server component renders, and neither the spring nor the pop may have dragged it
+    // over the line.
     const motionSource = readFileSync(
       path.join(REPOSITORY_ROOT, "app/(signed-in)/library/watch-mark-motion.tsx"),
       "utf8",
@@ -201,7 +339,7 @@ describe("the press answers the gesture the product is built around", () => {
     const motionCode = readFileSync(path.join(REPOSITORY_ROOT, "app/motion.ts"), "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
-    expect(motionCode).not.toMatch(/linear\(|cubic-bezier/);
+    expect(motionCode).not.toMatch(/linear\(|cubic-bezier|@keyframes/);
   });
 });
 
@@ -210,10 +348,15 @@ describe("reduced motion stops the movement, not the event", () => {
     .map((match) => match[0])
     .filter((block) => /\.pressable[^[]/.test(block));
 
-  it("still covers the press it now springs", () => {
+  it("drops the compression and the pop, both", () => {
     expect(reducedBlocks).toHaveLength(1);
     expect(reducedBlocks[0]).toMatch(/\.pressable\s*\{[\s\S]*?transition:\s*none/);
-    expect(reducedBlocks[0]).toMatch(/\.pressable:active\s*\{[\s\S]*?transform:\s*none/);
+    expect(reducedBlocks[0]).toMatch(/transform:\s*none/);
+    // Extended rather than replaced: the keyframe is the half #281 added, and a
+    // reduced-motion block that covered only the transition would still pop.
+    expect(reducedBlocks[0]).toMatch(
+      /\.pressable\[data-popped="true"\]\s*\{[\s\S]*?animation:\s*none/,
+    );
   });
 
   it("leaves the control able to be pressed", () => {

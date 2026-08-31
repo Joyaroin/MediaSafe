@@ -84,13 +84,26 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  * buys nothing because nothing can catch a reveal — and that had come to be read as
  * *therefore a press is flat*. A press cannot be caught either, but it can still have a
  * spring's **shape**, and those are two properties rather than one. `linear()` holds an
- * arbitrary function of time, so `.pressable`'s timing function is now `snappy` itself,
- * sampled: response `0.30`, damping fraction `0.85`, the numbers above rather than an
- * approximation of them, so a control animated in CSS and one animated here are the same
- * spring. `globals.css`'s `--spring-press` carries the derivation, and
- * `tests/press-spring.test.ts` recomputes all 33 samples from `snappy` — this note's own
- * warning about two spellings, answered by making the second one a function of the first.
+ * arbitrary function of time, so the press was given `snappy` itself, sampled: response
+ * `0.30`, damping fraction `0.85`, the numbers above rather than an approximation of them,
+ * so a control animated in CSS and one animated here are the same spring.
  *
  * So the dividing line narrows to what it can actually defend: what only Motion can
  * express is **interruptibility**. Not spring shape.
+ *
+ * ── #281 kept all of that and moved where the spring is written ─────────────────────
+ *
+ * `globals.css`'s `--spring-press` is gone, and none of the above changes: the press is
+ * still in CSS, this module still gains nothing back, and the press is still `snappy`.
+ * What was wrong was the **timing function** as the place to put it. A transition's easing
+ * scales the *delta* between two values rather than a value, so a curve peaking at `1.0062`
+ * over a `0.97 → 1` release arrived at `1.00019` — a faithful transcription of the spring
+ * above, and 0.008px of movement on the checkmark this product is built around.
+ *
+ * The press is now a 100ms compression and a `press-pop` keyframe, and that keyframe's 33
+ * stops are the same step response, from the same closed form, normalised to sizes a
+ * reader can see. `tests/press-spring.test.ts` recomputes every one of them from `snappy`
+ * and now also asserts the pop exceeds rest: this note's own warning about two spellings,
+ * answered first by making the second spelling a function of the first, and then by
+ * asserting that the second one does anything at all.
  */
