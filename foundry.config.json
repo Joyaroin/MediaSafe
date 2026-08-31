@@ -1,7 +1,8 @@
 {
   "verify": [
-    "rm -rf .next/types .next/dev/types",
+    "rm -rf .next",
     "npm run typecheck",
+    "npm run build",
     "npm test"
   ],
   "maxParallel": 3,
