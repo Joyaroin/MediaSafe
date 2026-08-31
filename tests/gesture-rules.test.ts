@@ -7,6 +7,7 @@ import {
   dragOffset,
   ownsPointer,
   releaseDrag,
+  releasePops,
   type Drag,
   type DragRules,
 } from "@/app/gesture-rules";
@@ -307,5 +308,108 @@ describe("a gesture the surface claimed is not also a press on a child", () => {
   it("delivers a tap, which never latched a claim either way", () => {
     expect(deliversClick(null)).toBe(true);
     expect(claimsDrag({ dx: 0, dy: 0 }, PAGER_FIRST)).toBe(false);
+  });
+});
+
+/**
+ * ── What a release just produced — issue #280 ────────────────────────────────────────
+ *
+ * `deliversClick` above answers half of *what did this pointer just produce*: whether the
+ * click a finished gesture leaves behind may be delivered. #279 adds the other half. The
+ * press now **pops** past its resting size on release, and a pop is a claim about the
+ * gesture rather than a decoration on it — it means *that was a tap and it landed*. A
+ * gesture that turned into a drag did not tap anything, and a pointer the browser took
+ * away did not either.
+ *
+ * So the two answers live in one module, and the point of the last block in this file is
+ * that they **agree**. A pop that survived a claimed drag, or a click swallowed under a
+ * flourish that ran anyway, is one gesture meaning two things — the failure `SPEC.md`
+ * states for the season row's check, arriving here as motion instead of navigation.
+ *
+ * There is no DOM here and there is not meant to be, which is the whole reason the rule is
+ * a function rather than three branches inside the delegated listener in
+ * `app/motion-provider.tsx`. That listener owns *which element* and *whose pointer*; this
+ * owns *whether*.
+ */
+
+describe("whether a release pops", () => {
+  /** The ordinary tap: the pointer went down on a control and came up on it, and no
+   *  surface ever asked whether the delta was a drag, because there was no delta. */
+  it("pops a release that never latched a claim", () => {
+    expect(releasePops("released", null)).toBe(true);
+  });
+
+  /**
+   * **The case this rule exists for** — #279's *a press that becomes a swipe does not
+   * pop*. The pager claimed the gesture and paged; the control under the thumb was the
+   * thing the swipe was made *of*, not the thing the reader tapped.
+   */
+  it("does not pop a release whose pointer was claimed as a drag", () => {
+    expect(releasePops("released", true)).toBe(false);
+  });
+
+  /**
+   * A gesture some surface watched and refused is somebody else's, and on this surface
+   * that somebody is the control the finger is still resting on. It pops, for the same
+   * reason its click is delivered.
+   */
+  it("pops a release from a gesture that was watched and refused", () => {
+    expect(releasePops("released", false)).toBe(true);
+  });
+
+  /**
+   * `pointercancel` is the browser taking the pointer away — a native scroll starting, a
+   * gesture handed to the system. Nothing was tapped, so nothing pops, **whatever the
+   * claim was**. This is the contract that keeps the delegated listener and the pager
+   * apart, and #279 states it as a tested property rather than a convention.
+   */
+  it("never pops a cancelled pointer, whatever the claim was", () => {
+    expect(releasePops("cancelled", null)).toBe(false);
+    expect(releasePops("cancelled", false)).toBe(false);
+    expect(releasePops("cancelled", true)).toBe(false);
+  });
+});
+
+describe("the pop rule and the click rule agree about what a pointer produced", () => {
+  /**
+   * One gesture, one answer. The click is delivered exactly when the pop runs, because
+   * both are the same sentence — *that was a tap and it landed*. Written as an equality
+   * over all three claims rather than three restated literals, so a change to either rule
+   * that does not move the other fails here rather than shipping as a control that flashes
+   * without navigating, or navigates without flashing.
+   */
+  it("says the same thing for every claim a release can carry", () => {
+    for (const claimed of [true, false, null] as const) {
+      expect(releasePops("released", claimed), `claimed: ${String(claimed)}`).toBe(
+        deliversClick(claimed),
+      );
+    }
+  });
+
+  /**
+   * And they part company on exactly one thing, which is the one thing `deliversClick`
+   * cannot be asked: a cancelled pointer generates no click at all, so there is nothing
+   * for that rule to refuse — while the press is a mark on an element that very much
+   * still exists and must come off without a flourish.
+   */
+  it("differs only where there is no click to have an opinion about", () => {
+    expect(releasePops("cancelled", null)).toBe(false);
+    expect(deliversClick(null)).toBe(true);
+  });
+
+  /**
+   * The two rules over one whole gesture, driven from the same delta the pager's binding
+   * would latch from: a swipe across a card claims the drag, so the card's click is
+   * swallowed **and** its pop does not run. This is #280's *a swipe across a pager card
+   * leaves no pop mark behind*, said in the only place it can be said without a browser.
+   */
+  it("leaves a swipe across a card with neither a click nor a pop", () => {
+    const swipe: Drag = { dx: -120, dy: 8 };
+    const claimed = claimsDrag(swipe, PAGER_FIRST);
+
+    expect(claimed).toBe(true);
+    expect(releaseDrag(swipe, PAGER_FIRST, claimed)).toEqual({ kind: "commit", direction: -1 });
+    expect(deliversClick(claimed)).toBe(false);
+    expect(releasePops("released", claimed)).toBe(false);
   });
 });

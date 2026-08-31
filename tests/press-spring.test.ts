@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -220,5 +220,127 @@ describe("reduced motion stops the movement, not the event", () => {
     // The event still happens; it stops moving through space. Anything that took the
     // control out of the document or off the pointer would be the other thing.
     expect(reducedBlocks[0]).not.toMatch(/pointer-events|display\s*:|visibility/);
+  });
+});
+
+/**
+ * ── The trigger — issues #279 and #280 ──────────────────────────────────────────────
+ *
+ * Everything above is the stylesheet, read as text. This is the one piece of runtime the
+ * press has: a **single delegated pointer listener**, in the root client component that
+ * already wraps the whole tree, which marks the nearest `pressable` ancestor of whatever
+ * a finger came down on and — when the release qualifies — marks it as having popped.
+ *
+ * `vitest.config.mts` runs in `node`, so the marking itself cannot be driven here, and
+ * `tests/gesture-rules.test.ts` is where the *rule* it applies is asserted with no DOM at
+ * all. What is left is structural, and it is structural in the way this application keeps
+ * failing: the cost of a press is the thing #270's suite already guards, and *one listener
+ * at the root* versus *a handler per call site* is exactly that cost restated for the
+ * trigger. `tests/upcoming-surface.test.ts` reads the pager's source for the same reason
+ * and says so.
+ *
+ * **This is also the run's stated main risk.** #277 hardened the landing pager's pointer
+ * handling hours before this listener was written, and the two share `pointerdown`,
+ * `pointerup` and `pointercancel` over the same surfaces. The audit below is what keeps
+ * the press from growing a second opinion about a gesture somewhere else in the tree.
+ */
+
+/** Every `.ts`/`.tsx` file under `app/`, relative to the repository root — the same
+ *  whole-tree audit `tests/underline-audit.test.ts` runs, and for the same reason: a fixed
+ *  list of files to check is how a rule like this drifts in the first place. */
+function appSourceFiles(): string[] {
+  const files: string[] = [];
+
+  function walk(dir: string): void {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry.name)) files.push(path.relative(REPOSITORY_ROOT, full));
+    }
+  }
+
+  walk(path.join(REPOSITORY_ROOT, "app"));
+  return files;
+}
+
+/** A source file with its comments blanked. The prose in this codebase names the very
+ *  things these assertions look for — `landing-pager.tsx` discusses `pointermove` at
+ *  length and must not read as one. */
+function codeOf(relativePath: string): string {
+  return readFileSync(path.join(REPOSITORY_ROOT, relativePath), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
+const ROOT_CLIENT_COMPONENT = "app/motion-provider.tsx";
+
+describe("the press has a trigger, and there is one of it", () => {
+  const provider = codeOf(ROOT_CLIENT_COMPONENT);
+
+  /**
+   * **Exactly one.** Twenty-five call sites wear `pressable`, and the press costing them
+   * nothing is the whole argument for it being CSS at all — a per-call-site handler would
+   * put a client boundary on every tile, cell and row in the application, which is the
+   * thing `costs no client boundary` above exists to prevent, arriving from the other
+   * side.
+   */
+  it("adds one delegated pointerdown listener in the whole application", () => {
+    const listening = appSourceFiles().filter((file) =>
+      /addEventListener\(\s*"pointerdown"/.test(codeOf(file)),
+    );
+
+    expect(listening).toEqual([ROOT_CLIENT_COMPONENT]);
+  });
+
+  /** The root layout renders `<html>` and holds the metadata. It stays a server component,
+   *  which is why the listener lives in the client island it already mounts rather than in
+   *  the layout itself. */
+  it("leaves the root layout a server component", () => {
+    expect(codeOf("app/layout.tsx")).not.toMatch(/^\s*"use client"/m);
+    expect(codeOf("app/layout.tsx")).toContain("MotionProvider");
+  });
+
+  /**
+   * All three, and the third is the one that matters. A `pointercancel` is the browser
+   * taking the pointer away — a native scroll starting under the thumb — and a listener
+   * that only knew about `pointerup` would leave the mark on an element the reader has
+   * stopped touching, for as long as they stay on the page.
+   */
+  it("clears the mark on a cancelled pointer as well as on a release", () => {
+    expect(provider).toMatch(/addEventListener\(\s*"pointerup"/);
+    expect(provider).toMatch(/addEventListener\(\s*"pointercancel"/);
+  });
+
+  /**
+   * **No per-frame JavaScript.** #279's user story is a rail of many tiles staying as
+   * cheap as it is now, and a `pointermove` handler on the document is the one addition
+   * that would quietly undo the scrolling work an earlier pass did. The listener's whole
+   * job happens on the two ends of a gesture.
+   */
+  it("does no work while the finger is moving", () => {
+    expect(provider).not.toContain("pointermove");
+    expect(provider).not.toContain("requestAnimationFrame");
+  });
+
+  /**
+   * The rule is the shared module's, not this file's — #279's *the two answers to what
+   * did this pointer just produce live in one module*. A branch spelled out here would be
+   * a second opinion about a gesture, decidable only in a browser.
+   */
+  it("takes the pop rule from the shared gesture module", () => {
+    expect(provider).toContain("./gesture-rules");
+    expect(provider).toContain("releasePops");
+  });
+
+  /**
+   * **The mark is set regardless of the reduced-motion preference.** The event always
+   * happens; only the animation is negotiable, and the stylesheet is where it is dropped
+   * (see the block above). A `matchMedia` here would be a second answer to a question the
+   * application answers in two places already — `MotionConfig` for Motion, and the
+   * `@media` block for CSS.
+   */
+  it("does not ask about reduced motion before marking the press", () => {
+    expect(provider).not.toContain("prefers-reduced-motion");
+    expect(provider).not.toContain("matchMedia");
   });
 });

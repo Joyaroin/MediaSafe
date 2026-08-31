@@ -258,3 +258,57 @@ export function ownsPointer<G extends GesturePointer>(
 export function deliversClick(claimed: boolean | null): boolean {
   return claimed !== true;
 }
+
+/**
+ * ── What a release just produced — issues #279 and #280 ─────────────────────────────
+ *
+ * `deliversClick` answers half of *what did this pointer just produce*. The other half
+ * arrives with the press that pops: on release, a `pressable` control carries past its
+ * resting size and settles, and that flourish is a **claim about the gesture** — it says
+ * *that was a tap and it landed*. A gesture that turned into a drag did not tap anything,
+ * and a pointer the browser took away did not either.
+ *
+ * The rule is here rather than inside `app/motion-provider.tsx`'s delegated listener for
+ * the reason the whole module exists: a decision made inside a pointer handler is a
+ * decision nothing without a browser can assert, and this one has to be checked *against
+ * the rule beside it* rather than on its own. A pop that ran under a swallowed click, or
+ * a click delivered under no pop, is one gesture meaning two things.
+ */
+
+/**
+ * How a press ended.
+ *
+ * `"released"` is the finger coming off. `"cancelled"` is the browser taking the pointer
+ * away mid-gesture — a native scroll starting under the thumb, or the system claiming the
+ * gesture — which fires `pointercancel` and no `pointerup` at all.
+ *
+ * Two named strings rather than a `cancelled: boolean`, because the two are not degrees of
+ * one thing and a call site reading `releasePops(true, claimed)` would be unreadable in
+ * exactly the direction that matters.
+ */
+export type PressEnd = "released" | "cancelled";
+
+/**
+ * **Does the control the finger was on pop when the finger comes off?**
+ *
+ * Two conditions, and each is a thing a reader would describe:
+ *
+ *  - the pointer was **released** rather than cancelled. A cancelled pointer was taken
+ *    away, and the press it leaves behind has to come off quietly — this is the contract
+ *    that keeps the delegated listener and the landing pager (#277) apart, and #279 states
+ *    it as a tested property rather than a convention;
+ *  - and no surface **claimed** the gesture as a drag. `claimed` is the same three-state
+ *    latch `deliversClick` takes, in the same three states: `true` is *a surface claimed
+ *    this and has already acted on it*, `false` is *a surface watched it and refused*, and
+ *    `null` is *nothing ever asked*, which is a tap.
+ *
+ * The last two answering alike is the point rather than an accident: the pop runs exactly
+ * when the click is delivered, which is what `tests/gesture-rules.test.ts` asserts as an
+ * equality across all three claims.
+ *
+ * Spelled out rather than delegating to `deliversClick`, so that the agreement between the
+ * two is a **property under test** and not a fact about which one calls the other.
+ */
+export function releasePops(end: PressEnd, claimed: boolean | null): boolean {
+  return end === "released" && claimed !== true;
+}
