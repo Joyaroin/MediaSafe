@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { DEFAULT_KIND_MODE, type KindMode } from "@/app/(signed-in)/library/kind-mode";
+import { type KindMode } from "@/app/(signed-in)/library/kind-mode";
 import { KindModeControl } from "@/app/(signed-in)/library/kind-mode-control";
+import { SEARCH_START, type SearchPlace } from "@/app/restoration";
+import { keepSearch, rememberedSearch } from "@/app/restoration-memory";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { catalogueKeyOf } from "@/tmdb/mirror";
@@ -44,6 +46,14 @@ import { searchCatalogueAction, type MarkedResult, type SearchOutcome } from "./
  * be a URL that renders a failure if you came back to it. Sort state on the library **is**
  * in the URL (`SPEC.md` §7) because it is a view of your own rows that is worth linking to;
  * a half-typed catalogue query is not.
+ *
+ * **That client state is now remembered for the session** —
+ * [#276](https://github.com/Joyaroin/MediaSafe/issues/276). Since #273 a search result
+ * opens the title's own page instead of raising a sheet, so leaving this screen used to
+ * cost the reader their query and its results. It does not any more: the query, the mode
+ * and the results come back on return, out of `app/restoration.ts`, without a re-type and
+ * without a second request to the catalogue. Nothing about the paragraph above changes —
+ * it is still not a URL, and there is still no state here a link could carry.
  */
 
 /**
@@ -60,6 +70,29 @@ type Phase =
   | { kind: "results"; results: readonly MarkedResult[] }
   | { kind: "empty"; query: string }
   | { kind: "failed"; reference: string | null };
+
+/**
+ * The phase this screen opens in, for a reader who has been here already — issue #276's
+ * *returning to search restores the query and its results without a re-fetch or a
+ * re-type*.
+ *
+ * **Only `results` is remembered**, which is what makes this one branch rather than five.
+ * The reason to come back to search is that you opened a result to read about it; the other
+ * four phases are not places a reader leaves and returns to — `searching` has no answer
+ * yet, `failed` is about a request that is now minutes old, and `empty` and `idle` restore
+ * to themselves. So the memory holds a query, its mode and its results or it holds nothing,
+ * and there is no state here that can be restored half-remembered.
+ *
+ * A reader who has not been here gets `SEARCH_START` — nothing typed, and *you have not
+ * typed yet* under the field. **That is also what keeps hydration honest**: nothing on the
+ * server ever writes the memory (`app/restoration-memory.ts` says why at length), so a
+ * fresh load renders the resting state on both sides.
+ */
+function openingPhase(remembered: SearchPlace<MarkedResult>): Phase {
+  return remembered.results.length === 0
+    ? { kind: "idle" }
+    : { kind: "results", results: remembered.results };
+}
 
 export function SearchSurface({
   rails,
@@ -85,9 +118,16 @@ export function SearchSurface({
    */
   rails?: Partial<Record<KindMode, React.ReactNode>>;
 }) {
-  const [mode, setMode] = useState<KindMode>(DEFAULT_KIND_MODE);
-  const [query, setQuery] = useState("");
-  const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+  /**
+   * Where this screen was when the reader last left it, read once — a plain read of a
+   * module variable, so it is the same three values for all three `useState` initialisers
+   * below and cannot be half of one visit and half of another.
+   */
+  const [was] = useState(rememberedSearch);
+
+  const [mode, setMode] = useState<KindMode>(was.mode);
+  const [query, setQuery] = useState(was.query);
+  const [phase, setPhase] = useState<Phase>(() => openingPhase(was));
 
   /** The pending debounce, so the next keystroke can cancel it. */
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,15 +173,28 @@ export function SearchSurface({
       if (request !== newestRequest.current) return;
 
       if (!outcome.ok) {
+        keepSearch(SEARCH_START);
         setPhase({ kind: "failed", reference: outcome.reference });
         return;
       }
 
-      setPhase(
-        outcome.results.length === 0
-          ? { kind: "empty", query: trimmed }
-          : { kind: "results", results: outcome.results },
-      );
+      /**
+       * The one place a search becomes something worth coming back to (#276). Kept with
+       * the mode it was asked under, because *Fargo* is a film and a show and the two
+       * restored apart would be a films list under a control saying **Shows**.
+       *
+       * An answer with nothing in it forgets instead, along with every other branch above
+       * — a reader cannot have opened a result there, so there is nothing a return would
+       * be restoring except a query they had already given up on.
+       */
+      if (outcome.results.length === 0) {
+        keepSearch(SEARCH_START);
+        setPhase({ kind: "empty", query: trimmed });
+        return;
+      }
+
+      keepSearch({ mode: asked, query: trimmed, results: outcome.results });
+      setPhase({ kind: "results", results: outcome.results });
     }, delayMs);
   }
 
@@ -155,6 +208,9 @@ export function SearchSurface({
       // and having *no results* appear a moment later would be the screen saying the
       // catalogue is empty when nothing was asked.
       newestRequest.current += 1;
+      // And an emptied field is a reader who is done with that search, so there is nothing
+      // left to come back to (#276).
+      keepSearch(SEARCH_START);
       setPhase({ kind: "idle" });
       return;
     }
@@ -180,6 +236,7 @@ export function SearchSurface({
     if (!trimmed) {
       if (timer.current) clearTimeout(timer.current);
       newestRequest.current += 1;
+      keepSearch(SEARCH_START);
       setPhase({ kind: "idle" });
       return;
     }
@@ -192,6 +249,7 @@ export function SearchSurface({
   function retry() {
     const trimmed = query.trim();
     if (!trimmed) {
+      keepSearch(SEARCH_START);
       setPhase({ kind: "idle" });
       return;
     }
