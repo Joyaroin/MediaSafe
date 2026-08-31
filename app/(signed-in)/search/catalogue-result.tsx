@@ -174,8 +174,10 @@ export function CatalogueResultRow({
             A result had exactly one affordance, *Add*, so the only way to find out what a
             title was before taking it into your library was to add it and look. That is
             the wrong order for the one screen whose whole job is titles you have never
-            seen. `/titles/[kind]/[tmdbId]` already existed for an unowned title and is
-            intercepted into a dialog from here.
+            seen. `/titles/[kind]/[tmdbId]` already existed for an unowned title, and a
+            press here is an ordinary navigation to it. It was intercepted into a dialog
+            from #254 until #273 deleted the route interceptions: a reader who asked to
+            open a result gets the title's full page, not a sheet over the search.
 
             The **name** rather than the whole row: the row also carries *Add*, and a link
             wrapping a button is neither a valid nesting nor an honest target — a press

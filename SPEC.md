@@ -323,6 +323,16 @@ fourth.
    the three rails* below.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
+   **True again since [#273](https://github.com/Joyaroin/MediaSafe/issues/273), and it was not
+   in between.** [#254](https://github.com/Joyaroin/MediaSafe/issues/254) put two *intercepting*
+   route slots on the signed-in layout, so a press on a library cell, a title, an episode or a
+   search result was captured and raised a **sheet** over the screen the reader was on rather
+   than pushing anything — this bullet went on saying *a route you push and pop* while the
+   phone had stopped doing that. #273 deletes both interceptions and the shared dialog: a
+   sheet never raises over a tab when the reader asked to open something, and there is one
+   model for what a tap does. The **remove confirmation** is reached by ordinary page
+   navigation for the same reason, which a destructive confirmation should always have been.
+   The desktop half of this bullet was never affected and is unchanged.
 4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
    and for phone by [#138](https://github.com/Joyaroin/MediaSafe/issues/138).**
    Phone: **no numeric cap on a group's screen**, the same *a surface you work down never renders N at

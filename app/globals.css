@@ -500,9 +500,11 @@
      `manipulation` keeps panning and pinch-zoom — the two gestures a reader actually uses
      on a list of posters — and gives up only double-tap-to-zoom, on controls where it was
      never meaningful. Elements that need to own a gesture outright still say so at the
-     call site: `route-modal.tsx`'s grabber sets `touch-none`, and it is a class, so it
-     wins over this. `landing-pager.tsx` deliberately sets nothing and is a `div`, so this
-     rule does not reach it either.
+     call site: `reorderable-title-list.tsx`'s drag handle sets `touch-none`, and it is a
+     class, so it wins over this. `landing-pager.tsx` deliberately sets nothing and is a
+     `div`, so this rule does not reach it either. (The example named here was
+     `route-modal.tsx`'s grabber until issue #273 deleted the route interceptions and the
+     dialog with them.)
 
      The tap highlight goes with it. It is a grey rectangle the platform paints over the
      element's own bounds on press, and this app already answers a press properly — the
