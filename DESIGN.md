@@ -1019,6 +1019,30 @@ is describing the committed library.
   every surface that renders one renders the name beside it as real text, so an `alt` here
   would make a screen reader read every title twice.
 
+**Amended by [#269](https://github.com/Joyaroin/MediaSafe/issues/269), for one frame, and
+it is a crop.** *Uncropped*, and the bullet that makes the `2/3` ratio decide the other
+side, are reversed on the next-episodes card and nowhere else: when that card has no still
+to draw, **the title's poster fills the still's own `16 / 9` frame, cropped to its centre**.
+Recorded here as a reversal rather than quietly overwritten, because the paragraph above
+forbids exactly this by default.
+
+Three things keep the amendment from reopening the rule it sits inside:
+
+- **It is a fallback, not a treatment.** No surface *chooses* to draw a poster at `16 / 9`.
+  This is the frame a still would have filled, filled by the one other piece of artwork the
+  card already holds, and only when there is no still — which is `up-next-mark.ts`'s rule
+  and not the component's.
+- **The alternative was a hole.** A card that advances on a mark loses the still it was
+  drawing (see the still's own section below), and the card is mostly picture. The reader
+  did nothing but the one thing the card is for, so the frame going blank is the surface
+  breaking under ordinary use — the complaint #268 is written from.
+- **The box does not move.** A crop is what keeps the card's measure identical in all three
+  of its states, and a whole `2/3` poster in that slot is what would not. The rail must not
+  reflow under a thumb that has just tapped a checkmark.
+
+**No second surface gets a cropped poster by default.** If one arrives, it argues from
+here rather than citing this as precedent, the way §12 requires of the rating scale.
+
 ### The still — issue #253
 
 The frame at the top of an episode's page, over the `still_path` column issue #246 put in
@@ -1040,7 +1064,20 @@ Three things differ, and all three follow from what a still *is*:
   would be a knob with nothing on the other end of it. It takes `poster`'s own `7px`
   default, so the two agree by default rather than by coincidence.
 
-**The missing-artwork state is the frame, and nothing inside it.** Issue #245's user story
+**A card that has advanced draws the title's poster in this frame — issue #269.** The
+next-episodes card's still belongs to the **head** of its run and to nobody else:
+`QueuedEpisode` carries no artwork, and widening that read was considered and rejected in
+favour of the poster the entry already has. So a card that has been marked cannot draw the
+new episode's frame, and must not draw the old one — a frame from the episode just watched,
+over the name of the episode on offer, is a *wrong* picture rather than a missing one.
+What fills the gap is the poster, cropped to centre, at this frame's measure and not the
+poster's; §8's amendment above is where that reversal is argued. **The rule for which of
+the two lives in `app/(signed-in)/up-next/up-next-mark.ts`**, with the rest of that card's
+derivations, and not in the component that draws it.
+
+**The missing-artwork state is the frame, and nothing inside it.** It is now reached when
+the title has **neither** a still nor a poster, which is the only remaining case and is
+unchanged in every other respect. Issue #245's user story
 48 asks for *a deliberate placeholder, so that a missing still does not collapse the row*,
 and it is worth being exact that this is the same answer §3 already gives for the poster
 rather than an exception to it: what was asked for is that the space is **held**, not that
