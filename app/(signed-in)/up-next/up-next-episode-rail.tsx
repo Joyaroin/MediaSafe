@@ -2,9 +2,15 @@
 
 import { useMemo } from "react";
 
-import type { UpNextEntry } from "@/db/access";
+import {
+  isEpisodeEntry,
+  isPendingEntry,
+  type UpNextEntry,
+  type UpNextRailEntry,
+} from "@/db/access";
 import { RailSection, FIRST_RUN } from "./up-next-phone-rail";
 import { UpNextEpisodeCard } from "./up-next-episode-card";
+import { UpNextPendingCard } from "./up-next-pending-card";
 import { useEntriesOnRail } from "./up-next-mark";
 
 /**
@@ -39,11 +45,26 @@ export function UpNextEpisodeRail({
   rails,
 }: {
   rails: {
-    readonly ongoing: readonly UpNextEntry[];
+    readonly ongoing: readonly UpNextRailEntry[];
     readonly comingBack: readonly UpNextEntry[];
     readonly oldFriends: readonly UpNextEntry[];
   };
 }) {
+  /**
+   * Ongoing's two shapes, split before anything else happens — issue #272.
+   *
+   * The split is here rather than in `up-next-mark.ts` because everything that module does
+   * is about an episode: which one a card is on, whether the run is spent, whether the card
+   * has left the rail. A title whose episodes have not arrived has no episode, cannot be
+   * marked and can never leave the rail by being marked, so it is not a question that
+   * module is asked — it is handed the cards that have a run, and the pending ones go
+   * straight to the head of the track.
+   *
+   * Memoised for the same reason `entries` below is, and it must be: a fresh array here is
+   * a fresh array there, since both are cut from `rails.ongoing`.
+   */
+  const pending = useMemo(() => rails.ongoing.filter(isPendingEntry), [rails.ongoing]);
+
   /**
    * The one line that makes the three orderings one rail. Written out rather than
    * `Object.values(rails)` so the sequence is a fact of this file and not of a key order.
@@ -64,7 +85,11 @@ export function UpNextEpisodeRail({
    * because it passed `rails.ongoing` straight through and concatenated nothing.
    */
   const entries = useMemo(
-    () => [...rails.ongoing, ...rails.comingBack, ...rails.oldFriends],
+    () => [
+      ...rails.ongoing.filter(isEpisodeEntry),
+      ...rails.comingBack,
+      ...rails.oldFriends,
+    ],
     [rails.ongoing, rails.comingBack, rails.oldFriends],
   );
 
@@ -75,15 +100,24 @@ export function UpNextEpisodeRail({
    */
   const showing = useEntriesOnRail(entries);
 
-  if (showing.length === 0) return null;
+  /* A rail of nothing but pending cards is still a rail — the reader has just added their
+     first title, and the tab it was added for must not read as empty. */
+  if (pending.length === 0 && showing.length === 0) return null;
 
   return (
     <RailSection label="Next episodes">
+      {pending.map((entry, index) => (
+        <UpNextPendingCard
+          key={entry.libraryEntryId}
+          entry={entry}
+          aboveFold={index < FIRST_RUN}
+        />
+      ))}
       {showing.map((entry, index) => (
         <UpNextEpisodeCard
           key={entry.libraryEntryId}
           entry={entry}
-          aboveFold={index < FIRST_RUN}
+          aboveFold={pending.length + index < FIRST_RUN}
         />
       ))}
     </RailSection>

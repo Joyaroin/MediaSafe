@@ -764,9 +764,32 @@ the product.
 
 | Rail | Head line | Rule (`db/access.ts`, `listUpNextRails`) |
 |---|---|---|
-| **Ongoing** | *Watching · your most recent* | *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
+| **Ongoing** | *Watching · your most recent* | a **pending** title — episodes not mirrored — newest added first; then *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
 | **Coming back** | *Caught up · an episode is dated* | *caught up* ∧ the **up next** episode's air date is in the future |
 | **Old friends** | *Watching · everything else* | *watching*, everything not in **Ongoing** |
+
+**Amended by [#272](https://github.com/Joyaroin/MediaSafe/issues/272): Ongoing has a second
+membership, and it is the first thing this file said the rails did not have.** Every rule
+above was *a grouping over the derived-state view*, and the sentence below still beginning
+"nothing is stored" was written to mean that a rail could hold nothing the watches did not
+put there. A title whose episodes have not mirrored has no watches, no progress and no
+`library_entry_up_next` row, so the projection cannot reach it at all — and a reader who has
+just added a show and cannot find it on the tab they added it for concludes the add failed.
+
+Recorded as a reversal rather than quietly overwritten, and narrowed as hard as it goes:
+
+- **It is one rail, and the rails stay three.** A fourth rail was considered and refused. A
+  pending title is *something you are in the middle of starting*, which is Ongoing's own
+  sentence, and a rail that empties itself within seconds of appearing is chrome.
+- **It is still not stored derived state.** `title.episodes_mirrored_at` is not a copy of
+  anything — nothing else in the database knows whether a mirror has run, and ADR-0001
+  amendment 11 argues at length why *this title has no episode rows* is the wrong place to
+  infer it from: it makes *still arriving* and *genuinely has none* the same state.
+- **It spends none of the twelve.** The cap bounds *watching*, which is the set it was
+  measured against; pending titles are prepended to it. Otherwise a mirror in flight would
+  push a show the reader is actually watching onto **Old friends** for the length of it.
+- **A film is never pending**, and neither is a show whose mirror has landed on nothing. Both
+  are the column read literally, and both are asserted against a real Postgres.
 
 The membership rules live in `db/access.ts` and not in the components on purpose: the
 surface decides the words and the order they read in, and knows nothing about what put a
@@ -804,6 +827,8 @@ reads as a count whether it is meant as one or not.
 
 - **A rail is never *pending* on its own either**, and gets no loading boundary of its own —
   §9 settles that, and settles it against a written request, so read it there before adding one.
+  **#272 did not change this.** A rail is still never pending; one *tile* on Ongoing can be,
+  which is a different claim about a different thing, and §9 carries it.
 - **An empty rail is absent** — no heading over nothing, no sentence, no zero, no reserved
   space. **Every** rail empty is a different fact, answered once by `UpNextRailsSurface` in
   `UpNextEmpty`'s own voice, because *you're caught up* is a sentence and not three
@@ -1187,13 +1212,29 @@ before the fetch that fills it. A poster path is a fact the tile that was presse
 None of those is pending, so none of them waits — and what is left pending is a far smaller
 region than the whole screen the reader is currently staring at.
 
-### One treatment, at three radii
+### One treatment, at three radii — four since #272
 
 | Blast radius | Treatment | Where it lives |
 |---|---|---|
 | **A whole surface is pending** | The surface's own heading, and one `code-line` in `dim` where the content will be | `loading.tsx` at the page's own segment — the one row here that was a decision rather than a description, and now `app/pending-line.tsx` at three placements under `/library` |
 | **One region is pending, beside rendered content** | The region's own head alone, in its settled form, marked `role="status"` | a `Suspense` boundary, or the region's own phase state |
 | **A pane is swapping** | Everything the caller already holds — the poster — and the same one dim line | `programme-note.tsx`'s four-phase union |
+| **One *entry* is pending, beside entries that are not** | Everything the entry already holds — poster and name — and the same one dim line where its unresolved fact will be | `up-next-tile.tsx` and `up-next-pending-card.tsx` ([#272](https://github.com/Joyaroin/MediaSafe/issues/272)) |
+
+**The fourth row is an amendment, and *three radii* was not a placeholder waiting to be
+filled.** The three above are all *a read has not answered yet* — the answer is coming in
+milliseconds and the treatment is what stands in for it meanwhile. The fourth is a different
+kind of waiting: the read **has** answered, completely and correctly, and the answer is *this
+title's episodes have not arrived from TMDB yet*. It is a fact the database holds
+(`title.episodes_mirrored_at`, ADR-0001 amendment 11), it can outlive several page loads, and
+a failed background mirror can leave it standing until the nightly sweep. Recorded as a
+reversal of the count rather than slipped into the table, because *pending is a read in
+flight* was a real assumption of the three rows above and it is no longer true of all four.
+
+What is emphatically **not** amended is the treatment. It is the same `PendingLine` — one
+`code-line` in `dim`, `role="status"`, the word *Reading* — for the same reason there is one
+of it at three placements and not three of it: **§9 settles one visual treatment and lets the
+caller decide the placement.** A state that lasts longer does not get to be louder.
 
 The table takes the error table's shape on purpose, and for the reason `AGENTS.md` gives for
 the four failure placements: **treatment follows blast radius**, and a surface that replaces
@@ -1398,6 +1439,39 @@ the route's.**
 merely looks separable on the glass. The three live fact sections have three independent
 fetches and three independent failures, and that is what makes each of them genuinely able to
 be pending alone.
+
+### One tile on a rail can be pending — and the rail still cannot
+
+**Amended by [#272](https://github.com/Joyaroin/MediaSafe/issues/272), and it does not reopen
+the section above.** Everything argued there is about a *rail* — three rails from one read,
+resolving together, so a boundary around one of them would be a boundary around nothing. That
+holds unchanged. What #272 adds is a **tile**, and a tile is not a rail: it is one entry among
+entries that have already arrived, on a rail that is not waiting for anything.
+
+A title added from search is written and answered before its seasons and episodes are
+mirrored (`SPEC.md`'s add, ADR-0001 amendment 11). Until they land it appears at the head of
+**Ongoing** — §7 carries that membership — and it is drawn like this:
+
+- **The poster and the name render at once, at full strength.** They are facts the add wrote
+  from the series before it answered the press. This is §9's own opening principle applied
+  without exception: *everything already in hand renders at once*, and what is left pending is
+  a far smaller region than the tile.
+- **The episode line is the one region that says it is waiting**, in the one dim line. On the
+  phone's next-episodes card that is where the code line and the remainder sit; on the desktop
+  rail tile it is the line under the year. Nothing else on either changes.
+- **The box does not change size.** The pending card is `up-next-episode-card.tsx`'s own
+  `CARD`, `CARD_WIDTH` and `FRAME`, imported rather than restated, and it keeps the empty
+  `44px` mark slot — so the rail does not reflow at the instant the mirror lands and the card
+  becomes an ordinary one. That is #269's *the rail never reflows under a thumb*, held through
+  one more transition.
+- **No skeleton and no shimmer**, and the four reasons above are unchanged. The second bites
+  hardest here: a grey rectangle at a poster's measure is already *a title TMDB has no artwork
+  for*, and a rail is precisely where that reading is available. **No new radius either** —
+  the tile draws the poster's `7px` and the card its own existing corner, and §4's list of two
+  is not extended.
+- **A pending tile is not a disabled tile.** It is pressable, and it opens the title's own
+  page, where the episode region draws the identical treatment (radius 2, above). Pressing the
+  thing that says *waiting* leads somewhere that answers what it is waiting for.
 
 ### Radius 3 — a pane is swapping, and this is the prior art
 

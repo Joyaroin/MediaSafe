@@ -6,10 +6,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   asUserId,
+  isEpisodeEntry,
+  isPendingEntry,
   listUpNextRails,
   ONGOING_RAIL_SIZE,
   UP_NEXT_QUEUE_DEPTH,
   type UpNextEntry,
+  type UpNextRailEntry,
   type UpNextRails,
   type UserId,
 } from "@/db/access";
@@ -92,6 +95,18 @@ interface ShowSpec {
   inProduction?: boolean | null;
   episodes?: EpisodeSpec[];
   abandonedAt?: Date;
+  /**
+   * When the entry was added. Left out, the column's `DEFAULT now()` stands — which inside
+   * one transaction is the *transaction's* clock and therefore identical for every row this
+   * file seeds, so a case that orders by it has to set it.
+   */
+  addedAt?: Date;
+  /**
+   * `null` is a title whose episodes have not mirrored — the pending case (#272). Left
+   * out, the column's own `DEFAULT now()` stamps the row, which is what makes *complete*
+   * the answer for every show this file seeds without saying otherwise.
+   */
+  episodesMirroredAt?: Date | null;
 }
 
 interface Show {
@@ -116,6 +131,8 @@ async function seedShow(
       releaseYear: "releaseYear" in spec ? spec.releaseYear : 2022,
       posterPath: "posterPath" in spec ? spec.posterPath : `/poster-${number}.jpg`,
       inProduction: "inProduction" in spec ? spec.inProduction : true,
+      // `undefined` is dropped by the insert, so the column's own default stands.
+      episodesMirroredAt: spec.episodesMirroredAt,
     })
     .returning({ id: title.id });
 
@@ -139,7 +156,12 @@ async function seedShow(
 
   const [entry] = await tx
     .insert(libraryEntry)
-    .values({ userId, titleId: row.id, abandonedAt: spec.abandonedAt })
+    .values({
+      userId,
+      titleId: row.id,
+      abandonedAt: spec.abandonedAt,
+      addedAt: spec.addedAt,
+    })
     .returning({ id: libraryEntry.id });
 
   return { userId, titleId: row.id, entryId: entry.id, episodeIds };
@@ -254,7 +276,7 @@ async function seedComingBack(
 async function railNames(
   tx: Transaction,
   userId: UserId,
-  rail: (rails: UpNextRails) => readonly UpNextEntry[],
+  rail: (rails: UpNextRails) => readonly UpNextRailEntry[],
 ): Promise<string[]> {
   const rails = await listUpNextRails(userId, tx);
   return rail(rails).map((entry) => entry.titleName);
@@ -287,7 +309,7 @@ interface OrderReader {
   readonly entries: (
     tx: Transaction,
     userId: UserId,
-  ) => Promise<readonly UpNextEntry[]>;
+  ) => Promise<readonly UpNextRailEntry[]>;
 }
 
 async function displaceNothing(): Promise<void> {}
@@ -562,6 +584,42 @@ async function seedFinished(
   await markWatched(tx, show, 0, watchedAt);
   await markWatched(tx, show, 1, watchedAt);
   return show;
+}
+
+/**
+ * A title whose episodes have not mirrored — issue #272's whole subject, and the one
+ * membership on this surface that is not a projection of the derived-state view.
+ *
+ * No episodes at all, because that is what the case *is*: the add wrote the series row and
+ * answered the press, and the seasons are still on their way. `episodesMirroredAt: null` is
+ * the fact that says so, and it is the fact this seeder exists to set — a show with no
+ * episode rows and a *stamped* column is a different case entirely (a show TMDB genuinely
+ * lists nothing for), and it is seeded by leaving the field out.
+ */
+async function seedPending(
+  tx: Transaction,
+  userId: UserId,
+  name: string,
+  addedAt?: Date,
+): Promise<Show> {
+  return await seedShow(tx, userId, {
+    name,
+    addedAt,
+    episodesMirroredAt: null,
+    episodes: [],
+  });
+}
+
+/**
+ * Ongoing's ordinary, episode-bearing entries — issue #272 widened that one rail to hold
+ * pending titles as well, and every case that asks for `.queue` or an episode name is
+ * asking for this shape.
+ *
+ * A filter rather than a cast: a case that seeds a pending title by accident gets a shorter
+ * array and a failing assertion, not a field read off a row that never had one.
+ */
+function ongoingCards(rails: UpNextRails): readonly UpNextEntry[] {
+  return rails.ongoing.filter(isEpisodeEntry);
 }
 
 /** Every name on every rail, so a case can assert what is nowhere as well as what is where. */
@@ -921,7 +979,7 @@ describe("listUpNextRails — what each rail contains", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       // Null is the honest answer; the tile's own rule is that it never degrades to
       // "S1 E2" instead, and it cannot follow that rule from a name this read invented.
@@ -930,6 +988,274 @@ describe("listUpNextRails — what each rail contains", () => {
       // Same rule for a title TMDB has not dated: the tile prints no year line at all
       // rather than a placeholder, which it cannot do from a year this read invented.
       expect(entry.releaseYear).toBeNull();
+    });
+  });
+});
+
+/**
+ * Pending titles on Ongoing — issue #272.
+ *
+ * ── Why this cannot be checked anywhere but here ─────────────────────────────────────
+ *
+ * Every other rail membership is a projection of `library_entry_state` over episodes, and
+ * a title with no episodes cannot come out of that view: no watches, so no progress, so no
+ * `library_entry_up_next` row for the shared read's inner join to find. The widened read
+ * is a second membership beside it, and **its failure is the silent kind this whole file
+ * exists for** — a reader who adds a show and does not see it simply concludes the add did
+ * not work, and nothing anywhere throws.
+ *
+ * The five properties below are the ticket's, and each of them is a way for the widening
+ * to be wrong without being noisy: absent, doubled, sunk down the rail, stuck pending after
+ * the mirror landed, or claimed for a film that has nothing to wait for.
+ */
+describe("listUpNextRails — a title whose episodes have not mirrored", () => {
+  it("puts it at the head of Ongoing, ahead of what was watched last night", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // Watched today: the top of SPEC.md §7's order, and the tile a pending title has to
+      // get in front of. Nothing about the pending title is watched, so the cascade has
+      // nothing to rank it by and could not put it here on its own.
+      await seedWatching(tx, reader, { name: "Watched last night", watchedAt: daysAgo(0) });
+      await seedPending(tx, reader, "Just added");
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(rails.ongoing.map((entry) => entry.titleName)).toEqual([
+        "Just added",
+        "Watched last night",
+      ]);
+    });
+  });
+
+  it("puts the most recently added pending title first", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // Three adds in sequence. §7's own cascade has nothing to rank these by — no watch,
+      // no next episode, no air date — so *newest added first* is a rule this read has to
+      // carry itself, and the one a reader who just pressed Add is looking for.
+      await seedPending(tx, reader, "Added first", daysAgo(3));
+      await seedPending(tx, reader, "Added second", daysAgo(2));
+      await seedPending(tx, reader, "Added third", daysAgo(1));
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(rails.ongoing.map((entry) => entry.titleName)).toEqual([
+        "Added third",
+        "Added second",
+        "Added first",
+      ]);
+    });
+  });
+
+  it("puts it on Ongoing once, and never on a second rail as well", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // The doubling case, and it is reachable: a mirror that landed some of a show's
+      // episodes and then failed leaves the column null with rows behind it, so the title
+      // is *watching* with an episode after its progress **and** unmirrored. Read by both
+      // memberships it would draw twice — a pending tile and an ordinary one, for one show.
+      const half = await seedShow(tx, reader, {
+        name: "Half arrived",
+        episodesMirroredAt: null,
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, half, 0, daysAgo(1));
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(everyRailName(rails)).toEqual(["Half arrived"]);
+      // And it is the pending shape, not the ordinary one — a title whose episodes have
+      // not mirrored must never be rendered as though they had.
+      expect(rails.ongoing.map(isPendingEntry)).toEqual([true]);
+    });
+  });
+
+  it("carries the poster and the name the add already wrote, and no episode at all", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        name: "Andor",
+        releaseYear: 2022,
+        posterPath: "/andor.jpg",
+        episodesMirroredAt: null,
+        episodes: [],
+      });
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      // Asserted whole rather than field by field: what a pending tile may draw is exactly
+      // this, and a field arriving here that the tile has no rule for is the way a skeleton
+      // gets in (`DESIGN.md` §9).
+      expect(entry).toEqual({
+        libraryEntryId: show.entryId,
+        titleId: show.titleId,
+        titleName: "Andor",
+        releaseYear: 2022,
+        posterPath: "/andor.jpg",
+        pending: true,
+      });
+    });
+  });
+
+  it("draws a pending title TMDB has neither dated nor illustrated", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedShow(tx, reader, {
+        name: "Unillustrated",
+        releaseYear: null,
+        posterPath: null,
+        episodesMirroredAt: null,
+        episodes: [],
+      });
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      // Null is the honest answer here exactly as it is on an ordinary tile: no year line
+      // and no placeholder glyph, and neither can be followed from a fact this read made up.
+      expect(entry.posterPath).toBeNull();
+      expect(entry.releaseYear).toBeNull();
+    });
+  });
+
+  it("stops being pending the moment the mirror stamps the title", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // The episodes have landed and one is watched; only the stamp is missing, which is
+      // the window between the mirror writing its rows and finishing.
+      const show = await seedShow(tx, reader, {
+        name: "Mirrored at last",
+        episodesMirroredAt: null,
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      expect((await listUpNextRails(reader, tx)).ongoing.map(isPendingEntry)).toEqual([
+        true,
+      ]);
+
+      await tx
+        .update(title)
+        .set({ episodesMirroredAt: new Date() })
+        .where(eq(title.id, show.titleId));
+
+      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+
+      // An ordinary Ongoing entry now: the same tile, holding the episode it was waiting
+      // for. Nothing was written to move it — the stamp is the whole transition.
+      expect(isPendingEntry(entry)).toBe(false);
+      expect(entry.titleName).toBe("Mirrored at last");
+      expect(entry).toMatchObject({ episodeId: show.episodeIds[1], seasonNo: 1, episodeNo: 2 });
+    });
+  });
+
+  it("never renders a film as pending, whatever its stamp says", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // The add stamps a film on the way in, so this row should not exist — and the rule
+      // is asserted against a row that does, because *a film is never pending* is a rule
+      // of the product and not a consequence of how one writer happens to be written.
+      const [film] = await tx
+        .insert(title)
+        .values({
+          kind: "film",
+          tmdbId: nextNumber(),
+          name: "Unstamped film",
+          releaseYear: 2019,
+          posterPath: "/film.jpg",
+          episodesMirroredAt: null,
+        })
+        .returning({ id: title.id });
+      await tx.insert(libraryEntry).values({ userId: reader, titleId: film.id });
+
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual([]);
+    });
+  });
+
+  it("leaves a complete show with genuinely no episodes off every rail", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // Stamped, and TMDB lists nothing. *Still arriving* and *genuinely has none* are the
+      // two states the column exists to keep apart, and this is the second of them: an
+      // empty season list means an empty season list, and it is not a tile on Up next.
+      await seedShow(tx, reader, { name: "Nothing listed", episodes: [] });
+
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual([]);
+    });
+  });
+
+  it("leaves a pending title you have abandoned off every rail", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedShow(tx, reader, {
+        name: "Put down",
+        episodesMirroredAt: null,
+        episodes: [],
+        abandonedAt: daysAgo(1),
+      });
+
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual([]);
+    });
+  });
+
+  it("reads this account's pending titles and never another account's", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const stranger = await seedUser(tx, "stranger");
+
+      await seedPending(tx, reader, "Mine, arriving");
+      await seedPending(tx, stranger, "Theirs, arriving");
+
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual(["Mine, arriving"]);
+    });
+  });
+
+  it("keeps the rails three, and puts pending on Ongoing rather than a fourth", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedPending(tx, reader, "Just added");
+
+      const rails = await listUpNextRails(reader, tx);
+
+      expect(Object.keys(rails).sort()).toEqual(["comingBack", "oldFriends", "ongoing"]);
+      expect(rails.comingBack).toEqual([]);
+      expect(rails.oldFriends).toEqual([]);
+    });
+  });
+
+  it("spends none of Ongoing's twelve on a pending title", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      for (let days = ONGOING_RAIL_SIZE; days >= 1; days -= 1) {
+        await seedWatching(tx, reader, {
+          name: `Watched ${days} days ago`,
+          watchedAt: daysAgo(days),
+        });
+      }
+      await seedPending(tx, reader, "Just added");
+
+      const rails = await listUpNextRails(reader, tx);
+
+      // Thirteen on Ongoing and nothing on Old friends: the cap bounds *watching*, which is
+      // the set it was measured against, and a mirror in flight does not push a show the
+      // reader is in the middle of onto the cold rail for the length of it.
+      expect(rails.ongoing).toHaveLength(ONGOING_RAIL_SIZE + 1);
+      expect(rails.ongoing[0].titleName).toBe("Just added");
+      expect(rails.oldFriends).toEqual([]);
     });
   });
 });
@@ -966,7 +1292,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       // One fact read twice, and the assertion is that they cannot disagree.
       expect(entry.queue.episodes[0].episodeId).toBe(entry.episodeId);
@@ -986,7 +1312,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(
         entry.queue.episodes.map((one) => `S${one.seasonNo}E${one.episodeNo}`),
@@ -1006,7 +1332,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(entry.queue.episodes.every((one) => one.seasonNo > 0)).toBe(true);
     });
@@ -1028,7 +1354,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(entry.queue.episodes.map((one) => one.episodeNo)).toEqual([2]);
       expect(entry.queue.more).toBe(false);
@@ -1048,7 +1374,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       // A null air date is not a released one, exactly as `db/views.ts` reads it.
       expect(entry.queue.episodes.map((one) => one.episodeNo)).toEqual([2]);
@@ -1066,7 +1392,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       const show = await seedShow(tx, reader, { episodes });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(entry.queue.episodes).toHaveLength(UP_NEXT_QUEUE_DEPTH);
       expect(entry.queue.more).toBe(true);
@@ -1086,7 +1412,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       const show = await seedShow(tx, reader, { episodes });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(entry.queue.episodes).toHaveLength(UP_NEXT_QUEUE_DEPTH);
       expect(entry.queue.more).toBe(false);
@@ -1105,7 +1431,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, show, 0, daysAgo(1));
 
-      const [entry] = (await listUpNextRails(reader, tx)).ongoing;
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(entry.queue.episodes[0].episodeName).toBeNull();
     });
@@ -1143,7 +1469,7 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
       });
       await markWatched(tx, theirs, 0, daysAgo(1));
 
-      const { ongoing } = await listUpNextRails(reader, tx);
+      const ongoing = ongoingCards(await listUpNextRails(reader, tx));
 
       expect(ongoing).toHaveLength(2);
       expect(ongoing.every((entry) => entry.queue.episodes.length === 2)).toBe(true);

@@ -239,12 +239,16 @@ function countAfterShown(remaining: number, marked: number, spent: boolean): num
 
 /** The card's fixed measure — the prototype's `262px`, and the one thing it fixes. The
  *  height follows from the still's ratio and the lines under it, so a long episode name
- *  makes a taller card rather than a truncated one. */
-const CARD_WIDTH = 262;
-const CARD = "w-[262px] shrink-0 snap-start";
+ *  makes a taller card rather than a truncated one.
+ *
+ *  Exported since #272: the pending card is the same box with a different filling, and a
+ *  second `262px` written down beside this one is a rail that reflows the moment either
+ *  number moves. */
+export const CARD_WIDTH = 262;
+export const CARD = "w-[262px] shrink-0 snap-start";
 /** The frame's measure, stated once so the three states of `CardFrame` cannot come to
  *  differ in size — which is the whole of *the rail never reflows under a thumb*. */
-const FRAME = "w-full [--still-radius:0]";
+export const FRAME = "w-full [--still-radius:0]";
 
 /**
  * The card, drawn once for both branches above.
