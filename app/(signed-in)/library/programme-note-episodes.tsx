@@ -585,10 +585,12 @@ function EpisodeLine({
        * identical too, and the check's box `44.00 × 44.00` flush with the row's top edge.
        * §6's *the fifth time was the row becoming a link* has the table.
        *
-       * `scroll={false}` for `up-next-episode-card.tsx`'s reason, which matters more here:
-       * a season list is scrolled to wherever the reader was reading, and the router would
-       * otherwise send the page behind the backdrop to the top before the modal even
-       * opened.
+       * This row carried `scroll={false}` until issue #273, for
+       * `up-next-episode-card.tsx`'s reason: the press was intercepted, the season list
+       * stayed underneath, and the router would otherwise have sent the page behind the
+       * backdrop to the top before the modal even opened. Nothing is underneath now — the
+       * episode is a page, this is an ordinary navigation, and it goes to the top of that
+       * page like every other navigation in the application.
        *
        * The label is the episode's **full** name rather than the two cells' text, because
        * `E1 Brigade` read aloud does not say which season it is in — the same words the
@@ -596,7 +598,6 @@ function EpisodeLine({
        */}
       <Link
         href={`/library/${libraryEntryId}/episode/${episode.id}`}
-        scroll={false}
         aria-label={fullName}
         className="-my-2 flex min-w-0 flex-1 items-center gap-3 self-stretch py-2"
       >

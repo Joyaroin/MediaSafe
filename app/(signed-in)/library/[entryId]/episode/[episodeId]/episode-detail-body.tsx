@@ -8,21 +8,23 @@ import { EpisodeDetailView } from "./episode-detail-view";
 import { EpisodeSynopsisStreamed } from "./episode-synopsis-streamed";
 
 /**
- * The episode surface itself — the read, the miss, and everything the reader looks at —
- * with no opinion about whether it is a page or a modal.
+ * The episode surface itself — the read, the miss, and everything the reader looks at.
  *
  * ── Why this is a component and not the body of `page.tsx` ───────────────────────────
  *
- * Issue #254 gives this route a second render: the intercepted one in the signed-in
- * layout's `@episode` slot, which shows the *same* episode from the same read over whatever
- * the reader was looking at. Two files rendering that from two copies of the same eight
- * lines is the arrangement where one of them quietly stops calling `notFound()`, or reads
- * a different cache entry, and the two surfaces begin disagreeing about an episode the
- * reader believes is one thing.
+ * Issue #254 gave this route a second render: an intercepted one in the signed-in
+ * layout's `@episode` slot, which showed the *same* episode from the same read over
+ * whatever the reader was looking at. Two files rendering that from two copies of the same
+ * eight lines is the arrangement where one of them quietly stops calling `notFound()`, or
+ * reads a different cache entry, and the two surfaces begin disagreeing about an episode
+ * the reader believes is one thing. So the split was: this file is *the episode*,
+ * `page.tsx` is *the page it is on*, and the slot's own page was *the dialog it arrived
+ * in*.
  *
- * So the split is: this file is *the episode*, `page.tsx` is *the page it is on* and
- * `@episode/(.)…/page.tsx` is *the dialog it arrives in*. Both of those are four lines long
- * and neither of them reads anything.
+ * **Issue #273 deletes the interception**, so there is one render again — and the split
+ * stays. `page.tsx` is a route file that reads nothing, this is the surface, and putting
+ * the read, the `notFound()` and the streamed synopsis back into a route body would be a
+ * second rewrite riding on the deletion of a slot.
  *
  * Every argument for how this reads — one cache entry, authorisation through
  * `getTitleDetail`, the day in the key, an unguarded call so a failure throws, and a
@@ -33,25 +35,9 @@ import { EpisodeSynopsisStreamed } from "./episode-synopsis-streamed";
 export async function EpisodeDetailBody({
   entryId,
   episodeId,
-  overlaid = false,
 }: {
   readonly entryId: string;
   readonly episodeId: string;
-  /**
-   * **This is the modal's render, not the page's.**
-   *
-   * The one difference between the two surfaces, and it is passed rather than detected:
-   * a component that asked the router whether it happened to be inside a slot would be a
-   * component whose behaviour nobody can see from either call site. Both callers are four
-   * lines long and say which they are.
-   *
-   * It reaches exactly one control — *Previous* and *Next*, which must not scroll the page
-   * behind the backdrop and must not stack a history entry per episode.
-   * `EpisodeDetailView`'s `EpisodeRunControls` has the argument in full. Everything else
-   * about the episode is identical on both, which is why there is one component here and
-   * not two.
-   */
-  readonly overlaid?: boolean;
 }) {
   const userId = await requireUserId();
   const detail = await cachedTitleDetail(userId, entryId);
@@ -66,7 +52,6 @@ export async function EpisodeDetailBody({
         titleName={detail.name}
         episodes={detail.episodes}
         located={located}
-        overlaid={overlaid}
         synopsis={
           <EpisodeSynopsisStreamed
             userId={userId}

@@ -40,7 +40,9 @@ const PAGER_SECOND: DragRules = {
   commits: [1],
 };
 
-/** The episode modal's dismiss (#254): vertical, and only downwards. */
+/** A vertical dismiss, downwards only. It was the episode modal's (#254) until issue #273
+ *  deleted the route interceptions and the sheet they raised; the rules module is general,
+ *  and this is where its vertical axis is driven from. */
 const SWIPE_DOWN: DragRules = { axis: "vertical", threshold: DRAG_THRESHOLD_PX, commits: [1] };
 
 /**

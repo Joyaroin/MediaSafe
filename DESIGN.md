@@ -685,10 +685,15 @@ pass against the running app, though nothing in a fixed-pixel box model depends 
 ### The fifth time was the row becoming a link, and it passed
 
 Issue #254 makes a season row a destination: the episode number and the name are wrapped in
-a `Link` to `library/[entryId]/episode/[episodeId]`, so pressing a row opens the episode
-modal. That is a new element in the middle of a row whose height is guaranteed, which is
-exactly the shape of change the four entries above were all written about, so it was
-measured before it was believed.
+a `Link` to `library/[entryId]/episode/[episodeId]`. That is a new element in the middle of
+a row whose height is guaranteed, which is exactly the shape of change the four entries
+above were all written about, so it was measured before it was believed.
+
+**This paragraph said *pressing a row opens the episode modal* until issue #273**, and the
+correction is a reversal rather than a rewording: the route interception is deleted, so a
+row now opens the episode's **page**. The geometry below is untouched by that — the link,
+its `44px` box and the check beside it are the same element either way, and what changed is
+only where the press lands.
 
 **Two things make it geometry-neutral, and the second is the one that is easy to omit.**
 The link is `flex min-w-0 flex-1 items-center gap-3`, which is the arrangement the `<li>`
@@ -1014,6 +1019,52 @@ navigates. The sheet is that same answer in the shape a phone has room for.
   by a media query: the five groups only ever render inside `lg:hidden`, so *is there a
   sheet* and *is this the phone* are already the same question. #136 deleted this build's
   only `matchMedia` branch and nothing here reintroduces one.
+
+### A sheet never raises over a tab — issue #273
+
+**The route interceptions are deleted.** There were two parallel slots on the signed-in
+layout, `@title` and `@episode`, each holding an intercepting route and each rendering a
+shared `RouteModal` dialog. A press on a library cell, a title, a season row, a
+next-episodes card or a search result was captured into one of them and arrived as a sheet
+over the screen the reader was on, instead of as the page they had asked for. All of it
+goes: both slots, their catch-all closers, their slot defaults and the dialog, which had no
+other caller.
+
+There is now **one model for what a tap does, and it navigates.** That is the sentence this
+section is measured against from here.
+
+- **This reaches past Up next, on purpose.** Library entries, title pages, episode pages
+  and search results all opened in a sheet; all four are ordinary navigations now. So is
+  the **remove confirmation** — the title interception's `[[...rest]]` matched one segment
+  deeper than the route it shadowed, so a destructive confirmation was reached with a sheet
+  raised over it. A destructive confirmation is not a dismissible sheet. Its page was
+  already written as a full page and needed no change of its own.
+- **The desktop side pane stays, and is not what was removed.** It is the two-pane layout
+  #137 built: selection state swapping a pane while nothing navigates, with the programme
+  note's four-phase pending machine (§9, radius 3) behind it. On `lg` and up nothing in
+  this ticket touches it.
+- **The phone sheet the paragraphs above describe is not what this deletes**, and it is
+  worth saying so rather than leaving a reader to assume one section undid the other. That
+  sheet was selection state on the Up next tab, not a route, and it went earlier — with
+  #250's five vertical groups, which were its only callers (`up-next-rails.tsx`). The
+  paragraphs above are stale on their own account and
+  [#274](https://github.com/Joyaroin/MediaSafe/issues/274) is the ticket that amends them,
+  when the phone's remaining *use* of selection goes and a tile becomes the link the film
+  tile already is. What #273 deletes is the route interception: a different mechanism,
+  reaching a different set of surfaces.
+- **A press stopped saying `scroll={false}`.** Both origins into an episode — the
+  next-episodes card and the season row — carried it, because the page underneath was still
+  the reader's place to come back to and the router must not send it to the top behind a
+  backdrop. Nothing is underneath any more. Left in place it would land a reader part-way
+  down a page they have never seen, which is the quietest failure this reversal could have
+  left behind, and `tests/episode-modal.test.ts` is what asserts it is gone.
+
+A slot contributes no path segment and neither does `(.)`, so **none of this is visible in
+a URL**: an interception put back would build, typecheck and serve exactly the same
+addresses while changing what every press in the application means.
+`tests/route-manifest.test.ts` reads the build's own manifests and asserts that no
+interception route and no modal slot were compiled, which is the only place that failure
+can be caught.
 
 ---
 

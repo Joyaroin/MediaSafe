@@ -15,9 +15,11 @@ import { AddToLibraryControl } from "./add-to-library-control";
 import { UnownedEpisodes } from "./unowned-episodes";
 
 /**
- * Catalogue detail's content, shared by the route and by the dialog that intercepts it —
- * the same split as `title-detail-body.tsx` and `episode-detail-body.tsx`, for the same
- * reason: there are two renders of this URL and there is one screen.
+ * Catalogue detail's content — the same split as `title-detail-body.tsx` and
+ * `episode-detail-body.tsx`, and it arrived for the same reason: there were two renders of
+ * this URL and there is one screen, so the screen is written once. Issue #273 deletes the
+ * dialog that was the second render, and the split stays — the route file reads nothing
+ * and this is the surface.
  *
  * Its own file rather than an export of `page.tsx`. A page module is the framework's, with
  * its own rules about what may be exported from it, and importing a component out of one
@@ -55,18 +57,15 @@ import { UnownedEpisodes } from "./unowned-episodes";
 export async function UnownedTitleBody({
   kind,
   tmdbId,
-  overlaid = false,
 }: {
   readonly kind: TitleKind;
   readonly tmdbId: number;
   /**
-   * Rendered inside the intercepting dialog rather than as the page.
-   *
-   * Changes the back bar and nothing else: on the route it is the only way out, and in the
-   * dialog it would be a third one beside Close, Escape and the swipe — and a wrong one,
-   * since *Back to lists* is a lie to a reader who arrived from a search result.
+   * There was an `overlaid` flag here until issue #273 — *rendered inside the intercepting
+   * dialog rather than as the page* — and it changed the back bar and nothing else. The
+   * interception is deleted, this route has one render, and the back bar is the only way
+   * out of it again.
    */
-  readonly overlaid?: boolean;
 }) {
   const userId = await requireUserId();
 
@@ -74,8 +73,9 @@ export async function UnownedTitleBody({
    * You already own this. The route redirects to the library entry, because a screen
    * offering to add what you have is worse than a navigation nobody asked for.
    *
-   * `redirect()` works from the dialog too — it replaces the intercepted render with the
-   * owned title's route, which is the right destination from either arrival.
+   * It was written when this route had a second, intercepted render and `redirect()` had
+   * to work from inside a dialog as well. Issue #273 deleted that render; the redirect is
+   * unchanged, because it was never the half that varied.
    */
   const owned = await cachedLibraryEntryIdForTitle(userId, kind, tmdbId);
   if (owned !== null) redirect(`/library/${owned}`);
@@ -89,7 +89,7 @@ export async function UnownedTitleBody({
           a destination rather than a history pop for the reason `library/[entryId]`'s own
           back link is: a link still works on a tab opened cold, where nothing has been
           popped from yet. */}
-      {overlaid ? null : <BackToListsBar />}
+      <BackToListsBar />
 
       <div className="px-6 py-5">
         {/* `382` is `programme-note-content.tsx`'s number, taken rather than re-derived:

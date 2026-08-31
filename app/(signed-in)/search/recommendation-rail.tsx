@@ -85,8 +85,9 @@ function Rail({ rail }: { rail: Recommendations }) {
           >
             {/* Catalogue detail, not the library route: none of these is yours yet, so
                 there is no library entry to open. `/titles/[kind]/[tmdbId]` is the page
-                that already existed for an unowned title, and it is intercepted into a
-                dialog when pressed from here. */}
+                that already existed for an unowned title, and a press here navigates to
+                it. It was intercepted into a dialog from #254 until #273 deleted the route
+                interceptions. */}
             <Link href={`/titles/${result.kind}/${result.tmdbId}`} className="group block">
               <Poster
                 posterPath={result.posterPath}
