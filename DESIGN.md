@@ -1956,6 +1956,30 @@ asserts the pop exceeds the resting value**, which is the assertion #270's suite
 fidelity to a source and visible effect are two properties, the old suite proved the first,
 and the press shipped a release without the second.
 
+**The press's depth is the `--raised` / `--ground` step, and nothing else — issue #284.**
+Scale alone reads flat at any amount, so a held press now settles the surface under the
+thumb from `--raised` to `--ground`, at that element's own radius, over the compression's
+same `100ms`, and returns it on release. This is the one lift this world has, used
+literally: §2's tone step is what stands in for every shadow the design does not draw, and
+a pressed surface stops floating. It is **not** a shadow — there are none, and §10 says
+adding one is not a fix — and it is **not** the accent, which §3 rations to *this was
+recorded* and which a control tinting under a thumb would be claiming falsely. It does not
+overshoot in either direction: a colour has no mass to carry past the tone it is heading
+for, so it is an ease and never `press-pop`'s curve.
+
+**A bare control gets no backplate.** Of the twenty-five `pressable` call sites only two
+carry a surface of their own on the same element; the rest are transparent links and
+buttons sitting inside somebody else's raised card, and painting a ground on one of those
+would invent a plate the design never drew. So the step is qualified by the element already
+being a `bg-raised` surface, and it means one thing wherever it appears rather than two
+things depending on the call site. **`pressable` was not moved up onto the raised
+parents**, which is the obvious alternative and is rejected on the Up next episode card by
+its own markup: the checkmark is a *sibling* inside that raised `<li>`, so a `pressable`
+parent would scale the whole card every time the check is pressed. `tests/palette.test.ts`
+holds all of it — the ground token, the absent shadow, the absent accent, and the two call
+sites — beside the no-shadow sweep and the accent's closed meaning, which are the two rules
+a press is best placed to break quietly.
+
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what
 a pending surface renders instead and gives four separate reasons why a skeleton is not it —

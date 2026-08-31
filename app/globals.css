@@ -923,11 +923,60 @@
 @utility pressable {
   transition:
     transform var(--dur-press) var(--ease-out-quart),
+    background-color var(--dur-press) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
   &:active,
   &[data-pressed="true"] {
     transform: scale(0.96);
+  }
+
+  /* ── The depth, and the whole of it — issue #284 ─────────────────────────────────
+     Scale alone reads flat at any amount, and until now nothing else about a control
+     acknowledged the press. The depth it gains here is the one this stylesheet already
+     has and the only one it has: the `--raised` / `--ground` step the handoff's Geometry
+     table calls *the only lift there is*. A pressed surface paints the ground tone over
+     its own raised for the length of the compression and returns on release — it stops
+     floating, which is what a surface under a thumb should do.
+
+     **No shadow and no accent**, and neither is an omission. There are no drop shadows
+     anywhere in this application — the tone step is what replaced them — and colour here
+     means *this was recorded*, so a control that tints under a thumb is claiming to have
+     written something it has not. The paragraph at the top of this file spends five
+     hundred words rationing the accent to that one act; a press is not it.
+
+     **It does not overshoot.** `--ease-out-quart` and not the pop's curve: a colour has
+     no mass, so there is nothing for it to carry past `--ground` and come back from. The
+     same sentence already stood beside `filter` above and it holds unchanged here.
+
+     ── `.bg-raised` is the discriminator, and it is not a convention ──────────────────
+     Of the twenty-five `pressable` call sites exactly two carry a surface of their own on
+     the same element (`upcoming-row.tsx`, `lists-rail.tsx`); the rest are transparent
+     links and buttons sitting *inside* somebody else's raised surface. Painting a ground
+     on one of those would invent a backplate the design never drew, so the tone step is
+     qualified by the class that says *this element is a raised surface*. That makes the
+     step mean one thing wherever it appears rather than two things depending on the call
+     site, and it costs no markup: both call sites already spell `bg-raised` and neither
+     is touched.
+
+     **Not solved by moving `pressable` up onto the raised parent**, which is the other
+     obvious answer and is rejected in #279 by name. On the Up next episode card the
+     checkmark is a *sibling* inside that raised `<li>`, so a `pressable` parent would
+     scale the whole card every time the check is pressed.
+
+     **The radius is the element's own** because this paints the element's own background
+     rather than a pseudo-element behind it: a background is clipped by whatever
+     `border-radius` the call site set, so `rounded-2xl` here needs no counterpart in this
+     file and no radius token is added.
+
+     Compounded onto `pressable` rather than written as a bare `.bg-raised:active`, for
+     the reason the hold-to-select rules below give: those two attribute names and this
+     tone belong to the press, not to every element in the application. Specificity
+     (`0,3,0`) settles it against `.bg-raised`'s own `0,1,0` inside the one `utilities`
+     layer they share, so there is no emission-order question here. */
+  &.bg-raised:active,
+  &.bg-raised[data-pressed="true"] {
+    background-color: var(--ground);
   }
 }
 
