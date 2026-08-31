@@ -883,8 +883,13 @@ away in the panel it opens.
   needs the larger number.
 - **Phone group tile: fluid.** The grid's column width decides it. `width={132}` is still
   passed to `Poster`, but only to pick a CDN bucket — it sizes nothing on screen.
-- **Clicking a rail tile swaps the panel; it is never a navigation.** The page never routes,
-  so it never loses its place, so comparing two candidates costs nothing.
+- **Clicking a rail tile swaps the panel; it is never a navigation — on `lg` and up.**
+  The page never routes, so it never loses its place, so comparing two candidates costs
+  nothing. **Narrowed by [#274](https://github.com/Joyaroin/MediaSafe/issues/274)**: the
+  tile is a `Link` to `/library/{entryId}` whose click the desktop intercepts, rather than a
+  `button` that could only ever select. Below `lg` the link is followed and the reader gets
+  the title's page — see *Opening a title opens the title* below. The desktop half of this
+  bullet is unchanged, and the interception is what keeps it true.
 
 ### The phone has five groups, and they scroll
 
@@ -987,38 +992,66 @@ when it carries neither.
 > #194**: bulk *Add to list* and bulk *Abandon* are reached from `/library` and its status
 > filters rather than from the landing screen.
 
-### Opening a title does not leave Up next
+### Opening a title opens the title — issue #274
 
-Tapping a tile on the phone's Up next tab **raises a sheet over the tab**. It does not
-navigate.
+> **⚠️ This section is a reversal, and it reverses itself.** It used to open: *"Tapping a
+> tile on the phone's Up next tab **raises a sheet over the tab**. It does not navigate."*
+> That is no longer true of anything on this tab, and it has not been true of the phone
+> since [#250](https://github.com/Joyaroin/MediaSafe/issues/250) deleted the five vertical
+> groups the sheet was mounted for. #273 deleted the route interceptions and left this
+> section stale on its own account, naming #274 as the ticket that would amend it. This is
+> that amendment. The paragraphs the sheet argued for are kept below, in the past tense,
+> because a note that simply disappeared would read as a decision nobody made.
 
-Until this, a group tile was a `Link` to `/library/{entryId}` — a Library surface, under
-the Library's path, carrying a `‹ Library` bar back to a grid the reader had not asked for.
-Reached from Up next that is a one-way door: the reader taps a show and the way back leads
-somewhere else, with their scroll position in five horizontal tracks gone. The desktop has
-never had this problem, because #137's answer there is a pane that swaps while nothing
-navigates. The sheet is that same answer in the shape a phone has room for.
+**Every tile and every card on Up next opens the title's own page**, and there is one
+mechanism for it: a `Link` to `/library/{entryId}`.
 
-- **It is the programme note, in a sheet.** The content is `ProgrammeNoteContent` — the
-  identical component the desktop pane and the title-detail route both render — so the
-  recording controls the note above sends the reader to the title *for* are here, one tap
-  from the tab, without costing them their place. The home still has no control of its own;
-  that reversal stands.
-- **The motion is `sheet`, and this is its first caller.** It sat in `app/motion.ts`
-  unused from #132 — *"slower and heavier: a sheet has more mass than a chip"* — and this
-  is the surface it was written for. The panel springs in on `sheet` and leaves on `exit`,
-  because §6's rule holds here too: nothing can catch a thing that is already leaving. The
-  backdrop only fades; a backdrop that springs draws the eye to the ground rather than to
-  the thing arriving on it.
-- **Pending is the note's own four-phase machine** (§9, radius 3), reused rather than
-  re-derived. The `loading` frame draws the poster, the name and the year the tile already
-  handed over, so the morph has a destination the instant it starts.
-- **The route is not deleted.** `/library/{entryId}` is still correct for the Library's own
-  grid and for a deep link, and the group screens at `/up-next/{group}` still use it — they
-  have no sheet. A tile decides which it is by whether a sheet is above it in the tree, not
-  by a media query: the five groups only ever render inside `lg:hidden`, so *is there a
-  sheet* and *is this the phone* are already the same question. #136 deleted this build's
-  only `matchMedia` branch and nothing here reintroduces one.
+| What is pressed | Where it goes |
+| --- | --- |
+| A show tile on a rail (`up-next-tile.tsx`) | the library entry's page |
+| A film card (`up-next-film-rail.tsx`) | the same, unchanged |
+| A pending tile (`up-next-pending-card.tsx`) | the same, unchanged |
+| A next-episodes card (`up-next-episode-card.tsx`) | **the show's page** — retargeted from the episode's |
+| A search result (`catalogue-result.tsx`) | the title's full page |
+
+- **A show and a film behave the same way on the same tab.** They reached their
+  destinations by two different mechanisms before this — the film card by a link, the show
+  tile by writing selection state — and *"a film tile and a show tile reach their
+  destination by two different mechanisms"* was one of the four complaints #268 was written
+  about. One mechanism now, and it is the film card's, because a real anchor can be
+  middle-clicked, opened in a new tab and read as a link, and a `button` calling
+  `router.push` can do none of those.
+- **The next-episodes card retargets to the title.**
+  [#250](https://github.com/Joyaroin/MediaSafe/issues/250) was written expecting exactly
+  this and settled for the episode because
+  [#253](https://github.com/Joyaroin/MediaSafe/issues/253) built an episode page first. The
+  card was then the one thing on the tab that led somewhere other than a title. **The
+  episode's page is not deleted**: it keeps a season row inside the title and a deep link,
+  and the route is still keyed by both ids. What it stops having is a second front door
+  from a surface whose whole subject is titles.
+- **The desktop side pane stays, and is not what this removes.** On `lg` and up a tile's
+  click is stopped and `select()` swaps the programme note beside it, exactly as
+  [#137](https://github.com/Joyaroin/MediaSafe/issues/137) built it. Selection state, the
+  pane and its four-phase pending machine (§9, radius 3) are untouched. **What went is the
+  phone's use of that state**, which is the whole of the removal. The breakpoint is
+  `selectable-entry.tsx`'s exported `DESKTOP_BREAKPOINT`, read at the moment of the click —
+  the same divergence, the same constant, and not a second `1024px` literal.
+- **A modified click is left to the browser on both sides.** ⌘, Ctrl, Shift or any button
+  but the primary one is a request about a link, not about a pane.
+
+> **What the sheet was, and why it went.** While the phone had five vertical groups, a tap
+> on a group tile raised a sheet over the tab rather than navigating, holding
+> `ProgrammeNoteContent` —
+> the identical component the desktop pane and the title-detail route render — so that the
+> recording controls were one tap from the tab without costing the reader their place. The
+> argument against navigating was real and is answered rather than dismissed: a title
+> opened from a rail was *"a one-way door"*, and the reader's scroll position in five
+> horizontal tracks was gone on the way back.
+> [#276](https://github.com/Joyaroin/MediaSafe/issues/276) is where that cost is paid —
+> Up next and search remember where the reader was — and
+> [#275](https://github.com/Joyaroin/MediaSafe/issues/275) is where the poster morph
+> follows the reader into the page. The sheet's own motion (`sheet` in `app/motion.ts`) has
+> no caller again, which is the state #132 left it in.
 
 ### A sheet never raises over a tab — issue #273
 

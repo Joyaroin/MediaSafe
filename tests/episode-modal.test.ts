@@ -149,28 +149,48 @@ describe("the dialog a route arrived in, and the slots that held it", () => {
   });
 });
 
-describe("an episode opens as a page, from both origins", () => {
+/**
+ * **One origin rather than two, since #274.** The rail card is retargeted to the title, so
+ * the season row is the only press in the application that opens an episode; the route
+ * itself is unchanged and still reached by a deep link. The card is asserted here anyway,
+ * and as a negative — *the episode route has no caller on Up next* is the property, and it
+ * is exactly the sort that comes back silently.
+ */
+describe("an episode opens as a page, from the origin it keeps", () => {
   const HREF = /\/library\/\$\{[^}]+\}\/episode\/\$\{[^}]+\}/;
 
   /**
-   * **`scroll={false}` is gone from both origins, and its absence is the assertion.**
+   * **The rail card no longer reaches the episode route at all — issue #274.**
    *
-   * It was there for one reason: the press was intercepted, so the page underneath was
-   * still the reader's place to come back to and Next scrolling it to the top would have
-   * lost their position behind the backdrop. Nothing is underneath now. Left in place it
-   * says *do not move the viewport* on a navigation that replaces the whole screen, so a
-   * reader who pressed a card at the foot of a rail arrives on an episode page already
-   * scrolled to somewhere in the middle of it, with no way to tell why.
+   * #253 gave an episode a page and #250's card went straight to it, which made the
+   * next-episodes card the one thing on Up next that led somewhere other than a title.
+   * #274 retargets it: every tile and every card on the tab opens the title's own page,
+   * so a show tile, a film tile and a next-episodes card all lead to the same kind of
+   * place. The episode's page is unchanged and keeps both of its remaining origins — the
+   * season row below, and a deep link.
    *
-   * This is the one failure in this file that a build audit cannot see at all: the route,
-   * the render and the manifest are identical either way.
+   * Asserted as a pair, because the halves fail differently. A card that gained the
+   * title's href **beside** the episode's would satisfy the positive and still open the
+   * wrong page from whichever of the two a thumb landed in, and a card with no href at
+   * all would satisfy the negative while opening nothing.
+   *
+   * **`scroll={false}` stays asserted absent, for #273's reason, which the retarget does
+   * not change.** It was there because the press was intercepted, so the page underneath
+   * was still the reader's place to come back to and Next scrolling it to the top would
+   * have lost their position behind the backdrop. Nothing is underneath now, on either
+   * destination: left in place it says *do not move the viewport* on a navigation that
+   * replaces the whole screen, so a reader who pressed a card at the foot of a rail
+   * arrives part-way down a page they have never seen, with no way to tell why. This is
+   * the one failure in this file that a build audit cannot see at all — the route, the
+   * render and the manifest are identical either way.
    */
-  it("sends a rail card to the episode route, scrolling as any navigation does", () => {
-    expect(RAIL_CARD).toMatch(HREF);
+  it("sends a rail card to the title's page rather than the episode's", () => {
+    expect(codeOf(RAIL_CARD)).toMatch(/href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(codeOf(RAIL_CARD)).not.toMatch(HREF);
     expect(codeOf(RAIL_CARD)).not.toMatch(/scroll=\{false\}/);
   });
 
-  it("sends a season row to the same route, also scrolling", () => {
+  it("sends a season row to the episode route, scrolling as any navigation does", () => {
     expect(SEASON_ROWS).toMatch(HREF);
     expect(codeOf(SEASON_ROWS)).not.toMatch(/scroll=\{false\}/);
   });
