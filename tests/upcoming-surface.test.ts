@@ -529,11 +529,72 @@ describe("the pager", () => {
     expect(pager).toContain("setPointerCapture");
   });
 
-  /** A drag that began on a row's `Link` must not also navigate on release — a gesture is
-   *  never two things at once. */
-  it("swallows the click a drag would otherwise generate", () => {
+  /**
+   * A drag that began on a row's `Link` must not also navigate on release — a gesture is
+   * never two things at once.
+   *
+   * **Issue #277 moved the decision into the rules module and this case with it.** It read
+   * `toContain("dragged")` — the name of a boolean ref this file kept — which passed for
+   * any use of that word anywhere in the file, including the one in a comment. The rule is
+   * now `deliversClick`, asserted against its three answers in
+   * `tests/gesture-rules.test.ts`, and what is left here is that the binding *asks* it.
+   */
+  it("swallows the click a claimed gesture would otherwise deliver to a child", () => {
     expect(pager).toContain("onClickCapture");
-    expect(pager).toContain("dragged");
+    expect(pager).toContain("deliversClick");
+    expect(pager).toMatch(/if \(deliversClick\(claimed\)\) return;/);
+    expect(pager).toContain("event.preventDefault()");
+    expect(pager).toContain("event.stopPropagation()");
+  });
+
+  /**
+   * ── The pointer audit — issue #277 ──────────────────────────────────────────────────
+   *
+   * The Android report behind #277 is second-hand and **unreproduced**, and the ticket
+   * ships two hardenings on that basis rather than claiming a fix. This is the pager's
+   * half: *a gesture the pager has claimed cannot also be delivered to a child.*
+   *
+   * What the audit found, and what these three cases pin, is that the binding never asked
+   * **whose** pointer an event was. Every handler read `event.clientX` and acted on it, so
+   * a second finger arriving mid-drag re-seated the origin the first one was measured
+   * from, and a release from any pointer at all ended the gesture. On a phone that is not
+   * an exotic input: it is a thumb and the hand holding the device.
+   *
+   * All three would fail silently. Nothing throws, the pager still pages, and the only
+   * symptom is a page that jumps or a press that lands somewhere nobody asked for — which
+   * is precisely the report.
+   */
+  it("drives the gesture from the pointer it began with and no other", () => {
+    expect(pager).toContain("ownsPointer");
+    expect(pager).toContain("pointerId: event.pointerId");
+
+    // Every handler that reads a delta or ends a gesture asks first.
+    const asks = pager.match(/ownsPointer\(from, event\.pointerId\)/g) ?? [];
+    expect(asks.length).toBe(3);
+  });
+
+  /**
+   * A second finger is not a second gesture, and must not re-seat the first one's origin.
+   * `isPrimary` is the platform's own answer for touch; the second guard covers a pen or a
+   * mouse arriving over a live one, since either is always primary for its own type.
+   *
+   * **And it is keyed to `claimed`, not to a bare `!== null`.** A claimed gesture has been
+   * captured, so its release is guaranteed to come back here and refusing cannot strand
+   * the pager; an unclaimed one is replaced instead, which is the only recovery there is
+   * from a `pointerdown` whose release never arrived. A pager left permanently inert by
+   * one lost event would be a worse bug than the one #277 is guessing at, and it is the
+   * bug the obvious spelling of this guard has.
+   */
+  it("refuses a second pointer rather than letting it take over", () => {
+    expect(pager).toContain("event.isPrimary");
+    expect(pager).toMatch(/if \(gesture\.current\?\.claimed === true\) return;/);
+  });
+
+  /** A cancelled pointer generates no click, so nothing may be left armed to swallow one.
+   *  The next press a reader makes is not the drag the browser took away. */
+  it("arms no click swallow for a gesture the browser cancelled", () => {
+    const cancel = pager.slice(pager.indexOf("const onPointerCancel"));
+    expect(cancel).toMatch(/released\.current = null/);
   });
 });
 

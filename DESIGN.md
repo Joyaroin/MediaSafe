@@ -1053,6 +1053,63 @@ mechanism for it: a `Link` to `/library/{entryId}`.
 > follows the reader into the page. The sheet's own motion (`sheet` in `app/motion.ts`) has
 > no caller again, which is the state #132 left it in.
 
+### The Android tap is hardened against, and not fixed — issue #277
+
+> **⚠️ Read this as a hypothesis.** Nothing below was reproduced. The report is
+> second-hand — on Android a tap on a next-episodes card *sometimes appears* to land on the
+> recording control rather than opening the card, so a reader records a watch they did not
+> intend — and the owner does not have the device. Two hardenings ship because each is
+> defensible on its own merits, and this section exists so that the next reader knows the
+> difference between *this was addressed* and *this was fixed*. **If the misfire persists,
+> #277 did not address it**, and the two changes below are still worth having.
+
+**The recording control has a real dead zone from the card's tap area.** The card's `Link`
+and the check were two targets **sharing an edge**: the link's box ended exactly where the
+mark row began, and the check fills that row's whole `44px`, so the boundary between *open
+this show* and *record a watch* was one boundary pixel wide. Touch adjustment snaps a fat
+contact to the nearest target, and two targets that touch give it nothing to snap between.
+
+- **`4px`, taken out of the link and not added to the card.** The link's text block ended in
+  `pb-1`; that padding is now the gap. The link's box is `4px` shorter, the dead zone is
+  `4px` tall, and the card's rendered box is identical — §6's bounding-rect guarantee, and
+  #250's *the rail never reflows under a thumb*. A dead zone that made every card taller
+  would answer one complaint by causing another.
+- **It is exactly the slack that was available, and that is the argument for the number.**
+  The card's height is fixed by its measure, so the only pixels a gap can be cut from are
+  the ones the link already spent on padding. Wider would have to come out of the check's
+  `44px` — §6's floor, and the one direction a target must never be paid for from — or out
+  of the card itself.
+- **What was already true and is asserted beside it**: the picture and the text are inside
+  the link and the check is outside it, so the only thing that records a watch is the
+  control. That is `SPEC.md`'s season-row rule, held here since #250.
+
+**The landing pager's pointer handling is audited**, so that a gesture the pager has claimed
+cannot also be delivered to a child (`landing-pager.tsx`, `app/gesture-rules.ts`).
+
+- **A gesture belongs to one pointer.** Every handler read `event.clientX` without asking
+  whose finger it was. A second pointer landing mid-drag re-seated the origin the first was
+  being measured from, and a release from *any* pointer ended the gesture and parked the
+  track. `ownsPointer` is asked in all three handlers now, and a second pointer is refused at
+  `pointerdown` rather than allowed to take over — by `isPrimary` for touch, and by the live
+  gesture itself for a pen or a mouse, which are always primary for their own type. That
+  second guard is keyed to a **claimed** gesture rather than to any gesture at all: claiming
+  is the moment capture is taken, so the release is guaranteed to come back and refusing
+  cannot strand the pager, while an unclaimed one is replaced — which is the only recovery
+  there is from a `pointerdown` whose release never arrived.
+- **The claimed gesture's click is swallowed by a rule rather than by a flag.**
+  `deliversClick` takes the binding's latched claim in the three states it really has: the
+  pager claimed it (swallow), the pager watched and refused it (deliver — the click is
+  whoever the pointer was over), and nothing was ever claimed because the pointer did not
+  move (deliver — that is a **tap**, and a tap is what opens the card). It was a `dragged`
+  boolean meaning *did the pager move*: the same answer for the wrong reason, decided inside
+  a handler, and therefore asserted by nothing.
+- **A cancelled pointer arms nothing.** A pointer the browser takes away generates no click,
+  so a swallow left armed after one would have been waiting for somebody else's press.
+
+**No telemetry.** #277 ships the hardening and explicitly not the instrumentation that would
+prove it. The report stays unreproduced, and a beacon added to find out is the one thing the
+ticket rules out.
+
 ### A sheet never raises over a tab — issue #273
 
 **The route interceptions are deleted.** There were two parallel slots on the signed-in

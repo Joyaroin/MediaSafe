@@ -644,6 +644,91 @@ describe("every tile and card on Up next opens the title's page", () => {
 });
 
 /**
+ * **Issue #277 — the recording control gets a real dead zone from the card's tap area.**
+ *
+ * The report this answers is second-hand and **unreproduced**: on Android a tap on a card
+ * sometimes appears to land on the check rather than opening the card, so a reader records
+ * a watch they did not ask for. The owner does not have the device. What ships is a
+ * hardening that stands on its own merits, and this suite asserts the hardening — not a
+ * fix, because nothing here can prove one.
+ *
+ * The property, and it is the kind that fails **silently**: the link and the check are two
+ * targets sharing an edge. Every assertion in this file passes with them flush against
+ * each other, and so does every pixel of the rendered card — the only thing that changes
+ * is what a fat finger lands on, which no test in this repository can see.
+ *
+ * The second half is `DESIGN.md`'s bounding-rect guarantee (§6) and #250's own
+ * *the rail never reflows under a thumb*: the dead zone comes out of the link's own
+ * bottom padding rather than out of the card's height, so the box is unchanged. A dead
+ * zone that made the card taller would be a fix for one complaint that caused another.
+ */
+describe("the recording control has a dead zone from the card's tap area", () => {
+  const card = sourceAt(EPISODE_CARD);
+  const code = codeOf(card);
+
+  /** The gap itself, stated once and applied to the link rather than typed at the element
+   *  — a second copy is how the two halves below come to disagree. */
+  it("names the dead zone once and puts it on the card's link", () => {
+    expect(code).toMatch(/const TAP_DEAD_ZONE = "mb-1"/);
+    expect(code).toMatch(/className=\{`pressable block \$\{TAP_DEAD_ZONE\}`\}/);
+  });
+
+  /**
+   * **Where the space came from.** The link's text block used to end in `pb-1`, and that
+   * `4px` is now the dead zone: taken out of the link's own box and put between the two
+   * targets. The card is exactly as tall as it was, which is why this asserts the padding
+   * is *gone* rather than merely that a margin exists — a margin added beside the padding
+   * would separate the targets and grow every card on the rail by four pixels.
+   */
+  it("takes the gap out of the link's own bottom padding, not out of the card", () => {
+    expect(code).toMatch(/className="px-\[14px\] pt-3"/);
+    expect(code).not.toMatch(/pb-1/);
+  });
+
+  /** The control's target is untouched. `44px` is `DESIGN.md` §6's floor and the one
+   *  direction a dead zone must never come out of. */
+  it("costs the control nothing of its 44px target", () => {
+    expect(code).toMatch(/flex min-h-11 items-center/);
+    expect(code).toMatch(/CHECK_HIT_BOX = `pressable group flex h-11 shrink-0/);
+  });
+
+  /** And the card's measure is the same measure, so the rail lays out as it did. */
+  it("leaves the card's box and the rail's layout alone", () => {
+    expect(code).toMatch(/CARD_WIDTH = 262/);
+    expect(code).toMatch(/CARD = "w-\[262px\] shrink-0 snap-start"/);
+    expect(code).toMatch(/FRAME = "w-full \[--still-radius:0\]"/);
+  });
+
+  /**
+   * The other half of the acceptance criterion, and the half that was already true: the
+   * picture and the text are **inside** the link and the check is outside it, so the only
+   * thing that records a watch is the control itself. Asserted here beside the dead zone
+   * because the two are one claim — *tapping the card opens the card* — and a refactor
+   * that moved the check inside the link would leave the gap looking correct and the
+   * behaviour wrong.
+   */
+  it("keeps the picture and the text inside the link and the control outside it", () => {
+    const link = code.indexOf("<Link");
+    const closes = code.indexOf("</Link>");
+
+    expect(link).toBeGreaterThan(-1);
+    expect(code.indexOf("<CardFrame")).toBeGreaterThan(link);
+    expect(code.indexOf("<CardFrame")).toBeLessThan(closes);
+    expect(code.indexOf("{entry.titleName}")).toBeLessThan(closes);
+    expect(code.indexOf("{control}")).toBeGreaterThan(closes);
+  });
+
+  /**
+   * **No telemetry.** #277 ships the hardening and explicitly not the instrumentation that
+   * would prove it — the report stays unreproduced, and a beacon added to find out would
+   * be the one thing the ticket rules out.
+   */
+  it("adds no instrumentation to the tap", () => {
+    expect(code).not.toMatch(/captureMessage|addBreadcrumb|Sentry|analytics|track\(|beacon/i);
+  });
+});
+
+/**
  * The documents, amended in this commit rather than after it — `CLAUDE.md` binds them and
  * `DESIGN.md` records two prior occasions where a note and the code it described drifted
  * apart silently. Both reversals are written as reversals.
@@ -680,6 +765,30 @@ describe("the documents record the reversal", () => {
     );
 
     expect(surfaces).toMatch(/#274/);
+  });
+
+  /**
+   * **And #277's framing, which is the part a future reader is owed.** The hardening is
+   * defensible on its own and it is *not* a fix — the report was never reproduced. A
+   * document that recorded the change without recording that would leave the next reader
+   * believing the Android misfire was dealt with, and there is nothing in the build that
+   * would correct them.
+   */
+  it("has DESIGN.md recording the Android hardening as a hypothesis rather than a fix", () => {
+    const design = sourceAt("DESIGN.md");
+    const from = design.indexOf("### The Android tap");
+    expect(from).toBeGreaterThan(-1);
+
+    const section = design.slice(from, design.indexOf("\n### ", from + 4));
+
+    expect(section).toMatch(/#277/);
+    expect(section).toMatch(/unreproduced/);
+    expect(section).toMatch(/dead zone/);
+    // The pager's half of the same hardening, so the section covers both halves rather
+    // than the one that is visible in a card.
+    expect(section).toMatch(/pager/);
+    // And it must say what happens if the misfire survives, which is the recoverable part.
+    expect(section).toMatch(/did not address it|was not addressed here/);
   });
 });
 
