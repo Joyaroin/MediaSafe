@@ -394,9 +394,80 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* ── The press's spring — issue #270 ────────────────────────────
+     **Amends the split above rather than breaking it.** The rule was
+     *a spring is a spring because a finger can catch it, and springs
+     live in `app/motion.ts`*; the unstated second half was *and a
+     CSS transition therefore cannot be a spring at all*. That half
+     is what `linear()` reverses. A spring's shape and its
+     interruptibility are separate properties, and only the second
+     needs a runtime: a curve is a function of time, and CSS has been
+     able to hold an arbitrary one since `linear()` shipped. So the
+     press keeps every reason it is in CSS — no client boundary on a
+     rail of tiles, no per-frame JavaScript — and stops being flat.
+
+     `--ease-press` is NOT this, despite reading like it. It is the
+     arrival curve #88 cut for the watch strike and the name has been
+     wrong since; it times view transitions and the sweep, not a
+     press. This is the one a finger meets.
+
+     ── Where the numbers come from ───────────────────────────────
+     `app/motion.ts`'s `snappy`, transcribed. Nothing here was
+     picked by eye, because a control animated in CSS and one
+     animated by Motion disagreeing is the whole failure mode:
+     `snappy` is SwiftUI's `.snappy` — response `0.30`, damping
+     fraction `0.85` — and Motion states that pair as
+     `duration: 0.3, bounce: 0.15`.
+
+       ωₙ   = 2π / 0.30              = 20.944 rad/s
+       ω_d  = ωₙ √(1 − 0.85²)        = 11.033 rad/s
+       x(t) = 1 − e^(−ζωₙt)·(cos ω_d t + (ζωₙ/ω_d)·sin ω_d t)
+
+     `x` is the unit step response of a damped harmonic oscillator —
+     the fraction of the distance travelled at `t`, which is exactly
+     what an easing function returns. `linear()` is that function
+     sampled at 33 even intervals, and the browser interpolates
+     between the samples.
+
+     The one number the physics does not supply is where to stop, so:
+     the envelope `e^(−ζωₙt)/√(1 − ζ²)` falling under one part in a
+     thousand, which is `425ms` and is `--dur-press` below. A tenth
+     of a percent of a 3% press is a hundredth of a pixel.
+
+     The overshoot is `1.0062` — the platform's own trace, and the
+     closed form `1 + e^(−πζ/√(1−ζ²))` agrees to four places. It is
+     deliberately not wound up to something a screenshot would show:
+     on `pressable`'s 3% travel it is a fifth of a thousandth of the
+     control's size, so what the finger reads is the *velocity* — a
+     release that leaves fast, arrives, and settles — rather than a
+     bounce. Winding the pair past the platform's is how motion stops
+     reading as physics (`app/motion.ts`), and #270 rules the
+     existing spring callers out of being re-tuned to match a louder
+     press.
+
+     `tests/press-spring.test.ts` recomputes all 33 from `snappy` and
+     fails if either side moves. This is the palette's lesson applied
+     before the drift instead of after it: 33 numbers beside a
+     comment claiming a provenance is precisely the shape of a value
+     nobody can check by eye and therefore nobody checks.
+
+     No fallback declaration. A browser without `linear()` drops the
+     whole `transition` and the press lands instantly — which is the
+     one degradation this control can take, because the state change
+     was never what the animation was carrying. `linear()` has been
+     in every engine since 2023 and this app already requires newer
+     than that (view transitions, `content-visibility`). */
+  --spring-press: linear(
+    0, 0.033, 0.1129, 0.217, 0.3298, 0.4412, 0.5448, 0.6373, 0.7171, 0.7842, 0.8393,
+    0.8834, 0.918, 0.9447, 0.9646, 0.9793, 0.9896, 0.9967, 1.0014, 1.0042, 1.0057,
+    1.0062, 1.0062, 1.0058, 1.0052, 1.0045, 1.0038, 1.0031, 1.0025, 1.002, 1.0015,
+    1.0012, 1
+  );
+
   --dur-fast: 140ms; /* immediate feedback, and every exit          */
   --dur-base: 220ms; /* routine state change                        */
   --dur-slow: 380ms; /* layout, overlay, cross-surface continuity   */
+  --dur-press: 425ms; /* one settle of `--spring-press`             */
 }
 
 @layer base {
@@ -429,9 +500,11 @@
      `manipulation` keeps panning and pinch-zoom — the two gestures a reader actually uses
      on a list of posters — and gives up only double-tap-to-zoom, on controls where it was
      never meaningful. Elements that need to own a gesture outright still say so at the
-     call site: `route-modal.tsx`'s grabber sets `touch-none`, and it is a class, so it
-     wins over this. `landing-pager.tsx` deliberately sets nothing and is a `div`, so this
-     rule does not reach it either.
+     call site: `reorderable-title-list.tsx`'s drag handle sets `touch-none`, and it is a
+     class, so it wins over this. `landing-pager.tsx` deliberately sets nothing and is a
+     `div`, so this rule does not reach it either. (The example named here was
+     `route-modal.tsx`'s grabber until issue #273 deleted the route interceptions and the
+     dialog with them.)
 
      The tap highlight goes with it. It is a grey rectangle the platform paints over the
      element's own bounds on press, and this app already answers a press properly — the
@@ -836,14 +909,30 @@
 
    `0.97` and not `0.9`. The gesture is a confirmation that the tap landed, not an
    animation to watch; a deep press on a poster-sized tile turns the whole grid into a
-   trampoline. `--dur-fast` in, and the release rides the same curve back.
+   trampoline.
 
-   CSS rather than Motion for the same reason the stagger is: a press has no state a
-   finger can catch it in mid-flight, and keeping it here leaves every tile a server
-   component. */
+   ── It springs now, and the reason it is still CSS has changed — issue #270 ─────────
+   This used to read *`--dur-fast` in, and the release rides the same curve back*, on
+   `--ease-out-quart`: a press that arrived and stopped dead, with nothing on the way out.
+   Every control in the application pressed flat, including the checkmark that records a
+   watch, which is the most repeated act in the product.
+
+   It is now `--spring-press` — `app/motion.ts`'s `snappy`, transcribed into a `linear()`
+   curve, derivation beside the token — over `--dur-press`, which is that spring's own
+   settle and not `--dur-fast`. Replaying a spring's shape at three times its speed is a
+   different spring, so the duration travels with the curve.
+
+   **CSS rather than Motion, for a reason that is no longer the old one.** The old reason
+   was *a press has no state a finger can catch it mid-flight, so it does not need a
+   spring* — which quietly conceded that a CSS press could not be one. `linear()` is why
+   that concession was wrong: interruptibility needs a runtime, a curve does not. The
+   reason that survives is the one that was always load-bearing — every tile, cell and
+   row wearing this stays a server component, and a rail of them costs no per-frame
+   JavaScript. `filter` keeps `--ease-out-quart`: the only thing that animates it here is
+   `IN_FLIGHT`'s brightness, and a colour has no mass to overshoot with. */
 @utility pressable {
   transition:
-    transform var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-press) var(--spring-press),
     filter var(--dur-fast) var(--ease-out-quart);
 
   &:active {

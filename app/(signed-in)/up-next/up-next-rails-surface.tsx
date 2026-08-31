@@ -13,7 +13,10 @@ import { UpNextRail } from "./up-next-rail";
  *
  * The rules are `db/access.ts`'s `listUpNextRails`, and they are there rather than here on
  * purpose: this file decides the words and the order they read in, and knows nothing about
- * what put a title on one rail rather than another.
+ * what put a title on one rail rather than another. **#272 is the proof of that**: Ongoing
+ * gained a second membership — a title whose episodes have not mirrored, at the head — and
+ * nothing in this file changed, because the rail is still *what you are in the middle of*
+ * and the head line still says so. `UpNextTile` is where the two shapes differ.
  *
  * ── The dim line beside each head, and the one word taken out of it ───────────────────
  *

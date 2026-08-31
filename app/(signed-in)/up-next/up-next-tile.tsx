@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { ViewTransition } from "react";
 
+import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
-import type { UpNextEntry } from "@/db/access";
+import { DESKTOP_BREAKPOINT } from "@/app/(signed-in)/library/selectable-entry";
+import { isPendingEntry, type UpNextRailEntry } from "@/db/access";
 
 /**
  * One poster on a rail — issue #137, and the whole of what a rail is made of.
@@ -21,14 +24,34 @@ import type { UpNextEntry } from "@/db/access";
  * for this surface specifically. The library is not a backlog to feel bad about, and every
  * fact a tile withholds is one click away in the panel it opens.
  *
- * ── Clicking swaps the panel; it is never a navigation ────────────────────────────────
+ * ── A link to the title, and on the desktop a panel swap instead — issue #274 ─────────
  *
- * `select()` from `library-selection.tsx` and nothing else — not `SelectableEntry`, which
- * branches on the viewport to push `/library/{id}` on a phone. The rails are desktop-only
- * (`page.tsx` renders nothing of them below `lg`), so there is no phone click for that
- * branch to serve, and reaching for it would put a route push behind a button that can
- * never be pressed at a width where it applies. **Comparing two candidates costs nothing**
- * is the property: the page never routes, so it never loses its place.
+ * > **⚠️ This reverses what this file said until #274**, which was: *`select()` and nothing
+ * > else — not `SelectableEntry`, which branches on the viewport.* The rails were
+ * > desktop-only, so there was no phone click for a branch to serve. #268 makes *every tile
+ * > and card on Up next opens the title's page* a rule about the whole tab rather than
+ * > about the phone's two rails, and a tile that can only ever write selection state is the
+ * > one surface that cannot obey it.
+ *
+ * The tile is now a **`Link` to `/library/{entryId}`** — the same mechanism the film card
+ * on the phone's rail already had, so a film and a show behave the same way on the same
+ * tab. Being a real anchor is the point rather than an implementation detail: it can be
+ * middle-clicked, opened in a new tab, and read as a link by a screen reader, none of
+ * which a `button` calling `router.push` can do.
+ *
+ * **On `lg` and up nothing navigates, and that is unchanged.** The click handler checks
+ * `DESKTOP_BREAKPOINT` — `selectable-entry.tsx`'s constant, imported rather than a second
+ * `1024px` literal — and on the desktop stops the link and calls `select()` instead. That
+ * is `DESIGN.md`'s Never-Navigate-Away Rule and the whole reason the programme note pane
+ * exists: **comparing two candidates costs nothing**, because the page never routes and so
+ * never loses its place. The pane, the selection store and the pane's four-phase pending
+ * machine are untouched; what went is the phone's *use* of them.
+ *
+ * The width is read at the moment of the click rather than baked into a server-rendered
+ * branch, which is `selectable-entry.tsx`'s own reasoning: resizing past the breakpoint
+ * mid-session changes which one a click does without a reload. A **modified** click —
+ * ⌘, Ctrl, Shift, or anything but the primary button — is left to the browser on both
+ * sides, because *open this in a new tab* is a request about a link and not about a pane.
  *
  * ── Selection is border weight, not colour ───────────────────────────────────────────
  *
@@ -39,15 +62,26 @@ import type { UpNextEntry } from "@/db/access";
  *
  * ── The transition name lives here only while the tile owns it ───────────────────────
  *
- * Issue #141's morph pairs this poster with the pane's by giving both the same
- * `view-transition-name` (`rail-poster-{id}`, `programme-note.tsx`'s half of this). A
- * name can only ever mark one on-screen element at a time, so once this entry is
+ * Issue #141's morph pairs this poster with its destination's by giving both the same
+ * `view-transition-name` — `rail-poster-{id}`, minted in `poster-transition-name.ts`, and
+ * since #275 the app's **only** family. The destination is whichever surface the click
+ * opens: the pane on the desktop (`programme-note.tsx`'s half of this) and the title's own
+ * page on the phone (`[entryId]/title-detail-view.tsx`), which used to hold a second
+ * family of its own and no longer does. So the poster travels on both sides of the
+ * breakpoint, and on the phone the morph survives the navigation rather than being lost to
+ * it.
+ *
+ * A name can only ever mark one on-screen element at a time, so once this entry is
  * selected the tile drops it — the pane is the one showing that poster now — and picks
  * it back up the moment something else is selected, ready to be the next morph's start.
  * Without the drop, the instant a second tile is picked the pane would be mounting a
  * second `rail-poster-{id}` for the *first* tile's id while this one is still sitting on
  * screen holding the original, and the browser skips a transition it finds duplicated
  * rather than guessing which one wins.
+ *
+ * **On the phone there is nothing to drop**, and that is why the same one name is safe on
+ * both sides: the navigation replaces the page and takes this tile with it, so the name is
+ * free before the destination's poster ever mounts.
  */
 
 /**
@@ -68,7 +102,7 @@ export function UpNextTile({
   entry,
   aboveFold = false,
 }: {
-  entry: UpNextEntry;
+  entry: UpNextRailEntry;
   /** This tile is in its rail's first visible run — `up-next-rail.tsx`'s to say
    *  (`app/poster.tsx`). */
   aboveFold?: boolean;
@@ -76,15 +110,25 @@ export function UpNextTile({
   const { selectedEntryId, select } = useLibrarySelection();
   const selected = entry.libraryEntryId === selectedEntryId;
 
+  function onClick(event: React.MouseEvent<HTMLAnchorElement>): void {
+    // A ⌘-click, a Ctrl-click, a Shift-click or a middle button is a request about the
+    // link, and it is answered by the link on both sides of the breakpoint.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    if (!window.matchMedia(DESKTOP_BREAKPOINT).matches) return;
+
+    event.preventDefault();
+    select(entry.libraryEntryId, entry.posterPath);
+  }
+
   return (
     /* `snap-start`, which is half of *a scroll stops on whole posters* — the track carries
        the other half (`up-next-rail.tsx`). */
     <li className={`${TILE} shrink-0 snap-start`}>
-      <button
-        type="button"
-        onClick={() => select(entry.libraryEntryId, entry.posterPath)}
+      <Link
+        href={`/library/${entry.libraryEntryId}`}
+        onClick={onClick}
         aria-current={selected ? "true" : undefined}
-        className="pressable group block w-full text-left"
+        className="pressable group block w-full"
       >
         {selected ? (
           <Poster
@@ -116,7 +160,21 @@ export function UpNextTile({
             {entry.releaseYear}
           </p>
         )}
-      </button>
+
+        {/* The pending tile's one dim line — issue #272, and `DESIGN.md` §9's treatment
+            unaltered: `PendingLine`, at the placement this surface chooses, and nothing
+            else. Everything above it is a fact the add already wrote and renders at full
+            strength; this is the only region genuinely still waiting.
+
+            **No skeleton and no shimmer**, and nothing here reserves a height for what has
+            not arrived: the tile is one poster taller than nothing, exactly as it is when
+            the mirror lands. */}
+        {isPendingEntry(entry) ? (
+          <div className="mt-1">
+            <PendingLine />
+          </div>
+        ) : null}
+      </Link>
     </li>
   );
 }

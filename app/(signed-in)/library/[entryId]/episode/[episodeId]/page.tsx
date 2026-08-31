@@ -2,18 +2,22 @@ import { EpisodeDetailBody } from "./episode-detail-body";
 
 /**
  * **An episode you can read** — issue #253. A full page at its own URL beneath the library
- * entry that owns it, and the surface issue #254 presents as a modal over whatever the
- * reader was looking at. A direct load or a refresh lands exactly here, which is the whole
- * of this file's job now: the modal is the *intercepted* render of this route
- * (`app/(signed-in)/@episode/(.)library/[entryId]/episode/[episodeId]/page.tsx`), and an
- * address typed, shared or refreshed reaches no interception at all.
+ * entry that owns it, and since issue #273 the **only** render of that URL.
+ *
+ * Issue #254 presented this surface as a modal over whatever the reader was looking at,
+ * through an intercepting route in the signed-in layout's `@episode` slot, and this file
+ * was the deep-link fallback beneath it. #273 deletes the interception: a sheet never
+ * raises over a tab when the reader asked to open something, so a press from a rail card
+ * or a season row arrives here exactly as a typed address, a shared link and a refresh
+ * always did.
  *
  * ── The episode itself moved one file over, and nothing else did ────────────────────
  *
  * `episode-detail-body.tsx` holds the read and the render, because #254 gave this route a
- * second surface and two copies of one read is how two surfaces start disagreeing. Its
- * docblock carries the reasoning this one used to: it is a projection of title detail's
- * read rather than a read of its own.
+ * second surface and two copies of one read is how two surfaces start disagreeing. There
+ * is one surface again and the split stays: its docblock carries the reasoning this one
+ * used to, and moving the read back up here would be a second rewrite riding on the
+ * deletion of a slot.
  *
  * ── It is a projection of title detail's read, not a read of its own ─────────────────
  *
@@ -26,8 +30,9 @@ import { EpisodeDetailBody } from "./episode-detail-body";
  *   are the same read. An episode cannot be struck on one and unstruck on the other,
  *   because there is nothing for them to disagree *with* — the entry is `title-detail`,
  *   tagged and busted by the writes that already bust it (`cache/tags.ts`), including the
- *   marks this page itself records. #254 makes the point sharper still: the modal and the
- *   page are now literally the same component over the same key.
+ *   marks this page itself records. #254 made the point sharper still — the modal and the
+ *   page were literally the same component over the same key — and #273 settles it by
+ *   leaving one of them.
  * - **Authorisation is `getTitleDetail`'s, unchanged.** It scopes by
  *   `ownedBy(userId, libraryEntry)` and throws when the entry is not this account's. So
  *   *an unowned title has no episode page* needs no check here: a title you have not added
@@ -68,9 +73,10 @@ import { EpisodeDetailBody } from "./episode-detail-body";
 /**
  * Never prerendered and never revalidated on a timer: every render is this account's, and
  * the read behind it is cached in `cache/` where the key carries the account and the day
- * (`cachedTitleDetail`). `[entryId]/page.tsx` declares the same for the same reason, and
- * so does the intercepted render — a slot that prerendered while its page did not would be
- * two answers to one URL.
+ * (`cachedTitleDetail`). `[entryId]/page.tsx` declares the same for the same reason. The
+ * intercepted render used to declare it too — a slot that prerendered while its page did
+ * not would have been two answers to one URL — and there is one render to declare it on
+ * since #273.
  */
 export const dynamic = "force-dynamic";
 

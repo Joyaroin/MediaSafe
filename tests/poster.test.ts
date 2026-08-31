@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -18,6 +20,19 @@ import { Poster } from "@/app/poster";
  */
 const render = (props: Parameters<typeof Poster>[0]) =>
   renderToStaticMarkup(createElement(Poster, props));
+
+const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
+
+/** Every `.ts`/`.tsx` under a directory — `tests/up-next-phone-rails.test.ts`'s walker, for
+ *  the same job: proving a deleted thing is gone from the whole tree rather than from the
+ *  files the author happened to remember. */
+function sourceFilesUnder(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) return sourceFilesUnder(full);
+    return /\.tsx?$/.test(entry.name) ? [full] : [];
+  });
+}
 
 describe("the poster", () => {
   it("renders no image and no placeholder when TMDB has no artwork", () => {
@@ -77,5 +92,53 @@ describe("the poster", () => {
     expect(lazy).toContain('loading="lazy"');
     expect(lazy).not.toContain("fetchPriority");
     expect(eager).not.toBe(lazy);
+  });
+});
+
+/**
+ * ── One transition-name family — issue #275 ──────────────────────────────────────────
+ *
+ * The morph (#141) pairs a rail tile's poster with the poster on the surface that opens by
+ * giving both the same `view-transition-name`. Until #275 there were **two** families and
+ * two minting functions, because the phone raised a sheet over `/up-next` while the phone
+ * route was a second, separate destination. #268 deleted the sheet and the interceptions:
+ * the phone's tile now navigates to `/library/{id}`, so there is one destination and one
+ * family.
+ *
+ * These live beside the poster's own contracts because the name is a property *of the
+ * poster's identity across a navigation*, and both failures here are silent: a second
+ * family that nothing mints runs no morph and throws nothing, and a caller left on the
+ * dead family pairs against an element that never appears.
+ */
+describe("the poster morph's transition-name family", () => {
+  it("mints from exactly one family, so a source and its destination can only agree", async () => {
+    const families = Object.entries(
+      await import("@/app/(signed-in)/library/poster-transition-name"),
+    ).filter(([, value]) => typeof value === "function");
+
+    expect(families.map(([name]) => name)).toEqual(["railPosterTransitionName"]);
+  });
+
+  it("names one element per entry, and a different one per entry", async () => {
+    const { railPosterTransitionName } = await import(
+      "@/app/(signed-in)/library/poster-transition-name"
+    );
+
+    expect(railPosterTransitionName("abc")).toBe("rail-poster-abc");
+    expect(railPosterTransitionName("abc")).toBe(railPosterTransitionName("abc"));
+    expect(railPosterTransitionName("abc")).not.toBe(railPosterTransitionName("def"));
+  });
+
+  it("leaves no caller and no hand-spelled copy of the retired family", () => {
+    // The minting helper is gone; so is anywhere that used to write the template literal
+    // out by hand. A survivor here is a `view-transition-name` with nothing to pair
+    // against — inert, silent, and indistinguishable from a morph that simply did not run.
+    const retired = /\bgroupPosterTransitionName\b|group-poster-\$\{/;
+
+    for (const file of sourceFilesUnder(path.join(REPOSITORY_ROOT, "app"))) {
+      const relative = path.relative(REPOSITORY_ROOT, file);
+      const cites = retired.test(readFileSync(file, "utf8"));
+      expect({ file: relative, cites }).toEqual({ file: relative, cites: false });
+    }
   });
 });

@@ -7,10 +7,13 @@ import { smooth } from "@/app/motion";
 import {
   DRAG_THRESHOLD_PX,
   claimsDrag,
+  deliversClick,
   dragOffset,
+  ownsPointer,
   releaseDrag,
   type DragRules,
 } from "@/app/gesture-rules";
+import { keepPage, rememberedPage } from "@/app/restoration-memory";
 
 /**
  * The landing screen's two-page pager — *Up next* and *Upcoming*, issue #251.
@@ -63,6 +66,25 @@ const PAGES = [
 
 type PageIndex = 0 | 1;
 
+/**
+ * The page the reader was on when they last left this tab, narrowed to a page that exists.
+ *
+ * `app/restoration.ts` keeps the index as a plain number and this is where it becomes one
+ * of the two the pager has — issue #276's *returning to Up next restores the landing
+ * pager's page index*, and #268's *coming back from a title I found on Upcoming does not
+ * put me on Up next*.
+ *
+ * A reader who has not been here restores to `0`, which is where the pager already
+ * started, so a fresh load is unchanged. **That is also what keeps hydration honest**: the
+ * memory is a variable in the client bundle and nothing on the server ever writes it, so
+ * the server renders the first page and the browser's first render agrees. Only a
+ * client-side return — the navigation this ticket exists for — has anything remembered to
+ * restore.
+ */
+function openingPage(): PageIndex {
+  return rememberedPage() === 1 ? 1 : 0;
+}
+
 /** Which directions have a page behind them, from where the reader is standing. A
  *  leftward drag (`-1`) goes forwards, because the pages move the other way. */
 function rulesFor(page: PageIndex): DragRules {
@@ -83,11 +105,42 @@ export function LandingPager({
   upNext: React.ReactNode;
   upcoming: React.ReactNode;
 }) {
-  const [page, setPage] = useState<PageIndex>(0);
+  const [page, setPage] = useState<PageIndex>(openingPage);
   const [drag, setDrag] = useState(0);
+
+  /**
+   * Whether the reader has changed page **themselves** since this pager mounted — which is
+   * what tells a page change from a restore (issue #276), and therefore what springs from
+   * what does not.
+   *
+   * `width` is `0` until the observer has measured, so a pager restored onto *Upcoming*
+   * renders at `x: 0` for one commit and at `x: -width` for the next. Left alone, that
+   * second commit is a **settle**: the reader who left *Upcoming* comes back to *Up next*
+   * and watches it slide across to *Upcoming*, which is the app replaying a page change
+   * nobody made. Restoring is arriving, not moving.
+   *
+   * Set in `goToPage` below rather than watched from an effect, because *the reader
+   * changed page* is an event and not a thing to derive: all three ways to change page go
+   * through that one function, so the first of them is the moment the pager becomes a
+   * surface that animates.
+   */
+  const [moved, setMoved] = useState(false);
+
+  /**
+   * Every way the page changes goes through here, so that the one the reader ends on is
+   * the one they come back to. Three callers — a tap on a label, an arrow key and a
+   * committed drag — and a fourth that forgot to remember would be a pager that restores
+   * correctly except when you swiped.
+   */
+  const goToPage = useCallback((next: PageIndex) => {
+    setPage(next);
+    setMoved(true);
+    keepPage(next);
+  }, []);
 
   const track = useRef<HTMLDivElement>(null);
   const width = useTrackWidth(track);
+
 
   /**
    * The gesture in progress, or `null` between gestures.
@@ -98,17 +151,62 @@ export function LandingPager({
    * two where the vertical component wins, and the page would snap back to nothing and out
    * again under the finger.
    *
+   * `pointerId` is **issue #277's**, and the rest of this file's audit follows from it.
+   * Every handler below used to read `event.clientX` without asking whose finger it was,
+   * so a second pointer landing mid-drag re-seated the origin the first one was being
+   * measured from and any release at all ended the gesture. `ownsPointer` is the question,
+   * asked in all three places, and the id is why it can be.
+   *
    * A ref rather than state, because none of it is drawn. The one thing that *is* drawn is
    * `drag`, and that is state.
    */
-  const gesture = useRef<{ x: number; y: number; claimed: boolean | null } | null>(null);
+  const gesture = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    claimed: boolean | null;
+  } | null>(null);
 
-  /** Whether the gesture that just ended actually moved the pager, so the click it is
-   *  about to generate can be swallowed. Cleared on the next press. */
-  const dragged = useRef(false);
+  /**
+   * The claim the gesture that just ended finished on, held only for the click that
+   * release is about to generate — `deliversClick` is what reads it.
+   *
+   * `null` between gestures, and `null` for a tap, which never latched a claim at all.
+   * That is the same three-state answer the rules module takes, kept as three rather than
+   * flattened to a boolean here: *the pager claimed it*, *the pager refused it* and *there
+   * was nothing to claim* are three different things and only the first swallows a click.
+   *
+   * **This was a `dragged` boolean until #277.** It said *did the pager move*, which is
+   * the same answer for the wrong reason, and could not be checked against a rule because
+   * there was no rule — the decision was an `if` in the handler below.
+   */
+  const released = useRef<boolean | null>(null);
 
   const onPointerDown = useCallback((event: React.PointerEvent) => {
-    dragged.current = false;
+    released.current = null;
+
+    /**
+     * **A second pointer is not a second gesture** — issue #277.
+     *
+     * `isPrimary` is the platform's own answer for touch: the second and every later finger
+     * of a multi-touch is not primary, so a hand steadying the phone can neither begin a
+     * gesture nor re-seat the origin the thumb is being measured from. Ignored rather than
+     * cancelling what is in flight — the first finger is still on the glass and still
+     * dragging, and taking its page away because a second one touched down is the same jump
+     * under the thumb from the other direction.
+     *
+     * **The second guard is narrower than it looks, and deliberately so.** A pen or a mouse
+     * is always primary *for its own type*, so one arriving over a live touch gesture sails
+     * past `isPrimary`. It is refused only while the live gesture is **claimed**, and that
+     * is the condition rather than a bare `!== null` because claiming is the same moment
+     * capture is taken (below): a captured pointer's release is guaranteed to reach this
+     * element, so refusing here cannot strand the pager. An *unclaimed* gesture is replaced
+     * rather than refused, which is also the only recovery there is from a `pointerdown`
+     * whose release never arrived — and a pager that could be left permanently inert by one
+     * lost event would be a worse bug than the one this ticket is guessing at.
+     */
+    if (!event.isPrimary) return;
+    if (gesture.current?.claimed === true) return;
 
     /**
      * **A rail owns its own swipes.** Page one holds two horizontally scrolling rails
@@ -130,13 +228,19 @@ export function LandingPager({
 
     // Nothing is captured yet: a press that turns out to be a tap on a link has to stay a
     // click, and capture is taken below only once the drag is real.
-    gesture.current = { x: event.clientX, y: event.clientY, claimed: null };
+    gesture.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      claimed: null,
+    };
   }, []);
 
   const onPointerMove = useCallback(
     (event: React.PointerEvent) => {
       const from = gesture.current;
-      if (from === null) return;
+      // Whose finger this is, before anything is measured from it (#277).
+      if (!ownsPointer(from, event.pointerId)) return;
 
       const delta = { dx: event.clientX - from.x, dy: event.clientY - from.y };
 
@@ -147,7 +251,6 @@ export function LandingPager({
 
         from.claimed = claimsDrag(delta, rulesFor(page));
         if (from.claimed) {
-          dragged.current = true;
           /* Capture, so a pointer released over the tab row, the nav bar or off the
              window still reaches `onPointerUp` here. Without it that release lands
              nowhere, and the track stays parked mid-drag until the next press. */
@@ -163,46 +266,69 @@ export function LandingPager({
   const onPointerUp = useCallback(
     (event: React.PointerEvent) => {
       const from = gesture.current;
+      /* A release from a pointer that is not this gesture's ends nothing (#277). It used
+         to clear the gesture and park the track before it checked, so the second finger of
+         a two-finger scroll lifting mid-drag left the pager stopped where it stood. */
+      if (!ownsPointer(from, event.pointerId)) return;
+
       gesture.current = null;
       setDrag(0);
-      if (from === null) return;
+      // Armed for the click below, and only for it — the next press clears it again.
+      released.current = from.claimed;
 
       const delta = { dx: event.clientX - from.x, dy: event.clientY - from.y };
       const outcome = releaseDrag(delta, rulesFor(page), from.claimed ?? false);
       // `-1` is a leftward drag, which goes forwards. The rules module speaks the axis's
       // language rather than the pager's, deliberately — see its own docblock.
-      if (outcome.kind === "commit") setPage(outcome.direction === -1 ? 1 : 0);
+      if (outcome.kind === "commit") goToPage(outcome.direction === -1 ? 1 : 0);
     },
-    [page],
+    [page, goToPage],
   );
 
   /** A pointer the browser takes away mid-drag never sends `pointerup`. Springing back is
-   *  the right answer: nothing was committed, so nothing changes. */
-  const onPointerCancel = useCallback(() => {
+   *  the right answer: nothing was committed, so nothing changes.
+   *
+   *  **And nothing is armed to swallow a click** (#277): a cancelled pointer generates no
+   *  click, so a swallow left armed here would be waiting for somebody else's press. */
+  const onPointerCancel = useCallback((event: React.PointerEvent) => {
+    const from = gesture.current;
+    if (!ownsPointer(from, event.pointerId)) return;
+
     gesture.current = null;
+    released.current = null;
     setDrag(0);
   }, []);
 
   /**
    * A drag that started on a row or a card would otherwise **also** navigate: the pointer
    * went down on a `Link`, travelled, and the browser fires a click on release like any
-   * other press. Swallowed in the capture phase, before it reaches the link.
+   * other press. Swallowed in the capture phase, before it reaches the link — which is the
+   * whole of #277's *a gesture the pager has claimed is not also delivered to a child*.
    *
-   * Keyed to whether the pager actually claimed the gesture, so an ordinary tap — which
-   * never latches `claimed` true — is untouched. This is the same *the check is its own
-   * target* instinct `SPEC.md` states for the season row, one level up: a gesture must
-   * never be two things at once.
+   * `deliversClick` is the rule and it is not this file's (#277). Keyed to the latched
+   * claim rather than to a *did it move* flag, so an ordinary tap — which never latches a
+   * claim either way — is untouched, and so is a gesture the pager watched and **refused**,
+   * whose click belongs to whatever the pointer was actually over. This is the same *the
+   * check is its own target* instinct `SPEC.md` states for the season row, one level up: a
+   * gesture must never be two things at once.
+   *
+   * The claim is read and cleared in one go, so at most one click is ever swallowed per
+   * gesture. `preventDefault` is for the anchor and `stopPropagation` for everything
+   * React would route beneath this handler; the capture phase is what puts both of them
+   * ahead of the children rather than after them.
    */
   const onClickCapture = useCallback((event: React.MouseEvent) => {
-    if (!dragged.current) return;
-    dragged.current = false;
+    const claimed = released.current;
+    released.current = null;
+
+    if (deliversClick(claimed)) return;
     event.preventDefault();
     event.stopPropagation();
   }, []);
 
   return (
     <div>
-      <PagerTabs page={page} onPick={setPage} />
+      <PagerTabs page={page} onPick={goToPage} />
 
       <div
         ref={track}
@@ -222,12 +348,18 @@ export function LandingPager({
              page offset and the live drag have to add, and a `calc()` mixing the two
              cannot be animated. `width` is `0` until the observer has measured, which is
              only ever the first paint — and page `0` at `0` is where the pager starts, so
-             nothing moves through a wrong position on the way. */
+             nothing moves through a wrong position on the way.
+
+             **Since #276 the pager does not always start on page `0`.** A restored pager
+             starts on the page the reader left, and its first two commits really are `0`
+             and then `-width`. That is a jump rather than a wrong position, and `moved`
+             above is what keeps it from being animated as though it were a page change. */
           animate={{ x: -page * width + drag }}
           /* No spring while the thumb is down. A page being dragged is under the finger
              one pixel per pixel; animating towards where the finger *was* is the exact
-             glassiness `app/motion.ts` describes. The spring is for the settle. */
-          transition={drag === 0 ? smooth : { duration: 0 }}
+             glassiness `app/motion.ts` describes. The spring is for the settle — and a
+             restore is not one, which is what `moved` above is for. */
+          transition={drag === 0 && moved ? smooth : { duration: 0 }}
         >
           {PAGES.map((one, index) => (
             <div
@@ -408,6 +540,10 @@ function overHorizontalScroller(target: EventTarget | null, track: HTMLElement |
  * measured at mount would leave the second page parked a screen and a half over. `0` until
  * the first observation, which is the state the pager already starts in — page zero at
  * offset zero — so nothing is ever drawn at a stale width.
+ *
+ * **A pager restored onto page two (#276) is the one case that starts elsewhere**, and it
+ * crosses that first commit at `x: 0` before landing at `x: -width`. It arrives rather than
+ * travels: see `moved` in the component above.
  */
 function useTrackWidth(track: React.RefObject<HTMLDivElement | null>): number {
   const [width, setWidth] = useState(0);

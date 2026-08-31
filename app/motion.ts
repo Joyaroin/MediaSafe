@@ -76,4 +76,21 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  * What stays here is what only Motion can express — the springs above, for the things a
  * finger can catch mid-flight. That is the dividing line `DESIGN.md`'s motion section
  * draws, and it is now also the line this file's exports fall on.
+ *
+ * ── #270 reversed one word of this, and left the conclusion standing ─────────────────
+ *
+ * The press is still in CSS, still has no variant here, and this module gains nothing
+ * back. What was wrong is *the press is the same story*. The grid's story is that a spring
+ * buys nothing because nothing can catch a reveal — and that had come to be read as
+ * *therefore a press is flat*. A press cannot be caught either, but it can still have a
+ * spring's **shape**, and those are two properties rather than one. `linear()` holds an
+ * arbitrary function of time, so `.pressable`'s timing function is now `snappy` itself,
+ * sampled: response `0.30`, damping fraction `0.85`, the numbers above rather than an
+ * approximation of them, so a control animated in CSS and one animated here are the same
+ * spring. `globals.css`'s `--spring-press` carries the derivation, and
+ * `tests/press-spring.test.ts` recomputes all 33 samples from `snappy` — this note's own
+ * warning about two spellings, answered by making the second one a function of the first.
+ *
+ * So the dividing line narrows to what it can actually defend: what only Motion can
+ * express is **interruptibility**. Not spring shape.
  */

@@ -67,7 +67,12 @@ describe("the rail does not re-render on every scroll event", () => {
   it("still measures on mount, on scroll and on resize", () => {
     // The guard must not have been bought by measuring less often — an arrow left on
     // screen after the last tile is a control that does nothing.
-    expect(rail).toMatch(/onScroll=\{measure\}/);
+    //
+    // Since #276 the scroll handler is the rail's own `onScroll`, which measures **and**
+    // records the offset the rail will come back to. Both halves are asserted, because
+    // the way this regresses is one of them being dropped from a two-line function.
+    expect(rail).toMatch(/onScroll=\{onScroll\}/);
+    expect(rail).toMatch(/function onScroll\(\) \{\s*measure\(\);/);
     expect(rail).toMatch(/new ResizeObserver\(measure\)/);
   });
 });

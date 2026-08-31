@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -53,8 +53,24 @@ const SURFACE = `${UP_NEXT}/up-next-rails.tsx`;
 const RAIL_SECTION = `${UP_NEXT}/up-next-phone-rail.tsx`;
 const EPISODE_RAIL = `${UP_NEXT}/up-next-episode-rail.tsx`;
 const EPISODE_CARD = `${UP_NEXT}/up-next-episode-card.tsx`;
+const PENDING_CARD = `${UP_NEXT}/up-next-pending-card.tsx`;
 const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
 const NOTHING = `${UP_NEXT}/up-next-nothing.tsx`;
+/** #274's three: the desktop rail's tile, the season row that keeps the episode page, and
+ *  the search result. None of them is a phone rail, and they are asserted here because
+ *  this is the suite that reads what the surfaces around Up next link to. */
+const TILE = `${UP_NEXT}/up-next-tile.tsx`;
+const SEASON_ROWS = "app/(signed-in)/library/programme-note-episodes.tsx";
+const SEARCH_RESULT = "app/(signed-in)/search/catalogue-result.tsx";
+
+/**
+ * A file with its comments taken out — `tests/episode-modal.test.ts`'s device, for its
+ * reason. Every file here argues for itself at length, and #274's assertions are mostly
+ * about a destination appearing **nowhere**; against the raw text those become assertions
+ * about the prose, which is prose this codebase always has.
+ */
+const codeOf = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /** Every source file a docblock could legitimately be citing. Built once — the citation
  *  check below asks it a question per reference. */
@@ -188,6 +204,10 @@ describe("the landing screen shows two rails and the five groups are gone", () =
       FILM_RAIL,
       NOTHING,
       `${UP_NEXT}/episode-card-line.ts`,
+      // #272's pending card, joining the list for the same reason the rest are on it: it is
+      // a new file on this surface, and a citation it invents is a citation nothing else
+      // would ever catch.
+      PENDING_CARD,
     ];
 
     let checked = 0;
@@ -222,11 +242,34 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
    * **The assertion this file exists for.** Ongoing, then coming back, then old friends —
    * the sequence the five deleted groups expressed structurally, now expressed as one line
    * of spread syntax that nothing else in the build would notice going wrong.
+   *
+   * **#272 narrowed the first of the three and did not reorder them.** Ongoing can now hold
+   * a title whose episodes have not mirrored, which has no run to mark and no episode to
+   * draw, so `isEpisodeEntry` takes the episode-bearing half of that rail here — the same
+   * three arrays, in the same order, with the pending cards lifted out and drawn ahead of
+   * the whole sequence (below).
    */
   it("spreads ongoing, then comingBack, then oldFriends, in that order", () => {
     expect(source).toMatch(
-      /\[\s*\.\.\.rails\.ongoing,\s*\.\.\.rails\.comingBack,\s*\.\.\.rails\.oldFriends,?\s*\]/,
+      /\[\s*\.\.\.rails\.ongoing\.filter\(isEpisodeEntry\),\s*\.\.\.rails\.comingBack,\s*\.\.\.rails\.oldFriends,?\s*\]/,
     );
+  });
+
+  /**
+   * **A pending card is drawn before the concatenation, not inside it** — issue #272.
+   *
+   * *At the head of Ongoing* is the ticket's own wording, and Ongoing leads this rail, so
+   * on the phone that means the head of the whole track. It fails silently in the way this
+   * file was built for: put the pending cards after `showing` and the reader who just added
+   * a show scrolls past every cold title in their library to find it, with nothing anywhere
+   * throwing.
+   */
+  it("draws the pending cards ahead of every episode card", () => {
+    const pendingAt = source.indexOf("<UpNextPendingCard");
+    const episodeAt = source.indexOf("<UpNextEpisodeCard");
+    expect(pendingAt).toBeGreaterThan(-1);
+    expect(episodeAt).toBeGreaterThan(-1);
+    expect(pendingAt).toBeLessThan(episodeAt);
   });
 
   /**
@@ -305,9 +348,16 @@ describe("both rails snap to the page gutter and leave the next card peeking", (
    * padding would clip the trailing card at the gutter instead of at the screen edge, and
    * nothing would peek.
    */
+  /**
+   * The track is `RememberedTrack` since #276 — a client `<ol>` carrying the rail's own
+   * scroll offset across a navigation away and back — so the gutter is asserted on the
+   * `className` it is handed rather than on a literal `<ol>`. The property is unchanged and
+   * is the reason this is not just a class-list check: the padding is on the *track*, not
+   * on the `<section>`.
+   */
   it("puts the gutter on the track rather than on the section around it", () => {
     expect(section).toMatch(/<section className="pt-\[26px\]">/);
-    expect(section).toMatch(/<ol className="[^"]*px-\[22px\]/);
+    expect(section).toMatch(/<RememberedTrack[\s\S]*?className="[^"]*px-\[22px\]/);
   });
 
   it("hides the scrollbar without hiding that there is more", () => {
@@ -385,7 +435,12 @@ describe("the films rail", () => {
 
 describe("empty and failed are never the same thing", () => {
   it("renders an empty rail as absent, with no heading over nothing", () => {
-    expect(sourceAt(EPISODE_RAIL)).toMatch(/if \(showing\.length === 0\) return null;/);
+    // #272: the rail is empty when it holds neither a pending card nor an episode card.
+    // A reader whose only title is one still mirroring has a rail with one card on it, not
+    // an absent rail — the tab must not read as empty for a title just added to it.
+    expect(sourceAt(EPISODE_RAIL)).toMatch(
+      /if \(pending\.length === 0 && showing\.length === 0\) return null;/,
+    );
     expect(sourceAt(FILM_RAIL)).toMatch(/if \(films\.length === 0\) return null;/);
   });
 
@@ -467,6 +522,280 @@ describe("the mark is unchanged", () => {
 
     expect(link).toBeGreaterThan(-1);
     expect(control).toBeGreaterThan(closes);
+  });
+});
+
+/**
+ * **Issue #274 — every tile and every card on this tab opens the title's own page.**
+ *
+ * The tab used to answer a press three different ways: a show tile wrote selection state,
+ * a film tile navigated, and a next-episodes card navigated somewhere else again. One
+ * model for what a tap does is the property, and it fails **silently** in the worst way
+ * available to a link — the press is answered, something opens, and it is the wrong thing.
+ * Nothing throws, nothing looks broken, and a reader who asked for a show gets an episode.
+ *
+ * The desktop's half of the same rule is here too, and it is the reversal's other edge: on
+ * `lg` and up a tile must still swap the programme note pane **without navigating**. A
+ * `<Link>` that stopped guarding its own click would take the whole two-pane layout out at
+ * once, and that failure is loud only if somebody is looking at a desktop.
+ */
+describe("every tile and card on Up next opens the title's page", () => {
+  const tile = codeOf(sourceAt(TILE));
+
+  /**
+   * The show tile is a link, which is the mechanism the film tile already had. A `<button>`
+   * that called `router.push` would open the same page and still be the wrong answer: it
+   * cannot be middle-clicked, cannot be opened in a new tab, and does not tell a screen
+   * reader it is a link.
+   */
+  it("makes the show tile a link to the library entry's page", () => {
+    expect(tile).toMatch(/<Link\s+href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(tile).not.toMatch(/<button/);
+  });
+
+  /** The same destination reached the same way, which is the acceptance criterion's own
+   *  words: a film and a show behave the same way on the same tab. */
+  it("gives the film tile that destination by the same mechanism", () => {
+    expect(codeOf(sourceAt(FILM_RAIL))).toMatch(
+      /<Link href=\{`\/library\/\$\{film\.libraryEntryId\}`\}/,
+    );
+  });
+
+  /** And the card, retargeted from the episode. The negative is the load-bearing half —
+   *  a card that gained the title's href beside the episode's would pass the positive. */
+  it("sends a next-episodes card to the show's page, not the episode's", () => {
+    const card = codeOf(sourceAt(EPISODE_CARD));
+
+    expect(card).toMatch(/href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(card).not.toMatch(/\/episode\//);
+  });
+
+  /**
+   * **The episode's page is retargeted away from, not deleted.** It keeps a season row
+   * inside the title, and the route it deep-links to is still on disk. Asserted because
+   * the cheap way to satisfy every line above is to stop having an episode page at all,
+   * and #253's surface is not this ticket's to remove.
+   */
+  it("leaves the episode's own page reachable from a season row and by deep link", () => {
+    expect(codeOf(sourceAt(SEASON_ROWS))).toMatch(
+      /href=\{`\/library\/\$\{libraryEntryId\}\/episode\/\$\{episode\.id\}`\}/,
+    );
+    expect(
+      existsSync(
+        path.join(
+          REPOSITORY_ROOT,
+          "app/(signed-in)/library/[entryId]/episode/[episodeId]/page.tsx",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  /** A reader can read about a title properly before deciding to add it. #273 made this
+   *  an ordinary navigation by deleting the interception that captured it; this pins the
+   *  destination, which is the half of it a manifest audit cannot see. */
+  it("sends a search result to the title's full page", () => {
+    expect(codeOf(sourceAt(SEARCH_RESULT))).toMatch(
+      /href=\{`\/titles\/\$\{result\.kind\}\/\$\{result\.tmdbId\}`\}/,
+    );
+  });
+
+  /**
+   * **The phone writes no selection.** Every `select(` in the tile sits after the
+   * breakpoint check, so the only click that reaches the selection store is a desktop
+   * one; a phone press falls through to the link's own default and navigates.
+   *
+   * Positions rather than presence, because presence is what a second, unguarded call
+   * would also satisfy — and an unguarded `select()` beside a guarded one is the exact
+   * shape of this regression: the pane swaps *and* the phone routes.
+   */
+  it("writes selection state only on the desktop side of the breakpoint", () => {
+    const guard = tile.indexOf("matchMedia(DESKTOP_BREAKPOINT)");
+    expect(guard).toBeGreaterThan(-1);
+
+    const writes = [...tile.matchAll(/\bselect\(/g)].map((match) => match.index);
+    expect(writes.length).toBeGreaterThan(0);
+    for (const at of writes) expect({ at, after: at > guard }).toEqual({ at, after: true });
+  });
+
+  /**
+   * **And it is the one breakpoint constant, not a second copy of `1024px`.**
+   * `selectable-entry.tsx` exports it precisely so that the JS copy of `lg` exists once;
+   * a literal here would be the silent second the constant was named to prevent.
+   */
+  it("takes the breakpoint from the one place that names it", () => {
+    expect(sourceAt(TILE)).toMatch(
+      /import \{ DESKTOP_BREAKPOINT \} from "@\/app\/\(signed-in\)\/library\/selectable-entry"/,
+    );
+    expect(tile).not.toMatch(/min-width:\s*1024px/);
+  });
+
+  /**
+   * **On `lg` and up nothing navigates**, which is `DESIGN.md`'s Never-Navigate-Away Rule
+   * and the whole reason the pane exists. The desktop branch has to stop the link before
+   * the browser follows it, and that `preventDefault` is the one line standing between the
+   * two-pane layout and a full page load on every tile press.
+   */
+  it("stops the navigation on the desktop rather than letting both happen", () => {
+    expect(tile).toMatch(/preventDefault\(\)/);
+  });
+
+  /** The pane and its four-phase pending machine are untouched — only the phone's use of
+   *  selection went. Asserted against the pane's own file so that "unchanged" is a claim
+   *  something checks. */
+  it("leaves the programme note pane driven by the same selection", () => {
+    const pane = sourceAt("app/(signed-in)/library/programme-note.tsx");
+
+    expect(pane).toMatch(/useLibrarySelection\(\)/);
+    expect(pane).toMatch(/selectedEntryId/);
+  });
+});
+
+/**
+ * **Issue #277 — the recording control gets a real dead zone from the card's tap area.**
+ *
+ * The report this answers is second-hand and **unreproduced**: on Android a tap on a card
+ * sometimes appears to land on the check rather than opening the card, so a reader records
+ * a watch they did not ask for. The owner does not have the device. What ships is a
+ * hardening that stands on its own merits, and this suite asserts the hardening — not a
+ * fix, because nothing here can prove one.
+ *
+ * The property, and it is the kind that fails **silently**: the link and the check are two
+ * targets sharing an edge. Every assertion in this file passes with them flush against
+ * each other, and so does every pixel of the rendered card — the only thing that changes
+ * is what a fat finger lands on, which no test in this repository can see.
+ *
+ * The second half is `DESIGN.md`'s bounding-rect guarantee (§6) and #250's own
+ * *the rail never reflows under a thumb*: the dead zone comes out of the link's own
+ * bottom padding rather than out of the card's height, so the box is unchanged. A dead
+ * zone that made the card taller would be a fix for one complaint that caused another.
+ */
+describe("the recording control has a dead zone from the card's tap area", () => {
+  const card = sourceAt(EPISODE_CARD);
+  const code = codeOf(card);
+
+  /** The gap itself, stated once and applied to the link rather than typed at the element
+   *  — a second copy is how the two halves below come to disagree. */
+  it("names the dead zone once and puts it on the card's link", () => {
+    expect(code).toMatch(/const TAP_DEAD_ZONE = "mb-1"/);
+    expect(code).toMatch(/className=\{`pressable block \$\{TAP_DEAD_ZONE\}`\}/);
+  });
+
+  /**
+   * **Where the space came from.** The link's text block used to end in `pb-1`, and that
+   * `4px` is now the dead zone: taken out of the link's own box and put between the two
+   * targets. The card is exactly as tall as it was, which is why this asserts the padding
+   * is *gone* rather than merely that a margin exists — a margin added beside the padding
+   * would separate the targets and grow every card on the rail by four pixels.
+   */
+  it("takes the gap out of the link's own bottom padding, not out of the card", () => {
+    expect(code).toMatch(/className="px-\[14px\] pt-3"/);
+    expect(code).not.toMatch(/pb-1/);
+  });
+
+  /** The control's target is untouched. `44px` is `DESIGN.md` §6's floor and the one
+   *  direction a dead zone must never come out of. */
+  it("costs the control nothing of its 44px target", () => {
+    expect(code).toMatch(/flex min-h-11 items-center/);
+    expect(code).toMatch(/CHECK_HIT_BOX = `pressable group flex h-11 shrink-0/);
+  });
+
+  /** And the card's measure is the same measure, so the rail lays out as it did. */
+  it("leaves the card's box and the rail's layout alone", () => {
+    expect(code).toMatch(/CARD_WIDTH = 262/);
+    expect(code).toMatch(/CARD = "w-\[262px\] shrink-0 snap-start"/);
+    expect(code).toMatch(/FRAME = "w-full \[--still-radius:0\]"/);
+  });
+
+  /**
+   * The other half of the acceptance criterion, and the half that was already true: the
+   * picture and the text are **inside** the link and the check is outside it, so the only
+   * thing that records a watch is the control itself. Asserted here beside the dead zone
+   * because the two are one claim — *tapping the card opens the card* — and a refactor
+   * that moved the check inside the link would leave the gap looking correct and the
+   * behaviour wrong.
+   */
+  it("keeps the picture and the text inside the link and the control outside it", () => {
+    const link = code.indexOf("<Link");
+    const closes = code.indexOf("</Link>");
+
+    expect(link).toBeGreaterThan(-1);
+    expect(code.indexOf("<CardFrame")).toBeGreaterThan(link);
+    expect(code.indexOf("<CardFrame")).toBeLessThan(closes);
+    expect(code.indexOf("{entry.titleName}")).toBeLessThan(closes);
+    expect(code.indexOf("{control}")).toBeGreaterThan(closes);
+  });
+
+  /**
+   * **No telemetry.** #277 ships the hardening and explicitly not the instrumentation that
+   * would prove it — the report stays unreproduced, and a beacon added to find out would
+   * be the one thing the ticket rules out.
+   */
+  it("adds no instrumentation to the tap", () => {
+    expect(code).not.toMatch(/captureMessage|addBreadcrumb|Sentry|analytics|track\(|beacon/i);
+  });
+});
+
+/**
+ * The documents, amended in this commit rather than after it — `CLAUDE.md` binds them and
+ * `DESIGN.md` records two prior occasions where a note and the code it described drifted
+ * apart silently. Both reversals are written as reversals.
+ */
+describe("the documents record the reversal", () => {
+  it("has DESIGN.md saying a tap on Up next opens a page", () => {
+    const design = sourceAt("DESIGN.md");
+    const from = design.indexOf("### Opening a title");
+    const section = design.slice(from, design.indexOf("\n### ", from + 4));
+
+    expect(section).toMatch(/#274/);
+    expect(section).toMatch(/opens the title's own page/);
+
+    /**
+     * **The sheet survives only inside a quotation.** `CLAUDE.md` asks a reversal to be
+     * written as one, so the sentence this section used to open with is kept — in a
+     * blockquote, in the past tense. What must not survive is the same sentence asserted
+     * in the document's own voice, which is the drift `DESIGN.md` records two prior
+     * occasions of. So the check is over the section's *unquoted* lines.
+     */
+    const asserted = section
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith(">"))
+      .join("\n");
+
+    expect(asserted).not.toMatch(/raises a sheet over the tab/);
+  });
+
+  it("has SPEC.md §7's surfaces section carrying the same reversal", () => {
+    const spec = sourceAt("SPEC.md");
+    const surfaces = spec.slice(
+      spec.indexOf("## 7. The surfaces"),
+      spec.indexOf("### Up next — ordering"),
+    );
+
+    expect(surfaces).toMatch(/#274/);
+  });
+
+  /**
+   * **And #277's framing, which is the part a future reader is owed.** The hardening is
+   * defensible on its own and it is *not* a fix — the report was never reproduced. A
+   * document that recorded the change without recording that would leave the next reader
+   * believing the Android misfire was dealt with, and there is nothing in the build that
+   * would correct them.
+   */
+  it("has DESIGN.md recording the Android hardening as a hypothesis rather than a fix", () => {
+    const design = sourceAt("DESIGN.md");
+    const from = design.indexOf("### The Android tap");
+    expect(from).toBeGreaterThan(-1);
+
+    const section = design.slice(from, design.indexOf("\n### ", from + 4));
+
+    expect(section).toMatch(/#277/);
+    expect(section).toMatch(/unreproduced/);
+    expect(section).toMatch(/dead zone/);
+    // The pager's half of the same hardening, so the section covers both halves rather
+    // than the one that is visible in a card.
+    expect(section).toMatch(/pager/);
+    // And it must say what happens if the misfire survives, which is the recoverable part.
+    expect(section).toMatch(/did not address it|was not addressed here/);
   });
 });
 

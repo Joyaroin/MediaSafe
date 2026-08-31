@@ -685,10 +685,15 @@ pass against the running app, though nothing in a fixed-pixel box model depends 
 ### The fifth time was the row becoming a link, and it passed
 
 Issue #254 makes a season row a destination: the episode number and the name are wrapped in
-a `Link` to `library/[entryId]/episode/[episodeId]`, so pressing a row opens the episode
-modal. That is a new element in the middle of a row whose height is guaranteed, which is
-exactly the shape of change the four entries above were all written about, so it was
-measured before it was believed.
+a `Link` to `library/[entryId]/episode/[episodeId]`. That is a new element in the middle of
+a row whose height is guaranteed, which is exactly the shape of change the four entries
+above were all written about, so it was measured before it was believed.
+
+**This paragraph said *pressing a row opens the episode modal* until issue #273**, and the
+correction is a reversal rather than a rewording: the route interception is deleted, so a
+row now opens the episode's **page**. The geometry below is untouched by that — the link,
+its `44px` box and the check beside it are the same element either way, and what changed is
+only where the press lands.
 
 **Two things make it geometry-neutral, and the second is the one that is easy to omit.**
 The link is `flex min-w-0 flex-1 items-center gap-3`, which is the arrangement the `<li>`
@@ -764,9 +769,32 @@ the product.
 
 | Rail | Head line | Rule (`db/access.ts`, `listUpNextRails`) |
 |---|---|---|
-| **Ongoing** | *Watching · your most recent* | *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
+| **Ongoing** | *Watching · your most recent* | a **pending** title — episodes not mirrored — newest added first; then *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
 | **Coming back** | *Caught up · an episode is dated* | *caught up* ∧ the **up next** episode's air date is in the future |
 | **Old friends** | *Watching · everything else* | *watching*, everything not in **Ongoing** |
+
+**Amended by [#272](https://github.com/Joyaroin/MediaSafe/issues/272): Ongoing has a second
+membership, and it is the first thing this file said the rails did not have.** Every rule
+above was *a grouping over the derived-state view*, and the sentence below still beginning
+"nothing is stored" was written to mean that a rail could hold nothing the watches did not
+put there. A title whose episodes have not mirrored has no watches, no progress and no
+`library_entry_up_next` row, so the projection cannot reach it at all — and a reader who has
+just added a show and cannot find it on the tab they added it for concludes the add failed.
+
+Recorded as a reversal rather than quietly overwritten, and narrowed as hard as it goes:
+
+- **It is one rail, and the rails stay three.** A fourth rail was considered and refused. A
+  pending title is *something you are in the middle of starting*, which is Ongoing's own
+  sentence, and a rail that empties itself within seconds of appearing is chrome.
+- **It is still not stored derived state.** `title.episodes_mirrored_at` is not a copy of
+  anything — nothing else in the database knows whether a mirror has run, and ADR-0001
+  amendment 11 argues at length why *this title has no episode rows* is the wrong place to
+  infer it from: it makes *still arriving* and *genuinely has none* the same state.
+- **It spends none of the twelve.** The cap bounds *watching*, which is the set it was
+  measured against; pending titles are prepended to it. Otherwise a mirror in flight would
+  push a show the reader is actually watching onto **Old friends** for the length of it.
+- **A film is never pending**, and neither is a show whose mirror has landed on nothing. Both
+  are the column read literally, and both are asserted against a real Postgres.
 
 The membership rules live in `db/access.ts` and not in the components on purpose: the
 surface decides the words and the order they read in, and knows nothing about what put a
@@ -804,6 +832,8 @@ reads as a count whether it is meant as one or not.
 
 - **A rail is never *pending* on its own either**, and gets no loading boundary of its own —
   §9 settles that, and settles it against a written request, so read it there before adding one.
+  **#272 did not change this.** A rail is still never pending; one *tile* on Ongoing can be,
+  which is a different claim about a different thing, and §9 carries it.
 - **An empty rail is absent** — no heading over nothing, no sentence, no zero, no reserved
   space. **Every** rail empty is a different fact, answered once by `UpNextRailsSurface` in
   `UpNextEmpty`'s own voice, because *you're caught up* is a sentence and not three
@@ -853,8 +883,13 @@ away in the panel it opens.
   needs the larger number.
 - **Phone group tile: fluid.** The grid's column width decides it. `width={132}` is still
   passed to `Poster`, but only to pick a CDN bucket — it sizes nothing on screen.
-- **Clicking a rail tile swaps the panel; it is never a navigation.** The page never routes,
-  so it never loses its place, so comparing two candidates costs nothing.
+- **Clicking a rail tile swaps the panel; it is never a navigation — on `lg` and up.**
+  The page never routes, so it never loses its place, so comparing two candidates costs
+  nothing. **Narrowed by [#274](https://github.com/Joyaroin/MediaSafe/issues/274)**: the
+  tile is a `Link` to `/library/{entryId}` whose click the desktop intercepts, rather than a
+  `button` that could only ever select. Below `lg` the link is followed and the reader gets
+  the title's page — see *Opening a title opens the title* below. The desktop half of this
+  bullet is unchanged, and the interception is what keeps it true.
 
 ### The phone has five groups, and they scroll
 
@@ -957,38 +992,211 @@ when it carries neither.
 > #194**: bulk *Add to list* and bulk *Abandon* are reached from `/library` and its status
 > filters rather than from the landing screen.
 
-### Opening a title does not leave Up next
+### Opening a title opens the title — issue #274
 
-Tapping a tile on the phone's Up next tab **raises a sheet over the tab**. It does not
-navigate.
+> **⚠️ This section is a reversal, and it reverses itself.** It used to open: *"Tapping a
+> tile on the phone's Up next tab **raises a sheet over the tab**. It does not navigate."*
+> That is no longer true of anything on this tab, and it has not been true of the phone
+> since [#250](https://github.com/Joyaroin/MediaSafe/issues/250) deleted the five vertical
+> groups the sheet was mounted for. #273 deleted the route interceptions and left this
+> section stale on its own account, naming #274 as the ticket that would amend it. This is
+> that amendment. The paragraphs the sheet argued for are kept below, in the past tense,
+> because a note that simply disappeared would read as a decision nobody made.
 
-Until this, a group tile was a `Link` to `/library/{entryId}` — a Library surface, under
-the Library's path, carrying a `‹ Library` bar back to a grid the reader had not asked for.
-Reached from Up next that is a one-way door: the reader taps a show and the way back leads
-somewhere else, with their scroll position in five horizontal tracks gone. The desktop has
-never had this problem, because #137's answer there is a pane that swaps while nothing
-navigates. The sheet is that same answer in the shape a phone has room for.
+**Every tile and every card on Up next opens the title's own page**, and there is one
+mechanism for it: a `Link` to `/library/{entryId}`.
 
-- **It is the programme note, in a sheet.** The content is `ProgrammeNoteContent` — the
-  identical component the desktop pane and the title-detail route both render — so the
-  recording controls the note above sends the reader to the title *for* are here, one tap
-  from the tab, without costing them their place. The home still has no control of its own;
-  that reversal stands.
-- **The motion is `sheet`, and this is its first caller.** It sat in `app/motion.ts`
-  unused from #132 — *"slower and heavier: a sheet has more mass than a chip"* — and this
-  is the surface it was written for. The panel springs in on `sheet` and leaves on `exit`,
-  because §6's rule holds here too: nothing can catch a thing that is already leaving. The
-  backdrop only fades; a backdrop that springs draws the eye to the ground rather than to
-  the thing arriving on it.
-- **Pending is the note's own four-phase machine** (§9, radius 3), reused rather than
-  re-derived. The `loading` frame draws the poster, the name and the year the tile already
-  handed over, so the morph has a destination the instant it starts.
-- **The route is not deleted.** `/library/{entryId}` is still correct for the Library's own
-  grid and for a deep link, and the group screens at `/up-next/{group}` still use it — they
-  have no sheet. A tile decides which it is by whether a sheet is above it in the tree, not
-  by a media query: the five groups only ever render inside `lg:hidden`, so *is there a
-  sheet* and *is this the phone* are already the same question. #136 deleted this build's
-  only `matchMedia` branch and nothing here reintroduces one.
+| What is pressed | Where it goes |
+| --- | --- |
+| A show tile on a rail (`up-next-tile.tsx`) | the library entry's page |
+| A film card (`up-next-film-rail.tsx`) | the same, unchanged |
+| A pending tile (`up-next-pending-card.tsx`) | the same, unchanged |
+| A next-episodes card (`up-next-episode-card.tsx`) | **the show's page** — retargeted from the episode's |
+| A search result (`catalogue-result.tsx`) | the title's full page |
+
+- **A show and a film behave the same way on the same tab.** They reached their
+  destinations by two different mechanisms before this — the film card by a link, the show
+  tile by writing selection state — and *"a film tile and a show tile reach their
+  destination by two different mechanisms"* was one of the four complaints #268 was written
+  about. One mechanism now, and it is the film card's, because a real anchor can be
+  middle-clicked, opened in a new tab and read as a link, and a `button` calling
+  `router.push` can do none of those.
+- **The next-episodes card retargets to the title.**
+  [#250](https://github.com/Joyaroin/MediaSafe/issues/250) was written expecting exactly
+  this and settled for the episode because
+  [#253](https://github.com/Joyaroin/MediaSafe/issues/253) built an episode page first. The
+  card was then the one thing on the tab that led somewhere other than a title. **The
+  episode's page is not deleted**: it keeps a season row inside the title and a deep link,
+  and the route is still keyed by both ids. What it stops having is a second front door
+  from a surface whose whole subject is titles.
+- **The desktop side pane stays, and is not what this removes.** On `lg` and up a tile's
+  click is stopped and `select()` swaps the programme note beside it, exactly as
+  [#137](https://github.com/Joyaroin/MediaSafe/issues/137) built it. Selection state, the
+  pane and its four-phase pending machine (§9, radius 3) are untouched. **What went is the
+  phone's use of that state**, which is the whole of the removal. The breakpoint is
+  `selectable-entry.tsx`'s exported `DESKTOP_BREAKPOINT`, read at the moment of the click —
+  the same divergence, the same constant, and not a second `1024px` literal.
+- **A modified click is left to the browser on both sides.** ⌘, Ctrl, Shift or any button
+  but the primary one is a request about a link, not about a pane.
+
+> **What the sheet was, and why it went.** While the phone had five vertical groups, a tap
+> on a group tile raised a sheet over the tab rather than navigating, holding
+> `ProgrammeNoteContent` —
+> the identical component the desktop pane and the title-detail route render — so that the
+> recording controls were one tap from the tab without costing the reader their place. The
+> argument against navigating was real and is answered rather than dismissed: a title
+> opened from a rail was *"a one-way door"*, and the reader's scroll position in five
+> horizontal tracks was gone on the way back.
+> [#276](https://github.com/Joyaroin/MediaSafe/issues/276) **is where that cost was paid**
+> — Up next and search now remember where the reader was, and the section below is what
+> that means — and [#275](https://github.com/Joyaroin/MediaSafe/issues/275) is where the
+> poster morph follows the reader into the page. The sheet's own motion (`sheet` in
+> `app/motion.ts`) has no caller again, which is the state #132 left it in.
+
+### Up next and search remember where the reader was — issue #276
+
+**This section is a reversal, and it reverses the sentence directly above it.** Until this
+ticket, opening a title from Up next cost the reader their place: the pager sprang back to
+*Up next* however they had got to *Upcoming*, every rail returned to its first card, and
+search met them with an empty field where their query and its results had been. That was
+the honest consequence of #273 and #274 — a tap became a navigation — and the note above
+recorded it as a debt rather than a design. It is settled here.
+
+- **Three things are remembered, and only three.** The landing pager's page index, each
+  rail's horizontal scroll offset, and search's query with the results it found. A reader
+  who found a show on *Upcoming* and opened it comes back to *Upcoming*; a reader who
+  scrolled *Old friends* to its end comes back to its end; a reader who opened a search
+  result to read about it comes back to the list they opened it from, without a re-type and
+  **without a second request to the catalogue**.
+- **The rules are a pure module.** `app/restoration.ts` takes the state to remember in and
+  hands it back out, with no element, no event and no React in it — the shape
+  `app/gesture-rules.ts` already has for the pager's drag, and for the reason that file
+  gives: `vitest.config.mts` runs in `node`, so a rule that only lives inside a scroll
+  handler is a rule nothing can assert. `tests/restoration.test.ts` drives it directly.
+- **A surface never seen restores to its default, not to nothing.** *Never visited* and
+  *visited, and at the start* are the same position and not the same fact, which is why the
+  memory holds an absence for the first rather than a zero. The consequence a reader sees:
+  a first visit is exactly the first visit it always was.
+- **It is session-scoped, and that is a property of one variable.**
+  `app/restoration-memory.ts` is a module variable in the client bundle, so a reload empties
+  it. `sessionStorage` would survive one and `localStorage` would survive a week — either
+  would hand somebody back a catalogue answer of unknown age dressed as a fresh one. The
+  suite checks that file for both names.
+- **The rail's key is its own label.** *Ongoing*, *Coming back*, *Old friends*, *Next
+  episodes*, *Films to watch* — the five already differ by the one thing on screen that
+  names them. An index would hand one rail's place to another the first time a rail above it
+  was empty and absent, which is a state all five have (§7's *an empty rail is absent*).
+- **Library, lists and You are untouched**, and that is a decision rather than an omission.
+  The library grid is reached from a filter it already carries in the URL, and neither Lists
+  nor You is a surface a reader leaves and comes straight back to. A third memory here would
+  be a third thing to keep true, bought with nothing.
+- **The desktop pane is not involved.** On `lg` and up a tile still swaps the programme note
+  beside it and nothing navigates, so there was never a place to lose. The desktop's three
+  rails keep their offsets anyway, because they are the same component and the memory costs
+  them a `scrollLeft`.
+
+### The Android tap is hardened against, and not fixed — issue #277
+
+> **⚠️ Read this as a hypothesis.** Nothing below was reproduced. The report is
+> second-hand — on Android a tap on a next-episodes card *sometimes appears* to land on the
+> recording control rather than opening the card, so a reader records a watch they did not
+> intend — and the owner does not have the device. Two hardenings ship because each is
+> defensible on its own merits, and this section exists so that the next reader knows the
+> difference between *this was addressed* and *this was fixed*. **If the misfire persists,
+> #277 did not address it**, and the two changes below are still worth having.
+
+**The recording control has a real dead zone from the card's tap area.** The card's `Link`
+and the check were two targets **sharing an edge**: the link's box ended exactly where the
+mark row began, and the check fills that row's whole `44px`, so the boundary between *open
+this show* and *record a watch* was one boundary pixel wide. Touch adjustment snaps a fat
+contact to the nearest target, and two targets that touch give it nothing to snap between.
+
+- **`4px`, taken out of the link and not added to the card.** The link's text block ended in
+  `pb-1`; that padding is now the gap. The link's box is `4px` shorter, the dead zone is
+  `4px` tall, and the card's rendered box is identical — §6's bounding-rect guarantee, and
+  #250's *the rail never reflows under a thumb*. A dead zone that made every card taller
+  would answer one complaint by causing another.
+- **It is exactly the slack that was available, and that is the argument for the number.**
+  The card's height is fixed by its measure, so the only pixels a gap can be cut from are
+  the ones the link already spent on padding. Wider would have to come out of the check's
+  `44px` — §6's floor, and the one direction a target must never be paid for from — or out
+  of the card itself.
+- **What was already true and is asserted beside it**: the picture and the text are inside
+  the link and the check is outside it, so the only thing that records a watch is the
+  control. That is `SPEC.md`'s season-row rule, held here since #250.
+
+**The landing pager's pointer handling is audited**, so that a gesture the pager has claimed
+cannot also be delivered to a child (`landing-pager.tsx`, `app/gesture-rules.ts`).
+
+- **A gesture belongs to one pointer.** Every handler read `event.clientX` without asking
+  whose finger it was. A second pointer landing mid-drag re-seated the origin the first was
+  being measured from, and a release from *any* pointer ended the gesture and parked the
+  track. `ownsPointer` is asked in all three handlers now, and a second pointer is refused at
+  `pointerdown` rather than allowed to take over — by `isPrimary` for touch, and by the live
+  gesture itself for a pen or a mouse, which are always primary for their own type. That
+  second guard is keyed to a **claimed** gesture rather than to any gesture at all: claiming
+  is the moment capture is taken, so the release is guaranteed to come back and refusing
+  cannot strand the pager, while an unclaimed one is replaced — which is the only recovery
+  there is from a `pointerdown` whose release never arrived.
+- **The claimed gesture's click is swallowed by a rule rather than by a flag.**
+  `deliversClick` takes the binding's latched claim in the three states it really has: the
+  pager claimed it (swallow), the pager watched and refused it (deliver — the click is
+  whoever the pointer was over), and nothing was ever claimed because the pointer did not
+  move (deliver — that is a **tap**, and a tap is what opens the card). It was a `dragged`
+  boolean meaning *did the pager move*: the same answer for the wrong reason, decided inside
+  a handler, and therefore asserted by nothing.
+- **A cancelled pointer arms nothing.** A pointer the browser takes away generates no click,
+  so a swallow left armed after one would have been waiting for somebody else's press.
+
+**No telemetry.** #277 ships the hardening and explicitly not the instrumentation that would
+prove it. The report stays unreproduced, and a beacon added to find out is the one thing the
+ticket rules out.
+
+### A sheet never raises over a tab — issue #273
+
+**The route interceptions are deleted.** There were two parallel slots on the signed-in
+layout, `@title` and `@episode`, each holding an intercepting route and each rendering a
+shared `RouteModal` dialog. A press on a library cell, a title, a season row, a
+next-episodes card or a search result was captured into one of them and arrived as a sheet
+over the screen the reader was on, instead of as the page they had asked for. All of it
+goes: both slots, their catch-all closers, their slot defaults and the dialog, which had no
+other caller.
+
+There is now **one model for what a tap does, and it navigates.** That is the sentence this
+section is measured against from here.
+
+- **This reaches past Up next, on purpose.** Library entries, title pages, episode pages
+  and search results all opened in a sheet; all four are ordinary navigations now. So is
+  the **remove confirmation** — the title interception's `[[...rest]]` matched one segment
+  deeper than the route it shadowed, so a destructive confirmation was reached with a sheet
+  raised over it. A destructive confirmation is not a dismissible sheet. Its page was
+  already written as a full page and needed no change of its own.
+- **The desktop side pane stays, and is not what was removed.** It is the two-pane layout
+  #137 built: selection state swapping a pane while nothing navigates, with the programme
+  note's four-phase pending machine (§9, radius 3) behind it. On `lg` and up nothing in
+  this ticket touches it.
+- **The phone sheet the paragraphs above describe is not what this deletes**, and it is
+  worth saying so rather than leaving a reader to assume one section undid the other. That
+  sheet was selection state on the Up next tab, not a route, and it went earlier — with
+  #250's five vertical groups, which were its only callers (`up-next-rails.tsx`). The
+  paragraphs above are stale on their own account and
+  [#274](https://github.com/Joyaroin/MediaSafe/issues/274) is the ticket that amends them,
+  when the phone's remaining *use* of selection goes and a tile becomes the link the film
+  tile already is. What #273 deletes is the route interception: a different mechanism,
+  reaching a different set of surfaces.
+- **A press stopped saying `scroll={false}`.** Both origins into an episode — the
+  next-episodes card and the season row — carried it, because the page underneath was still
+  the reader's place to come back to and the router must not send it to the top behind a
+  backdrop. Nothing is underneath any more. Left in place it would land a reader part-way
+  down a page they have never seen, which is the quietest failure this reversal could have
+  left behind, and `tests/episode-modal.test.ts` is what asserts it is gone.
+
+A slot contributes no path segment and neither does `(.)`, so **none of this is visible in
+a URL**: an interception put back would build, typecheck and serve exactly the same
+addresses while changing what every press in the application means.
+`tests/route-manifest.test.ts` reads the build's own manifests and asserts that no
+interception route and no modal slot were compiled, which is the only place that failure
+can be caught.
 
 ---
 
@@ -1019,6 +1227,30 @@ is describing the committed library.
   every surface that renders one renders the name beside it as real text, so an `alt` here
   would make a screen reader read every title twice.
 
+**Amended by [#269](https://github.com/Joyaroin/MediaSafe/issues/269), for one frame, and
+it is a crop.** *Uncropped*, and the bullet that makes the `2/3` ratio decide the other
+side, are reversed on the next-episodes card and nowhere else: when that card has no still
+to draw, **the title's poster fills the still's own `16 / 9` frame, cropped to its centre**.
+Recorded here as a reversal rather than quietly overwritten, because the paragraph above
+forbids exactly this by default.
+
+Three things keep the amendment from reopening the rule it sits inside:
+
+- **It is a fallback, not a treatment.** No surface *chooses* to draw a poster at `16 / 9`.
+  This is the frame a still would have filled, filled by the one other piece of artwork the
+  card already holds, and only when there is no still — which is `up-next-mark.ts`'s rule
+  and not the component's.
+- **The alternative was a hole.** A card that advances on a mark loses the still it was
+  drawing (see the still's own section below), and the card is mostly picture. The reader
+  did nothing but the one thing the card is for, so the frame going blank is the surface
+  breaking under ordinary use — the complaint #268 is written from.
+- **The box does not move.** A crop is what keeps the card's measure identical in all three
+  of its states, and a whole `2/3` poster in that slot is what would not. The rail must not
+  reflow under a thumb that has just tapped a checkmark.
+
+**No second surface gets a cropped poster by default.** If one arrives, it argues from
+here rather than citing this as precedent, the way §12 requires of the rating scale.
+
 ### The still — issue #253
 
 The frame at the top of an episode's page, over the `still_path` column issue #246 put in
@@ -1040,7 +1272,20 @@ Three things differ, and all three follow from what a still *is*:
   would be a knob with nothing on the other end of it. It takes `poster`'s own `7px`
   default, so the two agree by default rather than by coincidence.
 
-**The missing-artwork state is the frame, and nothing inside it.** Issue #245's user story
+**A card that has advanced draws the title's poster in this frame — issue #269.** The
+next-episodes card's still belongs to the **head** of its run and to nobody else:
+`QueuedEpisode` carries no artwork, and widening that read was considered and rejected in
+favour of the poster the entry already has. So a card that has been marked cannot draw the
+new episode's frame, and must not draw the old one — a frame from the episode just watched,
+over the name of the episode on offer, is a *wrong* picture rather than a missing one.
+What fills the gap is the poster, cropped to centre, at this frame's measure and not the
+poster's; §8's amendment above is where that reversal is argued. **The rule for which of
+the two lives in `app/(signed-in)/up-next/up-next-mark.ts`**, with the rest of that card's
+derivations, and not in the component that draws it.
+
+**The missing-artwork state is the frame, and nothing inside it.** It is now reached when
+the title has **neither** a still nor a poster, which is the only remaining case and is
+unchanged in every other respect. Issue #245's user story
 48 asks for *a deliberate placeholder, so that a missing still does not collapse the row*,
 and it is worth being exact that this is the same answer §3 already gives for the poster
 rather than an exception to it: what was asked for is that the space is **held**, not that
@@ -1051,9 +1296,10 @@ that less true.
 
 ### The morph
 
-Selecting a tile morphs its poster into the one on the surface that opens — the desktop
-panel, the phone's title sheet, or the phone's title-detail route. It is the browser's
-native View Transitions API, reached through React's `<ViewTransition>`.
+Pressing a tile morphs its poster into the one on the surface that opens — the desktop
+panel, or the title's own page on the phone. (The phone's title *sheet* was a third such
+surface until #268 deleted it; the name-family paragraph below carries that reversal.) It
+is the browser's native View Transitions API, reached through React's `<ViewTransition>`.
 
 **The morph is authored, and this reverses what this file said one ticket ago.** The
 previous wording made the browser default *the rule rather than an omission* — the motion
@@ -1086,26 +1332,38 @@ poster morphs into the newly-selected tile's on the way out, and that tile's mor
 the panel's on the way in — one for each name, in the same commit. The name-drop below is
 what keeps those two from colliding.
 
-**Two name families, on purpose**: `rail-poster-{id}` for the desktop pane and
-`group-poster-{id}` for the phone. The desktop pane and the phone route can both be
-showing the same title at once — a reader on desktop with the phone route open in another
-tab — and a name shared across them would pair the wrong two elements.
+**One name family: `rail-poster-{id}`, and this reverses what this file said one spec
+ago.** The previous wording was *two name families, on purpose* — `rail-poster-{id}` for
+the desktop pane and `group-poster-{id}` for the phone, on the grounds that *the desktop
+pane and the phone route can both be showing the same title at once, and a name shared
+across them would pair the wrong two elements* — with a further note that the phone's
+sheet shared the second family with the phone route rather than opening a third.
 
-**The phone's sheet shares `group-poster-{id}` with the phone route** rather than opening
-a third family, because the two are never on screen together: the sheet lives on
-`/up-next` and the route is `/library/{id}`. What *is* on screen together is the sheet and
-the tile that opened it, which is why the name-drop below applies to the sheet as much as
-to the rail.
+That rule described a phone with **two** destinations: a title sheet raised over `/up-next`
+by a route interception, and the `/library/{id}` route underneath it. #268 deleted both
+interceptions and the sheet with them, so every tile and card on Up next navigates to the
+same page. The two surfaces that needed separate names are one surface, the second family
+had nothing left to keep apart, and it is gone along with the function that minted it.
+`app/(signed-in)/library/poster-transition-name.ts` is now one function with three callers
+— the rail tile, the desktop pane and the title's own page.
+
+The "same title at once" the old rule guarded against was a reader on the desktop pane with
+the phone route open **in another tab** — two documents, and a `view-transition-name` has
+never been shared across documents. What is genuinely on screen together is a tile and its
+destination, and that is what the name-drop handles.
+
+Recorded as a reversal rather than quietly overwritten: the decision was right for the app
+that existed when it was written, and it is the surfaces that changed underneath it.
 
 **A name can only mark one on-screen element at a time.** The rail tile therefore *drops*
-its name once selected (the pane is the one showing that poster now) and picks it back up
-the moment something else is selected, ready to be the next morph's start. **A group tile
-drops its name the same way while the phone's sheet holds it** — and unlike the route,
-which replaced the page and took the tile with it, the sheet sits *over* a tile that is
-still mounted, so without the drop there is no morph at all. Without the drop,
+its name once its destination holds it. On the desktop that is the moment the tile is
+selected — the pane is the one showing that poster now — and it picks the name back up the
+moment something else is selected, ready to be the next morph's start. Without the drop,
 picking a second tile would mount a second `rail-poster-{id}` for the *first* tile's id
 while the original was still on screen, and the browser skips a transition it finds
-duplicated rather than guessing which one wins.
+duplicated rather than guessing which one wins. **On the phone there is nothing to drop**,
+which is what makes the single family safe on both sides: the navigation replaces the page
+and takes the tile with it, so the name is free before the destination's poster mounts.
 
 ---
 
@@ -1150,13 +1408,29 @@ before the fetch that fills it. A poster path is a fact the tile that was presse
 None of those is pending, so none of them waits — and what is left pending is a far smaller
 region than the whole screen the reader is currently staring at.
 
-### One treatment, at three radii
+### One treatment, at three radii — four since #272
 
 | Blast radius | Treatment | Where it lives |
 |---|---|---|
 | **A whole surface is pending** | The surface's own heading, and one `code-line` in `dim` where the content will be | `loading.tsx` at the page's own segment — the one row here that was a decision rather than a description, and now `app/pending-line.tsx` at three placements under `/library` |
 | **One region is pending, beside rendered content** | The region's own head alone, in its settled form, marked `role="status"` | a `Suspense` boundary, or the region's own phase state |
 | **A pane is swapping** | Everything the caller already holds — the poster — and the same one dim line | `programme-note.tsx`'s four-phase union |
+| **One *entry* is pending, beside entries that are not** | Everything the entry already holds — poster and name — and the same one dim line where its unresolved fact will be | `up-next-tile.tsx` and `up-next-pending-card.tsx` ([#272](https://github.com/Joyaroin/MediaSafe/issues/272)) |
+
+**The fourth row is an amendment, and *three radii* was not a placeholder waiting to be
+filled.** The three above are all *a read has not answered yet* — the answer is coming in
+milliseconds and the treatment is what stands in for it meanwhile. The fourth is a different
+kind of waiting: the read **has** answered, completely and correctly, and the answer is *this
+title's episodes have not arrived from TMDB yet*. It is a fact the database holds
+(`title.episodes_mirrored_at`, ADR-0001 amendment 11), it can outlive several page loads, and
+a failed background mirror can leave it standing until the nightly sweep. Recorded as a
+reversal of the count rather than slipped into the table, because *pending is a read in
+flight* was a real assumption of the three rows above and it is no longer true of all four.
+
+What is emphatically **not** amended is the treatment. It is the same `PendingLine` — one
+`code-line` in `dim`, `role="status"`, the word *Reading* — for the same reason there is one
+of it at three placements and not three of it: **§9 settles one visual treatment and lets the
+caller decide the placement.** A state that lasts longer does not get to be louder.
 
 The table takes the error table's shape on purpose, and for the reason `AGENTS.md` gives for
 the four failure placements: **treatment follows blast radius**, and a surface that replaces
@@ -1362,6 +1636,39 @@ merely looks separable on the glass. The three live fact sections have three ind
 fetches and three independent failures, and that is what makes each of them genuinely able to
 be pending alone.
 
+### One tile on a rail can be pending — and the rail still cannot
+
+**Amended by [#272](https://github.com/Joyaroin/MediaSafe/issues/272), and it does not reopen
+the section above.** Everything argued there is about a *rail* — three rails from one read,
+resolving together, so a boundary around one of them would be a boundary around nothing. That
+holds unchanged. What #272 adds is a **tile**, and a tile is not a rail: it is one entry among
+entries that have already arrived, on a rail that is not waiting for anything.
+
+A title added from search is written and answered before its seasons and episodes are
+mirrored (`SPEC.md`'s add, ADR-0001 amendment 11). Until they land it appears at the head of
+**Ongoing** — §7 carries that membership — and it is drawn like this:
+
+- **The poster and the name render at once, at full strength.** They are facts the add wrote
+  from the series before it answered the press. This is §9's own opening principle applied
+  without exception: *everything already in hand renders at once*, and what is left pending is
+  a far smaller region than the tile.
+- **The episode line is the one region that says it is waiting**, in the one dim line. On the
+  phone's next-episodes card that is where the code line and the remainder sit; on the desktop
+  rail tile it is the line under the year. Nothing else on either changes.
+- **The box does not change size.** The pending card is `up-next-episode-card.tsx`'s own
+  `CARD`, `CARD_WIDTH` and `FRAME`, imported rather than restated, and it keeps the empty
+  `44px` mark slot — so the rail does not reflow at the instant the mirror lands and the card
+  becomes an ordinary one. That is #269's *the rail never reflows under a thumb*, held through
+  one more transition.
+- **No skeleton and no shimmer**, and the four reasons above are unchanged. The second bites
+  hardest here: a grey rectangle at a poster's measure is already *a title TMDB has no artwork
+  for*, and a rail is precisely where that reading is available. **No new radius either** —
+  the tile draws the poster's `7px` and the card its own existing corner, and §4's list of two
+  is not extended.
+- **A pending tile is not a disabled tile.** It is pressable, and it opens the title's own
+  page, where the episode region draws the identical treatment (radius 2, above). Pressing the
+  thing that says *waiting* leads somewhere that answers what it is waiting for.
+
 ### Radius 3 — a pane is swapping, and this is the prior art
 
 **Already built, already correct, and not to be reworked.** It is recorded here because it
@@ -1493,9 +1800,18 @@ transition token* — an accurate description of a build whose entire vocabulary
 easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
 the app; all four of those absences are now present on purpose. What governs it:
 
-- **Three duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
-  (`380ms`) — and three easings: `--ease-press` (unchanged, the arrival curve),
-  `--ease-out-quart`, `--ease-in-out-soft`.
+- **Four duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
+  (`380ms`), `--dur-press` (`425ms`) — and four easings: `--ease-press` (unchanged, the
+  arrival curve, and misnamed — it is not the press), `--ease-out-quart`,
+  `--ease-in-out-soft`, and `--spring-press`.
+
+  **This said *three and three* until #270, and the fourth of each arrived together
+  because they are one value.** `--spring-press` is a spring, and a spring's shape is
+  meaningless without the time it settles over: replaying it at `--dur-fast` is not this
+  spring played briskly, it is a spring with a different response. `425ms` is not a taste
+  in the ramp above — it is where `snappy`'s own oscillation falls under a thousandth,
+  computed rather than chosen, which is why it sits outside the three-step scale instead
+  of being rounded into it.
 - **Exits run at `--dur-fast` against entrances at `--dur-base` or slower.** Arriving is
   where the character lives; leaving is where impatience does.
 
@@ -1524,6 +1840,17 @@ the app; all four of those absences are now present on purpose. What governs it:
   transition or keyframe and reads its timing from the tokens above. A CSS transition
   cannot be redirected once running: reverse it halfway and it restarts from a standstill
   at the new target, which is the exact glassiness the springs exist to remove.
+
+  **#270 corrects what that rule was quietly also claiming, and this is written as a
+  reversal rather than an edit.** *Stays a CSS transition* had come to mean *and is
+  therefore flat*, which is how every control in the application ended up pressing on an
+  ease-out with nothing on the way out — the checkmark that records a watch included. The
+  two properties were being treated as one and they are not: **interruptibility needs a
+  runtime, a curve does not.** `linear()` holds an arbitrary function of time, so a CSS
+  transition can carry a spring's exact shape while still being uncatchable — which is
+  fine, because nothing was catching a press anyway. The dividing line above is unchanged:
+  it still decides *where the animation is authored*. It no longer also decides *whether
+  the thing may be a spring*.
 - **The springs are transcribed, not invented.** SwiftUI describes a spring as a *response*
   and a *damping fraction*; Motion accepts the same perceptual pair as `duration` and
   `bounce`, where `bounce ≈ 1 - dampingFraction`. `smooth` / `snappy` / `bouncy` carry
@@ -1566,6 +1893,25 @@ no importer between them, so the build always ran the CSS one while the numbers 
 apart (the cap was `10` in both places by luck, not by construction). The five are gone.
 What lives in `app/motion.ts` is what only Motion can express: the springs, for the things
 a finger can catch mid-flight.
+
+**#270 kept that conclusion and reversed the reason under the press's half of it.** The
+sentence above is still true — the press is in `globals.css` and nowhere else — but *what
+only Motion can express* was doing work it cannot do. It was read as *the press is in CSS
+because a press does not deserve a spring*, and the honest version is narrower: **Motion is
+what only Motion can express, and that is interruptibility, not spring shape.**
+`.pressable`'s timing function is now `--spring-press`, which is `snappy` — response
+`0.30`, damping fraction `0.85` — sampled into a `linear()` curve, so a control animated in
+CSS and one animated by Motion are the same spring rather than two dialects of one
+vocabulary. What kept the press in CSS is the half of the old argument that was always
+load-bearing and is untouched by this: every tile, cell and row wearing `pressable` stays a
+server component, a rail of them adds no per-frame JavaScript, and the earlier
+performance pass's savings are kept whole.
+
+The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts`
+imports `snappy`, recomputes all 33 samples from the closed form for a damped oscillator's
+step response, and fails if either side moves — the discipline `tests/palette.test.ts`
+exists to enforce, applied here before the drift rather than after it, because 33 numbers
+in a stylesheet are the definitive example of a value nobody can check by eye.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what

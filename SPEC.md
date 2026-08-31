@@ -321,8 +321,46 @@ fourth.
    the phone, Coming back, Old friends, Watchlist and Abandoned carry none either. To mark anything
    else, or to give up on a title, open it. The rails' and the groups' shared rules are in *Up next —
    the three rails* below.
+   **[#250](https://github.com/Joyaroin/MediaSafe/issues/250) then replaced the five groups with two
+   horizontal rails** — next episodes, and films to watch — so the phone's half of this bullet is two
+   rails and a pager rather than five stacked groups, and
+   **[#274](https://github.com/Joyaroin/MediaSafe/issues/274) settles what a press on either device
+   does**: *swaps the panel* stays true only on `lg` and up, and every tile and card below that
+   breakpoint **navigates to the title's page**. See divergence 3.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
+   **True again since [#273](https://github.com/Joyaroin/MediaSafe/issues/273), and it was not
+   in between.** [#254](https://github.com/Joyaroin/MediaSafe/issues/254) put two *intercepting*
+   route slots on the signed-in layout, so a press on a library cell, a title, an episode or a
+   search result was captured and raised a **sheet** over the screen the reader was on rather
+   than pushing anything — this bullet went on saying *a route you push and pop* while the
+   phone had stopped doing that. #273 deletes both interceptions and the shared dialog: a
+   sheet never raises over a tab when the reader asked to open something, and there is one
+   model for what a tap does. The **remove confirmation** is reached by ordinary page
+   navigation for the same reason, which a destructive confirmation should always have been.
+   The desktop half of this bullet was never affected and is unchanged.
+
+   **And [#274](https://github.com/Joyaroin/MediaSafe/issues/274) finishes it on Up next.**
+   Deleting the interceptions restored *a route you push and pop*; it did not settle what
+   each surface pushes. On Up next a show tile still wrote **selection state** and a
+   next-episodes card still pushed the **episode's** page, so a show, a film and a card
+   reached three different kinds of place from one tab. They reach one now: **the title's
+   own page**, by one mechanism — a `Link` to `/library/{entryId}` — with a search result
+   opening `/titles/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
+   away from rather than deleted, and keeps a season row and a deep link. The phone's use
+   of selection is what goes; on `lg` and up the tile's click is stopped and the programme
+   note pane swaps as divergence 2 describes, unchanged.
+
+   **And [#276](https://github.com/Joyaroin/MediaSafe/issues/276) narrows what this bullet
+   claims for the desktop.** *So the grid keeps its scroll position* was written as the
+   thing the pane buys that a push and a pop cannot, and it is **no longer the difference
+   between the two devices** — on Up next and on search, a push and a pop keep the reader's
+   place too. The landing pager's page, each rail's horizontal offset, and search's query
+   with its results are remembered for the session in a pure module (`app/restoration.ts`),
+   so opening a title from a rail is not a one-way door on either device. What stays true is
+   the topology: the phone pushes a route and the desktop replaces a pane. What is reversed
+   is the consequence this bullet drew from it. **Library, lists and You are deliberately
+   not included** — only the two surfaces a reader leaves and comes straight back to.
 4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
    and for phone by [#138](https://github.com/Joyaroin/MediaSafe/issues/138).**
    Phone: **no numeric cap on a group's screen**, the same *a surface you work down never renders N at
@@ -374,7 +412,7 @@ Settled by [#137](https://github.com/Joyaroin/MediaSafe/issues/137), which is wh
 
 | Rail | Rule |
 |---|---|
-| **Ongoing** | *watching* ∩ the **12 most recently watched** |
+| **Ongoing** | a **pending** title — episodes not mirrored — newest added first; then *watching* ∩ the **12 most recently watched** |
 | **Coming back** | *caught up* ∧ the next episode's air date is in the future |
 | **Old friends** | *watching*, everything not in Ongoing |
 
@@ -383,9 +421,20 @@ cold**, and Up next before this treated every one of them identically to somethi
 
 Four things about it that are rules and not implementation:
 
-- **All of it comes from the existing views.** No column is added, no view is added, and no derived
-  state is stored — a rail is a grouping over `library_entry_state` and the ordering above, evaluated
-  on read like everything else in this model (ADR-0001).
+- **All of it comes from the existing views.** No view is added and no derived state is stored — a
+  rail is a grouping over `library_entry_state` and the ordering above, evaluated on read like
+  everything else in this model (ADR-0001).
+
+  **Amended by [#272](https://github.com/Joyaroin/MediaSafe/issues/272): one column is read, and
+  *no column is added* is reversed.** Ongoing also reads `title.episodes_mirrored_at`, which
+  [#271](https://github.com/Joyaroin/MediaSafe/issues/271) added and ADR-0001 amendment 11 argues.
+  A title whose episodes have not mirrored has no watches, no progress and no
+  `library_entry_up_next` row, so the projection cannot reach it however it is grouped — and being
+  absent from Up next is exactly the wrong answer for a title the reader has just added. The column
+  is **not** a stored copy of derived state: nothing else in the database knows whether a mirror has
+  run, and inferring it from *this title has no episode rows* was refused outright because it makes
+  *still arriving* and *genuinely has none* the same state. The rails stay three, the twelve is
+  unchanged, and `DESIGN.md` §7 and §9 carry the rest.
 - **Twelve is a chosen number.** The measured signal was an empty 61–90 day gap, which suggests a
   60-day threshold; a *count* was chosen because it is self-correcting — never empty after a quiet
   month, never 199 long after a binge year. It is a **build-time constant**: not a stored setting, not

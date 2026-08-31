@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { PendingLine } from "@/app/pending-line";
 import type { EpisodeDetail } from "@/db/access";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
@@ -63,13 +64,47 @@ export function ProgrammeNoteEpisodes({
   episodes,
   libraryEntryId,
   titleName,
+  episodesPending,
 }: {
   kind: TitleKind;
   episodes: readonly EpisodeDetail[];
   libraryEntryId: string;
   titleName: string;
+  /**
+   * This show's episodes have not mirrored — `TitleDetailRow.episodesPending`, and issue
+   * #272. It is the row's answer and never this component's: inferring it from
+   * `episodes.length === 0` is the exact conflation the column was added to end.
+   */
+  episodesPending: boolean;
 }) {
   if (kind === "film") return null;
+
+  /**
+   * **Pending, and it is checked before empty because it outranks it.**
+   *
+   * The two used to be one sentence — *No episode data yet* answered a show whose mirror
+   * was still running and a show TMDB genuinely lists nothing for, and #272 is where they
+   * separate. The order matters in one direction only: a pending title has no episode rows
+   * yet, so the empty branch below would catch it first and say the wrong thing.
+   *
+   * `DESIGN.md` §9, radius 2 — *one region is pending, beside rendered content*. Everything
+   * else on this page is at full strength the whole time; this is the one region genuinely
+   * unresolved and it says so in the one dim line §9 settles. **No skeleton and no
+   * shimmer**, and the region reserves no height for what it does not yet know the size
+   * of — §9 argues both at length, and a season list is the exact shape a skeleton would
+   * be reached for.
+   *
+   * The card around this is `programme-note-content.tsx`'s, and it is drawn for a show
+   * either way, so a pending region is a card with a line in it rather than a card with
+   * nothing in it.
+   */
+  if (episodesPending) {
+    return (
+      <div className={PROGRAMME_NOTE_SECTION}>
+        <PendingLine />
+      </div>
+    );
+  }
 
   if (episodes.length === 0) {
     return (
@@ -77,9 +112,10 @@ export function ProgrammeNoteEpisodes({
         <p className="text-item text-dim">
           {/*
             Missing and empty stay distinct here as everywhere (`CONTEXT.md`): this is not
-            "a season with nothing in it", which would be a `library_entry` bug — it is
-            TMDB not having handed the mirror anything yet, and the honest way to say that
-            is a sentence, not a season heading over zero rows.
+            "a season with nothing in it", which would be a `library_entry` bug — and since
+            #272 it is not *the mirror has not arrived* either, which `episodesPending`
+            answers above. What is left is the honest remainder: TMDB lists no episodes for
+            this show, said as a sentence rather than as a season heading over zero rows.
           */}
           No episode data yet.
         </p>
@@ -549,10 +585,12 @@ function EpisodeLine({
        * identical too, and the check's box `44.00 × 44.00` flush with the row's top edge.
        * §6's *the fifth time was the row becoming a link* has the table.
        *
-       * `scroll={false}` for `up-next-episode-card.tsx`'s reason, which matters more here:
-       * a season list is scrolled to wherever the reader was reading, and the router would
-       * otherwise send the page behind the backdrop to the top before the modal even
-       * opened.
+       * This row carried `scroll={false}` until issue #273, for
+       * `up-next-episode-card.tsx`'s reason: the press was intercepted, the season list
+       * stayed underneath, and the router would otherwise have sent the page behind the
+       * backdrop to the top before the modal even opened. Nothing is underneath now — the
+       * episode is a page, this is an ordinary navigation, and it goes to the top of that
+       * page like every other navigation in the application.
        *
        * The label is the episode's **full** name rather than the two cells' text, because
        * `E1 Brigade` read aloud does not say which season it is in — the same words the
@@ -560,7 +598,6 @@ function EpisodeLine({
        */}
       <Link
         href={`/library/${libraryEntryId}/episode/${episode.id}`}
-        scroll={false}
         aria-label={fullName}
         className="-my-2 flex min-w-0 flex-1 items-center gap-3 self-stretch py-2"
       >

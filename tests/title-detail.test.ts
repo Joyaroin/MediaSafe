@@ -46,6 +46,12 @@ async function seedShow(
   tx: Transaction,
   userId: UserId,
   episodes: EpisodeSpec[] = [],
+  /**
+   * `episodesMirroredAt: null` is a show whose episodes have not arrived — issue #272's
+   * pending case. Left out, the column's own `DEFAULT now()` stamps the row, so every
+   * other case in this file seeds a complete show without saying so.
+   */
+  spec: { episodesMirroredAt?: Date | null } = {},
 ): Promise<{ entryId: string; episodeIds: Record<string, string> }> {
   const number = nextNumber();
   const [row] = await tx
@@ -56,6 +62,7 @@ async function seedShow(
       name: `Show ${number}`,
       releaseYear: 2022,
       inProduction: true,
+      episodesMirroredAt: spec.episodesMirroredAt,
     })
     .returning({ id: title.id });
 
@@ -246,6 +253,76 @@ describe("getTitleDetail", () => {
       const detail = await getTitleDetail(userId, entryId, tx);
 
       expect(detail.state).toBe("abandoned");
+    }));
+
+  /**
+   * Pending on the title's own page — issue #272.
+   *
+   * The page has drawn one sentence for two states since #58: *No episode data yet*, for a
+   * show whose episodes had not mirrored **and** for a show TMDB genuinely lists none for.
+   * The column that tells them apart exists now (#271), so the row carries the answer and
+   * the surface stops guessing. **The failure is silent in the worst direction**: a reader
+   * whose mirror is still running is told their show has no episodes, which is the same lie
+   * `AGENTS.md` opens on wearing a third hat.
+   */
+  it("reads a show whose episodes have not mirrored as pending", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "reader");
+      const { entryId } = await seedShow(tx, userId, [], { episodesMirroredAt: null });
+
+      const detail = await getTitleDetail(userId, entryId, tx);
+
+      expect(detail.episodesPending).toBe(true);
+      // And the season list is genuinely empty, not filled with anything invented to stand
+      // in for what has not arrived.
+      expect(detail.episodes).toEqual([]);
+    }));
+
+  it("reads a show TMDB lists no episodes for as empty rather than pending", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "reader");
+      const { entryId } = await seedShow(tx, userId, []);
+
+      const detail = await getTitleDetail(userId, entryId, tx);
+
+      expect(detail.episodesPending).toBe(false);
+      expect(detail.episodes).toEqual([]);
+    }));
+
+  it("reads a show whose episodes have landed as not pending", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "reader");
+      const { entryId } = await seedShow(tx, userId, [{ seasonNo: 1, episodeNo: 1 }]);
+
+      const detail = await getTitleDetail(userId, entryId, tx);
+
+      expect(detail.episodesPending).toBe(false);
+    }));
+
+  it("never reads a film as pending, whatever its stamp says", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "reader");
+      const [row] = await tx
+        .insert(title)
+        .values({
+          kind: "film",
+          tmdbId: nextNumber(),
+          name: "Unstamped film",
+          releaseYear: 2019,
+          runtimeMins: 121,
+          episodesMirroredAt: null,
+        })
+        .returning({ id: title.id });
+      const [entry] = await tx
+        .insert(libraryEntry)
+        .values({ userId, titleId: row.id })
+        .returning({ id: libraryEntry.id });
+
+      const detail = await getTitleDetail(userId, entry.id, tx);
+
+      // A film has nothing to wait for, so there is no region on its page for a pending
+      // line to stand in — and it must never be told there is one.
+      expect(detail.episodesPending).toBe(false);
     }));
 
   it("refuses another account's library entry — a missing row and someone else's row are the same case", () =>

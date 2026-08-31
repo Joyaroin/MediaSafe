@@ -42,46 +42,40 @@ import { TabBar } from "../tab-bar";
  * chrome. A custom property is the one form a Tailwind class can actually read, which is
  * what makes the shared source shared.
  *
- * ── The two modal slots, and why they are on this layout rather than a lower one ────
+ * ── The two modal slots are gone — issue #273, reversing #254 ────────────────────────
  *
- * Issue #254 opened one, `@modal`, for episode detail. There are now **two**, and the
- * first has been renamed for it: `@title` and `@episode`, each the directory of that name
- * beside this file, handed in as props the way `children` is. A slot adds no path
- * segment, exactly as the route group adds none, so `/library/…/episode/…` is still that
- * URL while being rendered in here.
+ * This layout carried two parallel slots beside `children`: `@title` and `@episode`, each
+ * a directory of that name next to this file, each holding an *intercepting* route that
+ * rendered a shared `RouteModal` dialog. Pressing a library cell, a rail card, a season
+ * row or a search result raised a sheet over the screen the reader was on rather than
+ * taking them to the page they had asked for.
  *
- * **Two slots, because one slot holds one route.** A reader on the library opens a title;
- * inside it, they open an episode. Those are two URLs, one nested under the other, and a
- * single slot would render the second *instead of* the first — the title sheet would
- * vanish at the moment the episode arrived over it. Separate slots let the framework hold
- * both, and `showModal()` stacks them in the top layer in call order with no `z-index`
- * anywhere.
+ * **Both are deleted, and the dialog with them.** A sheet never raises over a tab when the
+ * reader asked to open something: there is one model for what a tap does, and it
+ * navigates. That reaches past Up next on purpose — library entries, title pages, episode
+ * pages, search results and the remove confirmation were all reached through one of the
+ * two slots, and every one of them is an ordinary navigation now. The remove confirmation
+ * is the one worth naming: the title interception's `[[...rest]]` matched a segment
+ * *deeper* than the route it shadowed, so a destructive confirmation was reached with a
+ * sheet raised over it.
  *
- * They are on the **signed-in** layout and not on `library/[entryId]` because the origins
- * have to share them. A rail card on the landing screen, a row in a season list and a
- * cell in the library grid are on three different pages under different segments, and a
- * slot mounted below the point where those part company would be two slots, two dialogs
- * and two ways to close one. This is the lowest layout they all have in common.
+ * Written out here rather than quietly removed, because a slot is **invisible in the
+ * URL** — it contributes no path segment, exactly as the route group contributes none —
+ * so a slot put back would build, typecheck and serve the same addresses while changing
+ * what a press does. `tests/route-manifest.test.ts` reads the build's own manifests and
+ * asserts that no interception route and no modal slot were compiled;
+ * `tests/episode-modal.test.ts` asserts the source side, this file's props included.
  *
- * **Order matters here, and only here.** `{title}` before `{episode}` so that the title
- * sheet calls `showModal()` first and the episode lands *over* it. For a single dialog
- * the position in this flow was meaningless — the top layer ignores stacking contexts
- * entirely — but the top layer is ordered by call, and call order follows render order.
+ * **The desktop side pane is untouched.** It was never one of these slots: it is the
+ * two-pane layout — selection swapping a pane rather than an overlay raised over a page —
+ * and it stays exactly as it was on `lg` and up.
  *
- * Both still come **after** the tab bar, for the reason the single one did: a slot
- * rendered between the sidebar and the page would suggest it takes part in the row's
- * layout. It does not. Each slot renders `null` on every route it does not match —
- * `default.tsx` on a hard load, `page.tsx` and `[...catchAll]/page.tsx` on a soft one —
- * and the intercepted pages render dialogs that are not in flow at all.
+ * What this layout takes now is `children`, which is the page.
  */
 export default function SignedInLayout({
   children,
-  title,
-  episode,
 }: Readonly<{
   children: React.ReactNode;
-  title: React.ReactNode;
-  episode: React.ReactNode;
 }>) {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[var(--tab-bar-height)] lg:flex-row lg:pb-0">
@@ -89,8 +83,6 @@ export default function SignedInLayout({
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       <TabBar />
-      {title}
-      {episode}
     </div>
   );
 }

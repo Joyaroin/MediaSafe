@@ -1,3 +1,5 @@
+import { RememberedTrack } from "./remembered-rail";
+
 /**
  * The head and the track a landing-screen rail is drawn in, with the cards left to the
  * caller — issue #250, and the deleted phone group section's shape at the handoff's
@@ -73,9 +75,16 @@ export function RailSection({
         <h2 className="label-line text-accent">{label}</h2>
       </div>
 
-      <ol className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-[22px] px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* The track is a client component and the rest of this file is not — it carries the
+          rail's own scroll offset across a navigation away and back (#276), and the cards
+          inside it stay server-rendered children. `label` is the key it is remembered
+          under, which is why this component needs no second prop to say which rail it is. */}
+      <RememberedTrack
+        rail={label}
+        className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-[22px] px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {children}
-      </ol>
+      </RememberedTrack>
     </section>
   );
 }

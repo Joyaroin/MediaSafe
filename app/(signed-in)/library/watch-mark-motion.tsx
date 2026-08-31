@@ -36,8 +36,20 @@ export const WATCHED_NAME = "text-dim";
  *
  * `group`, so `RECORDING_GLYPH` below can invert on a hover over the *hit box*, not over
  * the smaller chip drawn inside it — the whole reason the two are separate elements.
+ *
+ * **`pressable` is new, and it is the point of issue #270.** This control had a hover
+ * invert and nothing at all under a thumb — and a hover is the one state a phone cannot
+ * enter, so the gesture the whole product is built around was the only one in the
+ * application with no physical answer. It now carries the same press every tile, cell and
+ * row wears (`globals.css`'s `@utility pressable`), which since #270 is `app/motion.ts`'s
+ * `snappy` transcribed into a `linear()` curve. On the hit box rather than on
+ * `RECORDING_GLYPH`, for the same reason the hover is: the `44px` box is what a finger is
+ * actually on, and scaling the `26px` chip inside a box that stayed still would read as
+ * the chip coming loose. It costs no client boundary — this file is class strings, and
+ * the surfaces rendering them stay server components.
  */
-export const RECORDING_HIT_BOX = "group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
+export const RECORDING_HIT_BOX =
+  "pressable group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
 
 /**
  * The recording control's visible chip — the same ghost treatment (`DESIGN.md`, Buttons:
