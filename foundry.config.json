@@ -1,0 +1,22 @@
+{
+  "verify": [
+    "npm run typecheck",
+    "npm test"
+  ],
+  "maxParallel": 3,
+  "verifyEnv": {
+    "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_foundry"
+  },
+  "builderEnv": {
+    "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_t{ticket}"
+  },
+  "builderSetup": [
+    "ln -sfn {repoRoot}/node_modules node_modules",
+    "ln -sfn {repoRoot}/.env .env",
+    "docker exec mediasafe-postgres createdb -U mediasafe mediasafe_t{ticket}",
+    "npm run db:migrate"
+  ],
+  "builderTeardown": [
+    "docker exec mediasafe-postgres dropdb --if-exists -U mediasafe mediasafe_t{ticket}"
+  ]
+}
