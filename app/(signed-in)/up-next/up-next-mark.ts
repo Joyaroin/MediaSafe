@@ -106,6 +106,9 @@ export interface UpNextMark {
   readonly undoable: QueuedEpisode | null;
   /** The just-marked episode's animation phase, so the slot can play the sweep once. */
   readonly phase: WatchMarkPhase;
+  /** What goes in the card's 16:9 frame — `cardPicture`'s answer, over this card's own
+   *  position. The card renders it and does not choose it (#269). */
+  readonly picture: CardPicture;
   mark(): void;
   undo(): void;
   /** The sweep ended. */
@@ -244,6 +247,80 @@ export function readUpNextMark(
     pending,
     phase,
   };
+}
+
+/**
+ * The picture one next-episodes card draws — issue #269, and the rule lives here rather
+ * than in the component for the reason everything else in this half does: *which picture*
+ * is a consequence of *which episode the card is on*, which is the derivation this module
+ * owns and `tests/up-next-card-mark.test.ts` drives with no DOM.
+ *
+ * ── Two paths, in one order, and a third case that draws nothing ────────────────────
+ *
+ * The episode's own still, then the title's poster. `none` is not a fallback but the
+ * absence of one: the frame keeps its space and nothing goes in it, which is `DESIGN.md`
+ * §8's rule for missing artwork, unchanged by this ticket.
+ *
+ * `path` is a TMDB CDN path in both cases and the two are **not** interchangeable at the
+ * point of drawing — a still is sized off `EpisodeStill`'s own ladder and a poster off
+ * `poster.tsx`'s, and they are different ladders. So the kind travels with the path rather
+ * than the card being handed a bare string and left to guess which ladder it came off.
+ */
+export type CardPicture =
+  | { readonly kind: "still"; readonly path: string }
+  | { readonly kind: "poster"; readonly path: string }
+  | { readonly kind: "none" };
+
+/**
+ * What this card puts in its frame — issue #269.
+ *
+ * ── The complaint, and why the still alone could not answer it ───────────────────────
+ *
+ * A reader marks tonight's episode, the card advances, and the frame goes blank. The still
+ * is `UpNextEntry`'s, which is the **head of the run**'s frame and nobody else's:
+ * `QueuedEpisode` carries no artwork, and #269 rejects widening it outright rather than
+ * paying a second read of every show's next four episodes for metadata only ever correct
+ * for the first of them (`SPEC.md`'s spec issue #268, *Out of Scope*).
+ *
+ * So once the card has advanced, the honest answer is that this surface does not know the
+ * new episode's frame — and drawing the old one would be a **wrong** picture rather than a
+ * missing one, a frame from the episode just watched sitting over the name of the one on
+ * offer. That much is #250's reasoning and it stands. What #269 changes is what happens
+ * next: the title's poster, which the entry already carries, fills the still's own 16:9
+ * frame instead of nothing at all.
+ *
+ * The position is `positionOf`'s, so the picture walks forward on a mark and back on a
+ * rollback by the same rule the episode does, rather than by a second one that could come
+ * to disagree with it.
+ */
+export function cardPicture(
+  marks: WatchMarks,
+  entry: Pick<UpNextEntry, "libraryEntryId" | "posterPath" | "stillPath" | "queue">,
+): CardPicture {
+  return pictureAt(positionOf(marks, entry.libraryEntryId, entry.queue).position, entry);
+}
+
+/**
+ * The rule itself, over a position already read — so `cardPicture` above and the hook
+ * below give one answer rather than two that have to be kept in step. The hook has the
+ * position in hand from its own snapshot and must not read the store a second time during
+ * render (see `useUpNextMark`'s note on deriving from the snapshot).
+ */
+function pictureAt(
+  position: number,
+  entry: Pick<UpNextEntry, "posterPath" | "stillPath">,
+): CardPicture {
+  /**
+   * Position zero is *the card has not moved*, and it covers both cards that never will:
+   * a **coming-back** entry, whose run arrived empty and has nothing markable in it, and a
+   * card nobody has pressed yet. Both are drawing the entry's own episode, so the entry's
+   * own still is that episode's still.
+   */
+  if (position === 0 && entry.stillPath !== null) {
+    return { kind: "still", path: entry.stillPath };
+  }
+  if (entry.posterPath !== null) return { kind: "poster", path: entry.posterPath };
+  return { kind: "none" };
 }
 
 /**
@@ -393,6 +470,9 @@ export function useUpNextMark(
     pending,
     undoable,
     phase,
+    /** From the same position the episode above came out of, so the frame and the name
+     *  under it can never be answering different renders (#269). */
+    picture: pictureAt(position, entry),
     mark() {
       if (episode === null) return;
       setPressed(episode.episodeId);

@@ -8,6 +8,8 @@ import {
   RECORDING_GLYPH,
   WatchSweep,
 } from "@/app/(signed-in)/library/watch-mark-motion";
+import { watchMarks } from "@/app/(signed-in)/library/watch-marks";
+import { posterSrc } from "@/app/poster";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { QueuedEpisode, UpNextEntry } from "@/db/access";
 import {
@@ -15,7 +17,13 @@ import {
   episodeMetaLine,
   remainingInWords,
 } from "./episode-card-line";
-import { queuedEpisodeFullName, useUpNextMark, type UpNextMark } from "./up-next-mark";
+import {
+  cardPicture,
+  queuedEpisodeFullName,
+  useUpNextMark,
+  type CardPicture,
+  type UpNextMark,
+} from "./up-next-mark";
 
 /**
  * One card on the next-episodes rail — issue #250, and the landing screen's whole reason
@@ -88,7 +96,17 @@ export function UpNextEpisodeCard({
         episodeId={entry.episodeId}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
-        stillPath={entry.stillPath}
+        /**
+         * `cardPicture` over the module-level store, rather than a still read straight off
+         * the entry — one rule for every card (#269), even the one that can never move.
+         *
+         * This branch has no `useUpNextMark` and must not grow one: the hook rule at the
+         * top of this file is why the branch exists at all. It does not need the
+         * subscription either — a run that arrived empty has nothing markable in it, so
+         * this card's position is nailed to zero and no press can change the answer. The
+         * store is passed because the rule takes one, not because this call is watching it.
+         */
+        picture={cardPicture(watchMarks, entry)}
         airDate={entry.airDate}
         runtimeMins={entry.runtimeMins}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
@@ -158,23 +176,21 @@ function MarkableCard({
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       /**
-       * The **entry's** still, air date and runtime, and only while the card is still on
-       * the head of its run.
+       * The picture is `up-next-mark.ts`'s answer, asked and not decided (#269).
        *
-       * `QueuedEpisode` carries none of the three — #220 read four facts per queued episode
-       * because a mark control needs a name and nothing else, and widening it would be a
-       * second read of every show's next four episodes for metadata only ever correct for
-       * the first of them. So once the card has advanced, the honest answer is that this
-       * surface does not know.
+       * **This reverses what this file did one ticket ago, and the reversal is the ticket.**
+       * The air date and the runtime below are still the **entry's**, and still dropped the
+       * moment the card advances, for #220's unchanged reason: `QueuedEpisode` carries
+       * neither, so once the card has moved this surface does not know them, and
+       * `episodeMetaLine` renders no line at all rather than the wrong one.
        *
-       * All three are dropped together rather than only the two text ones, and the still is
-       * the one worth arguing: a frame from the episode just watched, sitting above the
-       * name of the episode on offer, is a **wrong** picture rather than a missing one, and
-       * a card is mostly picture. `EpisodeStill` holds the frame's measure and shows the
-       * `raised` ground for it, `episodeMetaLine` renders no line at all — so the card
-       * keeps its shape and says less, which is the direction this has to fail in.
+       * The still used to be dropped with them, and a card that advanced went to the
+       * `raised` ground — which held the card's shape and lost the artwork, on a card that
+       * is mostly artwork. #269 keeps the drop and adds what takes its place: the title's
+       * poster, in the still's own frame. The rule for which of the two, and for the title
+       * that has neither, is in the module and is exercised with no DOM.
        */
-      stillPath={marked === 0 ? entry.stillPath : null}
+      picture={mark.picture}
       airDate={marked === 0 ? entry.airDate : null}
       runtimeMins={marked === 0 ? entry.runtimeMins : null}
       remainingAfter={countAfterShown(entry.remaining, marked, spent)}
@@ -226,6 +242,9 @@ function countAfterShown(remaining: number, marked: number, spent: boolean): num
  *  makes a taller card rather than a truncated one. */
 const CARD_WIDTH = 262;
 const CARD = "w-[262px] shrink-0 snap-start";
+/** The frame's measure, stated once so the three states of `CardFrame` cannot come to
+ *  differ in size — which is the whole of *the rail never reflows under a thumb*. */
+const FRAME = "w-full [--still-radius:0]";
 
 /**
  * The card, drawn once for both branches above.
@@ -248,7 +267,7 @@ function CardBody({
   episodeId,
   code,
   episodeName,
-  stillPath,
+  picture,
   airDate,
   runtimeMins,
   remainingAfter,
@@ -262,7 +281,8 @@ function CardBody({
   episodeId: string;
   code: string;
   episodeName: string | null;
-  stillPath: string | null;
+  /** What goes in the frame — chosen by `up-next-mark.ts`, drawn by `CardFrame` below. */
+  picture: CardPicture;
   airDate: string | null;
   runtimeMins: number | null;
   remainingAfter: number;
@@ -314,21 +334,7 @@ function CardBody({
            is what a reader is choosing between. */
         aria-label={`${entry.titleName} — ${code}${episodeName === null ? "" : `, ${episodeName}`}`}
       >
-        {/* `EpisodeStill` is #253's, shared rather than re-cut — one answer to *what does
-            a still look like, and what happens when there isn't one*. The `still` utility
-            holds the 16:9 ratio, so an episode with no frame keeps the card's shape rather
-            than collapsing it, which is #245's user story 48.
-
-            `--still-radius: 0` because the card already clips this frame at its own `16px`
-            corner; the utility's default `7px` would draw a notch inside it. Set through
-            the variable rather than as a competing class, for the reason `globals.css`
-            gives beside both this utility and `poster`. */}
-        <EpisodeStill
-          stillPath={stillPath}
-          width={CARD_WIDTH}
-          className="w-full [--still-radius:0]"
-          aboveFold={aboveFold}
-        />
+        <CardFrame picture={picture} aboveFold={aboveFold} />
 
         <div className="px-[14px] pt-3 pb-1">
           <p className="label-line text-dim">{entry.titleName}</p>
@@ -367,6 +373,82 @@ function CardBody({
 
       {sweep}
     </li>
+  );
+}
+
+/**
+ * The card's 16:9 frame, and the three things that can be in it — issue #269.
+ *
+ * **Which** of the three is `up-next-mark.ts`'s and arrives already decided; this function
+ * only draws it. That split is the ticket: the rule is a consequence of which episode the
+ * card is on, which is the one derivation that module owns and the one this suite has no
+ * DOM to assert against.
+ *
+ * ── One frame, three fillings, one box ──────────────────────────────────────────────
+ *
+ * All three states are the same `still` utility at the same measure, so the card is
+ * exactly the same size whether it draws a still, a poster or nothing — which is user
+ * story 3's *tapping a checkmark does not make the rail jump under my thumb*, and is the
+ * reason the poster is cropped into this frame rather than given its own `2/3` box.
+ *
+ * `--still-radius: 0` because the card already clips this frame at its own `16px` corner;
+ * the utility's default `7px` would draw a notch inside it. Set through the variable
+ * rather than as a competing class, for the reason `globals.css` gives beside both this
+ * utility and `poster`.
+ *
+ * ── The poster is a plain `<img>` here rather than `Poster` ─────────────────────────
+ *
+ * `Poster`'s box is its own `2/3` ratio — a whole poster, uncropped — and what is wanted
+ * is a centre crop of one into a broadcast-ratio frame. `you-list-card.tsx` reached the
+ * same conclusion for its four square cells and this follows it exactly: `posterSrc` is
+ * `app/poster.tsx`'s own CDN URL builder, exported for callers that need the URL rather
+ * than the box, so the size ladder is not restated here.
+ *
+ * **And it draws no initials.** `Poster`'s missing-artwork fallback sets the title's
+ * initials in the well, and that is right for a rail of posters where the poster is doing
+ * the identifying. It is wrong here: a card names its series in real text directly beneath
+ * this frame, and `DESIGN.md` §8's *the missing-artwork state is the frame, and nothing
+ * inside it* is the rule for the still. `kind: "none"` is drawn by `EpisodeStill` with no
+ * path, which is that rule unchanged — the space is held and nothing is put in it.
+ */
+function CardFrame({
+  picture,
+  aboveFold,
+}: {
+  picture: CardPicture;
+  aboveFold: boolean;
+}) {
+  if (picture.kind === "poster") {
+    return (
+      <div className={`still ${FRAME}`}>
+        {/* `app/poster.tsx`'s own reasoning, which ADR-0001 fixes: TMDB's CDN, never
+            Vercel's metered optimiser. `object-center` states the crop the ticket asks for
+            rather than leaving it to the property's default. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="block h-full w-full object-cover object-center"
+          src={posterSrc(picture.path, CARD_WIDTH)}
+          alt=""
+          aria-hidden="true"
+          loading={aboveFold ? "eager" : "lazy"}
+          fetchPriority={aboveFold ? "high" : undefined}
+          decoding="async"
+        />
+      </div>
+    );
+  }
+
+  /* `EpisodeStill` is #253's, shared rather than re-cut — one answer to *what does a still
+     look like, and what happens when there isn't one*. `null` is the held frame: the ratio
+     keeps the card's shape and the `raised` ground fills it, which is #245's user story 48
+     and `DESIGN.md` §8's missing-artwork rule, both unchanged by #269. */
+  return (
+    <EpisodeStill
+      stillPath={picture.kind === "still" ? picture.path : null}
+      width={CARD_WIDTH}
+      className={FRAME}
+      aboveFold={aboveFold}
+    />
   );
 }
 
