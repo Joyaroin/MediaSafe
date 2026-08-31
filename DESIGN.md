@@ -1047,11 +1047,53 @@ mechanism for it: a `Link` to `/library/{entryId}`.
 > argument against navigating was real and is answered rather than dismissed: a title
 > opened from a rail was *"a one-way door"*, and the reader's scroll position in five
 > horizontal tracks was gone on the way back.
-> [#276](https://github.com/Joyaroin/MediaSafe/issues/276) is where that cost is paid —
-> Up next and search remember where the reader was — and
-> [#275](https://github.com/Joyaroin/MediaSafe/issues/275) is where the poster morph
-> follows the reader into the page. The sheet's own motion (`sheet` in `app/motion.ts`) has
-> no caller again, which is the state #132 left it in.
+> [#276](https://github.com/Joyaroin/MediaSafe/issues/276) **is where that cost was paid**
+> — Up next and search now remember where the reader was, and the section below is what
+> that means — and [#275](https://github.com/Joyaroin/MediaSafe/issues/275) is where the
+> poster morph follows the reader into the page. The sheet's own motion (`sheet` in
+> `app/motion.ts`) has no caller again, which is the state #132 left it in.
+
+### Up next and search remember where the reader was — issue #276
+
+**This section is a reversal, and it reverses the sentence directly above it.** Until this
+ticket, opening a title from Up next cost the reader their place: the pager sprang back to
+*Up next* however they had got to *Upcoming*, every rail returned to its first card, and
+search met them with an empty field where their query and its results had been. That was
+the honest consequence of #273 and #274 — a tap became a navigation — and the note above
+recorded it as a debt rather than a design. It is settled here.
+
+- **Three things are remembered, and only three.** The landing pager's page index, each
+  rail's horizontal scroll offset, and search's query with the results it found. A reader
+  who found a show on *Upcoming* and opened it comes back to *Upcoming*; a reader who
+  scrolled *Old friends* to its end comes back to its end; a reader who opened a search
+  result to read about it comes back to the list they opened it from, without a re-type and
+  **without a second request to the catalogue**.
+- **The rules are a pure module.** `app/restoration.ts` takes the state to remember in and
+  hands it back out, with no element, no event and no React in it — the shape
+  `app/gesture-rules.ts` already has for the pager's drag, and for the reason that file
+  gives: `vitest.config.mts` runs in `node`, so a rule that only lives inside a scroll
+  handler is a rule nothing can assert. `tests/restoration.test.ts` drives it directly.
+- **A surface never seen restores to its default, not to nothing.** *Never visited* and
+  *visited, and at the start* are the same position and not the same fact, which is why the
+  memory holds an absence for the first rather than a zero. The consequence a reader sees:
+  a first visit is exactly the first visit it always was.
+- **It is session-scoped, and that is a property of one variable.**
+  `app/restoration-memory.ts` is a module variable in the client bundle, so a reload empties
+  it. `sessionStorage` would survive one and `localStorage` would survive a week — either
+  would hand somebody back a catalogue answer of unknown age dressed as a fresh one. The
+  suite checks that file for both names.
+- **The rail's key is its own label.** *Ongoing*, *Coming back*, *Old friends*, *Next
+  episodes*, *Films to watch* — the five already differ by the one thing on screen that
+  names them. An index would hand one rail's place to another the first time a rail above it
+  was empty and absent, which is a state all five have (§7's *an empty rail is absent*).
+- **Library, lists and You are untouched**, and that is a decision rather than an omission.
+  The library grid is reached from a filter it already carries in the URL, and neither Lists
+  nor You is a surface a reader leaves and comes straight back to. A third memory here would
+  be a third thing to keep true, bought with nothing.
+- **The desktop pane is not involved.** On `lg` and up a tile still swaps the programme note
+  beside it and nothing navigates, so there was never a place to lose. The desktop's three
+  rails keep their offsets anyway, because they are the same component and the memory costs
+  them a `scrollLeft`.
 
 ### A sheet never raises over a tab — issue #273
 

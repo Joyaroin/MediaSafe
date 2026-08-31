@@ -11,6 +11,7 @@ import {
   releaseDrag,
   type DragRules,
 } from "@/app/gesture-rules";
+import { keepPage, rememberedPage } from "@/app/restoration-memory";
 
 /**
  * The landing screen's two-page pager — *Up next* and *Upcoming*, issue #251.
@@ -63,6 +64,25 @@ const PAGES = [
 
 type PageIndex = 0 | 1;
 
+/**
+ * The page the reader was on when they last left this tab, narrowed to a page that exists.
+ *
+ * `app/restoration.ts` keeps the index as a plain number and this is where it becomes one
+ * of the two the pager has — issue #276's *returning to Up next restores the landing
+ * pager's page index*, and #268's *coming back from a title I found on Upcoming does not
+ * put me on Up next*.
+ *
+ * A reader who has not been here restores to `0`, which is where the pager already
+ * started, so a fresh load is unchanged. **That is also what keeps hydration honest**: the
+ * memory is a variable in the client bundle and nothing on the server ever writes it, so
+ * the server renders the first page and the browser's first render agrees. Only a
+ * client-side return — the navigation this ticket exists for — has anything remembered to
+ * restore.
+ */
+function openingPage(): PageIndex {
+  return rememberedPage() === 1 ? 1 : 0;
+}
+
 /** Which directions have a page behind them, from where the reader is standing. A
  *  leftward drag (`-1`) goes forwards, because the pages move the other way. */
 function rulesFor(page: PageIndex): DragRules {
@@ -83,11 +103,42 @@ export function LandingPager({
   upNext: React.ReactNode;
   upcoming: React.ReactNode;
 }) {
-  const [page, setPage] = useState<PageIndex>(0);
+  const [page, setPage] = useState<PageIndex>(openingPage);
   const [drag, setDrag] = useState(0);
+
+  /**
+   * Whether the reader has changed page **themselves** since this pager mounted — which is
+   * what tells a page change from a restore (issue #276), and therefore what springs from
+   * what does not.
+   *
+   * `width` is `0` until the observer has measured, so a pager restored onto *Upcoming*
+   * renders at `x: 0` for one commit and at `x: -width` for the next. Left alone, that
+   * second commit is a **settle**: the reader who left *Upcoming* comes back to *Up next*
+   * and watches it slide across to *Upcoming*, which is the app replaying a page change
+   * nobody made. Restoring is arriving, not moving.
+   *
+   * Set in `goToPage` below rather than watched from an effect, because *the reader
+   * changed page* is an event and not a thing to derive: all three ways to change page go
+   * through that one function, so the first of them is the moment the pager becomes a
+   * surface that animates.
+   */
+  const [moved, setMoved] = useState(false);
+
+  /**
+   * Every way the page changes goes through here, so that the one the reader ends on is
+   * the one they come back to. Three callers — a tap on a label, an arrow key and a
+   * committed drag — and a fourth that forgot to remember would be a pager that restores
+   * correctly except when you swiped.
+   */
+  const goToPage = useCallback((next: PageIndex) => {
+    setPage(next);
+    setMoved(true);
+    keepPage(next);
+  }, []);
 
   const track = useRef<HTMLDivElement>(null);
   const width = useTrackWidth(track);
+
 
   /**
    * The gesture in progress, or `null` between gestures.
@@ -171,9 +222,9 @@ export function LandingPager({
       const outcome = releaseDrag(delta, rulesFor(page), from.claimed ?? false);
       // `-1` is a leftward drag, which goes forwards. The rules module speaks the axis's
       // language rather than the pager's, deliberately — see its own docblock.
-      if (outcome.kind === "commit") setPage(outcome.direction === -1 ? 1 : 0);
+      if (outcome.kind === "commit") goToPage(outcome.direction === -1 ? 1 : 0);
     },
-    [page],
+    [page, goToPage],
   );
 
   /** A pointer the browser takes away mid-drag never sends `pointerup`. Springing back is
@@ -202,7 +253,7 @@ export function LandingPager({
 
   return (
     <div>
-      <PagerTabs page={page} onPick={setPage} />
+      <PagerTabs page={page} onPick={goToPage} />
 
       <div
         ref={track}
@@ -222,12 +273,18 @@ export function LandingPager({
              page offset and the live drag have to add, and a `calc()` mixing the two
              cannot be animated. `width` is `0` until the observer has measured, which is
              only ever the first paint — and page `0` at `0` is where the pager starts, so
-             nothing moves through a wrong position on the way. */
+             nothing moves through a wrong position on the way.
+
+             **Since #276 the pager does not always start on page `0`.** A restored pager
+             starts on the page the reader left, and its first two commits really are `0`
+             and then `-width`. That is a jump rather than a wrong position, and `moved`
+             above is what keeps it from being animated as though it were a page change. */
           animate={{ x: -page * width + drag }}
           /* No spring while the thumb is down. A page being dragged is under the finger
              one pixel per pixel; animating towards where the finger *was* is the exact
-             glassiness `app/motion.ts` describes. The spring is for the settle. */
-          transition={drag === 0 ? smooth : { duration: 0 }}
+             glassiness `app/motion.ts` describes. The spring is for the settle — and a
+             restore is not one, which is what `moved` above is for. */
+          transition={drag === 0 && moved ? smooth : { duration: 0 }}
         >
           {PAGES.map((one, index) => (
             <div
@@ -408,6 +465,10 @@ function overHorizontalScroller(target: EventTarget | null, track: HTMLElement |
  * measured at mount would leave the second page parked a screen and a half over. `0` until
  * the first observation, which is the state the pager already starts in — page zero at
  * offset zero — so nothing is ever drawn at a stale width.
+ *
+ * **A pager restored onto page two (#276) is the one case that starts elsewhere**, and it
+ * crosses that first commit at `x: 0` before landing at `x: -width`. It arrives rather than
+ * travels: see `moved` in the component above.
  */
 function useTrackWidth(track: React.RefObject<HTMLDivElement | null>): number {
   const [width, setWidth] = useState(0);

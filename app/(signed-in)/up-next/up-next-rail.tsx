@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { UpNextRailEntry } from "@/db/access";
+import { keepRailOffset, rememberedRailOffset } from "@/app/restoration-memory";
 import { UpNextTile } from "./up-next-tile";
 
 /**
@@ -168,11 +169,36 @@ export function UpNextRail({
     const track = trackRef.current;
     if (track === null) return;
 
+    /**
+     * Where the reader left this rail, before anything is measured — issue #276. The
+     * offset comes back first so that the arrows are asked about a track already standing
+     * where it is going to stand; measuring first would light the back arrow a frame
+     * late on every return.
+     *
+     * `0` for a rail nobody has scrolled, which is where the track already is, so a first
+     * visit is untouched. The rules are `app/restoration.ts`'s and driven by
+     * `tests/restoration.test.ts`; this line and the handler below are the whole binding,
+     * and `remembered-rail.tsx` argues why the phone's identical pair is not shared with
+     * it.
+     */
+    track.scrollLeft = rememberedRailOffset(label);
+
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(track);
     return () => observer.disconnect();
-  }, [entries]);
+  }, [entries, label]);
+
+  /** A scroll does two things: it changes which arrows have somewhere to go, and it is the
+   *  rail's new place. `measure` still bails on an unchanged answer — see `sameReach` —
+   *  and recording an offset re-renders nothing at all. */
+  function onScroll() {
+    measure();
+
+    const track = trackRef.current;
+    if (track === null) return;
+    keepRailOffset(label, track.scrollLeft);
+  }
 
   /**
    * As many whole tiles as the track shows, in the direction asked for. The pitch is the
@@ -223,7 +249,7 @@ export function UpNextRail({
 
       <ol
         ref={trackRef}
-        onScroll={measure}
+        onScroll={onScroll}
         aria-labelledby={railId}
         className="stagger-rise flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-6 px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >

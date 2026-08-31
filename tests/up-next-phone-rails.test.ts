@@ -348,9 +348,16 @@ describe("both rails snap to the page gutter and leave the next card peeking", (
    * padding would clip the trailing card at the gutter instead of at the screen edge, and
    * nothing would peek.
    */
+  /**
+   * The track is `RememberedTrack` since #276 — a client `<ol>` carrying the rail's own
+   * scroll offset across a navigation away and back — so the gutter is asserted on the
+   * `className` it is handed rather than on a literal `<ol>`. The property is unchanged and
+   * is the reason this is not just a class-list check: the padding is on the *track*, not
+   * on the `<section>`.
+   */
   it("puts the gutter on the track rather than on the section around it", () => {
     expect(section).toMatch(/<section className="pt-\[26px\]">/);
-    expect(section).toMatch(/<ol className="[^"]*px-\[22px\]/);
+    expect(section).toMatch(/<RememberedTrack[\s\S]*?className="[^"]*px-\[22px\]/);
   });
 
   it("hides the scrollbar without hiding that there is more", () => {

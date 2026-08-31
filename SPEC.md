@@ -350,6 +350,17 @@ fourth.
    away from rather than deleted, and keeps a season row and a deep link. The phone's use
    of selection is what goes; on `lg` and up the tile's click is stopped and the programme
    note pane swaps as divergence 2 describes, unchanged.
+
+   **And [#276](https://github.com/Joyaroin/MediaSafe/issues/276) narrows what this bullet
+   claims for the desktop.** *So the grid keeps its scroll position* was written as the
+   thing the pane buys that a push and a pop cannot, and it is **no longer the difference
+   between the two devices** — on Up next and on search, a push and a pop keep the reader's
+   place too. The landing pager's page, each rail's horizontal offset, and search's query
+   with its results are remembered for the session in a pure module (`app/restoration.ts`),
+   so opening a title from a rail is not a one-way door on either device. What stays true is
+   the topology: the phone pushes a route and the desktop replaces a pane. What is reversed
+   is the consequence this bullet drew from it. **Library, lists and You are deliberately
+   not included** — only the two surfaces a reader leaves and comes straight back to.
 4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
    and for phone by [#138](https://github.com/Joyaroin/MediaSafe/issues/138).**
    Phone: **no numeric cap on a group's screen**, the same *a surface you work down never renders N at
