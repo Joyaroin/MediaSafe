@@ -921,13 +921,53 @@
    `--ease-out-quart`: the only thing that animates it here is `IN_FLIGHT`'s brightness,
    and a colour has no mass to overshoot with. */
 @utility pressable {
+  /* ── The register — issue #282 ─────────────────────────────────────────────────────
+     `0.96` was one number doing two jobs. It is a considered movement on a 262px rail
+     card and it is nothing at all on a 44px checkmark, and both wore this same utility.
+     There are two presses now:
+
+       surfaces (cards, cells, rows, tiles)   0.960 in, 1.012 past rest
+       controls (checkmark hit boxes, chips)  0.920 in, 1.030 past rest
+
+     **One property selects between them, and the call site is the only place it is set.**
+     `--poster-radius`'s pattern, for `--poster-radius`'s reason: a second utility beside
+     this one — a `press-loud` — is two rules setting one property in the `utilities`
+     cascade layer, so *which wins* would be decided by the order Tailwind **emits** them
+     in and not by the order they appear in the `class` attribute. A variable the call
+     site sets is the one form with no ordering question in it. Nothing about a
+     `pressable` element reveals its size or its role, so there is no automatic
+     discriminator to use instead; the call site has to say.
+
+     **One property, not a pair.** Both halves of the press are derived from it here, so
+     there is no way to set half a register and no way to pair a surface compression with
+     a control pop. A `--press-compress`/`--press-pop` pair at the call site would make
+     both of those available on the first day.
+
+     **The default is the quieter register, and it is spelled by saying nothing.** The
+     value is *read* through a fallback and never declared, so a call site nobody
+     classified is under-stated rather than shouting — and a call site that does declare
+     one has no equal-specificity rule of its own to beat. `--press-register: 0` is the
+     surfaces, `1` is the controls; the four numbers are written out rather than folded
+     into deltas, because the amplitudes are chosen and the choosing should be legible.
+
+     `tests/press-spring.test.ts` resolves both registers the way a browser would and
+     asserts that they differ, that the default is the quieter one, and that the pop still
+     carries `snappy`'s own shape in either of them. */
+  --press-compress: calc(0.96 + var(--press-register, 0) * (0.92 - 0.96));
+  --press-pop: calc(1.012 + var(--press-register, 0) * (1.03 - 1.012));
+
+  /* The two spans `press-pop`'s stops are written against, so the keyframe carries the
+     spring's *shape* once and the register supplies the distance. */
+  --press-rise: calc(var(--press-pop) - var(--press-compress));
+  --press-overshoot: calc(var(--press-pop) - 1);
+
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
   &:active,
   &[data-pressed="true"] {
-    transform: scale(0.96);
+    transform: scale(var(--press-compress));
   }
 }
 
@@ -951,11 +991,20 @@
    what shipped in #270.** A 0.85-damped spring released from `0.96` overshoots to
    `1.00025`, because its overshoot is a fraction of the distance travelled and the
    distance is 4%. So the curve is normalised to the two sizes the press names: the rise
-   maps `x / (1 + e^(−πζ/√(1−ζ²)))` onto `0.96 → 1.012`, the settle maps
-   `(x − 1) / e^(−πζ/√(1−ζ²))` onto `1.012 → 1`. The two pieces meet at the peak, where
-   the step response's slope is zero, so the join is not a corner. Derived shape, declared
-   amplitude — and the amplitude is now a number in this file rather than a consequence
-   of a delta nobody computed.
+   maps `x / (1 + e^(−πζ/√(1−ζ²)))` onto the compression-to-pop span, the settle maps
+   `(x − 1) / e^(−πζ/√(1−ζ²))` onto the pop-to-rest one. The two pieces meet at the peak,
+   where the step response's slope is zero, so the join is not a corner. Derived shape,
+   declared amplitude — and the amplitude is now a number in this file rather than a
+   consequence of a delta nobody computed.
+
+   **#282 made the amplitude the register's, and this is why every stop is a `calc()`.**
+   The stops were `0.96 → 1.012` written out; they are the same 33 samples written as
+   *fractions of the span*, against `--press-rise` and `--press-overshoot` above. So the
+   shape is stated once and the two registers are one keyframe rather than two — which
+   matters more than the duplication it saves, because two keyframes are two places for
+   `snappy` to drift from itself, and this stylesheet has been bitten by that twice. The
+   numbers below are therefore the spring and nothing else; how far the control actually
+   travels is `--press-register`, up in `pressable`.
 
    The last stop is rest exactly, for the reason the `linear()` curve's last sample was:
    a spring settles asymptotically and an animation has to end, and one that finished at
@@ -975,38 +1024,38 @@
    timer made visible and its own arrival, not a press. `tests/press-spring.test.ts`
    recomputes every stop below from `snappy` and asserts the peak exceeds `1`. */
 @keyframes press-pop {
-  0% { transform: scale(0.96); }
-  3.125% { transform: scale(0.9617); }
-  6.25% { transform: scale(0.9658); }
-  9.375% { transform: scale(0.9712); }
-  12.5% { transform: scale(0.977); }
-  15.625% { transform: scale(0.9828); }
-  18.75% { transform: scale(0.9882); }
-  21.875% { transform: scale(0.9929); }
-  25% { transform: scale(0.9971); }
-  28.125% { transform: scale(1.0005); }
-  31.25% { transform: scale(1.0034); }
-  34.375% { transform: scale(1.0056); }
-  37.5% { transform: scale(1.0074); }
-  40.625% { transform: scale(1.0088); }
-  43.75% { transform: scale(1.0098); }
-  46.875% { transform: scale(1.0106); }
-  50% { transform: scale(1.0111); }
-  53.125% { transform: scale(1.0115); }
-  56.25% { transform: scale(1.0117); }
-  59.375% { transform: scale(1.0119); }
-  62.5% { transform: scale(1.012); }
-  65.625% { transform: scale(1.012); }
-  68.75% { transform: scale(1.0119); }
-  71.875% { transform: scale(1.0111); }
-  75% { transform: scale(1.01); }
-  78.125% { transform: scale(1.0086); }
-  81.25% { transform: scale(1.0073); }
-  84.375% { transform: scale(1.006); }
-  87.5% { transform: scale(1.0048); }
-  90.625% { transform: scale(1.0038); }
-  93.75% { transform: scale(1.0029); }
-  96.875% { transform: scale(1.0022); }
+  0% { transform: scale(var(--press-compress)); }
+  3.125% { transform: scale(calc(var(--press-compress) + 0.03283 * var(--press-rise))); }
+  6.25% { transform: scale(calc(var(--press-compress) + 0.11216 * var(--press-rise))); }
+  9.375% { transform: scale(calc(var(--press-compress) + 0.2156 * var(--press-rise))); }
+  12.5% { transform: scale(calc(var(--press-compress) + 0.32773 * var(--press-rise))); }
+  15.625% { transform: scale(calc(var(--press-compress) + 0.43841 * var(--press-rise))); }
+  18.75% { transform: scale(calc(var(--press-compress) + 0.54141 * var(--press-rise))); }
+  21.875% { transform: scale(calc(var(--press-compress) + 0.6333 * var(--press-rise))); }
+  25% { transform: scale(calc(var(--press-compress) + 0.71266 * var(--press-rise))); }
+  28.125% { transform: scale(calc(var(--press-compress) + 0.77933 * var(--press-rise))); }
+  31.25% { transform: scale(calc(var(--press-compress) + 0.83401 * var(--press-rise))); }
+  34.375% { transform: scale(calc(var(--press-compress) + 0.87788 * var(--press-rise))); }
+  37.5% { transform: scale(calc(var(--press-compress) + 0.91231 * var(--press-rise))); }
+  40.625% { transform: scale(calc(var(--press-compress) + 0.93876 * var(--press-rise))); }
+  43.75% { transform: scale(calc(var(--press-compress) + 0.95861 * var(--press-rise))); }
+  46.875% { transform: scale(calc(var(--press-compress) + 0.97314 * var(--press-rise))); }
+  50% { transform: scale(calc(var(--press-compress) + 0.98345 * var(--press-rise))); }
+  53.125% { transform: scale(calc(var(--press-compress) + 0.99051 * var(--press-rise))); }
+  56.25% { transform: scale(calc(var(--press-compress) + 0.99511 * var(--press-rise))); }
+  59.375% { transform: scale(calc(var(--press-compress) + 0.99789 * var(--press-rise))); }
+  62.5% { transform: scale(calc(var(--press-compress) + 0.99937 * var(--press-rise))); }
+  65.625% { transform: scale(calc(var(--press-compress) + 0.99995 * var(--press-rise))); }
+  68.75% { transform: scale(calc(1 + 0.98889 * var(--press-overshoot))); }
+  71.875% { transform: scale(calc(1 + 0.92638 * var(--press-overshoot))); }
+  75% { transform: scale(calc(1 + 0.83068 * var(--press-overshoot))); }
+  78.125% { transform: scale(calc(1 + 0.72015 * var(--press-overshoot))); }
+  81.25% { transform: scale(calc(1 + 0.60716 * var(--press-overshoot))); }
+  84.375% { transform: scale(calc(1 + 0.49954 * var(--press-overshoot))); }
+  87.5% { transform: scale(calc(1 + 0.40188 * var(--press-overshoot))); }
+  90.625% { transform: scale(calc(1 + 0.31639 * var(--press-overshoot))); }
+  93.75% { transform: scale(calc(1 + 0.24374 * var(--press-overshoot))); }
+  96.875% { transform: scale(calc(1 + 0.18353 * var(--press-overshoot))); }
   100% { transform: scale(1); }
 }
 

@@ -291,6 +291,16 @@ export function CatalogueResultRow({
          * not — a `button`'s hit area is its own border box and nothing its parent adds
          * reaches it. That comment asserted a target the code did not have, on the one
          * control on this screen a reader has to hit.
+         *
+         * ── The press register — issue #282 ──────────────────────────────────────────
+         *
+         * `[--press-register:1]` is the control register: `0.92` in and `1.030` past
+         * rest, against the `0.960`/`1.012` a card or a row gets. This is a chip with no
+         * ground of its own — the pill inside it is what a reader sees — and 4% on a
+         * 44px box moves its edge under a device pixel. One property rather than a pair,
+         * and a property rather than a second utility, for the same reason `w-auto`
+         * after a `size-11` was refused above: two utilities over one property are
+         * resolved by the order Tailwind emits them in.
          */
         <button
           type="button"
@@ -301,7 +311,7 @@ export function CatalogueResultRow({
            * accessible name carries the title the visible label leaves to the layout.
            */
           aria-label={`Add ${result.name} to your library`}
-          className="pressable flex h-11 shrink-0 items-center"
+          className="pressable [--press-register:1] flex h-11 shrink-0 items-center"
         >
           <span className="flex h-[34px] items-center rounded-[17px] bg-accent px-4 text-item font-semibold text-accent-ink">
             Add

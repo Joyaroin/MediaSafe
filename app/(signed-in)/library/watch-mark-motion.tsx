@@ -47,9 +47,21 @@ export const WATCHED_NAME = "text-dim";
  * actually on, and scaling the `26px` chip inside a box that stayed still would read as
  * the chip coming loose. It costs no client boundary — this file is class strings, and
  * the surfaces rendering them stay server components.
+ *
+ * **`[--press-register:1]` is the control register, and it is new in #282.** `pressable`
+ * had one movement for a 262px rail card and a 44px checkmark alike, and 4% on a 44px box
+ * moves its edge 0.88px — under a device pixel, which is to say not at all. The register
+ * is `0.92` in and `1.030` past rest, so the smallest control in the application is no
+ * longer the least responsive thing in it. It is a bare control with no ground of its own,
+ * which is the whole of what the register says about it.
+ *
+ * One property and not two, set here rather than reached for as a second utility, for
+ * `--poster-radius`'s reason restated two paragraphs up: two utilities setting one
+ * property are resolved by the order Tailwind emits them in. `app/globals.css`'s
+ * `@utility pressable` derives both halves of the press from this one value.
  */
 export const RECORDING_HIT_BOX =
-  "pressable group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
+  "pressable [--press-register:1] group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
 
 /**
  * The recording control's visible chip — the same ghost treatment (`DESIGN.md`, Buttons:

@@ -517,8 +517,14 @@ function CardFrame({
  * is what this card is for, and it pressed flat. Both hit boxes carry it because both are
  * places the act happens, and the card's own `pressable` link (above) is a sibling of this
  * button rather than its parent, so the two presses never compound.
+ *
+ * **`[--press-register:1]` is #282's control register.** The card above stays on the quiet
+ * default — it is a 262px surface and a grid of trampolines is the thing that register
+ * exists to avoid — and this 44px hit box takes the loud one, so the sibling that records
+ * the watch moves as much under a thumb as the sibling that opens the episode does. Both
+ * branches below wear it, because `Undo` is the same act being taken back.
  */
-const CHECK_HIT_BOX = `pressable group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
+const CHECK_HIT_BOX = `pressable [--press-register:1] group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
 
 function MarkControl({ mark }: { mark: UpNextMark }) {
   const { episode, undoable, pending } = mark;
