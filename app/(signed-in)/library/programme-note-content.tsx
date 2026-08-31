@@ -229,6 +229,7 @@ export function ProgrammeNoteContent({
           <ProgrammeNoteEpisodes
             kind={detail.kind}
             episodes={detail.episodes}
+            episodesPending={detail.episodesPending}
             libraryEntryId={detail.libraryEntryId}
             titleName={detail.name}
           />

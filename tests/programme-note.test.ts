@@ -57,6 +57,9 @@ const episodes = (list: EpisodeDetail[], kind: "film" | "show" = "show") =>
     createElement(ProgrammeNoteEpisodes, {
       kind,
       episodes: list,
+      // Complete, which is every case in this file: the pending region is #272's and is
+      // asserted in `tests/library-pending.test.ts` beside the treatment it draws.
+      episodesPending: false,
       libraryEntryId: "entry-1",
       titleName: "Game of Thrones",
     }),

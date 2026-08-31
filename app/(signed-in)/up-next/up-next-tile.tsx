@@ -2,10 +2,11 @@
 
 import { ViewTransition } from "react";
 
+import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
-import type { UpNextEntry } from "@/db/access";
+import { isPendingEntry, type UpNextRailEntry } from "@/db/access";
 
 /**
  * One poster on a rail — issue #137, and the whole of what a rail is made of.
@@ -68,7 +69,7 @@ export function UpNextTile({
   entry,
   aboveFold = false,
 }: {
-  entry: UpNextEntry;
+  entry: UpNextRailEntry;
   /** This tile is in its rail's first visible run — `up-next-rail.tsx`'s to say
    *  (`app/poster.tsx`). */
   aboveFold?: boolean;
@@ -116,6 +117,20 @@ export function UpNextTile({
             {entry.releaseYear}
           </p>
         )}
+
+        {/* The pending tile's one dim line — issue #272, and `DESIGN.md` §9's treatment
+            unaltered: `PendingLine`, at the placement this surface chooses, and nothing
+            else. Everything above it is a fact the add already wrote and renders at full
+            strength; this is the only region genuinely still waiting.
+
+            **No skeleton and no shimmer**, and nothing here reserves a height for what has
+            not arrived: the tile is one poster taller than nothing, exactly as it is when
+            the mirror lands. */}
+        {isPendingEntry(entry) ? (
+          <div className="mt-1">
+            <PendingLine />
+          </div>
+        ) : null}
       </button>
     </li>
   );

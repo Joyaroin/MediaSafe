@@ -53,6 +53,7 @@ const SURFACE = `${UP_NEXT}/up-next-rails.tsx`;
 const RAIL_SECTION = `${UP_NEXT}/up-next-phone-rail.tsx`;
 const EPISODE_RAIL = `${UP_NEXT}/up-next-episode-rail.tsx`;
 const EPISODE_CARD = `${UP_NEXT}/up-next-episode-card.tsx`;
+const PENDING_CARD = `${UP_NEXT}/up-next-pending-card.tsx`;
 const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
 const NOTHING = `${UP_NEXT}/up-next-nothing.tsx`;
 
@@ -188,6 +189,10 @@ describe("the landing screen shows two rails and the five groups are gone", () =
       FILM_RAIL,
       NOTHING,
       `${UP_NEXT}/episode-card-line.ts`,
+      // #272's pending card, joining the list for the same reason the rest are on it: it is
+      // a new file on this surface, and a citation it invents is a citation nothing else
+      // would ever catch.
+      PENDING_CARD,
     ];
 
     let checked = 0;
@@ -222,11 +227,34 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
    * **The assertion this file exists for.** Ongoing, then coming back, then old friends —
    * the sequence the five deleted groups expressed structurally, now expressed as one line
    * of spread syntax that nothing else in the build would notice going wrong.
+   *
+   * **#272 narrowed the first of the three and did not reorder them.** Ongoing can now hold
+   * a title whose episodes have not mirrored, which has no run to mark and no episode to
+   * draw, so `isEpisodeEntry` takes the episode-bearing half of that rail here — the same
+   * three arrays, in the same order, with the pending cards lifted out and drawn ahead of
+   * the whole sequence (below).
    */
   it("spreads ongoing, then comingBack, then oldFriends, in that order", () => {
     expect(source).toMatch(
-      /\[\s*\.\.\.rails\.ongoing,\s*\.\.\.rails\.comingBack,\s*\.\.\.rails\.oldFriends,?\s*\]/,
+      /\[\s*\.\.\.rails\.ongoing\.filter\(isEpisodeEntry\),\s*\.\.\.rails\.comingBack,\s*\.\.\.rails\.oldFriends,?\s*\]/,
     );
+  });
+
+  /**
+   * **A pending card is drawn before the concatenation, not inside it** — issue #272.
+   *
+   * *At the head of Ongoing* is the ticket's own wording, and Ongoing leads this rail, so
+   * on the phone that means the head of the whole track. It fails silently in the way this
+   * file was built for: put the pending cards after `showing` and the reader who just added
+   * a show scrolls past every cold title in their library to find it, with nothing anywhere
+   * throwing.
+   */
+  it("draws the pending cards ahead of every episode card", () => {
+    const pendingAt = source.indexOf("<UpNextPendingCard");
+    const episodeAt = source.indexOf("<UpNextEpisodeCard");
+    expect(pendingAt).toBeGreaterThan(-1);
+    expect(episodeAt).toBeGreaterThan(-1);
+    expect(pendingAt).toBeLessThan(episodeAt);
   });
 
   /**
@@ -385,7 +413,12 @@ describe("the films rail", () => {
 
 describe("empty and failed are never the same thing", () => {
   it("renders an empty rail as absent, with no heading over nothing", () => {
-    expect(sourceAt(EPISODE_RAIL)).toMatch(/if \(showing\.length === 0\) return null;/);
+    // #272: the rail is empty when it holds neither a pending card nor an episode card.
+    // A reader whose only title is one still mirroring has a rail with one card on it, not
+    // an absent rail — the tab must not read as empty for a title just added to it.
+    expect(sourceAt(EPISODE_RAIL)).toMatch(
+      /if \(pending\.length === 0 && showing\.length === 0\) return null;/,
+    );
     expect(sourceAt(FILM_RAIL)).toMatch(/if \(films\.length === 0\) return null;/);
   });
 

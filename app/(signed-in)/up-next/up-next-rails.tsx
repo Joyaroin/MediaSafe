@@ -30,7 +30,10 @@ import { UpNextNothing } from "./up-next-nothing";
  * `up-next-nothing.tsx` for why that sentence is not `UpNextEmpty`'s.
  *
  * The check below is the **server's** answer, taken from the two reads, and it deliberately
- * does not re-ask the client-side question the episode rail asks of the marks store. A
+ * does not re-ask the client-side question the episode rail asks of the marks store. It
+ * counts #272's pending titles as episodes, which they are about to be: a reader whose only
+ * title is one still mirroring has a rail with a card on it, not *nothing queued for
+ * tonight*, and that sentence is the one thing this surface must never say by mistake. A
  * library marked empty card by card between two loads keeps an absent rail and no sentence
  * until the next load: a stale empty state rather than a wrong one, and the alternative is
  * the phrase that must never stand in for a failed read having a second author

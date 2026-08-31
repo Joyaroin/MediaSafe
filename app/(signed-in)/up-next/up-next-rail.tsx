@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-import type { UpNextEntry } from "@/db/access";
+import type { UpNextRailEntry } from "@/db/access";
 import { UpNextTile } from "./up-next-tile";
 
 /**
@@ -130,7 +130,12 @@ export function UpNextRail({
    * only: `up-next-rails-surface.tsx` owns them, and it owns why none has a numeral.
    */
   rule: string;
-  entries: readonly UpNextEntry[];
+  /**
+   * Ongoing can hold a pending title as well as an ordinary one since #272; the other two
+   * rails cannot, and are typed the wider way only because one component draws all three.
+   * `UpNextTile` is where the two are told apart.
+   */
+  entries: readonly UpNextRailEntry[];
 }) {
   /**
    * The heading's id, minted rather than passed in. `library-grid.tsx` imports

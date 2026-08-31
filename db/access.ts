@@ -11,6 +11,7 @@ import {
   isNull,
   lt,
   lte,
+  ne,
   notInArray,
   or,
   sql,
@@ -2808,6 +2809,71 @@ export interface UpNextEntry {
 }
 
 /**
+ * A title on Ongoing whose episodes have not mirrored — issue #272, and **the only entry
+ * on this surface that carries no episode**.
+ *
+ * ── Why it is a second shape and not a widened `UpNextEntry` ─────────────────────────
+ *
+ * Every field `UpNextEntry` holds beyond these five is a fact about an episode, and this
+ * title has none: no id, no name, no numbers, no air date, no still, no run to mark, and
+ * no remainder — `library_entry_remaining` counts episode rows, and there are none. Making
+ * those nullable would put thirteen `?? null`s into the read and hand every surface a row
+ * whose emptiness it has to interpret. **Pending is not a card with holes in it; it is a
+ * different card**, and a separate shape is what says so to the type checker.
+ *
+ * The five fields here are exactly the five a pending tile draws — the poster, the name,
+ * the year, and the two ids the surface needs to key and open it. That is `DESIGN.md` §9's
+ * *render what you already know* held at the read: what the tile knows is what the add
+ * wrote from the series, and the episode line is the one region genuinely still waiting.
+ *
+ * ── `pending` is the discriminant, and it is only on this side ───────────────────────
+ *
+ * `isPendingEntry` narrows with `in` rather than on a literal field, so `UpNextEntry` gains
+ * no `pending: false` it would have to carry through every construction of one. The two are
+ * told apart by a field one of them has, which is what a discriminated union is for.
+ */
+export interface UpNextPendingEntry {
+  readonly libraryEntryId: string;
+  readonly titleId: string;
+  /** Borrowed, and written by the add from the series alone — `UpNextEntry.titleName`. */
+  readonly titleName: string;
+  /** Borrowed, and `null` where TMDB has not dated the title. */
+  readonly releaseYear: number | null;
+  /** Borrowed. */
+  readonly posterPath: string | null;
+  /** Always `true`. The discriminant, and never written anywhere else. */
+  readonly pending: true;
+}
+
+/**
+ * What Ongoing holds — an ordinary entry, or a title still waiting for its episodes.
+ *
+ * Only Ongoing is widened. *Coming back* is a caught-up show with a dated episode ahead of
+ * it and *Old friends* is the cold tail of *watching*; a title whose episodes have not
+ * arrived is neither of those things, and the spec puts it on Ongoing precisely so that the
+ * rails stay three.
+ */
+export type UpNextRailEntry = UpNextEntry | UpNextPendingEntry;
+
+/**
+ * Which of the two an Ongoing entry is — the one place that question is answered, so that
+ * no surface mints a second test for it (`"pending" in entry`, or worse, `episodeId ===
+ * null` against a field that does not exist).
+ */
+export function isPendingEntry(entry: UpNextRailEntry): entry is UpNextPendingEntry {
+  return "pending" in entry;
+}
+
+/**
+ * `isPendingEntry`'s complement, and it exists because a negated call is not a type guard:
+ * `entries.filter((entry) => !isPendingEntry(entry))` narrows nothing, so a caller that
+ * wants the episode-bearing half has to be handed a predicate that says so.
+ */
+export function isEpisodeEntry(entry: UpNextRailEntry): entry is UpNextEntry {
+  return !isPendingEntry(entry);
+}
+
+/**
  * The five terms of `SPEC.md` §7's Up next order, built once and handed to both the
  * `ORDER BY` and the cursor's `WHERE`, so there is one definition of the order and not a
  * copy of it in each place that has to agree with it.
@@ -3004,6 +3070,53 @@ const COMING_BACK: SQL = sql`(
     and ${episode.airDate} > current_date
   )`;
 
+/**
+ * **The rule every rail's membership now runs through: the title's episodes have
+ * mirrored** — issue #272.
+ *
+ * It sits on the shared read rather than on one predicate because it is not a rail's rule,
+ * it is a rule about which *read* answers a title. A pending title is answered by
+ * `upNextPending`, once, at the head of Ongoing; without this it could also be answered
+ * here — a show with a watch and a next episode among the handful of episodes that did land
+ * before the mirror failed is *watching*, and would draw twice, as a pending tile and as an
+ * ordinary one. **Once** is an acceptance criterion, and it is worth having by construction
+ * rather than by deduplicating two lists afterwards.
+ *
+ * It excludes nothing that existed before the column did. `title.episodes_mirrored_at`
+ * carries `DEFAULT now()` and the migration stamped every row with it, so the only way to
+ * be null is for `mirrorTitle` to have been passed `"pending"` deliberately (#271).
+ */
+const MIRRORED: SQL = isNotNull(title.episodesMirroredAt);
+
+/**
+ * **Ongoing's second membership: a show whose episodes have not mirrored, and which you
+ * have not abandoned** — issue #272.
+ *
+ * ── Why `kind = 'show'` is a predicate and not a comment ─────────────────────────────
+ *
+ * A film is stamped on the way in, because it has nothing to wait for (#271), so this
+ * clause removes nothing today. It is here because *a film is never pending* is a rule of
+ * the product rather than a consequence of how the add happens to be written: an import, a
+ * backfill or a future writer that leaves the column null on a film must not put that film
+ * on Ongoing with an episode line that will never resolve.
+ *
+ * ── Abandoned, through the view and not through the column ───────────────────────────
+ *
+ * `library_entry_state` is where *abandoned outranks every derived state* is written down,
+ * and this asks it rather than reading `abandoned_at` a second time. A title you have put
+ * down is off this surface whatever its mirror is doing.
+ *
+ * There is no air-date filter, no state filter beyond that one, and no watch test. Pending
+ * is a fact about the catalogue row, not about the reader's progress through it: the common
+ * case is a title nobody has watched anything of yet, but a half-arrived mirror can leave a
+ * watched show unstamped too, and that show is still pending.
+ */
+const PENDING: SQL = sql`(
+    ${isNull(title.episodesMirroredAt)}
+    and ${eq(title.kind, "show" satisfies TitleKind)}
+    and ${ne(libraryEntryState.state, "abandoned" satisfies LibraryState)}
+  )`;
+
 function upNextRead(userId: UserId, executor: Executor): UpNextRead {
   const lastWatch = executor
     .select({
@@ -3055,7 +3168,7 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
         )
         .leftJoin(lastWatch, eq(lastWatch.libraryEntryId, libraryEntry.id))
-        .where(and(ownedBy(userId, libraryEntry), where))
+        .where(and(ownedBy(userId, libraryEntry), MIRRORED, where))
         .orderBy(...order.orderBy);
 
       return limit === null ? await query : await query.limit(limit);
@@ -3375,13 +3488,69 @@ async function upNextQueues(
  * read that had already flattened them would put the *ongoing, then coming back, then old
  * friends* rule somewhere no surface could see it and the desktop could not undo.
  *
- * All three are the same shape since #250. Ongoing used to be the only one carrying a
- * queue, because it was the only group with a mark.
+ * All three were the same shape from #250 until #272, which widened **Ongoing alone** to
+ * hold a title whose episodes have not mirrored as well. Ongoing used to be the only one
+ * carrying a queue, because it was the only group with a mark; it is now the only one
+ * carrying two shapes, for the reason `UpNextRailEntry` gives.
  */
 export interface UpNextRails {
-  readonly ongoing: readonly UpNextEntry[];
+  /**
+   * Pending titles first, then the twelve — issue #272. This is the one rail of the three
+   * that can hold either shape, and `isPendingEntry` is how a surface tells them apart.
+   */
+  readonly ongoing: readonly UpNextRailEntry[];
   readonly comingBack: readonly UpNextEntry[];
   readonly oldFriends: readonly UpNextEntry[];
+}
+
+/**
+ * The titles still waiting for their episodes, newest first — issue #272.
+ *
+ * ── Why this is a query of its own and not a widened join ────────────────────────────
+ *
+ * `upNextRead` reaches these titles through nothing: `library_entry_up_next` is an inner
+ * join and a title with no episodes has no row in it, `library_entry_remaining` is an inner
+ * join and a title with no episodes has a zero it would rank on, and `episode` is an inner
+ * join on an episode that does not exist. Loosening all three to outer joins would make
+ * every column on every other row nullable in order to carry one that has none of them —
+ * the shared read's whole select list weakened for a set it does not describe.
+ *
+ * ── The order, and why it is not `SPEC.md` §7's ──────────────────────────────────────
+ *
+ * §7's cascade ranks by *your most recent watch*, falling back to *the next episode's air
+ * date*. A pending title has neither, so every one of them lands in the cascade's rank 2 —
+ * the group with no date at all — and the rule would separate them by name. That is the
+ * wrong answer for the case: the reader just added one of these, and the one they added is
+ * the one they are looking for. So it is **most recently added first**, with §7's own
+ * `lower(name)` and the entry id underneath it as the total order two adds in the same
+ * millisecond still need.
+ */
+async function upNextPending(
+  userId: UserId,
+  executor: Executor,
+): Promise<UpNextPendingEntry[]> {
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .where(and(ownedBy(userId, libraryEntry), PENDING))
+    .orderBy(desc(libraryEntry.addedAt), sql`lower(${title.name})`, libraryEntry.id);
+
+  return rows.map((row) => ({
+    libraryEntryId: row.libraryEntryId,
+    titleId: row.titleId,
+    titleName: row.titleName,
+    releaseYear: row.releaseYear,
+    posterPath: row.posterPath,
+    pending: true,
+  }));
 }
 
 export async function listUpNextRails(
@@ -3391,19 +3560,26 @@ export async function listUpNextRails(
   const read = upNextRead(userId, executor);
 
   /**
-   * Two independent reads, overlapped rather than stacked: neither takes the other's
-   * rows. `Promise.all` rejects on the first rejection, so a failure still reaches the
-   * caller's boundary exactly as it did in series.
+   * Three independent reads, overlapped rather than stacked: none takes another's rows.
+   * `Promise.all` rejects on the first rejection, so a failure still reaches the caller's
+   * boundary exactly as it did in series.
    *
-   * On the pool this checks out two connections instead of reusing one, which on a cold
-   * process is two WebSocket handshakes rather than one. It is still the shorter wall
+   * On the pool this checks out three connections instead of reusing one, which on a cold
+   * process is three WebSocket handshakes rather than one. It is still the shorter wall
    * clock — the handshakes overlap too — and it is a trade of connection count for
-   * latency, made knowingly. Passed a transaction, node-postgres queues both on that one
-   * connection, so this is correct there and merely no faster.
+   * latency, made knowingly. Passed a transaction, node-postgres queues them all on that
+   * one connection, so this is correct there and merely no faster.
+   *
+   * **The third is #272's**, and it is here rather than sequential because it takes nothing
+   * from the other two: the pending read's membership is a column on `title`, not a set of
+   * entry ids the other reads produce. It is also the cheapest of the three by a wide
+   * margin — an index on `episodes_mirrored_at`, read by `IS NULL`, over a set that is
+   * empty on almost every load.
    */
-  const [watching, comingBack] = await Promise.all([
+  const [watching, comingBack, pending] = await Promise.all([
     read.rows(WATCHING, null),
     read.rows(COMING_BACK, null),
+    upNextPending(userId, executor),
   ]);
 
   /**
@@ -3456,8 +3632,21 @@ export async function listUpNextRails(
   const watchingEntry = (row: UpNextRow): UpNextEntry =>
     upNextEntry(row, queues.get(row.libraryEntryId) ?? { episodes: [], more: true });
 
+  /**
+   * **Pending titles are ahead of the twelve, not among them** — issue #272.
+   *
+   * `ONGOING_RAIL_SIZE` bounds *watching*, which is the set it was measured against and
+   * the set it is self-correcting over: twelve is about two screens of what you are in the
+   * middle of. Pending is neither of those things. It is a handful of titles for a few
+   * seconds, and spending one of the twelve on each of them would push a show the reader
+   * is actually watching onto Old friends for the length of a mirror — a rail that
+   * reshuffles itself while nothing is watched.
+   *
+   * So the cap is unchanged and the head is prepended, which is also what makes *at the
+   * head* true without a sort key that could rank a pending title below a watch.
+   */
   return {
-    ongoing: watching.slice(0, ONGOING_RAIL_SIZE).map(watchingEntry),
+    ongoing: [...pending, ...watching.slice(0, ONGOING_RAIL_SIZE).map(watchingEntry)],
     comingBack: comingBack.map((row) => upNextEntry(row, NOTHING_RELEASED)),
     oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(watchingEntry),
   };
@@ -3932,6 +4121,21 @@ export interface TitleDetailRow {
    *  identically here; `programme-note-episodes.tsx` is what tells them apart, from
    *  `kind`. */
   readonly episodes: readonly EpisodeDetail[];
+  /**
+   * **This show's episodes have not mirrored** — issue #272, and the fact that makes
+   * `episodes: []` two states rather than one.
+   *
+   * Empty and pending are not the same answer and the page must not draw them the same
+   * way: *still arriving* becomes an ordinary season list in a moment, and *TMDB lists
+   * none* is the whole truth about the title. This is `title.episodes_mirrored_at IS NULL`
+   * and nothing inferred — inferring it from `episodes.length === 0` is the exact
+   * conflation the column was added to end (#271).
+   *
+   * **False for a film, always.** A film has nothing to wait for and no episode region for
+   * a pending line to stand in; the add stamps it on the way in, and the `kind` test here
+   * is what keeps a row that somehow escaped that from putting one on its page.
+   */
+  readonly episodesPending: boolean;
 }
 
 /**
@@ -3993,6 +4197,7 @@ export async function getTitleDetail(
       runtimeMins: title.runtimeMins,
       state: libraryEntryState.state,
       rating: libraryEntry.rating,
+      episodesMirroredAt: title.episodesMirroredAt,
     })
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -4043,10 +4248,12 @@ export async function getTitleDetail(
     .where(eq(episode.titleId, row.titleId))
     .orderBy(episode.seasonNo, episode.episodeNo);
 
+  const kind = kindFrom(row.kind);
+
   return {
     libraryEntryId: row.libraryEntryId,
     titleId: row.titleId,
-    kind: kindFrom(row.kind),
+    kind,
     tmdbId: row.tmdbId,
     name: row.name,
     releaseYear: row.releaseYear,
@@ -4054,6 +4261,7 @@ export async function getTitleDetail(
     runtimeMins: row.runtimeMins,
     state: stateFrom(row.state),
     rating: row.rating,
+    episodesPending: kind === "show" && row.episodesMirroredAt === null,
     episodes: episodeRows.map((one) => ({
       id: one.id,
       seasonNo: one.seasonNo,

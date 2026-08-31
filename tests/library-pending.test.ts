@@ -8,6 +8,7 @@ import TitleDetailLoading from "@/app/(signed-in)/library/[entryId]/loading";
 import RemoveTitleLoading from "@/app/(signed-in)/library/[entryId]/remove/loading";
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import LibraryLoading from "@/app/(signed-in)/library/loading";
+import { ProgrammeNoteEpisodes } from "@/app/(signed-in)/library/programme-note-episodes";
 import { PendingLine } from "@/app/pending-line";
 import { ReadFailure } from "@/errors/read-failure";
 
@@ -141,6 +142,67 @@ describe("a pending library is not an empty one and not a failed one", () => {
   it("paints the library's own heading immediately", () => {
     expect(pending).toContain("The library");
     expect(pending).toContain('id="library-heading"');
+  });
+});
+
+/**
+ * **A title whose episodes have not mirrored is not a title with no episodes** — issue
+ * #272, and the third collapse of the pair this file exists to keep apart.
+ *
+ * The episode region has drawn one sentence for two states since #58: *No episode data
+ * yet*, for a show still waiting for its mirror and for a show TMDB genuinely lists nothing
+ * for. Since #271 the row carries the difference, and this is the surface holding it.
+ *
+ * The direction of the lie is what makes it worth a test. A reader who has just added a
+ * show and is told it has no episodes concludes the add did not work; nothing throws,
+ * nothing is logged, and the sentence becomes true-looking again the moment the mirror
+ * lands, so it never reproduces for anybody looking for it.
+ */
+describe("a title whose episodes have not mirrored reads as pending, not as empty", () => {
+  const region = (episodesPending: boolean, kind: "show" | "film" = "show") =>
+    markupOf(
+      createElement(ProgrammeNoteEpisodes, {
+        kind,
+        episodes: [],
+        libraryEntryId: "entry-1",
+        titleName: "Andor",
+        episodesPending,
+      }),
+    );
+
+  const pending = region(true);
+  const empty = region(false);
+
+  it("does not tell a reader the show has no episodes while they are still arriving", () => {
+    expect(empty).toContain("No episode data yet");
+    expect(pending).not.toContain("No episode data yet");
+  });
+
+  it("draws DESIGN.md §9's line, and draws it politely", () => {
+    expect(pending).toContain('role="status"');
+    expect(pending).not.toContain('role="alert"');
+    expect(pending).toContain("code-line");
+    expect(pending).toContain("text-dim");
+    expect(pending).toContain("Reading");
+  });
+
+  /**
+   * §9's four reasons, held here as they are held for the line itself: no skeleton, no
+   * shimmer, and no accent. A season list is precisely the shape a builder would reach for
+   * a skeleton of — twelve grey rows — and §9's first reason is that twelve grey rows are a
+   * count of something nobody knows yet.
+   */
+  it("has no skeleton, no shimmer and no accent", () => {
+    expect(pending).not.toContain("animate-");
+    expect(pending).not.toContain("stagger-rise");
+    expect(pending).not.toContain("accent");
+    expect(pending).not.toContain("<button");
+  });
+
+  it("never draws a pending region for a film", () => {
+    // A film has no episode region at all, so there is nothing here for a pending line to
+    // stand in — and `getTitleDetail` never reports one as pending either.
+    expect(region(true, "film")).toBe("");
   });
 });
 

@@ -374,7 +374,7 @@ Settled by [#137](https://github.com/Joyaroin/MediaSafe/issues/137), which is wh
 
 | Rail | Rule |
 |---|---|
-| **Ongoing** | *watching* ∩ the **12 most recently watched** |
+| **Ongoing** | a **pending** title — episodes not mirrored — newest added first; then *watching* ∩ the **12 most recently watched** |
 | **Coming back** | *caught up* ∧ the next episode's air date is in the future |
 | **Old friends** | *watching*, everything not in Ongoing |
 
@@ -383,9 +383,20 @@ cold**, and Up next before this treated every one of them identically to somethi
 
 Four things about it that are rules and not implementation:
 
-- **All of it comes from the existing views.** No column is added, no view is added, and no derived
-  state is stored — a rail is a grouping over `library_entry_state` and the ordering above, evaluated
-  on read like everything else in this model (ADR-0001).
+- **All of it comes from the existing views.** No view is added and no derived state is stored — a
+  rail is a grouping over `library_entry_state` and the ordering above, evaluated on read like
+  everything else in this model (ADR-0001).
+
+  **Amended by [#272](https://github.com/Joyaroin/MediaSafe/issues/272): one column is read, and
+  *no column is added* is reversed.** Ongoing also reads `title.episodes_mirrored_at`, which
+  [#271](https://github.com/Joyaroin/MediaSafe/issues/271) added and ADR-0001 amendment 11 argues.
+  A title whose episodes have not mirrored has no watches, no progress and no
+  `library_entry_up_next` row, so the projection cannot reach it however it is grouped — and being
+  absent from Up next is exactly the wrong answer for a title the reader has just added. The column
+  is **not** a stored copy of derived state: nothing else in the database knows whether a mirror has
+  run, and inferring it from *this title has no episode rows* was refused outright because it makes
+  *still arriving* and *genuinely has none* the same state. The rails stay three, the twelve is
+  unchanged, and `DESIGN.md` §7 and §9 carry the rest.
 - **Twelve is a chosen number.** The measured signal was an empty 61–90 day gap, which suggests a
   60-day threshold; a *count* was chosen because it is self-correcting — never empty after a quiet
   month, never 199 long after a binge year. It is a **build-time constant**: not a stored setting, not
