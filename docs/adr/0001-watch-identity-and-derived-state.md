@@ -222,6 +222,46 @@ things around it that are not are listed here, newest last.
 
     **Nothing renders either field yet**, which makes this verifiable rather than demoable and is
     said plainly rather than left for someone to discover.
+11. **A title's episodes can be *pending*, and the database is what says so** —
+    [#271](https://github.com/Joyaroin/MediaSafe/issues/271), 2026-08-31. `title` gains a nullable
+    `episodes_mirrored_at`. NULL means this title's episodes have not been mirrored; a timestamp
+    means they have, as of then.
+
+    **The column exists because adding a show stopped waiting for them.** The add used to fetch the
+    series and every season of it before answering the press — one request, then one per season, in
+    front of a reader holding a control that had not come back. It now writes the `title` row from
+    the series alone and returns; the season-and-episode mirror runs after the response through
+    Next's `after()`, and stamps this column when it lands. Nothing else about the mirror changes:
+    it is the same `mirrorTitle` upsert, from the same mapping, written by the same function the
+    nightly sweep writes through.
+
+    **Inferring pending from "this title has no episode rows" is rejected outright**, and this is
+    the decision rather than the column. That inference makes *still arriving* and *genuinely has
+    none* the same state, and both exist: TMDB lists shows with no episodes at all, and a mirror
+    that has not landed is not one of them. The five states are still derived and nothing here is
+    stored *state* — this is a fact about the mirror, in the borrowed half of the schema, beside
+    `metadata_refreshed_at`, which has always recorded when the same rows were last written.
+
+    **A film is stamped on the way in.** It has no seasons to fetch, so there is nothing it could
+    be waiting for, and leaving the column NULL on films would make it read as *does not apply* on
+    half the table — a third meaning for a column with two.
+
+    **Nullable, additive, no backfill, and `DEFAULT now()` is what stamps the rows that were already
+    there.** Every title in the database was mirrored whole on the way in, so complete is the truth
+    about all of them; a backfill script would be a second writer of global rows and therefore a
+    second definition of what a mirrored title contains (amendment 5's reason, amendment 10's
+    precedent). The default stays on the column afterwards for the same reason it was right during
+    the migration: a row written by something that has not heard of pending was written from a whole
+    mirror. The one path that means NULL writes it explicitly.
+
+    **A mirror that fails behind a response raises nothing.** The library entry landed before the
+    fetch was attempted, so no write was lost and `SPEC.md` §3.3's toast does not apply. The failure
+    is reported to Sentry as the sweep reports its own, and the title stays pending — which is both
+    true and the retry, because the sweep now asks for unstamped titles **first**. That is a new
+    tier ahead of the two below: the other tiers describe titles that are wholly mirrored and merely
+    stale, and by `metadata_refreshed_at` a title added a minute ago is the newest row in the table,
+    so without it a failed mirror would be reached last and stay pending for days. The index in
+    *Indexes* is that query's, read by `IS NULL`.
 
 ## Context
 
@@ -346,7 +386,9 @@ CREATE TABLE title (
   in_production         boolean,      -- shows only; NULL for films
   runtime_mins          smallint,     -- films only
   metadata_refreshed_at timestamptz NOT NULL DEFAULT now(),
-
+  episodes_mirrored_at  timestamptz DEFAULT now(),  -- amendment 11; NULL = the episodes have
+                                            -- not been mirrored. Stamped when they land, and
+                                            -- at add time for a film, which has none to wait for
   UNIQUE (kind, tmdb_id)              -- TMDB numbers films and shows separately
 );
 
@@ -483,6 +525,7 @@ CREATE INDEX ON watch (library_entry_id);
 CREATE INDEX ON watch (episode_id);
 CREATE INDEX ON watch (user_id, watched_at) WHERE watched_at IS NOT NULL;  -- streak, year in review
 CREATE INDEX ON title (metadata_refreshed_at);                             -- the nightly sweep
+CREATE INDEX ON title (episodes_mirrored_at);                              -- amendment 11; pending titles, by IS NULL
 CREATE INDEX ON library_entry (user_id);
 ```
 
@@ -671,6 +714,8 @@ reconciliation that use it rather than alongside them.
 interval of **once per day** with ±59 minutes of precision — verified against Vercel's own limits
 table — which is sufficient. Each run refreshes, in priority order:
 
+0. titles whose `episodes_mirrored_at` is NULL — a mirror that was scheduled behind an add's
+   response and did not land *(amendment 11)*;
 1. shows with `in_production = true` whose next air date has passed since their last refresh;
 2. otherwise, the titles with the oldest `metadata_refreshed_at`.
 

@@ -244,6 +244,20 @@ export async function libraryCatalogueKeys(
   return new Set(keys.map(catalogueKeyOf).filter((key) => held.has(key)));
 }
 
+/**
+ * Whether the mirror being written carries this title's episodes (issue #271).
+ *
+ * `"mirrored"` on every path that fetched the whole thing — the import, the nightly
+ * refresh, a repoint, a film, which has no seasons to fetch. `"pending"` on the one path
+ * that deliberately did not: the add writes the `title` row from the series alone so the
+ * press can be answered, and the seasons follow after the response.
+ *
+ * It is spelled as a word rather than a boolean because a bare `false` at a call site
+ * says nothing about what is false, and the two states are read off the column by
+ * everything downstream.
+ */
+export type EpisodesMirrored = "mirrored" | "pending";
+
 /** One title's global rows, as they stand after being mirrored. */
 interface MirroredTitle {
   readonly id: string;
@@ -285,8 +299,21 @@ interface MirroredTitle {
  *
  * **Not exported, and takes no user id**, because it touches no owned row. It is called
  * inside a transaction its caller opened; it opens none of its own.
+ *
+ * ── `episodes`, and the only way a title is ever pending (issue #271) ────────────────
+ *
+ * `episodes_mirrored_at` moves to `now()` on `"mirrored"` — on the insert and on the
+ * conflict, so a refresh **rescues** a title that was left pending — and is written as
+ * `NULL` on `"pending"`, which is the add path writing a `title` row from the series
+ * alone. On `"pending"` the conflict leaves the column exactly as it found it: a title
+ * another account already mirrored whole must not be taken back to pending for everybody
+ * because somebody added it a second time.
  */
-async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredTitle> {
+async function mirrorTitle(
+  tx: Executor,
+  mirror: TitleMirror,
+  episodes: EpisodesMirrored = "mirrored",
+): Promise<MirroredTitle> {
   const [mirrored] = await tx
     .insert(title)
     .values({
@@ -299,6 +326,10 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
       posterPath: mirror.posterPath,
       inProduction: mirror.inProduction,
       runtimeMins: mirror.runtimeMins,
+      // Written on both branches rather than left to the column's `DEFAULT now()`, so
+      // that a pending row is created by a statement somebody wrote and not by the
+      // absence of one.
+      episodesMirroredAt: episodes === "mirrored" ? sql`now()` : null,
     })
     .onConflictDoUpdate({
       target: [title.kind, title.tmdbId],
@@ -317,6 +348,12 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
         inProduction: sql`excluded.in_production`,
         runtimeMins: sql`excluded.runtime_mins`,
         metadataRefreshedAt: sql`now()`,
+        /**
+         * Stamped by a write that carried the episodes, and left alone by one that did
+         * not — never `excluded.episodes_mirrored_at`, which would take a complete title
+         * back to pending the moment a second account added it (issue #271).
+         */
+        ...(episodes === "mirrored" ? { episodesMirroredAt: sql`now()` } : {}),
       },
     })
     .returning({ id: title.id });
@@ -325,7 +362,7 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
     return { id: mirrored.id, episodeIds: new Map() };
   }
 
-  const episodes = await tx
+  const episodeRows = await tx
     .insert(episode)
     .values(
       mirror.episodes.map((one) => ({
@@ -358,7 +395,7 @@ async function mirrorTitle(tx: Executor, mirror: TitleMirror): Promise<MirroredT
 
   return {
     id: mirrored.id,
-    episodeIds: new Map(episodes.map((one) => [one.tmdbEpisodeId, one.id])),
+    episodeIds: new Map(episodeRows.map((one) => [one.tmdbEpisodeId, one.id])),
   };
 }
 
@@ -415,6 +452,19 @@ function asSweepCandidate(row: {
  * Which titles the nightly sweep refreshes next, in ADR-0001's priority order, capped at
  * `cap` in total.
  *
+ * ── Tier 0: a title whose episodes have never arrived (issue #271) ───────────────────
+ *
+ * `episodes_mirrored_at IS NULL` — a show whose season-and-episode mirror was scheduled
+ * behind an add's response and did not land, because TMDB was unreachable or the process
+ * ended first. It is first because it is the only tier where something is *missing*
+ * rather than *stale*: the other two describe titles that are wholly mirrored and merely
+ * out of date, and a reader is looking at this one right now, on the tab they added it
+ * for. By `metadata_refreshed_at` it is the newest row in the table, so without this tier
+ * it would be reached last and stay pending for days.
+ *
+ * The sweep needs no new mechanism to rescue it: `refreshTitleMirror` writes the whole
+ * mirror and stamps the column as part of the same upsert every other tier goes through.
+ *
  * ── Tier 1: a show that may have just aired something new ────────────────────────────
  *
  * `in_production = true` **and** an episode whose `air_date` fell after the title's own
@@ -429,13 +479,13 @@ function asSweepCandidate(row: {
  *
  * ── "Come first" is exclusion, not a tiebreak ─────────────────────────────────────────
  *
- * Tier 1 is answered in full — up to `cap` — before tier 2 is asked at all, and tier 2
- * explicitly excludes tier 1's rows rather than merely being asked to sort after them:
- * two `ORDER BY` terms could not express "come first" here, because a tier-1 title's own
- * `metadata_refreshed_at` may well be newer than plenty of tier-2 titles it must still
- * precede. The second query only runs, and only asks for the remainder, when the first
- * did not already fill the cap — the same short-circuit `libraryCatalogueKeys` takes for
- * an empty `keys` array, and for the same reason: no query is the cheapest query.
+ * Each tier is answered in full — up to `cap` — before the next is asked at all, and each
+ * excludes the rows already spoken for rather than merely being asked to sort after them:
+ * two `ORDER BY` terms could not express "come first" here, because an earlier tier's own
+ * `metadata_refreshed_at` may well be newer than plenty of later-tier titles it must still
+ * precede. A query only runs, and only asks for the remainder, when the ones before it did
+ * not already fill the cap — the same short-circuit `libraryCatalogueKeys` takes for an
+ * empty `keys` array, and for the same reason: no query is the cheapest query.
  */
 export async function titlesDueForRefresh(
   cap: number = NIGHTLY_SWEEP_CAP,
@@ -463,28 +513,46 @@ export async function titlesDueForRefresh(
       ),
   );
 
-  const tier1Rows = await executor
+  const tier0Rows = await executor
     .select(columns)
     .from(title)
-    .where(and(eq(title.kind, "show"), eq(title.inProduction, true), airedSinceLastRefresh))
+    .where(isNull(title.episodesMirroredAt))
     .orderBy(asc(title.metadataRefreshedAt), title.id)
     .limit(cap);
 
+  const tier0 = tier0Rows.map(asSweepCandidate);
+  if (tier0.length >= cap) return tier0;
+
+  /** Every id already spoken for by an earlier tier — see "come first" above. */
+  const taken = tier0.map((row) => row.id);
+
+  const tier1Rows = await executor
+    .select(columns)
+    .from(title)
+    .where(
+      and(
+        eq(title.kind, "show"),
+        eq(title.inProduction, true),
+        airedSinceLastRefresh,
+        taken.length > 0 ? notInArray(title.id, taken) : undefined,
+      ),
+    )
+    .orderBy(asc(title.metadataRefreshedAt), title.id)
+    .limit(cap - tier0.length);
+
   const tier1 = tier1Rows.map(asSweepCandidate);
-  if (tier1.length >= cap) return tier1;
+  if (tier0.length + tier1.length >= cap) return [...tier0, ...tier1];
+
+  taken.push(...tier1.map((row) => row.id));
 
   const tier2Rows = await executor
     .select(columns)
     .from(title)
-    .where(
-      tier1.length > 0
-        ? notInArray(title.id, tier1.map((row) => row.id))
-        : undefined,
-    )
+    .where(taken.length > 0 ? notInArray(title.id, taken) : undefined)
     .orderBy(asc(title.metadataRefreshedAt), title.id)
-    .limit(cap - tier1.length);
+    .limit(cap - tier0.length - tier1.length);
 
-  return [...tier1, ...tier2Rows.map(asSweepCandidate)];
+  return [...tier0, ...tier1, ...tier2Rows.map(asSweepCandidate)];
 }
 
 /**
@@ -718,14 +786,23 @@ export interface AddOutcome {
  *  - **`library_entry`** does nothing on conflict and reports it. A title already in your
  *    library is not added twice, and the caller is told which of the two happened rather
  *    than being left to assume.
+ *
+ * ── `episodes`, defaulted, and the one caller that passes it (issue #271) ────────────
+ *
+ * `"mirrored"` by default, because every caller before #271 handed this function a whole
+ * mirror. The search screen's add now hands it the series alone and passes `"pending"`,
+ * so the press can be answered before the seasons are fetched; `mirrorTitle` carries what
+ * that does to the column. It is last and defaulted so that the three call sites that
+ * were correct before this argument existed remain correct without naming it.
  */
 export async function addTitleToLibrary(
   userId: UserId,
   mirror: TitleMirror,
   executor: Executor = getDb(),
+  episodes: EpisodesMirrored = "mirrored",
 ): Promise<AddOutcome> {
   return executor.transaction(async (tx) => {
-    const mirrored = await mirrorTitle(tx, mirror);
+    const mirrored = await mirrorTitle(tx, mirror, episodes);
 
     const created = await tx
       .insert(libraryEntry)

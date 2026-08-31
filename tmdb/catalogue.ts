@@ -328,6 +328,34 @@ export async function titleMirror(
 }
 
 /**
+ * The `title` row and nothing under it — one request, whatever the kind (issue #271).
+ *
+ * This is `titleMirror` above without the per-season fetches, and it exists because those
+ * are what made adding a show slow: the series costs one request and the seasons cost one
+ * apiece, in front of a reader waiting for the press to come back. The add writes the row
+ * this returns, answers, and lets `titleMirror` run behind the response.
+ *
+ * A **film** is the same call as `titleMirror` makes, because a film has no seasons to
+ * skip — it delegates rather than restating `/movie/{id}`, so there is one place a film's
+ * mirror is fetched from.
+ *
+ * `episodes` comes back empty for a show, and the caller must not read that as *this show
+ * has no episodes*: `db/access.ts` writes the row as pending, which is the distinction
+ * ADR-0001 amendment 11 exists to keep.
+ */
+export async function titleRowMirror(
+  kind: TitleKind,
+  tmdbId: number,
+): Promise<TitleMirror> {
+  if (kind === "film") return titleMirror(kind, tmdbId);
+
+  const show = await get<TmdbShowPayload>(`/tv/${tmdbId}`, {
+    append_to_response: SHOW_EXTERNAL_IDS_APPEND,
+  });
+  return showMirror(show, []);
+}
+
+/**
  * `items` through `run`, at most `size` at a time.
  *
  * `Promise.all` over the batch, so one failed season fails the whole add — which is the
