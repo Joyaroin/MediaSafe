@@ -387,8 +387,13 @@ function CardBody({
  * resolves by the order it *emits* them in, not by the order they appear in the `class`
  * attribute. `app/globals.css`'s `--poster-radius` note is the same trap written down once
  * already. So each branch states its own width and neither has to win an argument.
+ *
+ * `pressable` for the same reason `RECORDING_HIT_BOX` gained it in #270: recording a watch
+ * is what this card is for, and it pressed flat. Both hit boxes carry it because both are
+ * places the act happens, and the card's own `pressable` link (above) is a sibling of this
+ * button rather than its parent, so the two presses never compound.
  */
-const CHECK_HIT_BOX = `group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
+const CHECK_HIT_BOX = `pressable group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
 
 function MarkControl({ mark }: { mark: UpNextMark }) {
   const { episode, undoable, pending } = mark;

@@ -1493,9 +1493,18 @@ transition token* — an accurate description of a build whose entire vocabulary
 easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
 the app; all four of those absences are now present on purpose. What governs it:
 
-- **Three duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
-  (`380ms`) — and three easings: `--ease-press` (unchanged, the arrival curve),
-  `--ease-out-quart`, `--ease-in-out-soft`.
+- **Four duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
+  (`380ms`), `--dur-press` (`425ms`) — and four easings: `--ease-press` (unchanged, the
+  arrival curve, and misnamed — it is not the press), `--ease-out-quart`,
+  `--ease-in-out-soft`, and `--spring-press`.
+
+  **This said *three and three* until #270, and the fourth of each arrived together
+  because they are one value.** `--spring-press` is a spring, and a spring's shape is
+  meaningless without the time it settles over: replaying it at `--dur-fast` is not this
+  spring played briskly, it is a spring with a different response. `425ms` is not a taste
+  in the ramp above — it is where `snappy`'s own oscillation falls under a thousandth,
+  computed rather than chosen, which is why it sits outside the three-step scale instead
+  of being rounded into it.
 - **Exits run at `--dur-fast` against entrances at `--dur-base` or slower.** Arriving is
   where the character lives; leaving is where impatience does.
 
@@ -1524,6 +1533,17 @@ the app; all four of those absences are now present on purpose. What governs it:
   transition or keyframe and reads its timing from the tokens above. A CSS transition
   cannot be redirected once running: reverse it halfway and it restarts from a standstill
   at the new target, which is the exact glassiness the springs exist to remove.
+
+  **#270 corrects what that rule was quietly also claiming, and this is written as a
+  reversal rather than an edit.** *Stays a CSS transition* had come to mean *and is
+  therefore flat*, which is how every control in the application ended up pressing on an
+  ease-out with nothing on the way out — the checkmark that records a watch included. The
+  two properties were being treated as one and they are not: **interruptibility needs a
+  runtime, a curve does not.** `linear()` holds an arbitrary function of time, so a CSS
+  transition can carry a spring's exact shape while still being uncatchable — which is
+  fine, because nothing was catching a press anyway. The dividing line above is unchanged:
+  it still decides *where the animation is authored*. It no longer also decides *whether
+  the thing may be a spring*.
 - **The springs are transcribed, not invented.** SwiftUI describes a spring as a *response*
   and a *damping fraction*; Motion accepts the same perceptual pair as `duration` and
   `bounce`, where `bounce ≈ 1 - dampingFraction`. `smooth` / `snappy` / `bouncy` carry
@@ -1566,6 +1586,25 @@ no importer between them, so the build always ran the CSS one while the numbers 
 apart (the cap was `10` in both places by luck, not by construction). The five are gone.
 What lives in `app/motion.ts` is what only Motion can express: the springs, for the things
 a finger can catch mid-flight.
+
+**#270 kept that conclusion and reversed the reason under the press's half of it.** The
+sentence above is still true — the press is in `globals.css` and nowhere else — but *what
+only Motion can express* was doing work it cannot do. It was read as *the press is in CSS
+because a press does not deserve a spring*, and the honest version is narrower: **Motion is
+what only Motion can express, and that is interruptibility, not spring shape.**
+`.pressable`'s timing function is now `--spring-press`, which is `snappy` — response
+`0.30`, damping fraction `0.85` — sampled into a `linear()` curve, so a control animated in
+CSS and one animated by Motion are the same spring rather than two dialects of one
+vocabulary. What kept the press in CSS is the half of the old argument that was always
+load-bearing and is untouched by this: every tile, cell and row wearing `pressable` stays a
+server component, a rail of them adds no per-frame JavaScript, and the earlier
+performance pass's savings are kept whole.
+
+The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts`
+imports `snappy`, recomputes all 33 samples from the closed form for a damped oscillator's
+step response, and fails if either side moves — the discipline `tests/palette.test.ts`
+exists to enforce, applied here before the drift rather than after it, because 33 numbers
+in a stylesheet are the definitive example of a value nobody can check by eye.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what
