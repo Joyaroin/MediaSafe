@@ -62,15 +62,26 @@ import { isPendingEntry, type UpNextRailEntry } from "@/db/access";
  *
  * ── The transition name lives here only while the tile owns it ───────────────────────
  *
- * Issue #141's morph pairs this poster with the pane's by giving both the same
- * `view-transition-name` (`rail-poster-{id}`, `programme-note.tsx`'s half of this). A
- * name can only ever mark one on-screen element at a time, so once this entry is
+ * Issue #141's morph pairs this poster with its destination's by giving both the same
+ * `view-transition-name` — `rail-poster-{id}`, minted in `poster-transition-name.ts`, and
+ * since #275 the app's **only** family. The destination is whichever surface the click
+ * opens: the pane on the desktop (`programme-note.tsx`'s half of this) and the title's own
+ * page on the phone (`[entryId]/title-detail-view.tsx`), which used to hold a second
+ * family of its own and no longer does. So the poster travels on both sides of the
+ * breakpoint, and on the phone the morph survives the navigation rather than being lost to
+ * it.
+ *
+ * A name can only ever mark one on-screen element at a time, so once this entry is
  * selected the tile drops it — the pane is the one showing that poster now — and picks
  * it back up the moment something else is selected, ready to be the next morph's start.
  * Without the drop, the instant a second tile is picked the pane would be mounting a
  * second `rail-poster-{id}` for the *first* tile's id while this one is still sitting on
  * screen holding the original, and the browser skips a transition it finds duplicated
  * rather than guessing which one wins.
+ *
+ * **On the phone there is nothing to drop**, and that is why the same one name is safe on
+ * both sides: the navigation replaces the page and takes this tile with it, so the name is
+ * free before the destination's poster ever mounts.
  */
 
 /**

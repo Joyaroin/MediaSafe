@@ -225,3 +225,82 @@ describe("both directions are drawn, and only on the phone", () => {
     expect(MASTHEAD).toContain("lg:hidden");
   });
 });
+
+/**
+ * ── The poster morph survives the navigation — issue #275 ────────────────────────────
+ *
+ * The tab slide above is not the only transition on the phone. Opening a title from an Up
+ * next rail is a route navigation *and* a morph: the tile's poster travels into the page's
+ * hero, so the navigation reads as opening the thing the reader touched.
+ *
+ * > **⚠️ This reverses what §8 and these files said until #275**, which was that the morph
+ * > needed **two** name families — one for the desktop pane, one for the phone — because
+ * > the phone's title sheet and the phone's route could be showing the same title at once.
+ * > #268 deleted the sheet and both route interceptions, so the phone's tile now navigates
+ * > to the same `/library/{id}` the desktop pane's contents already describe. There is one
+ * > destination, so there is one family.
+ *
+ * Each of these fails silently. A destination left on the retired family renders a
+ * `view-transition-name` with nothing to pair against, and the browser simply runs no
+ * morph — no error, no warning, and a navigation that looks merely unanimated.
+ */
+const TILE = readFileSync("app/(signed-in)/up-next/up-next-tile.tsx", "utf8");
+const DETAIL_VIEW = readFileSync(
+  "app/(signed-in)/library/[entryId]/title-detail-view.tsx",
+  "utf8",
+);
+const PANE = readFileSync("app/(signed-in)/library/programme-note.tsx", "utf8");
+
+describe("the poster morph, on one transition-name family", () => {
+  it("gives the rail tile and the page it opens the same name", () => {
+    // Same minting function, same argument shape: the tile's entry id and the page's.
+    expect(TILE).toContain("railPosterTransitionName(entry.libraryEntryId)");
+    expect(DETAIL_VIEW).toContain(
+      "posterTransitionName={railPosterTransitionName(current.libraryEntryId)}",
+    );
+  });
+
+  it("keeps every half minting from the shared module rather than spelling the name", () => {
+    for (const [label, source] of [
+      ["up-next-tile.tsx", TILE],
+      ["title-detail-view.tsx", DETAIL_VIEW],
+      ["programme-note.tsx", PANE],
+    ] as const) {
+      expect(source, `${label} imports the minting function`).toMatch(
+        /import \{ railPosterTransitionName \} from "[^"]*poster-transition-name"/,
+      );
+      // A hand-written template literal is how the two families drifted apart in the first
+      // place — a rename would touch the module and leave the copy behind.
+      expect(source, `${label} spells a name by hand`).not.toMatch(
+        /`[a-z]+-poster-\$\{/,
+      );
+    }
+  });
+
+  it("drops the tile's name once its destination holds it", () => {
+    // A name can only mark one on-screen element at a time. The tile carries it in exactly
+    // one branch — the unselected one — so the moment the desktop pane is showing that
+    // poster the tile has already let go, and the browser never sees the name twice.
+    expect(TILE.match(/<ViewTransition/g)).toHaveLength(1);
+    expect(TILE.indexOf("selected ? (")).toBeGreaterThan(-1);
+    expect(TILE.indexOf("selected ? (")).toBeLessThan(TILE.indexOf("<ViewTransition"));
+  });
+
+  it("still hands the desktop programme note pane the morph, in both its frames", () => {
+    // `loading` is the first half of the morph (§9's radius 3), not a placeholder that
+    // happens to show a poster; `loaded` is the same name one phase on.
+    expect(PANE).toContain("transitionName={railPosterTransitionName(selectedEntryId)}");
+    expect(PANE).toContain(
+      "posterTransitionName={railPosterTransitionName(phase.detail.libraryEntryId)}",
+    );
+  });
+
+  it("leaves the fixed chrome out of the root snapshot, exactly as before", () => {
+    // The morph collapsing to one family must not disturb what is held still under it.
+    expect(TAB_BAR).toContain('viewTransitionName: "phone-tab-bar"');
+    expect(MASTHEAD).toContain('viewTransitionName: "phone-masthead"');
+    expect(GLOBALS).toMatch(
+      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+    );
+  });
+});

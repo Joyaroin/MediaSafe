@@ -1,35 +1,31 @@
 /**
- * The two transition-name families the poster morph (#141) pairs a source tile with its
- * destination poster by. One function per family, so a rename touches this file rather
- * than the several call sites that used to spell the template literal by hand — the
- * desktop rail tile and the programme note pane share `rail-poster-{id}`
- * (`up-next-tile.tsx`, `programme-note.tsx`), and the title detail route holds
- * `group-poster-{id}` (`[entryId]/title-detail-view.tsx`).
+ * The one transition-name family the poster morph (#141) pairs a source tile with its
+ * destination poster by. One function, so a rename touches this file rather than the
+ * several call sites that used to spell the template literal by hand: the rail tile
+ * (`up-next-tile.tsx`), the desktop programme note pane (`programme-note.tsx`) and the
+ * title's own page (`[entryId]/title-detail-view.tsx`) all mint `rail-poster-{id}`.
  *
- * `programme-note-content.tsx`'s own docblock is why the two families stay disjoint rather
- * than becoming one function: the desktop pane and the phone route can both be showing the
- * same title at once, and a shared name would pair the wrong two elements.
+ * ── ⚠️ There were two families until #275, and this reverses that ────────────────────
  *
- * ── ⚠️ The group family currently has a destination and no source (#250) ─────────────
+ * > The rule this file carried was: *the two families stay disjoint rather than becoming
+ * > one function, because the desktop pane and the phone route can both be showing the
+ * > same title at once, and a shared name would pair the wrong two elements.* The desktop
+ * > pane held `rail-poster-{id}`; a second function minted `group-poster-{id}` for the
+ * > phone's sheet and the phone's route.
  *
- * `group-poster-{id}` was minted by the phone's Up next group tile, which pressed through
- * to `/library/[entryId]` and morphed its poster into that page's. #250 deleted that tile
- * along with the five vertical groups, and **nothing produces the name any more**: the
- * phone's remaining route into title detail is `selectable-entry.tsx`, which pushes without
- * a transition name, and the new episode card links to the same route without one either.
+ * That reasoning described a phone with **two** destinations — a title sheet raised over
+ * `/up-next`, and a `/library/{id}` route reached by an interception. #268 deleted both
+ * interceptions and the sheet with them, and every tile and card on Up next now navigates
+ * to the same page. The two surfaces that needed separate names are one surface, so the
+ * families collapse to one and the second minting function is gone with no caller.
  *
- * A `view-transition-name` with nothing to pair against is inert rather than broken — the
- * browser simply runs no morph — so this is a **dormant half**, not a bug. It is recorded
- * here rather than deleted for two reasons: `title-detail-view.tsx` is a real destination
- * that a future source can pair with, and #254's episode detail is the obvious candidate.
- * Whoever picks it up should either give the phone's card the matching name or delete both
- * halves; what must not happen is this quietly becoming folklore about a morph that no
- * longer runs.
+ * The "same title at once" case the old note worried about was a reader on the desktop
+ * pane with the phone route open **in another tab** — two documents, never one, and a
+ * `view-transition-name` has never been shared across documents. What is genuinely on
+ * screen together is the rail tile and its destination, and that pair is what the
+ * name-drop handles: the tile releases the name the moment the pane holds it
+ * (`up-next-tile.tsx`), and on the phone the tile is gone with the page it left.
  */
 export function railPosterTransitionName(libraryEntryId: string): string {
   return `rail-poster-${libraryEntryId}`;
-}
-
-export function groupPosterTransitionName(libraryEntryId: string): string {
-  return `group-poster-${libraryEntryId}`;
 }

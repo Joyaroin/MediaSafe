@@ -84,15 +84,18 @@ import { UpNextRow } from "./up-next-row";
  *
  * ── `posterTransitionName`, the morph's second half ───────────────────────────────────
  *
- * Issue #141. Each caller hands this the same name its own source tile carries —
- * `rail-poster-{id}` from `programme-note.tsx`'s `loading` frame on desktop, and
- * `group-poster-{id}` from the phone route, whose source tile #250 deleted (see
- * `poster-transition-name.ts`: that family has a destination and no source until something
- * mints the name again) — so this poster is what the browser morphs the tile into where
- * there is still a tile to morph. The two callers use different name families on purpose:
- * the desktop pane and the phone route can both be showing the same title at once (a
- * reader on desktop who also opens the phone route in another tab), and a name shared
- * across them would pair the wrong two elements.
+ * Issue #141. Both callers hand this the same name the rail tile carries —
+ * `rail-poster-{id}`, minted in `poster-transition-name.ts` — so this poster is what the
+ * browser morphs that tile into, whether the tile's destination is the desktop pane
+ * (`programme-note.tsx`'s `loading` frame, then this) or the title's own page on the phone
+ * (`[entryId]/title-detail-view.tsx`).
+ *
+ * > **⚠️ This reverses what this file said until #275**, which was: *the two callers use
+ * > different name families on purpose — the desktop pane and the phone route can both be
+ * > showing the same title at once, and a name shared across them would pair the wrong two
+ * > elements.* The phone had two destinations then, a sheet over `/up-next` and a route;
+ * > #268 left it with one, so the second family had nothing left to keep apart.
+ * > `poster-transition-name.ts` carries the argument in full.
  *
  * `key={posterTransitionName}` carries the same weight `programme-note.tsx`'s `Loading`
  * gives its own poster, for the identical reason: this component is never remounted on

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 
 import type { TitleDetailRow } from "@/db/access";
-import { groupPosterTransitionName } from "../poster-transition-name";
+import { railPosterTransitionName } from "../poster-transition-name";
 import { ProgrammeNoteContent } from "../programme-note-content";
 
 /**
@@ -24,16 +24,21 @@ import { ProgrammeNoteContent } from "../programme-note-content";
  * of `ProgrammeNoteContent` answer a landed write identically rather than one of them
  * relying on a topology property to be safe.
  *
- * `posterTransitionName` is `group-poster-{id}` — issue #141, and the half of the morph
- * this route owns. **It currently has no other half**: the phone's Up next group tile
- * minted the matching name and #250 deleted it, so nothing produces `group-poster-{id}`
- * any more and the browser runs no morph into this page. That is inert rather than broken,
- * and `poster-transition-name.ts` carries the whole argument and the decision to leave the
- * name standing for a future source rather than delete both halves. Both name families and
- * the reason this one differs from the desktop pane's `rail-poster-{id}` are on
- * `programme-note-content.tsx`'s own docblock. Next's route navigations are transitions
- * on their own — Next's [View transitions guide](https://nextjs.org/docs/app/guides/view-transitions)
- * says so — so nothing here has to ask for one the way the desktop pane's `select` does.
+ * `posterTransitionName` is `rail-poster-{id}` — issue #141, and the half of the morph
+ * this route owns.
+ *
+ * > **⚠️ This reverses what this file said until #275**, which was: *this route holds
+ * > `group-poster-{id}`, a second family, and it currently has no other half — the tile
+ * > that minted the matching name was deleted, so the browser runs no morph into this
+ * > page.* The second family existed because the phone had two destinations, a sheet and
+ * > a route; #268 deleted the sheet and both interceptions, so there is one destination
+ * > and one family. `poster-transition-name.ts` carries the whole argument.
+ *
+ * The other half is live again, and it is the rail tile: an Up next tile now navigates
+ * here, under the same name, so the poster the reader touched travels into this page's
+ * hero. Next's route navigations are transitions on their own — Next's
+ * [View transitions guide](https://nextjs.org/docs/app/guides/view-transitions) says so —
+ * so nothing here has to ask for one the way the desktop pane's `select` does.
  */
 export function TitleDetailView({
   detail,
@@ -57,7 +62,7 @@ export function TitleDetailView({
       synopsis={synopsis}
       watchProviders={watchProviders}
       cast={cast}
-      posterTransitionName={groupPosterTransitionName(current.libraryEntryId)}
+      posterTransitionName={railPosterTransitionName(current.libraryEntryId)}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))
       }
