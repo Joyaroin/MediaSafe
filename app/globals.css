@@ -394,80 +394,58 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
-  /* ── The press's spring — issue #270 ────────────────────────────
-     **Amends the split above rather than breaking it.** The rule was
-     *a spring is a spring because a finger can catch it, and springs
-     live in `app/motion.ts`*; the unstated second half was *and a
-     CSS transition therefore cannot be a spring at all*. That half
-     is what `linear()` reverses. A spring's shape and its
-     interruptibility are separate properties, and only the second
-     needs a runtime: a curve is a function of time, and CSS has been
-     able to hold an arbitrary one since `linear()` shipped. So the
-     press keeps every reason it is in CSS — no client boundary on a
-     rail of tiles, no per-frame JavaScript — and stops being flat.
+  /* ── The press's timing — issues #270 and #281 ──────────────────
+     **#270 put a spring in this slot and #281 took it out again**,
+     and the reversal is worth keeping because the mistake is easy to
+     make twice. What stood here was `--spring-press`: `app/motion.ts`'s
+     `snappy` transcribed into a 33-sample `linear()` curve, run over a
+     `--dur-press` of `425ms` — that spring's own settle, computed
+     rather than chosen. The transcription was exact and a suite proved
+     it. It proved the wrong property.
 
-     `--ease-press` is NOT this, despite reading like it. It is the
-     arrival curve #88 cut for the watch strike and the name has been
-     wrong since; it times view transitions and the sweep, not a
-     press. This is the one a finger meets.
+     A CSS transition's easing scales **the delta between two values**,
+     never a value itself. So a curve peaking at `1.0062`, applied to a
+     `0.97 → 1` release, arrives at `1.00019`: 0.019% above rest, which
+     is 0.05px on a rail card and 0.008px on the checkmark this product
+     is built around. A mathematically exact spring nobody could see —
+     and the note that stood here half-conceded it, in the words
+     *deliberately not wound up to something a screenshot would show*.
+     `425ms` was the other half of the same failure: one transition
+     governed both directions, so a tap shorter than a quarter-second
+     never reached full compression and started easing back from
+     wherever it had got to.
 
-     ── Where the numbers come from ───────────────────────────────
-     `app/motion.ts`'s `snappy`, transcribed. Nothing here was
-     picked by eye, because a control animated in CSS and one
-     animated by Motion disagreeing is the whole failure mode:
-     `snappy` is SwiftUI's `.snappy` — response `0.30`, damping
-     fraction `0.85` — and Motion states that pair as
-     `duration: 0.3, bounce: 0.15`.
+     The press is two mechanisms now, and neither is a spring
+     transition:
 
-       ωₙ   = 2π / 0.30              = 20.944 rad/s
-       ω_d  = ωₙ √(1 − 0.85²)        = 11.033 rad/s
-       x(t) = 1 − e^(−ζωₙt)·(cos ω_d t + (ζωₙ/ω_d)·sin ω_d t)
+       `--dur-press`  the **compression**, on `--ease-out-quart`. A
+                      tenth of a second, which is shorter than a tap:
+                      the control answers the finger instead of
+                      lagging it. Deliberately not the spring — a
+                      spring's long settle is the thing being fixed.
+       `--dur-pop`    the **release**, as `@keyframes press-pop` far
+                      below. A keyframe *names values*, which is the
+                      only mechanism that can reach a number the
+                      transition's two endpoints do not contain.
 
-     `x` is the unit step response of a damped harmonic oscillator —
-     the fraction of the distance travelled at `t`, which is exactly
-     what an easing function returns. `linear()` is that function
-     sampled at 33 even intervals, and the browser interpolates
-     between the samples.
+     **The spring is not deleted, it moved.** `press-pop`'s 33 stops
+     are the same `snappy` step response the `linear()` curve was,
+     sampled from the same closed form — so a control animated in CSS
+     and one animated by Motion are still one spring rather than two
+     hand-picked feels. The derivation, and which half of it is derived
+     rather than chosen, is written out beside the keyframe.
+     `tests/press-spring.test.ts` recomputes every stop from `snappy`,
+     and now also asserts the property #270's suite never did: that the
+     pop **exceeds the resting value**.
 
-     The one number the physics does not supply is where to stop, so:
-     the envelope `e^(−ζωₙt)/√(1 − ζ²)` falling under one part in a
-     thousand, which is `425ms` and is `--dur-press` below. A tenth
-     of a percent of a 3% press is a hundredth of a pixel.
-
-     The overshoot is `1.0062` — the platform's own trace, and the
-     closed form `1 + e^(−πζ/√(1−ζ²))` agrees to four places. It is
-     deliberately not wound up to something a screenshot would show:
-     on `pressable`'s 3% travel it is a fifth of a thousandth of the
-     control's size, so what the finger reads is the *velocity* — a
-     release that leaves fast, arrives, and settles — rather than a
-     bounce. Winding the pair past the platform's is how motion stops
-     reading as physics (`app/motion.ts`), and #270 rules the
-     existing spring callers out of being re-tuned to match a louder
-     press.
-
-     `tests/press-spring.test.ts` recomputes all 33 from `snappy` and
-     fails if either side moves. This is the palette's lesson applied
-     before the drift instead of after it: 33 numbers beside a
-     comment claiming a provenance is precisely the shape of a value
-     nobody can check by eye and therefore nobody checks.
-
-     No fallback declaration. A browser without `linear()` drops the
-     whole `transition` and the press lands instantly — which is the
-     one degradation this control can take, because the state change
-     was never what the animation was carrying. `linear()` has been
-     in every engine since 2023 and this app already requires newer
-     than that (view transitions, `content-visibility`). */
-  --spring-press: linear(
-    0, 0.033, 0.1129, 0.217, 0.3298, 0.4412, 0.5448, 0.6373, 0.7171, 0.7842, 0.8393,
-    0.8834, 0.918, 0.9447, 0.9646, 0.9793, 0.9896, 0.9967, 1.0014, 1.0042, 1.0057,
-    1.0062, 1.0062, 1.0058, 1.0052, 1.0045, 1.0038, 1.0031, 1.0025, 1.002, 1.0015,
-    1.0012, 1
-  );
-
+     `--ease-press` is NOT the press, despite reading like it. It is
+     the arrival curve #88 cut for the watch strike and the name has
+     been wrong since; it times view transitions and the sweep. */
   --dur-fast: 140ms; /* immediate feedback, and every exit          */
   --dur-base: 220ms; /* routine state change                        */
   --dur-slow: 380ms; /* layout, overlay, cross-surface continuity   */
-  --dur-press: 425ms; /* one settle of `--spring-press`             */
+  --dur-press: 100ms; /* the compression, shorter than a tap        */
+  --dur-pop: 260ms; /* the release, past rest and back              */
 }
 
 @layer base {
@@ -903,49 +881,154 @@
 
 /* ── Press ──────────────────────────────────────────────────────────────────────────
    The acknowledgement every tappable surface owes a finger. Scale only, and only
-   downward: colour is not available for this, because in this world colour means *this
-   was marked*, and a control that tints under the thumb is claiming to have recorded
-   something it has not.
+   downward on the way in: colour is not available for this, because in this world colour
+   means *this was marked*, and a control that tints under the thumb is claiming to have
+   recorded something it has not.
 
-   `0.97` and not `0.9`. The gesture is a confirmation that the tap landed, not an
-   animation to watch; a deep press on a poster-sized tile turns the whole grid into a
-   trampoline.
+   ── It moves now, and it is two mechanisms rather than one — issue #281 ────────────
+   This read *`--spring-press` … over `--dur-press`, which is that spring's own settle*,
+   and before #270 it read *`--dur-fast` in, and the release rides the same curve back*.
+   Both were **one `transition` governing both directions**, and that shape is why the
+   press never sprang however exact the curve was: a transition's easing scales the delta
+   between two values, not a value itself, so `snappy`'s `1.0062` overshoot applied to a
+   `0.97 → 1` release landed at `1.00019` — 0.019% above rest. The token's own note is
+   quoted with the derivation it belongs to, up in `@theme`. `0.97` goes with it: a third
+   of the travel a finger reads as a press, on a checkmark and on a 262px card alike.
 
-   ── It springs now, and the reason it is still CSS has changed — issue #270 ─────────
-   This used to read *`--dur-fast` in, and the release rides the same curve back*, on
-   `--ease-out-quart`: a press that arrived and stopped dead, with nothing on the way out.
-   Every control in the application pressed flat, including the checkmark that records a
-   watch, which is the most repeated act in the product.
+   **The compression is a transition, and deliberately not the spring.** `--dur-press`
+   (100ms) on `--ease-out-quart`, `1 → 0.96`. A spring's long settle is the cause of the
+   mushiness being fixed rather than a way to fix it: at `425ms` a tap shorter than a
+   quarter-second never reached full compression and started easing back from wherever it
+   had got to, so the control lagged the finger. A tenth of a second is shorter than a
+   tap, so a quick one now arrives at `0.96` rather than at halfway.
 
-   It is now `--spring-press` — `app/motion.ts`'s `snappy`, transcribed into a `linear()`
-   curve, derivation beside the token — over `--dur-press`, which is that spring's own
-   settle and not `--dur-fast`. Replaying a spring's shape at three times its speed is a
-   different spring, so the duration travels with the curve.
+   **The pop is a keyframe, and it is the spring.** `press-pop` below, over `--dur-pop`,
+   run on `data-popped` — the mark `motion-provider.tsx`'s one delegated listener sets on
+   a release that qualified as a tap and never on a `pointercancel` or on a swipe that
+   claimed the gesture (#280). A keyframe names values, which is the only mechanism that
+   can reach `1.012` when the transition's two endpoints are `0.96` and `1`. This is a
+   structural change and not a re-tune. `select-land` below already proves the pattern in
+   this stylesheet and is the one press in the product that visibly pops.
 
-   **CSS rather than Motion, for a reason that is no longer the old one.** The old reason
-   was *a press has no state a finger can catch it mid-flight, so it does not need a
-   spring* — which quietly conceded that a CSS press could not be one. `linear()` is why
-   that concession was wrong: interruptibility needs a runtime, a curve does not. The
-   reason that survives is the one that was always load-bearing — every tile, cell and
-   row wearing this stays a server component, and a rail of them costs no per-frame
-   JavaScript. `filter` keeps `--ease-out-quart`: the only thing that animates it here is
-   `IN_FLIGHT`'s brightness, and a colour has no mass to overshoot with. */
+   **`:active` and `data-pressed` are one rule and not two.** The delegated listener is
+   what a finger gets; `:active` is what the platform gives a mouse, a keyboard and the
+   moment before the listener has mounted. Two declarations would be two opinions about
+   what *pressed* means, and the cascade would decide between them by emission order.
+
+   **CSS rather than Motion, for the half of the old argument that was always
+   load-bearing.** Every tile, cell and row wearing this stays a server component and a
+   rail of them costs no per-frame JavaScript. `filter` keeps `--dur-fast` and
+   `--ease-out-quart`: the only thing that animates it here is `IN_FLIGHT`'s brightness,
+   and a colour has no mass to overshoot with. */
 @utility pressable {
   transition:
-    transform var(--dur-press) var(--spring-press),
+    transform var(--dur-press) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
-  &:active {
-    transform: scale(0.97);
+  &:active,
+  &[data-pressed="true"] {
+    transform: scale(0.96);
   }
 }
 
+/* The release, and the whole of what #281 moved out of `--spring-press`.
+
+   ── The shape is derived; the two amplitudes are chosen ────────────────────────────
+   Every stop is `app/motion.ts`'s `snappy` — SwiftUI's `.snappy`, response `0.30`,
+   damping fraction `0.85` — through the same closed form the 33 `linear()` samples came
+   from, so the CSS press and a Motion-animated surface remain one spring:
+
+     ωₙ   = 2π / 0.30              = 20.944 rad/s
+     ω_d  = ωₙ √(1 − 0.85²)        = 11.033 rad/s
+     x(t) = 1 − e^(−ζωₙt)·(cos ω_d t + (ζωₙ/ω_d)·sin ω_d t)
+
+   `x` is the unit step response, sampled at 33 even intervals over the settle — where
+   the envelope `e^(−ζωₙt)/√(1−ζ²)` falls under one part in a thousand, `425ms`. That is
+   the *shape*: when the control leaves, where it turns over (`t = π/ω_d`, 67% through),
+   how it comes to rest.
+
+   **What the physics does not supply is how far it travels, and pretending otherwise is
+   what shipped in #270.** A 0.85-damped spring released from `0.96` overshoots to
+   `1.00025`, because its overshoot is a fraction of the distance travelled and the
+   distance is 4%. So the curve is normalised to the two sizes the press names: the rise
+   maps `x / (1 + e^(−πζ/√(1−ζ²)))` onto `0.96 → 1.012`, the settle maps
+   `(x − 1) / e^(−πζ/√(1−ζ²))` onto `1.012 → 1`. The two pieces meet at the peak, where
+   the step response's slope is zero, so the join is not a corner. Derived shape, declared
+   amplitude — and the amplitude is now a number in this file rather than a consequence
+   of a delta nobody computed.
+
+   The last stop is rest exactly, for the reason the `linear()` curve's last sample was:
+   a spring settles asymptotically and an animation has to end, and one that finished at
+   `1.0022` would leave the control fractionally scaled for as long as the mark stays on.
+
+   `--dur-pop` is `260ms` against the shape's own `425ms` settle, and that is the one
+   number here chosen by hand. It is stated rather than hidden: the same damping over a
+   shorter response, so the bounce is the platform's and the response is this gesture's.
+   A flourish that outlasted its 100ms compression four times over would read as an
+   animation being watched rather than as a release.
+
+   `linear` and not an easing: the stops *are* the curve, and a timing function over them
+   would be a second opinion about the same spring.
+
+   Declared before `select-land` on purpose. The two are equal-specificity rules on the
+   same library cell, so source order decides, and the hold has to win: a 500ms hold is a
+   timer made visible and its own arrival, not a press. `tests/press-spring.test.ts`
+   recomputes every stop below from `snappy` and asserts the peak exceeds `1`. */
+@keyframes press-pop {
+  0% { transform: scale(0.96); }
+  3.125% { transform: scale(0.9617); }
+  6.25% { transform: scale(0.9658); }
+  9.375% { transform: scale(0.9712); }
+  12.5% { transform: scale(0.977); }
+  15.625% { transform: scale(0.9828); }
+  18.75% { transform: scale(0.9882); }
+  21.875% { transform: scale(0.9929); }
+  25% { transform: scale(0.9971); }
+  28.125% { transform: scale(1.0005); }
+  31.25% { transform: scale(1.0034); }
+  34.375% { transform: scale(1.0056); }
+  37.5% { transform: scale(1.0074); }
+  40.625% { transform: scale(1.0088); }
+  43.75% { transform: scale(1.0098); }
+  46.875% { transform: scale(1.0106); }
+  50% { transform: scale(1.0111); }
+  53.125% { transform: scale(1.0115); }
+  56.25% { transform: scale(1.0117); }
+  59.375% { transform: scale(1.0119); }
+  62.5% { transform: scale(1.012); }
+  65.625% { transform: scale(1.012); }
+  68.75% { transform: scale(1.0119); }
+  71.875% { transform: scale(1.0111); }
+  75% { transform: scale(1.01); }
+  78.125% { transform: scale(1.0086); }
+  81.25% { transform: scale(1.0073); }
+  84.375% { transform: scale(1.006); }
+  87.5% { transform: scale(1.0048); }
+  90.625% { transform: scale(1.0038); }
+  93.75% { transform: scale(1.0029); }
+  96.875% { transform: scale(1.0022); }
+  100% { transform: scale(1); }
+}
+
+.pressable[data-popped="true"] {
+  animation: press-pop var(--dur-pop) linear;
+}
+
+/* The event still happens; it stops moving through space. Both halves of the press are
+   dropped — the compression's transition and the release's keyframe — and the pressed
+   state itself is untouched, so a control still answers a finger instantly. The mark is
+   set either way: `motion-provider.tsx` never asks about the preference, because the
+   negotiable part is the animation and this is where it is negotiated. */
 @media (prefers-reduced-motion: reduce) {
   .pressable {
     transition: none;
   }
-  .pressable:active {
+  .pressable:active,
+  .pressable[data-pressed="true"] {
     transform: none;
+  }
+  .pressable[data-popped="true"] {
+    animation: none;
   }
 }
 
