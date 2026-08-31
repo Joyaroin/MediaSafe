@@ -1,5 +1,6 @@
 {
   "verify": [
+    "rm -rf .next/types .next/dev/types",
     "npm run typecheck",
     "npm test"
   ],
