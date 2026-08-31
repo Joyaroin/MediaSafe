@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -56,6 +56,21 @@ const EPISODE_CARD = `${UP_NEXT}/up-next-episode-card.tsx`;
 const PENDING_CARD = `${UP_NEXT}/up-next-pending-card.tsx`;
 const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
 const NOTHING = `${UP_NEXT}/up-next-nothing.tsx`;
+/** #274's three: the desktop rail's tile, the season row that keeps the episode page, and
+ *  the search result. None of them is a phone rail, and they are asserted here because
+ *  this is the suite that reads what the surfaces around Up next link to. */
+const TILE = `${UP_NEXT}/up-next-tile.tsx`;
+const SEASON_ROWS = "app/(signed-in)/library/programme-note-episodes.tsx";
+const SEARCH_RESULT = "app/(signed-in)/search/catalogue-result.tsx";
+
+/**
+ * A file with its comments taken out — `tests/episode-modal.test.ts`'s device, for its
+ * reason. Every file here argues for itself at length, and #274's assertions are mostly
+ * about a destination appearing **nowhere**; against the raw text those become assertions
+ * about the prose, which is prose this codebase always has.
+ */
+const codeOf = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /** Every source file a docblock could legitimately be citing. Built once — the citation
  *  check below asks it a question per reference. */
@@ -500,6 +515,171 @@ describe("the mark is unchanged", () => {
 
     expect(link).toBeGreaterThan(-1);
     expect(control).toBeGreaterThan(closes);
+  });
+});
+
+/**
+ * **Issue #274 — every tile and every card on this tab opens the title's own page.**
+ *
+ * The tab used to answer a press three different ways: a show tile wrote selection state,
+ * a film tile navigated, and a next-episodes card navigated somewhere else again. One
+ * model for what a tap does is the property, and it fails **silently** in the worst way
+ * available to a link — the press is answered, something opens, and it is the wrong thing.
+ * Nothing throws, nothing looks broken, and a reader who asked for a show gets an episode.
+ *
+ * The desktop's half of the same rule is here too, and it is the reversal's other edge: on
+ * `lg` and up a tile must still swap the programme note pane **without navigating**. A
+ * `<Link>` that stopped guarding its own click would take the whole two-pane layout out at
+ * once, and that failure is loud only if somebody is looking at a desktop.
+ */
+describe("every tile and card on Up next opens the title's page", () => {
+  const tile = codeOf(sourceAt(TILE));
+
+  /**
+   * The show tile is a link, which is the mechanism the film tile already had. A `<button>`
+   * that called `router.push` would open the same page and still be the wrong answer: it
+   * cannot be middle-clicked, cannot be opened in a new tab, and does not tell a screen
+   * reader it is a link.
+   */
+  it("makes the show tile a link to the library entry's page", () => {
+    expect(tile).toMatch(/<Link\s+href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(tile).not.toMatch(/<button/);
+  });
+
+  /** The same destination reached the same way, which is the acceptance criterion's own
+   *  words: a film and a show behave the same way on the same tab. */
+  it("gives the film tile that destination by the same mechanism", () => {
+    expect(codeOf(sourceAt(FILM_RAIL))).toMatch(
+      /<Link href=\{`\/library\/\$\{film\.libraryEntryId\}`\}/,
+    );
+  });
+
+  /** And the card, retargeted from the episode. The negative is the load-bearing half —
+   *  a card that gained the title's href beside the episode's would pass the positive. */
+  it("sends a next-episodes card to the show's page, not the episode's", () => {
+    const card = codeOf(sourceAt(EPISODE_CARD));
+
+    expect(card).toMatch(/href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(card).not.toMatch(/\/episode\//);
+  });
+
+  /**
+   * **The episode's page is retargeted away from, not deleted.** It keeps a season row
+   * inside the title, and the route it deep-links to is still on disk. Asserted because
+   * the cheap way to satisfy every line above is to stop having an episode page at all,
+   * and #253's surface is not this ticket's to remove.
+   */
+  it("leaves the episode's own page reachable from a season row and by deep link", () => {
+    expect(codeOf(sourceAt(SEASON_ROWS))).toMatch(
+      /href=\{`\/library\/\$\{libraryEntryId\}\/episode\/\$\{episode\.id\}`\}/,
+    );
+    expect(
+      existsSync(
+        path.join(
+          REPOSITORY_ROOT,
+          "app/(signed-in)/library/[entryId]/episode/[episodeId]/page.tsx",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  /** A reader can read about a title properly before deciding to add it. #273 made this
+   *  an ordinary navigation by deleting the interception that captured it; this pins the
+   *  destination, which is the half of it a manifest audit cannot see. */
+  it("sends a search result to the title's full page", () => {
+    expect(codeOf(sourceAt(SEARCH_RESULT))).toMatch(
+      /href=\{`\/titles\/\$\{result\.kind\}\/\$\{result\.tmdbId\}`\}/,
+    );
+  });
+
+  /**
+   * **The phone writes no selection.** Every `select(` in the tile sits after the
+   * breakpoint check, so the only click that reaches the selection store is a desktop
+   * one; a phone press falls through to the link's own default and navigates.
+   *
+   * Positions rather than presence, because presence is what a second, unguarded call
+   * would also satisfy — and an unguarded `select()` beside a guarded one is the exact
+   * shape of this regression: the pane swaps *and* the phone routes.
+   */
+  it("writes selection state only on the desktop side of the breakpoint", () => {
+    const guard = tile.indexOf("matchMedia(DESKTOP_BREAKPOINT)");
+    expect(guard).toBeGreaterThan(-1);
+
+    const writes = [...tile.matchAll(/\bselect\(/g)].map((match) => match.index);
+    expect(writes.length).toBeGreaterThan(0);
+    for (const at of writes) expect({ at, after: at > guard }).toEqual({ at, after: true });
+  });
+
+  /**
+   * **And it is the one breakpoint constant, not a second copy of `1024px`.**
+   * `selectable-entry.tsx` exports it precisely so that the JS copy of `lg` exists once;
+   * a literal here would be the silent second the constant was named to prevent.
+   */
+  it("takes the breakpoint from the one place that names it", () => {
+    expect(sourceAt(TILE)).toMatch(
+      /import \{ DESKTOP_BREAKPOINT \} from "@\/app\/\(signed-in\)\/library\/selectable-entry"/,
+    );
+    expect(tile).not.toMatch(/min-width:\s*1024px/);
+  });
+
+  /**
+   * **On `lg` and up nothing navigates**, which is `DESIGN.md`'s Never-Navigate-Away Rule
+   * and the whole reason the pane exists. The desktop branch has to stop the link before
+   * the browser follows it, and that `preventDefault` is the one line standing between the
+   * two-pane layout and a full page load on every tile press.
+   */
+  it("stops the navigation on the desktop rather than letting both happen", () => {
+    expect(tile).toMatch(/preventDefault\(\)/);
+  });
+
+  /** The pane and its four-phase pending machine are untouched — only the phone's use of
+   *  selection went. Asserted against the pane's own file so that "unchanged" is a claim
+   *  something checks. */
+  it("leaves the programme note pane driven by the same selection", () => {
+    const pane = sourceAt("app/(signed-in)/library/programme-note.tsx");
+
+    expect(pane).toMatch(/useLibrarySelection\(\)/);
+    expect(pane).toMatch(/selectedEntryId/);
+  });
+});
+
+/**
+ * The documents, amended in this commit rather than after it — `CLAUDE.md` binds them and
+ * `DESIGN.md` records two prior occasions where a note and the code it described drifted
+ * apart silently. Both reversals are written as reversals.
+ */
+describe("the documents record the reversal", () => {
+  it("has DESIGN.md saying a tap on Up next opens a page", () => {
+    const design = sourceAt("DESIGN.md");
+    const from = design.indexOf("### Opening a title");
+    const section = design.slice(from, design.indexOf("\n### ", from + 4));
+
+    expect(section).toMatch(/#274/);
+    expect(section).toMatch(/opens the title's own page/);
+
+    /**
+     * **The sheet survives only inside a quotation.** `CLAUDE.md` asks a reversal to be
+     * written as one, so the sentence this section used to open with is kept — in a
+     * blockquote, in the past tense. What must not survive is the same sentence asserted
+     * in the document's own voice, which is the drift `DESIGN.md` records two prior
+     * occasions of. So the check is over the section's *unquoted* lines.
+     */
+    const asserted = section
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith(">"))
+      .join("\n");
+
+    expect(asserted).not.toMatch(/raises a sheet over the tab/);
+  });
+
+  it("has SPEC.md §7's surfaces section carrying the same reversal", () => {
+    const spec = sourceAt("SPEC.md");
+    const surfaces = spec.slice(
+      spec.indexOf("## 7. The surfaces"),
+      spec.indexOf("### Up next — ordering"),
+    );
+
+    expect(surfaces).toMatch(/#274/);
   });
 });
 

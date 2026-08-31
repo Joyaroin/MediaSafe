@@ -321,6 +321,12 @@ fourth.
    the phone, Coming back, Old friends, Watchlist and Abandoned carry none either. To mark anything
    else, or to give up on a title, open it. The rails' and the groups' shared rules are in *Up next —
    the three rails* below.
+   **[#250](https://github.com/Joyaroin/MediaSafe/issues/250) then replaced the five groups with two
+   horizontal rails** — next episodes, and films to watch — so the phone's half of this bullet is two
+   rails and a pager rather than five stacked groups, and
+   **[#274](https://github.com/Joyaroin/MediaSafe/issues/274) settles what a press on either device
+   does**: *swaps the panel* stays true only on `lg` and up, and every tile and card below that
+   breakpoint **navigates to the title's page**. See divergence 3.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
    **True again since [#273](https://github.com/Joyaroin/MediaSafe/issues/273), and it was not
@@ -333,6 +339,17 @@ fourth.
    model for what a tap does. The **remove confirmation** is reached by ordinary page
    navigation for the same reason, which a destructive confirmation should always have been.
    The desktop half of this bullet was never affected and is unchanged.
+
+   **And [#274](https://github.com/Joyaroin/MediaSafe/issues/274) finishes it on Up next.**
+   Deleting the interceptions restored *a route you push and pop*; it did not settle what
+   each surface pushes. On Up next a show tile still wrote **selection state** and a
+   next-episodes card still pushed the **episode's** page, so a show, a film and a card
+   reached three different kinds of place from one tab. They reach one now: **the title's
+   own page**, by one mechanism — a `Link` to `/library/{entryId}` — with a search result
+   opening `/titles/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
+   away from rather than deleted, and keeps a season row and a deep link. The phone's use
+   of selection is what goes; on `lg` and up the tile's click is stopped and the programme
+   note pane swaps as divergence 2 describes, unchanged.
 4. **How Up next is bounded — settled for desktop by [#137](https://github.com/Joyaroin/MediaSafe/issues/137),
    and for phone by [#138](https://github.com/Joyaroin/MediaSafe/issues/138).**
    Phone: **no numeric cap on a group's screen**, the same *a surface you work down never renders N at

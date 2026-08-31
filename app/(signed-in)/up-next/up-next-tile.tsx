@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { ViewTransition } from "react";
 
 import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
+import { DESKTOP_BREAKPOINT } from "@/app/(signed-in)/library/selectable-entry";
 import { isPendingEntry, type UpNextRailEntry } from "@/db/access";
 
 /**
@@ -22,14 +24,34 @@ import { isPendingEntry, type UpNextRailEntry } from "@/db/access";
  * for this surface specifically. The library is not a backlog to feel bad about, and every
  * fact a tile withholds is one click away in the panel it opens.
  *
- * ── Clicking swaps the panel; it is never a navigation ────────────────────────────────
+ * ── A link to the title, and on the desktop a panel swap instead — issue #274 ─────────
  *
- * `select()` from `library-selection.tsx` and nothing else — not `SelectableEntry`, which
- * branches on the viewport to push `/library/{id}` on a phone. The rails are desktop-only
- * (`page.tsx` renders nothing of them below `lg`), so there is no phone click for that
- * branch to serve, and reaching for it would put a route push behind a button that can
- * never be pressed at a width where it applies. **Comparing two candidates costs nothing**
- * is the property: the page never routes, so it never loses its place.
+ * > **⚠️ This reverses what this file said until #274**, which was: *`select()` and nothing
+ * > else — not `SelectableEntry`, which branches on the viewport.* The rails were
+ * > desktop-only, so there was no phone click for a branch to serve. #268 makes *every tile
+ * > and card on Up next opens the title's page* a rule about the whole tab rather than
+ * > about the phone's two rails, and a tile that can only ever write selection state is the
+ * > one surface that cannot obey it.
+ *
+ * The tile is now a **`Link` to `/library/{entryId}`** — the same mechanism the film card
+ * on the phone's rail already had, so a film and a show behave the same way on the same
+ * tab. Being a real anchor is the point rather than an implementation detail: it can be
+ * middle-clicked, opened in a new tab, and read as a link by a screen reader, none of
+ * which a `button` calling `router.push` can do.
+ *
+ * **On `lg` and up nothing navigates, and that is unchanged.** The click handler checks
+ * `DESKTOP_BREAKPOINT` — `selectable-entry.tsx`'s constant, imported rather than a second
+ * `1024px` literal — and on the desktop stops the link and calls `select()` instead. That
+ * is `DESIGN.md`'s Never-Navigate-Away Rule and the whole reason the programme note pane
+ * exists: **comparing two candidates costs nothing**, because the page never routes and so
+ * never loses its place. The pane, the selection store and the pane's four-phase pending
+ * machine are untouched; what went is the phone's *use* of them.
+ *
+ * The width is read at the moment of the click rather than baked into a server-rendered
+ * branch, which is `selectable-entry.tsx`'s own reasoning: resizing past the breakpoint
+ * mid-session changes which one a click does without a reload. A **modified** click —
+ * ⌘, Ctrl, Shift, or anything but the primary button — is left to the browser on both
+ * sides, because *open this in a new tab* is a request about a link and not about a pane.
  *
  * ── Selection is border weight, not colour ───────────────────────────────────────────
  *
@@ -77,15 +99,25 @@ export function UpNextTile({
   const { selectedEntryId, select } = useLibrarySelection();
   const selected = entry.libraryEntryId === selectedEntryId;
 
+  function onClick(event: React.MouseEvent<HTMLAnchorElement>): void {
+    // A ⌘-click, a Ctrl-click, a Shift-click or a middle button is a request about the
+    // link, and it is answered by the link on both sides of the breakpoint.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    if (!window.matchMedia(DESKTOP_BREAKPOINT).matches) return;
+
+    event.preventDefault();
+    select(entry.libraryEntryId, entry.posterPath);
+  }
+
   return (
     /* `snap-start`, which is half of *a scroll stops on whole posters* — the track carries
        the other half (`up-next-rail.tsx`). */
     <li className={`${TILE} shrink-0 snap-start`}>
-      <button
-        type="button"
-        onClick={() => select(entry.libraryEntryId, entry.posterPath)}
+      <Link
+        href={`/library/${entry.libraryEntryId}`}
+        onClick={onClick}
         aria-current={selected ? "true" : undefined}
-        className="pressable group block w-full text-left"
+        className="pressable group block w-full"
       >
         {selected ? (
           <Poster
@@ -131,7 +163,7 @@ export function UpNextTile({
             <PendingLine />
           </div>
         ) : null}
-      </button>
+      </Link>
     </li>
   );
 }
