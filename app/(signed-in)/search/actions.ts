@@ -1,15 +1,16 @@
 "use server";
 
+import { after } from "next/server";
+
 import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
   accountsHoldingTitles,
-  addTitleToLibrary,
   addTitleToLibraryWatched,
   libraryCatalogueKeys,
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
-import { searchCatalogueOfKind, titleMirror } from "@/tmdb/catalogue";
+import { searchCatalogueOfKind, titleMirror, titleRowMirror } from "@/tmdb/catalogue";
 import {
   catalogueKeyFrom,
   catalogueKeyOf,
@@ -18,6 +19,8 @@ import {
   type TitleKind,
 } from "@/tmdb/mirror";
 import { requireUserId } from "@/lib/session";
+
+import { addTitleAnswering } from "./add-title";
 
 /**
  * The two things the search screen asks the server for.
@@ -116,12 +119,24 @@ export async function searchCatalogueAction(
 }
 
 /**
- * Add one catalogue result to this account's library, mirroring it on the way in.
+ * Add one catalogue result to this account's library, and answer immediately.
  *
  * One action, from the result, with no intermediate form — so everything the mirror needs
- * is fetched here rather than asked of the reader. For a show that is the series and every
- * season, because ADR-0001 mirrors episode **names** and CONTEXT.md makes them
- * load-bearing.
+ * is fetched here rather than asked of the reader.
+ *
+ * ── The press is answered before the seasons arrive (issue #271) ─────────────────────
+ *
+ * Adding a show used to fetch the series **and every season of it** before returning:
+ * ADR-0001 mirrors episode *names* and CONTEXT.md makes them load-bearing, so that work
+ * has to happen — but it does not have to happen in front of the reader. `titleRowMirror`
+ * is the series alone, one request; `addTitleAnswering` writes the `title` row and the
+ * library entry from it and hands back the season-and-episode mirror unrun; `after` runs
+ * that mirror once this response has been sent.
+ *
+ * **`after` and nothing else.** No queue table, no job runner, no second deployment target
+ * — the work happens in this request, after its response, which is what makes the retry
+ * story simply *the nightly sweep*: a mirror that does not land leaves the title unstamped,
+ * and `titlesDueForRefresh`'s tier 0 asks for exactly those first.
  *
  * **Already in the library is a success.** The screen offers no second add, so reaching
  * this twice is a retry or a second tab, and telling the reader their library is wrong
@@ -136,6 +151,8 @@ export async function addToLibraryAction(
   let titleId: string;
   /** The same row by its catalogue key — the third bust, issue #225. */
   let key: CatalogueKey;
+  /** The half of the add that runs behind the response — see `after` below. */
+  let mirrorEpisodes: () => Promise<void>;
 
   try {
     /**
@@ -150,11 +167,23 @@ export async function addToLibraryAction(
      */
     key = catalogueKeyFrom(kind, tmdbId);
 
-    titleId = (await addTitleToLibrary(userId, await titleMirror(key.kind, key.tmdbId)))
-      .titleId;
+    const answered = await addTitleAnswering(
+      userId,
+      await titleRowMirror(key.kind, key.tmdbId),
+      titleMirror,
+    );
+    titleId = answered.titleId;
+    mirrorEpisodes = answered.mirrorEpisodes;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search-add" }) };
   }
+
+  /**
+   * Past the `catch` with the busts below, and for the same reason: only a landed add has
+   * a title to finish mirroring. The task reports its own failures and resolves either
+   * way (`add-title.ts`), so nothing here has to handle what `after` cannot answer to.
+   */
+  after(mirrorEpisodes);
 
   /**
    * Past the `catch`, so only a landed add busts anything (issue #219). The reader is on

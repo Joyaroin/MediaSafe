@@ -98,6 +98,31 @@ export const title = pgTable(
     metadataRefreshedAt: timestamp("metadata_refreshed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    /**
+     * When this title's episodes were last mirrored **whole** — and NULL while they have
+     * not been (ADR-0001 amendment 11, issue #271).
+     *
+     * **Pending is a fact the database holds, not one each surface infers.** Adding a show
+     * writes this row from the series alone and answers the press; the seasons follow
+     * after the response, and stamp this column when they land. Inferring *still arriving*
+     * from "this title has no episode rows" was rejected outright: it makes a show whose
+     * mirror is on its way and a show that genuinely has no episodes the same state, and
+     * only one of those is worth telling a reader about.
+     *
+     * A **film** carries a timestamp from the moment it is added. It has nothing to wait
+     * for, so it is never pending — the add stamps it on the way in rather than leaving a
+     * column that would have to be read as *does not apply*.
+     *
+     * **`DEFAULT now()`, and the default is the point.** It is what stamped every row that
+     * existed before the column did, without a backfill script (amendment 5's mechanism,
+     * amendment 10's precedent), and it is what a row written by anything that has not
+     * heard of pending — a fixture, a future writer — gets: complete. The one path that
+     * means it writes `NULL` explicitly, which is `db/access.ts`'s `mirrorTitle` taking
+     * `"pending"`, and that is the only way a NULL is ever created.
+     */
+    episodesMirroredAt: timestamp("episodes_mirrored_at", {
+      withTimezone: true,
+    }).defaultNow(),
   },
   (t) => [
     check("title_kind_check", sql`${t.kind} in ('film','show')`),
@@ -117,6 +142,9 @@ export const title = pgTable(
     unique("title_kind_tmdb_id_key").on(t.kind, t.tmdbId),
     // The nightly metadata sweep reads oldest-first.
     index("title_metadata_refreshed_at_idx").on(t.metadataRefreshedAt),
+    // Pending titles are read by `IS NULL` — the sweep asks for them first, and Up next
+    // asks which of a reader's titles are still arriving (issue #271).
+    index("title_episodes_mirrored_at_idx").on(t.episodesMirroredAt),
   ],
 );
 
