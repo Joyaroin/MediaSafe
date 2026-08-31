@@ -1197,9 +1197,10 @@ that less true.
 
 ### The morph
 
-Selecting a tile morphs its poster into the one on the surface that opens — the desktop
-panel, the phone's title sheet, or the phone's title-detail route. It is the browser's
-native View Transitions API, reached through React's `<ViewTransition>`.
+Pressing a tile morphs its poster into the one on the surface that opens — the desktop
+panel, or the title's own page on the phone. (The phone's title *sheet* was a third such
+surface until #268 deleted it; the name-family paragraph below carries that reversal.) It
+is the browser's native View Transitions API, reached through React's `<ViewTransition>`.
 
 **The morph is authored, and this reverses what this file said one ticket ago.** The
 previous wording made the browser default *the rule rather than an omission* — the motion
@@ -1232,26 +1233,38 @@ poster morphs into the newly-selected tile's on the way out, and that tile's mor
 the panel's on the way in — one for each name, in the same commit. The name-drop below is
 what keeps those two from colliding.
 
-**Two name families, on purpose**: `rail-poster-{id}` for the desktop pane and
-`group-poster-{id}` for the phone. The desktop pane and the phone route can both be
-showing the same title at once — a reader on desktop with the phone route open in another
-tab — and a name shared across them would pair the wrong two elements.
+**One name family: `rail-poster-{id}`, and this reverses what this file said one spec
+ago.** The previous wording was *two name families, on purpose* — `rail-poster-{id}` for
+the desktop pane and `group-poster-{id}` for the phone, on the grounds that *the desktop
+pane and the phone route can both be showing the same title at once, and a name shared
+across them would pair the wrong two elements* — with a further note that the phone's
+sheet shared the second family with the phone route rather than opening a third.
 
-**The phone's sheet shares `group-poster-{id}` with the phone route** rather than opening
-a third family, because the two are never on screen together: the sheet lives on
-`/up-next` and the route is `/library/{id}`. What *is* on screen together is the sheet and
-the tile that opened it, which is why the name-drop below applies to the sheet as much as
-to the rail.
+That rule described a phone with **two** destinations: a title sheet raised over `/up-next`
+by a route interception, and the `/library/{id}` route underneath it. #268 deleted both
+interceptions and the sheet with them, so every tile and card on Up next navigates to the
+same page. The two surfaces that needed separate names are one surface, the second family
+had nothing left to keep apart, and it is gone along with the function that minted it.
+`app/(signed-in)/library/poster-transition-name.ts` is now one function with three callers
+— the rail tile, the desktop pane and the title's own page.
+
+The "same title at once" the old rule guarded against was a reader on the desktop pane with
+the phone route open **in another tab** — two documents, and a `view-transition-name` has
+never been shared across documents. What is genuinely on screen together is a tile and its
+destination, and that is what the name-drop handles.
+
+Recorded as a reversal rather than quietly overwritten: the decision was right for the app
+that existed when it was written, and it is the surfaces that changed underneath it.
 
 **A name can only mark one on-screen element at a time.** The rail tile therefore *drops*
-its name once selected (the pane is the one showing that poster now) and picks it back up
-the moment something else is selected, ready to be the next morph's start. **A group tile
-drops its name the same way while the phone's sheet holds it** — and unlike the route,
-which replaced the page and took the tile with it, the sheet sits *over* a tile that is
-still mounted, so without the drop there is no morph at all. Without the drop,
+its name once its destination holds it. On the desktop that is the moment the tile is
+selected — the pane is the one showing that poster now — and it picks the name back up the
+moment something else is selected, ready to be the next morph's start. Without the drop,
 picking a second tile would mount a second `rail-poster-{id}` for the *first* tile's id
 while the original was still on screen, and the browser skips a transition it finds
-duplicated rather than guessing which one wins.
+duplicated rather than guessing which one wins. **On the phone there is nothing to drop**,
+which is what makes the single family safe on both sides: the navigation replaces the page
+and takes the tile with it, so the name is free before the destination's poster mounts.
 
 ---
 
