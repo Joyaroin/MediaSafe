@@ -6,10 +6,11 @@ import { describe, expect, it } from "vitest";
 import { snappy } from "@/app/motion";
 
 /**
- * The press, asserted against the spring it claims to come from — issues #270 and #281.
+ * The press, asserted against the spring it claims to come from — issues #270, #281, #282.
  *
  * The press is CSS and stays CSS: it costs no client boundary and no per-frame JavaScript,
- * and `DESIGN.md`'s motion section holds why. What it is made of changed in #281.
+ * and `DESIGN.md`'s motion section holds why. What it is made of changed in #281, and #282
+ * gave it a register — two sizes, chosen by one property the call site sets.
  *
  * ── What #270 shipped, and why this file did not catch it ────────────────────────────
  *
@@ -57,11 +58,12 @@ import { snappy } from "@/app/motion";
  * **The two amplitudes are the register's, not the spring's, and that is the whole of the
  * correction.** A 0.85-damped spring released from `0.96` overshoots to `1.00025` — which
  * is exactly what shipped and exactly what nobody could see. So the curve is normalised to
- * the two numbers #279 names: the rise runs `0.96 → 1.012` scaled by the curve's own peak,
- * the settle runs `1.012 → 1` scaled by the curve's own excess above rest. Both pieces meet
- * at the peak, where the step response's slope is zero, so the join is not a corner. What is
- * derived is every stop's *value in time*; what is chosen is how far it travels — and the
- * choosing is visible in the stylesheet as two numbers rather than hidden in a delta.
+ * the two numbers the register names: the rise runs compression-to-pop scaled by the curve's
+ * own peak, the settle runs pop-to-rest scaled by the curve's own excess above rest. Both
+ * pieces meet at the peak, where the step response's slope is zero, so the join is not a
+ * corner. What is derived is every stop's *value in time*; what is chosen is how far it
+ * travels — and since #282 the choosing is `--press-register`, one property at the call
+ * site, resolved below the way a browser resolves it rather than read as a literal.
  *
  * Two spellings of one rule is two places for the numbers to disagree, and this application
  * has been bitten by exactly that twice (`app/motion.ts`'s own note on the stagger cap;
@@ -113,14 +115,39 @@ const settleMs = Math.ceil(
 const peakTime = Math.PI / dampedFrequency;
 const peakExcess = Math.exp((-Math.PI * damping) / Math.sqrt(1 - damping * damping));
 
-/** The press's three sizes. #279's surface register, which is also the default and the
- *  quieter of the two it names. */
-const COMPRESS = 0.96;
 const REST = 1;
-const POP = 1.012;
 
-/** The pop keyframe's stop `index`, recomputed from `snappy` — the header's derivation. */
-function popStop(index: number): number {
+/**
+ * **The register — issue #282, and the second half of what #279 names.** One rule was wrong
+ * for two kinds of thing: the same 4% was a considered movement on a 262px rail card and
+ * nothing at all on a 44px checkmark, and both wore the identical utility. The press has two
+ * sizes now, and a call site says which of them it is in.
+ *
+ * The register is **one** property, so there is no way to set half of one and no way to pair
+ * a surface compression with a control pop — the compression and the pop are both derived
+ * from it, in the stylesheet, in one place. And it is a *property the call site sets* rather
+ * than a second utility, which is `--poster-radius`'s pattern and `--poster-radius`'s reason:
+ * two utilities setting one property in one cascade layer make *which rule wins* a question
+ * about the order Tailwind emits them in rather than about the call site.
+ *
+ * **The default is the quieter register.** `pressable` *reads* `--press-register` through a
+ * fallback and never declares it, so a call site nobody classified is under-stated rather
+ * than shouting — and a call site that does classify itself has no cascade argument to win.
+ */
+const REGISTER_PROPERTY = "--press-register";
+
+const REGISTERS = {
+  surface: { register: null, compress: 0.96, pop: 1.012 },
+  control: { register: 1, compress: 0.92, pop: 1.03 },
+} as const;
+
+const COMPRESS = REGISTERS.surface.compress;
+const POP = REGISTERS.surface.pop;
+
+/** The pop keyframe's stop `index` in a register, recomputed from `snappy` — the header's
+ *  derivation. The *shape* is the spring's and is one curve; the two amplitudes it travels
+ *  between are the register's. */
+function popStop(index: number, compress: number = COMPRESS, pop: number = POP): number {
   // A spring settles asymptotically and an animation has to end. The last stop is rest
   // exactly: a keyframe that finished at 1.0022 would leave the control fractionally
   // scaled for as long as the mark stays on it.
@@ -130,8 +157,8 @@ function popStop(index: number): number {
   const x = travelled(t);
 
   return t <= peakTime
-    ? COMPRESS + (x / (1 + peakExcess)) * (POP - COMPRESS)
-    : REST + ((x - 1) / peakExcess) * (POP - REST);
+    ? compress + (x / (1 + peakExcess)) * (pop - compress)
+    : REST + ((x - 1) / peakExcess) * (pop - REST);
 }
 
 /** Every declaration of a custom property, so a second one is a failure and not a shadow. */
@@ -155,13 +182,131 @@ function keyframesBlock(name: string): string {
   return match![0];
 }
 
-/** The pop's stops, in the order the keyframe declares them. */
-function popStops(): { at: number; scale: number }[] {
+/** Every custom property `@utility pressable` declares, as the expression it declares it
+ *  with. `--press-register` is deliberately not among them — see `REGISTERS` above. */
+function pressableCustomProperties(): Record<string, string> {
+  const declared: Record<string, string> = {};
+
+  for (const [, name, value] of pressableUtility().matchAll(/(--[a-z-]+):\s*([^;]+);/g)) {
+    expect(declared[name], `${name} is declared twice on \`pressable\``).toBeUndefined();
+    declared[name] = value.trim();
+  }
+
+  return declared;
+}
+
+/** The stylesheet's own variables, with a register selected the way a call site selects one:
+ *  by setting a single property, or by setting nothing at all. */
+function variablesFor(register: number | null): Record<string, string> {
+  const variables = pressableCustomProperties();
+  if (register !== null) variables[REGISTER_PROPERTY] = String(register);
+  return variables;
+}
+
+/**
+ * The subset of `calc()` this stylesheet uses — numbers, the four operators and parentheses.
+ * A recursive descent rather than a regular expression, because the point of resolving at
+ * all is that the assertions see the number a browser would compute rather than the number
+ * a human wrote down beside it.
+ */
+function arithmetic(source: string): number {
+  let at = 0;
+  const skip = (): void => {
+    while (source[at] === " ") at += 1;
+  };
+
+  function primary(): number {
+    skip();
+    if (source[at] === "(") {
+      at += 1;
+      const value = sum();
+      skip();
+      expect(source[at], `unbalanced parentheses in ${source}`).toBe(")");
+      at += 1;
+      return value;
+    }
+
+    const number = /^[+-]?\d*\.?\d+/.exec(source.slice(at));
+    expect(number, `${source} is not arithmetic at character ${at}`).not.toBeNull();
+    at += number![0].length;
+    return Number(number![0]);
+  }
+
+  function product(): number {
+    let value = primary();
+    for (;;) {
+      skip();
+      const operator = source[at];
+      if (operator !== "*" && operator !== "/") return value;
+      at += 1;
+      const right = primary();
+      value = operator === "*" ? value * right : value / right;
+    }
+  }
+
+  function sum(): number {
+    let value = product();
+    for (;;) {
+      skip();
+      const operator = source[at];
+      if (operator !== "+" && operator !== "-") return value;
+      at += 1;
+      const right = product();
+      value = operator === "+" ? value + right : value - right;
+    }
+  }
+
+  const value = sum();
+  skip();
+  expect(at, `${source} has input left over`).toBe(source.length);
+  return value;
+}
+
+/**
+ * `var()` substitution followed by that arithmetic — what the browser does to one of these
+ * declarations on one element. A suite that read the stops as literal numbers could not see
+ * whether one property reaches *both* halves of the press, and that is the whole property
+ * #282 adds.
+ */
+function cssValue(expression: string, variables: Record<string, string>): number {
+  let text = expression;
+
+  for (let pass = 0; text.includes("var(") && pass < 10; pass += 1) {
+    text = text.replace(/var\(\s*(--[a-z-]+)\s*(?:,\s*([^(),]*))?\)/g, (_, name, fallback) => {
+      const value = variables[name] ?? fallback;
+      expect(value, `${name} is read and never declared`).toBeDefined();
+      return `(${value})`;
+    });
+  }
+
+  expect(text, `${expression} still reaches a variable`).not.toContain("var(");
+  return arithmetic(text.replaceAll("calc(", "("));
+}
+
+/** The pop's stops, in the order the keyframe declares them, resolved in a register. */
+function popStops(register: number | null = null): { at: number; scale: number }[] {
+  const variables = variablesFor(register);
+
   return [
-    ...keyframesBlock("press-pop").matchAll(
-      /([\d.]+)%\s*\{\s*transform:\s*scale\(([\d.]+)\)/g,
-    ),
-  ].map((stop) => ({ at: Number(stop[1]), scale: Number(stop[2]) }));
+    ...keyframesBlock("press-pop").matchAll(/([\d.]+)%\s*\{\s*transform:\s*scale\((.+)\);/g),
+  ].map((stop) => ({ at: Number(stop[1]), scale: cssValue(stop[2], variables) }));
+}
+
+/** How far the pop carries the control past rest in a register. */
+function popPeak(register: number | null = null): number {
+  return Math.max(...popStops(register).map((stop) => stop.scale));
+}
+
+/** The scale the compression drives to in a register — read out of the pressed rule rather
+ *  than assumed, so the register has to actually reach it. */
+function compression(register: number | null = null): number {
+  const pressed = pressableUtility().match(/&:active[\s\S]*?\{([\s\S]*?)\}/);
+  expect(pressed, "`pressable` must still scale under a press").not.toBeNull();
+
+  const scale = pressed![1].match(/transform:\s*scale\((.+)\);/);
+  expect(scale, "the pressed rule must still be a scale").not.toBeNull();
+
+  return cssValue(scale![1], variablesFor(register));
 }
 
 /** The rule that runs the pop, keyed off the mark the delegated listener sets. */
@@ -207,9 +352,10 @@ describe("the compression answers the finger", () => {
    *  mark the delegated listener sets and the platform's own `:active` are one rule, so
    *  there is no second opinion about what *pressed* means. */
   it("presses the surface to 0.96, marked or native", () => {
-    const pressed = pressableUtility().match(/&:active[\s\S]*?\{[\s\S]*?\}/);
-    expect(pressed, "`pressable` must still scale under a press").not.toBeNull();
-    expect(pressed![0]).toMatch(/transform:\s*scale\(0\.96\)/);
+    // **Updated from a literal `scale(0.96)`.** #282 made the compression the register's,
+    // so the number is derived from `--press-register` rather than written down — and the
+    // assertion resolves the declaration the way a browser would rather than reading it.
+    expect(compression(REGISTERS.surface.register)).toBeCloseTo(COMPRESS, 6);
     expect(pressableUtility()).toMatch(/&\[data-pressed="true"\]/);
   });
 });
@@ -222,12 +368,16 @@ describe("the release pops past rest", () => {
    * all — and it is checked against the resting size, not against a copy of the number.
    */
   it("exceeds the resting value by an amount a screenshot would show", () => {
-    const peak = Math.max(...popStops().map((stop) => stop.scale));
+    // In **both** registers, because #282 gave the pop two amplitudes and a register that
+    // popped to rest would be the shipped failure again, arriving on half the tree.
+    for (const { register, pop } of Object.values(REGISTERS)) {
+      const peak = popPeak(register);
 
-    expect(peak).toBeGreaterThan(REST);
-    // #270 shipped 1.00019 — 0.05px on a rail card. A percent is the floor of visible.
-    expect(peak).toBeGreaterThanOrEqual(1.01);
-    expect(Math.abs(peak - POP)).toBeLessThan(5e-4);
+      expect(peak).toBeGreaterThan(REST);
+      // #270 shipped 1.00019 — 0.05px on a rail card. A percent is the floor of visible.
+      expect(peak).toBeGreaterThanOrEqual(1.01);
+      expect(Math.abs(peak - pop)).toBeLessThan(5e-4);
+    }
   });
 
   /** A keyframe and not a transition, run off the mark the one delegated listener sets on
@@ -239,22 +389,27 @@ describe("the release pops past rest", () => {
     expect(popRule()).toMatch(/animation:[^;]*\blinear\b/);
   });
 
-  it("carries snappy's own step response, sample for sample", () => {
-    const stops = popStops();
+  it("carries snappy's own step response, sample for sample, in either register", () => {
+    // One shape, two amplitudes: #282 normalised the stops onto the register's own two
+    // numbers, so the spring has to survive the register rather than only the default.
+    for (const [name, { register, compress, pop }] of Object.entries(REGISTERS)) {
+      const stops = popStops(register);
 
-    expect(stops).toHaveLength(STOPS);
-    stops.forEach((stop, index) => {
-      // Evenly spaced in time, which is what makes the samples a curve rather than a list.
-      expect(stop.at).toBeCloseTo((index * 100) / (STOPS - 1), 5);
-      expect(
-        Math.abs(stop.scale - popStop(index)),
-        `stop ${index} is ${stop.scale}, and snappy puts it at ${popStop(index).toFixed(4)}`,
-      ).toBeLessThanOrEqual(5e-5);
-    });
+      expect(stops).toHaveLength(STOPS);
+      stops.forEach((stop, index) => {
+        // Evenly spaced in time — what makes the samples a curve rather than a list.
+        expect(stop.at).toBeCloseTo((index * 100) / (STOPS - 1), 5);
+        const expected = popStop(index, compress, pop);
+        expect(
+          Math.abs(stop.scale - expected),
+          `${name} stop ${index} is ${stop.scale}, and snappy puts it at ${expected.toFixed(4)}`,
+        ).toBeLessThanOrEqual(5e-5);
+      });
 
-    // Starts where the compression left the control and ends exactly at rest.
-    expect(stops[0].scale).toBe(COMPRESS);
-    expect(stops[STOPS - 1].scale).toBe(REST);
+      // Starts where the compression left the control and ends exactly at rest.
+      expect(stops[0].scale).toBeCloseTo(compress, 6);
+      expect(stops[STOPS - 1].scale).toBe(REST);
+    }
   });
 
   /** The pop's shape is the spring's, so the peak has to fall where the spring's does —
@@ -272,6 +427,68 @@ describe("the release pops past rest", () => {
     expect(Math.abs(peakAt - (peakTime / (settleMs / 1000)) * 100)).toBeLessThan(
       100 / (STOPS - 1),
     );
+  });
+});
+
+/**
+ * ── The register — issue #282 ────────────────────────────────────────────────────────
+ *
+ * The press has two sizes and the call site names which. Everything here is asserted on
+ * the values a browser would resolve, in a register and out of it, because the failure
+ * this ticket guards against is the shipped one restated: a register declared in a
+ * stylesheet, spelled correctly, that half of the press never reads.
+ */
+describe("the press has two registers and one property chooses between them", () => {
+  it("presses at the quieter surface register when nothing is set", () => {
+    expect(compression(null)).toBeCloseTo(REGISTERS.surface.compress, 6);
+    expect(popPeak(null)).toBeCloseTo(REGISTERS.surface.pop, 3);
+  });
+
+  it("presses a control harder and pops it further when the register is declared", () => {
+    const { register, compress, pop } = REGISTERS.control;
+
+    expect(compression(register)).toBeCloseTo(compress, 6);
+    expect(popPeak(register)).toBeCloseTo(pop, 3);
+  });
+
+  /** The two are different presses and not the same press twice — a 44px checkmark travels
+   *  further than a 262px card does, which is the whole of #279's fourth user story. */
+  it("makes the two registers differ, in both halves of the press", () => {
+    const control = REGISTERS.control.register;
+
+    expect(compression(control)).toBeLessThan(compression(null));
+    expect(popPeak(control)).toBeGreaterThan(popPeak(null));
+
+    /* #279's fourth user story, in pixels. An edge travels half the scale delta, so on
+       the 44px checkmark the quiet register moves it 0.88px — under a single device pixel,
+       the same *technically correct and invisible* this whole spec is about — and the
+       control register moves it 1.76px. The 262px rail card gets 5.24px from the quiet
+       one, which is why the quiet one is right for a card and wrong for a checkmark. */
+    const CHECKMARK = 44;
+
+    expect((CHECKMARK * (REST - compression(null))) / 2).toBeLessThan(1);
+    expect((CHECKMARK * (REST - compression(control))) / 2).toBeGreaterThan(1);
+  });
+
+  /**
+   * **One property, not a pair.** Both halves are derived from it inside the stylesheet, so
+   * there is no way to set half a register and no way to pair a surface compression with a
+   * control pop — the failure a `--press-compress`/`--press-pop` pair at the call site
+   * would make available on the first day.
+   */
+  it("gives the call site exactly one property, and derives both halves from it", () => {
+    const declared = pressableCustomProperties();
+    const read = [...pressableUtility().matchAll(/var\(\s*(--press-[a-z-]+)/g)].map(
+      (match) => match[1],
+    );
+    const settable = [...new Set(read)].filter((name) => !(name in declared));
+
+    expect(settable).toEqual([REGISTER_PROPERTY]);
+
+    // And `pressable` never *declares* it, so the call site's own declaration has no
+    // equal-specificity rule to beat. `--poster-radius`'s reason, restated.
+    expect(declared[REGISTER_PROPERTY]).toBeUndefined();
+    expect(pressableUtility()).toContain(`var(${REGISTER_PROPERTY}, `);
   });
 });
 
@@ -485,5 +702,116 @@ describe("the press has a trigger, and there is one of it", () => {
   it("does not ask about reduced motion before marking the press", () => {
     expect(provider).not.toContain("prefers-reduced-motion");
     expect(provider).not.toContain("matchMedia");
+  });
+});
+
+/**
+ * ── Classifying what exists — issue #282 ─────────────────────────────────────────────
+ *
+ * A register nobody applied is a table in a stylesheet. This is the other half: every
+ * element in the application that wears `pressable` is either **deliberately** left on the
+ * default surface register or **declares** the control one, and the manifest below is where
+ * that deliberateness is written down. A new call site fails here until somebody decides
+ * which of the two it is, which is the only form *none is left ambiguous* can take when the
+ * quieter register is spelled by saying nothing.
+ *
+ * The whole-tree sweep rather than a fixed list of files, for `tests/underline-audit.test.ts`'s
+ * reason: a rule about *every* call site that only looks at the ones it was told about is
+ * how the rule stops being true. #279 counted twenty-five call sites and the tree has
+ * thirteen class strings; the sweep is what settles that rather than either number.
+ */
+const PRESS_CALL_SITES: Readonly<Record<string, readonly ("surface" | "control")[]>> = {
+  // Surfaces — cards, cells, rows and tiles. They keep the default and say nothing, and a
+  // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
+  "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
+  "app/(signed-in)/library/lists-rail.tsx": ["surface"],
+  "app/(signed-in)/up-next/up-next-film-rail.tsx": ["surface"],
+  "app/(signed-in)/up-next/up-next-pending-card.tsx": ["surface"],
+  "app/(signed-in)/up-next/up-next-tile.tsx": ["surface"],
+  "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
+  "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
+  "app/(signed-in)/you/you-list-card.tsx": ["surface"],
+  "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
+
+  // The rail card is a surface and the checkmark inside it is a control — the two are
+  // siblings, which is why one file holds one of each.
+  "app/(signed-in)/up-next/up-next-episode-card.tsx": ["surface", "control"],
+
+  // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
+  // nothing else, at the register that makes 44px move as much as 262px does.
+  "app/(signed-in)/library/watch-mark-motion.tsx": ["control"],
+  "app/(signed-in)/search/catalogue-result.tsx": ["control"],
+};
+
+/** How a call site spells the control register, as Tailwind spells an arbitrary property —
+ *  `upcoming-row.tsx`'s own `[--poster-radius:10px]` is the same form. */
+const CONTROL_REGISTER = `[${REGISTER_PROPERTY}:${REGISTERS.control.register}]`;
+
+/** Every class string in the application that puts `pressable` on an element. A `.pressable`
+ *  *selector* is not one — `motion-provider.tsx` holds the only one of those — so the word
+ *  has to appear as a class token and not merely as a substring. */
+function pressClassStrings(file: string): string[] {
+  const strings = [...codeOf(file).matchAll(/"([^"\n]*)"|`([^`]*)`/g)].map(
+    (match) => match[1] ?? match[2],
+  );
+
+  return strings.filter((value) => /(^|\s)pressable(\s|$)/.test(value));
+}
+
+describe("every pressable call site declares a register or is deliberately left quiet", () => {
+  const found = appSourceFiles()
+    .map((file) => ({ file, strings: pressClassStrings(file) }))
+    .filter((site) => site.strings.length > 0);
+
+  it("classifies every call site in the tree and no others", () => {
+    expect(found.map((site) => site.file).sort()).toEqual(Object.keys(PRESS_CALL_SITES).sort());
+
+    for (const { file, strings } of found) {
+      expect(strings, `${file} has call sites this suite has not classified`).toHaveLength(
+        PRESS_CALL_SITES[file].length,
+      );
+    }
+  });
+
+  it("puts the control register on the controls and on nothing else", () => {
+    for (const { file, strings } of found) {
+      strings.forEach((classes, index) => {
+        const register = PRESS_CALL_SITES[file][index];
+        const declares = classes.split(/\s+/).filter((token) => token === CONTROL_REGISTER);
+
+        if (register === "control") {
+          expect(declares, `${file} call site ${index} must declare ${CONTROL_REGISTER}`)
+            .toHaveLength(1);
+        } else {
+          // Not merely *not the control register* — nothing at all, because the default is
+          // the quieter one and spelling it out would be a second place for it to live.
+          expect(classes, `${file} call site ${index} must stay on the default`).not.toContain(
+            REGISTER_PROPERTY,
+          );
+        }
+      });
+    }
+  });
+
+  /**
+   * **The register costs no client boundary.** It is a class token on a string, so it
+   * cannot make a server component a client one — and this pins that rather than trusting
+   * it. The three files below were already `"use client"` for their own reasons (a pointer
+   * gesture, an optimistic mark, an in-flight write) and every other call site renders on
+   * the server, which is the argument for the press being CSS at all.
+   */
+  it("leaves every call site on the boundary it was already on", () => {
+    const client = found
+      .filter((site) => /^\s*"use client"/m.test(readFileSync(
+        path.join(REPOSITORY_ROOT, site.file), "utf8",
+      )))
+      .map((site) => site.file)
+      .sort();
+
+    expect(client).toEqual([
+      "app/(signed-in)/search/catalogue-result.tsx",
+      "app/(signed-in)/up-next/up-next-episode-card.tsx",
+      "app/(signed-in)/up-next/up-next-tile.tsx",
+    ]);
   });
 });

@@ -1947,6 +1947,38 @@ Motion-animated surface are still one spring. What changed is what the numbers a
 *attached* to: the shape is derived, and the two sizes it travels between are declared in
 the stylesheet rather than falling out of a delta nobody computed.
 
+**The press has a register, and there are two of them (#282).** One rule was wrong for two
+kinds of thing: the same movement is a considered gesture on a 262px rail card and nothing
+at all on a 44px checkmark, and both wore the identical utility.
+
+| | compress | pop |
+|---|---|---|
+| Surfaces — cards, cells, rows, tiles | `0.960` | `1.012` |
+| Controls — checkmark hit boxes, Undo, chips | `0.920` | `1.030` |
+
+An edge travels half the scale delta, so the quiet register moves a 262px card's edge
+`5.24px` and a 44px checkmark's edge `0.88px` — under one device pixel, which is the same
+*technically correct and invisible* the whole press was corrected for. The loud register
+moves that checkmark `1.76px`.
+
+**The register is selected by one custom property the call site sets** — `--press-register`,
+`0` for surfaces and `1` for controls. This is `--poster-radius`'s pattern and
+`--poster-radius`'s reason: a second utility beside `pressable` would be two rules setting
+one property in the `utilities` cascade layer, so *which one wins* would be a question about
+the order Tailwind **emits** them in rather than about the call site. A variable the call
+site sets has no ordering question in it. Nothing about a `pressable` element reveals its
+size or its role, so there is no automatic discriminator to use instead — the call site has
+to say. And it is **one** property and not a pair, so there is no way to set half a register
+and no way to pair a surface compression with a control pop; `globals.css` derives both
+halves of the press from the single value, and `press-pop`'s stops are written as fractions
+of the register's own span so that the two registers stay one keyframe and one spring.
+
+**The default is the quieter register, and it is spelled by saying nothing.** A call site
+nobody classified is under-stated, never shouting. `tests/press-spring.test.ts` sweeps the
+whole tree for elements wearing `pressable` and fails on any that is neither deliberately
+left on the default nor declaring the control one, because a register nobody applied is a
+table in a stylesheet.
+
 The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts` imports
 `snappy`, recomputes all 33 stops from the closed form for a damped oscillator's step
 response, and fails if either side moves — the discipline `tests/palette.test.ts` exists to
