@@ -7,7 +7,9 @@ import { smooth } from "@/app/motion";
 import {
   DRAG_THRESHOLD_PX,
   claimsDrag,
+  deliversClick,
   dragOffset,
+  ownsPointer,
   releaseDrag,
   type DragRules,
 } from "@/app/gesture-rules";
@@ -149,17 +151,62 @@ export function LandingPager({
    * two where the vertical component wins, and the page would snap back to nothing and out
    * again under the finger.
    *
+   * `pointerId` is **issue #277's**, and the rest of this file's audit follows from it.
+   * Every handler below used to read `event.clientX` without asking whose finger it was,
+   * so a second pointer landing mid-drag re-seated the origin the first one was being
+   * measured from and any release at all ended the gesture. `ownsPointer` is the question,
+   * asked in all three places, and the id is why it can be.
+   *
    * A ref rather than state, because none of it is drawn. The one thing that *is* drawn is
    * `drag`, and that is state.
    */
-  const gesture = useRef<{ x: number; y: number; claimed: boolean | null } | null>(null);
+  const gesture = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    claimed: boolean | null;
+  } | null>(null);
 
-  /** Whether the gesture that just ended actually moved the pager, so the click it is
-   *  about to generate can be swallowed. Cleared on the next press. */
-  const dragged = useRef(false);
+  /**
+   * The claim the gesture that just ended finished on, held only for the click that
+   * release is about to generate — `deliversClick` is what reads it.
+   *
+   * `null` between gestures, and `null` for a tap, which never latched a claim at all.
+   * That is the same three-state answer the rules module takes, kept as three rather than
+   * flattened to a boolean here: *the pager claimed it*, *the pager refused it* and *there
+   * was nothing to claim* are three different things and only the first swallows a click.
+   *
+   * **This was a `dragged` boolean until #277.** It said *did the pager move*, which is
+   * the same answer for the wrong reason, and could not be checked against a rule because
+   * there was no rule — the decision was an `if` in the handler below.
+   */
+  const released = useRef<boolean | null>(null);
 
   const onPointerDown = useCallback((event: React.PointerEvent) => {
-    dragged.current = false;
+    released.current = null;
+
+    /**
+     * **A second pointer is not a second gesture** — issue #277.
+     *
+     * `isPrimary` is the platform's own answer for touch: the second and every later finger
+     * of a multi-touch is not primary, so a hand steadying the phone can neither begin a
+     * gesture nor re-seat the origin the thumb is being measured from. Ignored rather than
+     * cancelling what is in flight — the first finger is still on the glass and still
+     * dragging, and taking its page away because a second one touched down is the same jump
+     * under the thumb from the other direction.
+     *
+     * **The second guard is narrower than it looks, and deliberately so.** A pen or a mouse
+     * is always primary *for its own type*, so one arriving over a live touch gesture sails
+     * past `isPrimary`. It is refused only while the live gesture is **claimed**, and that
+     * is the condition rather than a bare `!== null` because claiming is the same moment
+     * capture is taken (below): a captured pointer's release is guaranteed to reach this
+     * element, so refusing here cannot strand the pager. An *unclaimed* gesture is replaced
+     * rather than refused, which is also the only recovery there is from a `pointerdown`
+     * whose release never arrived — and a pager that could be left permanently inert by one
+     * lost event would be a worse bug than the one this ticket is guessing at.
+     */
+    if (!event.isPrimary) return;
+    if (gesture.current?.claimed === true) return;
 
     /**
      * **A rail owns its own swipes.** Page one holds two horizontally scrolling rails
@@ -181,13 +228,19 @@ export function LandingPager({
 
     // Nothing is captured yet: a press that turns out to be a tap on a link has to stay a
     // click, and capture is taken below only once the drag is real.
-    gesture.current = { x: event.clientX, y: event.clientY, claimed: null };
+    gesture.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      claimed: null,
+    };
   }, []);
 
   const onPointerMove = useCallback(
     (event: React.PointerEvent) => {
       const from = gesture.current;
-      if (from === null) return;
+      // Whose finger this is, before anything is measured from it (#277).
+      if (!ownsPointer(from, event.pointerId)) return;
 
       const delta = { dx: event.clientX - from.x, dy: event.clientY - from.y };
 
@@ -198,7 +251,6 @@ export function LandingPager({
 
         from.claimed = claimsDrag(delta, rulesFor(page));
         if (from.claimed) {
-          dragged.current = true;
           /* Capture, so a pointer released over the tab row, the nav bar or off the
              window still reaches `onPointerUp` here. Without it that release lands
              nowhere, and the track stays parked mid-drag until the next press. */
@@ -214,9 +266,15 @@ export function LandingPager({
   const onPointerUp = useCallback(
     (event: React.PointerEvent) => {
       const from = gesture.current;
+      /* A release from a pointer that is not this gesture's ends nothing (#277). It used
+         to clear the gesture and park the track before it checked, so the second finger of
+         a two-finger scroll lifting mid-drag left the pager stopped where it stood. */
+      if (!ownsPointer(from, event.pointerId)) return;
+
       gesture.current = null;
       setDrag(0);
-      if (from === null) return;
+      // Armed for the click below, and only for it — the next press clears it again.
+      released.current = from.claimed;
 
       const delta = { dx: event.clientX - from.x, dy: event.clientY - from.y };
       const outcome = releaseDrag(delta, rulesFor(page), from.claimed ?? false);
@@ -228,25 +286,42 @@ export function LandingPager({
   );
 
   /** A pointer the browser takes away mid-drag never sends `pointerup`. Springing back is
-   *  the right answer: nothing was committed, so nothing changes. */
-  const onPointerCancel = useCallback(() => {
+   *  the right answer: nothing was committed, so nothing changes.
+   *
+   *  **And nothing is armed to swallow a click** (#277): a cancelled pointer generates no
+   *  click, so a swallow left armed here would be waiting for somebody else's press. */
+  const onPointerCancel = useCallback((event: React.PointerEvent) => {
+    const from = gesture.current;
+    if (!ownsPointer(from, event.pointerId)) return;
+
     gesture.current = null;
+    released.current = null;
     setDrag(0);
   }, []);
 
   /**
    * A drag that started on a row or a card would otherwise **also** navigate: the pointer
    * went down on a `Link`, travelled, and the browser fires a click on release like any
-   * other press. Swallowed in the capture phase, before it reaches the link.
+   * other press. Swallowed in the capture phase, before it reaches the link — which is the
+   * whole of #277's *a gesture the pager has claimed is not also delivered to a child*.
    *
-   * Keyed to whether the pager actually claimed the gesture, so an ordinary tap — which
-   * never latches `claimed` true — is untouched. This is the same *the check is its own
-   * target* instinct `SPEC.md` states for the season row, one level up: a gesture must
-   * never be two things at once.
+   * `deliversClick` is the rule and it is not this file's (#277). Keyed to the latched
+   * claim rather than to a *did it move* flag, so an ordinary tap — which never latches a
+   * claim either way — is untouched, and so is a gesture the pager watched and **refused**,
+   * whose click belongs to whatever the pointer was actually over. This is the same *the
+   * check is its own target* instinct `SPEC.md` states for the season row, one level up: a
+   * gesture must never be two things at once.
+   *
+   * The claim is read and cleared in one go, so at most one click is ever swallowed per
+   * gesture. `preventDefault` is for the anchor and `stopPropagation` for everything
+   * React would route beneath this handler; the capture phase is what puts both of them
+   * ahead of the children rather than after them.
    */
   const onClickCapture = useCallback((event: React.MouseEvent) => {
-    if (!dragged.current) return;
-    dragged.current = false;
+    const claimed = released.current;
+    released.current = null;
+
+    if (deliversClick(claimed)) return;
     event.preventDefault();
     event.stopPropagation();
   }, []);

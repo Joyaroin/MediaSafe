@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   DRAG_THRESHOLD_PX,
   claimsDrag,
+  deliversClick,
   dragOffset,
+  ownsPointer,
   releaseDrag,
   type Drag,
   type DragRules,
@@ -222,5 +224,88 @@ describe("tracking, while the thumb is still down", () => {
 describe("the threshold is the handoff's own number", () => {
   it("is 40 pixels", () => {
     expect(DRAG_THRESHOLD_PX).toBe(40);
+  });
+});
+
+/**
+ * ── The pointer audit — issue #277 ───────────────────────────────────────────────────
+ *
+ * Everything above is arithmetic over a delta and says nothing about **which pointer the
+ * delta was measured from**, or about what happens to the click a finished gesture leaves
+ * behind. Both were the binding's own business until #277 read it again, and both are the
+ * shape of rule this module exists to hold: a fact about a gesture, decided without a DOM.
+ *
+ * **This is a hardening on a hypothesis, not a reproduced fix.** #277's report is
+ * second-hand — a tap on a next-episodes card that appears to land on the recording
+ * control — and the owner does not have the device. What is asserted below stands on its
+ * own merits: a second finger must not move the origin the first one is being measured
+ * from, and a gesture the surface claimed must not also arrive somewhere as a press. If
+ * the Android misfire survives this, this suite is not where it was addressed.
+ */
+
+describe("a gesture belongs to one pointer, and only that one", () => {
+  /** The pointer that opened the gesture. A binding holds the whole of its own state; this
+   *  rule reads the one field of it that decides ownership. */
+  const gesture = { pointerId: 4 };
+
+  it("is driven by the pointer it began with", () => {
+    expect(ownsPointer(gesture, 4)).toBe(true);
+  });
+
+  /**
+   * **The case this exists for.** A second finger arriving mid-drag sends its own moves
+   * and its own release, and a binding that read `event.clientX` without asking whose it
+   * was would measure the first finger's drag from the second finger's origin — a page
+   * that jumps under the thumb, or a release that parks the track mid-drag.
+   */
+  it("is not driven by a second pointer that arrives mid-gesture", () => {
+    expect(ownsPointer(gesture, 9)).toBe(false);
+  });
+
+  /** Between gestures there is no pointer to own anything, and a stray move or release
+   *  belongs to nobody rather than to the last gesture that ended. */
+  it("owns nothing at all between gestures", () => {
+    expect(ownsPointer(null, 4)).toBe(false);
+  });
+
+  /**
+   * `0` is a legal pointer id, and it is the one a falsy check gets wrong. A binding that
+   * wrote `gesture?.pointerId && …` would disown its own gesture for the whole of a
+   * session where the browser numbered from zero — silently, and only on some engines.
+   */
+  it("does not read a pointer id of zero as no pointer", () => {
+    expect(ownsPointer({ pointerId: 0 }, 0)).toBe(true);
+    expect(ownsPointer(null, 0)).toBe(false);
+  });
+});
+
+describe("a gesture the surface claimed is not also a press on a child", () => {
+  /**
+   * A drag that began on a link travels and is released, and the browser fires a click on
+   * the way out like it would for any other press. The surface has already acted on that
+   * gesture — it paged, or it sprang back — so delivering the click as well makes one
+   * gesture mean two things.
+   */
+  it("does not deliver the click a claimed gesture generates", () => {
+    expect(deliversClick(true)).toBe(false);
+  });
+
+  /**
+   * And the other edge, which is the one that would take the whole surface out: a gesture
+   * the binding watched and refused — a page scroll going past, a rail's own swipe — is
+   * somebody else's, and its click is theirs.
+   */
+  it("delivers the click of a gesture it watched and did not claim", () => {
+    expect(deliversClick(false)).toBe(true);
+  });
+
+  /**
+   * A tap never latches a claim at all: the pointer went down and did not move, so
+   * `claimsDrag` was never asked. `null` is that state, and it is a **tap** — the one
+   * thing on this surface that must always be delivered.
+   */
+  it("delivers a tap, which never latched a claim either way", () => {
+    expect(deliversClick(null)).toBe(true);
+    expect(claimsDrag({ dx: 0, dy: 0 }, PAGER_FIRST)).toBe(false);
   });
 });

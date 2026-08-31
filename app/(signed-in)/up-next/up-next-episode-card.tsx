@@ -252,6 +252,33 @@ export const CARD = "w-[262px] shrink-0 snap-start";
 export const FRAME = "w-full [--still-radius:0]";
 
 /**
+ * **The dead zone between the card's tap area and the recording control — issue #277.**
+ *
+ * The report: on Android a tap on a card sometimes appears to land on the check rather than
+ * opening the card, so a reader records a watch they did not ask for. **It is second-hand
+ * and it was never reproduced** — the owner does not have the device — so this ships as a
+ * hardening that stands on its own merits and not as a fix, and `DESIGN.md` §7 says so in
+ * those words. If the misfire survives this, it was not addressed here.
+ *
+ * What stands on its own merits: the link and the check were two targets **sharing an
+ * edge**. The link's box ended exactly where the mark row began, and the check fills that
+ * row's whole `44px`, so the boundary between *open this show* and *record a watch* was one
+ * boundary pixel wide. Every platform's touch adjustment snaps a fat contact to the nearest
+ * target, and two targets that touch give it nothing to snap *between*.
+ *
+ * **`4px`, and it is the card's own bottom padding rather than four new pixels.** The
+ * link's text block ended in `pb-1`; that padding is gone and this margin is in its place,
+ * so the link's box is `4px` shorter, the gap is `4px` tall, and every pixel of the rendered
+ * card is where it was. That is `DESIGN.md` §6's bounding-rect guarantee and #250's *the
+ * rail never reflows under a thumb*, and it is the reason the gap is exactly this size:
+ * the card's height is fixed by its measure, so the only slack available is what the link
+ * already spent on padding. Anything wider would have to come out of the `44px` control
+ * — §6's floor, and the one direction a dead zone must never be paid for from — or out of
+ * the card, which would move every card on the rail.
+ */
+const TAP_DEAD_ZONE = "mb-1";
+
+/**
  * The card, drawn once for both branches above.
  *
  * Extracted rather than written twice for the reason the deleted phone group section gave
@@ -340,7 +367,7 @@ function CardBody({
            does when nothing tells it otherwise. #274 retargets the href above and changes
            nothing about this: the destination moved, the reason the prop is absent did
            not. */
-        className="pressable block"
+        className={`pressable block ${TAP_DEAD_ZONE}`}
         /* The still is `aria-hidden` and the code line is three tokens, so this label is
            what a screen reader hears for the link. `titleName` first, because the series
            is what a reader is choosing between. */
@@ -348,7 +375,7 @@ function CardBody({
       >
         <CardFrame picture={picture} aboveFold={aboveFold} />
 
-        <div className="px-[14px] pt-3 pb-1">
+        <div className="px-[14px] pt-3">
           <p className="label-line text-dim">{entry.titleName}</p>
 
           <p className="mt-[7px] flex items-baseline gap-2">
@@ -467,6 +494,10 @@ function CardFrame({
 /**
  * The check, and its own reversal — the deleted Ongoing tile's mark slot at a card's
  * measure, and deliberately the same three cases in the same order.
+ *
+ * **It is a sibling of the link and it no longer touches it** (#277). `TAP_DEAD_ZONE`
+ * above is the `4px` between the two boxes; this one is unchanged by it, because the
+ * `44px` target is what the gap was drawn *around* rather than out of.
  *
  * `RECORDING_GLYPH` and `GHOST_RECOVERY_COMPACT` are the episode row's own chip and glyph
  * reused rather than re-cut, so a reader meets one appearance for *record this* and one

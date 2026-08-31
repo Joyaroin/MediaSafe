@@ -18,12 +18,18 @@
  *
  * ── What it is not ───────────────────────────────────────────────────────────────────
  *
- * It holds no state, reads no clock and knows nothing about pointers, elements or React.
- * A binding tracks the pointer's start and current position, subtracts them, and asks
- * these functions what that difference means. Velocity is deliberately absent: the
- * handoff's rule is a distance (*the drag threshold is 40px*) and a flick that travels
- * fast and far crosses it anyway, so a second, unspecified rule would only be a way for
- * the two to disagree.
+ * It holds no state, reads no clock and knows nothing about elements or React. A binding
+ * tracks the pointer's start and current position, subtracts them, and asks these functions
+ * what that difference means. Velocity is deliberately absent: the handoff's rule is a
+ * distance (*the drag threshold is 40px*) and a flick that travels fast and far crosses it
+ * anyway, so a second, unspecified rule would only be a way for the two to disagree.
+ *
+ * **This said *knows nothing about pointers* until issue #277**, and the two rules at the
+ * foot of the file are why it no longer does. They know a pointer's **id** and nothing
+ * else: not its position, not its target, not its buttons. That is still a number a binding
+ * hands in rather than a DOM this module reaches for, and it is the narrowest thing that
+ * can answer *whose gesture is this* — which was the audit's finding and could not be
+ * asserted anywhere while it lived inside a handler.
  */
 
 /**
@@ -179,4 +185,76 @@ export function releaseDrag(drag: Drag, rules: DragRules, claimed: boolean): Dra
   if (!rules.commits.includes(direction)) return { kind: "cancel" };
 
   return { kind: "commit", direction };
+}
+
+/**
+ * ── The pointer audit — issue #277 ───────────────────────────────────────────────────
+ *
+ * Everything above is arithmetic over a delta and deliberately knows nothing about
+ * pointers. The two rules below are the smallest things that are *about* a pointer and are
+ * still decidable without one: **whose gesture an event belongs to**, and **whether the
+ * click a finished gesture leaves behind may be delivered**. Both were the landing pager's
+ * own business, written inline over `event.pointerId` and a boolean ref, and neither could
+ * be asserted by anything.
+ *
+ * **This is a hardening on a hypothesis and not a reproduced fix.** #277's report is
+ * second-hand — on Android a tap on a next-episodes card sometimes appears to land on the
+ * recording control rather than opening the card — and the owner does not have the device.
+ * These rules stand on their own merits, which is the whole basis on which they ship: a
+ * second finger must not move the origin the first one is being measured from, and a
+ * gesture a surface has claimed must not also arrive at a child as a press. If the misfire
+ * survives them, it was not addressed here, and `DESIGN.md` §7 says so in the same words.
+ */
+
+/** The one thing about a gesture that decides whose events it is. A binding holds much
+ *  more than this; the rule reads only the field it is about. */
+export interface GesturePointer {
+  readonly pointerId: number;
+}
+
+/**
+ * **Is this event's pointer the one the gesture in progress belongs to?**
+ *
+ * `false` between gestures, and `false` for every pointer but the gesture's own. A binding
+ * that skipped this measures one finger's travel from another finger's origin the moment a
+ * second one lands — the page jumps under the thumb — and lets any release at all end a
+ * drag, which parks the track mid-gesture until the next press.
+ *
+ * A type predicate rather than a bare `boolean`, so a handler that has asked the question
+ * is holding a gesture the compiler knows is there. `G` is the caller's own gesture shape,
+ * not this interface, so nothing has to be narrowed twice.
+ *
+ * The comparison is `===` against `null` and not a falsy check: `0` is a legal pointer id
+ * and is the value a truthiness test gets wrong, on some engines only, for a whole session.
+ */
+export function ownsPointer<G extends GesturePointer>(
+  gesture: G | null,
+  pointerId: number,
+): gesture is G {
+  return gesture !== null && gesture.pointerId === pointerId;
+}
+
+/**
+ * **May the click this gesture is about to generate reach a child?**
+ *
+ * A pointer that went down on a link, travelled and was released generates a click like any
+ * other press. If the surface has already acted on that travel — paged, or sprung back —
+ * then delivering the click as well makes one gesture mean two things, which is the failure
+ * `SPEC.md` states for the season row's check one level down: *a gesture must never be two
+ * things at once.*
+ *
+ * The argument is the binding's **latched** claim, in the three states it really has:
+ *
+ *  - `true` — the surface claimed the gesture, so the click is its own and is swallowed;
+ *  - `false` — the surface watched the gesture and refused it (a page scroll going past, a
+ *    rail's own swipe), so the click belongs to whoever the pointer was over;
+ *  - `null` — the pointer never moved, so the claim was never asked. That is a **tap**, and
+ *    a tap is the one thing on a surface like this that must always be delivered.
+ *
+ * The last two answering the same way is the point of taking `boolean | null` rather than a
+ * `boolean` the binding has already flattened: a `?? false` at the call site reads as a
+ * default and is in fact the whole of *a tap still opens the card*.
+ */
+export function deliversClick(claimed: boolean | null): boolean {
+  return claimed !== true;
 }
