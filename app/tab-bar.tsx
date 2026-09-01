@@ -132,6 +132,51 @@ function navTransitionTypes(pathname: string, href: string): string[] {
   return to > from ? ["nav-forward"] : ["nav-back"];
 }
 
+/**
+ * ── The bar wears the press — issue #295 ─────────────────────────────────────────────
+ *
+ * One class string, worn by all four tabs. Until this ticket these were the four most
+ * pressed controls in the application and the only ones that answered nothing: #279's
+ * press reached every tile, cell, row and button in the tree, and of the `pressable` call
+ * sites the bar that is on screen at all times was not one.
+ *
+ * **The control register, which is a register that already exists.** A tab is a 44px hit
+ * box, the same kind of thing as the search screen's add — not a 262px card — so it takes
+ * `--press-register: 1` and none of #279's numbers move. The register is spelled as an
+ * arbitrary property the way every other classified call site spells it
+ * (`globals.css`'s `@utility pressable`, and `tests/press-spring.test.ts` sweeps for it).
+ *
+ * **One string and not one per state.** The active and inactive branches differ by colour
+ * alone, so the press lives in the shared half. Four tabs pressing is then a property of
+ * the single `<Link>` below rather than of four class attributes staying in step.
+ *
+ * **The colour transition is gone from this element, and that is forced rather than
+ * chosen.** `pressable` declares `transition`, and `transition-colors` declares
+ * `transition`; two of them on one element in the `utilities` cascade layer make *which
+ * one wins* a question about the order Tailwind emits them in — and the losing branch is
+ * either a hover tint that no longer fades or a compression that no longer eases, which
+ * is the press broken outright. This bar is `lg:hidden`, so the tint it drops is a hover
+ * fade on a surface that only exists where there is no pointer to hover with; the press
+ * it keeps is what a finger gets. `hover:text-ink` still applies, instantly.
+ */
+const TAB = "pressable [--press-register:1] flex h-11 flex-col items-center justify-center gap-1";
+
+/**
+ * **The icon leads the label.** `press-lead` (`app/globals.css`) compresses the element
+ * that wears it a little further than the press it sits inside — `0.920 × 0.98 = 0.9016`
+ * here against the label's `0.920` — so a tab answers as an icon over a word rather than
+ * as one flat block. Without it the four cells compress uniformly and the bar reads as a
+ * search row that happens to have tabs in it.
+ *
+ * It is a class token and nothing else: no state, no handler, and the press's one
+ * delegated listener (`motion-provider.tsx`) is still the whole of this bar's runtime.
+ */
+const TAB_ICON = "press-lead h-[19px] w-[19px]";
+
+/** The label takes the tab's own compression and no more — the second half of the lead
+ *  being a lead at all. */
+const TAB_LABEL = "text-tab font-medium leading-tight";
+
 export function TabBar() {
   const pathname = usePathname();
 
@@ -161,14 +206,10 @@ export function TabBar() {
             href={href}
             transitionTypes={navTransitionTypes(pathname, href)}
             aria-current={current ? "page" : undefined}
-            className={
-              current
-                ? "flex h-11 flex-col items-center justify-center gap-1 text-ink"
-                : "flex h-11 flex-col items-center justify-center gap-1 text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink"
-            }
+            className={`${TAB} ${current ? "text-ink" : "text-dim hover:text-ink"}`}
           >
-            <Icon className="h-[19px] w-[19px]" />
-            <span className="text-tab font-medium leading-tight">{label}</span>
+            <Icon className={TAB_ICON} />
+            <span className={TAB_LABEL}>{label}</span>
           </Link>
         );
       })}
