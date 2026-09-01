@@ -2069,6 +2069,35 @@ the flourish meaning *that was a tap* playing over the arrival meaning *this is 
 selected* is one gesture saying two things. That ordering is a tested property now rather
 than a typing order.
 
+**And the phone tab bar finally wears it — issue #295.** The four tabs were the most
+pressed controls in the application and the only ones that answered nothing: #279's press
+reached every tile, cell, row and button, and of the `pressable` call sites the one bar
+that is on screen at all times was not one. It joins at the **control** register — a tab is
+a 44px hit box, the same kind of thing as the search screen's add, not a 262px card — so it
+takes `--press-register: 1` and not one of the six amplitudes above moves. What felt wrong
+was the motion around the numbers, not the tuning.
+
+**The icon leads the label**, by a factor rather than by a fourth register. A nested
+transform composes with its parent's, so a child wearing `press-lead` multiplies whatever
+compression the element it sits in resolved to: `0.920 × 0.98 = 0.9016` for a tab's icon
+against `0.920` for its label. A tab is an icon *over* a word, and four cells compressing
+flat read as a search row that happens to have tabs in it. A factor keeps the register table
+at three rows, leaves the call site saying exactly one thing, and makes a lead placed in a
+quieter register lead by the same *proportion* rather than by a copied number. It stays
+short of `0.900`, so the recording checkmark is still the deepest press there is, and it is
+one direction only — the release is the tab's own `press-pop` over the whole cell, because
+an icon popping on its own would be the bar answering twice for one tap. Reduced motion
+drops it in the same `@media` block that drops the compression and the pop, since it *is*
+the compression one element down.
+
+**The tab's colour transition went, and that was forced.** `pressable` declares
+`transition` and `transition-colors` declares `transition`; two of them on one element in
+the `utilities` layer make *which wins* a question about the order Tailwind emits them in,
+and the losing branch is either a hover tint that stops fading or a compression that stops
+easing — the press broken outright. The bar is `lg:hidden`, so what it gives up is a hover
+fade on a surface that exists only where there is no pointer to hover with. `hover:text-ink`
+still applies; it applies instantly.
+
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what
 a pending surface renders instead and gives four separate reasons why a skeleton is not it —

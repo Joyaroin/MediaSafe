@@ -987,6 +987,33 @@
   --press-rise: calc(var(--press-pop) - var(--press-compress));
   --press-overshoot: calc(var(--press-pop) - 1);
 
+  /* ── The lead — issue #295 ────────────────────────────────────────────────────────
+     The phone tab bar presses at the control register like any other small hit box, and
+     inside that press the icon goes a little further than the word under it. A tab is an
+     icon *over* a label; without this the four cells compress as flat blocks and the bar
+     reads as a search row that happens to have tabs in it. The icon leading is the whole
+     of the difference, which is why #295 is the motion around #279's numbers rather than
+     a re-tune of them: not one of the six amplitudes above moves.
+
+     **A factor, not a fourth register.** A nested transform composes with its parent's,
+     so a leading child multiplies whatever compression the element it sits in resolved
+     to — `0.920 × 0.98 = 0.9016` inside a tab, `0.960 × 0.98` inside a card. The register
+     table stays three rows, the call site still says exactly one thing, and a lead placed
+     in a quieter register leads by the same *proportion* rather than by a copied number.
+     A fourth register would have been a row nobody chose and a second property to set.
+
+     **It stays short of `0.900`**, the recording checkmark's, which is deliberately the
+     deepest press in the application (#283) — and it is *one direction only*. The release
+     is the tab's own `press-pop` over the whole cell: an icon that popped on its own
+     would be the bar answering twice for one tap, and the lead is a character the
+     compression has rather than a second flourish.
+
+     Declared here rather than beside the tab bar because the press has one vocabulary and
+     this is it. `tests/press-spring.test.ts` resolves the icon's compression the way a
+     browser would — the tab's own register through this factor — and asserts that it
+     exceeds the label's and falls short of the recording one. */
+  --press-lead: 0.98;
+
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     background-color var(--dur-press) var(--ease-out-quart),
@@ -995,6 +1022,18 @@
   &:active,
   &[data-pressed="true"] {
     transform: scale(var(--press-compress));
+  }
+
+  /* The lead — issue #295, and `--press-lead` above holds the whole of why. The child
+     that leads carries the press's own timing, because it is the same compression one
+     element down and not a second animation with an opinion of its own. */
+  & .press-lead {
+    transition: transform var(--dur-press) var(--ease-out-quart);
+  }
+
+  &:active .press-lead,
+  &[data-pressed="true"] .press-lead {
+    transform: scale(var(--press-lead));
   }
 
   /* ── The depth, and the whole of it — issue #284 ─────────────────────────────────
@@ -1158,6 +1197,17 @@
   }
   .pressable[data-popped="true"] {
     animation: none;
+  }
+  /* The lead (#295) is the compression again, one element down, so it is dropped here
+     rather than in a block of its own: a second `@media` would be a second answer to one
+     preference, and a reader who asked for no movement would still get icons shrinking
+     under a thumb. The tap itself is untouched — the tab still navigates. */
+  .pressable .press-lead {
+    transition: none;
+  }
+  .pressable:active .press-lead,
+  .pressable[data-pressed="true"] .press-lead {
+    transform: none;
   }
 }
 
