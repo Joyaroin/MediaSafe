@@ -79,6 +79,11 @@ export function WatchMenu({
     void watchMarks.mark(subject, naming);
   }
 
+  function undo(): void {
+    ref.current?.close();
+    void watchMarks.undo(subject, naming);
+  }
+
   function unwatch(): void {
     ref.current?.close();
     void watchMarks.unwatch(subject, naming);
@@ -101,13 +106,25 @@ export function WatchMenu({
             sentence is the one that matters: it is the only place in the product that says
             unwatch takes every watch, and it is said before the press rather than after
             it. */}
-        Recording a rewatch keeps the watches you already have and adds one. Unwatching
-        removes every watch of it, including any that came in with your library.
+        Recording a rewatch keeps the watches you already have and adds one. Undoing takes
+        back the most recent one and leaves the rest. Unwatching removes every watch of it,
+        including any that came in with your library.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button type="button" onClick={rewatch} className={GHOST_RECOVERY}>
           Rewatch
+        </button>
+
+        {/* **Undo lives here and nowhere else.** It was a glyph in the row's trailing
+            slot, offered only for a mark made on this visit — which meant the row swapped
+            one control for another and back, and meant the store had to know which surface
+            had pressed. Neither is true now: the slot holds the mark in every state, and
+            *Undo* is simply the middle item of the three things a watched row can be
+            asked. It is the same write either way (`db/access.ts`'s `undoWatch` — the
+            newest row, never all of them). */}
+        <button type="button" onClick={undo} className={GHOST_RECOVERY}>
+          Undo
         </button>
 
         <button type="button" onClick={unwatch} className={GHOST_RECOVERY}>

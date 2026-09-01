@@ -119,6 +119,16 @@ export type WatchMarkPhase = "unwatched" | "marking" | "settled";
 export interface WatchAppearance {
   /** Struck, in the reader's eye. Flips before the server has answered. */
   readonly watched: boolean;
+  /**
+   * How many watches this episode has, in the same eye. `watched` is `watches > 0`, and
+   * the two are always applied together — no path in this file sets one without the other,
+   * which is what keeps them from becoming the disagreement `EpisodeDetail` warns about.
+   *
+   * It is held here rather than left to the server read because the season row prints it,
+   * and a `×2` that appeared one revalidation after the press would be the only part of a
+   * mark that was not optimistic.
+   */
+  readonly watches: number;
   readonly phase: WatchMarkPhase;
 }
 
@@ -231,6 +241,7 @@ export interface WatchMarks {
 /** What a mark starts as when a write reaches an episode no surface is showing. */
 const UNSEEN: WatchMarkView = {
   watched: false,
+  watches: 0,
   phase: "unwatched",
   pending: false,
 };
@@ -284,12 +295,13 @@ interface Mark {
 }
 
 function appearanceOf(view: WatchMarkView): WatchAppearance {
-  return { watched: view.watched, phase: view.phase };
+  return { watched: view.watched, watches: view.watches, phase: view.phase };
 }
 
 function sameView(one: WatchMarkView, other: WatchMarkView): boolean {
   return (
     one.watched === other.watched &&
+    one.watches === other.watches &&
     one.phase === other.phase &&
     one.pending === other.pending
   );
@@ -382,7 +394,15 @@ export function createWatchMarks({
     const sourceKey = one.key;
 
     holdRestore(one);
-    apply(one, { watched: true, phase: "marking", pending: true });
+    /* `+ 1`, which is what makes this a **rewatch** when the episode already had one:
+       the same call, the same key discipline, one more row. The row's `×N` follows from
+       here rather than waiting for a revalidation. */
+    apply(one, {
+      watched: true,
+      watches: one.view.watches + 1,
+      phase: "marking",
+      pending: true,
+    });
 
     one.inFlight += 1;
     const outcome = await record(subject, sourceKey);
@@ -415,6 +435,11 @@ export function createWatchMarks({
       // only an appearance that was actually put back has a strike left to play.
       apply(one, {
         watched: true,
+        /* `Math.max(1, …)`, not `+ 1`: the press above already counted this write, and a
+           concurrent failure's rollback is the only thing that could have taken the count
+           back below one while this attempt was on the wire. Adding again here would
+           double-count the one row this attempt wrote. */
+        watches: Math.max(1, one.view.watches),
         phase: one.view.phase === "unwatched" ? "marking" : one.view.phase,
         pending: false,
       });
@@ -476,7 +501,7 @@ export function createWatchMarks({
     one.written = true;
 
     holdRestore(one);
-    apply(one, { watched: false, phase: "unwatched", pending: true });
+    apply(one, { watched: false, watches: 0, phase: "unwatched", pending: true });
 
     one.inFlight += 1;
     const outcome = await removeWatch(subject);
@@ -489,7 +514,7 @@ export function createWatchMarks({
       // reading watched with no watch behind it — the mirror of the case `mark` above
       // guards. `unwatched`, never `settled`: nothing was recorded, so nothing is
       // stamped and there is no strike to play out.
-      apply(one, { watched: false, phase: "unwatched", pending: false });
+      apply(one, { watched: false, watches: 0, phase: "unwatched", pending: false });
       settleToast(one, "unwatch");
       return;
     }
@@ -549,7 +574,14 @@ export function createWatchMarks({
 
     /* The mark is still there, so the screen says so again. `settled` and not `marking`:
        there is no sweep to replay for a watch that was recorded a while ago. */
-    apply(one, { watched: true, phase: "settled", pending: false });
+    apply(one, {
+      watched: true,
+      // The write did not land, so the row it was taking back is still there — one more
+      // than the appearance this undo optimistically restored.
+      watches: before.watches + 1,
+      phase: "settled",
+      pending: false,
+    });
 
     if (one.raised) return;
 
@@ -627,7 +659,19 @@ export function createWatchMarks({
     for (const one of marked) {
       one.written = true;
       holdRestore(one);
-      apply(one, { watched: true, phase: "settled", pending: true });
+      /* `Math.max(1, …)` rather than `+ 1`, and this is the difference between this write
+         and `mark`: the server does **not** write a second row for an episode already
+         watched — `markWatchedUpTo` is `ON CONFLICT DO NOTHING` over derived keys, and
+         `db/access.ts` says in as many words that *anything already recorded stays as it
+         is*. So a covered row that was already watched keeps the count it had, and one
+         that was not lands on exactly one. A press through ten episodes never manufactures
+         ten rewatches. */
+      apply(one, {
+        watched: true,
+        watches: Math.max(1, one.view.watches),
+        phase: "settled",
+        pending: true,
+      });
     }
 
     const outcome = await recordUpTo(
@@ -643,7 +687,12 @@ export function createWatchMarks({
     if (outcome.ok) {
       write.key = null;
       for (const one of marked) {
-        apply(one, { watched: true, phase: "settled", pending: stillPending(one) });
+        apply(one, {
+          watched: true,
+          watches: Math.max(1, one.view.watches),
+          phase: "settled",
+          pending: stillPending(one),
+        });
       }
       if (write.raised) {
         write.raised.resolve();

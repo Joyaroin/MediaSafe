@@ -10,7 +10,7 @@ import {
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { watchMarks } from "@/app/(signed-in)/library/watch-marks";
 import { posterSrc } from "@/app/poster";
-import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { QueuedEpisode, UpNextEntry } from "@/db/access";
 import {
   episodeCode,
@@ -104,7 +104,6 @@ export function UpNextEpisodeCard({
     return (
       <CardBody
         entry={entry}
-        episodeId={entry.episodeId}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         /**
@@ -183,7 +182,6 @@ function MarkableCard({
   return (
     <CardBody
       entry={entry}
-      episodeId={showing.episodeId}
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       /**
@@ -306,7 +304,6 @@ const TAP_DEAD_ZONE = "mb-1";
  */
 function CardBody({
   entry,
-  episodeId,
   code,
   episodeName,
   picture,
@@ -324,7 +321,6 @@ function CardBody({
    * lands. The markable branch hands down the episode it is showing; the branch whose run
    * arrived empty has nothing that can advance, so for it the two are the same id.
    */
-  episodeId: string;
   code: string;
   episodeName: string | null;
   /** What goes in the frame — chosen by `up-next-mark.ts`, drawn by `CardFrame` below. */
@@ -372,7 +368,7 @@ function CardBody({
           branch that owns the control, and for every state that has a control at all the
           two are the same episode. */}
       <Link
-        href={`/episodes/${episodeId}`}
+        href={`/titles/${entry.libraryEntryId}`}
         /* **This press carried `scroll={false}` until issue #273**, because #254
            intercepted it into the layout's `@episode` slot: the landing screen was not
            replaced, it was still underneath, and Next scrolling it to the top would have
@@ -561,21 +557,19 @@ function CardFrame({
 const CHECK_HIT_BOX = `pressable [--press-register:2] group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
 
 function MarkControl({ mark }: { mark: UpNextMark }) {
-  const { episode, undoable, pending } = mark;
+  const { episode, pending } = mark;
 
-  if (undoable !== null) {
-    return (
-      <button
-        type="button"
-        onClick={mark.undo}
-        aria-label={`Undo marking ${queuedEpisodeFullName(undoable)} watched`}
-        className={`${CHECK_HIT_BOX} px-2`}
-      >
-        <span className={GHOST_RECOVERY_COMPACT}>Undo</span>
-      </button>
-    );
-  }
-
+  /**
+   * **No *Undo* here.** It was a text pill in this slot, offered for the length of one
+   * visit after a mark. Up next has no hold panel to put the item in — every episode this
+   * surface shows is the *next unwatched* one, so there is nothing on a row here to
+   * rewatch or unwatch, and a panel with one item in it is a gesture nobody would find.
+   *
+   * A misfire on this screen is taken back where the episode lives: the title's season
+   * list, whose rows hold all three acts behind a hold (`watch-menu.tsx`). That costs a
+   * navigation, and it is the trade — the landing screen keeps one control and one
+   * meaning, which is what it was rebuilt around.
+   */
   /* A capped run that went dry — `UpNextQueue`'s own table has the three cases, and this
      is the one that is a read catching up rather than a show finishing. The slot offers
      nothing and keeps its height. */

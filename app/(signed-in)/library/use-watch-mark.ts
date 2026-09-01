@@ -47,6 +47,7 @@ export type { WatchAppearance, WatchMarkPhase } from "./watch-marks";
  */
 export function useWatchMark({
   initialWatched,
+  initialWatches,
   libraryEntryId,
   episodeId,
   titleName,
@@ -54,6 +55,9 @@ export function useWatchMark({
   onRecorded,
 }: {
   readonly initialWatched: boolean;
+  /** How many watches the server read found. Absent where the surface does not draw a
+   *  count, in which case `initialWatched` decides between none and one. */
+  readonly initialWatches?: number;
   readonly libraryEntryId: string;
   readonly episodeId: string | null;
   readonly titleName: string;
@@ -83,6 +87,10 @@ export function useWatchMark({
    */
   const [initial] = useState<WatchMarkView>(() => ({
     watched: initialWatched,
+    /* Defaulted from `initialWatched` rather than made required, so the callers that have
+       no count to give — the film row, the show page's own up-next row — keep seeding a
+       coherent view. Where a count matters, it is passed. */
+    watches: initialWatches ?? (initialWatched ? 1 : 0),
     phase: initialWatched ? "settled" : "unwatched",
     pending: false,
   }));

@@ -594,32 +594,33 @@ describe("every tile and card on Up next opens the thing it names", () => {
     );
   });
 
-  /** And the card, pointed back at the episode by #291. The negative is the load-bearing
-   *  half — a card that kept the title's href beside the episode's would pass the positive
-   *  and still open the wrong page from whichever of the two a thumb landed in. */
-  it("sends a next-episodes card to the episode it names, not to the show", () => {
+  /**
+   * **Every press on this tab leads to a title, and that is the whole rule now.**
+   *
+   * This asserted the opposite in three tests — the card pointed at `/episodes/{id}`, both
+   * branches handed down their own episode id, and the season row kept the same href — all
+   * of them #274's *a card leads to the thing it names*, restored by #291.
+   *
+   * `/episodes/[episodeId]` is deleted. What a card names is still an episode and there is
+   * nowhere for that to lead, so the destination is the title, which is where the desktop
+   * row already went. The negative is the load-bearing half, as it was before: a card
+   * carrying both hrefs would pass the positive and still open the wrong page from
+   * whichever of the two a thumb landed in.
+   */
+  it("sends a next-episodes card to the title, the one place it can lead", () => {
     const card = codeOf(sourceAt(EPISODE_CARD));
 
-    expect(card).toMatch(/href=\{`\/episodes\/\$\{episodeId\}`\}/);
-    expect(card).not.toMatch(/href=\{`\/titles\//);
+    expect(card).toMatch(/href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(card).not.toMatch(/\/episodes\//);
   });
 
-  /**
-   * **The episode it names is the episode it is *drawing*, not the head of the run.**
-   *
-   * `entry.episodeId` is `library_entry_up_next`'s own episode and is stale the moment a
-   * mark lands — the card advances through its queue without the page reloading, so a card
-   * three marks in names an episode the entry has never heard of. The two branches
-   * therefore hand down two different ids: the run that arrived empty has only the entry's
-   * (nothing there can advance), and the markable card hands down the episode it is
-   * showing. A single `entry.episodeId` at both call sites would pass the test above and
-   * still open the wrong episode, silently, for exactly the readers who use the rail most.
-   */
-  it("links to the episode the card is drawing, from each branch", () => {
-    const card = codeOf(sourceAt(EPISODE_CARD));
-
-    expect(card).toMatch(/episodeId=\{entry\.episodeId\}/);
-    expect(card).toMatch(/episodeId=\{showing\.episodeId\}/);
+  it("leaves no episode route referenced from any Up next surface", () => {
+    // The three that used to link there, asserted together: the card, the row, and the
+    // season row the phone reaches from a title. A reintroduced href fails here rather
+    // than 404ing in a browser.
+    for (const file of [EPISODE_CARD, TILE, SEASON_ROWS]) {
+      expect(codeOf(sourceAt(file))).not.toMatch(/\/episodes\//);
+    }
   });
 
   /**
@@ -641,14 +642,20 @@ describe("every tile and card on Up next opens the thing it names", () => {
    * because the destination the card gained here has to be a page that exists, and because
    * a season row quietly losing its own link is the sort of thing a retarget does.
    */
-  it("leaves the episode's own page reachable from a season row and by deep link", () => {
-    // #289 lifted the route out from under the entry: it carries the episode's id alone.
-    expect(codeOf(sourceAt(SEASON_ROWS))).toMatch(
-      /href=\{`\/episodes\/\$\{episode\.id\}`\}/,
-    );
+  it("leaves no episode route in the tree at all", () => {
+    /**
+     * The inversion of what this asserted, and it is asserted rather than assumed for the
+     * reason the positive was: a route left behind after its links are gone is a page
+     * nothing reaches and nothing maintains, and the next reader of this suite would have
+     * no way to tell that from a page whose links were dropped by mistake.
+     *
+     * #289 had lifted the route out from under the entry so it carried the episode's id
+     * alone; #254 made the season row link to it. Both are undone — an episode has a row
+     * on the title's page and nothing else, and the row's three acts live behind its hold.
+     */
     expect(
-      existsSync(path.join(REPOSITORY_ROOT, "app/(signed-in)/episodes/[episodeId]/page.tsx")),
-    ).toBe(true);
+      existsSync(path.join(REPOSITORY_ROOT, "app/(signed-in)/episodes")),
+    ).toBe(false);
   });
 
   /** A reader can read about a title properly before deciding to add it. #273 made this

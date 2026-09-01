@@ -47,6 +47,7 @@ function episode(overrides: Partial<EpisodeDetail> = {}): EpisodeDetail {
     airDate: null,
     runtimeMins: null,
     watched: false,
+    watches: 0,
     upNext: false,
     ...overrides,
   };

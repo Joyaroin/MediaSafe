@@ -57,6 +57,7 @@ export function useLiveEpisodes(
           { libraryEntryId, episodeId: one.id },
           {
             watched: one.watched,
+            watches: one.watches,
             phase: one.watched ? "settled" : "unwatched",
             pending: false,
           },
