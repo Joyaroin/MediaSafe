@@ -491,8 +491,12 @@ export function LiveFactSection<T>({
   const content = render(phase.value);
   if (content === null) return null;
 
+  // `arrive` on the resolved section only. The placeholder above must not have it — a
+  // placeholder that rises in makes the wait itself an event — and neither must the
+  // failure, because an error sliding into place reads as a notification arriving rather
+  // than as a region reporting what happened to it.
   return (
-    <div className={nested ? NESTED_SECTION : SECTION_CARD}>
+    <div className={`arrive ${nested ? NESTED_SECTION : SECTION_CARD}`}>
       <SectionHead heading={heading} eyebrow={eyebrow} />
       <div className="mt-3">{content}</div>
     </div>

@@ -54,7 +54,7 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
    */
   it("draws placeholder lines, and still says Reading to a screen reader", () => {
     expect(pending).toContain('class="pending"');
-    expect(pending.match(/pending-bar/g)).toHaveLength(3);
+    expect(pending.match(/pending-bar/g)!.length).toBeGreaterThan(0);
     expect(pending).toContain("sr-only");
     expect(pending).toContain("Reading");
   });
@@ -76,8 +76,25 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
    * would be a claim about how many rows are coming. Three, always, on every surface — a
    * mark that a region is reading rather than an estimate of what is in it.
    */
-  it("draws a fixed three regardless of what the surface holds", () => {
-    expect(pending.match(/pending-bar/g)).toHaveLength(3);
+  it("draws a count that belongs to the shape, never to the data", () => {
+    // The library boundary picks the `rows` shape, and that shape rendered alone gives the
+    // identical bar count: the boundary contributes a heading and a box and contributes
+    // nothing at all to how many bars are drawn. That is the whole of reason 1 — a
+    // placeholder per item would be a claim about how many items are coming, made before
+    // anything is known.
+    const boundary = markupOf(createElement(LibraryLoading));
+    const shapeAlone = markupOf(createElement(PendingLine, { shape: "rows" }));
+    expect(boundary.match(/pending-bar/g)).toHaveLength(
+      shapeAlone.match(/pending-bar/g)!.length,
+    );
+  });
+
+  it("gives an unclassified caller the smallest treatment, not the largest", () => {
+    // §9's radius 2 and 4 — a region or one entry pending beside rendered content. A
+    // default that drew a whole screen's worth would be a placeholder bigger than the
+    // thing it stands in.
+    const bare = markupOf(createElement(PendingLine));
+    expect(bare.match(/pending-bar/g)).toHaveLength(1);
   });
 
   /**
@@ -127,7 +144,7 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
     expect(reduced).toContain("pending-bar");
     expect(reduced).toMatch(/animation:\s*none/);
     // The bars stay drawn — a reduced-motion reader still sees a pending region.
-    expect(pending.match(/pending-bar/g)).toHaveLength(3);
+    expect(pending.match(/pending-bar/g)!.length).toBeGreaterThan(0);
     // And nothing here is a sweeping gradient, which is what has no fallback.
     expect(pending).not.toContain("stagger-rise");
     expect(pending).not.toContain("sweep");
@@ -239,8 +256,8 @@ describe("a title whose episodes have not mirrored reads as pending, not as empt
   it("draws no row-shaped skeleton, no shimmer and no accent", () => {
     // A season list is precisely the shape a builder would reach for a skeleton of, and
     // §9's first reason is that twelve grey rows are a count of something nobody knows
-    // yet. The treatment is three lines whatever the surface, so it never becomes one.
-    expect(pending.match(/pending-bar/g)).toHaveLength(3);
+    // yet. This region draws the default — one bar — so it never becomes one.
+    expect(pending.match(/pending-bar/g)).toHaveLength(1);
     expect(pending).not.toContain("stagger-rise");
     expect(pending).not.toContain("accent");
     expect(pending).not.toContain("<button");
@@ -323,5 +340,71 @@ describe("the navigation stays up while a surface reads", () => {
 
   it("puts no boundary on the root layout either", () => {
     expect(boundaryAt("")).toBe(false);
+  });
+});
+
+/**
+ * ── What replaces a pending region arrives, and the pending region does not ──────────
+ *
+ * A panel that swaps and an episode list that fills in used to appear by simply being
+ * there on the next frame. `arrive` gives them the entrance every row in the application
+ * already has — `rise-in`, the same 8px and the same curve, so a panel settling and a
+ * library cell settling read as the same hand.
+ *
+ * The asymmetry is the property worth holding: **the content arrives and the placeholder
+ * does not.** A placeholder that rises in makes the wait itself an event, which is what
+ * §9's quiet is against, and a failure that slides into place reads as a notification
+ * rather than as a region reporting what happened to it.
+ */
+describe("what replaces a pending region arrives", () => {
+  const CSS = readFileSync("app/globals.css", "utf8");
+  const EPISODES = readFileSync(
+    "app/(signed-in)/library/programme-note-episodes.tsx",
+    "utf8",
+  );
+  const FACTS = readFileSync("app/(signed-in)/library/live-title-facts.tsx", "utf8");
+  const PANEL = readFileSync("app/(signed-in)/library/programme-note-content.tsx", "utf8");
+
+  it("reuses the entrance every row already has rather than inventing a second", () => {
+    const arrive = CSS.match(/@utility arrive \{[^}]*\}/)![0];
+    expect(arrive).toContain("rise-in");
+    expect(arrive).toContain("var(--ease-press)");
+    // `backwards`, or the first frame is a flash of the final state before it animates.
+    expect(arrive).toContain("backwards");
+  });
+
+  it("gives the panel and the episode list an entrance", () => {
+    expect(PANEL).toContain('className="arrive-panel');
+    expect(EPISODES).toMatch(/className=\{`arrive \$\{PROGRAMME_NOTE_SECTION\}`\}/);
+  });
+
+  it("does not give one to the placeholder or to the failure", () => {
+    // The pending branch of the episode list, and the two non-resolved branches of a
+    // streamed fact section. If `arrive` ever appears on these, the wait and the error
+    // start announcing themselves.
+    // The pending branch draws the plain section class; the resolved ones interpolate
+    // `arrive` in front of it. Asserting the plain form still exists is what catches the
+    // day someone "tidies up" by giving every branch the same wrapper.
+    expect(EPISODES).toContain("<div className={PROGRAMME_NOTE_SECTION}>");
+
+    // The word appears in prose throughout these files, so this matches the *class* —
+    // the only form that changes what renders.
+    const usesArrive = (source: string) => /className=\{`arrive/.test(source);
+    const placeholder = FACTS.slice(0, FACTS.indexOf('const content = render(phase.value)'));
+    expect(usesArrive(placeholder)).toBe(false);
+    // And the resolved branch below it does.
+    expect(usesArrive(FACTS.slice(FACTS.indexOf("const content = render(phase.value)")))).toBe(
+      true,
+    );
+  });
+
+  it("stops moving for a reader who asked for reduced motion", () => {
+    // By construction rather than by a second rule: `arrive` is `rise-in`, and `rise-in`
+    // is already overridden to fade without travelling under reduced motion.
+    const reduced = CSS.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
+    )!.join("\n");
+    expect(reduced).toContain("rise-in");
+    expect(reduced).toMatch(/transform:\s*none/);
   });
 });

@@ -1536,6 +1536,42 @@ poster's own radius, because reason 4 closes that list at two; opacity rather th
 gradient, because reason 3 is about what survives reduced motion. A reader who wants to know
 why the pending state looks the way it does should read the four below and then that file.
 
+### The shape matches the page, and a shape is never a count
+
+Every boundary drew the identical three lines at first, so a grid, a detail page and a rail
+all waited in the same shape and none of them looked like the thing arriving. A **shape**
+places bars where that surface's text lands, at that text's own measure — the bar heights
+are read off the type ramp rather than picked, so a bar standing in for a library cell's
+title is the size of a library cell's title.
+
+| Shape | Where | What it draws |
+|---|---|---|
+| `line` | the default — a region or one entry pending beside rendered content (§9 radius 2 and 4) | one bar |
+| `rows` | Library, Lists, a list, You | three title-and-meta pairs |
+| `detail` | a title, an episode, a catalogue entry | a name, a meta line, a paragraph |
+| `rail` | Up next | a label over two card texts, across |
+| `form` | Settings, delete account, remove | two label-and-field pairs |
+
+Two rules hold the reversal honest. **A shape never mirrors content** — no poster wells, no
+per-item repetition, no attempt to guess a layout's extent; the count belongs to the shape
+and is identical whether the surface is about to render one row or forty, which is what
+keeps reason 1 answered. And **the default is the smallest**, because the three callers that
+are not route boundaries are pending *beside* content that has already rendered, where a
+whole screen's worth of placeholder would be larger than the thing it stands in.
+
+### What replaces a pending region arrives
+
+`arrive` and `arrive-panel`, and both are `rise-in` — the same 8px and the same curve every
+row in the application already rises on, so a panel settling and a library cell settling
+read as the same hand. Only the duration differs: a region carries more of the screen than a
+row does, and a panel that *replaces* something takes longer still.
+
+**The asymmetry is the point: the content arrives and the placeholder does not.** A
+placeholder that rises in makes the wait itself an event, which is what this section's quiet
+is against, and a failure that slides into place reads as a notification arriving rather than
+as a region reporting what happened to it. `tests/library-pending.test.ts` holds all three
+branches apart.
+
 ### The four reasons, which the treatment answers rather than overrules
 
 Four independent reasons, any one of them sufficient. They are written out because a skeleton

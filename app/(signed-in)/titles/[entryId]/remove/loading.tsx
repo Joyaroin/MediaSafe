@@ -35,7 +35,7 @@ export default function RemoveTitleLoading() {
       <RemoveTitleHeading />
 
       <div className="mt-8">
-        <PendingLine />
+        <PendingLine shape="form" />
       </div>
 
       <BackToLibrary />

@@ -15,7 +15,7 @@ export default function UnownedTitleLoading() {
       <BackToListsBar />
 
       <div className="px-6 py-5">
-        <PendingLine />
+        <PendingLine shape="detail" />
       </div>
     </main>
   );

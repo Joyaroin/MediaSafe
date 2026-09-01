@@ -30,7 +30,7 @@ import { PendingLine } from "@/app/pending-line";
 export default function EpisodeLoading() {
   return (
     <div className="px-6 py-5">
-      <PendingLine />
+      <PendingLine shape="detail" />
     </div>
   );
 }

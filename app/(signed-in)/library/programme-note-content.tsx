@@ -171,7 +171,7 @@ export function ProgrammeNoteContent({
    * do something with.
    */
   return (
-    <div className="px-4 py-5">
+    <div className="arrive-panel px-4 py-5">
       <TitleHero
         detail={detail}
         synopsis={synopsis}

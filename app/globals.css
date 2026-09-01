@@ -1370,6 +1370,35 @@
     var(--dur-quick) var(--ease-out-quart) both nav-rise;
 }
 
+/* ── Arriving ───────────────────────────────────────────────────────────────────────
+   A region that replaces a pending one, or a panel that swaps: the thing appears, and
+   until now it appeared by simply being there on the next frame.
+
+   `stagger-rise` is the grid and rail answer — many siblings, each a beat behind the last.
+   This is the answer for a region that arrives *whole*: a panel, an episode list, a
+   streamed section. One element, one motion, no stagger to run.
+
+   **It is `rise-in`, deliberately, rather than a second entrance.** The same 8px and the
+   same curve every row in the application already rises on, so a panel settling and a
+   library cell settling read as the same hand. What differs is only the duration: a region
+   is bigger than a row and carries more of the screen, so it takes `--dur-slow` where the
+   press takes milliseconds — the one place in this file where slower is the point.
+
+   `backwards` fill, so the first frame is the *from* state rather than a flash of the
+   final one before the animation starts. That flash is the whole defect this fixes, and it
+   is most visible on exactly the surfaces named above, because they are the ones that
+   arrive after a wait long enough to have been noticed. */
+@utility arrive {
+  animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+}
+
+/* A panel that swaps has further to travel than a section filling in, and it is replacing
+   something rather than joining it — so it takes the sheet's own heavier settle. */
+@utility arrive-panel {
+  animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+  animation-duration: 420ms;
+}
+
 /* ── Reading, drawn ─────────────────────────────────────────────────────────────────
    `app/pending-line.tsx` carries the argument, including which of §9's four reasons each
    decision here answers. In short: lines and never blocks, so nothing can be mistaken for
@@ -1383,18 +1412,28 @@
 
 @utility pending-bar {
   display: block;
-  height: 9px;
+  /* The height is the call site's, off the type ramp — `pending-line.tsx`'s `H`. A bar
+     stands in for a specific line of text, so it is that line's weight rather than one
+     measure used everywhere. */
   border-radius: var(--poster-radius, 7px);
   background: var(--color-raised);
   animation: pending-breathe 1.7s var(--ease-in-out-soft) infinite;
 }
 
-/* Staggered so the three read as one region breathing rather than three bars blinking in
-   lockstep, which is the difference between a surface that is working and a warning. */
+/* Staggered down the page so a region reads as one thing breathing rather than as bars
+   blinking in lockstep — the difference between a surface that is working and a warning.
+   By position within its own group rather than by a flat child index, because a shape
+   nests its bars into rows and columns. */
+.pending-bar:nth-child(2) {
+  animation-delay: 0.08s;
+}
 .pending-bar:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.pending :nth-child(2) .pending-bar {
   animation-delay: 0.12s;
 }
-.pending-bar:nth-child(4) {
+.pending :nth-child(3) .pending-bar {
   animation-delay: 0.24s;
 }
 

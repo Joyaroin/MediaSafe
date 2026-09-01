@@ -108,7 +108,7 @@ export function ProgrammeNoteEpisodes({
 
   if (episodes.length === 0) {
     return (
-      <div className={PROGRAMME_NOTE_SECTION}>
+      <div className={`arrive ${PROGRAMME_NOTE_SECTION}`}>
         <p className="text-item text-dim">
           {/*
             Missing and empty stay distinct here as everywhere (`CONTEXT.md`): this is not
@@ -219,7 +219,7 @@ function SeasonList({
         libraryEntryId={libraryEntryId}
       />
 
-      <div className={PROGRAMME_NOTE_SECTION}>
+      <div className={`arrive ${PROGRAMME_NOTE_SECTION}`}>
         <p className="code-line text-dim">{seasonHeading(currentSeason)}</p>
         <ol className={SEASON_LIST}>
           {currentEpisodes.map((one) => (
