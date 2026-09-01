@@ -695,13 +695,14 @@ describe("the recording control has a dead zone from the card's tap area", () =>
   /** The control's target is untouched. `44px` is `DESIGN.md` §6's floor and the one
    *  direction a dead zone must never come out of.
    *
-   *  **Updated for the press register (#282).** The hit box now declares the control
-   *  register beside `pressable`, which is a class token and costs the target nothing —
-   *  the `h-11` this asserts is the point and is exactly as it was. */
+   *  **Updated for the press register (#282), and again for #283's loud one.** The hit box
+   *  declares a register beside `pressable`, which is a class token and costs the target
+   *  nothing — the `h-11` this asserts is the point and is exactly as it was, at whichever
+   *  register `tests/press-spring.test.ts` classifies this call site into. */
   it("costs the control nothing of its 44px target", () => {
     expect(code).toMatch(/flex min-h-11 items-center/);
     expect(code).toMatch(
-      /CHECK_HIT_BOX = `pressable \[--press-register:1\] group flex h-11 shrink-0/,
+      /CHECK_HIT_BOX = `pressable \[--press-register:2\] group flex h-11 shrink-0/,
     );
   });
 

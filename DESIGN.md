@@ -1947,23 +1947,45 @@ Motion-animated surface are still one spring. What changed is what the numbers a
 *attached* to: the shape is derived, and the two sizes it travels between are declared in
 the stylesheet rather than falling out of a delta nobody computed.
 
-**The press has a register, and there are two of them (#282).** One rule was wrong for two
-kinds of thing: the same movement is a considered gesture on a 262px rail card and nothing
-at all on a 44px checkmark, and both wore the identical utility.
+**The press has a register, and there are three of them (#282, #283).** One rule was wrong
+for two kinds of thing: the same movement is a considered gesture on a 262px rail card and
+nothing at all on a 44px checkmark, and both wore the identical utility.
 
 | | compress | pop |
 |---|---|---|
 | Surfaces — cards, cells, rows, tiles | `0.960` | `1.012` |
-| Controls — checkmark hit boxes, Undo, chips | `0.920` | `1.030` |
+| Controls — small hit boxes and chips, such as the search screen's add | `0.920` | `1.030` |
+| The recording checkmark | `0.900` | `1.045` |
 
 An edge travels half the scale delta, so the quiet register moves a 262px card's edge
 `5.24px` and a 44px checkmark's edge `0.88px` — under one device pixel, which is the same
-*technically correct and invisible* the whole press was corrected for. The loud register
-moves that checkmark `1.76px`.
+*technically correct and invisible* the whole press was corrected for. The control register
+moves that checkmark `1.76px` and the recording one moves it `2.20px`.
+
+**The loudest press and the rationed accent mark the same act (#283).** The third register
+belongs to the recording checkmark and to nothing else — the episode row's hit box
+(`watch-mark-motion.tsx`'s `RECORDING_HIT_BOX`) and the Up next episode card's check
+(`up-next-episode-card.tsx`'s `CHECK_HIT_BOX`), which are one act on two surfaces — the
+card's *Undo* is the same string because it is that same act being taken back. §3
+already rations the accent to exactly that act: recording a watch is the one thing in this
+application allowed to be vermilion. It is now also the one thing allowed to move this far,
+so the product says one thing in two ways rather than two things. It is the act it exists
+for and the most repeated gesture in it, and it was the control this whole correction was
+measured against — `0.008px` on the checkmark is the number #270 shipped.
+
+**It is scale and the pop and nothing else.** A press still never tints a control: colour
+continues to mean *this was recorded*, and a checkmark that took the accent while being
+pressed would be claiming to have written something it has not — the accent it already
+carries is its rest state and its recorded state. No shadow either; the one depth
+vocabulary is the tone step above, and both recording hit boxes are bare 44px controls with
+no surface of their own, so nothing paints under them. Pressing the check on an Up next
+card moves the check and not the 262px card around it: the button is a sibling of the
+card's own `pressable` link inside a raised `<li>` that wears no press, which is why #279
+rejects moving `pressable` up onto raised parents by name.
 
 **The register is selected by one custom property the call site sets** — `--press-register`,
-`0` for surfaces and `1` for controls. This is `--poster-radius`'s pattern and
-`--poster-radius`'s reason: a second utility beside `pressable` would be two rules setting
+`0` for surfaces, `1` for controls and `2` for the recording checkmark. This is
+`--poster-radius`'s pattern and `--poster-radius`'s reason: a second utility beside `pressable` would be two rules setting
 one property in the `utilities` cascade layer, so *which one wins* would be a question about
 the order Tailwind **emits** them in rather than about the call site. A variable the call
 site sets has no ordering question in it. Nothing about a `pressable` element reveals its
@@ -1971,13 +1993,24 @@ size or its role, so there is no automatic discriminator to use instead — the 
 to say. And it is **one** property and not a pair, so there is no way to set half a register
 and no way to pair a surface compression with a control pop; `globals.css` derives both
 halves of the press from the single value, and `press-pop`'s stops are written as fractions
-of the register's own span so that the two registers stay one keyframe and one spring.
+of the register's own span so that all three registers stay one keyframe and one spring.
 
-**The default is the quieter register, and it is spelled by saying nothing.** A call site
+**The register climbs in clamped steps rather than by multiplication, and that is #283's
+one structural change.** #282 wrote each half as a single linear term in `--press-register`,
+which reaches two amplitudes and cannot reach three: the pairs are not collinear, because a
+control already compressed to `0.920` has less room left and buys more of its movement in
+the pop. Continuing the multiplication would have put register `2` at `0.880` / `1.048` —
+numbers nobody chose. Each register is now its own clamped step, so all six amplitudes
+appear in the stylesheet as themselves, and a mistyped `--press-register: 7` resolves to the
+recording register rather than inventing a fourth one.
+
+**The default is the quietest register, and it is spelled by saying nothing.** A call site
 nobody classified is under-stated, never shouting. `tests/press-spring.test.ts` sweeps the
 whole tree for elements wearing `pressable` and fails on any that is neither deliberately
-left on the default nor declaring the control one, because a register nobody applied is a
-table in a stylesheet.
+left on the default nor declaring one of the two louder ones, because a register nobody
+applied is a table in a stylesheet. The same sweep is what keeps *the loudest press in the
+application* true: it fails if any call site outside the two recording hit boxes reaches for
+register `2`.
 
 The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts` imports
 `snappy`, recomputes all 33 stops from the closed form for a damped oscillator's step
