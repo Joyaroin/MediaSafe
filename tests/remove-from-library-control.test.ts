@@ -102,10 +102,13 @@ describe("giving up and removing, which must not read as the same thing", () => 
    */
   it("promises the opposite of what the library tile promises", () => {
     const markup = render();
-    const tile = sourceAt("app/(signed-in)/library/library-entry-cell.tsx");
+    /* The sentence moved. It was on the library cell, which is a poster column now with
+       room for the state word and nothing else; it is on the title's own hero — the page a
+       reader opens to do something about it, and the page carrying the control that clears
+       it. Read from whichever surface renders it rather than restated here, so that
+       rewording the sentence fails this and asks the question. */
+    const tile = sourceAt("app/(signed-in)/library/title-hero.tsx");
 
-    // Read from the surface that renders it rather than restated here — if that sentence is
-    // ever reworded, this fails and asks the question.
     expect(tile).toContain("Watching it again clears this");
 
     // The remove block's counterweight, in the same voice and to the opposite effect.

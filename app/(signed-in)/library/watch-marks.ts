@@ -10,6 +10,7 @@ import {
 import {
   markWatchedUpToAction,
   recordWatchAction,
+  undoWatchAction,
   unwatchAction,
   type MarkWatchedUpToActionOutcome,
   type UnwatchActionOutcome,
@@ -163,6 +164,12 @@ export interface WatchWriter {
     readonly libraryEntryId: string;
     readonly episodeId: string | null;
   }): Promise<UnwatchActionOutcome>;
+  /** Takes back the newest watch only. A different write from `remove`, not a flag on it
+   *  — `db/access.ts`'s `undoWatch` has why. */
+  undo(params: {
+    readonly libraryEntryId: string;
+    readonly episodeId: string | null;
+  }): Promise<UnwatchActionOutcome>;
   /**
    * *Watched up to here* — issue #196. One press, one key, one transaction, and the set
    * derived server-side from the episode named here: `markWatchedUpToAction`'s own
@@ -196,6 +203,12 @@ export interface WatchMarks {
   ): Promise<void>;
   /** Take one watch back — issue #89. */
   unwatch(subject: WatchSubject, naming: WatchNaming): Promise<void>;
+  /**
+   * *I did not mean to press that.* Removes the newest watch and puts the appearance back
+   * to whatever it was before the mark this is undoing — which is **not** always
+   * unwatched: undo a rewatch and the episode is still watched, because it still is.
+   */
+  undo(subject: WatchSubject, naming: WatchNaming): Promise<void>;
   /**
    * Record everything up to and including one episode — issue #196.
    *
@@ -496,6 +509,61 @@ export function createWatchMarks({
   }
 
   /**
+   * *Undo* — the fourth write, and the one that used to be `unwatch` wearing a different
+   * label.
+   *
+   * ── What it puts on screen, and why that is not always *unwatched* ─────────────────
+   *
+   * `one.restore` — the appearance `holdRestore` captured when the mark being undone
+   * started. That is the whole trick, and it is why this reads nothing new off the server:
+   * undoing a mark on a previously unwatched episode lands on unwatched, and undoing a
+   * **rewatch** lands back on watched, because the episode still is. The store has no idea
+   * how many watch rows an episode has and does not need one; it knows what the screen
+   * said a moment before the press.
+   *
+   * ── No retry, and here the reason is sharper than `unwatch`'s ──────────────────────
+   *
+   * `unwatch`'s docblock notes that its delete is over a **predicate**, so sending it
+   * twice removes exactly what sending it once removes. **That is not true of this one.**
+   * This delete is over a row chosen at the moment it runs, so a second send removes a
+   * second watch — the earlier half of a rewatch, gone silently, which is the exact
+   * failure `undoWatch` was written to stop. A *Try again* on a lost undo would be the
+   * bug reintroduced through the recovery path, so there is none.
+   */
+  async function undo(subject: WatchSubject, naming: WatchNaming): Promise<void> {
+    const one = ensure(subject, UNSEEN);
+    one.written = true;
+
+    const before = one.restore;
+    apply(one, { ...before, pending: true });
+
+    one.inFlight += 1;
+    const outcome = await undoWrite(subject);
+    one.inFlight -= 1;
+
+    if (outcome.ok) {
+      apply(one, { ...before, pending: false });
+      settleToast(one, "unwatch");
+      return;
+    }
+
+    /* The mark is still there, so the screen says so again. `settled` and not `marking`:
+       there is no sweep to replay for a watch that was recorded a while ago. */
+    apply(one, { watched: true, phase: "settled", pending: false });
+
+    if (one.raised) return;
+
+    one.raised = {
+      kind: "unwatch",
+      handle: failures.raise({
+        title: naming.title,
+        episode: naming.episode,
+        reference: outcome.reference,
+      }),
+    };
+  }
+
+  /**
    * *Watched up to here* — issue #196, and the third write this store owns.
    *
    * ── Why it belongs here and not in the row that draws the control ────────────────
@@ -637,6 +705,16 @@ export function createWatchMarks({
     }
   }
 
+  /** The same wrapper, around the undo. Its own `surface` so a reference id in a toast
+   *  says which of the two deletes failed. */
+  async function undoWrite(subject: WatchSubject): Promise<UnwatchActionOutcome> {
+    try {
+      return await writer.undo(subject);
+    } catch (error) {
+      return { ok: false, reference: referenceFor(error, { surface: "undo" }) };
+    }
+  }
+
   /** The same wrapper again, around the press through an episode. */
   async function recordUpTo(
     libraryEntryId: string,
@@ -684,6 +762,7 @@ export function createWatchMarks({
 
     mark,
     unwatch,
+    undo,
     markUpTo,
 
     settle(subject) {
@@ -710,6 +789,7 @@ export const watchMarks = createWatchMarks({
   writer: {
     record: (params) => recordWatchAction(params),
     remove: (params) => unwatchAction(params),
+    undo: (params) => undoWatchAction(params),
     recordUpTo: (params) => markWatchedUpToAction(params),
   },
 });

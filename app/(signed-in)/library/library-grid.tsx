@@ -98,7 +98,9 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * measuring one at render time; a narrower breakpoint just marks a couple of rows eager
  * rather than one, never the whole 472-entry library (`app/poster.tsx`).
  */
-const FIRST_ROW = 4;
+/** Two rows of the widest column count — what a first paint can be asked for without
+ *  guessing at the viewport. */
+const FIRST_ROW = 12;
 
 export function LibraryGrid({
   entries,
@@ -127,7 +129,18 @@ export function LibraryGrid({
       // thing that differs between devices, and `tests/library-surface.test.ts` enforces
       // it by rejecting any breakpoint prefix here that is not `grid-cols`. The `14px`
       // gutter is the measure at every width.
-      className="stagger-rise mt-5 grid grid-cols-1 gap-2.5 px-[14px] pb-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      // **Columns, not rows.** The cell is a poster with a name under it now
+      // (`library-entry-cell.tsx`), so the grid counts in artwork rather than in
+      // full-width cards: three across on a phone, up to six on a wide desktop, which is
+      // the lists grid's own ramp (`lists/[listId]/list-icon-grid.tsx`) because they are
+      // the same content at the same size.
+      //
+      // `gap-x-3.5 gap-y-5` rather than one `gap-2.5`: the cells are no longer cards on a
+      // `--raised` ground, so what separates two of them sideways is whitespace alone,
+      // and the vertical gap has to clear a two-line name plus a state label before the
+      // next poster starts. Equal gaps in both directions read as a denser grid than it
+      // is.
+      className="stagger-rise mt-5 grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
     >
       {entries.map((entry, index) => (
         <LibraryEntryCell

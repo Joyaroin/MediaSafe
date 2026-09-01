@@ -4,6 +4,7 @@ import { invalidateFor } from "@/cache/tags";
 import {
   markWatchedUpTo,
   recordWatch,
+  undoWatch,
   unwatch,
   type MarkWatchedUpToParams,
   type RecordWatchParams,
@@ -100,6 +101,31 @@ export async function unwatchAction(
     await unwatch(userId, params);
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "unwatch" }) };
+  }
+
+  invalidateFor("unwatch", userId);
+  return { ok: true };
+}
+
+/**
+ * *Undo* — over `db/access.ts`'s `undoWatch`, and a fourth thin wrapper for the reasons
+ * the first one gives.
+ *
+ * It shares `UnwatchActionOutcome` because it answers the same shape of question, and it
+ * shares nothing else: this removes the newest watch and `unwatchAction` above removes
+ * every one of them. `undoWatch`'s docblock has why those are two writes rather than one
+ * with a flag. The surface names are kept apart too — `{ surface: "undo" }` — so a
+ * reference id in a toast says which of the two failed.
+ */
+export async function undoWatchAction(
+  params: UnwatchParams,
+): Promise<UnwatchActionOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    await undoWatch(userId, params);
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "undo" }) };
   }
 
   invalidateFor("unwatch", userId);

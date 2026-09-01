@@ -191,38 +191,64 @@ describe("the library entry cell", () => {
     expect(cell({ state: "abandoned", upNext: null })).toContain("Abandoned");
   });
 
-  it("keeps caught up and finished on different lines", () => {
-    expect(cell({ state: "caught_up", upNext: null })).toContain("Nothing to watch now");
-    expect(cell({ state: "finished", upNext: null })).toContain("Nothing left to watch");
+  /**
+   * ── Three lines became one, and it is the state ──────────────────────────────────────
+   *
+   * The cell was a row: a `66px` poster beside a name, a year, the state, and a sentence
+   * about what is next (*Nothing to watch now*, *Next — Hands*). It is a column now — the
+   * poster is the width of the cell and the text sits under it — which leaves room for one
+   * line, and the state is the line that earned it: the library is the surface organised
+   * *by* state and its filter chips are the six states.
+   *
+   * The three assertions this replaces are deleted rather than rewritten because the
+   * strings they checked no longer exist anywhere. `NEXT_LINES` is gone from
+   * `library-entry-cell.tsx`, and the fact it carried is on Up next, which since the rails
+   * became lists prints the episode's actual name in a full-width row rather than one
+   * truncated clause. The two surfaces had been saying the same thing, one of them badly.
+   *
+   * The year went with them: the poster identifies the title, and the title's own page
+   * carries the year. A list's icon cell keeps its year precisely because a list has no
+   * state to print there.
+   */
+  it("prints the state and nothing else under the name", () => {
+    const one = cell();
+
+    expect(one).toContain("Severance");
+    expect(one).toContain("Watching");
+
+    // The lines that left. Asserted as absences so that re-adding one is a decision
+    // somebody has to make against this test rather than a line that quietly reappears.
+    expect(one).not.toContain("Next — Hands");
+    expect(one).not.toContain("2022");
+    expect(cell({ state: "caught_up", upNext: null })).not.toContain("Nothing to watch now");
+    expect(cell({ state: "finished", upNext: null })).not.toContain("Nothing left to watch");
   });
 
-  it("names the next episode, and never numbers one", () => {
-    expect(cell()).toContain("Next — Hands");
-
-    const unnamed = cell({ upNext: { episodeName: null } });
-    expect(unnamed).toContain("Next episode not named yet");
-    expect(unnamed).not.toMatch(/S\d+\s*E\d+/);
+  it("never numbers an episode anywhere, which is the rule that outlived the line", () => {
+    // `CONTEXT.md`: an episode is never referred to by number alone. The next-episode line
+    // was where that could go wrong on this surface and it is gone, so this now holds the
+    // weaker-but-still-real claim that nothing reintroduced a code.
+    expect(cell({ upNext: { episodeName: null } })).not.toMatch(/S\d+\s*E\d+/);
   });
 
-  it("says nothing rather than something wrong when a title has no year", () => {
-    expect(cell({ releaseYear: null })).not.toContain("data-numeric");
-    expect(cell()).toContain("2022");
-  });
-
-  it("is a full-width button on a raised card, and still casts no shadow", () => {
+  it("is a poster column with the name under it, and still casts no shadow", () => {
     const one = cell();
 
     expect(one).toContain("<button");
     expect(one).toContain("w-full");
 
-    // The cell is a card since the linen redesign — an `18px` radius on a `--raised`
-    // ground, where it used to be a flat `--ground` cell divided from its neighbours by
-    // hairlines. `DESIGN.md`'s *no shadow, no lift, no radius, no scale* loses the last
-    // two clauses and keeps the first two, which is the half that still matters: the
-    // redesign's only lift is the tone step between `--raised` and `--ground`, and a
-    // shadow anywhere would be the thing the handoff rules out by name.
-    expect(one).toContain("rounded-[18px]");
-    expect(one).toContain("bg-raised");
+    /**
+     * **Not a card any more.** The linen redesign made this an `18px` `--raised` card, and
+     * the column layout takes the ground back off it: what identifies a cell now is the
+     * poster's own edge, exactly as on the lists icon grid, and a `--raised` panel behind
+     * a full-bleed poster would be a ground nobody can see.
+     *
+     * `DESIGN.md`'s *no shadow, no lift* survives all of it and is the half that has never
+     * moved — the tone step is the only lift this application has.
+     */
+    expect(one).not.toContain("rounded-[18px]");
+    expect(one).not.toContain("bg-raised");
+    expect(one).toContain("[--poster-radius:10px]");
     expect(one).not.toMatch(/shadow|translate-y/);
   });
 });
@@ -235,11 +261,13 @@ describe("the grid", () => {
   );
 
   it("changes its column count at the documented breakpoints and nothing else", () => {
-    // 1 · 2 at 640px · 3 at 1280px · 4 at 1536px — SPEC.md §10.3.
-    expect(grid).toContain("grid-cols-1");
-    expect(grid).toContain("sm:grid-cols-2");
-    expect(grid).toContain("xl:grid-cols-3");
-    expect(grid).toContain("2xl:grid-cols-4");
+    // 3 · 4 at 640px · 5 at 1280px · 6 at 1536px. The counts doubled when the cell became
+    // a poster column rather than a full-width row; the breakpoints did not move, and the
+    // ramp is the lists icon grid's own because they are the same content at the same size.
+    expect(grid).toContain("grid-cols-3");
+    expect(grid).toContain("sm:grid-cols-4");
+    expect(grid).toContain("xl:grid-cols-5");
+    expect(grid).toContain("2xl:grid-cols-6");
 
     // Nothing else is allowed to differ between devices, so no other breakpoint prefix
     // may appear anywhere in the grid or its cells.
@@ -257,7 +285,12 @@ describe("the grid", () => {
     // so the match allows anything before the `<ol` rather than anchoring to the start.
     const [, gridClasses] = grid.match(/<ol[^>]*class="([^"]*)"/) ?? [];
     expect(gridClasses).toBeDefined();
-    expect(gridClasses).toContain("gap-2.5");
+    // Two gaps, not one. The cells stopped being cards on a `--raised` ground, so what
+    // separates two of them sideways is whitespace alone — and the vertical gap has to
+    // clear a two-line name plus a state label before the next poster begins. Equal gaps
+    // in both directions read as a denser grid than it is.
+    expect(gridClasses).toContain("gap-x-3.5");
+    expect(gridClasses).toContain("gap-y-5");
 
     // The dividing borders are gone from the cells entirely — not merely overridden.
     expect(grid).not.toContain("border-b border-r border-hair");

@@ -668,11 +668,32 @@ next* label (the inverted `E5` chip says it, in the accent, two cells to the lef
 mid-sweep word *Watched*, and the film row's dead `Watched` — which is a control now, and
 is the first unwatch a film has ever had.
 
-**Rewatch is deleted as a feature, not as a concept.** `docs/adr/0001` records 1,156
-genuine rewatches already in the imported library, so the `watch` table, its identity rule
-and the read-side dedupe are untouched. What no longer exists is a button that mints one.
-Unwatching and marking again is *not* a rewatch — it destroys the first watch's date rather
-than adding a row beside it — and that is the trade, taken knowingly.
+**Rewatch came back behind a gesture, and the settled mark stopped being a control.**
+
+It was deleted outright first, and that lasted one ticket. This paragraph read: *what no
+longer exists is a button that mints one … unwatching and marking again is not a rewatch,
+and that is the trade, taken knowingly.* Two things were wrong with it. The trade was worse
+than it sounded — with no way to record a second watch and an unwatch that removed **all**
+of them, the application could only ever lose rewatches over the 1,156 `docs/adr/0001`
+counts. And the settled mark had quietly become the unwatch control: a dim circle that
+reads as a *state*, removing years of record on one tap with nothing to confirm it.
+
+So the row has three tiers now, ordered by how often each is pressed:
+
+| Act | How it is reached | What it writes |
+|---|---|---|
+| **Mark watched** | the accent check, one tap | one `watch` row |
+| **Undo** | the accent undo glyph, one tap, only for a mark made this visit | removes the **newest** row |
+| **Rewatch** · **Unwatch** | hold the row, or right-click it | a second row · every row |
+
+*Undo* and *Unwatch* were one write until this batch and are now two (`db/access.ts`'s
+`undoWatch`), which is the correctness half: *Undo* offered to reverse one press and took
+every earlier watch with it. #145's rule for *Unwatch* — *one press, one meaning: the
+episode is unwatched* — is untouched, and is exactly why the two cannot share an
+implementation.
+
+The settled mark is a mark again. It says *watched*, it is `aria-hidden`, and it does
+nothing.
 
 ### The third time was the button register, and nothing re-measured for two tickets
 

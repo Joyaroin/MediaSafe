@@ -129,6 +129,22 @@ export function TitleHero({
               second copy of the string. */}
           <p className="label-line text-dim">{state.label}</p>
 
+          {/**
+           * **The way out of the one state nothing can enter.** `CONTEXT.md`: *watching it
+           * again clears it* — and until this batch that sentence was printed on the
+           * library cell, which was the only place a reader ever met it. The cell became a
+           * poster column with room for the state word alone, and rather than let the fact
+           * go with the line, it moves here: the page a reader opens when they want to do
+           * something about it, and the page carrying the control that does it.
+           *
+           * Abandoned only. Every other state has a control on this page that speaks for
+           * itself; this is the one whose exit is a side effect of an unrelated act, and
+           * so the one that has to be said in words.
+           */}
+          {detail.state === "abandoned" ? (
+            <p className="mt-1 text-item text-dim">Watching it again clears this.</p>
+          ) : null}
+
           <h2 className="bill-title mt-1 text-bill-lg text-ink">{detail.name}</h2>
 
           {meta === null ? null : (

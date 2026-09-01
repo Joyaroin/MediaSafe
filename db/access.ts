@@ -1506,6 +1506,99 @@ export interface UnwatchOutcome {
 }
 
 /**
+ * **Undo — the newest watch of an episode, and only that one.**
+ *
+ * ── Why this is a second function and not a flag on `unwatch` ────────────────────────
+ *
+ * They are two different acts and #145 settled the harder of them. *Unwatch* answers
+ * **"I have not seen this"**: it removes every watch, because `tests/watch-unwatch.test.ts`
+ * put the alternative on the record — *"#89 took one row and left the other, so the
+ * episode stayed struck and the reader pressed again. One press, one meaning."* That
+ * argument holds and `unwatch` below is unchanged by this.
+ *
+ * *Undo* answers **"I did not mean to press that"**, and the two came apart the moment the
+ * product grew a control that says so. It offers to take back the mark just recorded, and
+ * it was calling `unwatch` — so on an episode carrying imported rewatches it took back
+ * every earlier watch as well, silently, while claiming to reverse one press. For the
+ * 1,156 episodes `docs/adr/0001` amendment 8 counts with two or three rows, *Undo* was the
+ * most destructive control in the application and the only one that looked harmless.
+ *
+ * This is the exact inverse of `recordWatch`: one press wrote one row, one undo removes
+ * it, and an episode watched three times is an episode watched twice. The episode stays
+ * struck afterwards, which is correct here and is precisely what made it wrong for
+ * *Unwatch* — a reader undoing a misfire has not said they never saw the episode.
+ *
+ * ── `nulls last`, which is the whole reason this is `sql` and not `desc(...)` ─────────
+ *
+ * Postgres sorts nulls **first** under `desc`, and `watched_at` is null for an undated
+ * watch — *it happened, you do not know when* (`db/tables.ts`). Left to the default, the
+ * first row this would remove is the one whose date nobody knows, ahead of the one
+ * recorded seconds ago — so an undo would reach past the press it exists to reverse and
+ * delete an imported watch instead. Every app watch carries `now()`, so under `nulls last`
+ * it is reliably the newest and reliably what this takes.
+ *
+ * `watch.id` breaks the tie, so two watches stamped inside one transaction resolve to a
+ * stable answer rather than to whichever the planner happens to return first.
+ *
+ * ── Authorization and isolation are `unwatch`'s, unchanged ───────────────────────────
+ *
+ * The same entry check, the same `ownedBy` on the delete, the same throw on a miss, for
+ * the reasons the docblock below gives at length. `episode` is global (ADR-0001), so owner
+ * plus library entry plus episode is the whole of the isolation here too.
+ */
+export async function undoWatch(
+  userId: UserId,
+  params: UnwatchParams,
+  executor: Executor = getDb(),
+): Promise<UnwatchOutcome> {
+  return executor.transaction(async (tx) => {
+    const [entry] = await tx
+      .select({ id: libraryEntry.id })
+      .from(libraryEntry)
+      .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)));
+
+    if (!entry) {
+      throw new Error(
+        `Library entry ${params.libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    // A film's watch carries no episode, so the two cases are `IS NULL` and `=` — not one
+    // comparison that would silently match nothing for every film. `unwatch`'s own note.
+    const onThisEpisode =
+      params.episodeId === null
+        ? isNull(watch.episodeId)
+        : eq(watch.episodeId, params.episodeId);
+
+    const [newest] = await tx
+      .select({ id: watch.id })
+      .from(watch)
+      .where(
+        and(
+          ownedBy(userId, watch),
+          eq(watch.libraryEntryId, params.libraryEntryId),
+          onThisEpisode,
+        ),
+      )
+      .orderBy(sql`${watch.watchedAt} desc nulls last`, desc(watch.id))
+      .limit(1);
+
+    if (newest === undefined) return { removed: false };
+
+    /* Chosen and deleted inside one transaction, so nothing inserts between the two and
+       leaves this removing a row that is no longer the newest. Two presses racing resolve
+       honestly: one takes the row, the other finds it gone and reports `removed: false`,
+       which is what that field has always meant. */
+    const removed = await tx
+      .delete(watch)
+      .where(and(ownedBy(userId, watch), eq(watch.id, newest.id)))
+      .returning({ id: watch.id });
+
+    return { removed: removed.length > 0 };
+  });
+}
+
+/**
  * Unwatch an episode — or a film, which is the same write with a null `episodeId`. Issue
  * #89, rewritten by #145, and the only function in this module that removes a watch.
  *

@@ -836,6 +836,11 @@ export const INVALIDATES = {
   applyImportChunk: ["library", "up-next", "lists", "title-detail", "you"],
   recordWatch: ["library", "up-next", "title-detail", "you"],
   unwatch: ["library", "up-next", "title-detail", "you"],
+  /* The same four as `unwatch`, because it changes the same facts — one watch fewer moves
+     progress, up next, the state and every figure derived from them. It is a separate
+     write only because it removes the *newest* row rather than all of them
+     (`db/access.ts`'s `undoWatch`); nothing about what a reader sees afterwards differs. */
+  undoWatch: ["library", "up-next", "title-detail", "you"],
   markWatchedUpTo: ["library", "up-next", "title-detail", "you"],
   abandonTitle: ["library", "up-next", "title-detail", "you"],
   abandonTitles: ["library", "up-next", "title-detail", "you"],

@@ -20,6 +20,8 @@ import { coveredUpTo, markUpToLabel } from "./mark-up-to";
 import { MarkUpToDialog } from "./mark-up-to-dialog";
 import { MarkUpToIcon } from "./mark-up-to-icon";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
+import { HOLDABLE, useHoldGesture } from "./use-hold-to-select";
+import { WatchMenu } from "./watch-menu";
 import { SeasonChips } from "./season-chips";
 import { defaultSeason, episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
 import { useLiveEpisodes } from "./use-live-episodes";
@@ -193,6 +195,10 @@ function SeasonList({
   libraryEntryId: string;
   titleName: string;
 }) {
+  /* One menu for the whole season, mounted only while a row has asked for it —
+     `mark-up-to-dialog.tsx`'s rule, restated in `watch-menu.tsx`. */
+  const [menuFor, setMenuFor] = useState<EpisodeDetail | null>(null);
+
   const [confirming, setConfirming] = useState<{
     readonly through: EpisodeDetail;
     readonly covered: readonly EpisodeDetail[];
@@ -226,6 +232,7 @@ function SeasonList({
         <ol className={SEASON_LIST}>
           {currentEpisodes.map((one) => (
             <EpisodeLine
+              onOpenMenu={setMenuFor}
               key={one.id}
               episode={one}
               covered={coveredUpTo(live, one)}
@@ -236,6 +243,16 @@ function SeasonList({
           ))}
         </ol>
       </div>
+
+      {menuFor === null ? null : (
+        <WatchMenu
+          libraryEntryId={libraryEntryId}
+          episodeId={menuFor.id}
+          titleName={titleName}
+          episodeName={episodeFullName(menuFor)}
+          onClosed={() => setMenuFor(null)}
+        />
+      )}
 
       {confirming === null ? null : (
         <MarkUpToDialog
@@ -576,6 +593,7 @@ function EpisodeLine({
   libraryEntryId,
   titleName,
   onMarkUpTo,
+  onOpenMenu,
 }: {
   episode: EpisodeDetail;
   /** What a press of *watched up to here* would record, or `null` where the control must
@@ -587,6 +605,8 @@ function EpisodeLine({
     readonly through: EpisodeDetail;
     readonly covered: readonly EpisodeDetail[];
   }) => void;
+  /** Opens the season's one `WatchMenu` on this episode. */
+  onOpenMenu: (episode: EpisodeDetail) => void;
 }) {
   const fullName = episodeFullName(episode);
 
@@ -609,7 +629,7 @@ function EpisodeLine({
    */
   const [justMarked, setJustMarked] = useState(false);
 
-  const { watched, phase, pending, attempt, unwatch, settle } = useWatchMark({
+  const { watched, phase, pending, attempt, undo, settle } = useWatchMark({
     initialWatched: episode.watched,
     libraryEntryId,
     episodeId: episode.id,
@@ -618,17 +638,56 @@ function EpisodeLine({
     onRecorded: () => setJustMarked(true),
   });
 
-  /* One write behind both controls: `unwatch` removes every watch of the episode (#145),
-     which is exactly right for undoing a mark made seconds ago and exactly right for
-     taking back one made last year. `setJustMarked(false)` is what stops the row offering
-     *Undo* for a mark that is no longer there. */
+  /**
+   * **Two writes, not one, and the paragraph this replaces had it wrong.** It read: *one
+   * write behind both controls — `unwatch` removes every watch of the episode (#145),
+   * which is exactly right for undoing a mark made seconds ago and exactly right for
+   * taking back one made last year.* The second half of that is true and the first half
+   * was the bug: on an episode carrying imported rewatches, *Undo* was deleting every
+   * earlier watch while offering to reverse one press.
+   *
+   * `undo` takes back the newest watch and puts the row back to whatever it looked like
+   * before the press. `unwatch` still removes them all, because #145 settled that *"one
+   * press, one meaning: the episode is unwatched"* — and it is now reached only from the
+   * row's menu, deliberately, rather than from a glyph that looks like a state.
+   */
+  /**
+   * **Hold the row — or right-click it — to reach *Rewatch* and *Unwatch*.**
+   *
+   * Offered only on a watched row, because both items are about a watch that exists: an
+   * unwatched row's whole vocabulary is the check beside it, and a menu there would open
+   * on two words that could not do anything.
+   *
+   * `useHoldGesture` is the library grid's own press, extracted rather than re-derived
+   * (`use-hold-to-select.ts`) — the same 500ms, the same 10px slop, and the same swallowed
+   * click, so the hold that opens this does not also navigate to the episode when the
+   * finger lifts.
+   *
+   * `onContextMenu` is doing two jobs. On a phone the hook's own handler suppresses the
+   * text-selection callout the browser would otherwise raise over the row being held. On a
+   * desktop, where there is no hold to make, the same event **is** the gesture: a
+   * right-click opens the menu, which is the only route a mouse has to either item.
+   */
+  const hold = useHoldGesture(watched ? () => onOpenMenu(episode) : null);
+
+  function openMenu(event: React.MouseEvent): void {
+    event.preventDefault();
+    if (watched) onOpenMenu(episode);
+  }
+
   function takeItBack(): void {
     setJustMarked(false);
-    void unwatch();
+    void undo();
   }
 
   return (
-    <li className={`relative ${EPISODE_ROW}`}>
+    <li
+      className={`relative ${EPISODE_ROW}${watched ? ` ${HOLDABLE}` : ""}`}
+      {...hold.handlers}
+      onContextMenu={openMenu}
+      data-holding={hold.holding ? "true" : undefined}
+      data-landed={hold.landed ? "true" : undefined}
+    >
       {/**
        * **The row is a destination now** — issue #254, #245's story 63: *press an episode
        * row in a season list and get the same page.* The same href the rail card carries,
@@ -753,11 +812,24 @@ function EpisodeLine({
             disabled={pending}
           />
         ) : (
-          <UnwatchButton
-            label={`Unwatch ${fullName}`}
-            onClick={takeItBack}
-            disabled={pending}
-          />
+          /**
+           * **A mark, not a button.** This was a `<button>` calling `unwatch` — a glyph
+           * that reads as a *state* removing every watch of the episode on one tap, which
+           * on the 1,156 episodes carrying imported rewatches (`docs/adr/0001`) is years
+           * of record gone to a stray press with nothing to confirm it.
+           *
+           * So the settled mark says *watched* and does nothing, and *Unwatch* is one of
+           * the two items behind the row's hold (`watch-menu.tsx`), where it has a word
+           * attached and a sentence saying what it takes.
+           *
+           * `aria-hidden`, because a screen reader is already told: the name in the cell
+           * beside this carries `WATCHED_NAME`, and the row's menu is what offers the acts.
+           */
+          <span className={RECORDING_HIT_BOX} aria-hidden="true">
+            <span className={SETTLED_GLYPH}>
+              <CheckmarkIcon className="block h-4 w-4" />
+            </span>
+          </span>
         )}
       </span>
 
@@ -818,39 +890,6 @@ function UndoMarkButton({
     >
       <span className={RECORDING_GLYPH}>
         <UndoIcon className="block h-4 w-4" />
-      </span>
-    </button>
-  );
-}
-
-/**
- * The settled mark, which is also how a watch is taken back — the whole of what a watched
- * row carries now that *Rewatch* and *Unwatch* are deleted. `SETTLED_GLYPH`
- * (`watch-mark-motion.tsx`) holds the argument for both halves of that sentence.
- *
- * The same `RECORDING_HIT_BOX` as the other two, so the `44px` target and the loud press
- * register are identical in every state this row can be in, and nothing in the trailing
- * slot moves as it passes between them.
- */
-function UnwatchButton({
-  label,
-  onClick,
-  disabled = false,
-}: {
-  readonly label: string;
-  readonly onClick: () => void;
-  readonly disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
-    >
-      <span className={SETTLED_GLYPH}>
-        <CheckmarkIcon className="block h-4 w-4" />
       </span>
     </button>
   );

@@ -74,6 +74,7 @@ function harness() {
   const answerUpTo: Array<
     (outcome: MarkWatchedUpToActionOutcome) => void
   > = [];
+  const answerUndo: Array<(outcome: UnwatchActionOutcome) => void> = [];
   let minted = 0;
 
   const failures = createWriteFailureStore();
@@ -85,6 +86,12 @@ function harness() {
       },
       remove() {
         return new Promise((resolve) => answerRemove.push(resolve));
+      },
+      /* Undo is a different write (`db/access.ts`'s `undoWatch` — one row, not all of
+         them), and it queues on its own answers so a test can hold one open without
+         holding the other. */
+      undo() {
+        return new Promise((resolve) => answerUndo.push(resolve));
       },
       recordUpTo(params) {
         upTo.push(params);
