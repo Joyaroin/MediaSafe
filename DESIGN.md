@@ -993,7 +993,7 @@ when it carries neither.
 > #194**: bulk *Add to list* and bulk *Abandon* are reached from `/library` and its status
 > filters rather than from the landing screen.
 
-### Opening a title opens the title — issue #274
+### Opening a title opens the title, and a card opens its episode — issues #274 and #291
 
 > **⚠️ This section is a reversal, and it reverses itself.** It used to open: *"Tapping a
 > tile on the phone's Up next tab **raises a sheet over the tab**. It does not navigate."*
@@ -1004,15 +1004,31 @@ when it carries neither.
 > that amendment. The paragraphs the sheet argued for are kept below, in the past tense,
 > because a note that simply disappeared would read as a decision nobody made.
 
-**Every tile and every card on Up next opens the title's own page**, and there is one
-mechanism for it: a `Link` to `/titles/{entryId}`.
+> **⚠️ And one row of it has now been reversed a second time — issue
+> [#291](https://github.com/Joyaroin/MediaSafe/issues/291), under spec
+> [#287](https://github.com/Joyaroin/MediaSafe/issues/287).** The next-episodes card is
+> pointed back at the episode's own page. **#274's reasoning is kept below rather than
+> overwritten**, because the same decision has now been made in both directions and a note
+> that quietly replaced the losing argument would invite a third pass to re-derive it and
+> swing back. What it said, and it was not wrong: *every tile and every card on this tab
+> should lead to the same kind of place, and the next-episodes card was the one thing that
+> did not — so a show, a film and a card reached three different kinds of destination from
+> one surface.* What outranks it: **a card leads to the thing it names.** The card names
+> one episode in its code line and offers a control that records that same episode, so a
+> destination that opened the show left the card saying one thing, doing a second and
+> going to a third — and the tiles, which name titles, are unaffected either way.
+
+**Every tile and every card on Up next opens the page it names**, and there is one
+mechanism for it: a `Link`. A show tile, a film tile and a pending tile each
+opens the title's own page, `/titles/{entryId}`; a next-episodes card opens the
+episode's own page, `/episodes/{episodeId}`.
 
 | What is pressed | Where it goes |
 | --- | --- |
 | A show tile on a rail (`up-next-tile.tsx`) | the library entry's page |
 | A film card (`up-next-film-rail.tsx`) | the same, unchanged |
 | A pending tile (`up-next-pending-card.tsx`) | the same, unchanged |
-| A next-episodes card (`up-next-episode-card.tsx`) | **the show's page** — retargeted from the episode's |
+| A next-episodes card (`up-next-episode-card.tsx`) | **the episode it names** — `/episodes/{episodeId}`, pointed back there by #291 |
 | A search result (`catalogue-result.tsx`) | the title's full page |
 
 - **A show and a film behave the same way on the same tab.** They reached their
@@ -1022,14 +1038,25 @@ mechanism for it: a `Link` to `/titles/{entryId}`.
   about. One mechanism now, and it is the film card's, because a real anchor can be
   middle-clicked, opened in a new tab and read as a link, and a `button` calling
   `router.push` can do none of those.
-- **The next-episodes card retargets to the title.**
-  [#250](https://github.com/Joyaroin/MediaSafe/issues/250) was written expecting exactly
-  this and settled for the episode because
-  [#253](https://github.com/Joyaroin/MediaSafe/issues/253) built an episode page first. The
-  card was then the one thing on the tab that led somewhere other than a title. **The
-  episode's page is not deleted**: it keeps a season row inside the title and a deep link,
-  and the route is still keyed by both ids. What it stops having is a second front door
-  from a surface whose whole subject is titles.
+- **The next-episodes card opens the episode it names** — reversed back by
+  [#291](https://github.com/Joyaroin/MediaSafe/issues/291), and the third time this one
+  href has been decided. [#250](https://github.com/Joyaroin/MediaSafe/issues/250) meant it
+  for the title and settled for the episode because
+  [#253](https://github.com/Joyaroin/MediaSafe/issues/253) built an episode page first;
+  #274 took it to the title; #287 takes it back. **The episode is the one the card is
+  drawing**, not `UpNextEntry.episodeId` — a card advances through its run as marks land,
+  so the head of the entry's run is stale the moment the first check is pressed, and the
+  href, the code line and the check all read the same episode or the card is lying about
+  one of them. The card is a **second** door to that page and not its only one: a season
+  row inside the title reaches it too, and the route is deep-linkable.
+
+  > **What #274 argued, kept because it is not a bad argument.** *"#250 was written
+  > expecting exactly this and settled for the episode because #253 built an episode page
+  > first. The card was then the one thing on the tab that led somewhere other than a
+  > title. The episode's page is not deleted: it keeps a season row inside the title and a
+  > deep link. What it stops having is a second front door from a surface whose whole
+  > subject is titles."* Living with it is what settled it: the surface's subject turned
+  > out to be a weaker rule than the card's own words.
 - **The desktop side pane stays, and is not what this removes.** On `lg` and up a tile's
   click is stopped and `select()` swaps the programme note beside it, exactly as
   [#137](https://github.com/Joyaroin/MediaSafe/issues/137) built it. Selection state, the

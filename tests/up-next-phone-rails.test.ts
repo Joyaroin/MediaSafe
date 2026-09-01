@@ -526,20 +526,28 @@ describe("the mark is unchanged", () => {
 });
 
 /**
- * **Issue #274 — every tile and every card on this tab opens the title's own page.**
+ * **Issue #274, narrowed by issue #291 — every press on this tab opens the thing it names.**
  *
  * The tab used to answer a press three different ways: a show tile wrote selection state,
  * a film tile navigated, and a next-episodes card navigated somewhere else again. One
  * model for what a tap does is the property, and it fails **silently** in the worst way
  * available to a link — the press is answered, something opens, and it is the wrong thing.
- * Nothing throws, nothing looks broken, and a reader who asked for a show gets an episode.
+ * Nothing throws, nothing looks broken, and a reader gets a page they did not ask for.
+ *
+ * **#274 read that model as *every card leads to the same kind of place* and pointed the
+ * next-episodes card at the show. #291 reverses that half.** The mechanism is unchanged
+ * and so is every other row: a `Link`, a real anchor, one press one destination. What
+ * changed is which destination the card gets — the episode it names, because the card
+ * names one episode and the check beside it records that same episode, and a destination
+ * that disagreed with both was the card saying one thing and doing another. Show tiles and
+ * film tiles are untouched and still open the title.
  *
  * The desktop's half of the same rule is here too, and it is the reversal's other edge: on
  * `lg` and up a tile must still swap the programme note pane **without navigating**. A
  * `<Link>` that stopped guarding its own click would take the whole two-pane layout out at
  * once, and that failure is loud only if somebody is looking at a desktop.
  */
-describe("every tile and card on Up next opens the title's page", () => {
+describe("every tile and card on Up next opens the thing it names", () => {
   const tile = codeOf(sourceAt(TILE));
 
   /**
@@ -561,20 +569,52 @@ describe("every tile and card on Up next opens the title's page", () => {
     );
   });
 
-  /** And the card, retargeted from the episode. The negative is the load-bearing half —
-   *  a card that gained the title's href beside the episode's would pass the positive. */
-  it("sends a next-episodes card to the show's page, not the episode's", () => {
+  /** And the card, pointed back at the episode by #291. The negative is the load-bearing
+   *  half — a card that kept the title's href beside the episode's would pass the positive
+   *  and still open the wrong page from whichever of the two a thumb landed in. */
+  it("sends a next-episodes card to the episode it names, not to the show", () => {
     const card = codeOf(sourceAt(EPISODE_CARD));
 
-    expect(card).toMatch(/href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
-    expect(card).not.toMatch(/\/episode\//);
+    expect(card).toMatch(/href=\{`\/episodes\/\$\{episodeId\}`\}/);
+    expect(card).not.toMatch(/href=\{`\/titles\//);
   });
 
   /**
-   * **The episode's page is retargeted away from, not deleted.** It keeps a season row
-   * inside the title, and the route it deep-links to is still on disk. Asserted because
-   * the cheap way to satisfy every line above is to stop having an episode page at all,
-   * and #253's surface is not this ticket's to remove.
+   * **The episode it names is the episode it is *drawing*, not the head of the run.**
+   *
+   * `entry.episodeId` is `library_entry_up_next`'s own episode and is stale the moment a
+   * mark lands — the card advances through its queue without the page reloading, so a card
+   * three marks in names an episode the entry has never heard of. The two branches
+   * therefore hand down two different ids: the run that arrived empty has only the entry's
+   * (nothing there can advance), and the markable card hands down the episode it is
+   * showing. A single `entry.episodeId` at both call sites would pass the test above and
+   * still open the wrong episode, silently, for exactly the readers who use the rail most.
+   */
+  it("links to the episode the card is drawing, from each branch", () => {
+    const card = codeOf(sourceAt(EPISODE_CARD));
+
+    expect(card).toMatch(/episodeId=\{entry\.episodeId\}/);
+    expect(card).toMatch(/episodeId=\{showing\.episodeId\}/);
+  });
+
+  /**
+   * **And the control beside it is untouched — the card's third agreement.** The
+   * destination moved; what the check records did not. It is still `up-next-mark.ts`'s
+   * episode, named in full in the label and marked through the hook's own `mark`, which is
+   * the same episode the card draws for every state that has a control at all.
+   */
+  it("leaves the recording control on the same episode it always recorded", () => {
+    const card = codeOf(sourceAt(EPISODE_CARD));
+
+    expect(card).toMatch(/aria-label=\{`Mark \$\{queuedEpisodeFullName\(episode\)\} watched`\}/);
+    expect(card).toMatch(/onClick=\{mark\.mark\}/);
+  });
+
+  /**
+   * **The card is a second door to the episode's page, not its only one.** The season row
+   * inside the title reaches it too, and the route is on disk to be deep-linked. Asserted
+   * because the destination the card gained here has to be a page that exists, and because
+   * a season row quietly losing its own link is the sort of thing a retarget does.
    */
   it("leaves the episode's own page reachable from a season row and by deep link", () => {
     // #289 lifted the route out from under the entry: it carries the episode's id alone.
@@ -775,6 +815,41 @@ describe("the documents record the reversal", () => {
     );
 
     expect(surfaces).toMatch(/#274/);
+    /** And #291's half of it, so that divergence 3 does not go on describing a card that
+     *  opens the show after the card stopped doing that. */
+    expect(surfaces).toMatch(/#291/);
+  });
+
+  /**
+   * **Issue #291 — the card's destination is recorded as a *reversal*, not overwritten.**
+   *
+   * The same decision has now been made in both directions: #274 pointed the card at the
+   * show because every card on the tab should lead to the same kind of place, and #291
+   * points it back because a card leads to the thing it names. Both arguments are real,
+   * which is exactly why the losing one has to stay legible — a note that simply replaced
+   * #274's reasoning invites a third pass to re-derive it and swing back.
+   *
+   * So this asserts four things, and they are the acceptance criterion's four: the
+   * decision being reversed is named, this spec is named, the reason is given, and the
+   * superseded reasoning is still **there** — in the blockquoted, past-tense form this
+   * file already uses for its reversals, and no longer in the document's own voice.
+   */
+  it("has DESIGN.md recording the card's destination as a reversal of #274", () => {
+    const design = sourceAt("DESIGN.md");
+    const from = design.indexOf("### Opening a title");
+    const section = design.slice(from, design.indexOf("\n### ", from + 4));
+
+    expect(section).toMatch(/#274/);
+    expect(section).toMatch(/#287/);
+    expect(section).toMatch(/#291/);
+    expect(section).toMatch(/a card leads to the thing it names/);
+
+    const lines = section.split("\n");
+    const quoted = lines.filter((line) => line.trimStart().startsWith(">")).join("\n");
+    const asserted = lines.filter((line) => !line.trimStart().startsWith(">")).join("\n");
+
+    expect(quoted).toMatch(/the same kind of place/);
+    expect(asserted).not.toMatch(/the same kind of place/);
   });
 
   /**
