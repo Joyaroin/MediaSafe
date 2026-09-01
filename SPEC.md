@@ -351,6 +351,14 @@ fourth.
    of selection is what goes; on `lg` and up the tile's click is stopped and the programme
    note pane swaps as divergence 2 describes, unchanged.
 
+   **And [#291](https://github.com/Joyaroin/MediaSafe/issues/291) reverses one row of that**
+   — the next-episodes card alone, which opens `/episodes/{episodeId}` again. #274's rule
+   was that every card on the tab should lead to one kind of destination; the rule that
+   replaces it is that a card leads to the thing it names, and this card names an episode
+   and offers a control that records that episode. Tiles are untouched and still open the
+   title. `DESIGN.md` §7 carries the reversal with #274's reasoning kept, because the same
+   decision has now been made in both directions.
+
    **And [#276](https://github.com/Joyaroin/MediaSafe/issues/276) narrows what this bullet
    claims for the desktop.** *So the grid keeps its scroll position* was written as the
    thing the pane buys that a push and a pop cannot, and it is **no longer the difference
