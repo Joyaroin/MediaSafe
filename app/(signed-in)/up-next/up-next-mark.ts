@@ -377,7 +377,12 @@ export function undoFromCard(
   entry: Pick<UpNextEntry, "libraryEntryId" | "titleName">,
   episode: QueuedEpisode,
 ): Promise<void> {
-  return marks.unwatch(
+  /* `undo`, not `unwatch`. This offers to take back the mark the reader just pressed, and
+     `unwatch` removes **every** watch of the episode — so on one of the 1,156 episodes
+     carrying imported rewatches (`docs/adr/0001`) this was quietly deleting years of
+     history while claiming to reverse one press. `db/access.ts`'s `undoWatch` is the
+     inverse of the mark, and nothing else. */
+  return marks.undo(
     subjectOf(entry.libraryEntryId, episode),
     namingFor(entry.titleName, episode),
   );

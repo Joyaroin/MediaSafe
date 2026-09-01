@@ -166,7 +166,21 @@ describe("the episode list", () => {
      * (`SPEC.md` §7), and a control that skipped them rendered on essentially nothing its
      * only reader owns.
      */
-    expect(markup).toContain("Unwatch Season 1, Episode 1 — Winter Is Coming");
+    /**
+     * **Unwatch is not on the row any more, and this is what replaced the assertion.**
+     *
+     * It was an inline control — first a text pill, then briefly the settled mark itself,
+     * which is a glyph that reads as a *state* removing every watch of the episode on one
+     * tap. It lives behind the row's hold now (`watch-menu.tsx`), so what this can check
+     * without a browser is that the row **offers the gesture**: `HOLDABLE` is applied to a
+     * watched row and to no other, and it is the class that suppresses the phone's own
+     * text-selection callout so the app's hold can have the press.
+     *
+     * The settled mark is `aria-hidden` and is not a `<button>`, which is the other half:
+     * there is no inline control left for a stray tap to find.
+     */
+    expect(markup).not.toContain("Unwatch Season 1, Episode 1 — Winter Is Coming");
+    expect(markup).toContain("[-webkit-touch-callout:none]");
   });
 
   it("offers no way back on an unwatched episode", () => {
@@ -289,8 +303,12 @@ describe("the watched-up-to-here control", () => {
     expect(markup).toContain(
       "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
     );
-    // Beside the row's own controls, not instead of them.
-    expect(markup).toContain("Unwatch Season 1, Episode 2 — The Kingsroad");
+    // Beside the row's own controls, not instead of them — and *watched up to here* is
+    // the one that stayed inline when unwatch went to the row's menu, because it records
+    // a watch rather than removing one.
+    expect(markup).toContain(
+      "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
+    );
   });
 
   it("never appears on a special itself", () => {

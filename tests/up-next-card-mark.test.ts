@@ -87,6 +87,7 @@ function entryWith(
 function harness() {
   const recorded: string[] = [];
   const removed: Array<{ libraryEntryId: string; episodeId: string | null }> = [];
+  const undone: Array<{ libraryEntryId: string; episodeId: string | null }> = [];
   const answerRecord: Array<(outcome: WatchActionOutcome) => void> = [];
   const answerRemove: Array<(outcome: UnwatchActionOutcome) => void> = [];
   let minted = 0;
@@ -100,6 +101,15 @@ function harness() {
       },
       remove(params) {
         removed.push(params);
+        return new Promise((resolve) => answerRemove.push(resolve));
+      },
+      /* The card's *Undo* takes this route, not `remove` — one watch back rather than
+         every watch of the episode (`db/access.ts`'s `undoWatch`). Both are recorded into
+         `removed` so the existing assertions about *which episode was targeted* keep
+         reading one list; `undone` is what tells the two writes apart. */
+      undo(params) {
+        removed.push(params);
+        undone.push(params);
         return new Promise((resolve) => answerRemove.push(resolve));
       },
       recordUpTo(): Promise<MarkWatchedUpToActionOutcome> {

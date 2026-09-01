@@ -111,6 +111,10 @@ export function useWatchMark({
     ...view,
     attempt: () => watchMarks.mark(subject, naming, onRecorded),
     unwatch: () => watchMarks.unwatch(subject, naming),
+    /** Takes back the newest watch only, and restores the appearance the row had before
+     *  the mark being undone — `watch-marks.ts`'s `undo`. Offered to every caller; drawn
+     *  by the row that recorded the mark on this visit. */
+    undo: () => watchMarks.undo(subject, naming),
     settle: () => watchMarks.settle(subject),
   };
 }

@@ -1,4 +1,4 @@
-import type { LibraryEntryRow, LibraryState } from "@/db/access";
+import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
@@ -54,53 +54,17 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * `66` and `78` land in the same `w92` CDN bucket, so the smaller measure changes what is
  * drawn and not what is fetched (`app/poster.tsx`).
  */
-const BILL_POSTER_WIDTH = 66;
-const BILL_POSTER = "w-[66px] shrink-0 [--poster-radius:10px]";
-
 /**
- * The one line of what is next, for each of the five states this cell renders. The label
- * and its colour are `library-state.ts`'s `STATE_LABELS` — shared with the programme note
- * (issue #58) — because a *tile*'s "what's next" line has no equivalent there, where the
- * season/episode list is the answer to the same question at full length.
+ * The poster's rendered width at the narrowest column this grid draws — what `Poster`
+ * resolves to a TMDB bucket, and what its missing-artwork initials scale off.
  *
- * ── The lines ────────────────────────────────────────────────────────────────────────
- *
- * Two rules shape the wording, and neither is cosmetic:
- *
- *  - **An episode is never referred to by number alone** (`CONTEXT.md`, and
- *    `docs/design/v1-surfaces.md` §4 makes it a hard rule *with no degrading surface*).
- *    So an unnamed next episode says that it is unnamed. It does not fall back to `S2 E4`,
- *    which is the fallback `tvtracker` had no choice about — its `NextEpisode` type
- *    carried no name at all.
- *  - ***Caught up* and *finished* are not the same sentence.** `CONTEXT.md` glosses caught
- *    up as *"nothing to watch now; something to watch later"* and finished as a show that
- *    has ended or a film you have watched. Giving them one line would erase the only
- *    distinction between them that a reader of this grid can see.
- *
- * Every line is a function of the entry, including the four that ignore it, so that the
- * table has one shape rather than a special case for the one state that reads a column.
+ * `132px` and not the `66px` this cell drew beside its text: the cell is a **column** now,
+ * and the poster is the width of it. `up-next-episode-row.tsx` and the lists grid ask for
+ * the same number, so all three resolve to the same bucket and the browser caches one
+ * image per title across the application.
  */
-const NEXT_LINES: Record<LibraryState, (entry: LibraryEntryRow) => string> = {
-  watching: (entry) => {
-    if (entry.upNext === null) {
-      /**
-       * Watching, with nothing after your progress. Reachable by skipping forward —
-       * progress is a high-water mark, so an unwatched earlier episode keeps the state
-       * at *watching* while `library_entry_up_next` has nothing later to point at.
-       */
-      return "Nothing listed after your progress";
-    }
-    return entry.upNext.episodeName === null
-      ? "Next episode not named yet"
-      : `Next — ${entry.upNext.episodeName}`;
-  },
-  caught_up: () => "Nothing to watch now",
-  finished: () => "Nothing left to watch",
-  watchlist: () => "Not started",
-  // `CONTEXT.md`: *watching the title again clears it.* The line says how to undo the
-  // one state you set by hand, because this cell is where you meet it again.
-  abandoned: () => "Watching it again clears this",
-};
+const BILL_POSTER_WIDTH = 132;
+const BILL_POSTER = "w-full [--poster-radius:10px]";
 
 export function LibraryEntryCell({
   entry,
@@ -113,31 +77,24 @@ export function LibraryEntryCell({
 }) {
   const abandoned = entry.state === "abandoned";
   const state = STATE_LABELS[entry.state];
-  const nextLine = NEXT_LINES[entry.state];
 
   return (
-    <li className="offscreen-skippable overflow-hidden rounded-[18px] bg-raised">
+    <li className="offscreen-skippable">
       <SelectableEntry
         title={{
           libraryEntryId: entry.libraryEntryId,
           titleId: entry.titleId,
           name: entry.name,
         }}
-        className="pressable flex w-full gap-3.5 p-3.5 text-left"
+        className="pressable block w-full text-left"
       >
         {/* `relative` and nothing else: the check badge (#197) hangs off the poster's own
-            corner rather than the cell's, because *on the poster* is where the ticket puts
-            it and because the cell's corner is 14px of padding away from anything. The
-            wrapper takes `shrink-0` so the poster keeps its fixed width inside the flex
-            row exactly as it did when it was the flex child itself. */}
-        <div className="relative shrink-0">
-          {/* `.55`, not the `.45` this used to carry. The handoff sets abandoned tiles at
-              `.55` on the Up next groups and then names this cell as the one place that
-              already dims a poster, with the instruction not to leave the two different by
-              accident. Both are `.55` now: the linen ground is lighter than the bone one
-              this number was chosen against, so the same title reads as further gone at
-              the same opacity, and `.55` is the redesign's value for the state on both
-              surfaces. */}
+            corner rather than the cell's, which is where the ticket puts it — and in a
+            column layout those two corners are finally the same place. */}
+        <div className="relative">
+          {/* `.55` for an abandoned title, on both surfaces that dim one. The linen ground
+              is lighter than the bone one this number was chosen against, so the same
+              title reads as further gone at the same opacity. */}
           <Poster
             posterPath={entry.posterPath}
             name={entry.name}
@@ -145,56 +102,44 @@ export function LibraryEntryCell({
             className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
             aboveFold={aboveFold}
           />
-
           {/* Renders nothing at all outside a selection provider — the desktop, always. */}
           <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
         </div>
 
-        <div className="min-w-0 flex-1">
-          {/*
-            `break-words` is not decoration. A title is one flex child beside a poster of
-            fixed width, and a long word — `ENGAGEMENT`, `Neighbourhood`, most of a German
-            title — cannot wrap, so without this it pushes past the cell and the whole
-            page gains a horizontal scrollbar at phone widths. Measured at 388px before it
-            was added: 552px of content in a 388px viewport.
-          */}
-          <p
-            className={`break-words text-row font-semibold leading-tight tracking-[-0.014em] ${abandoned ? "text-dim" : "text-ink"}`}
-          >
-            {entry.name}
-          </p>
+        {/*
+          `break-words` is not decoration, and the measurement behind it survives the
+          re-layout intact: a long unbroken word — `ENGAGEMENT`, `Neighbourhood`, most of a
+          German title — cannot wrap, and in a grid column it pushes the column open and
+          the page gains a horizontal scrollbar. It was measured at 388px against the old
+          row layout (552px of content in a 388px viewport) and a column is narrower than
+          that row was, so the case is if anything easier to hit.
 
-          {/*
-            `DESIGN.md` draws this line as `2022 · FX` — a year and a network. **The
-            network half has no source.** ADR-0001's mirror is `kind`, `tmdb_id`, `name`,
-            `release_year`, `poster_path`, `in_production` and `runtime_mins`; there is no
-            network column on `title` and nothing in `tmdb/mirror.ts` produces one. So the
-            line is the year alone rather than a year beside an invented string, and
-            printing the network needs a column, a mirror change and a migration — a
-            ticket, not a line here.
+          `line-clamp-2` is new and is what a column costs: the row this replaced let a
+          name run to as many lines as it wanted, because nothing was underneath it. Here a
+          third line would push the state label of one cell out of step with its
+          neighbours' across the whole grid.
+        */}
+        <p
+          className={`mt-2 line-clamp-2 break-words text-item leading-snug font-medium ${abandoned ? "text-dim" : "text-ink"}`}
+        >
+          {entry.name}
+        </p>
 
-            A title TMDB has not dated gets no line at all rather than a placeholder,
-            for the reason `app/poster.tsx` gives for artwork it does not have: a missing
-            borrowed fact is not an error and an apology is the wrong shape for it.
-          */}
-          {entry.releaseYear === null ? null : (
-            <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
-              {entry.releaseYear}
-            </p>
-          )}
+        {/*
+          **The state, and it is the one line that survived the re-layout.**
+          
+          The cell used to carry three lines under the name — the year, the state, and what
+          is next (`Next — Winter Is Coming`, `Nothing to watch now`). A column has room for
+          one, and this is it: the library is the surface organised *by* state, its filter
+          chips are the six states, and it is the fact a reader is scanning for.
 
-          <p className={`label-line mt-2.5 ${state.className}`}>{state.label}</p>
-
-          {/*
-            One line, and it truncates rather than wrapping: two cells whose titles are
-            one and two lines long already sit at different heights, and a next-episode
-            name that wraps would add a third variation to a grid whose whole job is to
-            read as one printed sheet.
-          */}
-          <p className="mt-1 truncate text-item leading-[1.3] text-dim">
-            {nextLine(entry)}
-          </p>
-        </div>
+          The year went because the poster identifies the title and the title's own page
+          carries it. The next-episode line went to Up next, which since the rails became
+          lists is a full-width row with room to print the episode's actual name rather
+          than one truncated clause — the two surfaces stopped duplicating each other.
+          `NEXT_LINES` is deleted with it; nothing else read those strings.
+        */}
+        <p className={`label-line mt-1.5 ${state.className}`}>{state.label}</p>
       </SelectableEntry>
     </li>
   );

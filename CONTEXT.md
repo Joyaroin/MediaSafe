@@ -77,12 +77,16 @@ _Avoid_: legacy watch, historical watch, unknown watch
 **Rewatch**:
 A watch of something you had already watched. A kind of watch, not a separate record, and never a
 number kept on a title.
-**No control in the application records one.** The term stays in the language because the data
-does: `docs/adr/0001` counts 1,156 of them in the imported library, and the `watch` table's
-identity rule and every read that groups by episode exist to handle them correctly. What was
-deleted is the *Rewatch* button on a watched episode row, not the thing it named. Note that
-unwatching and marking again is not a rewatch — it destroys the first watch rather than adding
-a second.
+Recorded by **holding a watched episode row** (or right-clicking it) and choosing *Rewatch* —
+one gesture away rather than on the row, because it is pressed a few times a year against a
+check pressed every evening. The control was deleted outright for one ticket and came back:
+with no way to record a second watch and an *Unwatch* that removed every watch, the
+application could only lose the 1,156 rewatches `docs/adr/0001` counts in the library.
+
+Not to be confused with the two ways back. **Undo** takes back the newest watch — the press
+just made — and leaves every earlier one. **Unwatch** removes them all, because *unwatched
+means unwatched*. So unwatching and then marking again is not a rewatch: it destroys what was
+there rather than adding to it.
 _Avoid_: replay, second watch, watch count
 
 **Progress**:

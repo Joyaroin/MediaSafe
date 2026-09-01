@@ -6,6 +6,7 @@ import {
   getTitleDetail,
   ownedBy,
   recordWatch,
+  undoWatch,
   unwatch,
   type UserId,
 } from "@/db/access";
@@ -261,6 +262,89 @@ describe("unwatch", () => {
       // pressed again. One press, one meaning: the episode is unwatched.
       expect(outcome).toEqual({ removed: true });
       expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(0);
+    }));
+
+  /**
+   * ── Undo is not unwatch, and the difference is the point ────────────────────────────
+   *
+   * The two above establish that *unwatch* takes every watch of an episode, which #145
+   * settled and which these do not disturb. `undoWatch` answers the other question — *I
+   * did not mean to press that* — and it was calling `unwatch` until this batch, so an
+   * undo on an episode with earlier watches took those with it while claiming to reverse
+   * one press.
+   */
+  it("undo takes back one watch and leaves the earlier ones", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, [
+        { seasonNo: 1, episodeNo: 1 },
+      ]);
+      const episodeId = episodeIds["1-1"];
+      // Three clicks, three keys — a twice-rewatched episode, which is three rows.
+      await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
+      await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
+      await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
+
+      const outcome = await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+
+      expect(outcome).toEqual({ removed: true });
+      expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(2);
+    }));
+
+  it("undo reaches the app watch, never past it to an imported one", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, titleId, episodeIds } = await seedShow(tx, userId, [
+        { seasonNo: 1, episodeNo: 1 },
+      ]);
+      const episodeId = episodeIds["1-1"];
+
+      /**
+       * The ordering trap this is here to hold. `importedWatch` writes a row with a null
+       * `watched_at` — *it happened, you do not know when* — and Postgres sorts nulls
+       * **first** under a plain `desc`. Without `nulls last`, an undo would delete the
+       * imported watch and leave the press the reader was trying to take back.
+       */
+      const imported = await importedWatch(tx, userId, entryId, titleId, episodeId);
+      await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
+
+      await undoWatch(userId, { libraryEntryId: entryId, episodeId }, tx);
+
+      expect(await watchExists(tx, imported)).toBe(true);
+      expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(1);
+    }));
+
+  it("undo removes nothing from an episode that was never watched, and does not throw", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, [
+        { seasonNo: 1, episodeNo: 1 },
+      ]);
+
+      const outcome = await undoWatch(
+        userId,
+        { libraryEntryId: entryId, episodeId: episodeIds["1-1"] },
+        tx,
+      );
+
+      expect(outcome).toEqual({ removed: false });
+    }));
+
+  it("undo refuses another account's library entry", () =>
+    inTransaction(async (tx) => {
+      const owner = await seedUser(tx, "adham");
+      const stranger = await seedUser(tx, "stranger");
+      const { entryId, episodeIds } = await seedShow(tx, owner, [
+        { seasonNo: 1, episodeNo: 1 },
+      ]);
+      const episodeId = episodeIds["1-1"];
+      await recordWatch(owner, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
+
+      await expect(
+        undoWatch(stranger, { libraryEntryId: entryId, episodeId }, tx),
+      ).rejects.toThrow(/not found in this account/);
+
+      expect(await watchesOnEpisode(tx, owner, episodeId)).toHaveLength(1);
     }));
 
   it("touches no other episode of the same title", () =>

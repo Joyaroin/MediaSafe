@@ -109,10 +109,21 @@ export const SELECTED = "outline-2 -outline-offset-2 outline-ink";
  * the desktop, always. `title` likewise: a fresh value each render is exactly what a hold
  * started this render should act on.
  */
-export function useHoldToSelect(
-  bulk: BulkSelection | null,
-  title: SelectableTitle,
-): HoldGesture {
+/**
+ * **The gesture, with nothing about selection in it** — issue: the episode row and the Up
+ * next row want a hold too, and what they want it to *do* is open a menu.
+ *
+ * Extracted rather than copied, which is `episode-line.ts`'s rule for exactly this shape
+ * of thing: the `500ms`, the `10px` slop, the swallowed click, the unmount cleanup and the
+ * `animationend` guard are five decisions each with a paragraph behind them, and a second
+ * hold that re-derived four of them would differ from this one in the fifth without
+ * anybody noticing.
+ *
+ * `onLand` is `null` where the surface has no hold — the library grid outside a selection
+ * provider — and that null is what turns the whole gesture off, `onContextMenu`
+ * suppression included.
+ */
+export function useHoldGesture(onLand: (() => void) | null): HoldGesture {
   const [holding, setHolding] = useState(false);
   const [landed, setLanded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -136,7 +147,7 @@ export function useHoldToSelect(
   useEffect(() => cancelHold, []);
 
   function onPointerDown(event: React.PointerEvent): void {
-    if (bulk === null) return;
+    if (onLand === null) return;
     // Cleared here as well as on `animationend`, and the reason is
     // `prefers-reduced-motion`: `globals.css` sets `animation: none` there, so no
     // `animationend` is ever fired and the attribute set by the last hold would stay on
@@ -154,7 +165,7 @@ export function useHoldToSelect(
       swallowClick.current = true;
       setHolding(false);
       setLanded(true);
-      bulk.hold(title);
+      onLand();
     }, HOLD_MS);
   }
 
@@ -187,7 +198,7 @@ export function useHoldToSelect(
       // A long press on a phone otherwise raises the text-selection callout over the
       // element the reader is holding, which is the browser answering a gesture this app
       // has just claimed. Suppressed only where the gesture exists.
-      onContextMenu: bulk === null ? undefined : (event) => event.preventDefault(),
+      onContextMenu: onLand === null ? undefined : (event) => event.preventDefault(),
       // `currentTarget === target` only: a check badge mounted inside plays its own
       // arrival, and an `animationend` bubbling up from it would clear this one's
       // overshoot part-way through.
@@ -196,4 +207,18 @@ export function useHoldToSelect(
       },
     },
   };
+}
+
+/**
+ * Hold to select — the gesture above, landing on `bulk.hold`.
+ *
+ * This is the whole of what the hook used to be; the body moved up so that a second
+ * surface could land the same press somewhere else. `SelectableEntry` calls this and is
+ * unchanged, including the `null` bulk case: no provider, no hold.
+ */
+export function useHoldToSelect(
+  bulk: BulkSelection | null,
+  title: SelectableTitle,
+): HoldGesture {
+  return useHoldGesture(bulk === null ? null : () => bulk.hold(title));
 }
