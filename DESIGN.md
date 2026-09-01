@@ -756,7 +756,8 @@ The same rule holds everywhere motion exists:
   animation cannot ship without a reduced-motion path: there is no call site to forget.
 - **The staggered entrance** keeps its opacity fade and drops its `8px` rise, and every
   child's delay collapses to zero. The list still arrives; it stops travelling to get here.
-- **The press** stops scaling and keeps its colour change.
+- **The press** drops both of its halves — the 100ms compression and the pop keyframe —
+  and keeps its colour change. Pressed is still pressed; it stops moving to get there.
 
 **The event always happens. Only the animation is negotiable.**
 
@@ -1800,18 +1801,21 @@ transition token* — an accurate description of a build whose entire vocabulary
 easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
 the app; all four of those absences are now present on purpose. What governs it:
 
-- **Four duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
-  (`380ms`), `--dur-press` (`425ms`) — and four easings: `--ease-press` (unchanged, the
-  arrival curve, and misnamed — it is not the press), `--ease-out-quart`,
-  `--ease-in-out-soft`, and `--spring-press`.
+- **Five duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
+  (`380ms`), `--dur-press` (`100ms`), `--dur-pop` (`260ms`) — and three easings:
+  `--ease-press` (unchanged, the arrival curve, and misnamed — it is not the press),
+  `--ease-out-quart` and `--ease-in-out-soft`.
 
-  **This said *three and three* until #270, and the fourth of each arrived together
-  because they are one value.** `--spring-press` is a spring, and a spring's shape is
-  meaningless without the time it settles over: replaying it at `--dur-fast` is not this
-  spring played briskly, it is a spring with a different response. `425ms` is not a taste
-  in the ramp above — it is where `snappy`'s own oscillation falls under a thousandth,
-  computed rather than chosen, which is why it sits outside the three-step scale instead
-  of being rounded into it.
+  **This said *four and four* until #281, and the fourth easing has been removed rather
+  than retuned.** That entry read: *`--spring-press` is a spring, and a spring's shape is
+  meaningless without the time it settles over … `425ms` is not a taste in the ramp above
+  — it is where `snappy`'s own oscillation falls under a thousandth.* All of that was true
+  and none of it moved anything on screen, because a transition's easing scales the delta
+  between two values rather than a value — see the press's own reversal below. The spring
+  was not deleted; it became the `press-pop` keyframe's 33 stops, which is the one place a
+  number the endpoints do not contain can be named. `--dur-press` is now the compression
+  alone, and it is `100ms` because that is shorter than a tap: the press's two directions
+  are two mechanisms and each carries its own clock.
 - **Exits run at `--dur-fast` against entrances at `--dur-base` or slower.** Arriving is
   where the character lives; leaving is where impatience does.
 
@@ -1851,6 +1855,17 @@ the app; all four of those absences are now present on purpose. What governs it:
   fine, because nothing was catching a press anyway. The dividing line above is unchanged:
   it still decides *where the animation is authored*. It no longer also decides *whether
   the thing may be a spring*.
+
+  **#281 keeps that and adds the half of it #270 got wrong, again as a reversal.** A
+  *transition* still cannot be a spring the way that paragraph meant, because **its easing
+  scales the delta between the two values it is given, not the values themselves**. A curve
+  peaking at `1.0062` over a `0.97 → 1` release peaks at `1.00019` on screen: 0.05px on a
+  rail card, 0.008px on the checkmark. So the sentence *a CSS transition can carry a
+  spring's exact shape* is true and useless on its own — it carries the shape and discards
+  the amplitude. A **keyframe** names values, so it can reach a number neither endpoint
+  contains, and that is what the press's pop is. The rule stands with one word changed: a
+  press stays a CSS *transition or keyframe*, and which of the two is decided by whether the
+  motion has to name a value nothing else does.
 - **The springs are transcribed, not invented.** SwiftUI describes a spring as a *response*
   and a *damping fraction*; Motion accepts the same perceptual pair as `duration` and
   `bounce`, where `bounce ≈ 1 - dampingFraction`. `smooth` / `snappy` / `bouncy` carry
@@ -1898,20 +1913,161 @@ a finger can catch mid-flight.
 sentence above is still true — the press is in `globals.css` and nowhere else — but *what
 only Motion can express* was doing work it cannot do. It was read as *the press is in CSS
 because a press does not deserve a spring*, and the honest version is narrower: **Motion is
-what only Motion can express, and that is interruptibility, not spring shape.**
-`.pressable`'s timing function is now `--spring-press`, which is `snappy` — response
-`0.30`, damping fraction `0.85` — sampled into a `linear()` curve, so a control animated in
-CSS and one animated by Motion are the same spring rather than two dialects of one
-vocabulary. What kept the press in CSS is the half of the old argument that was always
-load-bearing and is untouched by this: every tile, cell and row wearing `pressable` stays a
-server component, a rail of them adds no per-frame JavaScript, and the earlier
-performance pass's savings are kept whole.
+what only Motion can express, and that is interruptibility, not spring shape.** What kept
+the press in CSS is the half of the old argument that was always load-bearing and is
+untouched by any of this: every tile, cell and row wearing `pressable` stays a server
+component, a rail of them adds no per-frame JavaScript, and the earlier performance pass's
+savings are kept whole.
 
-The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts`
-imports `snappy`, recomputes all 33 samples from the closed form for a damped oscillator's
-step response, and fails if either side moves — the discipline `tests/palette.test.ts`
-exists to enforce, applied here before the drift rather than after it, because 33 numbers
-in a stylesheet are the definitive example of a value nobody can check by eye.
+**#281 reversed the mechanism under that, and this too is recorded rather than
+overwritten.** The paragraph here read:
+
+> `.pressable`'s timing function is now `--spring-press`, which is `snappy` — response
+> `0.30`, damping fraction `0.85` — sampled into a `linear()` curve, so a control animated
+> in CSS and one animated by Motion are the same spring rather than two dialects of one
+> vocabulary.
+
+Every clause of that was true of the source and false of the screen. A transition's easing
+scales the **delta** between its two values, so `1.0062` applied to a `0.97 → 1` release
+landed at `1.00019` — 0.019% above rest, 0.05px on a rail card, 0.008px on the recording
+checkmark. The press was an exact spring nobody could see, and one `transition` governing
+both directions made it slow as well: at `425ms`, a tap shorter than a quarter-second never
+reached full compression and eased back from halfway.
+
+**The press is two mechanisms now.** A `transition` compresses it — `--dur-press`, 100ms,
+`--ease-out-quart`, `1 → 0.96` — and is deliberately *not* the spring, because a spring's
+long settle is the thing being fixed. A `@keyframes press-pop` carries the release past rest
+to `1.012` and settles it over `--dur-pop`, run on the `data-popped` mark the one delegated
+listener sets when a release qualified as a tap. `select-land` already proved the pattern
+and was the one press in the product that visibly popped.
+
+**The spring was re-pointed, not deleted.** `press-pop`'s 33 stops are the same `snappy`
+step response `--spring-press` held, from the same closed form, so the CSS press and a
+Motion-animated surface are still one spring. What changed is what the numbers are
+*attached* to: the shape is derived, and the two sizes it travels between are declared in
+the stylesheet rather than falling out of a delta nobody computed.
+
+**The press has a register, and there are three of them (#282, #283).** One rule was wrong
+for two kinds of thing: the same movement is a considered gesture on a 262px rail card and
+nothing at all on a 44px checkmark, and both wore the identical utility.
+
+| | compress | pop |
+|---|---|---|
+| Surfaces — cards, cells, rows, tiles | `0.960` | `1.012` |
+| Controls — small hit boxes and chips, such as the search screen's add | `0.920` | `1.030` |
+| The recording checkmark | `0.900` | `1.045` |
+
+An edge travels half the scale delta, so the quiet register moves a 262px card's edge
+`5.24px` and a 44px checkmark's edge `0.88px` — under one device pixel, which is the same
+*technically correct and invisible* the whole press was corrected for. The control register
+moves that checkmark `1.76px` and the recording one moves it `2.20px`.
+
+**The loudest press and the rationed accent mark the same act (#283).** The third register
+belongs to the recording checkmark and to nothing else — the episode row's hit box
+(`watch-mark-motion.tsx`'s `RECORDING_HIT_BOX`) and the Up next episode card's check
+(`up-next-episode-card.tsx`'s `CHECK_HIT_BOX`), which are one act on two surfaces — the
+card's *Undo* is the same string because it is that same act being taken back. §3
+already rations the accent to exactly that act: recording a watch is the one thing in this
+application allowed to be vermilion. It is now also the one thing allowed to move this far,
+so the product says one thing in two ways rather than two things. It is the act it exists
+for and the most repeated gesture in it, and it was the control this whole correction was
+measured against — `0.008px` on the checkmark is the number #270 shipped.
+
+**It is scale and the pop and nothing else.** A press still never tints a control: colour
+continues to mean *this was recorded*, and a checkmark that took the accent while being
+pressed would be claiming to have written something it has not — the accent it already
+carries is its rest state and its recorded state. No shadow either; the one depth
+vocabulary is the tone step above, and both recording hit boxes are bare 44px controls with
+no surface of their own, so nothing paints under them. Pressing the check on an Up next
+card moves the check and not the 262px card around it: the button is a sibling of the
+card's own `pressable` link inside a raised `<li>` that wears no press, which is why #279
+rejects moving `pressable` up onto raised parents by name.
+
+**The register is selected by one custom property the call site sets** — `--press-register`,
+`0` for surfaces, `1` for controls and `2` for the recording checkmark. This is
+`--poster-radius`'s pattern and `--poster-radius`'s reason: a second utility beside `pressable` would be two rules setting
+one property in the `utilities` cascade layer, so *which one wins* would be a question about
+the order Tailwind **emits** them in rather than about the call site. A variable the call
+site sets has no ordering question in it. Nothing about a `pressable` element reveals its
+size or its role, so there is no automatic discriminator to use instead — the call site has
+to say. And it is **one** property and not a pair, so there is no way to set half a register
+and no way to pair a surface compression with a control pop; `globals.css` derives both
+halves of the press from the single value, and `press-pop`'s stops are written as fractions
+of the register's own span so that all three registers stay one keyframe and one spring.
+
+**The register climbs in clamped steps rather than by multiplication, and that is #283's
+one structural change.** #282 wrote each half as a single linear term in `--press-register`,
+which reaches two amplitudes and cannot reach three: the pairs are not collinear, because a
+control already compressed to `0.920` has less room left and buys more of its movement in
+the pop. Continuing the multiplication would have put register `2` at `0.880` / `1.048` —
+numbers nobody chose. Each register is now its own clamped step, so all six amplitudes
+appear in the stylesheet as themselves, and a mistyped `--press-register: 7` resolves to the
+recording register rather than inventing a fourth one.
+
+**The default is the quietest register, and it is spelled by saying nothing.** A call site
+nobody classified is under-stated, never shouting. `tests/press-spring.test.ts` sweeps the
+whole tree for elements wearing `pressable` and fails on any that is neither deliberately
+left on the default nor declaring one of the two louder ones, because a register nobody
+applied is a table in a stylesheet. The same sweep is what keeps *the loudest press in the
+application* true: it fails if any call site outside the two recording hit boxes reaches for
+register `2`.
+
+The derivation is not a comment claiming a provenance. `tests/press-spring.test.ts` imports
+`snappy`, recomputes all 33 stops from the closed form for a damped oscillator's step
+response, and fails if either side moves — the discipline `tests/palette.test.ts` exists to
+enforce, applied here before the drift rather than after it, because 33 numbers in a
+stylesheet are the definitive example of a value nobody can check by eye. **And it now
+asserts the pop exceeds the resting value**, which is the assertion #270's suite lacked:
+fidelity to a source and visible effect are two properties, the old suite proved the first,
+and the press shipped a release without the second.
+
+**The press's depth is the `--raised` / `--ground` step, and nothing else — issue #284.**
+Scale alone reads flat at any amount, so a held press now settles the surface under the
+thumb from `--raised` to `--ground`, at that element's own radius, over the compression's
+same `100ms`, and returns it on release. This is the one lift this world has, used
+literally: §2's tone step is what stands in for every shadow the design does not draw, and
+a pressed surface stops floating. It is **not** a shadow — there are none, and §10 says
+adding one is not a fix — and it is **not** the accent, which §3 rations to *this was
+recorded* and which a control tinting under a thumb would be claiming falsely. It does not
+overshoot in either direction: a colour has no mass to carry past the tone it is heading
+for, so it is an ease and never `press-pop`'s curve.
+
+**A bare control gets no backplate.** Of the twenty-five `pressable` call sites only two
+carry a surface of their own on the same element; the rest are transparent links and
+buttons sitting inside somebody else's raised card, and painting a ground on one of those
+would invent a plate the design never drew. So the step is qualified by the element already
+being a `bg-raised` surface, and it means one thing wherever it appears rather than two
+things depending on the call site. **`pressable` was not moved up onto the raised
+parents**, which is the obvious alternative and is rejected on the Up next episode card by
+its own markup: the checkmark is a *sibling* inside that raised `<li>`, so a `pressable`
+parent would scale the whole card every time the check is pressed. `tests/palette.test.ts`
+holds all of it — the ground token, the absent shadow, the absent accent, and the two call
+sites — beside the no-shadow sweep and the accent's closed meaning, which are the two rules
+a press is best placed to break quietly.
+
+**And the hold on a library cell is now the same hand — issue #285.** A cell can be tapped
+and the same cell can be held for `HOLD_MS` to select it, and the hold arrived (#197) with
+two numbers of its own: it compressed to `0.95` and its `select-land` arrival overshot to
+`1.035`, chosen beside the press rather than out of it. Once the press had a register those
+were simply a second scale on one cell — `4%` of travel under a tap and `8.5%` under a hold,
+under the same finger. So `select-land`'s two stops and the held cell's compression read
+`--press-compress` and `--press-pop` off the element they are on, which for a library cell
+is the quiet surface register it never declares.
+
+**The hold stays its own rules, and only its two numbers moved.** It is a *timer made
+visible*, not a press: the ramp is still `HOLD_MS` of `linear` rather than the press's 100ms
+ease-out — an ease-out would spend the first half of the wait looking finished — and
+`select-land` still turns over at 55% over `--dur-base`. The hold's rules are **unlayered**
+and `pressable` is a `@utility` in the `utilities` layer, so the hold still wins the
+compression on the one element that carries both, and it wins by cascade origin rather than
+by specificity. The pop is settled differently and now deliberately: `press-pop` and
+`select-land` are run by two rules of *identical* specificity, one class and one attribute
+each, both unlayered, so only their order in the file separates them — and a release that
+lands a selection is an ordinary release as far as the delegated listener can tell, so both
+marks land on one cell at once. `press-pop` is declared first and the arrival wins, because
+the flourish meaning *that was a tap* playing over the arrival meaning *this is now
+selected* is one gesture saying two things. That ordering is a tested property now rather
+than a typing order.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what

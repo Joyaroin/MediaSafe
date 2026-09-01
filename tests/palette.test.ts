@@ -430,6 +430,262 @@ describe("no drop shadow appears anywhere", () => {
   });
 });
 
+/**
+ * ── The press's depth — issue #284 ──────────────────────────────────────────────────
+ *
+ * Scale alone reads flat at any amount, so #279 gives the press depth as well as size, and
+ * the depth it gives it is **the one this palette already has**: the `--raised` / `--ground`
+ * step the handoff's Geometry table calls *the only lift there is*. A pressed surface paints
+ * the ground tone over its own raised, at its own radius, and comes back on release.
+ *
+ * It is asserted here rather than in `tests/press-spring.test.ts` because the properties are
+ * this suite's own: the sweep above proves the application casts no shadow, and the block at
+ * the top of `app/globals.css` proves the accent means *recorded* and nothing else. The tone
+ * step is the first thing since either rule was written that could quietly break both — a
+ * press is exactly where a shadow or a tint would look reasonable — so it is checked beside
+ * them rather than beside the spring arithmetic.
+ */
+
+/** The body of the `@utility pressable` block, comments already blanked. */
+function pressableUtility(): string {
+  const match = CSS_CODE.match(/@utility pressable \{[\s\S]*?\n\}/);
+  expect(match, "globals.css must still declare `@utility pressable`").not.toBeNull();
+  return match![0];
+}
+
+/**
+ * The innermost rules of a block — selector list and declarations. Read structurally rather
+ * than grepped for a spelling, so the assertions below are about *what the stylesheet does*
+ * and not about how the selector happens to be typed.
+ */
+function nestedRules(block: string): Array<{ selector: string; body: string }> {
+  return [...block.matchAll(/([^{}();]+?)\{([^{}]*)\}/g)].map((match) => ({
+    selector: match[1].trim().replace(/\s+/g, " "),
+    body: match[2].trim(),
+  }));
+}
+
+/** A motion token's single declared value — `--dur-press`, an easing, a duration. */
+function motionToken(name: string): string {
+  const all = [...CSS_CODE.matchAll(new RegExp(`^\\s*${name}:\\s*([^;]+);`, "gm"))];
+  expect(all, `${name} must have exactly one declaration site`).toHaveLength(1);
+  return all[0][1].trim();
+}
+
+/** The property names a declaration list sets — `background-color: var(--ground);` → the name. */
+function propertiesOf(declarations: string): string[] {
+  return declarations
+    .split(";")
+    .map((declaration) => declaration.split(":")[0].trim())
+    .filter((property) => /^[a-z-]+$/.test(property));
+}
+
+/** The properties a block declares itself, with every nested rule removed first. */
+function ownProperties(block: string): string[] {
+  return propertiesOf(block.replace(/[^{}();]+?\{[^{}]*\}/g, " ").replace(/^[^{]*\{/, ""));
+}
+
+/** Every rule inside `pressable` that paints a background — the tone step, and only it. */
+function toneRules(): Array<{ selector: string; body: string }> {
+  return nestedRules(pressableUtility()).filter((rule) => /background/.test(rule.body));
+}
+
+/** Every rule in the stylesheet that applies to a pressed element, `&` resolved. */
+function pressRules(): Array<{ selector: string; body: string }> {
+  return [
+    ...nestedRules(pressableUtility()).map((rule) => ({
+      ...rule,
+      selector: rule.selector.replace(/&/g, ".pressable"),
+    })),
+    ...nestedRules(CSS_CODE).filter((rule) => rule.selector.includes(".pressable")),
+  ];
+}
+
+/** The two blocks that repaint the palette in dark — the media query and the explicit choice. */
+function darkBlocks(): string[] {
+  return [...CSS_CODE.matchAll(/:root(?:\[data-theme="dark"\]|:not\(\[data-theme="light"\]\))\s*\{[^}]*\}/g)].map(
+    (match) => match[0],
+  );
+}
+
+describe("a pressed surface settles toward the ground", () => {
+  it("paints the ground token while the press is held", () => {
+    const tone = toneRules();
+
+    // One rule, not two: `:active` is what the platform gives a mouse and a keyboard,
+    // `data-pressed` is what the delegated listener gives a finger, and two declarations
+    // would be two opinions about what *pressed* means.
+    expect(tone).toHaveLength(1);
+    expect(tone[0].selector).toContain(":active");
+    expect(tone[0].selector).toContain('[data-pressed="true"]');
+
+    // The token itself, not a hex and not a mix. `--ground` is one of the seven the
+    // handoff supplies and both dark paths remap, which is the whole of why this works
+    // in light and dark without a second declaration.
+    expect(tone[0].body).toMatch(/^background-color:\s*var\(--ground\);?$/);
+  });
+
+  it("takes the compression's own 100ms, and gives it back on release", () => {
+    const transition = pressableUtility().match(/transition:([^;]+);/);
+    expect(transition, "`pressable` must still declare a transition").not.toBeNull();
+
+    // The tone runs for the length of the compression — the same token, so the two
+    // halves of the press cannot drift into different durations.
+    expect(transition![1]).toMatch(
+      /background-color\s+var\(--dur-press\)\s+var\(--ease-out-quart\)/,
+    );
+    expect(motionToken("--dur-press")).toBe("100ms");
+
+    // And it returns. Nothing paints a background unconditionally, so the release drops
+    // the rule and the element falls back to the surface it already had — through the
+    // same transition, which is what makes the return an animation rather than a cut.
+    expect(ownProperties(pressableUtility()).filter((p) => p.startsWith("background"))).toEqual(
+      [],
+    );
+  });
+
+  it("does not overshoot in either direction", () => {
+    // A colour has no mass to carry past the tone it is heading for, so the step is an
+    // ease and never the pop's curve. An easing whose ordinates stay inside [0,1] cannot
+    // produce a value outside its two endpoints; `linear()` sampled from a spring can,
+    // and that is exactly what `press-pop` is for.
+    const easing = motionToken("--ease-out-quart");
+    expect(easing).toMatch(/^cubic-bezier\([^)]+\)$/);
+
+    const [, y1, , y2] = easing
+      .replace(/^cubic-bezier\(|\)$/g, "")
+      .split(",")
+      .map(Number);
+    for (const ordinate of [y1, y2]) {
+      expect(ordinate).toBeGreaterThanOrEqual(0);
+      expect(ordinate).toBeLessThanOrEqual(1);
+    }
+
+    const tone = toneRules()[0];
+    expect(tone.body).not.toMatch(/animation|linear\(/);
+  });
+
+  it("gives a bare control with no surface of its own no backplate", () => {
+    // Of the twenty-five call sites only two carry a surface on the same element; the
+    // rest are transparent links and buttons inside somebody else's raised surface, and
+    // a ground painted on one of those is a backplate the design never drew. So the step
+    // is qualified by the element having a surface, and it means one thing everywhere.
+    expect(toneRules()[0].selector).toContain(".bg-raised");
+
+    // Nothing else in the stylesheet paints a background on a press, qualified or not —
+    // an unqualified rule anywhere would put the backplate back.
+    const painting = pressRules().filter((rule) =>
+      propertiesOf(rule.body).some((property) => property.startsWith("background")),
+    );
+    expect(painting).toHaveLength(1);
+    expect(painting[0].selector).toContain(".bg-raised");
+
+    // And no pseudo-element, which is the other way a backplate arrives.
+    expect(CSS_CODE).not.toMatch(/\.pressable[^{]*::(?:before|after)/);
+  });
+
+  it("paints at the pressed element's own radius, so it declares none", () => {
+    // A background is clipped by whatever `border-radius` the call site set, which is why
+    // the step needs no radius of its own and adds no radius token. Anything else here —
+    // an inset, a clip, a second box — would be this file having an opinion about a
+    // measure that belongs to the call site.
+    expect(propertiesOf(toneRules()[0].body)).toEqual(["background-color"]);
+  });
+
+  it("raises no shadow and never reaches for the accent", () => {
+    // Both are rules older than the press and both are exactly where a press would break
+    // them: there are no drop shadows anywhere in this application — the tone step is
+    // what replaced them — and colour here means *this was recorded*, so a control that
+    // tints under a thumb claims to have written something it has not.
+    for (const rule of pressRules()) {
+      expect(rule.body, rule.selector).not.toMatch(/box-shadow|drop-shadow/);
+      expect(rule.body, rule.selector).not.toMatch(/accent/);
+    }
+  });
+
+  it("adds no token, and therefore works in light and in dark", () => {
+    // The step is `--ground` over `--raised`, and both are among the seven the handoff
+    // supplies and both dark paths remap — so one declaration serves both schemes, which
+    // is the whole argument of the block at the top of the stylesheet.
+    expect(HANDOFF_TOKENS).toContain("ground");
+
+    // Both dark paths, and there are two of them — the system's answer and the reader's.
+    // Checking a list nobody counted is how this assertion would pass against none.
+    const dark = darkBlocks();
+    expect(dark).toHaveLength(2);
+    for (const block of dark) expect(block).toMatch(/--ground:\s*var\(--dark-ground\)/);
+
+    // Nothing new was declared to get here — no tone, no elevation, no blur, no radius.
+    const declared = [...CSS_CODE.matchAll(/^\s*(--[a-z0-9-]+):/gim)].map((match) => match[1]);
+    expect(
+      declared.filter((name) => /shadow|elevation|blur|press-tone|pressed/.test(name)),
+    ).toEqual([]);
+  });
+
+  it("drops the animation under reduced motion and keeps the state", () => {
+    const reduced = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ]
+      .map((match) => match[0])
+      .filter((block) => /\.pressable[^[]/.test(block));
+
+    expect(reduced).toHaveLength(1);
+
+    // The transition goes, so the tone changes instantly rather than over 100ms — the
+    // same one line that already drops the compression, because the tone rides the same
+    // transition rather than a second mechanism that would need its own opt-out.
+    expect(reduced[0]).toMatch(/\.pressable\s*\{[\s\S]*?transition:\s*none/);
+
+    // What must *not* happen: the pressed state itself is untouched. A reduced-motion
+    // block that unpainted the ground would answer a finger with nothing at all, and
+    // `DESIGN.md` §6 is explicit — pressed is still pressed, it stops moving to get there.
+    for (const rule of nestedRules(reduced[0])) {
+      expect(propertiesOf(rule.body).filter((property) => property.startsWith("background")))
+        .toEqual([]);
+    }
+  });
+
+  it("leaves `pressable` where it was, and never on a raised parent", () => {
+    /**
+     * The alternative to a self-painting element is moving `pressable` up onto the raised
+     * parent, and #279 rejects it by name: on the Up next episode card the checkmark is a
+     * *sibling* inside that raised `<li>`, so the whole card would scale when the check is
+     * pressed. This is that rejection made checkable — the tone step is not allowed to buy
+     * its simplicity by restructuring markup.
+     */
+    const carriers: string[] = [];
+
+    for (const path of sourceFiles()) {
+      if (path.endsWith(".css")) continue;
+      const source = readFileSync(path, "utf8");
+      for (const match of code(source).matchAll(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g)) {
+        const list = (match[1] ?? match[2] ?? match[3] ?? "").split(/\s+/);
+        if (list.includes("pressable") && list.includes("bg-raised")) carriers.push(relative(path));
+      }
+    }
+
+    expect(carriers.sort()).toEqual([
+      "app/(signed-in)/library/lists-rail.tsx",
+      "app/(signed-in)/up-next/upcoming-row.tsx",
+    ]);
+  });
+
+  it("is recorded in DESIGN.md as the whole of the press's depth", () => {
+    const at = DESIGN_DOC.indexOf("#284");
+    expect(at, "DESIGN.md must record the tone step").toBeGreaterThan(-1);
+
+    // The entry has to say what the depth *is* and what it is not, because the two rules
+    // it could quietly break are stated in this same document and a reader who finds only
+    // "the press has depth now" learns nothing about either.
+    // A window either side of the marker: the entry names the step in its own heading,
+    // which sits before the issue number rather than after it.
+    const entry = DESIGN_DOC.slice(Math.max(0, at - 400), at + 2000);
+    expect(entry).toMatch(/`--raised`\s*\/\s*`--ground`|raised\/ground/);
+    expect(entry).toMatch(/shadow/);
+    expect(entry).toMatch(/accent/);
+  });
+});
+
 describe("the three names the handoff proposes never reach a class list either", () => {
   // Asserted over the source tree as well as the stylesheet. Checking only `globals.css`
   // left the case that actually matters unguarded: a component reaching for `bg-well`

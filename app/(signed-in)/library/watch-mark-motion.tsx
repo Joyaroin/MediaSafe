@@ -41,15 +41,42 @@ export const WATCHED_NAME = "text-dim";
  * invert and nothing at all under a thumb — and a hover is the one state a phone cannot
  * enter, so the gesture the whole product is built around was the only one in the
  * application with no physical answer. It now carries the same press every tile, cell and
- * row wears (`globals.css`'s `@utility pressable`), which since #270 is `app/motion.ts`'s
- * `snappy` transcribed into a `linear()` curve. On the hit box rather than on
+ * row wears (`globals.css`'s `@utility pressable`), which since #281 is a 100ms
+ * compression and a `snappy`-derived pop keyframe. On the hit box rather than on
  * `RECORDING_GLYPH`, for the same reason the hover is: the `44px` box is what a finger is
  * actually on, and scaling the `26px` chip inside a box that stayed still would read as
  * the chip coming loose. It costs no client boundary — this file is class strings, and
  * the surfaces rendering them stay server components.
+ *
+ * **`[--press-register:2]` is the loud register, and it is the whole of issue #283.**
+ * `pressable` had one movement for a 262px rail card and a 44px checkmark alike, and 4% on
+ * a 44px box moves its edge 0.88px — under a device pixel, which is to say not at all.
+ * #282 gave the small controls a register of their own (`0.92` in, `1.030` past rest) and
+ * this took it. #283 gives this control a third one above that: **`0.900` in and `1.045`
+ * past rest, the loudest press in the application**, declared by the same single property
+ * and reached from nowhere else but here and the Up next card's own check.
+ *
+ * **Why this control and not the others.** Recording a watch is the act the product is
+ * built around and the most repeated gesture in it, and `DESIGN.md` §3 already rations the
+ * accent to exactly that act — this is the one place in the application allowed to be
+ * vermilion, and it is now the one place allowed to move this far. The motion and the
+ * colour come to say the same thing rather than two different things.
+ *
+ * **It is scale and the pop and nothing else.** No tint under the thumb: colour continues
+ * to mean *this was recorded*, and a control that took the accent while being pressed
+ * would be claiming to have written something it has not — the accent on `RECORDING_GLYPH`
+ * below is the rest state and it is what marks the recorded one. No shadow either, because
+ * the application's one depth vocabulary is the raised/ground tone step and a bare 44px hit
+ * box has no ground of its own to settle toward (`globals.css`'s tone rule is qualified by
+ * `.bg-raised`, which this box deliberately does not wear).
+ *
+ * One property and not two, set here rather than reached for as a second utility, for
+ * `--poster-radius`'s reason restated two paragraphs up: two utilities setting one
+ * property are resolved by the order Tailwind emits them in. `app/globals.css`'s
+ * `@utility pressable` derives both halves of the press from this one value.
  */
 export const RECORDING_HIT_BOX =
-  "pressable group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
+  "pressable [--press-register:2] group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
 
 /**
  * The recording control's visible chip — the same ghost treatment (`DESIGN.md`, Buttons:

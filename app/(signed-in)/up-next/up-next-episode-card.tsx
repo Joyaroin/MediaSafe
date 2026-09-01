@@ -517,8 +517,30 @@ function CardFrame({
  * is what this card is for, and it pressed flat. Both hit boxes carry it because both are
  * places the act happens, and the card's own `pressable` link (above) is a sibling of this
  * button rather than its parent, so the two presses never compound.
+ *
+ * **`[--press-register:2]` is the loud register — issue #283, and #282's third value of
+ * the one property.** The card above stays on the quiet default — it is a 262px surface
+ * and a grid of trampolines is the thing that register exists to avoid — and this 44px hit
+ * box takes the loudest press in the application: `0.900` in and `1.045` past rest, the
+ * same as the episode row's own checkmark (`watch-mark-motion.tsx`'s `RECORDING_HIT_BOX`),
+ * because it is the same act on another surface. Recording a watch is what the product is
+ * built around, and `DESIGN.md` §3 rations the accent to exactly that act — so the loudest
+ * motion and the only sanctioned colour mark one thing between them.
+ *
+ * Both branches below wear it, because `Undo` is the same act being taken back.
+ *
+ * **The card does not move with it.** This button is a *sibling* of the card's `pressable`
+ * link rather than a child of it, and the raised `<li>` holding both wears no press at all,
+ * so `motion-provider.tsx`'s `closest(".pressable")` from a finger on the check finds the
+ * check. #279 rejects moving `pressable` up onto the raised parent by name for this exact
+ * reason, and at this register it would be a 262px card jumping 0.900.
+ *
+ * **And it is scale and the pop and nothing else** — no tint, because colour here means
+ * *this was recorded* and the accent belongs to `RECORDING_GLYPH` inside; no shadow,
+ * because there are none in this application. The tone step (#284) is qualified by
+ * `.bg-raised` and this hit box carries no surface of its own, so nothing paints under it.
  */
-const CHECK_HIT_BOX = `pressable group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
+const CHECK_HIT_BOX = `pressable [--press-register:2] group flex h-11 shrink-0 items-center justify-center ${IN_FLIGHT}`;
 
 function MarkControl({ mark }: { mark: UpNextMark }) {
   const { episode, undoable, pending } = mark;
