@@ -327,6 +327,21 @@ fourth.
    **[#274](https://github.com/Joyaroin/MediaSafe/issues/274) settles what a press on either device
    does**: *swaps the panel* stays true only on `lg` and up, and every tile and card below that
    breakpoint **navigates to the title's page**. See divergence 3.
+   **The rails are vertical lists, on both devices.** Everything above describes their
+   *contents* and still holds — the three rules, the ordering inside each, the bounding, the
+   press. What changed is the container: a rail is a good box for a poster and a bad one for
+   a sentence, and Up next's rows carry a show name, a season/episode code, an episode name
+   and a remainder, which inside a `262px` card stack until the episode name is the one that
+   loses. Nothing was shortened; the box was widened. Deleted with the track: the reach
+   measurement, the two scroll arrows, the scroll-snap, the `ResizeObserver` and the
+   remembered horizontal offset — a list is scrolled by the page it is on, and that page's
+   own position is already restored. **Upcoming and the library's lists rail are untouched
+   and are still rails.**
+
+   **The desktop's rows carry the episode now**, which is a real change to what that surface
+   says and is recorded again under *Up next — the three rails* below. The two devices were
+   showing different facts about the same list, and the phone's version is the one that
+   answers *what do I put on*.
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
    **True again since [#273](https://github.com/Joyaroin/MediaSafe/issues/273), and it was not
@@ -380,7 +395,12 @@ fourth.
    **arrows**, and **snapping on whole posters** so a rail never comes to rest part-way through one.
    This overturns what this bullet used to say twice over — the *no scroll, no fade, no arrow* row
    bounded by the viewport went with the desktop TONIGHT row in #136, and #137 replaces the placeholder
-   that followed it. Its one-click escape to Library's *Watching* chip is gone with it; the chip itself
+   that followed it.
+   **The scrolling is vertical now, and *snapping on whole posters* is gone with the track that
+   snapped.** The bounding rules themselves are unchanged and are the point of this bullet:
+   *Ongoing* is still capped by its own build-time count, *Coming back* and *Old friends* are
+   still bounded by nothing but their membership, and what a rail reached by scrolling sideways
+   a list reaches by scrolling down. An arrow is not a rule and neither is a snap point. Its one-click escape to Library's *Watching* chip is gone with it; the chip itself
    is untouched (§7's *Library — filter chips* below), only its old job of holding a TONIGHT row's
    overflow.
 
@@ -471,9 +491,21 @@ Four things about it that are rules and not implementation:
   has since deleted, which narrows the exclusion no further: the rule about counts on *this*
   surface never depended on there being another one.
 
-  The desktop rail tile is **unchanged and still carries no count** — it is a poster, a name and a
-  year, and #137's *no count, no badge, no state label, no episode name* still describes it
-  exactly.
+  The desktop rail tile was **unchanged and carried no count** — a poster, a name and a year,
+  with #137's *no count, no badge, no state label, no episode name* describing it exactly.
+  **That is no longer true, and it was overturned deliberately.** The rails are vertical
+  lists (divergence 2), and their rows are the phone's: the show, the code, the episode name,
+  the remainder and the mark.
+
+  The narrowing above is what makes this legal, and it is the same argument at a second call
+  site rather than a new one. A count is allowed where **the number is part of the content**,
+  and *am I three from the end of this show* is as much the question a desktop reader is
+  asking as a phone one. What could not be justified was the two devices answering it
+  differently for no reason either of them could state — the desktop tile withheld the
+  episode name and the remainder while the phone card printed both, off the same read.
+
+  The line the rule still holds is untouched: **no count as chrome**. No size on a group
+  head, no badge on a row, no *showing 10 of 62*, on either device.
 
 ### Library — sort
 
@@ -823,6 +855,20 @@ What came in with them, and what did not:
 
   **`/lists` and `/lists/[listId]` are untouched.** The rail leads to them, the sidebar links
   to them, deep links keep working. A tab was retired; a destination was not.
+- **A list is drawn as an icon grid by default**, with rows as the alternate — Finder's own
+  two views, and its own words for them. The artwork is what tells a hand-picked set of
+  titles apart, and the row view spends most of a wide screen on whitespace beside a `56px`
+  poster. The position numeral moves onto the poster's corner, because a grid wraps and the
+  hand order would otherwise have to be reconstructed from the layout; that is content, not
+  chrome, and §9's count rule is untouched by it.
+
+  **Reordering stays in the row view**, and the grid is view-only. The drag is
+  one-dimensional — pointer offset against a column of measured row heights — and its
+  keyboard fallback is up/down; a grid makes both two-dimensional, which is a different
+  interaction and its own ticket. Finder strikes the same bargain. The choice of view is one
+  preference for every list, kept in `localStorage`; it moves to the `user` row the day it
+  needs to follow a reader between devices.
+
 - **A list holds anything in the catalogue**, not only what you own, and is **ordered by hand**. So
   `list_membership` points at `title` rather than `library_entry` — ADR-0001 amendment 7, issue
   [#143](https://github.com/Joyaroin/MediaSafe/issues/143). A title leaving your library leaves your

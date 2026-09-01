@@ -1,58 +1,30 @@
-import type { UpNextRails } from "@/db/access";
+import { isEpisodeEntry, isPendingEntry, type UpNextRails } from "@/db/access";
 import { UpNextEmpty } from "./up-next-empty";
-import { UpNextRail } from "./up-next-rail";
+import { UpNextGroup } from "./up-next-group";
+import { UpNextEpisodeRow, UpNextPendingRow } from "./up-next-episode-row";
 
 /**
- * The desktop Up next surface — issue #137's three rails, in this order.
+ * The desktop's three groups — *Ongoing*, *Coming back*, *Old friends* — beside the
+ * programme note.
  *
- * | Rail | What is on it |
- * |---|---|
- * | **Ongoing** | what you are actually in the middle of |
- * | **Coming back** | caught up, and dated to return |
- * | **Old friends** | watching, and cold |
+ * **They are vertical lists now, not horizontal rails.** `up-next-group.tsx` holds the
+ * argument for the shape; what it means here is that `up-next-rail.tsx` is deleted, and
+ * with it the reach measurement, the two arrows, the scroll-snap, the `ResizeObserver` and
+ * the remembered horizontal offset. The rules the rails were bounded by are untouched:
+ * *Ongoing* is still capped by its own build-time count and the other two are still
+ * bounded by nothing but their membership. A cap that a rail reached by scrolling
+ * sideways, a list reaches by scrolling down.
  *
- * The rules are `db/access.ts`'s `listUpNextRails`, and they are there rather than here on
- * purpose: this file decides the words and the order they read in, and knows nothing about
- * what put a title on one rail rather than another. **#272 is the proof of that**: Ongoing
- * gained a second membership — a title whose episodes have not mirrored, at the head — and
- * nothing in this file changed, because the rail is still *what you are in the middle of*
- * and the head line still says so. `UpNextTile` is where the two shapes differ.
+ * **The rows carry the episode now, and that is a real change to what this surface says.**
+ * The desktop tile was a poster, a name and a year — `SPEC.md` §7's *the desktop rail tile
+ * is unchanged and still carries no count* — and this replaces it with the row the phone
+ * already drew: the show, the code, the episode name, the remainder and the mark. The two
+ * devices were showing different facts about the same list for no reason either of them
+ * could state, and the phone's version is the one that answers *what do I put on*.
+ * `SPEC.md` is amended in the same commit rather than quietly outvoted.
  *
- * ── The dim line beside each head, and the one word taken out of it ───────────────────
- *
- * `design/catalogue-wall.html` puts a dim rule-of-the-rail beside each head, and it is kept
- * — it is the prototype's appearance, and the label alone is what has to *"need no
- * explanation"*, not the whole head. One word is dropped: the prototype's ONGOING line reads
- * *"watching · your 12 most recent"*, and the numeral goes, because #137 forbids **counts**
- * *"not on a rail head, not on a tile, not on the page"* and a twelve on a rail head reads
- * as one whether it is meant as one or not. *Your most recent* says the same rule without
- * the number; how many is `db/access.ts`'s constant and nobody else's business.
- *
- * The other two lines are the prototype's verbatim. Neither contains a numeral, and neither
- * is a count of anything.
- *
- * ── Server component, and there is nothing to hydrate here ───────────────────────────
- *
- * No `"use client"`: the labels and the order are static, so they are rendered once on the
- * server and the client bundle gets only `UpNextRail`, which needs a ref and two pieces of
- * scroll state, and `UpNextTile`, which needs the selection. The split is
- * `library-grid.tsx`/`selectable-entry.tsx`'s, for the same reason.
- *
- * ── An empty rail, and every rail empty ───────────────────────────────────────────────
- *
- * `UpNextRail` renders nothing for a rail with no members — no heading over nothing. **Every
- * rail empty is a different fact**, and the answer to it is here rather than on `page.tsx`
- * because this component is the one that has all three: a library with nothing watching and
- * nothing dated to return reads as *you're caught up*, in `UpNextEmpty`'s own voice, which is
- * a sentence and not three absences. Both branches are reachable only from a read that
- * succeeded — a failure throws past this into the route's `error.tsx`.
- *
- * ── Hidden below `lg` ─────────────────────────────────────────────────────────────────
- *
- * `page.tsx` gates this, not this file — the phone renders its own five vertical groups
- * instead — five vertical groups from #138, and since #250 two horizontal rails of its own
- * (`up-next-rails.tsx`). A rail read as a single cramped column is not a smaller rail, it
- * is a different surface, and that argument is why this file was left alone by #250.
+ * A press still swaps the pane rather than navigating (`press="select"`), which is
+ * divergence 3 and is not touched by any of this.
  */
 export function UpNextRailsSurface({ rails }: { rails: UpNextRails }) {
   if (
@@ -65,21 +37,55 @@ export function UpNextRailsSurface({ rails }: { rails: UpNextRails }) {
 
   return (
     <div className="pt-5">
-      <UpNextRail
-        label="Ongoing"
-        rule="Watching · your most recent"
-        entries={rails.ongoing}
-      />
-      <UpNextRail
-        label="Coming back"
-        rule="Caught up · an episode is dated"
-        entries={rails.comingBack}
-      />
-      <UpNextRail
-        label="Old friends"
-        rule="Watching · everything else"
-        entries={rails.oldFriends}
-      />
+      {rails.ongoing.length === 0 ? null : (
+        <UpNextGroup label="Ongoing" rule="Watching · your most recent">
+          {/* Pending titles first, and they are not filtered out of an otherwise empty
+              group: a reader who has just added their first title must not see the tab
+              they added it for read as empty. */}
+          {rails.ongoing.filter(isPendingEntry).map((entry, index) => (
+            <UpNextPendingRow
+              key={entry.libraryEntryId}
+              entry={entry}
+              aboveFold={index < FIRST_RUN}
+            />
+          ))}
+          {rails.ongoing.filter(isEpisodeEntry).map((entry, index) => (
+            <UpNextEpisodeRow
+              key={entry.libraryEntryId}
+              entry={entry}
+              press="select"
+              aboveFold={index < FIRST_RUN}
+            />
+          ))}
+        </UpNextGroup>
+      )}
+
+      {rails.comingBack.length === 0 ? null : (
+        <UpNextGroup label="Coming back" rule="Caught up · an episode is dated">
+          {rails.comingBack.map((entry) => (
+            <UpNextEpisodeRow key={entry.libraryEntryId} entry={entry} press="select" />
+          ))}
+        </UpNextGroup>
+      )}
+
+      {rails.oldFriends.length === 0 ? null : (
+        <UpNextGroup label="Old friends" rule="Watching · everything else">
+          {rails.oldFriends.map((entry) => (
+            <UpNextEpisodeRow key={entry.libraryEntryId} entry={entry} press="select" />
+          ))}
+        </UpNextGroup>
+      )}
     </div>
   );
 }
+
+/**
+ * How many rows are asked for eagerly. Three rather than the rail's six: a vertical list
+ * shows fewer things above the fold than a horizontal track of `132px` posters did, and
+ * every one of these is a `104px` still rather than a poster.
+ *
+ * **An empty group is absent** — no heading, no sentence, no zero, no reserved space
+ * (`SPEC.md`). That is why each group is behind its own length check rather than rendering
+ * a head over nothing.
+ */
+const FIRST_RUN = 3;

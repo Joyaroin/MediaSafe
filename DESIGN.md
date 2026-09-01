@@ -264,8 +264,9 @@ Consequences that are already load-bearing in the build:
 
 `--accent` is the **one** chromatic token, and the rest of the world is as quiet as it is
 because it is spent carefully. #134 narrowed it to **recording a watch**, and that is the
-meaning to design towards: the sweep is the accent in motion (§6), and *Rewatch* keeps it
-because it records a watch.
+meaning to design towards: the sweep is the accent in motion (§6), and the check keeps it
+because it records a watch. (*Rewatch* used to be the second half of that sentence and is
+deleted — see the Episode Line below.)
 
 **Read the next part carefully, because the build is broader than that sentence.** This
 file describes what shipped, not what #134 intended, and what shipped paints the accent in
@@ -274,7 +275,7 @@ copying whichever call site they happened to open:
 
 | Role | Where | Standing |
 |---|---|---|
-| **Recording a watch** | the sweep; *Rewatch* (`programme-note-episodes.tsx`); the episode card's check and its *Undo* (`up-next/up-next-episode-card.tsx`, #220 → #250) | the reserved meaning |
+| **Recording a watch** | the sweep; the season row's check and its *Undo* glyph (`programme-note-episodes.tsx`); the Up next row's check and its *Undo* (`up-next/up-next-episode-row.tsx`, #220 → #250) | the reserved meaning |
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
 | **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
@@ -466,14 +467,49 @@ The condensed uppercase belongs to the rail's heading, not to the titles under i
 
 ### Corners
 
-`--radius-none: 0px` is declared, and it is zeroed deliberately rather than skipped: **this
-world is square.** Two things in the entire build are not, and both come from the prototype:
+**This section said the opposite until the button register was redrawn, and the sentence it
+opened with — *this world is square* — had been false on screen for two redesigns before
+that.** It is rewritten rather than struck through, because a rule with a divergence table
+under it is a rule nobody can act on. What it used to say, in full, so the change is
+legible: `--radius-none: 0px` is zeroed deliberately; two things in the entire build are
+not square, the poster at `7px` and the rail's scroll arrows; *there is no radius scale,
+those are the two exceptions and the list is closed*.
 
-- **The poster**, at `border-radius: 7px` — soft enough to read as a printed card, and the
-  only radius that touches content.
-- **The rail's scroll arrows**, which are `rounded-full` circles.
+Three of those four claims are now wrong. The linen redesign rounded every card, field and
+chip it drew (`9–22px`); the rail's arrows are deleted with the rails themselves; and the
+buttons — the last square things in the application — are pills.
 
-There is no radius scale. Those are the two exceptions and the list is closed.
+**There are two shapes and a poster.**
+
+- **A pill**, `rounded-full`, on anything carrying a label. `GHOST_RECOVERY` and
+  `SOLID_RECOVERY` and their compact measures (`errors/recovery-buttons.ts`), and the
+  quiet hairline variants (`watch-mark-motion.tsx`). At `px-4 py-2` on a `code-line` that
+  is a `34.2px` control, so the pill is a `17px` radius — which is what **Add** has drawn
+  since the redesign, with **New list** at `22px` beside it. The pill was never a new shape;
+  it was the shape the two primary actions already had while every other control disagreed
+  with them.
+- **A circle**, `rounded-full`, on anything carrying a glyph and no label. The recording
+  check and the settled mark (`RECORDING_GLYPH`, `SETTLED_GLYPH`), *watched up to here*,
+  the selection badge, the segmented controls' track and thumb, the avatar.
+- **The poster**, still at `border-radius: 7px` by default, and still the only radius that
+  touches content — read through `--poster-radius` because three surfaces draw it at
+  `14`/`10`/`9`.
+
+Cards, fields and chips keep the per-surface `9–22px` measures the handoff gave them.
+
+**There is still no radius *scale*, and that part of the old rule survives intact.** No
+`--radius-sm/md/lg` ramp is invented: `rounded-full` needs no token at all, and the card
+values are per-surface measures from one handoff rather than steps on a ladder. §12's
+argument against a fifth thing to keep in step is untouched.
+
+A **soft rectangle** for the buttons — `6px`, `10px` — was drawn and declined. It reads
+well on its own, but beside a pill primary it is a third shape family answering one
+question, and adopting it would have meant re-cutting **Add** and **New list** down to it
+too. The cheaper-looking option was the more expensive one.
+
+`--radius-none: 0px` stays declared. What it now means is the bill-era surfaces the
+redesign has not reached — the programme note, Settings, sign-in — rather than a rule about
+the world.
 
 ---
 
@@ -610,6 +646,33 @@ up-next, marking, settled) at both pane widths: `44 / 44 / 44 / 44` at `420px` a
 
 **Re-measure if you touch the row.** It did not pass the first time, and it did not pass
 the second time either.
+
+### The fourth time was deleting *Rewatch*, and the row got shorter by getting simpler
+
+A settled watched row carried two `code-line` text pills, *Rewatch* and *Unwatch*, in a
+trailing slot fixed at `192px` to hold them — `149.9px` for the pair, `183.9px` with
+*watched up to here* beside it. A finished season was twenty-two rows each carrying two
+controls pressed approximately never, at the same weight as the one control a reader
+presses every evening, and the slot they forced left the episode **name** about `190px` at
+a `420px` pane. The long names were not too long; the row was too full.
+
+Both are gone. **The mark itself is the control**: `SETTLED_GLYPH` is a dim filled circle
+that unwatches, `RECORDING_GLYPH` around `UndoIcon` is the same box offering to take back a
+mark made on this visit, and every state the slot can be in is now `RECORDING_HIT_BOX`'s
+`44px` square. The slot is `w-20` — `80px`, holding `78px` for the widest state, *watched
+up to here* beside the mark — and the name takes the `112px` difference and wraps to two
+lines instead of truncating at one.
+
+Three things left the row with them, and each was saying something already said: the *Up
+next* label (the inverted `E5` chip says it, in the accent, two cells to the left), the
+mid-sweep word *Watched*, and the film row's dead `Watched` — which is a control now, and
+is the first unwatch a film has ever had.
+
+**Rewatch is deleted as a feature, not as a concept.** `docs/adr/0001` records 1,156
+genuine rewatches already in the imported library, so the `watch` table, its identity rule
+and the read-side dedupe are untouched. What no longer exists is a button that mints one.
+Unwatching and marking again is *not* a rewatch — it destroys the first watch's date rather
+than adding a row beside it — and that is the trade, taken knowingly.
 
 ### The third time was the button register, and nothing re-measured for two tickets
 
@@ -1878,7 +1941,8 @@ library ›` had already set the shape a control this ordinary takes, and a seco
 for the same weight of control would be exactly the drift `errors/recovery-buttons.ts`'s own
 docblock exists to prevent.
 
-**This spends the accent knowingly, on thirteen of the fourteen.** Only *Rewatch*
+**This spends the accent knowingly, on thirteen of the fourteen.** (*Rewatch* is since
+deleted and *Unwatch* is a glyph; the batch is twelve labelled controls now.) Only *Rewatch*
 (`programme-note-episodes.tsx`) already painted accent before this ticket — it records a
 watch, which is what the accent has always meant. The other thirteen move from dim,
 borderless, unaccented type onto `GHOST_RECOVERY`, and two of them are a sharper reversal

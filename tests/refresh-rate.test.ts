@@ -46,36 +46,25 @@ function sourceAt(relativePath: string): string {
   return readFileSync(path.join(REPOSITORY_ROOT, relativePath), "utf8");
 }
 
-const RAIL = "app/(signed-in)/up-next/up-next-rail.tsx";
 const EPISODE_CARD = "app/(signed-in)/up-next/up-next-episode-card.tsx";
 const GLOBALS = "app/globals.css";
 
-describe("the rail does not re-render on every scroll event", () => {
-  const rail = sourceAt(RAIL);
-
-  it("compares the answer before setting it", () => {
-    expect(rail).toMatch(/function sameReach\(/);
-    expect(rail).toMatch(/sameReach\(prev, next\) \? prev : next/);
-  });
-
-  it("never hands a freshly-minted reach straight to the setter", () => {
-    // `setReach(reachOf(track))` is the shape this replaces: a new object every call, so
-    // React re-renders even when both booleans are unchanged.
-    expect(rail).not.toMatch(/setReach\(reachOf\(/);
-  });
-
-  it("still measures on mount, on scroll and on resize", () => {
-    // The guard must not have been bought by measuring less often — an arrow left on
-    // screen after the last tile is a control that does nothing.
-    //
-    // Since #276 the scroll handler is the rail's own `onScroll`, which measures **and**
-    // records the offset the rail will come back to. Both halves are asserted, because
-    // the way this regresses is one of them being dropped from a two-line function.
-    expect(rail).toMatch(/onScroll=\{onScroll\}/);
-    expect(rail).toMatch(/function onScroll\(\) \{\s*measure\(\);/);
-    expect(rail).toMatch(/new ResizeObserver\(measure\)/);
-  });
-});
+/**
+ * **The rail is gone, and so is the work this block guarded.**
+ *
+ * Cause 1 below was `up-next-rail.tsx`'s scroll handler, and Up next's rails are vertical
+ * lists now (`up-next-group.tsx`). A list has no reach to measure, no arrows to re-render
+ * and no `ResizeObserver`: the page scrolls it, and the browser does that work whether
+ * this application is watching or not. There is nothing left to hold to a guard, which is
+ * a stronger outcome than the guard was — the per-frame work was not made cheaper, it was
+ * deleted.
+ *
+ * The cause is left written up above rather than struck out, because it is the reason the
+ * *other* two blocks in this file exist and the shape it describes is the one a future
+ * scroll handler would reintroduce. `RailSection`'s surviving callers — Upcoming, and the
+ * library's lists rail — never had a reach measurement; they scroll freely and draw no
+ * arrows.
+ */
 
 describe("nothing animates a backdrop filter", () => {
   /**

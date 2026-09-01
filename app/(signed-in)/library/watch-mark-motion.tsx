@@ -19,6 +19,59 @@ export function WatchSweep({ onSettled }: { readonly onSettled: () => void }) {
 export const WATCHED_NAME = "text-dim";
 
 /**
+ * **The settled watch mark, which is also the control that takes it back.** This is the
+ * whole of what a watched row now carries, and it replaces the pair of `code-line` text
+ * pills — *Rewatch* and *Unwatch* — that issue #89 put there and #195 moved onto
+ * `GHOST_RECOVERY_COMPACT`.
+ *
+ * ── Rewatch is deleted, and that is a product decision rather than a tidy-up ─────────
+ *
+ * There is no longer any control in the application that records a **second** watch of an
+ * episode by hand. The concept survives untouched everywhere it actually lives: the
+ * `watch` table, its `UNIQUE (user_id, source, source_key)` identity rule, and the
+ * rewatch dedupe in `db/access.ts`'s read paths are all exactly as they were, because
+ * `docs/adr/0001` records that the imported library **already holds 1,156 genuine
+ * rewatches** (1,129 at occurrence `:2`, 27 at `:3`). Deleting the concept would have
+ * taken that history with it. Deleting the button takes nothing.
+ *
+ * Note what this does not offer, so that nobody re-derives it as an oversight: unwatching
+ * and marking again is **not** a rewatch. It destroys the first watch's date rather than
+ * adding a row beside it. That is the trade the deletion makes, taken knowingly.
+ *
+ * ── Why the state is the control, rather than sitting beside a control ───────────────
+ *
+ * A finished season was twenty-two rows each carrying two text buttons, both of them
+ * pressed approximately never, at the same weight as the one control a reader presses
+ * every evening. `programme-note-episodes.tsx`'s own measurement table put that pair at
+ * `149.9px` — `183.9px` with *watched up to here* beside it — which is what forced
+ * `TRAILING` to a fixed `192px` and left the episode **name** about `190px` at a `420px`
+ * pane. The long names were not too long; the row was too full.
+ *
+ * So the mark itself became the button: one `44px` hit box in every row state, and the
+ * `w-48` slot collapses to `w-11`. `EPISODE_NAME_CELL` gets the difference.
+ *
+ * ── The treatment, and the one colour rule it is obeying ─────────────────────────────
+ *
+ * Dim, filled, and emphatically **not** accent. `app/globals.css` rations the accent to
+ * three roles and *Live* — recording a watch — is the first of them; a settled mark is a
+ * watch that was already recorded, so painting this vermilion would spend the accent on
+ * every row of a finished season and leave the one unrecorded episode indistinguishable.
+ * `bg-hair` with the glyph in `text-ground` is the fill, which is the same tone step the
+ * whole application uses for depth and the only one it has.
+ *
+ * **It hollows out on hover** rather than lighting up: the fill drops away and the check
+ * is left in `text-dim` inside its own hairline ring. That is the row saying *this can be
+ * pressed* without ever claiming to be the recording control, which is the thing directly
+ * above it in every unwatched row.
+ *
+ * `group-hover:` and not `hover:`, for `RECORDING_GLYPH`'s reason exactly: the pointer is
+ * over `RECORDING_HIT_BOX`, which is `9px` larger on every side, so the state has to
+ * answer to the group rather than to this element.
+ */
+export const SETTLED_GLYPH =
+  "flex items-center justify-center rounded-full border border-hair bg-hair p-1 text-ground transition-colors duration-150 group-hover:bg-transparent group-hover:text-dim";
+
+/**
  * The recording control's hit box — issue #217, which took *Strike it* from a `code-line`
  * text pill to a checkmark and, with the copy gone, could finally give the daily gesture
  * the target size the row itself has always had. `catalogue-result.tsx`'s own words are
@@ -93,7 +146,7 @@ export const RECORDING_HIT_BOX =
  * dims everything it paints, chip included, so `IN_FLIGHT` needs no second copy here.
  */
 export const RECORDING_GLYPH =
-  "flex items-center justify-center border border-accent p-1 text-accent transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-ink";
+  "flex items-center justify-center rounded-full border border-accent p-1 text-accent transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-ink";
 
 /**
  * The **quiet** recording control — issue #196's *watched up to here*, and the only
@@ -125,7 +178,7 @@ export const RECORDING_GLYPH =
  * #195. Naming this one is what stops a third copy; settling the register is #194's.
  */
 export const QUIET_RECORDING_CONTROL =
-  "shrink-0 border border-hair p-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+  "shrink-0 rounded-full border border-hair p-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
 
 /**
  * `QUIET_RECORDING_CONTROL` at a measure that can hold words — issue #222's *Add —
@@ -174,7 +227,7 @@ export const QUIET_RECORDING_CONTROL =
  * all three constants move together.
  */
 export const QUIET_RECORDING_CONTROL_LABELLED =
-  "code-line border border-hair px-4 py-2 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+  "code-line rounded-full border border-hair px-4 py-2 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
 
 /**
  * The same again at `errors/recovery-buttons.ts`'s compact measure — `px-2.5 py-1` — for
@@ -211,4 +264,4 @@ export const QUIET_RECORDING_CONTROL_LABELLED =
  * the constant above and this one exist to keep.
  */
 export const QUIET_RECORDING_CONTROL_LABELLED_COMPACT =
-  "code-line border border-hair px-2.5 py-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+  "code-line rounded-full border border-hair px-2.5 py-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";

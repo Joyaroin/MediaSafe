@@ -24,11 +24,39 @@
  * When the library surfaces arrive and *Clear the filter* and *Bring your library in* need
  * these too, they move somewhere less specific than `errors/`. They are not errors-only;
  * they are only errors-only today.
+ *
+ * ── `rounded-full`, and why it is on all four rather than at any call site ───────────
+ *
+ * All four of these carried no radius at all until this batch, which made them the last
+ * square things in an application whose cards, fields and chips the linen redesign had
+ * already rounded to `9–22px`. `DESIGN.md`'s own divergence table had been recording that
+ * gap rather than closing it: §4 *Corners* still read *this world is square … there is no
+ * radius scale, and the list is closed* while `library-grid.tsx` drew `18px` cells and
+ * `up-next-episode-card.tsx` drew a `rounded-2xl` card with a `0px` button inside it.
+ *
+ * **The pill is not a new shape here, it is the shape this register already had.**
+ * `GHOST_RECOVERY` is `code-line px-4 py-2` plus a `1px` border, which resolves to a
+ * `34.2px` control — so a full round is a `17px` radius, and `17px` is exactly what
+ * `catalogue-result.tsx`'s **Add** has drawn since the redesign, with
+ * `create-list-form.tsx`'s **New list** at `22px` beside it. §4's own table already listed
+ * those two as *"a pill would be the first radius in the application"* overturned. What
+ * this does is stop the other fourteen controls disagreeing with the two primaries.
+ *
+ * A softer rectangle — `6px`, `10px` — was drawn and declined: it reads fine alone, but
+ * beside a pill primary it is a **third** shape family answering one question, and the
+ * cheaper-looking option would have meant re-cutting **Add** and **New list** down to it
+ * as well. Two shapes, and the application already had both.
+ *
+ * **It is set here and not at the fourteen call sites**, which is `DESIGN.md` §10's rule
+ * and this module's whole reason for existing: a radius typed fourteen times is fourteen
+ * radii the first time one of them is adjusted. `rounded-full` also needs no token, so
+ * §12's argument against inventing a `--radius-sm/md/lg` ramp for a handful of one-off
+ * numbers is untouched — there is still no radius *scale*, there is one keyword.
  */
 
 /** The recovery action a reader can take. Inverts to solid on hover. */
 export const GHOST_RECOVERY =
-  "code-line border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
+  "code-line rounded-full border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
 
 /**
  * `GHOST_RECOVERY` at the episode row's own measure — issue #203.
@@ -69,14 +97,14 @@ export const GHOST_RECOVERY =
  * hatch is a constant nobody can read the intent of.
  */
 export const GHOST_RECOVERY_COMPACT =
-  "code-line shrink-0 border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
+  "code-line shrink-0 rounded-full border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
 
 /**
  * The one primary recovery action on a surface. Pressed state is `brightness(0.9)` over
  * `200ms`, per DESIGN.md's recording control.
  */
 export const SOLID_RECOVERY =
-  "code-line bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
+  "code-line rounded-full bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
 
 /**
  * `SOLID_RECOVERY` at `GHOST_RECOVERY_COMPACT`'s measure — issue #199.
@@ -114,7 +142,7 @@ export const SOLID_RECOVERY =
  * the status line beside them is the thing that gives.
  */
 export const SOLID_RECOVERY_COMPACT =
-  "code-line shrink-0 bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
+  "code-line shrink-0 rounded-full bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
 
 /**
  * How a disabled control is dimmed — **the dim alone, and one string for all of them.**

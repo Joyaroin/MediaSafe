@@ -226,8 +226,11 @@ const NAVIGATING_CONTROLS = [
 
 const ACTING_CONTROLS = [
   { file: "app/(signed-in)/lists/delete-list-dialog.tsx", label: "Cancel" },
-  { file: "app/(signed-in)/library/programme-note-episodes.tsx", label: "Rewatch" },
-  { file: "app/(signed-in)/library/programme-note-episodes.tsx", label: "Unwatch" },
+  /* *Rewatch* and *Unwatch* sat here until the episode row was redrawn. Both are gone
+     from that row — the mark itself is the control now (`watch-mark-motion.tsx`'s
+     `SETTLED_GLYPH`), and an icon in a `<button>` with an `aria-label` has no text for
+     this audit to find. Nothing about the rule they were here to hold has changed; there
+     is simply no longer a labelled control at that call site to hold it over. */
   { file: "app/(signed-in)/lists/list-row.tsx", label: "Delete" },
   { file: "app/(signed-in)/library/add-to-list-control.tsx", label: "Add to list" },
   // The bulk bar's two, and the ternary-labelled case `rendersAs` above is written for.

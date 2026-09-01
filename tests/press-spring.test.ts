@@ -931,9 +931,18 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
   "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
   "app/(signed-in)/library/lists-rail.tsx": ["surface"],
+  /* A custom list's icon view (`list-icon-grid.tsx`). A poster with a name under it is the
+     same surface the library grid and the Up next groups draw, at the same register. */
+  "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
   "app/(signed-in)/up-next/up-next-film-rail.tsx": ["surface"],
   "app/(signed-in)/up-next/up-next-pending-card.tsx": ["surface"],
-  "app/(signed-in)/up-next/up-next-tile.tsx": ["surface"],
+  /* The Up next row, which replaced the rail's tile. **Two surface sites in one file**,
+     which is new and is not a second register: an episode row and a pending row are the
+     same surface at two states of the same title, and they are two elements because one
+     of them has a mark slot and the other has nothing to put in it. The check inside the
+     episode row is `RECORDING_HIT_BOX`'s, declared in `watch-mark-motion.tsx` below and
+     not spelled here. */
+  "app/(signed-in)/up-next/up-next-episode-row.tsx": ["surface", "surface"],
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
   "app/(signed-in)/you/you-list-card.tsx": ["surface"],
@@ -1062,7 +1071,7 @@ describe("every pressable call site declares a register or is deliberately left 
     expect(client).toEqual([
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/up-next/up-next-episode-card.tsx",
-      "app/(signed-in)/up-next/up-next-tile.tsx",
+      "app/(signed-in)/up-next/up-next-episode-row.tsx",
       "app/tab-bar.tsx",
     ]);
   });

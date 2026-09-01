@@ -88,30 +88,6 @@ function negativeMarginBlock(classes: string): number {
   return match === null ? 0 : -Number(match[1]) * STEP_PX;
 }
 
-/**
- * Glyph widths, in px, of every label the trailing slot can render.
- *
- * **The impure edge.** Measured with `getBoundingClientRect` over a `code-line` span in a
- * real Chromium tab, against `app/globals.css` compiled by Tailwind, with Archivo loaded
- * over the same `wdth 100 / wght 600` axis values `code-line` sets — the method
- * `programme-note-episodes.tsx`, `episode-line.ts` and `DESIGN.md` §6 all record their own
- * numbers by. Recomputing them here from font metrics would be a second, worse
- * implementation of a text shaper.
- *
- * These move if the type ramp moves. `DESIGN.md` §6 already records one re-cut of
- * `code-line` that broke the row's height, so that is not hypothetical — but it is also
- * exactly the change that arrives with its own re-measure, and this table is then part of
- * what gets updated.
- */
-const GLYPH: Readonly<Record<string, number>> = {
-  Rewatch: 48.69,
-  Unwatch: 49.16,
-  "Up next": 42.62,
-  Watched: 49.12,
-};
-
-/** `code-line` is `0.75rem` at `1.35` — one line of it, which is every label here. */
-const CODE_LINE_HEIGHT_PX = 0.75 * 16 * 1.35;
 
 const EPISODES_SOURCE = sourceAt("app/(signed-in)/library/programme-note-episodes.tsx");
 const MOTION_SOURCE = sourceAt("app/(signed-in)/library/watch-mark-motion.tsx");
@@ -126,21 +102,6 @@ const QUIET_RECORDING_CONTROL = classStringNamed(MOTION_SOURCE, "QUIET_RECORDING
 
 /** One thing in the slot: how wide its box is, and how tall. */
 type SlotItem = { readonly width: number; readonly height: number };
-
-/** A bordered control wrapping one `code-line` label. */
-function labelled(classes: string, label: string): SlotItem {
-  const glyph = GLYPH[label];
-  if (glyph === undefined) throw new Error(`no measured glyph width for ${label}`);
-  return {
-    width: glyph + spacing(classes, "px") * 2 + borderBox(classes),
-    height: CODE_LINE_HEIGHT_PX + spacing(classes, "py") * 2 + borderBox(classes),
-  };
-}
-
-/** Bare `code-line` text — the *Up next* and *Watched* labels, which have no box. */
-function bare(label: string): SlotItem {
-  return labelled("", label);
-}
 
 /**
  * *Watched up to here*: `QUIET_RECORDING_CONTROL` around a `h-4 w-4` glyph. The icon is
@@ -162,36 +123,33 @@ function markUpTo(): SlotItem {
  * `watch-mark-motion.tsx`'s own docblock walks through — `44 − (2 × 8) = 28`, the row's
  * own budget below (`leaves $name inside the row's own height`), not `44`.
  */
-function checkmark(): SlotItem {
+function markBox(): SlotItem {
   return {
     width: spacing(RECORDING_HIT_BOX, "w"),
     height: spacing(RECORDING_HIT_BOX, "h") + 2 * negativeMarginBlock(RECORDING_HIT_BOX),
   };
 }
 
-const rewatch = () => labelled(GHOST_COMPACT, "Rewatch");
-const unwatch = () => labelled(GHOST_COMPACT, "Unwatch");
-
 /**
- * **Every state the trailing slot can be in**, read off `EpisodeLine`'s own branching:
- * an *Up next* label when `episode.upNext && !watched`; the up-to control whenever
- * `covered !== null`, on both sides of the watched branch; then one of the checkmark
- * (unwatched), *Watched* (mid-sweep) or *Rewatch* beside *Unwatch* (settled).
+ * Every state the slot can be in, after the redraw that deleted *Rewatch* and *Unwatch*.
  *
- * An up-next episode is by definition unwatched, so *Up next* never appears beside the
- * watched pair — that is why there are seven rows here and not nine.
+ * **There are two widths, not seven.** Everything the slot holds is now a box: the mark
+ * in `RECORDING_HIT_BOX`'s `44px` square — accent check, settled check, or undo arrow,
+ * all three the same box — optionally preceded by *watched up to here* at `26px`. No
+ * state carries text, which is why the `GLYPH` width table this file used to open with is
+ * gone rather than trimmed: nothing left in this slot has a typeface.
+ *
+ * The states are still enumerated one per row even where the arithmetic repeats, because
+ * what this file is for is proving that a **transition** between two of them does not
+ * resize the slot, and that is only legible if both ends are written down.
  */
 const STATES: readonly { readonly name: string; readonly items: readonly SlotItem[] }[] = [
-  { name: "checkmark", items: [checkmark()] },
-  { name: "Up next · checkmark", items: [bare("Up next"), checkmark()] },
-  { name: "Watched (mid-sweep)", items: [bare("Watched")] },
-  { name: "up-to · checkmark", items: [markUpTo(), checkmark()] },
-  {
-    name: "Up next · up-to · checkmark",
-    items: [bare("Up next"), markUpTo(), checkmark()],
-  },
-  { name: "Rewatch · Unwatch", items: [rewatch(), unwatch()] },
-  { name: "up-to · Rewatch · Unwatch", items: [markUpTo(), rewatch(), unwatch()] },
+  { name: "checkmark", items: [markBox()] },
+  { name: "settled mark", items: [markBox()] },
+  { name: "undo", items: [markBox()] },
+  { name: "up-to · checkmark", items: [markUpTo(), markBox()] },
+  { name: "up-to · settled mark", items: [markUpTo(), markBox()] },
+  { name: "up-to · undo", items: [markUpTo(), markBox()] },
 ];
 
 const SLOT_PX = spacing(TRAILING, "w");
@@ -208,7 +166,7 @@ function round(n: number): number {
 
 describe("the episode row's trailing slot", () => {
   it("is the fixed measure the row was re-cut to", () => {
-    expect(SLOT_PX).toBe(192);
+    expect(SLOT_PX).toBe(80);
     expect(SLOT_GAP_PX).toBe(8);
   });
 
@@ -236,24 +194,49 @@ describe("the episode row's trailing slot", () => {
    * untouched since #203, because neither *Watched* mid-sweep nor the settled pair reads
    * anything from `RECORDING_HIT_BOX`.
    */
-  it("matches the widths measured for #217 and, for the unaffected states, for #203", () => {
+  it("holds the two widths the redraw leaves, and no others", () => {
     expect(Object.fromEntries(STATES.map((s) => [s.name, round(contentsOf(s.items))]))).toEqual({
       checkmark: 44,
-      "Up next · checkmark": 94.6,
-      "Watched (mid-sweep)": 49.1,
+      "settled mark": 44,
+      undo: 44,
       "up-to · checkmark": 78,
-      "Up next · up-to · checkmark": 128.6,
-      "Rewatch · Unwatch": 149.9,
-      "up-to · Rewatch · Unwatch": 183.9,
+      "up-to · settled mark": 78,
+      "up-to · undo": 78,
     });
   });
 
-  /**
-   * Issue #195's own rule, kept: the watched pair is the same *register* as everything
-   * else that ticket converted, and differs from it only in measure. If these ever come
-   * apart, one of the two is drifting and `DESIGN.md` §10's "two measures, one register"
-   * has stopped being true.
-   */
+  it("does not change width when a mark lands, settles, or is taken back", () => {
+    // The property the whole file exists for, stated directly rather than left to be
+    // inferred from the table above. A row either offers *watched up to here* or it does
+    // not, and a press does not change which; within either group every state is one
+    // width, so nothing in the slot moves as the reader marks, waits out the sweep, and
+    // takes it back.
+    const widthOf = (name: string) => {
+      const state = STATES.find((s) => s.name === name);
+      if (state === undefined) throw new Error(`no state named ${name}`);
+      return round(contentsOf(state.items));
+    };
+
+    expect(new Set(["checkmark", "settled mark", "undo"].map(widthOf)).size).toBe(1);
+    expect(
+      new Set(["up-to · checkmark", "up-to · settled mark", "up-to · undo"].map(widthOf)).size,
+    ).toBe(1);
+  });
+
+  it("has no control left in it that carries a word", () => {
+    // *Rewatch*, *Unwatch*, *Up next* and the mid-sweep *Watched* are all gone from this
+    // slot, and a text pill is the only thing that ever made it wider than its boxes. So
+    // this is what stops one coming back without the slot being re-measured for it.
+    const opening = EPISODES_SOURCE.indexOf("<span className={TRAILING}>");
+    if (opening < 0) throw new Error("no trailing slot found in the row");
+    const slot = EPISODES_SOURCE.slice(opening, EPISODES_SOURCE.indexOf("</span>\n\n", opening))
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+    for (const word of ["Rewatch", "Unwatch", "Up next", "Watched"]) {
+      expect(slot).not.toMatch(new RegExp(`>\\s*${word}\\s*<`));
+    }
+  });
+
   it("wears GHOST_RECOVERY's own treatment", () => {
     const treatment = (classes: string) =>
       classes

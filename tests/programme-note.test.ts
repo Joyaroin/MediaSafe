@@ -95,8 +95,19 @@ describe("the episode list", () => {
       episode({ id: "e2", episodeNo: 2, upNext: true }),
     ]);
 
-    expect(markup).toContain("Up next");
+    /**
+     * **The words *Up next* are gone from the row, and the inverted chip is the whole
+     * signal.** They used to open the trailing slot, saying in the accent what
+     * `EPISODE_NUMBER_UP_NEXT` was already saying in the accent two cells to the left on
+     * the same row — and being the only thing in that slot that carried text, they were
+     * the only reason it had to be wide enough for prose. `TRAILING`'s own docblock has
+     * the arithmetic.
+     *
+     * So this asserts the chip rather than the label: the inverted number is present, and
+     * the redundant sentence is not.
+     */
     expect(markup).toContain("bg-accent");
+    expect(markup).not.toContain("Up next");
   });
 
   it("groups specials under their own heading, not 'Season 0'", () => {
@@ -123,13 +134,22 @@ describe("the episode list", () => {
     expect(watchedMarkup).not.toContain("Mark Season 1, Episode 1 — Winter Is Coming watched");
   });
 
-  it("offers a watched episode a rewatch control that is not the one that struck it", () => {
+  it("offers a watched episode no way to record a second watch", () => {
     const markup = episodes([episode({ watched: true })]);
 
-    expect(markup).toContain("Rewatch");
-    // The whole rule, at the only place it can be checked without a browser: the gesture
-    // that records the first watch is not on a watched row at all, so repeating it cannot
-    // produce a rewatch (issue #89).
+    /**
+     * **Rewatch is deleted**, and this is the assertion that used to require it. Issue
+     * #89's rule — *the gesture that records the first watch is not on a watched row at
+     * all* — is still held by the second expectation; what is gone is the control that
+     * offered a deliberate second watch beside it.
+     *
+     * The concept is untouched where it actually lives. `docs/adr/0001` records 1,156
+     * genuine rewatches already in the imported library, so the `watch` table, its
+     * `UNIQUE (user_id, source, source_key)` identity rule and the dedupe in `db/access.ts`
+     * all stay exactly as they were — `watch-mark-motion.tsx`'s `SETTLED_GLYPH` holds that
+     * argument. What no longer exists is a button that mints one.
+     */
+    expect(markup).not.toContain("Rewatch");
     expect(markup).not.toContain("Mark Season 1, Episode 1 — Winter Is Coming watched");
   });
 
@@ -146,15 +166,14 @@ describe("the episode list", () => {
      * (`SPEC.md` §7), and a control that skipped them rendered on essentially nothing its
      * only reader owns.
      */
-    expect(markup).toContain("Unwatch");
     expect(markup).toContain("Unwatch Season 1, Episode 1 — Winter Is Coming");
   });
 
-  it("offers neither control on an unwatched episode", () => {
+  it("offers no way back on an unwatched episode", () => {
     const markup = episodes([episode({ watched: false })]);
 
     expect(markup).not.toContain("Rewatch");
-    expect(markup).not.toContain("Unwatch");
+    expect(markup).not.toContain("Unwatch Season 1, Episode 1 — Winter Is Coming");
   });
 
   it("displays no rewatch count anywhere", () => {
@@ -173,14 +192,14 @@ describe("the episode list", () => {
 
     // "Season 1" twice: once as the sole season chip (issue #224), once as the heading
     // over the rows it selects.
-    expect(visible).toEqual([
-      "Season 1",
-      "Season 1",
-      "E1",
-      "Winter Is Coming",
-      "Rewatch",
-      "Unwatch",
-    ]);
+    /**
+     * **Four words, down from six.** *Rewatch* and *Unwatch* are gone from the row's
+     * visible text entirely — a watched row carries `SETTLED_GLYPH`, which is a checkmark
+     * in a circle with an `aria-label` and no text node of its own. That makes this
+     * assertion strictly stronger than it was: there is now nothing at all in the trailing
+     * slot for a count to hide among.
+     */
+    expect(visible).toEqual(["Season 1", "Season 1", "E1", "Winter Is Coming"]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {

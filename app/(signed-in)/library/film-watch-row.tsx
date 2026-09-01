@@ -2,9 +2,15 @@
 
 import type { LibraryState } from "@/db/access";
 import { EPISODE_ROW } from "./episode-line";
+import { CheckmarkIcon } from "./checkmark-icon";
 import { MarkWatchedButton } from "./programme-note-episodes";
 import { useWatchMark } from "./use-watch-mark";
-import { WATCHED_NAME, WatchSweep } from "./watch-mark-motion";
+import {
+  RECORDING_HIT_BOX,
+  SETTLED_GLYPH,
+  WATCHED_NAME,
+  WatchSweep,
+} from "./watch-mark-motion";
 
 /**
  * The film recording control — issue #90's row, in the hero's card.
@@ -63,7 +69,7 @@ export function FilmWatchRow({
   state: LibraryState;
   onStateChange: (libraryEntryId: string, state: LibraryState) => void;
 }) {
-  const { watched, phase, attempt, settle } = useWatchMark({
+  const { watched, phase, pending, attempt, unwatch, settle } = useWatchMark({
     initialWatched: state === "finished",
     libraryEntryId,
     episodeId: null,
@@ -81,10 +87,35 @@ export function FilmWatchRow({
           <span className={watched && phase === "settled" ? WATCHED_NAME : ""}>{titleName}</span>
         </span>
 
+        {/* **A film can be unwatched now, and this is the first control that has ever
+            offered it.** The docblock above used to close by recording the opposite —
+            *"No unwatch, and it is a scope statement rather than a rule: issue #89 gave
+            the episode row Rewatch and Unwatch, and a film's unwatch is nobody's ticket
+            yet"* — and it named exactly what was missing: *the decision and the design,
+            not the write*. Both arrived with the episode row's own redraw, and the write
+            it describes is the one being called here, unchanged: `unwatch` has always
+            taken a null `episodeId` and has always been tested for a film.
+
+            What stood here instead was the word `Watched`, dim, in a `<span>`. A film's
+            page had one fact and no way to correct it. */}
         {watched ? (
-          <span className="code-line text-dim">Watched</span>
+          <button
+            type="button"
+            onClick={() => void unwatch()}
+            disabled={pending}
+            aria-label={`Unwatch ${titleName}`}
+            className={RECORDING_HIT_BOX}
+          >
+            <span className={SETTLED_GLYPH}>
+              <CheckmarkIcon className="block h-4 w-4" />
+            </span>
+          </button>
         ) : (
-          <MarkWatchedButton label={`Mark ${titleName} watched`} onClick={attempt} />
+          <MarkWatchedButton
+            label={`Mark ${titleName} watched`}
+            onClick={attempt}
+            disabled={pending}
+          />
         )}
 
         {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}

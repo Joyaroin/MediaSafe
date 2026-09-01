@@ -56,10 +56,13 @@ const EPISODE_CARD = `${UP_NEXT}/up-next-episode-card.tsx`;
 const PENDING_CARD = `${UP_NEXT}/up-next-pending-card.tsx`;
 const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
 const NOTHING = `${UP_NEXT}/up-next-nothing.tsx`;
-/** #274's three: the desktop rail's tile, the season row that keeps the episode page, and
+/** #274's three: the desktop list's row, the season row that keeps the episode page, and
  *  the search result. None of them is a phone rail, and they are asserted here because
- *  this is the suite that reads what the surfaces around Up next link to. */
-const TILE = `${UP_NEXT}/up-next-tile.tsx`;
+ *  this is the suite that reads what the surfaces around Up next link to.
+ *
+ *  It was `up-next-tile.tsx` until the rails became lists; the row is the same surface at
+ *  the same destination, and #274's rule over it is unchanged. */
+const TILE = `${UP_NEXT}/up-next-episode-row.tsx`;
 const SEASON_ROWS = "app/(signed-in)/library/programme-note-episodes.tsx";
 const SEARCH_RESULT = "app/(signed-in)/search/catalogue-result.tsx";
 
@@ -265,8 +268,8 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
    * throwing.
    */
   it("draws the pending cards ahead of every episode card", () => {
-    const pendingAt = source.indexOf("<UpNextPendingCard");
-    const episodeAt = source.indexOf("<UpNextEpisodeCard");
+    const pendingAt = source.indexOf("<UpNextPendingRow");
+    const episodeAt = source.indexOf("<UpNextEpisodeRow");
     expect(pendingAt).toBeGreaterThan(-1);
     expect(episodeAt).toBeGreaterThan(-1);
     expect(pendingAt).toBeLessThan(episodeAt);
@@ -330,16 +333,17 @@ describe("both rails snap to the page gutter and leave the next card peeking", (
   });
 
   /**
-   * The track's half is useless without the card's. Both card kinds carry it, and asserting
-   * each by file is what stops one of them being added later without it — a rail that
-   * scrolled freely while the one beside it snapped is the kind of difference nobody
-   * notices in a diff.
+   * The track's half is useless without the card's, so this asserted `snap-start` on each
+   * card kind by file.
+   *
+   * **Only the episode card is left**, and that is not a gap: Up next's own two rails are
+   * vertical lists now (`up-next-group.tsx`), so the film rail has no track to snap to and
+   * `up-next-film-rail.tsx` draws rows. `RailSection` and everything in this `describe`
+   * still governs the surfaces that *are* rails — Upcoming, and the library's lists rail —
+   * and `up-next-episode-card.tsx` is still the card those read.
    */
-  it.each([
-    ["episode card", EPISODE_CARD],
-    ["film card", FILM_RAIL],
-  ])("puts snap-start on the %s", (_name, file) => {
-    expect(sourceAt(file)).toMatch(/snap-start/);
+  it("puts snap-start on the episode card", () => {
+    expect(sourceAt(EPISODE_CARD)).toMatch(/snap-start/);
   });
 
   /**
@@ -382,7 +386,11 @@ describe("the count is on the card and never on a rail head", () => {
       [EPISODE_RAIL, "Next episodes"],
       [FILM_RAIL, "Films to watch"],
     ]) {
-      expect(sourceAt(file)).toContain(`<RailSection label="${label}">`);
+      // `UpNextGroup`, not `RailSection`: Up next's own rails became vertical lists
+      // (`up-next-group.tsx`). Upcoming and the library's lists rail still use
+      // `RailSection` and are not in that change's scope. The rule being held is the
+      // label's, and it did not move.
+      expect(sourceAt(file)).toContain(`<UpNextGroup label="${label}">`);
       expect(label).not.toMatch(/\d/);
     }
   });
@@ -558,9 +566,24 @@ describe("every tile and card on Up next opens the thing it names", () => {
    * cannot be middle-clicked, cannot be opened in a new tab, and does not tell a screen
    * reader it is a link.
    */
-  it("makes the show tile a link to the library entry's page", () => {
+  it("makes the desktop row a link to the library entry's page", () => {
     expect(tile).toMatch(/<Link\s+href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
-    expect(tile).not.toMatch(/<button/);
+
+    /**
+     * The tile this replaced carried **no** `<button>` at all, and that assertion was the
+     * whole of how this test said *pressing a show opens the show*. The row does carry
+     * one — the mark — so the rule has to be stated over the row's own structure instead:
+     * the destination is a `<Link>`, and the button beside it is the mark and nothing
+     * else.
+     *
+     * That the two are **siblings** rather than nested is the part that matters, and it is
+     * `SPEC.md`'s rule for the season row restated: a control inside a link is a control
+     * every press of which is also a navigation. `up-next-episode-card.tsx` has always
+     * been shaped this way; the row is the same shape.
+     */
+    const buttons = tile.match(/aria-label=\{`([^`]*)`\}/g) ?? [];
+    expect(buttons.some((label) => label.includes("Mark "))).toBe(true);
+    expect(tile).toMatch(/<\/RowLink>\s*\n\s*\n?\s*\{control\}/);
   });
 
   /** The same destination reached the same way, which is the acceptance criterion's own
