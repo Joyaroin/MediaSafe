@@ -1375,12 +1375,14 @@
    derives the direction from the two tabs' positions rather than from history, so it is
    the bar's own geometry that decides.
 
-   **Settings uses the same pair, in its hierarchical sense.** It is reached from the
-   masthead rather than from the bar, so it is a push *out of* the four rather than a move
-   along them: `nav-forward` on the way in, and `nav-back` on any tab tapped from a screen
-   that is on none of them. That symmetry is why the classes are named for the *direction*
-   and not for the tab bar — one vocabulary covers both the lateral move and the push, and
-   a second pair of near-identical classes would only invite the two to drift apart.
+   **Settings used to borrow this pair and no longer does — issue #294.** It is reached
+   from the masthead rather than from the bar, so it is a push *out of* the four rather
+   than a move along them, and dressing that push in the lateral motion made the one
+   navigation that leaves the bar look exactly like the four that stay on it. It has its
+   own type now (*Out of the tabs*, below). What is still lateral here is the way a tab
+   tapped from any screen off the bar comes back out: `nav-back`, which is what Import,
+   `/welcome` and every nested settings page get, because they are ordinary pages behind
+   ordinary links rather than a step out of anything.
 
    **Phone-only, without a media query.** The types are attached by `tab-bar.tsx`'s `Link`s
    and by `masthead.tsx`'s Settings entrance, both of which are `lg:hidden`.
@@ -1518,6 +1520,72 @@
   }
   to {
     scale: 1;
+  }
+}
+
+/* ── Out of the tabs, which is neither along them nor into something ─────────────
+   Issue #294, and the third and last motion this vocabulary needs. Tapping a tab moves the
+   reader *along* a row of four; opening a title moves them *into* something; opening
+   Settings from the masthead pushes them *out of* the four altogether. Until this, the
+   push wore the lateral pair above — so the one navigation that leaves the bar looked
+   exactly like the four that stay on it, and the motion said the wrong thing about the
+   move the reader had just made.
+
+   **Up from below on the way in, downward on the way out.** `--nav-rise` is a positive `y`
+   offset, so the arriving page starts below the fold of the viewport and settles; the
+   snapshot that is leaving plays the *same* animation with `reverse` and travels down.
+   `reverse` rather than a second pair of keyframes running the other way, for the reason
+   *Going deeper* gives: a round trip has to mirror, and two curves that merely look alike
+   today drift apart at the next tuning. One animation read in both directions cannot.
+
+   **`60px`, the lateral slide's own offset.** Depth needed its own number because a scale
+   is a different kind of cue; a translate is a translate, and a vertical push that
+   travelled further than a horizontal one would read as a bigger move rather than a
+   different one. It is far enough to say *direction*, short enough that nothing has to be
+   tracked across the screen.
+
+   **It costs no scrolling smoothness.** `translate` and `opacity` on a view-transition
+   snapshot — already a texture on the compositor — are the same work the lateral slide
+   does. No filter, no shadow, no geometry.
+
+   > **This type has exactly one caller, and that is a known cost recorded here rather
+   > than discovered later.** `masthead.tsx`'s Settings link is the only push out of the
+   > bar this application has: a whole class, this block and one line of
+   > `nav-transition.tsx`'s mapping, for one `Link`. It was paid deliberately, because the
+   > alternative was Settings keeping a lateral motion that means something else. A second
+   > masthead push arriving later costs one `transitionTypes` array and nothing more —
+   > read that as this decision vindicated rather than as a coincidence. Import,
+   > delete-account and every nested settings page are deliberately *not* callers: they are
+   > already outside the bar, so a push out of it would claim a move nobody made, and they
+   > land on `default: "none"` like every other ordinary link.
+
+   The timings are the ones both other families use — `--dur-fast` out against `--dur-base`
+   in — and reduced motion is handled once for all three motions by the `*` rule at the
+   foot of this file, so this type inherited it the moment it existed. */
+::view-transition-old(.nav-upward) {
+  --nav-rise: 60px;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
+    var(--dur-base) var(--ease-in-out-soft) both nav-rise reverse;
+}
+::view-transition-new(.nav-upward) {
+  --nav-rise: 60px;
+  animation:
+    var(--dur-base) var(--ease-out-quart) both nav-fade,
+    var(--dur-base) var(--ease-in-out-soft) both nav-rise;
+}
+
+/* `translate` on the `y` axis alone, with no `scale` beside it: `nav-slide` pairs its
+   translate with a hint of scale because a sideways move needs help reading as a change of
+   place, but a page arriving from below is already saying where it came from. A scale here
+   would be the depth cue, and this is not a move into anything. Separate properties rather
+   than one `transform`, as everywhere else in this section. */
+@keyframes nav-rise {
+  from {
+    translate: 0 var(--nav-rise);
+  }
+  to {
+    translate: 0 0;
   }
 }
 
