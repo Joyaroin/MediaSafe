@@ -393,14 +393,40 @@ describe("every dynamic surface has a loading boundary", () => {
    * The six segments of #181's eleven that still exist, asserted the same way — a floor
    * against the audit quietly passing rather than actually looking, on the batch that
    * ticket is responsible for rather than the one before it. #250 deleted the other five.
+   *
+   * **The catalogue segment is spelled `catalogue` since #288.** #181 converted it under
+   * `titles/[kind]/[tmdbId]`; the directory moved and the boundary moved with it. The
+   * sweep is the reason this line is edited rather than dropped: a `loading.tsx` left
+   * behind in the old directory would take the route with it, and a route moved without
+   * one would come back here as `unbounded`.
    */
   it("finds the boundary on every segment #181 converts that still exists", () => {
     expect(hasBoundary("(signed-in)/lists")).toBe(true);
     expect(hasBoundary("(signed-in)/lists/[listId]")).toBe(true);
     expect(hasBoundary("(signed-in)/settings")).toBe(true);
     expect(hasBoundary("(signed-in)/settings/delete-account")).toBe(true);
-    expect(hasBoundary("(signed-in)/titles/[kind]/[tmdbId]")).toBe(true);
+    expect(hasBoundary("(signed-in)/catalogue/[kind]/[tmdbId]")).toBe(true);
     expect(hasBoundary("(signed-in)/up-next")).toBe(true);
+  });
+
+  /**
+   * **The catalogue's own page, at the address that says catalogue — issue #288.**
+   *
+   * The move is the one that makes the rest of #287 legal rather than a preference: Next
+   * refuses two different slug names at one position, so `/titles/[entryId]` cannot
+   * coexist with `/titles/[kind]/[tmdbId]`. Moving the catalogue frees the prefix.
+   *
+   * Both halves are asserted, because only together do they say *moved* rather than
+   * *added*: the new path is in the build and behind the matcher, and the old one is not
+   * in the build at all. **There is no redirect** — that was offered and declined — so a
+   * bookmark to the old path 404s, and this is the assertion that says so on purpose.
+   */
+  it("builds the catalogue page at its new address and not its old one", () => {
+    expect(built.routes).toContain("/catalogue/[kind]/[tmdbId]");
+    expect(matcherRunsOn(built.matcher, "/catalogue/film/27205")).toBe(true);
+
+    expect(built.pages.map((one) => one.route)).not.toContain("/titles/[kind]/[tmdbId]");
+    expect(built.routes).not.toContain("/titles/[kind]/[tmdbId]");
   });
 
   /**
@@ -680,12 +706,16 @@ describe("nothing intercepts, so opening a title is an ordinary navigation", () 
    * catch-all, `(.)library/[entryId]/[[...rest]]`, matched one segment *deeper* than the
    * route it shadowed — so the remove confirmation was reached with a title sheet raised
    * over it. A destructive confirmation is an ordinary page navigation now.
+   *
+   * The catalogue's entry reads `/catalogue/[kind]/[tmdbId]` since #288 moved it. What is
+   * asserted here is unchanged — *it opens as a page* — and the address it opens at is
+   * the ticket's own business, held by the assertion above.
    */
   it.each([
     "/library/[entryId]",
     "/library/[entryId]/episode/[episodeId]",
     "/library/[entryId]/remove",
-    "/titles/[kind]/[tmdbId]",
+    "/catalogue/[kind]/[tmdbId]",
   ])("still builds %s as an ordinary page behind the matcher", (route) => {
     expect(built.routes).toContain(route);
     expect(matcherRunsOn(built.matcher, probeUrlFor(route))).toBe(true);

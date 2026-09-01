@@ -23,7 +23,7 @@ import type { ListDetailTitleRow } from "@/db/access";
  * #148, and `list-title-row.tsx`'s own docblock named the `libraryEntryId === null` branch
  * as the one line that would change when it did.
  *
- * It has. Untracked now means **linked to `titles/[kind]/[tmdbId]`** — the same borrowed
+ * It has. Untracked now means **linked to `catalogue/[kind]/[tmdbId]`** — the same borrowed
  * facts with no owned fact on them and one *Add to library*. Every row is a link; which
  * page it links to is the ownership question, and that is what this file locks down now.
  * The property #151 actually cares about is untouched: a row for a title this account does
@@ -60,7 +60,7 @@ describe("a list row for a title this account does not own", () => {
 
     // Keyed by `(kind, tmdbId)`, because that is what a page with no owner can be keyed
     // by — `db/access.ts`'s `getUnownedTitleDetail` carries why.
-    expect(markup).toContain('href="/titles/film/27205"');
+    expect(markup).toContain('href="/catalogue/film/27205"');
     expect(markup).toContain("Somebody Else&#x27;s Pick");
   });
 

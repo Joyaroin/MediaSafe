@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { UnownedEpisodes } from "@/app/(signed-in)/titles/[kind]/[tmdbId]/unowned-episodes";
+import { UnownedEpisodes } from "@/app/(signed-in)/catalogue/[kind]/[tmdbId]/unowned-episodes";
 import type { UnownedEpisodeDetail } from "@/db/access";
 
 /**
@@ -35,7 +35,7 @@ import type { UnownedEpisodeDetail } from "@/db/access";
  */
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
-const ROUTE = "app/(signed-in)/titles";
+const ROUTE = "app/(signed-in)/catalogue";
 
 function episode(overrides: Partial<UnownedEpisodeDetail> = {}): UnownedEpisodeDetail {
   return {
@@ -260,7 +260,7 @@ describe("where a list row goes", () => {
 
     // The one line issue #147 said would change when this ticket shipped. A list is not a
     // wall of dead posters any more: every row is a link.
-    expect(row).toContain("`/titles/${title.kind}/${title.tmdbId}`");
+    expect(row).toContain("`/catalogue/${title.kind}/${title.tmdbId}`");
     expect(row).toContain("`/library/${title.libraryEntryId}`");
   });
 });

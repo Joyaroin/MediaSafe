@@ -1391,7 +1391,7 @@ describe("busting a title's borrowed facts", () => {
 describe("every shared-mirror write busts the borrowed facts too", () => {
   const CALL_SITES = [
     "app/(signed-in)/search/actions.ts",
-    "app/(signed-in)/titles/actions.ts",
+    "app/(signed-in)/catalogue/actions.ts",
     "app/(signed-in)/import/actions.ts",
     "app/api/cron/nightly-sweep/route.ts",
   ];

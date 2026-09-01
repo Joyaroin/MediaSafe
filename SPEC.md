@@ -346,7 +346,7 @@ fourth.
    next-episodes card still pushed the **episode's** page, so a show, a film and a card
    reached three different kinds of place from one tab. They reach one now: **the title's
    own page**, by one mechanism — a `Link` to `/library/{entryId}` — with a search result
-   opening `/titles/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
+   opening `/catalogue/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
    away from rather than deleted, and keeps a season row and a deep link. The phone's use
    of selection is what goes; on `lg` and up the tile's click is stopped and the programme
    note pane swaps as divergence 2 describes, unchanged.

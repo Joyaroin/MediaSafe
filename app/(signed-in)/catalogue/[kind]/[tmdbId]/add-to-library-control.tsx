@@ -11,12 +11,12 @@ import {
   addUnownedTitleToLibraryAction,
   addUnownedTitleWatchedToLibraryAction,
   type AddToLibraryOutcome,
-} from "@/app/(signed-in)/titles/actions";
+} from "@/app/(signed-in)/catalogue/actions";
 import {
   addWatchedAccessibleLabel,
   addWatchedLabel,
-} from "@/app/(signed-in)/titles/add-watched";
-import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-add";
+} from "@/app/(signed-in)/catalogue/add-watched";
+import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost-add";
 
 /**
  * *Add to My Shows* / *Add to My Films*, and *Add — watched* beside it — issue #148's

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   addWatchedAccessibleLabel,
   addWatchedLabel,
-} from "@/app/(signed-in)/titles/add-watched";
+} from "@/app/(signed-in)/catalogue/add-watched";
 
 /**
  * What the second add says, and that both surfaces say it from one place — issue #222.
@@ -32,7 +32,7 @@ const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
 /** Every surface that offers the watched add. */
 const SURFACES = [
   "app/(signed-in)/search/catalogue-result.tsx",
-  "app/(signed-in)/titles/[kind]/[tmdbId]/add-to-library-control.tsx",
+  "app/(signed-in)/catalogue/[kind]/[tmdbId]/add-to-library-control.tsx",
 ];
 
 function sourceAt(relativePath: string): string {
@@ -64,7 +64,7 @@ describe("where that label comes from", () => {
   it.each(SURFACES)("%s takes it from the shared module rather than writing it", (file) => {
     const source = sourceAt(file);
 
-    expect(source).toMatch(/from "@\/app\/\(signed-in\)\/titles\/add-watched"/);
+    expect(source).toMatch(/from "@\/app\/\(signed-in\)\/catalogue\/add-watched"/);
     // Not the literal. A second copy on one of the two surfaces is the drift this module
     // exists to prevent, and it would read as perfectly ordinary at its call site.
     expect(source).not.toContain('"Add — watched');

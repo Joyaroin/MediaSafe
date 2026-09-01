@@ -595,7 +595,7 @@ describe("every tile and card on Up next opens the title's page", () => {
    *  destination, which is the half of it a manifest audit cannot see. */
   it("sends a search result to the title's full page", () => {
     expect(codeOf(sourceAt(SEARCH_RESULT))).toMatch(
-      /href=\{`\/titles\/\$\{result\.kind\}\/\$\{result\.tmdbId\}`\}/,
+      /href=\{`\/catalogue\/\$\{result\.kind\}\/\$\{result\.tmdbId\}`\}/,
     );
   });
 
