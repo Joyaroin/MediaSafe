@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { backOrigin, isCurrentRoute } from "@/app/nav-route";
 import { PHONE_BAR } from "@/app/phone-bar";
 
 /**
@@ -302,5 +303,132 @@ describe("the poster morph, on one transition-name family", () => {
     expect(GLOBALS).toMatch(
       /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
+  });
+});
+
+/**
+ * ── The way back names where the reader came from — issue #292 ───────────────────────
+ *
+ * A detail page's only on-screen exit used to be a hard `‹ Library` link, so a reader who
+ * opened a show from Up next was moved into a grid they never asked for. `backOrigin`
+ * (`app/nav-route.ts`) is the rule that replaces it: **previous pathname in, label and
+ * destination out**, and nothing else — no DOM, no component state, no history object.
+ * It sits beside `isCurrentRoute` because the two answer the same question about a path,
+ * and this suite is where they end up asserted together.
+ *
+ * All three properties below fail silently in the browser. A bar labelled from the wrong
+ * origin is a working link to the wrong place; a bar with no fallback is either absent on
+ * a reloaded page or points at nothing. Neither throws.
+ */
+const ORIGIN_SAMPLES = [
+  "/up-next",
+  "/library",
+  "/search",
+  "/you",
+  "/lists",
+  "/lists/list-1",
+  "/titles/entry-1",
+  "/episodes/episode-1",
+  "/catalogue/show/42",
+  "/settings",
+  "/import",
+  "/welcome",
+  "/librarian",
+  "/",
+  "",
+] as const;
+
+describe("where the back bar says the reader came from", () => {
+  it("names each origin surface it can have arrived from", () => {
+    expect(backOrigin("/up-next")).toEqual({ label: "Up next", destination: "/up-next" });
+    expect(backOrigin("/library")).toEqual({ label: "Library", destination: "/library" });
+    expect(backOrigin("/search")).toEqual({ label: "Search", destination: "/search" });
+  });
+
+  it("reads an origin through anything pushed under it", () => {
+    // The same `startsWith` rule `isCurrentRoute` already applies for the tab bar: a
+    // reader inside a section arrived from that section.
+    expect(backOrigin("/up-next/anything")).toEqual({
+      label: "Up next",
+      destination: "/up-next",
+    });
+    // And not by bare prefix — `/librarian` is not the library.
+    expect(backOrigin("/librarian").destination).toBe("/up-next");
+  });
+
+  it("falls back to Up next when there is no previous pathname", () => {
+    // The reloaded detail page: the previous pathname is tracked as the app renders, so a
+    // cold load has none. The home tab is an answer that works, against a bar that lies
+    // or a bar that is absent.
+    expect(backOrigin(null)).toEqual({ label: "Up next", destination: "/up-next" });
+    expect(backOrigin("")).toEqual({ label: "Up next", destination: "/up-next" });
+  });
+
+  it("falls back to Up next for a previous pathname that is not an origin", () => {
+    for (const previous of ["/you", "/settings", "/titles/entry-1", "/episodes/episode-1"]) {
+      expect(backOrigin(previous), previous).toEqual({
+        label: "Up next",
+        destination: "/up-next",
+      });
+    }
+  });
+
+  it("never names a destination the reader was not on", () => {
+    // The whole complaint this rule answers: `‹ Library` on a page reached from Up next.
+    // Every answer is either the stated fallback or a surface the previous pathname was
+    // itself on — there is no third case, and no destination computed from the id in the
+    // address.
+    for (const previous of ORIGIN_SAMPLES) {
+      const { destination } = backOrigin(previous);
+
+      if (destination === "/up-next") continue;
+      expect(isCurrentRoute(previous, destination), previous).toBe(true);
+    }
+  });
+
+  it("answers with a label for every destination it can name", () => {
+    for (const previous of [...ORIGIN_SAMPLES, null]) {
+      const { label, destination } = backOrigin(previous);
+
+      expect(label, `${previous}`).not.toBe("");
+      expect(destination.startsWith("/"), `${previous}`).toBe(true);
+    }
+  });
+});
+
+/**
+ * The bar itself: one component for both detail routes, in every render each of them has.
+ * A pending or failed render that lost its bar is a screen a reader cannot leave, and it
+ * is the render nobody looks at until the day it matters.
+ */
+const BACK_BAR = readFileSync("app/(signed-in)/back-bar.tsx", "utf8");
+
+describe("both detail routes leave by that bar", () => {
+  for (const file of [
+    "app/(signed-in)/titles/[entryId]/title-detail-body.tsx",
+    "app/(signed-in)/titles/[entryId]/loading.tsx",
+    "app/(signed-in)/titles/[entryId]/error.tsx",
+    // The episode route draws its bar once, in the layout that wraps its page and both
+    // of its boundaries.
+    "app/(signed-in)/episodes/[episodeId]/layout.tsx",
+  ]) {
+    it(`${file} renders the shared bar`, () => {
+      expect(readFileSync(file, "utf8")).toContain("<BackBar />");
+    });
+  }
+
+  it("walks history rather than following the link it draws", () => {
+    // The link's `href` is what a reloaded page and a middle-click get. A reader who
+    // arrived by navigating gets `history.back()` instead, so #276's restoration runs and
+    // the rails they left come back where they were.
+    expect(BACK_BAR).toContain("history.back()");
+    expect(BACK_BAR).toContain("preventDefault()");
+  });
+
+  it("draws the label the rule gives it rather than one of its own", () => {
+    // The chevron is the bar's; the word after it is the rule's. A hard-coded name here
+    // is the whole of the complaint #292 answers, and it would read as a working link.
+    expect(BACK_BAR).toContain("backOrigin(");
+    expect(BACK_BAR).toContain("‹ {label}");
   });
 });

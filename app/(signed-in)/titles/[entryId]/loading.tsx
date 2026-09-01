@@ -1,5 +1,5 @@
+import { BackBar } from "@/app/(signed-in)/back-bar";
 import { PendingLine } from "@/app/pending-line";
-import { BackToLibraryBar } from "./back-to-library-bar";
 
 /**
  * Title detail, still reading — the phone route.
@@ -18,8 +18,10 @@ import { BackToLibraryBar } from "./back-to-library-bar";
  * §9: *`loading.tsx` renders what the segment's `error.tsx` already renders, less the
  * failure* — and where the `<h1>` is `{detail.name}`, what `error.tsx` renders above the
  * failure is the back link and **no `<h1>` at all**, because the name is exactly the thing
- * being waited for. `back-to-library-bar.tsx` is that bar, shared by all three renders of
- * this route.
+ * being waited for. `(signed-in)/back-bar.tsx` is that bar, shared by all three renders of
+ * this route and by the episode route's three as well — and since #292 it names the surface
+ * the reader arrived from, so the pending render offers the same way out as the loaded one
+ * rather than a link to a grid.
  *
  * The poster is not mounted here, and that is the one place this differs from the desktop
  * pane. `programme-note.tsx`'s loading frame shows one because `selectedPosterPath` is a
@@ -33,7 +35,7 @@ import { BackToLibraryBar } from "./back-to-library-bar";
 export default function TitleDetailLoading() {
   return (
     <main className="flex w-full flex-1 flex-col">
-      <BackToLibraryBar />
+      <BackBar />
 
       <div className="px-6 py-5">
         <PendingLine />

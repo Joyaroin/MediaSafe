@@ -229,7 +229,11 @@ describe("the routes below a title say which page is reading", () => {
 
   it("does not print the library's heading over a title", () => {
     expect(detail).not.toContain("The library");
-    expect(detail).toContain("‹ Library");
+    // The back bar, which since #292 names the surface the reader arrived from rather
+    // than the library. This render has no previous pathname — nothing has navigated —
+    // so what it draws is the stated fallback, and the property held here is unchanged:
+    // the pending render carries a way out and no heading of its own.
+    expect(detail).toContain("‹ Up next");
     expect(detail).toContain('role="status"');
   });
 
