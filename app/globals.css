@@ -1068,13 +1068,15 @@
    `linear` and not an easing: the stops *are* the curve, and a timing function over them
    would be a second opinion about the same spring.
 
-   Declared before `select-land` on purpose, and since #285 the rule that runs it says so
-   as well. The two are equal-specificity rules on the same library cell and the hold has
-   to win — a 500ms hold is a timer made visible and its own arrival, not a press — so
-   source order was doing that work silently. It still holds; the `:not()` below states it,
-   because *the pop must not play over the arrival* is a fact about the gesture rather than
-   a fact about which of two blocks was typed first. `tests/press-spring.test.ts` recomputes
-   every stop below from `snappy` and asserts the peak exceeds `1`. */
+   Declared before `select-land` on purpose. The two are equal-specificity rules on the
+   same library cell, so source order decides, and the hold has to win: a 500ms hold is a
+   timer made visible and its own arrival, not a press. **#285 made that a tested property
+   rather than a typing order.** Both rules are unlayered and both are one class and one
+   attribute, so nothing but position separates them, and a cell whose selection has just
+   landed would otherwise play the flourish meaning *that was a tap* over the arrival
+   meaning *this is now selected* — one gesture saying two things. `tests/press-spring.test.ts`
+   recomputes every stop below from `snappy`, asserts the peak exceeds `1`, and asserts
+   this block comes first. */
 @keyframes press-pop {
   0% { transform: scale(var(--press-compress)); }
   3.125% { transform: scale(calc(var(--press-compress) + 0.03283 * var(--press-rise))); }
@@ -1111,14 +1113,7 @@
   100% { transform: scale(1); }
 }
 
-/* Not on a cell the reader is holding, and not on one whose selection has just landed —
-   issue #285. A release that lands a selection is a release like any other as far as the
-   delegated listener can tell, so without this the flourish that means *that was a tap*
-   plays over the arrival that means *this is now selected*, and one gesture says two
-   things. `select-land` would win the frame it shares, being later in this file; what the
-   exclusion adds is the frames after it, once the arrival's mark comes off and the pop's
-   is still on. */
-.pressable[data-popped="true"]:not([data-holding="true"], [data-landed="true"]) {
+.pressable[data-popped="true"] {
   animation: press-pop var(--dur-pop) linear;
 }
 

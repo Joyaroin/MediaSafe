@@ -310,14 +310,9 @@ function compression(register: number | null = null): number {
   return cssValue(scale![1], variablesFor(register));
 }
 
-/** The rule that runs the pop, keyed off the mark the delegated listener sets.
- *
- *  **Updated from a selector that had to be `.pressable[data-popped="true"]` and nothing
- *  else.** #285 hung a `:not()` off it so that a cell in the middle of the hold gesture
- *  does not also run the press's flourish, so the selector is read up to its brace rather
- *  than matched whole. */
+/** The rule that runs the pop, keyed off the mark the delegated listener sets. */
 function popRule(): string {
-  const match = CSS_CODE.match(/\.pressable\[data-popped="true"\][^{]*\{[\s\S]*?\n\}/);
+  const match = CSS_CODE.match(/\.pressable\[data-popped="true"\]\s*\{[\s\S]*?\n\}/);
   expect(match, "globals.css must run the pop off `data-popped`").not.toBeNull();
   return match![0];
 }
@@ -971,16 +966,26 @@ describe("the hold and the press are one hand on a library cell", () => {
 
   /**
    * **A cell being held does not also run the press's pop.** Both are `animation` on one
-   * element, and a release that lands a selection would otherwise put the flourish that
-   * means *that was a tap* over the arrival that means *this is now selected* — one
-   * gesture saying two things.
+   * element, and a release that lands a selection is an ordinary release as far as the
+   * delegated listener can tell — so both marks can be on one cell at once, and the
+   * flourish meaning *that was a tap* must not play over the arrival meaning *this is now
+   * selected*. One gesture saying two things.
+   *
+   * The two rules are **equal specificity** — one class and one attribute each — and both
+   * are unlayered, so nothing but position in the file separates them and the later one
+   * wins. That makes *`press-pop` is declared first* load-bearing rather than incidental,
+   * and it is what this asserts: the property, not the comment claiming it.
    */
   it("does not run the press's pop on a cell being held", () => {
-    const selector = popRule().split("{")[0];
+    // Same shape on both sides, so neither can out-specify the other.
+    expect(popRule().split("{")[0].trim()).toBe('.pressable[data-popped="true"]');
+    expect(landRule().split("{")[0].trim()).toBe('.pressable[data-landed="true"]');
+    expect(blockDepthOf('.pressable[data-popped="true"]')).toBe(0);
 
-    expect(selector).toContain('[data-holding="true"]');
-    expect(selector).toContain('[data-landed="true"]');
-    expect(selector).toMatch(/:not\(/);
+    // And the arrival is declared last, which is the whole of why it wins.
+    expect(CSS_CODE.indexOf('.pressable[data-landed="true"]')).toBeGreaterThan(
+      CSS_CODE.indexOf('.pressable[data-popped="true"]'),
+    );
   });
 
   /**

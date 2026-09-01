@@ -2025,12 +2025,16 @@ is the quiet surface register it never declares.
 visible*, not a press: the ramp is still `HOLD_MS` of `linear` rather than the press's 100ms
 ease-out — an ease-out would spend the first half of the wait looking finished — and
 `select-land` still turns over at 55% over `--dur-base`. The hold's rules are **unlayered**
-and `pressable` is a `@utility` in the `utilities` layer, so the hold still wins on the one
-element that carries both, and it wins by cascade origin rather than by specificity. The pop
-is the one half that had to be told: `press-pop` is excluded from a cell that is holding or
-has just landed, because a release that lands a selection is an ordinary release to the
-delegated listener, and the flourish meaning *that was a tap* playing over the arrival
-meaning *this is now selected* is one gesture saying two things.
+and `pressable` is a `@utility` in the `utilities` layer, so the hold still wins the
+compression on the one element that carries both, and it wins by cascade origin rather than
+by specificity. The pop is settled differently and now deliberately: `press-pop` and
+`select-land` are run by two rules of *identical* specificity, one class and one attribute
+each, both unlayered, so only their order in the file separates them — and a release that
+lands a selection is an ordinary release as far as the delegated listener can tell, so both
+marks land on one cell at once. `press-pop` is declared first and the arrival wins, because
+the flourish meaning *that was a tap* playing over the arrival meaning *this is now
+selected* is one gesture saying two things. That ordering is a tested property now rather
+than a typing order.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what
