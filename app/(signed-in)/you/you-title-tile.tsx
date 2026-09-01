@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
@@ -39,6 +40,7 @@ export function YouTitleTile({
   return (
     <Link
       href={`/titles/${entry.libraryEntryId}`}
+      transitionTypes={NAV_DEEPER}
       className={`pressable group block ${TILE} text-left`}
     >
       <Poster

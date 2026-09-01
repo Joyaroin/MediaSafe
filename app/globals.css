@@ -1462,6 +1462,65 @@
   }
 }
 
+/* ── Going deeper, which is a different move from going along ───────────────────────
+   Issue #293. Tapping a tab moves the reader *along* a row of four; opening a title or an
+   episode moves them *into* something. Until this they were the same nothing: a card's
+   link passed no transition type at all, so `default: "none"` applied and the poster
+   morphed over a page that had already cut underneath it. The morph was never the problem
+   — the missing half was.
+
+   **A type in the same vocabulary, not a second mechanism.** `nav-transition.tsx`'s one
+   mapping gained a third entry and every wrapped page reads it; the links listed in
+   `nav-deeper.ts` attach it. Nothing here is a new wrapper, a new component or a media
+   query.
+
+   **A scale-up and a fade for the arriving page, and its reverse on the way out.** The
+   `reverse` keyword rather than a second pair of keyframes running the other way: the
+   round trip has to mirror, and two curves that merely look alike today drift apart at
+   the next tuning. One animation read in both directions cannot.
+
+   **`0.94`, against the lateral slide's `0.985`.** The slide's scale is a hint riding on
+   a translate that is already carrying the direction; here the scale *is* the whole
+   message, so it has to be legible on its own. It is still small enough that nothing has
+   to be tracked across the screen, and it never touches layout.
+
+   **It costs no scrolling smoothness.** `opacity` and `scale` on a view-transition
+   snapshot — already a texture on the compositor — are the same work the slide does. No
+   filter, no shadow, no geometry: nothing here can contend for the main thread with a
+   list the reader is flicking.
+
+   **The poster morph is untouched and composes over this.** The poster carries its own
+   `view-transition-name`, so it leaves this snapshot and travels in its own group at
+   `--dur-slow` on `--ease-press` (above). The poster is the subject; this is the ground it
+   arrives on. The timings are deliberately the ones the lateral pair already uses —
+   `--dur-fast` out against `--dur-base` in — so the ground settles before the subject
+   does. */
+::view-transition-old(.nav-deeper) {
+  --nav-depth: 0.94;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
+    var(--dur-base) var(--ease-in-out-soft) both nav-depth reverse;
+}
+::view-transition-new(.nav-deeper) {
+  --nav-depth: 0.94;
+  animation:
+    var(--dur-base) var(--ease-out-quart) both nav-fade,
+    var(--dur-base) var(--ease-in-out-soft) both nav-depth;
+}
+
+/* `scale` alone, with no `translate` beside it: depth is the whole of what this says, and
+   a page that also drifted sideways would be claiming two moves at once. Separate
+   properties rather than one `transform` for the same reason `nav-slide` uses them — it is
+   what lets a future composition add to this without restating it. */
+@keyframes nav-depth {
+  from {
+    scale: var(--nav-depth);
+  }
+  to {
+    scale: 1;
+  }
+}
+
 /* ── The chrome does not travel with the content ─────────────────────────────────────
    The masthead and the tab bar are the reader's fixed reference: if they slide too, the
    whole viewport appears to move and the direction stops meaning anything. Naming them
