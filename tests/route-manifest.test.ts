@@ -255,12 +255,13 @@ describe("the check fails when the gate is widened", () => {
  *
  * ── Own segment, never inherited ─────────────────────────────────────────────────────
  *
- * A `loading.tsx` wraps its segment *and every segment below it*, so `/library/[entryId]`
- * would count as covered by the grid's boundary if this asked about effective coverage. It
- * asks about the segment's own file instead, for the reason `DESIGN.md` §9 gives when it
- * refuses to wrap the Up next rails: **one surface, one pending decision, and it is the
- * route's.** An inherited boundary is another surface's decision applied to this one, and it
- * shows on the glass — the library's own heading printed over a title's page. Counting it as
+ * A `loading.tsx` wraps its segment *and every segment below it*, so
+ * `/titles/[entryId]/remove` would count as covered by the title's boundary if this asked
+ * about effective coverage. It asks about the segment's own file instead, for the reason
+ * `DESIGN.md` §9 gives when it refuses to wrap the Up next rails: **one surface, one
+ * pending decision, and it is the route's.** An inherited boundary is another surface's
+ * decision applied to this one, and it shows on the glass — a title's own pending render
+ * standing in for the confirmation that is about to quote its counts. Counting it as
  * conversion would be the check passing for a surface nobody converted.
  */
 
@@ -353,10 +354,28 @@ describe("every dynamic surface has a loading boundary", () => {
    * started answering `false` for everything — three ways for the audit to pass while
    * proving nothing.
    */
-  it("finds the boundary on each of the library's own three segments", () => {
+  it("finds the boundary on the library, which is the grid and nothing else", () => {
     expect(hasBoundary("(signed-in)/library")).toBe(true);
-    expect(hasBoundary("(signed-in)/library/[entryId]")).toBe(true);
-    expect(hasBoundary("(signed-in)/library/[entryId]/remove")).toBe(true);
+  });
+
+  /**
+   * **The title's own two segments, at the route #290 moved them to.**
+   *
+   * They were `(signed-in)/library/[entryId]` and its `remove` child until this ticket.
+   * Both boundaries **moved with the route** — they were not dropped and re-added — and
+   * the sweep above is the reason that distinction is worth asserting twice: a
+   * `loading.tsx` left behind in the old directory takes the old route with it, and a
+   * route moved without one comes back through `auditLoadingBoundaries` as `unbounded`.
+   *
+   * The inheritance clause makes the remove child the sharper of the two. Its parent's
+   * boundary would cover it if this asked about effective coverage — a reader on their
+   * way to a destructive confirmation would be shown the *title's* pending render while
+   * the counts it is about to quote are still loading. It asks about the segment's own
+   * file, so that stays a failure rather than a silent downgrade.
+   */
+  it("finds the boundary on both of the title's segments, where #290 moved them", () => {
+    expect(hasBoundary("(signed-in)/titles/[entryId]")).toBe(true);
+    expect(hasBoundary("(signed-in)/titles/[entryId]/remove")).toBe(true);
   });
 
   /**
@@ -449,6 +468,52 @@ describe("every dynamic surface has a loading boundary", () => {
 
     expect(built.pages.map((one) => one.route)).not.toContain("/titles/[kind]/[tmdbId]");
     expect(built.routes).not.toContain("/titles/[kind]/[tmdbId]");
+  });
+
+  /**
+   * **A title the reader holds, at the address that says so — issue #290.**
+   *
+   * `/titles/[entryId]` is the prefix #288 freed, and this is what it was freed for. The
+   * pair is asserted together because the confirmation is not a screen of its own so much
+   * as a step of this one: *the page the reader reached it from and the page it lives
+   * under are the same place*, which is a property of the two paths' shapes and is
+   * therefore checkable here rather than anywhere else.
+   *
+   * **The matcher is asserted against both, by name.** `SPEC.md` constraint 5 is
+   * machine-checked, and reorganising the address space is exactly the change that could
+   * breach it silently — a new prefix that happens to fall under a catch-all today is not
+   * the same claim as a new prefix the compiled matcher was seen to run on.
+   */
+  it("builds a held title and its remove confirmation under /titles", () => {
+    expect(built.routes).toContain("/titles/[entryId]");
+    expect(built.routes).toContain("/titles/[entryId]/remove");
+
+    expect(matcherRunsOn(built.matcher, "/titles/entry-42")).toBe(true);
+    expect(matcherRunsOn(built.matcher, "/titles/entry-42/remove")).toBe(true);
+  });
+
+  /**
+   * **And `/library/` is the grid again** — issue #290's third criterion, read off the
+   * build's own manifest rather than off the source tree.
+   *
+   * Neither old path is redirected. They cease to exist, and a bookmark to one 404s — the
+   * accepted trade when a permanent redirect rule was offered and declined. So what has to
+   * be checked is that they are *gone* rather than merely unlinked: a `page.tsx` left
+   * behind, or the directory restored by a merge, serves both addresses at once and
+   * nothing on the glass says which one the reader is on.
+   *
+   * The filter is the assertion that makes this say *only the grid* instead of *not these
+   * two* — a third child added under `/library/` fails here rather than passing two
+   * `not.toContain`s that were never about it.
+   */
+  it("has nothing left under /library but the grid itself", () => {
+    const under = built.routes.filter(
+      (route) => route === "/library" || route.startsWith("/library/"),
+    );
+
+    expect(under).toEqual(["/library"]);
+    expect(built.pages.map((one) => one.route)).not.toContain("/library/[entryId]");
+    expect(built.pages.map((one) => one.route)).not.toContain("/library/[entryId]/remove");
   });
 
   /**
@@ -596,8 +661,10 @@ describe("the boundary check fails when a surface is left waiting", () => {
   /**
    * **Inheritance is not conversion.** The audit asks about the segment's own file, so a
    * child of a converted segment is still reported — which is the whole reason
-   * `/library/[entryId]` and `/library/[entryId]/remove` got boundaries of their own in
-   * #180 rather than being left to the grid's.
+   * the title's route and its remove child got boundaries of their own in #180 rather than
+   * being left to the grid's. The fixture keeps #180's own spelling of those two paths,
+   * because it is hand-built input to a pure function rather than a claim about the build —
+   * the live routes are asserted above, at the addresses #290 moved them to.
    */
   it("does not let a child route inherit its parent's boundary", () => {
     const audit = auditLoadingBoundaries(
@@ -724,21 +791,24 @@ describe("nothing intercepts, so opening a title is an ordinary navigation", () 
    * reason every audit in this file carries a floor: an empty list is also what a check
    * that has stopped looking returns.
    *
-   * `/library/[entryId]/remove` is in this list because the title interception's optional
+   * The remove confirmation is in this list because the title interception's optional
    * catch-all, `(.)library/[entryId]/[[...rest]]`, matched one segment *deeper* than the
    * route it shadowed — so the remove confirmation was reached with a title sheet raised
    * over it. A destructive confirmation is an ordinary page navigation now.
    *
-   * The catalogue's entry reads `/catalogue/[kind]/[tmdbId]` since #288 moved it. What is
-   * asserted here is unchanged — *it opens as a page* — and the address it opens at is
-   * the ticket's own business, held by the assertion above.
+   * The catalogue's entry reads `/catalogue/[kind]/[tmdbId]` since #288 moved it, and the
+   * title's two read `/titles/…` since #290 moved them. What is asserted here is unchanged
+   * — *they open as pages* — and the addresses they open at are those tickets' own
+   * business, held by the assertions above.
    */
   it.each([
-    "/library/[entryId]",
-    // #289's address for the episode. The reversal is about how a route opens, not where
-    // it lives, so the property is asserted against wherever the route is now.
+    // #290's address for a title the reader holds, and for its confirmation. The reversal
+    // is about how a route opens, not where it lives, so the property is asserted against
+    // wherever the route is now.
+    "/titles/[entryId]",
+    // #289's address for the episode, for the same reason.
     "/episodes/[episodeId]",
-    "/library/[entryId]/remove",
+    "/titles/[entryId]/remove",
     "/catalogue/[kind]/[tmdbId]",
   ])("still builds %s as an ordinary page behind the matcher", (route) => {
     expect(built.routes).toContain(route);

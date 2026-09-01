@@ -119,9 +119,12 @@ const TABS = [
  *   returning to the row is coming back out of something they went into.
  *
  *   This case used to return `[]`, which made Settings the one screen you slid *into* and
- *   then jumped out of with nothing. Note that a title detail is **not** this case:
- *   `isCurrentRoute` matches `/library/{id}` to the Library tab, so a reader three screens
- *   deep is still on a tab and still gets a lateral direction.
+ *   then jumped out of with nothing. **A title detail joined this case in #290**, and it
+ *   is worth saying so rather than leaving it to be rediscovered: it used to be excluded,
+ *   because `isCurrentRoute` matched `/library/{id}` to the Library tab and a reader three
+ *   screens deep was still on one. Detail lives at `/titles/{entryId}` now, which is under
+ *   no tab, so tapping a tab from a title reads as coming back out of something the reader
+ *   went into — the same treatment the Lists screens get, and for the same reason.
  */
 function navTransitionTypes(pathname: string, href: string): string[] {
   const from = TABS.findIndex((tab) => isCurrentRoute(pathname, tab.href));

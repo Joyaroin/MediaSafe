@@ -286,9 +286,9 @@ function routeFromRewritePath(path: string): string {
  * as one.
  */
 export interface PageRoute {
-  /** The URL pattern, as `routes-manifest.json` writes it — `/library/[entryId]`. */
+  /** The URL pattern, as `routes-manifest.json` writes it — `/titles/[entryId]`. */
   route: string;
-  /** The path under `app/` that owns it — `(signed-in)/library/[entryId]`. */
+  /** The path under `app/` that owns it — `(signed-in)/titles/[entryId]`. */
   segment: string;
   /** Rendered on demand, rather than prerendered at build time. */
   dynamic: boolean;

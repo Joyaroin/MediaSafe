@@ -3,9 +3,9 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
+import { ProgrammeNoteContent } from "@/app/(signed-in)/library/programme-note-content";
 import type { TitleDetailRow } from "@/db/access";
-import { railPosterTransitionName } from "../poster-transition-name";
-import { ProgrammeNoteContent } from "../programme-note-content";
 
 /**
  * The phone route's thin client shell around `ProgrammeNoteContent` — issue #87 gave that

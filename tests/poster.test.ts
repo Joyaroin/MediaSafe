@@ -102,8 +102,8 @@ describe("the poster", () => {
  * giving both the same `view-transition-name`. Until #275 there were **two** families and
  * two minting functions, because the phone raised a sheet over `/up-next` while the phone
  * route was a second, separate destination. #268 deleted the sheet and the interceptions:
- * the phone's tile now navigates to `/library/{id}`, so there is one destination and one
- * family.
+ * the phone's tile now navigates to the title's own route — `/titles/{entryId}` since
+ * #290 — so there is one destination and one family.
  *
  * These live beside the poster's own contracts because the name is a property *of the
  * poster's identity across a navigation*, and both failures here are silent: a second

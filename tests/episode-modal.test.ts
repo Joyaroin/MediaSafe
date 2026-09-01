@@ -184,7 +184,7 @@ describe("an episode opens as a page, from the origin it keeps", () => {
    * render and the manifest are identical either way.
    */
   it("sends a rail card to the title's page rather than the episode's", () => {
-    expect(codeOf(RAIL_CARD)).toMatch(/href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(codeOf(RAIL_CARD)).toMatch(/href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
     expect(codeOf(RAIL_CARD)).not.toMatch(HREF);
     expect(codeOf(RAIL_CARD)).not.toMatch(/scroll=\{false\}/);
   });
@@ -200,7 +200,7 @@ describe("an episode opens as a page, from the origin it keeps", () => {
    * film quietly acquiring an episode href the day somebody generalises the two rails.
    */
   it("sends a film card to the title page", () => {
-    expect(FILM_RAIL).toMatch(/href=\{`\/library\/\$\{film\.libraryEntryId\}`\}/);
+    expect(FILM_RAIL).toMatch(/href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/);
     expect(codeOf(FILM_RAIL)).not.toMatch(HREF);
   });
 

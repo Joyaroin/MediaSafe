@@ -6,7 +6,7 @@ import { referenceForBoundary } from "@/errors/reference";
 /**
  * The episode page did not load — the segment boundary for `[episodeId]`.
  *
- * It exists for the reason `library/[entryId]/error.tsx` gives for its own: the boundary
+ * It exists for the reason `titles/[entryId]/error.tsx` gives for its own: the boundary
  * above would replace a wider surface than the one that failed, telling a reader something
  * went wrong without telling them what. That was sharper still while this route lived
  * under `[entryId]` — the boundary above was the *title's*, so a failed episode read

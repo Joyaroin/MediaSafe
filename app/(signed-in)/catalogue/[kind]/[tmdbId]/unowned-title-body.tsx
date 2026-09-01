@@ -78,7 +78,7 @@ export async function UnownedTitleBody({
    * unchanged, because it was never the half that varied.
    */
   const owned = await cachedLibraryEntryIdForTitle(userId, kind, tmdbId);
-  if (owned !== null) redirect(`/library/${owned}`);
+  if (owned !== null) redirect(`/titles/${owned}`);
 
   const detail = await catalogueDetail(userId, kind, tmdbId);
   const meta = titleMetaLine(detail);
@@ -86,7 +86,7 @@ export async function UnownedTitleBody({
   return (
     <>
       {/* Back to Lists, because a list is the only thing that links to the *route*. It is
-          a destination rather than a history pop for the reason `library/[entryId]`'s own
+          a destination rather than a history pop for the reason `titles/[entryId]`'s own
           back link is: a link still works on a tab opened cold, where nothing has been
           popped from yet. */}
       <BackToListsBar />

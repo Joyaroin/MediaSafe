@@ -24,7 +24,7 @@ export type { Outcome } from "./live-facts";
  * shape `app/(signed-in)/search/actions.ts` already argues for and this reuses rather
  * than re-derives: **the desktop pane never navigates**, so there is no route-level
  * `error.tsx` for it to throw into the way
- * `app/(signed-in)/library/[entryId]/page.tsx` (the phone route) has. React also strips a
+ * `app/(signed-in)/titles/[entryId]/page.tsx` (the phone route) has. React also strips a
  * thrown Server Action's error before it crosses to the browser, so catching here is what
  * lets Sentry see the real exception and the reader see a reference id for it.
  *

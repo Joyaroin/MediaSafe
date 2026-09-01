@@ -50,7 +50,7 @@ import { UpNextRow } from "./up-next-row";
  * `onStateChange` is this component's entire surface for a landed write: it patches
  * `detail.state` in place, in whichever component is holding this one's props
  * (`ProgrammeNotePane` here, the phone route in
- * `app/(signed-in)/library/[entryId]/title-detail-view.tsx`). Nothing else about the title
+ * `app/(signed-in)/titles/[entryId]/title-detail-view.tsx`). Nothing else about the title
  * changes when that write lands, so nothing else is re-read.
  *
  * The entry id travels with it: this component is never remounted on a title switch in the
@@ -60,7 +60,7 @@ import { UpNextRow } from "./up-next-row";
  * ── `RemoveControl`, which reports nothing at all ───────────────────────────────────
  *
  * Issue #142's *Remove from library*, and the one control on this component that takes no
- * callback: it is a link to `library/[entryId]/remove`, so a press leaves this surface
+ * callback: it is a link to `titles/[entryId]/remove`, so a press leaves this surface
  * rather than changing anything on it. There is no landed write for it to patch, because
  * there is no write here to land — which is also why it needs no entry-id guard of the kind
  * `AbandonControl`'s docblock explains.
@@ -107,7 +107,7 @@ import { UpNextRow } from "./up-next-row";
  * ── The live facts are nodes, not data (issue #218) — and now there are three ────────
  *
  * This component does not fetch, or even know, how the live sections get their data — it
- * only knows where they sit in the layout. `library/[entryId]/title-detail-body.tsx` hands
+ * only knows where they sit in the layout. `titles/[entryId]/title-detail-body.tsx` hands
  * in Server Components built server-side and passed down as already-rendered elements
  * (React's own documented pattern for interleaving Server and Client Components); the
  * desktop pane hands in `<LiveTitleFactsClientFetch slot=… />` instead, since it has no

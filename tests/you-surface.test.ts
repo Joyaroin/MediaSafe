@@ -264,10 +264,14 @@ describe("the lists, shows and films rails — issue #248", () => {
     expect(markup).not.toContain(">Films<");
   });
 
-  it("links a title tile to its library entry, not a title page", () => {
+  it("links a title tile to the entry it holds, not to the catalogue", () => {
     const markup = render(figures(), { shows: [titleEntry({ libraryEntryId: "entry-42" })] });
 
-    expect(markup).toContain('href="/library/entry-42"');
+    // `/titles/{entryId}` since #290 — a title this account holds, told apart from one it
+    // does not by the address rather than by reading the page. The catalogue's own side is
+    // `/catalogue/{kind}/{tmdbId}`, and a tile on the you surface never goes there.
+    expect(markup).toContain('href="/titles/entry-42"');
+    expect(markup).not.toContain('href="/catalogue/');
   });
 
   it("prints a film's runtime beside its year, and a show's year alone", () => {

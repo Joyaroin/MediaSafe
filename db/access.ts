@@ -4174,7 +4174,7 @@ export interface TitleDetailRow {
  *
  * ── There is no `try` here ────────────────────────────────────────────────────────────
  *
- * Called directly from the phone route (`app/(signed-in)/library/[entryId]/page.tsx`),
+ * Called directly from the phone route (`app/(signed-in)/titles/[entryId]/page.tsx`),
  * a throw here is what reaches that route's own `error.tsx`. The desktop pane cannot
  * lean on a route boundary — it never navigates — so it calls this through
  * `titleDetailAction`, which is what does the catching, for the reason

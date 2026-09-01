@@ -613,7 +613,7 @@ export function cachedListDetail(
 }
 
 /**
- * One title, as the programme note and the phone's `library/[entryId]` route show it.
+ * One title, as the programme note and the phone's `titles/[entryId]` route show it.
  *
  * `libraryEntryId` is an argument for `cachedListDetail`'s reason. **Its ownership check is
  * still the query's**: `getTitleDetail` scopes by `ownedBy(userId, libraryEntry)` and the

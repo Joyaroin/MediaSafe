@@ -1,7 +1,7 @@
+import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedTitleDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
-import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "../live-title-facts-streamed";
 import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
@@ -11,7 +11,7 @@ import { TitleDetailView } from "./title-detail-view";
  *
  * ── Why this file exists at all ──────────────────────────────────────────────────────
  *
- * There were two renders of `/library/[entryId]` and there is one screen. Which one a
+ * There were two renders of this route and there is one screen. Which one a
  * reader got was the framework's decision, not this file's: intercepted into the `@title`
  * slot for a press inside the app, the full page for an address typed, shared or
  * refreshed. The thing that must not vary between them is *what title detail is*, so it

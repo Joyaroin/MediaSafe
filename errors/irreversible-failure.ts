@@ -3,7 +3,7 @@
  * never print the same sentence.
  *
  * Two forms hold one of these — `settings/delete-account/delete-account-form.tsx` (issue
- * #125) and `library/[entryId]/remove/remove-title-form.tsx` (issue #142) — and they are the
+ * #125) and `titles/[entryId]/remove/remove-title-form.tsx` (issue #142) — and they are the
  * only two writes in the product that cannot be taken back. The distinction was written out
  * once for the first of them; this file is where it stops being written out twice, on
  * `errors/failure-treatment.ts`'s reasoning about its own class strings.

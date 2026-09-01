@@ -38,7 +38,7 @@ export function YouTitleTile({
 
   return (
     <Link
-      href={`/library/${entry.libraryEntryId}`}
+      href={`/titles/${entry.libraryEntryId}`}
       className={`pressable group block ${TILE} text-left`}
     >
       <Poster

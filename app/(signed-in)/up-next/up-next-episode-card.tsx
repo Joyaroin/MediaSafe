@@ -63,7 +63,7 @@ import {
  *
  * ── Tapping the card ────────────────────────────────────────────────────────────────
  *
- * **The title's own page** — `/library/{entryId}`, and the same destination the film card
+ * **The title's own page** — `/titles/{entryId}`, and the same destination the film card
  * and the pending card already have. #250 was written expecting exactly this and settled
  * for the episode instead, because #253 gave an episode a page first; #274 puts the card
  * back where the ticket that built it meant it to go, so that every tile and every card on
@@ -354,7 +354,7 @@ function CardBody({
           from the store by the branch that owns the control, and the code line beside this
           text is what names the episode to the reader. */}
       <Link
-        href={`/library/${entry.libraryEntryId}`}
+        href={`/titles/${entry.libraryEntryId}`}
         /* **This press carried `scroll={false}` until issue #273**, because #254
            intercepted it into the layout's `@episode` slot: the landing screen was not
            replaced, it was still underneath, and Next scrolling it to the top would have

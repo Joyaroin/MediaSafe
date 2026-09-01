@@ -10,7 +10,7 @@ import { BackToTitleBar } from "./back-to-title-bar";
  *
  * ── Why this is a layout and not a line in each of the three files ──────────────────
  *
- * `library/[entryId]` solves the same problem with a shared component
+ * `titles/[entryId]` solves the same problem with a shared component
  * (`back-to-library-bar.tsx`) that its `page.tsx`, `error.tsx` and `loading.tsx` each
  * render. That works there because the bar it draws is a constant — `/library` needs
  * nothing from the route.
@@ -18,8 +18,8 @@ import { BackToTitleBar } from "./back-to-title-bar";
  * This bar does: it points at the owning entry. And **`loading.tsx` is given no
  * `params`** — Next hands those to pages and layouts, not to boundaries — so the pending
  * render is the one file that could not build the link. The first draft of this route
- * worked around that by passing an empty id and producing `/library/`, a link to nowhere
- * on the one render a reader is most likely to be looking at while they wait.
+ * worked around that by passing an empty id and producing a bare `/titles/`, a link to
+ * nowhere on the one render a reader is most likely to be looking at while they wait.
  *
  * A layout is the mechanism the framework already has for this: it receives `params`, it
  * wraps the segment's page **and its boundaries**, so the bar survives both the pending
@@ -50,7 +50,7 @@ import { BackToTitleBar } from "./back-to-title-bar";
  *
  * `null` is an episode this account does not hold, and `page.tsx` answers it with
  * `notFound()`. There is no show behind the address, so there is no *‹ Show* to offer —
- * a bar pointing at `/library/null` would be the link to nowhere this file was written to
+ * a bar pointing at `/titles/null` would be the link to nowhere this file was written to
  * prevent. The signed-in shell's masthead, sidebar and tab bar are on screen throughout
  * either way.
  *

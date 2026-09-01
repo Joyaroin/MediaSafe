@@ -415,7 +415,7 @@ describe("the films rail", () => {
   });
 
   it("navigates to the title rather than opening anything over the screen", () => {
-    expect(source).toMatch(/<Link href=\{`\/library\/\$\{film\.libraryEntryId\}`\}/);
+    expect(source).toMatch(/<Link href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/);
   });
 
   /**
@@ -549,7 +549,7 @@ describe("every tile and card on Up next opens the title's page", () => {
    * reader it is a link.
    */
   it("makes the show tile a link to the library entry's page", () => {
-    expect(tile).toMatch(/<Link\s+href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(tile).toMatch(/<Link\s+href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
     expect(tile).not.toMatch(/<button/);
   });
 
@@ -557,7 +557,7 @@ describe("every tile and card on Up next opens the title's page", () => {
    *  words: a film and a show behave the same way on the same tab. */
   it("gives the film tile that destination by the same mechanism", () => {
     expect(codeOf(sourceAt(FILM_RAIL))).toMatch(
-      /<Link href=\{`\/library\/\$\{film\.libraryEntryId\}`\}/,
+      /<Link href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/,
     );
   });
 
@@ -566,7 +566,7 @@ describe("every tile and card on Up next opens the title's page", () => {
   it("sends a next-episodes card to the show's page, not the episode's", () => {
     const card = codeOf(sourceAt(EPISODE_CARD));
 
-    expect(card).toMatch(/href=\{`\/library\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(card).toMatch(/href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
     expect(card).not.toMatch(/\/episode\//);
   });
 
