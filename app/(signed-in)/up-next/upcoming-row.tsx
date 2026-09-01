@@ -50,7 +50,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
   return (
     <li>
       <Link
-        href={`/library/${episode.libraryEntryId}/episode/${episode.episodeId}`}
+        href={`/episodes/${episode.episodeId}`}
         className="pressable flex items-center gap-3 rounded-2xl bg-raised p-2.5"
         /* The poster is `aria-hidden` and the code is three tokens, so this is what a
            screen reader hears. The series first, because that is what a reader scanning a

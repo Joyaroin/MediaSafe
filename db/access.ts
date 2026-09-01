@@ -4486,6 +4486,52 @@ export async function libraryEntryIdForTitle(
 }
 
 /**
+ * **The library entry one episode is held through, or `null`** — issue #289, and the read
+ * that lets `/episodes/{episodeId}` carry one id instead of two.
+ *
+ * ── Why the route stopped carrying the entry ─────────────────────────────────────────
+ *
+ * The episode page used to live at `/library/{entryId}/episode/{episodeId}`, and two ids
+ * in one path can disagree: an entry from one account beside an episode of another
+ * title is a URL anybody can type. Resolving the entry *from* the episode removes the
+ * disagreement rather than checking for it — there is one id, and it cannot contradict
+ * itself.
+ *
+ * ── The check is `ownedBy`, and it is the only thing standing here ───────────────────
+ *
+ * `episode` and `title` are global (ADR-0001), so an episode id names a row every account
+ * can see. What makes the answer *this* reader's is `ownedBy(userId, libraryEntry)`
+ * combined with the join — exactly `libraryEntryIdForTitle` above, one table further
+ * along. Without it this would answer whichever account happened to have added the show,
+ * which is the failure mode worth naming: not a leak of a *row*, but the episode page
+ * rendering somebody else's marks over a title the reader does not hold.
+ *
+ * ── `null` is a state, not a failure ─────────────────────────────────────────────────
+ *
+ * `SPEC.md` §3.2 again. An episode of a title the reader has not added, and an episode id
+ * that names nothing at all, are both *a read that succeeded and found nothing* — and the
+ * route above turns them into `notFound()`, which is what an address with no episode
+ * beneath it is. A database that is down still throws, with no `catch` in the way.
+ *
+ * The join is inner on both sides for that reason: a `leftJoin` would answer an entry row
+ * for an episode that has nothing to do with it, which is the one wrong answer this read
+ * must never give.
+ */
+export async function libraryEntryIdForEpisode(
+  userId: UserId,
+  episodeId: string,
+  executor: Executor = getDb(),
+): Promise<string | null> {
+  const [row] = await executor
+    .select({ id: libraryEntry.id })
+    .from(libraryEntry)
+    .innerJoin(episode, eq(episode.titleId, libraryEntry.titleId))
+    .where(and(ownedBy(userId, libraryEntry), eq(episode.id, episodeId)));
+
+  return row?.id ?? null;
+}
+
+/**
  * A list's own facts, and the one number the delete confirmation needs — issue #146.
  *
  * `titleCount` is read from `list_membership` rather than carried on `list` itself: there

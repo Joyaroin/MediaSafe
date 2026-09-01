@@ -45,17 +45,25 @@ import { groupBySeason } from "./season-grouping";
  * to label a control with it.
  */
 /**
- * Where one episode's page lives — written once, because issue #254 adds a second caller
- * (the season row that opens it as a modal) and a link built by hand in two places is two
- * routes the day one of them is renamed.
+ * Where one episode's page lives — written once, because a link built by hand in two
+ * places is two routes the day one of them is renamed.
  *
- * ── Beneath the library entry, and keyed by the episode's id ─────────────────────────
+ * ── Its own surface, carrying one id — issue #289 ────────────────────────────────────
  *
- * *Beneath the owning library entry* is #253's first acceptance criterion, and it is what
- * makes *an unowned title has no episode page* structural rather than a check somebody
- * has to remember: there is no entry id for a title you have not added, so there is no URL
- * to construct and nothing to guard. The page below authorises the entry and the title in
- * the one read it already makes.
+ * It was `/library/{entryId}/episode/{episodeId}` until then, and #253 argued for the
+ * nesting: there is no entry id for a title you have not added, so *an unowned title has
+ * no episode page* was a property of the URL's shape rather than a check somebody had to
+ * remember.
+ *
+ * The nesting is gone and the property is not. **Two ids in a path can disagree** — an
+ * entry from one account beside an episode of another title is an address anybody can
+ * type — and the answer to that was a check inside the page. One id cannot contradict
+ * itself, so the entry is resolved *from* the episode instead
+ * (`libraryEntryIdForEpisode`), scoped by the same `ownedBy` every other read in
+ * `db/access.ts` is scoped by. An episode of a title you do not hold resolves to nothing
+ * and the route is a 404, which is what it always was.
+ *
+ * ── Keyed by the episode's id ────────────────────────────────────────────────────────
  *
  * The **episode's id**, not its season and episode numbers, for the reason `db/tables.ts`
  * gives for keying the row that way: *`season_no` and `episode_no` are borrowed
@@ -66,8 +74,8 @@ import { groupBySeason } from "./season-grouping";
  * unavoidable, because TMDB's own API accepts nothing else, and it reads them off the row
  * this id resolves to.
  */
-export function episodePath(libraryEntryId: string, episodeId: string): string {
-  return `/library/${libraryEntryId}/episode/${episodeId}`;
+export function episodePath(episodeId: string): string {
+  return `/episodes/${episodeId}`;
 }
 
 export interface EpisodeInRun<T> {

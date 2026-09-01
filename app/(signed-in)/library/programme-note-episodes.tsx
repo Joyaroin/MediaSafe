@@ -597,7 +597,7 @@ function EpisodeLine({
        * row's own controls already use (`season-grouping.ts`).
        */}
       <Link
-        href={`/library/${libraryEntryId}/episode/${episode.id}`}
+        href={`/episodes/${episode.id}`}
         aria-label={fullName}
         className="-my-2 flex min-w-0 flex-1 items-center gap-3 self-stretch py-2"
       >

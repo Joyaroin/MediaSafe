@@ -360,19 +360,20 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
-   * The episode page — issue #253, the fourth segment under the library and the one most
-   * exposed to the inheritance problem this audit is about: without its own boundary a
-   * reader tapping an episode would be shown `[entryId]`'s pending render, which is the
-   * *title's* surface standing in for an episode's. `DESIGN.md` §9 treats that as a
-   * heading naming the wrong screen rather than a cosmetic slip, and *own segment, never
-   * inherited* is the clause of this audit that catches it.
+   * The episode page — issue #253, moved to its own top-level route by issue #289 and
+   * still the segment most exposed to the inheritance problem this audit is about: it has
+   * a `loading.tsx` of its own because without one a reader tapping an episode would be
+   * shown an ancestor's pending render — the *title's* surface standing in for an
+   * episode's while it lived under `[entryId]`, and now the group's. `DESIGN.md` §9 treats
+   * that as a heading naming the wrong screen rather than a cosmetic slip, and *own
+   * segment, never inherited* is the clause of this audit that catches it.
    *
-   * The route is also the one this ticket adds to the manifest, so this is the assertion
-   * that fails if it stops being built at all — the audits above are all `toEqual([])`,
-   * and an empty list is what a check that has stopped looking returns too.
+   * Asserted positively because the audits above are all `toEqual([])`, and an empty list
+   * is what a check that has stopped looking returns too. The boundary **moved with the
+   * route**; it was not dropped and re-added.
    */
-  it("finds the boundary on the episode page #253 adds", () => {
-    expect(hasBoundary("(signed-in)/library/[entryId]/episode/[episodeId]")).toBe(true);
+  it("finds the boundary on the episode page, at the route #289 moved it to", () => {
+    expect(hasBoundary("(signed-in)/episodes/[episodeId]")).toBe(true);
   });
 
   /**
@@ -383,10 +384,31 @@ describe("every dynamic surface has a loading boundary", () => {
    * that. Asserted positively rather than left to `audit.unprotected` being empty, for the
    * reason the boundary floor above exists — so that a route silently dropped from the
    * build fails here instead of passing three emptiness checks.
+   *
+   * **Reorganising the address space is exactly the change that could breach constraint 5
+   * silently**, which is why the matcher is asserted against the new path rather than
+   * trusted to a catch-all it happens to fall under today.
    */
-  it("builds the episode route, beneath the entry that owns it", () => {
-    expect(built.routes).toContain("/library/[entryId]/episode/[episodeId]");
-    expect(matcherRunsOn(built.matcher, "/library/entry-1/episode/episode-9")).toBe(true);
+  it("builds the episode route at its own address, carrying one id", () => {
+    expect(built.routes).toContain("/episodes/[episodeId]");
+    expect(matcherRunsOn(built.matcher, "/episodes/episode-9")).toBe(true);
+  });
+
+  /**
+   * **And the address it left does not resolve** — issue #289's second criterion, read off
+   * the build's own manifest.
+   *
+   * The old path is not redirected: it ceases to exist, and a bookmark to it 404s. That
+   * was the accepted trade when a permanent redirect rule was offered and declined, so
+   * what has to be checked is that the route is *gone* rather than merely unlinked — a
+   * `page.tsx` left behind, or the directory restored by a merge, serves both addresses
+   * and nothing on the glass says which one a reader is on.
+   */
+  it("has no route left beneath the entry the episode used to hang from", () => {
+    expect(built.pages.map((one) => one.route)).not.toContain(
+      "/library/[entryId]/episode/[episodeId]",
+    );
+    expect(built.routes).not.toContain("/library/[entryId]/episode/[episodeId]");
   });
 
   /**
@@ -683,7 +705,9 @@ describe("nothing intercepts, so opening a title is an ordinary navigation", () 
    */
   it.each([
     "/library/[entryId]",
-    "/library/[entryId]/episode/[episodeId]",
+    // #289's address for the episode. The reversal is about how a route opens, not where
+    // it lives, so the property is asserted against wherever the route is now.
+    "/episodes/[episodeId]",
     "/library/[entryId]/remove",
     "/titles/[kind]/[tmdbId]",
   ])("still builds %s as an ordinary page behind the matcher", (route) => {

@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 /**
  * **There is no episode modal** — issue #273, reversing issue #254.
  *
- * #254 gave `/library/[entryId]/episode/[episodeId]` a second render: an intercepted one
+ * #254 gave the episode route — `/library/[entryId]/episode/[episodeId]` then,
+ * `/episodes/[episodeId]` since #289 — a second render: an intercepted one
  * in a parallel slot on the signed-in layout, wrapped in a shared `RouteModal`, so that
  * pressing a rail card or a season row raised a sheet over the screen the reader was on.
  * #273 deletes both interception slots, the shared dialog and everything downstream of
@@ -62,16 +63,13 @@ const SEASON_ROWS = readFileSync(
   "app/(signed-in)/library/programme-note-episodes.tsx",
   "utf8",
 );
-const FULL_PAGE = readFileSync(
-  "app/(signed-in)/library/[entryId]/episode/[episodeId]/page.tsx",
-  "utf8",
-);
+const FULL_PAGE = readFileSync("app/(signed-in)/episodes/[episodeId]/page.tsx", "utf8");
 const DETAIL_VIEW = readFileSync(
-  "app/(signed-in)/library/[entryId]/episode/[episodeId]/episode-detail-view.tsx",
+  "app/(signed-in)/episodes/[episodeId]/episode-detail-view.tsx",
   "utf8",
 );
 const BODY = readFileSync(
-  "app/(signed-in)/library/[entryId]/episode/[episodeId]/episode-detail-body.tsx",
+  "app/(signed-in)/episodes/[episodeId]/episode-detail-body.tsx",
   "utf8",
 );
 
@@ -157,7 +155,8 @@ describe("the dialog a route arrived in, and the slots that held it", () => {
  * is exactly the sort that comes back silently.
  */
 describe("an episode opens as a page, from the origin it keeps", () => {
-  const HREF = /\/library\/\$\{[^}]+\}\/episode\/\$\{[^}]+\}/;
+  /** The episode route's own shape since #289: one segment, one id, and no entry in it. */
+  const HREF = /\/episodes\/\$\{[^}]+\}/;
 
   /**
    * **The rail card no longer reaches the episode route at all — issue #274.**
@@ -202,7 +201,7 @@ describe("an episode opens as a page, from the origin it keeps", () => {
    */
   it("sends a film card to the title page", () => {
     expect(FILM_RAIL).toMatch(/href=\{`\/library\/\$\{film\.libraryEntryId\}`\}/);
-    expect(codeOf(FILM_RAIL)).not.toMatch(/\/episode\//);
+    expect(codeOf(FILM_RAIL)).not.toMatch(HREF);
   });
 
   /**

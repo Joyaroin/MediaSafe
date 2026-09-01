@@ -1,8 +1,24 @@
 import { EpisodeDetailBody } from "./episode-detail-body";
 
 /**
- * **An episode you can read** — issue #253. A full page at its own URL beneath the library
- * entry that owns it, and since issue #273 the **only** render of that URL.
+ * **An episode you can read** — issue #253, at its own address since issue #289.
+ *
+ * ── The route carries one id ────────────────────────────────────────────────────────
+ *
+ * It was `/library/{entryId}/episode/{episodeId}`, nested beneath the entry that owned
+ * it, and #289 lifts it out to `/episodes/{episodeId}`. The old path is **not
+ * redirected**: it ceases to exist, every internal link moved with it, and a bookmark to
+ * it 404s — the accepted trade when a permanent redirect rule was offered and declined.
+ *
+ * What the nesting bought was that *an unowned title has no episode page* was a property
+ * of the URL's shape: no entry id, no URL to build. What it cost was that **two ids in a
+ * path can disagree** — an entry from one account beside an episode of another title is
+ * an address anybody can type, and the page had to hold that apart by hand. One id
+ * cannot contradict itself. The entry is resolved from the episode instead, by
+ * `libraryEntryIdForEpisode`, owned-checked by the same `ownedBy` every other read in
+ * `db/access.ts` uses — so the guarantee is the module's rather than the route tree's.
+ *
+ * Since issue #273 this is the **only** render of that URL.
  *
  * Issue #254 presented this surface as a modal over whatever the reader was looking at,
  * through an intercepting route in the signed-in layout's `@episode` slot, and this file
@@ -22,9 +38,10 @@ import { EpisodeDetailBody } from "./episode-detail-body";
  * ── It is a projection of title detail's read, not a read of its own ─────────────────
  *
  * `EpisodeDetailBody` calls `cachedTitleDetail` — the same wrapper, with the same account
- * and the same entry id, that `[entryId]/page.tsx` and `titleDetailAction` already call.
- * It then finds one episode inside the answer (`episode-run.ts`). There is no
- * `getEpisodeDetail`, and that is the central decision of #253 rather than an economy:
+ * and the same entry id, that `[entryId]/page.tsx` and `titleDetailAction` already call,
+ * against the entry `libraryEntryIdForEpisode` just resolved. It then finds one episode
+ * inside the answer (`episode-run.ts`). There is no `getEpisodeDetail`, and that is the
+ * central decision of #253 rather than an economy:
  *
  * - **One cache entry, so two surfaces cannot disagree.** The show's page and this page
  *   are the same read. An episode cannot be struck on one and unstruck on the other,
@@ -33,11 +50,12 @@ import { EpisodeDetailBody } from "./episode-detail-body";
  *   marks this page itself records. #254 made the point sharper still — the modal and the
  *   page were literally the same component over the same key — and #273 settles it by
  *   leaving one of them.
- * - **Authorisation is `getTitleDetail`'s, unchanged.** It scopes by
- *   `ownedBy(userId, libraryEntry)` and throws when the entry is not this account's. So
- *   *an unowned title has no episode page* needs no check here: a title you have not added
- *   has no library entry, so there is no URL to build; and an entry id belonging to
- *   somebody else answers nothing rather than someone else's episode.
+ * - **Authorisation is `ownedBy`'s, twice over.** `libraryEntryIdForEpisode` scopes the
+ *   resolution by `ownedBy(userId, libraryEntry)` and answers `null` for an episode of a
+ *   title this account does not hold; `getTitleDetail` then scopes the detail read the
+ *   same way. So *an unowned title has no episode page* survives the entry leaving the
+ *   URL — it is now a read that answers nothing rather than a URL that cannot be built,
+ *   and the route turns that into `notFound()`.
  * - **`coveredUpTo` needs the run anyway.** *Watched up to here* is a rule over every
  *   episode before this one, so a read scoped to one episode would have had to be joined
  *   by a second read of all of them.
@@ -55,12 +73,14 @@ import { EpisodeDetailBody } from "./episode-detail-body";
  *
  * ── An episode this show does not have is `notFound`, not a failure ─────────────────
  *
- * `locateEpisode` answers `null` for an id that is not in this show's list — a stale
- * bookmark, an episode a sweep repointed, a hand-edited URL, or a **film**, which has no
- * episodes at all and so can never resolve one. That is a read that succeeded and found
- * nothing, which is the one distinction this codebase is built around: rendering *this did
- * not load* over it would be `AGENTS.md`'s opening rule told backwards. `notFound()` is
- * what a route with no such episode beneath it is.
+ * Two misses reach the same answer. `libraryEntryIdForEpisode` answers `null` for an
+ * episode id naming nothing, or naming an episode of a title this account has not added;
+ * `locateEpisode` answers `null` for an id the resolved entry's own list does not hold,
+ * which since #289 is only reachable across a stale cache entry and is kept because the
+ * two reads can still disagree for an instant. Both are a read that succeeded and found
+ * nothing, which is the one distinction this codebase is built around: rendering *this
+ * did not load* over either would be `AGENTS.md`'s opening rule told backwards.
+ * `notFound()` is what a route with no such episode beneath it is.
  *
  * ── The synopsis is built there and never awaited ───────────────────────────────────
  *
@@ -83,9 +103,9 @@ export const dynamic = "force-dynamic";
 export default async function EpisodePage({
   params,
 }: {
-  params: Promise<{ entryId: string; episodeId: string }>;
+  params: Promise<{ episodeId: string }>;
 }) {
-  const { entryId, episodeId } = await params;
+  const { episodeId } = await params;
 
-  return <EpisodeDetailBody entryId={entryId} episodeId={episodeId} />;
+  return <EpisodeDetailBody episodeId={episodeId} />;
 }
