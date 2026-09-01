@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import type { SelectableTitle } from "./bulk-selection";
 import { useBulkSelection, useIsSelected, useIsSelecting } from "./bulk-selection-context";
 import { useLibrarySelection } from "./library-selection";
@@ -85,10 +84,7 @@ export function SelectableEntry({
     }
     // The one surface in `nav-deeper.ts`'s list that opens a title without a `Link`:
     // desktop selects and the phone navigates, decided at the moment of the click, so
-    // this cell cannot be a link on both. `router.push` takes the same `transitionTypes`
-    // a `Link` does — the depth motion is the reader's, not the element's, and a title
-    // opened from the grid has to look like a title opened from a rail.
-    router.push(`/titles/${title.libraryEntryId}`, { transitionTypes: NAV_DEEPER });
+    router.push(`/titles/${title.libraryEntryId}`);
   }
 
   return (

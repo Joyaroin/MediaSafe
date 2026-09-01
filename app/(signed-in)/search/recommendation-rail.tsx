@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { Poster } from "@/app/poster";
 import type { KindMode } from "@/app/(signed-in)/library/kind-mode";
 import type { UserId } from "@/db/access";
@@ -91,7 +90,6 @@ function Rail({ rail }: { rail: Recommendations }) {
                 interceptions. */}
             <Link
               href={`/catalogue/${result.kind}/${result.tmdbId}`}
-              transitionTypes={NAV_DEEPER}
               className="group block"
             >
               <Poster

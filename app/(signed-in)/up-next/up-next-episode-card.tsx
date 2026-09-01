@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { EpisodeStill } from "@/app/(signed-in)/library/episode-still";
 import {
@@ -374,7 +373,6 @@ function CardBody({
           two are the same episode. */}
       <Link
         href={`/episodes/${episodeId}`}
-        transitionTypes={NAV_DEEPER}
         /* **This press carried `scroll={false}` until issue #273**, because #254
            intercepted it into the layout's `@episode` slot: the landing screen was not
            replaced, it was still underneath, and Next scrolling it to the top would have

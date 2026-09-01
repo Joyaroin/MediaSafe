@@ -67,13 +67,24 @@ import { ViewTransition } from "react";
  * `default: "none"` is unchanged by either addition and still does both of its jobs — see
  * above. A third type, or a fourth, does not make anything unclassified animate.
  */
-const NAV_DIRECTIONS = {
-  "nav-forward": "nav-forward",
-  "nav-back": "nav-back",
-  "nav-deeper": "nav-deeper",
-  "nav-upward": "nav-upward",
-  default: "none",
-} as const;
+/**
+ * One motion for every navigation.
+ *
+ * This map used to carry four named types — a lateral pair for the tab bar, `nav-deeper`
+ * for opening a title or an episode, and `nav-upward` for Settings. All four are gone and
+ * only the default remains, so no navigation carries a class and every one of them is
+ * animated by the root pair in `app/globals.css`.
+ *
+ * The vocabularies were removed rather than retuned. Each was argued for on its own terms
+ * and each was right about the meaning it carried; the complaint that the transitions felt
+ * wrong survived all three of them, which is evidence about differentiation rather than
+ * about any one motion's numbers. `globals.css` holds the full reasoning beside the
+ * animation that replaced them.
+ *
+ * The default stays `"none"` rather than becoming a name, because a name here would be a
+ * class nothing selects — one motion needs no vocabulary at all.
+ */
+const NAV_DIRECTIONS = { default: "none" } as const;
 
 export function NavTransition({ children }: { children: React.ReactNode }) {
   return (

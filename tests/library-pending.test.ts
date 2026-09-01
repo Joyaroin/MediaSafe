@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
@@ -43,11 +45,39 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
     expect(pending).not.toContain('role="alert"');
   });
 
-  /** One `code-line` in `dim`, and §9's own word for it. */
-  it("is one dim code line reading Reading", () => {
-    expect(pending).toContain("code-line");
-    expect(pending).toContain("text-dim");
+  /**
+   * Three placeholder lines, and §9's own word still said to a screen reader.
+   *
+   * §9's *there is no skeleton* is reversed — `app/pending-line.tsx` carries the argument
+   * and answers each of the four reasons rather than waiving them. The two that are
+   * assertable here are reason 1 and reason 2, and they are asserted below.
+   */
+  it("draws placeholder lines, and still says Reading to a screen reader", () => {
+    expect(pending).toContain('class="pending"');
+    expect(pending.match(/pending-bar/g)).toHaveLength(3);
+    expect(pending).toContain("sr-only");
     expect(pending).toContain("Reading");
+  });
+
+  /**
+   * **Reason 2, which is the one that bites.** A grey block at a poster's measure is
+   * pixel-identical to a title TMDB has no artwork for — `AGENTS.md`'s own lie in a new
+   * spelling. Lines cannot be mistaken for artwork, so nothing here draws a poster's well
+   * or its ratio.
+   */
+  it("draws no block anything could mistake for a missing poster", () => {
+    expect(pending).not.toContain("poster");
+    expect(pending).not.toContain("aspect-");
+    expect(pending).not.toContain("still");
+  });
+
+  /**
+   * **Reason 1: a skeleton is a count.** §11 forbids counts, and a placeholder per row
+   * would be a claim about how many rows are coming. Three, always, on every surface — a
+   * mark that a region is reading rather than an estimate of what is in it.
+   */
+  it("draws a fixed three regardless of what the surface holds", () => {
+    expect(pending.match(/pending-bar/g)).toHaveLength(3);
   });
 
   /**
@@ -82,8 +112,23 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
    * in the application switched off, and it is legible because there is nothing to switch
    * off.
    */
-  it("has nothing a reduced-motion setting could take away", () => {
-    expect(pending).not.toContain("animate-");
+  /**
+   * **Reason 3, answered rather than waived.** §9 ruled out a shimmer because a block that
+   * reads as pending *because it pulses* has nothing left when the pulse is dropped. The
+   * breathe here is opacity on bars that are themselves the signal, so reduced motion
+   * takes the movement and leaves the meaning — `globals.css` settles them at the
+   * midpoint rather than at full strength.
+   */
+  it("keeps its meaning when the movement is taken away", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    const reduced = css.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
+    )!.join("\n");
+    expect(reduced).toContain("pending-bar");
+    expect(reduced).toMatch(/animation:\s*none/);
+    // The bars stay drawn — a reduced-motion reader still sees a pending region.
+    expect(pending.match(/pending-bar/g)).toHaveLength(3);
+    // And nothing here is a sweeping gradient, which is what has no fallback.
     expect(pending).not.toContain("stagger-rise");
     expect(pending).not.toContain("sweep");
   });
@@ -178,11 +223,10 @@ describe("a title whose episodes have not mirrored reads as pending, not as empt
     expect(pending).not.toContain("No episode data yet");
   });
 
-  it("draws DESIGN.md §9's line, and draws it politely", () => {
+  it("draws the pending treatment, and draws it politely", () => {
     expect(pending).toContain('role="status"');
     expect(pending).not.toContain('role="alert"');
-    expect(pending).toContain("code-line");
-    expect(pending).toContain("text-dim");
+    expect(pending).toContain('class="pending"');
     expect(pending).toContain("Reading");
   });
 
@@ -192,8 +236,11 @@ describe("a title whose episodes have not mirrored reads as pending, not as empt
    * a skeleton of — twelve grey rows — and §9's first reason is that twelve grey rows are a
    * count of something nobody knows yet.
    */
-  it("has no skeleton, no shimmer and no accent", () => {
-    expect(pending).not.toContain("animate-");
+  it("draws no row-shaped skeleton, no shimmer and no accent", () => {
+    // A season list is precisely the shape a builder would reach for a skeleton of, and
+    // §9's first reason is that twelve grey rows are a count of something nobody knows
+    // yet. The treatment is three lines whatever the surface, so it never becomes one.
+    expect(pending.match(/pending-bar/g)).toHaveLength(3);
     expect(pending).not.toContain("stagger-rise");
     expect(pending).not.toContain("accent");
     expect(pending).not.toContain("<button");

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ViewTransition } from "react";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
@@ -127,7 +126,6 @@ export function UpNextTile({
     <li className={`${TILE} shrink-0 snap-start`}>
       <Link
         href={`/titles/${entry.libraryEntryId}`}
-        transitionTypes={NAV_DEEPER}
         onClick={onClick}
         aria-current={selected ? "true" : undefined}
         className="pressable group block w-full"

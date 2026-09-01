@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import { useRef, useState } from "react";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { referenceFor } from "@/errors/reference";
 import { QUIET_RECORDING_CONTROL_LABELLED_COMPACT } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
@@ -186,7 +185,6 @@ export function CatalogueResultRow({
         <h2 className="text-card font-semibold leading-tight tracking-[-0.012em] text-ink">
           <Link
             href={`/catalogue/${result.kind}/${result.tmdbId}`}
-            transitionTypes={NAV_DEEPER}
             className="transition-opacity duration-[var(--dur-fast)] hover:opacity-80"
           >
             {result.name}

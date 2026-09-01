@@ -442,6 +442,7 @@
      the arrival curve #88 cut for the watch strike and the name has
      been wrong since; it times view transitions and the sweep. */
   --dur-fast: 140ms; /* immediate feedback, and every exit          */
+  --dur-quick: 190ms; /* a screen arriving — the one nav motion     */
   --dur-base: 220ms; /* routine state change                        */
   --dur-slow: 380ms; /* layout, overlay, cross-surface continuity   */
   --dur-press: 100ms; /* the compression, shorter than a tap        */
@@ -1351,90 +1352,98 @@
    rather than picking a second curve is deliberate: one arrival curve across the app is
    what makes two unrelated surfaces feel like the same hand made them. */
 ::view-transition-group(*) {
-  animation-duration: var(--dur-slow);
+  /* Was `--dur-slow`. With the page settling in `--dur-quick`, a 380ms morph left the
+     poster still travelling long after the screen it landed on had finished — the
+     "unfinished transition" this file warned about, reintroduced from the other side.
+     `--dur-quick` on both keeps the subject and its ground on one clock. */
+  animation-duration: var(--dur-quick);
   animation-timing-function: var(--ease-press);
 }
 
-::view-transition-old(root),
+::view-transition-old(root) {
+  animation: var(--dur-fast) var(--ease-out-quart) both nav-fade reverse;
+}
+
 ::view-transition-new(root) {
-  animation-duration: var(--dur-base);
-  animation-timing-function: var(--ease-out-quart);
-}
-
-/* ── Moving between the phone's screens ─────────────────────────────────────────────
-   Tapping a tab used to be an instant swap. The machinery for something better was
-   already here — `::view-transition-group(*)` above has been authored since #141 — but
-   nothing triggered a transition on navigation, so the places the phone changes screens
-   wholesale were the places nothing moved.
-
-   **A directional slide, not a crossfade.** Next's own guide draws the distinction: a
-   slide says *going somewhere*, a crossfade says *same place, different content*. Four
-   tabs are four destinations, and the bar itself is a horizontal row — so the direction
-   carries real information, which is *which way along that row you just moved*. Up next →
-   Lists and Lists → Up next are different journeys and now look like it. `tab-bar.tsx`
-   derives the direction from the two tabs' positions rather than from history, so it is
-   the bar's own geometry that decides.
-
-   **Settings used to borrow this pair and no longer does — issue #294.** It is reached
-   from the masthead rather than from the bar, so it is a push *out of* the four rather
-   than a move along them, and dressing that push in the lateral motion made the one
-   navigation that leaves the bar look exactly like the four that stay on it. It has its
-   own type now (*Out of the tabs*, below). What is still lateral here is the way a tab
-   tapped from any screen off the bar comes back out: `nav-back`, which is what Import,
-   `/welcome` and every nested settings page get, because they are ordinary pages behind
-   ordinary links rather than a step out of anything.
-
-   **Phone-only, without a media query.** The types are attached by `tab-bar.tsx`'s `Link`s
-   and by `masthead.tsx`'s Settings entrance, both of which are `lg:hidden`.
-   `sidebar-nav.tsx` — the desktop's own navigation, carrying the same four destinations
-   and its own Settings link — attaches none, so a desktop navigation carries no transition
-   type, falls to the pages' `default: "none"`, and animates exactly as it did before. #136
-   deleted this build's only `matchMedia` branch and this does not bring one back.
-
-   `60px` is the guide's own offset, taken rather than re-derived: far enough to read as
-   direction, short enough that nothing has to be tracked across the screen. The timings
-   are this file's, not the guide's — `--dur-fast` out against `--dur-base` in, which is
-   the asymmetry the motion section above already states (*"arriving is where the character
-   lives; leaving is where impatience does"*).
-
-   #221 removed the delay this used to put in front of the entrance's fade, and shortened
-   the slide to match. Before this, the incoming page sat invisible for the whole
-   `--dur-fast` before its own fade even started, so the outgoing page was the only thing
-   on screen for that stretch — still fading, still mid-slide — which is what the issue
-   called *"the old heading is at full opacity and travelling."* The slide also ran the
-   full `--dur-slow` on both sides regardless of either fade, so the transition did not
-   visually settle until 380ms had passed even though the fades themselves were long done
-   by then — a transition that reads as unfinished rather than finished. The entrance's
-   fade now starts immediately, and both `nav-slide` animations moved from `--dur-slow` to
-   `--dur-base`, so the whole thing settles in step with the fade instead of trailing
-   behind it. The asymmetry above is unchanged — `--dur-fast` out against `--dur-base`
-   in — it no longer also means *and the slide takes longer than either*. */
-::view-transition-old(.nav-forward) {
-  --nav-slide: -60px;
   animation:
-    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
-    var(--dur-base) var(--ease-in-out-soft) both nav-slide reverse;
-}
-::view-transition-new(.nav-forward) {
-  --nav-slide: 60px;
-  animation:
-    var(--dur-base) var(--ease-out-quart) both nav-fade,
-    var(--dur-base) var(--ease-in-out-soft) both nav-slide;
+    var(--dur-quick) var(--ease-out-quart) both nav-fade,
+    var(--dur-quick) var(--ease-out-quart) both nav-rise;
 }
 
-::view-transition-old(.nav-back) {
-  --nav-slide: 60px;
-  animation:
-    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
-    var(--dur-base) var(--ease-in-out-soft) both nav-slide reverse;
-}
-::view-transition-new(.nav-back) {
-  --nav-slide: -60px;
-  animation:
-    var(--dur-base) var(--ease-out-quart) both nav-fade,
-    var(--dur-base) var(--ease-in-out-soft) both nav-slide;
+/* ── Reading, drawn ─────────────────────────────────────────────────────────────────
+   `app/pending-line.tsx` carries the argument, including which of §9's four reasons each
+   decision here answers. In short: lines and never blocks, so nothing can be mistaken for
+   a title with no artwork; the poster's own radius rather than a pill; opacity rather than
+   a sweeping gradient, so reduced motion has something to fall back to. */
+@utility pending {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
 }
 
+@utility pending-bar {
+  display: block;
+  height: 9px;
+  border-radius: var(--poster-radius, 7px);
+  background: var(--color-raised);
+  animation: pending-breathe 1.7s var(--ease-in-out-soft) infinite;
+}
+
+/* Staggered so the three read as one region breathing rather than three bars blinking in
+   lockstep, which is the difference between a surface that is working and a warning. */
+.pending-bar:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.pending-bar:nth-child(4) {
+  animation-delay: 0.24s;
+}
+
+@keyframes pending-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* The bars are the signal, so the event survives the animation being dropped — §6's rule,
+   and reason 3 in `pending-line.tsx`. They settle at the midpoint of the breathe rather
+   than at full strength, so a pending region still reads quieter than rendered content. */
+@media (prefers-reduced-motion: reduce) {
+  .pending-bar {
+    animation: none;
+    opacity: 0.72;
+  }
+}
+
+/* ── One motion, everywhere — the transition vocabulary collapses ───────────────────
+
+   This replaces three: `nav-forward`/`nav-back` (a 60px directional slide for the tab
+   bar), `nav-deeper` (a scale-up for opening a title or an episode), and `nav-upward`
+   (Settings arriving from below). Each was argued for on its own terms and each was
+   right about the *meaning* it carried — a move along the bar, a move into something, a
+   step out of the four.
+
+   **It is removed because the differentiation was the problem.** Three separate rounds of
+   "the transitions are off" produced three fixes, and every one of them added a
+   distinction; the complaint survived all three. At that point the evidence is not that
+   the vocabularies were tuned wrong, it is that a screen change carrying an argument
+   about *what kind* of change it is has to be read, and reading it is what registers as
+   wrong. Adham's instruction was to change the behaviour completely across everything,
+   and this is that: one motion, the same motion, wherever the screen changes.
+
+   **What it is.** A short fade with a small rise on the arriving screen, and nothing on
+   the leaving one but a shorter fade. `--dur-fast` out against `--dur-quick` in, the
+   asymmetry this file has always held — arriving is where the character lives, leaving is
+   where impatience does — with both halves now well under the old `--dur-base` slide.
+   `10px` of rise, not `60px` of travel: enough to read as arrival, not far enough to be a
+   journey the eye has to follow.
+
+   The types are gone rather than remapped, so `tab-bar.tsx`, `masthead.tsx` and the
+   drill-in links attach nothing and every navigation falls to the root pair below. There
+   is no direction to derive, so there is nothing that can derive it wrongly. */
 @keyframes nav-fade {
   from {
     opacity: 0;
@@ -1444,161 +1453,18 @@
   }
 }
 
-/* `translate` and `scale` are separate properties here rather than one `transform`, which
-   is what lets the two nav animations compose without either restating the other's value.
-
-   **The scale is a depth cue and is deliberately tiny.** `0.985` is under two percent —
-   far too small to read as a zoom, and just enough that the arriving screen resolves
-   *towards* the reader rather than sliding in flat. It costs nothing: a view-transition
-   snapshot is already a texture on the compositor, so scaling it is the same work as
-   moving it, and it never touches layout. Paired with the slide it is what makes a tab
-   change read as a change of place instead of a change of contents. */
-@keyframes nav-slide {
-  from {
-    translate: var(--nav-slide);
-    scale: 0.985;
-  }
-  to {
-    translate: 0;
-    scale: 1;
-  }
-}
-
-/* ── Going deeper, which is a different move from going along ───────────────────────
-   Issue #293. Tapping a tab moves the reader *along* a row of four; opening a title or an
-   episode moves them *into* something. Until this they were the same nothing: a card's
-   link passed no transition type at all, so `default: "none"` applied and the poster
-   morphed over a page that had already cut underneath it. The morph was never the problem
-   — the missing half was.
-
-   **A type in the same vocabulary, not a second mechanism.** `nav-transition.tsx`'s one
-   mapping gained a third entry and every wrapped page reads it; the links listed in
-   `nav-deeper.ts` attach it. Nothing here is a new wrapper, a new component or a media
-   query.
-
-   **A scale-up and a fade for the arriving page, and its reverse on the way out.** The
-   `reverse` keyword rather than a second pair of keyframes running the other way: the
-   round trip has to mirror, and two curves that merely look alike today drift apart at
-   the next tuning. One animation read in both directions cannot.
-
-   **`0.94`, against the lateral slide's `0.985`.** The slide's scale is a hint riding on
-   a translate that is already carrying the direction; here the scale *is* the whole
-   message, so it has to be legible on its own. It is still small enough that nothing has
-   to be tracked across the screen, and it never touches layout.
-
-   **It costs no scrolling smoothness.** `opacity` and `scale` on a view-transition
-   snapshot — already a texture on the compositor — are the same work the slide does. No
-   filter, no shadow, no geometry: nothing here can contend for the main thread with a
-   list the reader is flicking.
-
-   **The poster morph is untouched and composes over this.** The poster carries its own
-   `view-transition-name`, so it leaves this snapshot and travels in its own group at
-   `--dur-slow` on `--ease-press` (above). The poster is the subject; this is the ground it
-   arrives on. The timings are deliberately the ones the lateral pair already uses —
-   `--dur-fast` out against `--dur-base` in — so the ground settles before the subject
-   does. */
-::view-transition-old(.nav-deeper) {
-  --nav-depth: 0.94;
-  animation:
-    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
-    var(--dur-base) var(--ease-in-out-soft) both nav-depth reverse;
-}
-::view-transition-new(.nav-deeper) {
-  --nav-depth: 0.94;
-  animation:
-    var(--dur-base) var(--ease-out-quart) both nav-fade,
-    var(--dur-base) var(--ease-in-out-soft) both nav-depth;
-}
-
-/* `scale` alone, with no `translate` beside it: depth is the whole of what this says, and
-   a page that also drifted sideways would be claiming two moves at once. Separate
-   properties rather than one `transform` for the same reason `nav-slide` uses them — it is
-   what lets a future composition add to this without restating it. */
-@keyframes nav-depth {
-  from {
-    scale: var(--nav-depth);
-  }
-  to {
-    scale: 1;
-  }
-}
-
-/* ── Out of the tabs, which is neither along them nor into something ─────────────
-   Issue #294, and the third and last motion this vocabulary needs. Tapping a tab moves the
-   reader *along* a row of four; opening a title moves them *into* something; opening
-   Settings from the masthead pushes them *out of* the four altogether. Until this, the
-   push wore the lateral pair above — so the one navigation that leaves the bar looked
-   exactly like the four that stay on it, and the motion said the wrong thing about the
-   move the reader had just made.
-
-   **Up from below on the way in, downward on the way out.** `--nav-rise` is a positive `y`
-   offset, so the arriving page starts below the fold of the viewport and settles; the
-   snapshot that is leaving plays the *same* animation with `reverse` and travels down.
-   `reverse` rather than a second pair of keyframes running the other way, for the reason
-   *Going deeper* gives: a round trip has to mirror, and two curves that merely look alike
-   today drift apart at the next tuning. One animation read in both directions cannot.
-
-   **`60px`, the lateral slide's own offset.** Depth needed its own number because a scale
-   is a different kind of cue; a translate is a translate, and a vertical push that
-   travelled further than a horizontal one would read as a bigger move rather than a
-   different one. It is far enough to say *direction*, short enough that nothing has to be
-   tracked across the screen.
-
-   **It costs no scrolling smoothness.** `translate` and `opacity` on a view-transition
-   snapshot — already a texture on the compositor — are the same work the lateral slide
-   does. No filter, no shadow, no geometry.
-
-   > **This type has exactly one caller, and that is a known cost recorded here rather
-   > than discovered later.** `masthead.tsx`'s Settings link is the only push out of the
-   > bar this application has: a whole class, this block and one line of
-   > `nav-transition.tsx`'s mapping, for one `Link`. It was paid deliberately, because the
-   > alternative was Settings keeping a lateral motion that means something else. A second
-   > masthead push arriving later costs one `transitionTypes` array and nothing more —
-   > read that as this decision vindicated rather than as a coincidence. Import,
-   > delete-account and every nested settings page are deliberately *not* callers: they are
-   > already outside the bar, so a push out of it would claim a move nobody made, and they
-   > land on `default: "none"` like every other ordinary link.
-
-   The timings are the ones both other families use — `--dur-fast` out against `--dur-base`
-   in — and reduced motion is handled once for all three motions by the `*` rule at the
-   foot of this file, so this type inherited it the moment it existed. */
-::view-transition-old(.nav-upward) {
-  --nav-rise: 60px;
-  animation:
-    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
-    var(--dur-base) var(--ease-in-out-soft) both nav-rise reverse;
-}
-::view-transition-new(.nav-upward) {
-  --nav-rise: 60px;
-  animation:
-    var(--dur-base) var(--ease-out-quart) both nav-fade,
-    var(--dur-base) var(--ease-in-out-soft) both nav-rise;
-}
-
-/* `translate` on the `y` axis alone, with no `scale` beside it: `nav-slide` pairs its
-   translate with a hint of scale because a sideways move needs help reading as a change of
-   place, but a page arriving from below is already saying where it came from. A scale here
-   would be the depth cue, and this is not a move into anything. Separate properties rather
-   than one `transform`, as everywhere else in this section. */
+/* `translate` and not `transform`, which is the property the deleted vocabularies used and
+   the reason they used it: it is compositor-driven and it composes with a `transform` the
+   arriving page may already carry, rather than replacing it. */
 @keyframes nav-rise {
   from {
-    translate: 0 var(--nav-rise);
+    translate: 0 10px;
   }
   to {
     translate: 0 0;
   }
 }
 
-/* ── The chrome does not travel with the content ─────────────────────────────────────
-   The masthead and the tab bar are the reader's fixed reference: if they slide too, the
-   whole viewport appears to move and the direction stops meaning anything. Naming them
-   takes them out of the `root` snapshot and gives each its own group, and these rules
-   then hold that group still.
-
-   `display: none` on the old snapshot is not decoration — without it the outgoing and
-   incoming copies of the bar are both painted for the length of the transition, which
-   reads as a flicker on the one element that is supposed to be the still point. The
-   `z-index` keeps both above the sliding content, which is otherwise painted over them. */
 ::view-transition-group(phone-masthead),
 ::view-transition-group(phone-tab-bar) {
   animation: none;

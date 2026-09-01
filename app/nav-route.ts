@@ -12,7 +12,7 @@
  * this matched it to the Library tab and a reader on a title counted as being on the bar.
  * #290 moved it to `/titles/{entryId}` — a title the reader holds is not a Library page —
  * and nothing is nested under a tab's href there, so a reader on a detail screen now counts
- * as being off the bar. `tab-bar.tsx`'s `navTransitionTypes` is where that is felt.
+ * as being off the bar. `tab-bar.tsx`'s active-tab mark is where that is felt.
  */
 export function isCurrentRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);

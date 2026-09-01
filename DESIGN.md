@@ -1228,6 +1228,26 @@ can be caught.
 
 ---
 
+### The three motions became one — and this reverses two of this file's own sections
+
+`nav-forward`/`nav-back`, `nav-deeper` and `nav-upward` are gone. Every navigation now
+animates identically: a short fade with a `10px` rise on the arriving screen, a shorter fade
+on the leaving one, and the poster morph on the same clock rather than half a second longer.
+
+**Each vocabulary was argued for here and each argument was sound.** A move along the bar,
+a move into something, a step out of the four — those are three different events and it is
+true that they are. What the argument missed is that a reader does not experience a
+transition as a claim to be read; three rounds of *the transitions feel off* produced three
+fixes, and every one of them added a distinction rather than removing one. The complaint
+outlived all three. At that point the evidence is about differentiation itself.
+
+Recorded as a reversal in the style this file already uses for the poster morph and for the
+next-episodes card, so the next reader can see it was decided rather than drifted into — and
+so that a fourth attempt does not begin by reinventing the first. `app/globals.css` holds the
+motion and the full reasoning beside it.
+
+---
+
 ## 8. The poster, and the morph
 
 ### The poster
@@ -1500,7 +1520,23 @@ Pending shares failure's *placement* — inline and left-aligned, because centri
 what would make it read as the empty library — and shares neither treatment's *weight*. It is
 the quietest thing on the screen, and it is the only one of the three that is not an answer.
 
-### There is no skeleton, and there is no shimmer
+### There was no skeleton, and now there is — the four reasons are answered, not waived
+
+**Reversed at Adham's instruction**, after eleven route boundaries had lived on a single
+dim line for the life of the build. *One `code-line` in `dim`* is what the table above
+specifies and it is what every one of them drew; the complaint is that it is too little to
+look like anything, and that is a fair reading of a surface that renders one word while a
+page loads.
+
+What follows is kept in full, because **none of the four reasons turned out to be wrong** —
+they are answered one at a time in `app/pending-line.tsx`, and the treatment is shaped by
+them rather than in spite of them. Lines and never blocks, because reason 2 is the one that
+bites; a fixed three regardless of surface, because reason 1 is about claiming a count; the
+poster's own radius, because reason 4 closes that list at two; opacity rather than a
+gradient, because reason 3 is about what survives reduced motion. A reader who wants to know
+why the pending state looks the way it does should read the four below and then that file.
+
+### The four reasons, which the treatment answers rather than overrules
 
 Four independent reasons, any one of them sufficient. They are written out because a skeleton
 is what a builder reaches for by reflex, and *"the design system forgot to mention it"* is

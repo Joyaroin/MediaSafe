@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { Poster } from "@/app/poster";
 import type { UpcomingFilm } from "@/db/access";
 import type { AwaitedFilm } from "./upcoming-grouping";
@@ -112,7 +111,6 @@ function FilmCard({
     <li className={FILM_CARD}>
       <Link
         href={`/titles/${film.libraryEntryId}`}
-        transitionTypes={NAV_DEEPER}
         className="pressable group block"
       >
         <Poster

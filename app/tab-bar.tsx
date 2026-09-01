@@ -97,44 +97,18 @@ const TABS = [
 ] as const;
 
 /**
- * Which way a tap moves the reader, as a transition type the CSS can act on
- * (`globals.css`, *Moving between the phone's screens*).
+ * The bar used to derive a direction here — forward or back by position in `TABS` — and
+ * attach it as a transition type. It does not any more: the three transition vocabularies
+ * collapsed into one motion, so every navigation animates identically and there is no
+ * direction for this file to decide.
  *
- * Derived from the two tabs' **positions in `TABS`**, not from history: the bar is a
- * horizontal row of four and the direction that means anything here is the one the reader
- * can see in front of them. A history-based direction would call *You → Up next* "forward"
- * whenever it happened to be a new entry, which is the opposite of what the row shows.
- *
- * Three cases, and the third is the one that keeps Settings symmetrical:
- *
- * - **Same tab** — no type, so no animation. A screen sliding out and back in to arrive
- *   where it already was is the clearest case of motion that means nothing.
- * - **Another tab** — forward or back by position in the row.
- * - **Not on a tab at all** (`from === -1`) — the reader is on a screen pushed *outside*
- *   the four, which today means Settings, `/import`, `/welcome`, and — since #227 retired
- *   its tab — `/lists` and a list's own screen. Tapping a tab from there is coming back
- *   out to the tab level, so it is `nav-back` — the mirror of the `nav-forward`
- *   `masthead.tsx` attaches on the way in. That is the right treatment for the Lists
- *   screens too: the rail that leads to them is *on* the Library tab, so a reader
- *   returning to the row is coming back out of something they went into.
- *
- *   This case used to return `[]`, which made Settings the one screen you slid *into* and
- *   then jumped out of with nothing. **A title detail joined this case in #290**, and it
- *   is worth saying so rather than leaving it to be rediscovered: it used to be excluded,
- *   because `isCurrentRoute` matched `/library/{id}` to the Library tab and a reader three
- *   screens deep was still on one. Detail lives at `/titles/{entryId}` now, which is under
- *   no tab, so tapping a tab from a title reads as coming back out of something the reader
- *   went into — the same treatment the Lists screens get, and for the same reason.
+ * The reasoning is in `globals.css` beside the animation and in `DESIGN.md` §7, recorded
+ * as the reversal it is. What was right about the old rule and is worth keeping in mind if
+ * anyone rebuilds it: direction came from the bar's own geometry rather than from history,
+ * because the row in front of the reader is the only thing that makes "forward" mean
+ * anything — a history-based direction would have called *You → Up next* forward whenever
+ * it happened to be a new entry.
  */
-function navTransitionTypes(pathname: string, href: string): string[] {
-  const from = TABS.findIndex((tab) => isCurrentRoute(pathname, tab.href));
-  const to = TABS.findIndex((tab) => tab.href === href);
-
-  if (from === to) return [];
-  if (from === -1) return ["nav-back"];
-  return to > from ? ["nav-forward"] : ["nav-back"];
-}
-
 /**
  * ── The bar wears the press — issue #295 ─────────────────────────────────────────────
  *
@@ -207,7 +181,6 @@ export function TabBar() {
           <Link
             key={href}
             href={href}
-            transitionTypes={navTransitionTypes(pathname, href)}
             aria-current={current ? "page" : undefined}
             className={`${TAB} ${current ? "text-ink" : "text-dim hover:text-ink"}`}
           >

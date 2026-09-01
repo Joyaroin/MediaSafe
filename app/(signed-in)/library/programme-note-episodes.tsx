@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { PendingLine } from "@/app/pending-line";
 import type { EpisodeDetail } from "@/db/access";
 import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
@@ -599,7 +598,6 @@ function EpisodeLine({
        */}
       <Link
         href={`/episodes/${episode.id}`}
-        transitionTypes={NAV_DEEPER}
         aria-label={fullName}
         className="-my-2 flex min-w-0 flex-1 items-center gap-3 self-stretch py-2"
       >

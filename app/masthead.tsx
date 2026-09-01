@@ -100,29 +100,22 @@ export async function Masthead() {
             the handoff's *every tap target ≥44px* without a header 11px wider than the
             screen title it sits over.
 
-            ── The upward push — issue #294 ────────────────────────────────────────────
+── Settings arrives like everything else ──────────────────────────────────
 
-            `nav-upward`, and this link is its only caller in the whole application.
+            This link used to attach `nav-upward`, and was its only caller in the whole
+            application. Settings is a step *out of* the four tabs rather than a move along
+            them, and #294 gave that its own motion on exactly that argument.
 
-            Settings is a step *out of* the four tabs rather than a move along them or a
-            move into something, and until #294 it borrowed the lateral type the tab bar
-            computes — so the one navigation that leaves the bar looked exactly like the
-            four that stay on it. Three kinds of move, three motions: the page pushes up
-            from below on the way in and the stylesheet plays that same motion reversed —
-            downward — for the snapshot that is leaving, so the round trip mirrors
-            (`globals.css`, *Out of the tabs*).
+            The three vocabularies have since collapsed into one — `globals.css` beside the
+            animation, and `DESIGN.md` §7 records the reversal. Every navigation animates
+            identically now, so this is an ordinary link and the distinction lives only in
+            the history of the file. The argument was not wrong about Settings being a
+            different kind of move; it was wrong that a reader reads the difference.
 
-            Import, delete-account and every nested settings page are deliberately not
-            here. They are already outside the bar, so a push out of it would be a motion
-            claiming a move nobody made; they attach no type and land on the mapping's
-            `default: "none"` like every other ordinary link.
-
-            The browser's own Back gesture still carries no type and so plays nothing,
-            which is a documented limit of the API rather than a decision here. */}
+            */}
         <Link
           href="/settings"
           aria-label="Settings"
-          transitionTypes={["nav-upward"]}
           className="-mr-[11px] flex h-11 w-11 items-center justify-center text-dim transition-colors hover:text-ink"
         >
           <SettingsIcon className="h-[17px] w-[17px]" />
