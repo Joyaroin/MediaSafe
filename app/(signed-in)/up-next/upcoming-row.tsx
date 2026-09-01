@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { airDateInWords } from "@/app/(signed-in)/library/episode-facts";
 import { Poster } from "@/app/poster";
 import type { UpcomingEpisode } from "@/db/access";
@@ -51,6 +52,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
     <li>
       <Link
         href={`/episodes/${episode.episodeId}`}
+        transitionTypes={NAV_DEEPER}
         className="pressable flex items-center gap-3 rounded-2xl bg-raised p-2.5"
         /* The poster is `aria-hidden` and the code is three tokens, so this is what a
            screen reader hears. The series first, because that is what a reader scanning a

@@ -31,9 +31,11 @@ const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
 const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
-/** The `::view-transition-{old,new}(.nav-{forward,back})` rule body, isolated so the
- * tests below assert on its declarations rather than re-deriving the same extraction. */
-const blockFor = (side: "old" | "new", cls: "nav-forward" | "nav-back") =>
+/** The `::view-transition-{old,new}(.nav-{forward,back,deeper})` rule body, isolated so
+ * the tests below assert on its declarations rather than re-deriving the same extraction.
+ * `nav-deeper` joined the union in #293 — the third type is read the same way as the two
+ * that were here first, because it is the same kind of thing. */
+const blockFor = (side: "old" | "new", cls: "nav-forward" | "nav-back" | "nav-deeper") =>
   GLOBALS.match(new RegExp(`::view-transition-${side}\\(\\.${cls}\\)\\s*\\{[^}]*\\}`))![0];
 
 /**
@@ -119,6 +121,18 @@ describe("where the wrapper lives", () => {
     expect(WRAPPER).toMatch(/default="none"/);
     expect(WRAPPER).toContain("enter={NAV_DIRECTIONS}");
     expect(WRAPPER).toContain("exit={NAV_DIRECTIONS}");
+  });
+
+  it("maps the third type — depth — in the same vocabulary as the other two", () => {
+    // Issue #293. Depth is a transition *type*, not a second mechanism: it joins the two
+    // lateral directions in the one mapping both halves of every wrapped page read, so a
+    // page that already slides sideways is the same page that already scales deeper.
+    // Adding it as a parallel `ViewTransition` would be two wrappers fighting for the
+    // same snapshot.
+    expect(WRAPPER).toContain('"nav-deeper": "nav-deeper"');
+    // And the default is untouched by the addition: anything unclassified — a desktop
+    // navigation, a Suspense reveal, the poster morph — still lands on `none`.
+    expect(WRAPPER).toMatch(/default:\s*"none"/);
   });
 });
 
@@ -209,6 +223,9 @@ describe("both directions are drawn, and only on the phone", () => {
   });
 
   it("never reaches the desktop, because only phone chrome tags a navigation", () => {
+    // The *slide*, that is. #293's depth type is on the links rather than on the chrome
+    // and does reach the desktop on purpose — see `nav-transition.tsx`. What must stay
+    // true is that no desktop *navigation bar* claims a direction.
     // `sidebar-nav.tsx` carries five primary destinations *and* its own Settings link —
     // an overlapping set rather than the same one since #227, which retired the phone's
     // Lists tab and gave the desktop a sixth destination without taking Lists away. #249
@@ -224,6 +241,165 @@ describe("both directions are drawn, and only on the phone", () => {
     expect(TAB_BAR).toContain("PHONE_BAR");
     expect(PHONE_BAR).toContain("lg:hidden");
     expect(MASTHEAD).toContain("lg:hidden");
+  });
+});
+
+/**
+ * ── Going deeper — issue #293 ────────────────────────────────────────────────────────
+ *
+ * Opening a title or an episode is the third kind of move this application makes, and
+ * until #293 it was the one with no motion of its own: a card's link passed no transition
+ * type, the mapping's `default: "none"` applied, and the poster morphed over a page that
+ * had already cut. The missing half is what read as wrong.
+ *
+ * Each of these fails silently in the same way the two above do — the class stops
+ * matching, or the reverse stops being a reverse, and a drill-in is just an abrupt swap
+ * again with nothing thrown.
+ */
+/**
+ * Every place a reader can open a title or an episode from, and the file that owns the
+ * navigation. The point of the list is that it is a **list**: depth reads the same
+ * wherever the reader was, and the failure this guards is one surface being added or
+ * rewritten without it — a single rail whose cards cut while every other rail's scale in,
+ * which reads as a bug in the animation rather than an omission at one call site.
+ *
+ * `back-to-library-bar.tsx` and `back-to-title-bar.tsx` are deliberately not here: they
+ * are the way *out* of a detail page, and a way out that played the going-in motion would
+ * be the mirror pointing the wrong way.
+ */
+const DEPTH_SURFACES = [
+  // Up next — the rails, the pager's Upcoming page, and the card that names an episode.
+  "app/(signed-in)/up-next/up-next-tile.tsx",
+  "app/(signed-in)/up-next/up-next-pending-card.tsx",
+  "app/(signed-in)/up-next/up-next-episode-card.tsx",
+  "app/(signed-in)/up-next/up-next-film-rail.tsx",
+  "app/(signed-in)/up-next/upcoming-row.tsx",
+  "app/(signed-in)/up-next/upcoming-films.tsx",
+  // Library — the grid's cell, and the desktop programme note's episode rows.
+  "app/(signed-in)/library/selectable-entry.tsx",
+  "app/(signed-in)/library/programme-note-episodes.tsx",
+  // Search — both of its title destinations are catalogue pages, because nothing on that
+  // screen is yours yet. A title you do not hold is still a title, and opening one is
+  // still a move into something.
+  "app/(signed-in)/search/catalogue-result.tsx",
+  "app/(signed-in)/search/recommendation-rail.tsx",
+  // A list's own screen, whose rows open either side.
+  "app/(signed-in)/lists/[listId]/list-title-row.tsx",
+  // The you surface.
+  "app/(signed-in)/you/you-title-tile.tsx",
+];
+
+/**
+ * The pages a depth navigation *lands* on. A type attached to a link with nothing wrapped
+ * at the other end animates nothing at all: the arriving content is part of the `root`
+ * snapshot, `root` carries no class, and the reader gets the abrupt cut #293 exists to
+ * remove — silently, because attaching the type still "worked".
+ */
+const DEPTH_DESTINATIONS = [
+  "app/(signed-in)/titles/[entryId]/page.tsx",
+  "app/(signed-in)/episodes/[episodeId]/page.tsx",
+  "app/(signed-in)/catalogue/[kind]/[tmdbId]/page.tsx",
+];
+
+describe("opening a title or an episode moves deeper", () => {
+  it("draws a depth pair, so the class the links attach has something to act on", () => {
+    expect(GLOBALS).toContain("::view-transition-old(.nav-deeper)");
+    expect(GLOBALS).toContain("::view-transition-new(.nav-deeper)");
+  });
+
+  it("carries the depth type on the links themselves, from every surface that has one", () => {
+    for (const surface of DEPTH_SURFACES) {
+      const source = readFileSync(surface, "utf8");
+      expect(source, `${surface} imports the shared type`).toMatch(
+        /import \{ NAV_DEEPER \} from "[^"]*nav-deeper"/,
+      );
+      expect(source, `${surface} attaches it to its own navigation`).toMatch(
+        /transitionTypes[=:] ?\{?NAV_DEEPER\}?/,
+      );
+    }
+  });
+
+  it("spells the type in one place, so twelve surfaces cannot drift apart", () => {
+    // A hand-written `["nav-deeper"]` at a call site is how a rename leaves one rail
+    // behind — the exact failure `poster-transition-name.ts` exists to prevent for the
+    // morph's names.
+    for (const surface of DEPTH_SURFACES) {
+      expect(readFileSync(surface, "utf8"), `${surface} spells the type by hand`).not.toContain(
+        '"nav-deeper"',
+      );
+    }
+  });
+
+  it("wraps what a depth navigation arrives on, or the type animates nothing", () => {
+    for (const page of DEPTH_DESTINATIONS) {
+      expect(readFileSync(page, "utf8"), `${page} is not wrapped`).toContain(
+        "<NavTransition>",
+      );
+    }
+  });
+
+  it("scales the arriving page up and fades it in", () => {
+    // The whole screen arrives together: the page grows from just under full size while
+    // it fades, so the poster morphing above it lands on ground that is arriving with it
+    // rather than on ground that has already cut.
+    const arriving = blockFor("new", "nav-deeper");
+    expect(arriving).toContain("nav-depth");
+    expect(arriving).toContain("nav-fade");
+    expect(arriving).not.toContain("reverse");
+    // The scale is the depth cue and it is authored here, not left to the browser.
+    expect(GLOBALS).toMatch(
+      /@keyframes nav-depth\s*\{\s*from\s*\{\s*scale:\s*var\(--nav-depth\)/,
+    );
+    expect(blockFor("new", "nav-deeper")).toMatch(/--nav-depth:\s*0?\.\d+/);
+  });
+
+  it("plays that same motion reversed on the way out, so the round trip mirrors", () => {
+    // Not a second pair of keyframes running the other way — the *same* two animations
+    // with `reverse`, which is what makes a mirror a mirror rather than two curves that
+    // happen to look alike today and drift apart at the next tuning.
+    const leaving = blockFor("old", "nav-deeper");
+    expect(leaving).toMatch(/both nav-fade reverse/);
+    expect(leaving).toMatch(/both nav-depth reverse/);
+  });
+
+  it("leaves quickly and arrives slowly, off this file's own motion tokens", () => {
+    // The same asymmetry the lateral pair carries, and for the same reason: arriving is
+    // where the character lives, leaving is where impatience does. No hardcoded
+    // milliseconds — `DESIGN.md`'s motion scale or nothing.
+    const leaving = blockFor("old", "nav-deeper");
+    const arriving = blockFor("new", "nav-deeper");
+    expect(leaving).toContain("var(--dur-fast)");
+    expect(arriving).toContain("var(--dur-base)");
+    expect(leaving).not.toMatch(/\d+ms/);
+    expect(arriving).not.toMatch(/\d+ms/);
+  });
+
+  it("costs no scrolling smoothness, because it moves nothing the compositor cannot", () => {
+    // `opacity` and `scale` on a view-transition snapshot are already a texture on the
+    // compositor, so the depth motion is the same work as the slide and never touches
+    // layout. A `filter`, a `width`, a `height` or a `margin` in here is a main-thread
+    // animation running over whatever the reader is scrolling — the one thing #293 was
+    // explicitly not allowed to cost.
+    const keyframes = GLOBALS.match(/@keyframes nav-depth\s*\{[\s\S]*?\n\}/)![0];
+    expect(keyframes).toMatch(/scale:/);
+    expect(keyframes).not.toMatch(/\b(filter|width|height|margin|padding|top|left|box-shadow)\s*:/);
+    for (const side of ["old", "new"] as const) {
+      expect(blockFor(side, "nav-deeper")).not.toMatch(
+        /\b(filter|backdrop-filter|box-shadow)\s*:/,
+      );
+    }
+  });
+
+  it("stops moving for a reader who asked for reduced motion, all three types at once", () => {
+    // One rule over `*` rather than one per class: the depth type inherits the reduced-
+    // motion path the moment it exists, so there is no call site to forget. The
+    // navigation still happens — the duration is zeroed, the transition is not removed.
+    const reduced = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*::view-transition-group\(\*\)[\s\S]*?\n\s*\}\n\}/,
+    )![0];
+    expect(reduced).toContain("::view-transition-old(*)");
+    expect(reduced).toContain("::view-transition-new(*)");
+    expect(reduced).toMatch(/animation-duration:\s*0s\s*!important/);
   });
 });
 

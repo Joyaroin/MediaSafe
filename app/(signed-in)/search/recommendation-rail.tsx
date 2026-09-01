@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { Poster } from "@/app/poster";
 import type { KindMode } from "@/app/(signed-in)/library/kind-mode";
 import type { UserId } from "@/db/access";
@@ -88,7 +89,11 @@ function Rail({ rail }: { rail: Recommendations }) {
                 that already existed for an unowned title, and a press here navigates to
                 it. It was intercepted into a dialog from #254 until #273 deleted the route
                 interceptions. */}
-            <Link href={`/catalogue/${result.kind}/${result.tmdbId}`} className="group block">
+            <Link
+              href={`/catalogue/${result.kind}/${result.tmdbId}`}
+              transitionTypes={NAV_DEEPER}
+              className="group block"
+            >
               <Poster
                 posterPath={result.posterPath}
                 name={result.name}

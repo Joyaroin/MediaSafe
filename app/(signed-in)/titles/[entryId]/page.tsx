@@ -1,3 +1,4 @@
+import { NavTransition } from "../../nav-transition";
 import { TitleDetailBody } from "./title-detail-body";
 
 /**
@@ -35,6 +36,24 @@ import { TitleDetailBody } from "./title-detail-body";
  * the three live reads runs inside its own `Suspense`, streamed in independently once
  * `getTitleDetail` above has already resolved.
  */
+/**
+ * ── Wrapped, because this is where a depth navigation lands — issue #293 ────────────
+ *
+ * The type is attached by whichever link the reader pressed (`nav-deeper.ts`); this is
+ * the other half of the same transition, and without it the type would animate nothing.
+ * The arriving content would be part of the `root` snapshot, `root` carries no class, and
+ * the reader would get the abrupt cut the issue exists to remove — silently, because
+ * attaching the type still "worked".
+ *
+ * The wrapper is the same one the four tabs use and it is in the page rather than the
+ * layout, for the reason `nav-transition.tsx` gives: a layout persists across navigations
+ * within its group, so its enter and exit would never fire.
+ *
+ * **The poster morph is untouched by this.** The poster carries its own
+ * `view-transition-name`, which takes it out of this snapshot and gives it its own group;
+ * it travels over the page rather than with it. The poster is the subject, this is the
+ * ground it arrives on.
+ */
 export const dynamic = "force-dynamic";
 
 export default async function TitleDetailPage({
@@ -45,8 +64,10 @@ export default async function TitleDetailPage({
   const { entryId } = await params;
 
   return (
-    <main className="flex w-full flex-1 flex-col">
-      <TitleDetailBody entryId={entryId} />
-    </main>
+    <NavTransition>
+      <main className="flex w-full flex-1 flex-col">
+        <TitleDetailBody entryId={entryId} />
+      </main>
+    </NavTransition>
   );
 }

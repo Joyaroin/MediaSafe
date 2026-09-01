@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { Poster } from "@/app/poster";
 import type { ListDetailTitleRow } from "@/db/access";
 
@@ -102,6 +103,7 @@ export function ListTitleRow({
           ? `/catalogue/${title.kind}/${title.tmdbId}`
           : `/titles/${title.libraryEntryId}`
       }
+      transitionTypes={NAV_DEEPER}
       className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-150 hover:bg-raised"
     >
       {content}

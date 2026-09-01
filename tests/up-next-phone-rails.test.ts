@@ -415,7 +415,9 @@ describe("the films rail", () => {
   });
 
   it("navigates to the title rather than opening anything over the screen", () => {
-    expect(source).toMatch(/<Link href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/);
+    // `\s+` rather than one space: #293 gave the link a `transitionTypes` of its own, so
+    // the attributes wrapped. What this asserts is the destination, not the formatting.
+    expect(source).toMatch(/<Link\s+href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/);
   });
 
   /**
@@ -565,7 +567,7 @@ describe("every tile and card on Up next opens the thing it names", () => {
    *  words: a film and a show behave the same way on the same tab. */
   it("gives the film tile that destination by the same mechanism", () => {
     expect(codeOf(sourceAt(FILM_RAIL))).toMatch(
-      /<Link href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/,
+      /<Link\s+href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/,
     );
   });
 
