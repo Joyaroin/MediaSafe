@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { backOrigin, isCurrentRoute } from "@/app/nav-route";
@@ -31,11 +33,15 @@ const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
 const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
-/** The `::view-transition-{old,new}(.nav-{forward,back,deeper})` rule body, isolated so
- * the tests below assert on its declarations rather than re-deriving the same extraction.
- * `nav-deeper` joined the union in #293 — the third type is read the same way as the two
- * that were here first, because it is the same kind of thing. */
-const blockFor = (side: "old" | "new", cls: "nav-forward" | "nav-back" | "nav-deeper") =>
+/** The `::view-transition-{old,new}(.nav-{forward,back,deeper,upward})` rule body,
+ * isolated so the tests below assert on its declarations rather than re-deriving the same
+ * extraction. `nav-deeper` joined the union in #293 and `nav-upward` in #294 — every type
+ * is read the same way as the two that were here first, because they are the same kind of
+ * thing: a class the stylesheet draws, attached by the link that means it. */
+const blockFor = (
+  side: "old" | "new",
+  cls: "nav-forward" | "nav-back" | "nav-deeper" | "nav-upward",
+) =>
   GLOBALS.match(new RegExp(`::view-transition-${side}\\(\\.${cls}\\)\\s*\\{[^}]*\\}`))![0];
 
 /**
@@ -74,8 +80,10 @@ describe("which way the content moves", () => {
 
   it("treats a tab tapped from off the bar as coming back out", () => {
     // `-1` is a screen pushed outside the four — Settings, `/import`, `/welcome`. This
-    // used to return `[]`, which made Settings the one screen you slid *into* and then
-    // left with nothing. It is the mirror of the `nav-forward` the masthead attaches.
+    // used to return `[]`, which made those the screens you arrived at and then left with
+    // nothing at all. It is the lateral default #294 leaves Import, delete-account and
+    // every nested settings page on; Settings' own round trip is drawn by the upward
+    // type's own pair instead.
     expect(TAB_BAR).toContain('if (from === -1) return ["nav-back"];');
     // Order matters: the same-tab check has to come first, or a same-tab tap from `-1`
     // would be impossible to express. Assert `from === to` is tested before `from === -1`.
@@ -84,12 +92,14 @@ describe("which way the content moves", () => {
     );
   });
 
-  it("sends the reader into Settings forwards, from the one phone entrance", () => {
-    // Without this Settings was the single screen that arrived with no motion while every
-    // tab around it slid — which is what makes an animation read as broken rather than
-    // absent.
-    expect(MASTHEAD).toContain('transitionTypes={["nav-forward"]}');
+  it("sends the reader into Settings out of the bar, not along it", () => {
+    // Issue #294. Settings used to borrow the lateral `nav-forward`, which made stepping
+    // *out of* the four tabs look exactly like stepping *along* them. It is the one
+    // masthead push, and it now says so: the upward type, on the one phone entrance.
+    expect(MASTHEAD).toContain('transitionTypes={["nav-upward"]}');
     expect(MASTHEAD).toContain('href="/settings"');
+    // And it no longer claims a lateral direction it never meant.
+    expect(MASTHEAD).not.toContain("nav-forward");
   });
 
   it("attaches the types to the links themselves", () => {
@@ -400,6 +410,177 @@ describe("opening a title or an episode moves deeper", () => {
     expect(reduced).toContain("::view-transition-old(*)");
     expect(reduced).toContain("::view-transition-new(*)");
     expect(reduced).toMatch(/animation-duration:\s*0s\s*!important/);
+  });
+});
+
+/**
+ * ── Settings arrives from below and leaves downward — issue #294 ─────────────────────
+ *
+ * The third kind of move, and the last one this vocabulary needed. Tapping a tab moves
+ * the reader *along* a row of four; opening a title moves them *into* something; opening
+ * Settings pushes them *out of* the four altogether. Until this, the push borrowed the
+ * lateral `nav-forward`, so stepping out of the tabs looked exactly like stepping along
+ * them — three kinds of move wearing two motions, and the one that was borrowed was the
+ * one that meant the least.
+ *
+ * **Upward has exactly one caller and that is a known cost.** The masthead's Settings
+ * link is the only push out of the bar this application has. A transition type for a
+ * single call site is a real price, paid deliberately: the alternative was Settings
+ * keeping a lateral motion that says the wrong thing about where the reader just went.
+ * The cost is written down where the next reader of the vocabulary will meet it — in the
+ * mapping every wrapped page reads, and in the stylesheet block that draws it — so that a
+ * second caller arriving later reads as vindication rather than coincidence.
+ *
+ * These fail silently in the browser exactly as the other two families do: the class
+ * stops matching, the reverse stops being a reverse, and Settings simply cuts.
+ */
+
+/**
+ * The surfaces that reach Settings' neighbours — Import, delete-account, and the way back
+ * out of delete-account. `DESIGN.md`'s rule for them is that they get *no motion of their
+ * own*: they are ordinary pages behind ordinary links, they attach no type, and the
+ * mapping's `default: "none"` is what they land on. Giving any of them the upward push
+ * would say they too are a step out of the tabs, which they are not — they are already
+ * outside.
+ */
+const LATERAL_DEFAULT_SURFACES = [
+  // Settings' own body: the Import entrance and the delete-account entrance both live here.
+  "app/(signed-in)/settings/page.tsx",
+  // And the way back out of delete-account, which is a nested settings page.
+  "app/(signed-in)/settings/delete-account/delete-account-frame.tsx",
+  // The two empty states that offer Import as a recovery.
+  "app/(signed-in)/library/empty-library.tsx",
+  "app/(signed-in)/you/empty-you.tsx",
+];
+
+/** Every `.ts`/`.tsx` under `app/`, so "and by nothing else" can be asserted against the
+ *  whole tree rather than against the two files this change happened to touch. */
+function appSources(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) return appSources(full);
+    return /\.tsx?$/.test(entry.name) ? [full] : [];
+  });
+}
+
+describe("opening Settings pushes it up out of the tabs", () => {
+  it("maps the fourth type — upward — in the same vocabulary as the other three", () => {
+    // One mapping, read by both halves of every wrapped page. A parallel `ViewTransition`
+    // for Settings would be two snapshots of the same pixels and the browser pairing
+    // whichever it found first.
+    expect(WRAPPER).toContain('"nav-upward": "nav-upward"');
+    // And the default is untouched by the addition: anything unclassified — a desktop
+    // navigation, Import, a nested settings page, the poster morph — still lands on
+    // `none`.
+    expect(WRAPPER).toMatch(/default:\s*"none"/);
+    expect(WRAPPER).toMatch(/default="none"/);
+  });
+
+  it("records the single-caller cost where the vocabulary is read", () => {
+    // The cost is the whole reason this type is worth arguing about, and a cost nobody
+    // can find is a cost that gets re-discovered as a surprise. Both places a reader
+    // meets the vocabulary say it.
+    expect(WRAPPER).toContain("#294");
+    expect(WRAPPER).toMatch(/one caller|single caller/i);
+    expect(GLOBALS).toMatch(/one caller|single caller/i);
+  });
+
+  it("carries the upward type on the masthead's Settings link and nothing else", () => {
+    expect(MASTHEAD).toContain('transitionTypes={["nav-upward"]}');
+
+    for (const file of appSources("app")) {
+      if (file === path.join("app", "masthead.tsx")) continue;
+      // The mapping has to name every type it maps; that is not a second caller.
+      if (file === path.join("app", "(signed-in)", "nav-transition.tsx")) continue;
+      expect(readFileSync(file, "utf8"), `${file} claims the upward push`).not.toContain(
+        "nav-upward",
+      );
+    }
+  });
+
+  it("leaves Import, delete-account and nested settings on the lateral default", () => {
+    for (const surface of LATERAL_DEFAULT_SURFACES) {
+      expect(
+        readFileSync(surface, "utf8"),
+        `${surface} claims a motion of its own`,
+      ).not.toContain("transitionTypes");
+    }
+  });
+
+  it("draws an upward pair, so the class the link attaches has something to act on", () => {
+    expect(GLOBALS).toContain("::view-transition-old(.nav-upward)");
+    expect(GLOBALS).toContain("::view-transition-new(.nav-upward)");
+  });
+
+  it("pushes the arriving page up from below", () => {
+    const arriving = blockFor("new", "nav-upward");
+    expect(arriving).toContain("nav-rise");
+    expect(arriving).toContain("nav-fade");
+    expect(arriving).not.toContain("reverse");
+    // From below: a positive vertical offset on the `y` axis, travelling to nothing. The
+    // offset is authored here rather than left to the browser, exactly as the lateral
+    // slide's `--nav-slide` is.
+    expect(arriving).toMatch(/--nav-rise:\s*\d+px/);
+    expect(GLOBALS).toMatch(
+      /@keyframes nav-rise\s*\{\s*from\s*\{\s*translate:\s*0 var\(--nav-rise\)/,
+    );
+  });
+
+  it("plays that same motion reversed on the way out, so the round trip mirrors", () => {
+    // Not a second pair of keyframes running the other way — the *same* two animations
+    // with `reverse`, which is what makes leaving downward the mirror of arriving from
+    // below rather than a curve that merely looks like one today.
+    const leaving = blockFor("old", "nav-upward");
+    expect(leaving).toMatch(/both nav-fade reverse/);
+    expect(leaving).toMatch(/both nav-rise reverse/);
+    // Same offset on both sides, or the mirror is lopsided.
+    expect(leaving).toMatch(/--nav-rise:\s*\d+px/);
+    expect(leaving.match(/--nav-rise:\s*(\d+px)/)![1]).toBe(
+      blockFor("new", "nav-upward").match(/--nav-rise:\s*(\d+px)/)![1],
+    );
+  });
+
+  it("leaves quickly and arrives slowly, off this file's own motion tokens", () => {
+    // The asymmetry both other families carry, for the same reason: arriving is where the
+    // character lives, leaving is where impatience does. No hardcoded milliseconds.
+    const leaving = blockFor("old", "nav-upward");
+    const arriving = blockFor("new", "nav-upward");
+    expect(leaving).toContain("var(--dur-fast)");
+    expect(arriving).toContain("var(--dur-base)");
+    expect(leaving).not.toMatch(/\d+ms/);
+    expect(arriving).not.toMatch(/\d+ms/);
+  });
+
+  it("moves nothing the compositor cannot", () => {
+    // `translate` and `opacity` on a view-transition snapshot are the same work the
+    // lateral slide already does. A `filter`, a `height` or a `margin` in here would be a
+    // main-thread animation running over whatever the reader is scrolling.
+    const keyframes = GLOBALS.match(/@keyframes nav-rise\s*\{[\s\S]*?\n\}/)![0];
+    expect(keyframes).toMatch(/translate:/);
+    expect(keyframes).not.toMatch(
+      /\b(filter|width|height|margin|padding|top|left|box-shadow)\s*:/,
+    );
+    for (const side of ["old", "new"] as const) {
+      expect(blockFor(side, "nav-upward")).not.toMatch(
+        /\b(filter|backdrop-filter|box-shadow)\s*:/,
+      );
+    }
+  });
+
+  it("stops moving for a reader who asked for reduced motion, all three motions at once", () => {
+    // Lateral, depth and upward: one rule over `*` rather than one per class, so a type
+    // added later inherits the reduced-motion path the moment it exists and there is no
+    // call site to forget. The navigation still happens — the duration is zeroed, the
+    // transition is not removed.
+    const reduced = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*::view-transition-group\(\*\)[\s\S]*?\n\s*\}\n\}/,
+    )![0];
+    expect(reduced).toContain("::view-transition-old(*)");
+    expect(reduced).toContain("::view-transition-new(*)");
+    expect(reduced).toMatch(/animation-duration:\s*0s\s*!important/);
+    for (const cls of ["nav-forward", "nav-back", "nav-deeper", "nav-upward"] as const) {
+      expect(reduced, `${cls} is exempted from the wildcard`).not.toContain(cls);
+    }
   });
 });
 
