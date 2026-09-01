@@ -921,13 +921,14 @@
    `--ease-out-quart`: the only thing that animates it here is `IN_FLIGHT`'s brightness,
    and a colour has no mass to overshoot with. */
 @utility pressable {
-  /* ── The register — issue #282 ─────────────────────────────────────────────────────
+  /* ── The register — issues #282 and #283 ──────────────────────────────────────────
      `0.96` was one number doing two jobs. It is a considered movement on a 262px rail
      card and it is nothing at all on a 44px checkmark, and both wore this same utility.
-     There are two presses now:
+     There are three presses now:
 
        surfaces (cards, cells, rows, tiles)   0.960 in, 1.012 past rest
-       controls (checkmark hit boxes, chips)  0.920 in, 1.030 past rest
+       controls (small hit boxes and chips)   0.920 in, 1.030 past rest
+       the recording checkmark                0.900 in, 1.045 past rest
 
      **One property selects between them, and the call site is the only place it is set.**
      `--poster-radius`'s pattern, for `--poster-radius`'s reason: a second utility beside
@@ -943,18 +944,43 @@
      a control pop. A `--press-compress`/`--press-pop` pair at the call site would make
      both of those available on the first day.
 
-     **The default is the quieter register, and it is spelled by saying nothing.** The
+     **The default is the quietest register, and it is spelled by saying nothing.** The
      value is *read* through a fallback and never declared, so a call site nobody
      classified is under-stated rather than shouting — and a call site that does declare
      one has no equal-specificity rule of its own to beat. `--press-register: 0` is the
-     surfaces, `1` is the controls; the four numbers are written out rather than folded
-     into deltas, because the amplitudes are chosen and the choosing should be legible.
+     surfaces, `1` is the controls, `2` is the recording checkmark; the six numbers are
+     written out rather than folded into deltas, because the amplitudes are chosen and the
+     choosing should be legible.
 
-     `tests/press-spring.test.ts` resolves both registers the way a browser would and
-     asserts that they differ, that the default is the quieter one, and that the pop still
-     carries `snappy`'s own shape in either of them. */
-  --press-compress: calc(0.96 + var(--press-register, 0) * (0.92 - 0.96));
-  --press-pop: calc(1.012 + var(--press-register, 0) * (1.03 - 1.012));
+     ── The third register, and why it is a step rather than a multiplier — issue #283 ──
+     The recording checkmark presses harder than anything else in the application. It is
+     the act the product is built around and the most repeated gesture in it, and the
+     paragraph at the top of this file rations the accent to exactly that act — so the
+     loudest press and the only sanctioned use of colour mark the same thing rather than
+     two different things. It is scale and the pop and nothing else: no tint, because a
+     press is not what the accent means, and no shadow, because this world has none.
+
+     `#282` read `calc(0.96 + var(--press-register, 0) * (0.92 - 0.96))`, one linear term,
+     and **a third register cannot be reached that way** — the three pairs are not on a
+     line. The control step gives up `0.040` of compression to buy `0.018` of pop; the
+     recording step gives up `0.020` to buy `0.015`, because a control already at `0.92`
+     has less room to travel and more of the movement has to land in the pop. Continuing
+     the multiplication would have put register `2` at `0.880` / `1.048`, which is a
+     number nobody chose. So the register climbs in **steps**, each clamped to `0..1`, and
+     every one of the six amplitudes appears here as itself.
+
+     The clamp is also what keeps a mistyped call site honest: `--press-register: 7` is
+     the recording register and not a fourth one nothing declares.
+
+     `tests/press-spring.test.ts` resolves all three registers the way a browser would —
+     `clamp()` included — and asserts that they differ, that the default is the quietest,
+     that the recording one is the loudest there is, and that the pop still carries
+     `snappy`'s own shape in every one of them. */
+  --press-control-step: clamp(0, var(--press-register, 0), 1);
+  --press-loud-step: clamp(0, var(--press-register, 0) - 1, 1);
+
+  --press-compress: calc(0.96 + var(--press-control-step) * (0.92 - 0.96) + var(--press-loud-step) * (0.9 - 0.92));
+  --press-pop: calc(1.012 + var(--press-control-step) * (1.03 - 1.012) + var(--press-loud-step) * (1.045 - 1.03));
 
   /* The two spans `press-pop`'s stops are written against, so the keyframe carries the
      spring's *shape* once and the register supplies the distance. */
@@ -1049,7 +1075,7 @@
    **#282 made the amplitude the register's, and this is why every stop is a `calc()`.**
    The stops were `0.96 → 1.012` written out; they are the same 33 samples written as
    *fractions of the span*, against `--press-rise` and `--press-overshoot` above. So the
-   shape is stated once and the two registers are one keyframe rather than two — which
+   shape is stated once and the three registers are one keyframe rather than three — which
    matters more than the duplication it saves, because two keyframes are two places for
    `snappy` to drift from itself, and this stylesheet has been bitten by that twice. The
    numbers below are therefore the spring and nothing else; how far the control actually

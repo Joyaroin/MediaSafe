@@ -136,9 +136,28 @@ const REST = 1;
  */
 const REGISTER_PROPERTY = "--press-register";
 
+/**
+ * **The third register — issue #283.** The recording checkmark presses harder than any
+ * other control in the application: `0.900` in, `1.045` past rest. It is the act the
+ * product is built around and the most repeated gesture in it, and `DESIGN.md` §3 already
+ * rations the accent to exactly that act — so the loudest press and the only sanctioned
+ * use of colour now mark the same thing rather than two different things.
+ *
+ * It is a **third value of the one property**, declared the same way at the call site, so
+ * everything the register already guarantees holds unchanged: one keyframe, one spring,
+ * no way to set half a register, and no cascade-ordering question.
+ *
+ * **Three amplitudes are not on one line**, and that is a fact about the numbers rather
+ * than a choice. `(0.96, 1.012)`, `(0.92, 1.030)` and `(0.900, 1.045)` are not collinear —
+ * the control step gives up `0.040` of compression for `0.018` of pop and the recording
+ * step gives up `0.020` for `0.015` — so a single linear term in `--press-register` cannot
+ * reach all three. The stylesheet adds a second, clamped step instead, and the assertions
+ * below resolve it the way a browser would rather than reading the literals back.
+ */
 const REGISTERS = {
   surface: { register: null, compress: 0.96, pop: 1.012 },
   control: { register: 1, compress: 0.92, pop: 1.03 },
+  recording: { register: 2, compress: 0.9, pop: 1.045 },
 } as const;
 
 const COMPRESS = REGISTERS.surface.compress;
@@ -212,11 +231,40 @@ function variablesFor(register: number | null): Record<string, string> {
 function arithmetic(source: string): number {
   let at = 0;
   const skip = (): void => {
-    while (source[at] === " ") at += 1;
+    while (/\s/.test(source[at] ?? "")) at += 1;
   };
+
+  /* `min()`, `max()` and `clamp()` are new in #283 and they are why the third register is
+     expressible at all: three amplitudes are not on one line, so the stylesheet selects
+     between them with a clamped step rather than with a single multiplication. A browser
+     evaluates these wherever it evaluates `calc()`, so this parser has to as well — a
+     suite that could not read them would be asserting against a value the browser never
+     computes, which is the whole failure this file exists to catch. */
+  function call(name: string): number {
+    const args: number[] = [];
+    for (;;) {
+      args.push(sum());
+      skip();
+      if (source[at] !== ",") break;
+      at += 1;
+    }
+    expect(source[at], `unbalanced parentheses in ${source}`).toBe(")");
+    at += 1;
+
+    if (name === "min") return Math.min(...args);
+    if (name === "max") return Math.max(...args);
+    expect(args, `clamp() takes three arguments in ${source}`).toHaveLength(3);
+    return Math.min(Math.max(args[0], args[1]), args[2]);
+  }
 
   function primary(): number {
     skip();
+    const named = /^(min|max|clamp)\(/.exec(source.slice(at));
+    if (named) {
+      at += named[0].length;
+      return call(named[1]);
+    }
+
     if (source[at] === "(") {
       at += 1;
       const value = sum();
@@ -438,7 +486,7 @@ describe("the release pops past rest", () => {
  * this ticket guards against is the shipped one restated: a register declared in a
  * stylesheet, spelled correctly, that half of the press never reads.
  */
-describe("the press has two registers and one property chooses between them", () => {
+describe("the press has three registers and one property chooses between them", () => {
   it("presses at the quieter surface register when nothing is set", () => {
     expect(compression(null)).toBeCloseTo(REGISTERS.surface.compress, 6);
     expect(popPeak(null)).toBeCloseTo(REGISTERS.surface.pop, 3);
@@ -449,6 +497,38 @@ describe("the press has two registers and one property chooses between them", ()
 
     expect(compression(register)).toBeCloseTo(compress, 6);
     expect(popPeak(register)).toBeCloseTo(pop, 3);
+  });
+
+  /** **Issue #283.** The third value of the same property, resolved the same way. */
+  it("presses hardest of all at the recording register", () => {
+    const { register, compress, pop } = REGISTERS.recording;
+
+    expect(compression(register)).toBeCloseTo(compress, 6);
+    expect(popPeak(register)).toBeCloseTo(pop, 3);
+  });
+
+  /**
+   * **There is a loudest, and it is the recording one — #283.** Asserted as an ordering
+   * over the whole table rather than against a copy of `0.900`: a fourth register added
+   * above this one, or a control register quietly wound past it, is the failure that
+   * would make *the loudest press in the application* stop being true while every
+   * individual number still looked right.
+   */
+  it("makes the recording register the loudest there is", () => {
+    const compressions = Object.values(REGISTERS).map((r) => compression(r.register));
+    const peaks = Object.values(REGISTERS).map((r) => popPeak(r.register));
+
+    expect(compression(REGISTERS.recording.register)).toBe(Math.min(...compressions));
+    expect(popPeak(REGISTERS.recording.register)).toBe(Math.max(...peaks));
+
+    // And strictly, not merely not-quieter: a register indistinguishable from the control
+    // one is a table entry rather than a press.
+    expect(compression(REGISTERS.recording.register)).toBeLessThan(
+      compression(REGISTERS.control.register),
+    );
+    expect(popPeak(REGISTERS.recording.register)).toBeGreaterThan(
+      popPeak(REGISTERS.control.register),
+    );
   });
 
   /** The two are different presses and not the same press twice — a 44px checkmark travels
@@ -516,27 +596,150 @@ describe("the stylesheet keeps no motion token nothing consumes", () => {
 });
 
 describe("the press answers the gesture the product is built around", () => {
+  const EPISODE_CARD = "app/(signed-in)/up-next/up-next-episode-card.tsx";
+  const WATCH_MARK = "app/(signed-in)/library/watch-mark-motion.tsx";
+
+  /** The episode row's own 44px hit box, read as its exported class string. */
+  function recordingHitBox(): string {
+    const hitBox = readFileSync(path.join(REPOSITORY_ROOT, WATCH_MARK), "utf8").match(
+      /export const RECORDING_HIT_BOX =\s*"([^"]*)"/,
+    );
+    expect(hitBox, "watch-mark-motion.tsx must still export RECORDING_HIT_BOX").not.toBeNull();
+    return hitBox![1];
+  }
+
+  /** The Up next card's check hit box — a separate string because its width is per-branch. */
+  function checkHitBox(): string {
+    const hitBox = readFileSync(path.join(REPOSITORY_ROOT, EPISODE_CARD), "utf8").match(
+      /const CHECK_HIT_BOX = `([^`]*)`/,
+    );
+    expect(hitBox, "up-next-episode-card.tsx must still declare CHECK_HIT_BOX").not.toBeNull();
+    return hitBox![1];
+  }
+
   it("puts the press on the recording control", () => {
     // Recording a watch is the most repeated act in the app and had no physical answer at
     // all: the checkmark's hit box carried a hover invert and nothing under the thumb.
-    const hitBox = readFileSync(
-      path.join(REPOSITORY_ROOT, "app/(signed-in)/library/watch-mark-motion.tsx"),
-      "utf8",
-    ).match(/export const RECORDING_HIT_BOX =\s*"([^"]*)"/);
-    expect(hitBox, "watch-mark-motion.tsx must still export RECORDING_HIT_BOX").not.toBeNull();
-    expect(hitBox![1].split(/\s+/)).toContain("pressable");
+    expect(recordingHitBox().split(/\s+/)).toContain("pressable");
   });
 
   it("puts it on the up-next card's checkmark too", () => {
-    // The same act on the other surface it happens on — the rail card's own hit box,
-    // which is a separate string because its width is per-branch.
-    const card = readFileSync(
-      path.join(REPOSITORY_ROOT, "app/(signed-in)/up-next/up-next-episode-card.tsx"),
-      "utf8",
-    );
-    const hitBox = card.match(/const CHECK_HIT_BOX = `([^`]*)`/);
-    expect(hitBox, "up-next-episode-card.tsx must still declare CHECK_HIT_BOX").not.toBeNull();
-    expect(hitBox![1]).toMatch(/(^|\s)pressable(\s|$)/);
+    // The same act on the other surface it happens on.
+    expect(checkHitBox()).toMatch(/(^|\s)pressable(\s|$)/);
+  });
+
+  /**
+   * **Issue #283, read the way this suite already reads these two.** Both hit boxes, as
+   * class strings, declaring the loud register — and the numbers those strings resolve to
+   * are the ones asserted above, so *the recording control is in the loud register* is one
+   * claim end to end rather than a spelling here and a table over there.
+   */
+  it("presses both recording hit boxes in the loud register", () => {
+    const loud = REGISTER_CLASS.recording as string;
+
+    for (const classes of [recordingHitBox(), checkHitBox()]) {
+      expect(classes.split(/\s+/)).toContain(loud);
+    }
+
+    expect(compression(REGISTERS.recording.register)).toBeCloseTo(0.9, 6);
+    expect(popPeak(REGISTERS.recording.register)).toBeCloseTo(1.045, 3);
+  });
+
+  /**
+   * **It is scale and the pop and nothing else.** The tone step (#284) is qualified by
+   * `.bg-raised`, so a bare 44px hit box gets no ground painted under it and no backplate
+   * the design never drew — and neither hit box may reach for the accent under a thumb,
+   * because colour in this world means *this was recorded* and a control that tints while
+   * being pressed is claiming to have written something it has not. The accent stays on
+   * the glyph, which is what marks the recorded state. `tests/palette.test.ts` proves no
+   * press rule anywhere raises a shadow; this is the call sites' half of it.
+   */
+  it("tints nothing and raises no shadow at either recording hit box", () => {
+    for (const classes of [recordingHitBox(), checkHitBox()]) {
+      const tokens = classes.split(/\s+/);
+
+      // No surface of its own, so the tone step cannot reach it.
+      expect(tokens).not.toContain("bg-raised");
+
+      for (const token of tokens) {
+        expect(token, `${token} paints under a press`).not.toMatch(
+          /^(?:[\w-]+:)*(?:active|group-active):/,
+        );
+        expect(token, `${token} is a shadow`).not.toMatch(/shadow/);
+      }
+
+      // The accent may appear on the glyph and never on the pressed state of the box.
+      expect(classes).not.toMatch(/active:[\w[\]-]*accent/);
+    }
+  });
+
+  /**
+   * **The checkmark moves and the card around it does not.** On the Up next card the check
+   * is a *sibling* of the card's own `pressable` link inside a raised `<li>` that wears no
+   * press at all, so `motion-provider.tsx`'s `closest(".pressable")` from the checkmark
+   * finds the checkmark. #279 rejects moving `pressable` onto the raised parent by name
+   * for exactly this: a pressable `<li>` would scale the whole 262px card every time the
+   * 44px check was pressed, and at the loud register it would do it hardest.
+   */
+  it("moves the checkmark and not the up-next card around it", () => {
+    const source = codeOf(EPISODE_CARD);
+
+    // The raised card element is not itself pressable.
+    const li = source.match(/<li className={`([^`]*)`}/);
+    expect(li, "the card must still be a raised `<li>`").not.toBeNull();
+    expect(li![1]).toContain("bg-raised");
+    expect(li![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
+
+    // And the control slot is rendered after the pressable link closes, so the check is a
+    // sibling of it rather than a descendant.
+    expect(source.indexOf("</Link>")).toBeGreaterThan(-1);
+    expect(source.indexOf("{control}")).toBeGreaterThan(source.indexOf("</Link>"));
+
+    // The listener takes the nearest pressable ancestor, which is what makes that
+    // structural fact the whole of the property.
+    expect(codeOf(ROOT_CLIENT_COMPONENT)).toContain("closest");
+  });
+
+  /**
+   * **Reduced motion drops the movement and keeps the write.** The register is two numbers
+   * the compression and the pop are made of, so the one `@media` block that already drops
+   * both drops them at every register — it must not be qualified by one. And nothing about
+   * the preference reaches the hit boxes themselves: they still carry their handlers, so
+   * the press still registers and still records.
+   */
+  it("drops the loud movement under reduced motion and still records", () => {
+    const reduced = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ]
+      .map((match) => match[0])
+      .filter((block) => /\.pressable[^[]/.test(block));
+
+    expect(reduced).toHaveLength(1);
+    expect(reduced[0]).not.toContain(REGISTER_PROPERTY);
+
+    // The write is untouched: the card's check still calls the mark, and the episode row's
+    // hit box is still class strings a server component renders.
+    expect(codeOf(EPISODE_CARD)).toContain("onClick={mark.mark}");
+    expect(codeOf(WATCH_MARK)).not.toMatch(/^\s*"use client"/m);
+  });
+
+  /**
+   * **`DESIGN.md` records that the loudest press and the rationed accent mark the same
+   * act.** The document is where the two rules live that this ticket ties together — §3's
+   * rationing of the accent to *this was recorded*, and the press's register table — so an
+   * entry naming only the numbers would leave the next change built against a document
+   * that never says why they are the loudest.
+   */
+  it("is recorded in DESIGN.md as the press and the accent saying one thing", () => {
+    const doc = readFileSync(path.join(REPOSITORY_ROOT, "DESIGN.md"), "utf8");
+    const at = doc.indexOf("#283");
+    expect(at, "DESIGN.md must record the recording register").toBeGreaterThan(-1);
+
+    const entry = doc.slice(Math.max(0, at - 600), at + 2000);
+    expect(entry).toContain("0.900");
+    expect(entry).toContain("1.045");
+    expect(entry).toMatch(/accent/);
+    expect(entry).toMatch(/ration/i);
   });
 
   it("costs no client boundary and no per-frame JavaScript", () => {
@@ -720,7 +923,9 @@ describe("the press has a trigger, and there is one of it", () => {
  * how the rule stops being true. #279 counted twenty-five call sites and the tree has
  * thirteen class strings; the sweep is what settles that rather than either number.
  */
-const PRESS_CALL_SITES: Readonly<Record<string, readonly ("surface" | "control")[]>> = {
+type Register = "surface" | "control" | "recording";
+
+const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // Surfaces — cards, cells, rows and tiles. They keep the default and say nothing, and a
   // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
   "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
@@ -734,18 +939,24 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly ("surface" | "control")
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
 
   // The rail card is a surface and the checkmark inside it is a control — the two are
-  // siblings, which is why one file holds one of each.
-  "app/(signed-in)/up-next/up-next-episode-card.tsx": ["surface", "control"],
+  // siblings, which is why one file holds one of each. The check is the recording one
+  // since #283: it is the same act as the episode row's checkmark on another surface.
+  "app/(signed-in)/up-next/up-next-episode-card.tsx": ["surface", "recording"],
 
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
-  "app/(signed-in)/library/watch-mark-motion.tsx": ["control"],
+  "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
   "app/(signed-in)/search/catalogue-result.tsx": ["control"],
 };
 
-/** How a call site spells the control register, as Tailwind spells an arbitrary property —
- *  `upcoming-row.tsx`'s own `[--poster-radius:10px]` is the same form. */
-const CONTROL_REGISTER = `[${REGISTER_PROPERTY}:${REGISTERS.control.register}]`;
+/** How a call site spells a register, as Tailwind spells an arbitrary property —
+ *  `upcoming-row.tsx`'s own `[--poster-radius:10px]` is the same form. The surface one
+ *  has no spelling at all, which is what *the default is spelled by saying nothing* means. */
+const REGISTER_CLASS: Readonly<Record<Register, string | null>> = {
+  surface: null,
+  control: `[${REGISTER_PROPERTY}:${REGISTERS.control.register}]`,
+  recording: `[${REGISTER_PROPERTY}:${REGISTERS.recording.register}]`,
+};
 
 /** Every class string in the application that puts `pressable` on an element. A `.pressable`
  *  *selector* is not one — `motion-provider.tsx` holds the only one of those — so the word
@@ -773,24 +984,58 @@ describe("every pressable call site declares a register or is deliberately left 
     }
   });
 
-  it("puts the control register on the controls and on nothing else", () => {
+  it("puts each declared register on its own call sites and on nothing else", () => {
     for (const { file, strings } of found) {
       strings.forEach((classes, index) => {
-        const register = PRESS_CALL_SITES[file][index];
-        const declares = classes.split(/\s+/).filter((token) => token === CONTROL_REGISTER);
+        const wanted = REGISTER_CLASS[PRESS_CALL_SITES[file][index]];
+        const tokens = classes.split(/\s+/).filter((token) => token.includes(REGISTER_PROPERTY));
 
-        if (register === "control") {
-          expect(declares, `${file} call site ${index} must declare ${CONTROL_REGISTER}`)
-            .toHaveLength(1);
+        if (wanted === null) {
+          // Not merely *not the loud register* — nothing at all, because the default is
+          // the quietest one and spelling it out would be a second place for it to live.
+          expect(tokens, `${file} call site ${index} must stay on the default`).toEqual([]);
         } else {
-          // Not merely *not the control register* — nothing at all, because the default is
-          // the quieter one and spelling it out would be a second place for it to live.
-          expect(classes, `${file} call site ${index} must stay on the default`).not.toContain(
-            REGISTER_PROPERTY,
-          );
+          expect(tokens, `${file} call site ${index} must declare ${wanted}`).toEqual([wanted]);
         }
       });
     }
+  });
+
+  /**
+   * **The loudest press has exactly two call sites — issue #283.** *No other call site
+   * declares this register* is the acceptance criterion, and it is a claim about the whole
+   * tree rather than about the two files that were edited, so it is swept for. A third
+   * control reaching for the recording register is how *the loudest press marks the act
+   * the product is built around* stops being true without any number changing.
+   */
+  it("declares the recording register at the two recording hit boxes and nowhere else", () => {
+    const declaring = found
+      .filter((site) =>
+        site.strings.some((classes) =>
+          classes.split(/\s+/).includes(REGISTER_CLASS.recording as string),
+        ),
+      )
+      .map((site) => site.file)
+      .sort();
+
+    expect(declaring).toEqual([
+      "app/(signed-in)/library/watch-mark-motion.tsx",
+      "app/(signed-in)/up-next/up-next-episode-card.tsx",
+    ]);
+
+    // And no register above it anywhere — a `[--press-register:3]` would resolve to the
+    // recording numbers under the stylesheet's clamp and read as a fourth register that
+    // does not exist.
+    const spelled = new Set(
+      found.flatMap((site) =>
+        site.strings.flatMap((classes) =>
+          classes.split(/\s+/).filter((token) => token.includes(REGISTER_PROPERTY)),
+        ),
+      ),
+    );
+    expect([...spelled].sort()).toEqual(
+      [REGISTER_CLASS.control, REGISTER_CLASS.recording].sort(),
+    );
   });
 
   /**
