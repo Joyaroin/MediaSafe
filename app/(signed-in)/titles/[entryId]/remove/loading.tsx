@@ -25,9 +25,9 @@ import { BackToLibrary, RemoveTitleHeading } from "./remove-frame";
  * ── Why this file exists at all ──────────────────────────────────────────────────────
  *
  * Without it, `[entryId]/loading.tsx` is the nearest boundary above and this route would show
- * the title-detail bar while it reads: `‹ Library` over a confirmation page, on a full-width
- * layout this surface does not use. The boundary belongs to the segment whose content is
- * pending.
+ * the title-detail bar while it reads: a way out of the *title* over a confirmation page,
+ * on a full-width layout this surface does not use. The boundary belongs to the segment
+ * whose content is pending.
  */
 export default function RemoveTitleLoading() {
   return (

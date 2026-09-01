@@ -216,7 +216,12 @@ const NAVIGATING_CONTROLS = [
     file: "app/(signed-in)/titles/[entryId]/remove/remove-title-form.tsx",
     label: "Open your library ›",
   },
-  { file: "app/(signed-in)/titles/[entryId]/back-to-library-bar.tsx", label: "‹ Library" },
+  /** The detail routes' back bar. Its label is the one in this table that is **not** a
+   *  literal — #292 made it name the surface the reader arrived from, so the fixed part
+   *  is the chevron, the interpolation after it and the element type. The rule this row
+   *  holds is the same one every other row holds: a control that navigates is an anchor,
+   *  and this one walks history from an `onClick` over an `href` that still resolves. */
+  { file: "app/(signed-in)/back-bar.tsx", label: "‹ {label}" },
 ] as const;
 
 const ACTING_CONTROLS = [

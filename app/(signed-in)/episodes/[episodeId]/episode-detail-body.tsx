@@ -34,9 +34,10 @@ import { EpisodeSynopsisStreamed } from "./episode-synopsis-streamed";
  * ── The entry is resolved here, not handed down — issue #289 ─────────────────────────
  *
  * The route carries the episode's id alone, so the first thing this does is ask which of
- * this reader's entries holds it. `layout.tsx` asks the same question for the back bar's
- * destination and gets the same cache entry, so the two callers cost one query between
- * them (`cachedLibraryEntryIdForEpisode`).
+ * this reader's entries holds it (`cachedLibraryEntryIdForEpisode`). `layout.tsx` used to
+ * ask the same question for the back bar's destination and share the cache entry; #292
+ * gave the bar an origin to name instead of a show to point at, so this is the only caller
+ * left and the read happens once, inside the boundary that belongs to it.
  */
 export async function EpisodeDetailBody({
   episodeId,
