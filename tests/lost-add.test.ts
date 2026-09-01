@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-add";
+import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost-add";
 import { createWriteFailureStore } from "@/errors/write-failure";
 
 /**

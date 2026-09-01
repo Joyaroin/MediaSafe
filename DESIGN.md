@@ -1510,7 +1510,7 @@ own three. **Pending is the fourth caller of a component that was built to be sh
 this kind of set**, and the sentence it makes true is *the library, which is still reading*.
 
 **Where the heading is itself the answer, it is pending too — and the build already says what
-takes its place.** `/lists/[listId]` and `/titles/[kind]/[tmdbId]` set their `<h1>` from the
+takes its place.** `/lists/[listId]` and `/catalogue/[kind]/[tmdbId]` set their `<h1>` from the
 read (`{detail.name}`), so there is no heading to render early: the name is exactly what is
 being waited for. Their `error.tsx` files already answer this, and answer it the same way for
 the same reason — they render the segment's **back link** (`‹ Lists`) in the heading bar and

@@ -4365,7 +4365,7 @@ export interface UnownedTitleDetailRow {
  * ── The page does not call this directly any more — issue #225 ───────────────────────
  *
  * `cache/borrowed-facts.ts`'s `cachedUnownedTitleDetail` wraps it, and that is what
- * `titles/[kind]/[tmdbId]/page.tsx` calls. Nothing about the query changed, and the throws
+ * `catalogue/[kind]/[tmdbId]/page.tsx` calls. Nothing about the query changed, and the throws
  * above still leave through `unstable_cache` untouched, because it stores resolved values
  * only.
  *

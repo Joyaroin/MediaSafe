@@ -23,7 +23,7 @@ import type { ListDetailTitleRow } from "@/db/access";
  * A list holds anything in the catalogue (issue #133), so a row is a title this account
  * has added or one it has not, and issue #148 gives the second case a page of its own.
  * An owned row links to `library/[entryId]` — your copy, with your progress on it. An
- * unowned row links to `titles/[kind]/[tmdbId]`, which is the same borrowed facts with no
+ * unowned row links to `catalogue/[kind]/[tmdbId]`, which is the same borrowed facts with no
  * owned fact anywhere on it and one *Add to library*. Two destinations rather than two
  * kinds of row: what differs is the key each page is keyed by, and that difference is the
  * whole of how the read stays scoped (`db/access.ts`'s `getUnownedTitleDetail`).
@@ -99,7 +99,7 @@ export function ListTitleRow({
     <Link
       href={
         title.libraryEntryId === null
-          ? `/titles/${title.kind}/${title.tmdbId}`
+          ? `/catalogue/${title.kind}/${title.tmdbId}`
           : `/library/${title.libraryEntryId}`
       }
       className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-150 hover:bg-raised"

@@ -9,7 +9,7 @@ import ListsLoading from "@/app/(signed-in)/lists/loading";
 import ListDetailLoading from "@/app/(signed-in)/lists/[listId]/loading";
 import DeleteAccountLoading from "@/app/(signed-in)/settings/delete-account/loading";
 import SettingsLoading from "@/app/(signed-in)/settings/loading";
-import UnownedTitleLoading from "@/app/(signed-in)/titles/[kind]/[tmdbId]/loading";
+import UnownedTitleLoading from "@/app/(signed-in)/catalogue/[kind]/[tmdbId]/loading";
 
 /**
  * The surfaces [#181](https://github.com/Joyaroin/MediaSafe/issues/181) converts — eleven
