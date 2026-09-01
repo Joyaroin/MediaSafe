@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { HOLD_MS } from "@/app/(signed-in)/library/use-hold-to-select";
 import { snappy } from "@/app/motion";
 
 /**
@@ -309,9 +310,14 @@ function compression(register: number | null = null): number {
   return cssValue(scale![1], variablesFor(register));
 }
 
-/** The rule that runs the pop, keyed off the mark the delegated listener sets. */
+/** The rule that runs the pop, keyed off the mark the delegated listener sets.
+ *
+ *  **Updated from a selector that had to be `.pressable[data-popped="true"]` and nothing
+ *  else.** #285 hung a `:not()` off it so that a cell in the middle of the hold gesture
+ *  does not also run the press's flourish, so the selector is read up to its brace rather
+ *  than matched whole. */
 function popRule(): string {
-  const match = CSS_CODE.match(/\.pressable\[data-popped="true"\]\s*\{[\s\S]*?\n\}/);
+  const match = CSS_CODE.match(/\.pressable\[data-popped="true"\][^{]*\{[\s\S]*?\n\}/);
   expect(match, "globals.css must run the pop off `data-popped`").not.toBeNull();
   return match![0];
 }
@@ -813,5 +819,229 @@ describe("every pressable call site declares a register or is deliberately left 
       "app/(signed-in)/up-next/up-next-episode-card.tsx",
       "app/(signed-in)/up-next/up-next-tile.tsx",
     ]);
+  });
+});
+
+/**
+ * ── The hold, re-derived onto the press's scale — issue #285 ─────────────────────────
+ *
+ * A library cell can be tapped and the same cell can be held for `HOLD_MS` to select it,
+ * and until this ticket the two moved on **two unrelated scales**: the hold compressed to
+ * `0.95` and landed on `1.035`, chosen beside the press rather than from it, while the
+ * press ran the register's own `0.96`/`1.012`. One cell, one finger, two hands.
+ *
+ * So the hold's two numbers are now the press's two numbers — `var(--press-compress)` and
+ * `var(--press-pop)`, read off the same element the press reads them off, which for a
+ * library cell is the quiet surface register it never declares. Nothing else about the
+ * hold moves: it is still a **timer made visible**, still `HOLD_MS` of linear ramp rather
+ * than the press's 100ms ease-out, and `select-land` still turns over at 55% over
+ * `--dur-base`. What changed is where the amplitudes come from, and this suite is what
+ * stops them from being picked beside the press a second time.
+ *
+ * The assertions resolve the declarations the way a browser would, through the same
+ * `cssValue` the register uses, because *the hold reads `--press-compress`* is the whole
+ * property and a suite that read `0.96` as a literal could not tell the two apart.
+ */
+
+/** The stylesheet's own note over the hold's rules — where the derivation is cited. */
+function holdNote(): string {
+  const match = CSS.match(/\/\* ── Hold to select[\s\S]*?\*\//);
+  expect(match, "globals.css must still open its hold section with a note").not.toBeNull();
+  return match![0];
+}
+
+/** The rule that compresses a cell while the hold's timer runs. */
+function holdRule(): string {
+  const match = CSS_CODE.match(/\.pressable\[data-holding="true"\]\s*\{[\s\S]*?\n\}/);
+  expect(match, "globals.css must still compress a cell being held").not.toBeNull();
+  return match![0];
+}
+
+/** The rule that plays the arrival once the hold lands. */
+function landRule(): string {
+  const match = CSS_CODE.match(/\.pressable\[data-landed="true"\]\s*\{[\s\S]*?\n\}/);
+  expect(match, "globals.css must still animate the hold's arrival").not.toBeNull();
+  return match![0];
+}
+
+/** The scale a held cell is driven to, resolved in a register the way a browser would. */
+function holdScale(register: number | null = null): number {
+  const scale = holdRule().match(/transform:\s*scale\((.+)\);/);
+  expect(scale, "the hold must still be a scale").not.toBeNull();
+  return cssValue(scale![1], variablesFor(register));
+}
+
+/** `select-land`'s stops, in the order the keyframe declares them, resolved in a register. */
+function selectLandStops(register: number | null = null): { at: number; scale: number }[] {
+  const variables = variablesFor(register);
+
+  return [
+    ...keyframesBlock("select-land").matchAll(/([\d.]+)%\s*\{\s*transform:\s*scale\((.+)\);/g),
+  ].map((stop) => ({ at: Number(stop[1]), scale: cssValue(stop[2], variables) }));
+}
+
+/**
+ * How many blocks deep a selector sits in the stylesheet. `0` is the top level and is
+ * therefore **unlayered**, which is the whole of why the hold's rules beat `pressable`'s:
+ * `@utility` puts those in the `utilities` cascade layer, and an unlayered rule wins
+ * against a layered one however specific the layered one is.
+ */
+function blockDepthOf(selector: string): number {
+  const at = CSS_CODE.indexOf(selector);
+  expect(at, `globals.css must declare ${selector}`).toBeGreaterThan(-1);
+
+  let depth = 0;
+  for (const character of CSS_CODE.slice(0, at)) {
+    if (character === "{") depth += 1;
+    else if (character === "}") depth -= 1;
+  }
+  return depth;
+}
+
+describe("the hold and the press are one hand on a library cell", () => {
+  it("compresses a held cell to the press's own compression, derived and not copied", () => {
+    // The value a browser resolves, in the register a library cell is in — the quiet one,
+    // because a cell declares nothing. `0.95` was the number this replaced.
+    expect(holdScale(null)).toBeCloseTo(REGISTERS.surface.compress, 6);
+
+    // And derived rather than transcribed: a literal that happened to equal the register
+    // today is exactly the drift the ticket exists to close.
+    expect(holdRule()).toContain("var(--press-compress)");
+  });
+
+  it("lands the hold on the press's own pop, derived and not copied", () => {
+    const stops = selectLandStops(null);
+
+    expect(stops).toHaveLength(3);
+    expect(stops[0].scale).toBeCloseTo(REGISTERS.surface.compress, 6);
+    expect(Math.max(...stops.map((stop) => stop.scale))).toBeCloseTo(REGISTERS.surface.pop, 6);
+    expect(stops[stops.length - 1].scale).toBe(REST);
+
+    expect(keyframesBlock("select-land")).toContain("var(--press-compress)");
+    expect(keyframesBlock("select-land")).toContain("var(--press-pop)");
+  });
+
+  /** #279's seventeenth user story, as one number: the cell a finger taps and the cell the
+   *  same finger holds travel between the same two sizes. */
+  it("gives the tap and the hold one scale on the same cell", () => {
+    expect(holdScale(null)).toBeCloseTo(compression(null), 6);
+    expect(Math.max(...selectLandStops(null).map((stop) => stop.scale))).toBeCloseTo(
+      popPeak(null),
+      3,
+    );
+  });
+
+  /**
+   * **The hold stays its own rules.** #279's eighteenth user story: a `500ms` hold is a
+   * timer made visible, not a press, and the long linear ramp is what makes the wait
+   * legible as a wait. An ease-out over the press's 100ms would spend the first half of
+   * the gesture looking finished.
+   */
+  it("still reads as a timer rather than as a press", () => {
+    // `HOLD_MS` is imported rather than written down: the compression has to finish at the
+    // exact moment the hold lands, and a second copy of 500 is how that stops being true.
+    expect(holdRule()).toMatch(new RegExp(`transition:\\s*transform\\s+${HOLD_MS}ms\\s+linear`));
+    expect(holdRule()).not.toContain("--dur-press");
+    expect(holdRule()).not.toContain("--ease-out-quart");
+
+    // The wait is an order of magnitude longer than the press's answer to a finger, which
+    // is what a reader is being shown while the timer runs.
+    expect(HOLD_MS).toBeGreaterThanOrEqual(4 * Number(declaredOnce("--dur-press").replace("ms", "")));
+  });
+
+  /** `select-land`'s role and timing are unchanged — only its two numbers moved. */
+  it("keeps the arrival's role and its timing", () => {
+    expect(landRule()).toMatch(/animation:\s*select-land\s+var\(--dur-base\)\s+var\(--ease-out-quart\)/);
+    expect(selectLandStops(null).map((stop) => stop.at)).toEqual([0, 55, 100]);
+  });
+
+  /**
+   * **The hold's rules still win against the press on the same element**, and they win for
+   * the reason they always did: they are unlayered, and `@utility pressable` is in the
+   * `utilities` layer, so no amount of specificity down there can reach them.
+   */
+  it("keeps the hold's rules winning against the press, and the reason beside them", () => {
+    expect(blockDepthOf('.pressable[data-holding="true"]')).toBe(0);
+    expect(blockDepthOf('.pressable[data-landed="true"]')).toBe(0);
+    expect(pressableUtility()).not.toContain("data-holding");
+
+    // Recorded where the rules live, not only in DESIGN.md.
+    expect(holdNote()).toMatch(/[Uu]nlayered/);
+  });
+
+  /**
+   * **A cell being held does not also run the press's pop.** Both are `animation` on one
+   * element, and a release that lands a selection would otherwise put the flourish that
+   * means *that was a tap* over the arrival that means *this is now selected* — one
+   * gesture saying two things.
+   */
+  it("does not run the press's pop on a cell being held", () => {
+    const selector = popRule().split("{")[0];
+
+    expect(selector).toContain('[data-holding="true"]');
+    expect(selector).toContain('[data-landed="true"]');
+    expect(selector).toMatch(/:not\(/);
+  });
+
+  /**
+   * **And the tone step does not reach a held cell either.** #284 paints the ground tone on
+   * a pressed element that carries its own raised surface; on a library cell the raised
+   * surface is the `<li>` and `pressable` is the `<button>` inside it, so the two never
+   * meet. Asserted rather than assumed, because moving `bg-raised` onto the button is a
+   * one-word change that would put a colour change under the hold's 500ms wait.
+   */
+  it("leaves the tone step off the held cell", () => {
+    const cell = pressClassStrings("app/(signed-in)/library/library-entry-cell.tsx");
+
+    expect(cell).toHaveLength(1);
+    expect(cell[0].split(/\s+/)).not.toContain("bg-raised");
+  });
+
+  /**
+   * Reduced motion covers **both** halves of the hold — the ramp and the arrival — and
+   * neither the gesture nor the selection is dropped with them. The event always happens.
+   */
+  it("drops the hold's movement without dropping the hold", () => {
+    const blocks = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ]
+      .map((match) => match[0])
+      .filter((block) => block.includes("data-holding"));
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?transform:\s*none/);
+    expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?transition:\s*none/);
+    expect(blocks[0]).toMatch(/\[data-landed="true"\][\s\S]*?animation:\s*none/);
+
+    // Holding still selects: the timer never asks about the preference, exactly as the
+    // press's own listener never does. Only the animation is negotiable.
+    const hold = codeOf("app/(signed-in)/library/use-hold-to-select.ts");
+    expect(hold).toContain("HOLD_MS");
+    expect(hold).not.toContain("prefers-reduced-motion");
+    expect(hold).not.toContain("matchMedia");
+  });
+
+  /**
+   * **The prose cites the derivation rather than a number it no longer has.** A comment
+   * claiming a provenance beside a value that stopped coming from it is the exact failure
+   * this file exists to prevent, and the hold's note was one edit away from being it.
+   */
+  it("cites the hold's new derivation in the stylesheet and in DESIGN.md", () => {
+    expect(holdNote()).toContain("--press-compress");
+    expect(holdNote()).toContain("--press-pop");
+
+    // And no copy of the numbers the hold used to carry survives in the *rules*. The
+    // prose may name them — this file records a reversal as a reversal, as `DESIGN.md`
+    // does — but a literal amplitude left in a declaration is the thing being removed.
+    expect(CSS_CODE).not.toContain("1.035");
+    expect(CSS_CODE).not.toContain("scale(0.95)");
+
+    const design = readFileSync(path.join(REPOSITORY_ROOT, "DESIGN.md"), "utf8");
+    const paragraphs = design.split(/\n{2,}/).filter((text) => text.includes("select-land"));
+
+    expect(
+      paragraphs.some((text) => text.includes("--press-compress") && text.includes("--press-pop")),
+      "DESIGN.md must say where the hold's two numbers now come from",
+    ).toBe(true);
   });
 });

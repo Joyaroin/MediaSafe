@@ -1068,10 +1068,13 @@
    `linear` and not an easing: the stops *are* the curve, and a timing function over them
    would be a second opinion about the same spring.
 
-   Declared before `select-land` on purpose. The two are equal-specificity rules on the
-   same library cell, so source order decides, and the hold has to win: a 500ms hold is a
-   timer made visible and its own arrival, not a press. `tests/press-spring.test.ts`
-   recomputes every stop below from `snappy` and asserts the peak exceeds `1`. */
+   Declared before `select-land` on purpose, and since #285 the rule that runs it says so
+   as well. The two are equal-specificity rules on the same library cell and the hold has
+   to win — a 500ms hold is a timer made visible and its own arrival, not a press — so
+   source order was doing that work silently. It still holds; the `:not()` below states it,
+   because *the pop must not play over the arrival* is a fact about the gesture rather than
+   a fact about which of two blocks was typed first. `tests/press-spring.test.ts` recomputes
+   every stop below from `snappy` and asserts the peak exceeds `1`. */
 @keyframes press-pop {
   0% { transform: scale(var(--press-compress)); }
   3.125% { transform: scale(calc(var(--press-compress) + 0.03283 * var(--press-rise))); }
@@ -1108,7 +1111,14 @@
   100% { transform: scale(1); }
 }
 
-.pressable[data-popped="true"] {
+/* Not on a cell the reader is holding, and not on one whose selection has just landed —
+   issue #285. A release that lands a selection is a release like any other as far as the
+   delegated listener can tell, so without this the flourish that means *that was a tap*
+   plays over the arrival that means *this is now selected*, and one gesture says two
+   things. `select-land` would win the frame it shares, being later in this file; what the
+   exclusion adds is the frames after it, once the arrival's mark comes off and the pop's
+   is still on. */
+.pressable[data-popped="true"]:not([data-holding="true"], [data-landed="true"]) {
   animation: press-pop var(--dur-pop) linear;
 }
 
@@ -1135,7 +1145,7 @@
    ticket asks for both: *the held cell scales under the press, then springs into its
    selected state.*
 
-   `data-holding` is the press itself, and its `500ms` is `selectable-entry.tsx`'s
+   `data-holding` is the press itself, and its `500ms` is `use-hold-to-select.ts`'s
    `HOLD_MS` — the compression finishes at the exact moment the hold lands, so the cell is
    at its smallest when it pops. `linear` and not an ease, because this one is a *timer
    made visible* rather than a movement: an ease-out would spend the first half of the
@@ -1145,14 +1155,31 @@
    this and would ordinarily supply the spring, but not here: this rule is on a library
    cell and there are 472 of them on the one screen that renders the whole library —
    `library-grid.tsx`'s own trade — so it is authored as a keyframe for the same reason
-   `pressable` and `stagger-rise` are. `1.035` is the overshoot; the press it is coming out
-   of is `0.95`, so the whole gesture travels 8.5% and reads as one movement rather than
-   two.
+   `pressable` and `stagger-rise` are.
+
+   ── The two numbers are the press's, since issue #285 ───────────────────────────────
+   They were `0.95` and `1.035`, picked here when this section was written and never
+   reconciled with anything. The press then moved onto a register of its own (#282), and a
+   library cell was left travelling on two unrelated scales: `4%` under a tap and `8.5%`
+   under a hold, on the same cell, under the same finger. So the amplitudes are read off
+   the press instead — `var(--press-compress)` and `var(--press-pop)`, resolved on this
+   very element, which for a cell that declares no register is the quiet surface pair
+   `0.96`/`1.012`. A cell classified into another register would move the hold with it,
+   which is the point: *one hand, tapped or held* is a property of the element and not a
+   number that happens to match today.
+
+   **What is not re-derived is everything else.** The ramp is still `HOLD_MS` of `linear`
+   and not the press's `--dur-press` ease-out, and the arrival is still `--dur-base` and
+   still turns over at 55%. The hold is a timer made visible, and a timer that borrowed the
+   press's 100ms would be over before the reader had finished waiting. Only the two sizes
+   moved, and they moved because they now come from somewhere.
 
    Unlayered on purpose. `pressable` is a `@utility` and therefore in the `utilities`
    cascade layer, and the same cell carries both — a layered `.pressable:active` cannot
    win against these however specific it is, which is what stops a finger still resting on
-   a landed cell from flattening the overshoot back to `0.97`.
+   a landed cell from flattening the overshoot back to `--press-compress`. That is why the
+   two can share the register's numbers without sharing its behaviour: the hold beats the
+   press by cascade origin, not by out-specifying it.
 
    Qualified by `.pressable` rather than left as bare `[data-holding]` selectors, which
    would have claimed those two attribute names for every element in the application. The
@@ -1160,10 +1187,10 @@
    the rules say who they are for. */
 @keyframes select-land {
   0% {
-    transform: scale(0.95);
+    transform: scale(var(--press-compress));
   }
   55% {
-    transform: scale(1.035);
+    transform: scale(var(--press-pop));
   }
   100% {
     transform: scale(1);
@@ -1171,7 +1198,7 @@
 }
 
 .pressable[data-holding="true"] {
-  transform: scale(0.95);
+  transform: scale(var(--press-compress));
   transition: transform 500ms linear;
 }
 
@@ -1179,11 +1206,13 @@
   animation: select-land var(--dur-base) var(--ease-out-quart);
 }
 
-/* The check badge arriving on a selected poster (`selection-check-badge.tsx`). A slightly
+/* The check badge arriving on a selected poster (`selection-check-badge.tsx`). A far
    deeper overshoot than the cell's, because it is 22px across and starting from nothing —
-   the same movement at the cell's `1.035` would be invisible at this size. It has no exit:
-   a CSS animation cannot outlive its element, and `app/motion.ts` already holds that
-   nothing can catch a thing that is already leaving. */
+   the cell's own arrival, which is the press's `--press-pop`, would be invisible at this
+   size. This one is a literal and stays one: it is not a press and there is no register it
+   could be read out of. It has no exit either: a CSS animation cannot outlive its element,
+   and `app/motion.ts` already holds that nothing can catch a thing that is already
+   leaving. */
 @keyframes badge-arrive {
   0% {
     opacity: 0;

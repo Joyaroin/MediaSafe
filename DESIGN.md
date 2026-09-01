@@ -2012,6 +2012,26 @@ holds all of it — the ground token, the absent shadow, the absent accent, and 
 sites — beside the no-shadow sweep and the accent's closed meaning, which are the two rules
 a press is best placed to break quietly.
 
+**And the hold on a library cell is now the same hand — issue #285.** A cell can be tapped
+and the same cell can be held for `HOLD_MS` to select it, and the hold arrived (#197) with
+two numbers of its own: it compressed to `0.95` and its `select-land` arrival overshot to
+`1.035`, chosen beside the press rather than out of it. Once the press had a register those
+were simply a second scale on one cell — `4%` of travel under a tap and `8.5%` under a hold,
+under the same finger. So `select-land`'s two stops and the held cell's compression read
+`--press-compress` and `--press-pop` off the element they are on, which for a library cell
+is the quiet surface register it never declares.
+
+**The hold stays its own rules, and only its two numbers moved.** It is a *timer made
+visible*, not a press: the ramp is still `HOLD_MS` of `linear` rather than the press's 100ms
+ease-out — an ease-out would spend the first half of the wait looking finished — and
+`select-land` still turns over at 55% over `--dur-base`. The hold's rules are **unlayered**
+and `pressable` is a `@utility` in the `utilities` layer, so the hold still wins on the one
+element that carries both, and it wins by cascade origin rather than by specificity. The pop
+is the one half that had to be told: `press-pop` is excluded from a cell that is holding or
+has just landed, because a release that lands a selection is an ordinary release to the
+delegated listener, and the flourish meaning *that was a tap* playing over the arrival
+meaning *this is now selected* is one gesture saying two things.
+
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what
 a pending surface renders instead and gives four separate reasons why a skeleton is not it —
