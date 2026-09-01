@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { Poster } from "@/app/poster";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import type { LibraryStateGroupEntry } from "@/db/access";
@@ -85,7 +86,11 @@ function FilmCard({
 
   return (
     <li className={FILM_CARD}>
-      <Link href={`/library/${film.libraryEntryId}`} className="pressable group block">
+      <Link
+        href={`/titles/${film.libraryEntryId}`}
+        transitionTypes={NAV_DEEPER}
+        className="pressable group block"
+      >
         <Poster
           posterPath={film.posterPath}
           name={film.titleName}

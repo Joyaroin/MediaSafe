@@ -1,8 +1,8 @@
+import { BackBar } from "@/app/(signed-in)/back-bar";
+import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedTitleDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
-import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "../live-title-facts-streamed";
-import { BackToLibraryBar } from "./back-to-library-bar";
 import { TitleDetailView } from "./title-detail-view";
 
 /**
@@ -11,7 +11,7 @@ import { TitleDetailView } from "./title-detail-view";
  *
  * ── Why this file exists at all ──────────────────────────────────────────────────────
  *
- * There were two renders of `/library/[entryId]` and there is one screen. Which one a
+ * There were two renders of this route and there is one screen. Which one a
  * reader got was the framework's decision, not this file's: intercepted into the `@title`
  * slot for a press inside the app, the full page for an address typed, shared or
  * refreshed. The thing that must not vary between them is *what title detail is*, so it
@@ -22,7 +22,7 @@ import { TitleDetailView } from "./title-detail-view";
  * The interception is deleted: pressing a library cell, a rail tile or a search result
  * navigates to this page rather than raising a sheet over the screen the reader was on.
  * The flag this file carried changed the **back bar** and nothing else — it was suppressed
- * inside the dialog, where `‹ Library` would have been a third way out beside Close,
+ * inside the dialog, where the bar would have been a third way out beside Close,
  * Escape and the swipe, and a lying one, since the library was still on screen underneath.
  * There is no dialog, so the bar is unconditional and is again the way back.
  *
@@ -41,7 +41,7 @@ export async function TitleDetailBody({
 
   return (
     <>
-      <BackToLibraryBar />
+      <BackBar />
 
       {/* Three streamed sections, three nodes: the synopsis renders inside the hero's card,
           the providers in a card below the episodes, the cast last. They were two nodes

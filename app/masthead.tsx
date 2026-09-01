@@ -100,18 +100,29 @@ export async function Masthead() {
             the handoff's *every tap target ≥44px* without a header 11px wider than the
             screen title it sits over.
 
-            `nav-forward` because Settings is a push *out of* the four tabs, not a move
-            along them — this is the only entrance to it on the phone, and without a type
-            here it was the one screen that arrived with no motion at all while every tab
-            around it slid. The way back is `tab-bar.tsx`'s: tapping any tab from a screen
-            that is on none of them is `nav-back`, so the round trip mirrors.
+            ── The upward push — issue #294 ────────────────────────────────────────────
+
+            `nav-upward`, and this link is its only caller in the whole application.
+
+            Settings is a step *out of* the four tabs rather than a move along them or a
+            move into something, and until #294 it borrowed the lateral type the tab bar
+            computes — so the one navigation that leaves the bar looked exactly like the
+            four that stay on it. Three kinds of move, three motions: the page pushes up
+            from below on the way in and the stylesheet plays that same motion reversed —
+            downward — for the snapshot that is leaving, so the round trip mirrors
+            (`globals.css`, *Out of the tabs*).
+
+            Import, delete-account and every nested settings page are deliberately not
+            here. They are already outside the bar, so a push out of it would be a motion
+            claiming a move nobody made; they attach no type and land on the mapping's
+            `default: "none"` like every other ordinary link.
 
             The browser's own Back gesture still carries no type and so plays nothing,
             which is a documented limit of the API rather than a decision here. */}
         <Link
           href="/settings"
           aria-label="Settings"
-          transitionTypes={["nav-forward"]}
+          transitionTypes={["nav-upward"]}
           className="-mr-[11px] flex h-11 w-11 items-center justify-center text-dim transition-colors hover:text-ink"
         >
           <SettingsIcon className="h-[17px] w-[17px]" />

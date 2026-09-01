@@ -16,7 +16,7 @@ import { watchMarks } from "./watch-marks";
  * Every other recording control in this application writes on the press, because every
  * other one writes **one row** and the row it writes is the row under the thumb. This one
  * can write sixty-two, and nothing on screen would say so until they were all struck. So
- * this is removal's footprint instinct pointing the other way — `library/[entryId]/remove/page.tsx`
+ * this is removal's footprint instinct pointing the other way — `titles/[entryId]/remove/page.tsx`
  * draws the watches a removal destroys as a counted figure, on the grounds that *118
  * watches is a different decision from none*: the number is what makes the size of the
  * action visible while it can still be stopped.

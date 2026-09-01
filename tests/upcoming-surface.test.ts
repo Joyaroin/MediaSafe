@@ -251,15 +251,15 @@ describe("a row that is missing something", () => {
 });
 
 describe("where a row goes", () => {
-  /** The episode's own page beneath its owning library entry — the same destination the
-   *  rail's card and a season row reach, so an episode behaves the same way everywhere. */
-  it("links to the episode under its library entry", () => {
+  /** The episode's own page — its own route since #289, carrying the episode's id and no
+   *  entry beside it. The same destination a season row reaches, so an episode behaves the
+   *  same way everywhere. */
+  it("links to the episode's own route", () => {
     const one = episodeOn(TODAY);
     const markup = render([one]);
 
-    expect(markup).toContain(
-      `href="/library/${one.libraryEntryId}/episode/${one.episodeId}"`,
-    );
+    expect(markup).toContain(`href="/episodes/${one.episodeId}"`);
+    expect(markup).not.toContain(`/library/${one.libraryEntryId}/episode/`);
   });
 });
 
@@ -338,12 +338,12 @@ describe("the films you are waiting for", () => {
     expect(without).toContain("In 12 days");
   });
 
-  /** A card navigates to the film's own page under its library entry, like every other
-   *  film card in the build. */
-  it("links to the film under its library entry", () => {
+  /** A card navigates to the film's own page — `/titles/{entryId}` since #290, like every
+   *  other film card in the build. */
+  it("links to the film at the address a held title has", () => {
     const film = filmOn("2026-09-05");
 
-    expect(renderFilms([film])).toContain(`href="/library/${film.libraryEntryId}"`);
+    expect(renderFilms([film])).toContain(`href="/titles/${film.libraryEntryId}"`);
   });
 
   /**
@@ -656,7 +656,7 @@ describe("the page hands the pager both surfaces and one day", () => {
 /** How many episode rows the surface drew — one `<li>` each, counted by the link inside
  *  it, which no other part of this screen renders. */
 function rowCount(markup: string): number {
-  return (markup.match(/href="\/library\/[^"]*\/episode\//g) ?? []).length;
+  return (markup.match(/href="\/episodes\//g) ?? []).length;
 }
 
 describe("one row per show, not one per episode", () => {

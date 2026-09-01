@@ -948,6 +948,10 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
   "app/(signed-in)/search/catalogue-result.tsx": ["control"],
+
+  // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
+  // one class string is four call sites, and they are controls rather than surfaces.
+  "app/tab-bar.tsx": ["control"],
 };
 
 /** How a call site spells a register, as Tailwind spells an arbitrary property —
@@ -1042,9 +1046,10 @@ describe("every pressable call site declares a register or is deliberately left 
   /**
    * **The register costs no client boundary.** It is a class token on a string, so it
    * cannot make a server component a client one — and this pins that rather than trusting
-   * it. The three files below were already `"use client"` for their own reasons (a pointer
-   * gesture, an optimistic mark, an in-flight write) and every other call site renders on
-   * the server, which is the argument for the press being CSS at all.
+   * it. The four files below were already `"use client"` for their own reasons (a pointer
+   * gesture, an optimistic mark, an in-flight write, and — since #295 put the press on the
+   * tab bar — `usePathname`) and every other call site renders on the server, which is the
+   * argument for the press being CSS at all.
    */
   it("leaves every call site on the boundary it was already on", () => {
     const client = found
@@ -1058,6 +1063,7 @@ describe("every pressable call site declares a register or is deliberately left 
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/up-next/up-next-episode-card.tsx",
       "app/(signed-in)/up-next/up-next-tile.tsx",
+      "app/tab-bar.tsx",
     ]);
   });
 });
@@ -1293,5 +1299,183 @@ describe("the hold and the press are one hand on a library cell", () => {
       paragraphs.some((text) => text.includes("--press-compress") && text.includes("--press-pop")),
       "DESIGN.md must say where the hold's two numbers now come from",
     ).toBe(true);
+  });
+});
+
+/**
+ * ── The bar wears the press — issue #295 ─────────────────────────────────────────────
+ *
+ * The four most-pressed controls in the application had no press. Of the call sites swept
+ * above, the phone tab bar was not one: #279's press reached every tile, cell, row and
+ * button except the bar that is on screen at all times and answered nothing under a thumb.
+ *
+ * It joins at the **control** register — it is four small hit boxes, the same kind of
+ * thing as the search screen's add — rather than at the surface one a card gets, and no
+ * fourth register is introduced. What is new is one class on the child that leads.
+ */
+const TAB_BAR = "app/tab-bar.tsx";
+
+/** The class that marks the element leading its parent's press. */
+const LEAD_CLASS = "press-lead";
+
+/** The one class string the four tabs share, as tokens. One string and not four is the
+ *  whole of *each tab carries it*: the bar renders `TABS` through a single `<Link>`, so a
+ *  tab that did not press would have to be a second element rather than a missing token. */
+function tabPressTokens(): string[] {
+  const strings = pressClassStrings(TAB_BAR);
+
+  expect(strings, "the four tabs must press through one shared class string").toHaveLength(1);
+  return strings[0].split(/\s+/);
+}
+
+/** A named class-string constant in `tab-bar.tsx`, read the way `CHECK_HIT_BOX` is read
+ *  above — the source, with its comments blanked, so the prose cannot answer for it. */
+function tabConstant(name: string): string {
+  const match = codeOf(TAB_BAR).match(new RegExp(`const ${name} =\\s*"([^"]*)"`));
+
+  expect(match, `tab-bar.tsx must still declare ${name}`).not.toBeNull();
+  return match![1];
+}
+
+describe("the phone tab bar wears the press", () => {
+  it("presses every one of the four tabs", () => {
+    const source = codeOf(TAB_BAR);
+
+    // Four destinations, one `<Link>`, one class string.
+    expect([...source.matchAll(/\{\s*href:\s*"\//g)]).toHaveLength(4);
+    expect(source).toMatch(/TABS\.map\(/);
+    expect(source).toMatch(/className=\{`\$\{TAB\}\s/);
+
+    expect(tabPressTokens()).toContain("pressable");
+  });
+
+  it("presses at the control register and not at the surface one", () => {
+    const tokens = tabPressTokens();
+
+    expect(tokens).toContain(REGISTER_CLASS.control as string);
+    expect(tokens).not.toContain(REGISTER_CLASS.recording as string);
+
+    // And the register it declares is the one that resolves to #279's control numbers —
+    // the claim is *this bar presses like a control*, end to end, not a spelling here and
+    // a table over there.
+    expect(compression(REGISTERS.control.register)).toBeCloseTo(REGISTERS.control.compress, 6);
+    expect(compression(REGISTERS.control.register)).toBeLessThan(compression(null));
+    expect(popPeak(REGISTERS.control.register)).toBeCloseTo(REGISTERS.control.pop, 3);
+  });
+});
+
+/**
+ * What a leading child multiplies its parent's compression by. A nested transform
+ * composes with its parent's, so the icon's compression is this **times** the tab's own —
+ * which is why the lead is a factor and not a fourth row in the register table.
+ */
+function leadFactor(register: number | null = null): number {
+  const rule = pressableUtility().match(
+    new RegExp(`&:active \\.${LEAD_CLASS}[\\s\\S]*?\\{([\\s\\S]*?)\\}`),
+  );
+  expect(rule, "`pressable` must compress a leading child further than itself").not.toBeNull();
+
+  const scale = rule![1].match(/transform:\s*scale\((.+)\);/);
+  expect(scale, "the lead must still be a scale").not.toBeNull();
+
+  return cssValue(scale![1], variablesFor(register));
+}
+
+/** What the tab's icon and its label are actually driven to, resolved the way a browser
+ *  would: the label takes the tab's own compression, the icon takes it again through the
+ *  lead. Both come off one press, which is what keeps them one gesture. */
+function tabCompressions(): { icon: number; label: number } {
+  const control = REGISTERS.control.register;
+  const label = compression(control);
+
+  return { icon: label * leadFactor(control), label };
+}
+
+describe("the tab bar's icon leads its label", () => {
+  it("puts the lead on the icon and not on the label", () => {
+    expect(tabConstant("TAB_ICON").split(/\s+/)).toContain(LEAD_CLASS);
+    expect(tabConstant("TAB_LABEL").split(/\s+/)).not.toContain(LEAD_CLASS);
+
+    // And both are the strings the bar actually renders, not two constants beside it.
+    const source = codeOf(TAB_BAR);
+    expect(source).toContain("className={TAB_ICON}");
+    expect(source).toContain("className={TAB_LABEL}");
+  });
+
+  it("compresses the icon deeper than the label", () => {
+    const { icon, label } = tabCompressions();
+
+    expect(icon).toBeLessThan(label);
+    // Deeper by an amount, not by a rounding error: the lead exists so the bar reads as a
+    // bar rather than as a search row, and a factor of 0.999 would be #270's failure again.
+    expect(label - icon).toBeGreaterThan(0.01);
+  });
+
+  /**
+   * **Slightly deeper, and no deeper than that.** The lead is not a fourth register and
+   * must not reach past the one that is deliberately the loudest — #283 gives the
+   * recording checkmark `0.900` because it is the act the product is built around, and a
+   * tab icon overtaking it would make *the loudest press in the application* stop being
+   * true without any number in the register table changing.
+   */
+  it("stays short of the deepest press in the application", () => {
+    expect(tabCompressions().icon).toBeGreaterThan(REGISTERS.recording.compress);
+  });
+
+  /**
+   * **No register moved.** #295 is the motion around #279's numbers, not a re-tune: the
+   * lead is one property the press derives nothing else from, so the three registers
+   * resolve to exactly the six amplitudes they resolved to before it existed.
+   */
+  it("leaves all three registers where #279 and #283 left them", () => {
+    for (const { register, compress, pop } of Object.values(REGISTERS)) {
+      expect(compression(register)).toBeCloseTo(compress, 6);
+      expect(popPeak(register)).toBeCloseTo(pop, 3);
+    }
+  });
+
+  /**
+   * **The lead costs no client boundary and no handler.** It is a class token on a child,
+   * so the bar is still a client component only for `usePathname` — the reason it has
+   * been one since #102 — and the press's one delegated listener (asserted above) is
+   * still the whole of its runtime.
+   */
+  it("adds no state, no handler and no listener to the bar", () => {
+    const source = codeOf(TAB_BAR);
+
+    expect(source).not.toContain("useState");
+    expect(source).not.toContain("useEffect");
+    expect(source).not.toContain("addEventListener");
+    expect(source).not.toMatch(/onPointer|onClick|onTouch/);
+    expect(source).not.toContain("matchMedia");
+  });
+
+  /**
+   * **Reduced motion drops the lead, in the block that already drops the press.** The
+   * lead is the compression again one element down, so a second `@media` block would be a
+   * second answer to one preference — and a reader who asked for no movement would get a
+   * bar whose icons still shrank under a thumb.
+   */
+  it("drops the lead under reduced motion, with the rest of the press", () => {
+    const blocks = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ]
+      .map((match) => match[0])
+      .filter((block) => block.includes(LEAD_CLASS));
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatch(
+      new RegExp(`\\.pressable:active \\.${LEAD_CLASS}[\\s\\S]*?transform:\\s*none`),
+    );
+    expect(blocks[0]).toMatch(
+      new RegExp(`\\.pressable \\.${LEAD_CLASS}\\s*\\{[\\s\\S]*?transition:\\s*none`),
+    );
+
+    // The same block, not one of its own: it is the one that drops the compression too.
+    expect(blocks[0]).toMatch(/\.pressable\s*\{[\s\S]*?transition:\s*none/);
+    expect(blocks[0]).toMatch(/\.pressable\[data-popped="true"\]\s*\{[\s\S]*?animation:\s*none/);
+
+    // And the navigation still happens: nothing here takes a tab off the pointer.
+    expect(blocks[0]).not.toMatch(/pointer-events|display\s*:|visibility/);
   });
 });

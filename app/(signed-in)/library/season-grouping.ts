@@ -10,7 +10,7 @@
  *
  * Both are pure and take no owned fact: they are shape, not state, which is what lets the
  * owned surface (`programme-note-episodes.tsx`, whose rows carry `watched` and `upNext`)
- * and the unowned one (`titles/[kind]/[tmdbId]/unowned-episodes.tsx`, whose rows carry
+ * and the unowned one (`catalogue/[kind]/[tmdbId]/unowned-episodes.tsx`, whose rows carry
  * neither) share them without either type learning about the other.
  */
 

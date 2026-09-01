@@ -117,9 +117,9 @@ The dark palette is **out of scope** — leave `prefers-color-scheme: dark` as i
 | Design | Route | Files to change |
 | --- | --- | --- |
 | Up next + Upcoming | `/up-next` | `up-next/{page,up-next-heading,up-next-groups,home-group,group-tile,title-sheet}.tsx`, `app/masthead.tsx`, `app/tab-bar.tsx` |
-| Search | `/search` | `search/{search-surface,catalogue-result}.tsx`, `titles/[kind]/[tmdbId]/add-to-library-control.tsx` |
+| Search | `/search` | `search/{search-surface,catalogue-result}.tsx`, `catalogue/[kind]/[tmdbId]/add-to-library-control.tsx` |
 | Library (titles + lists) | `/library`, `/lists` | `library/{library-heading,library-filter-bar,library-grid,library-entry-cell,library-state}.tsx`, `lists/*.tsx` |
-| Show / film details | `/library/[entryId]`, `/titles/[kind]/[tmdbId]` | `library/{programme-note-content,programme-note-episodes,season-chips,title-meta-line,episode-line,watch-mark-motion,rating-control,add-to-list-control,abandon-control,remove-control}.tsx` |
+| Show / film details | `/titles/[entryId]`, `/catalogue/[kind]/[tmdbId]` | `library/{programme-note-content,programme-note-episodes,season-chips,title-meta-line,episode-line,watch-mark-motion,rating-control,add-to-list-control,abandon-control,remove-control}.tsx` |
 | Episode details | new route | `library/{programme-note-episodes,watch-mark-motion,mark-up-to}.ts(x)`, `up-next/title-sheet.tsx` |
 | You | new route | new screen; tokens from `app/globals.css` |
 | Tokens | — | `app/globals.css` |

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { EpisodeStill } from "@/app/(signed-in)/library/episode-still";
 import {
@@ -63,12 +64,20 @@ import {
  *
  * ── Tapping the card ────────────────────────────────────────────────────────────────
  *
- * **The title's own page** — `/library/{entryId}`, and the same destination the film card
- * and the pending card already have. #250 was written expecting exactly this and settled
- * for the episode instead, because #253 gave an episode a page first; #274 puts the card
- * back where the ticket that built it meant it to go, so that every tile and every card on
- * this tab opens the same kind of place. The episode's page keeps its other two origins —
- * a season row and a deep link — and is not deleted.
+ * **The episode's own page** — `/episodes/{episodeId}`, and the episode this card is
+ * *drawing* rather than the head of the entry's run.
+ *
+ * **This is a reversal, and the second one on this line** (issue #291, under spec #287).
+ * #250 linked to the episode; #274 retargeted the card at `/titles/{entryId}` on the
+ * argument that every card on this tab should lead to the same kind of place; this points
+ * it back. Both arguments are real, which is why `DESIGN.md` §7 keeps #274's rather than
+ * overwriting it — but the stronger rule is that **a card leads to the thing it names**.
+ * This card names one episode in its code line and offers a control that records that same
+ * episode, so a destination that opened the show made the card say one thing, do a second
+ * and go to a third.
+ *
+ * The tiles are unchanged and are not what this is about: a show tile, a film tile and a
+ * pending tile all still open `/titles/{entryId}`, because a tile names a title.
  *
  * The check is a sibling of the link rather than a control inside it, so a thumb on the
  * check is never also a navigation — `SPEC.md`'s own rule for the season row's check, held
@@ -96,6 +105,7 @@ export function UpNextEpisodeCard({
     return (
       <CardBody
         entry={entry}
+        episodeId={entry.episodeId}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         /**
@@ -174,6 +184,7 @@ function MarkableCard({
   return (
     <CardBody
       entry={entry}
+      episodeId={showing.episodeId}
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       /**
@@ -296,6 +307,7 @@ const TAP_DEAD_ZONE = "mb-1";
  */
 function CardBody({
   entry,
+  episodeId,
   code,
   episodeName,
   picture,
@@ -307,6 +319,13 @@ function CardBody({
   sweep,
 }: {
   entry: UpNextEntry;
+  /**
+   * The episode the card is drawing, which is what it links to — **not**
+   * `entry.episodeId`, which is only the head of the run and is stale the moment a mark
+   * lands. The markable branch hands down the episode it is showing; the branch whose run
+   * arrived empty has nothing that can advance, so for it the two are the same id.
+   */
+  episodeId: string;
   code: string;
   episodeName: string | null;
   /** What goes in the frame — chosen by `up-next-mark.ts`, drawn by `CardFrame` below. */
@@ -334,27 +353,28 @@ function CardBody({
           destination, and `SPEC.md`'s *a destination is a destination* is why a film card
           navigates too.
 
-          **The title, not the episode — issue #274, reversing #250's own reversal.** #250
-          was written expecting to link to the title until an episode had a page of its
-          own; #253 built that page first, so the card went straight there, and the
-          next-episodes card became the one thing on this tab that led somewhere other
-          than a title. It leads to the title now: a show tile, a film tile and a card all
-          open the same kind of place, which is what makes *one model for what a tap does*
-          a claim about the whole tab rather than about two thirds of it. Everything
-          MediaSafe holds about the show is on that page, the next episode included.
+          **The episode, not the title — issue #291, reversing #274.** #274's argument was
+          that every card on this tab should lead to the same kind of place, and it is a
+          real argument; it is kept in `DESIGN.md` §7 rather than deleted. What outranks it
+          is that a card leads to *the thing it names*. Three things on this card have to
+          agree about which episode it is — the code line above, the check below, and this
+          href — and under #274 the href was the odd one out, so a press answered with a
+          page the card had never mentioned. Nothing about that failure is visible: the
+          navigation happens, a real page renders, and it is the wrong one.
 
-          **The episode's page is not deleted and does not lose a reader.** It keeps both
-          of its other origins — a season row inside the title (`programme-note-episodes.tsx`)
-          and a deep link — and the route is still keyed by both ids, so nothing about
-          reaching it from there changes. What this card stops being is a *second* front
-          door to one episode from a surface whose whole subject is titles.
+          **The tiles are untouched.** A show tile, a film tile and a pending tile still
+          open `/titles/{entryId}`, because what a tile names is a title. The rule is the
+          same one; only this card was naming something else.
 
-          The card no longer takes an `episodeId` of its own. It existed to build the href
-          above and nothing else — the episode being marked is `up-next-mark.ts`'s, read
-          from the store by the branch that owns the control, and the code line beside this
-          text is what names the episode to the reader. */}
+          **`episodeId` is the drawn episode**, handed down by whichever branch mounted
+          this body — `showing.episodeId` once a mark has landed, which is why the prop
+          exists rather than this reading `entry.episodeId` off the entry in scope. The
+          episode being *marked* is still `up-next-mark.ts`'s, read from the store by the
+          branch that owns the control, and for every state that has a control at all the
+          two are the same episode. */}
       <Link
-        href={`/library/${entry.libraryEntryId}`}
+        href={`/episodes/${episodeId}`}
+        transitionTypes={NAV_DEEPER}
         /* **This press carried `scroll={false}` until issue #273**, because #254
            intercepted it into the layout's `@episode` slot: the landing screen was not
            replaced, it was still underneath, and Next scrolling it to the top would have
@@ -364,9 +384,9 @@ function CardBody({
            covering it, and the prop would now be a lie about a page the reader has never
            seen — arriving on a title already scrolled to wherever the rail happened to be.
            An ordinary navigation goes to the top of the document, which is what the router
-           does when nothing tells it otherwise. #274 retargets the href above and changes
-           nothing about this: the destination moved, the reason the prop is absent did
-           not. */
+           does when nothing tells it otherwise. #274 retargeted the href above and #291
+           moved it back; neither changes this. The destination moved twice, the reason the
+           prop is absent did not. */
         className={`pressable block ${TAP_DEAD_ZONE}`}
         /* The still is `aria-hidden` and the code line is three tokens, so this label is
            what a screen reader hears for the link. `titleName` first, because the series

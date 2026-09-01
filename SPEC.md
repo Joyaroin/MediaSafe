@@ -345,11 +345,19 @@ fourth.
    each surface pushes. On Up next a show tile still wrote **selection state** and a
    next-episodes card still pushed the **episode's** page, so a show, a film and a card
    reached three different kinds of place from one tab. They reach one now: **the title's
-   own page**, by one mechanism — a `Link` to `/library/{entryId}` — with a search result
-   opening `/titles/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
+   own page**, by one mechanism — a `Link` to `/titles/{entryId}` — with a search result
+   opening `/catalogue/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
    away from rather than deleted, and keeps a season row and a deep link. The phone's use
    of selection is what goes; on `lg` and up the tile's click is stopped and the programme
    note pane swaps as divergence 2 describes, unchanged.
+
+   **And [#291](https://github.com/Joyaroin/MediaSafe/issues/291) reverses one row of that**
+   — the next-episodes card alone, which opens `/episodes/{episodeId}` again. #274's rule
+   was that every card on the tab should lead to one kind of destination; the rule that
+   replaces it is that a card leads to the thing it names, and this card names an episode
+   and offers a control that records that episode. Tiles are untouched and still open the
+   title. `DESIGN.md` §7 carries the reversal with #274's reasoning kept, because the same
+   decision has now been made in both directions.
 
    **And [#276](https://github.com/Joyaroin/MediaSafe/issues/276) narrows what this bullet
    claims for the desktop.** *So the grid keeps its scroll position* was written as the

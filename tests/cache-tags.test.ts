@@ -66,6 +66,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
   reads: {
     listLibraryEntries: vi.fn(),
     libraryEntryIdForTitle: vi.fn(),
+    libraryEntryIdForEpisode: vi.fn(),
     listUpNextRails: vi.fn(),
     listWatchlistFilms: vi.fn(),
     listUpcomingEpisodes: vi.fn(),
@@ -202,6 +203,7 @@ const {
   UNCACHED_READS,
   cachedAccountFigures,
   cachedLibraryEntries,
+  cachedLibraryEntryIdForEpisode,
   cachedLibraryEntryIdForTitle,
   cachedListDetail,
   cachedLists,
@@ -253,6 +255,10 @@ const CACHED = {
   listLibraryEntries: (userId: typeof mine) => cachedLibraryEntries(userId),
   libraryEntryIdForTitle: (userId: typeof mine) =>
     cachedLibraryEntryIdForTitle(userId, "show", 1399),
+  /** Issue #289's episode route. The same `library` fact one table further along — the
+   *  entry that holds an episode, rather than the entry that holds a title. */
+  libraryEntryIdForEpisode: (userId: typeof mine) =>
+    cachedLibraryEntryIdForEpisode(userId, "episode-1"),
   listUpNextRails: (userId: typeof mine) => cachedUpNextRails(userId),
   listWatchlistFilms: (userId: typeof mine) => cachedWatchlistFilms(userId),
   /** Issue #251's Upcoming — the landing pager's second page, tagged `up-next` with the
@@ -1391,7 +1397,7 @@ describe("busting a title's borrowed facts", () => {
 describe("every shared-mirror write busts the borrowed facts too", () => {
   const CALL_SITES = [
     "app/(signed-in)/search/actions.ts",
-    "app/(signed-in)/titles/actions.ts",
+    "app/(signed-in)/catalogue/actions.ts",
     "app/(signed-in)/import/actions.ts",
     "app/api/cron/nightly-sweep/route.ts",
   ];
@@ -1469,6 +1475,9 @@ describe("the reads that are cached, and the one that must never be", () => {
       "getListDetail",
       "getTitleDetail",
       "libraryEntryIdForTitle",
+      // #289's, written beside its twin: the same `library` fact, reached through the
+      // episode rather than through the title.
+      "libraryEntryIdForEpisode",
       // #247's. #249 retired `accountStats`, which used to sit above it.
       "accountFigures",
       "listYouListCards",

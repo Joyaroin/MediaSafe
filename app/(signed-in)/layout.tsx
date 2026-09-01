@@ -1,4 +1,5 @@
 import { Masthead } from "../masthead";
+import { PathnameMemory } from "../previous-pathname";
 import { Sidebar } from "../sidebar";
 import { TabBar } from "../tab-bar";
 
@@ -71,6 +72,17 @@ import { TabBar } from "../tab-bar";
  * and it stays exactly as it was on `lg` and up.
  *
  * What this layout takes now is `children`, which is the page.
+ *
+ * ── The one thing in here that renders nothing — issue #292 ──────────────────────────
+ *
+ * `PathnameMemory` keeps the pathname the app last rendered, which is what lets a detail
+ * page's back bar name the surface the reader arrived from. It is mounted here because
+ * this shell is on screen for every signed-in route and mounts once for all of them: a
+ * recorder inside a page would only ever see the page it was in, which is the one
+ * pathname the rule does not need.
+ *
+ * It draws nothing, takes no props and holds no state of its own — `app/previous-pathname.ts`
+ * is the single module variable behind it and states what a reload does to it.
  */
 export default function SignedInLayout({
   children,
@@ -79,6 +91,7 @@ export default function SignedInLayout({
 }>) {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[var(--tab-bar-height)] lg:flex-row lg:pb-0">
+      <PathnameMemory />
       <Masthead />
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>

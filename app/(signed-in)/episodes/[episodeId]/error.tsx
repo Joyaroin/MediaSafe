@@ -6,11 +6,13 @@ import { referenceForBoundary } from "@/errors/reference";
 /**
  * The episode page did not load — the segment boundary for `[episodeId]`.
  *
- * It exists for the reason `[entryId]/error.tsx` gives for its own: the boundary above
- * would replace a wider surface than the one that failed, telling a reader something went
- * wrong without telling them what. Here that matters more than usual, because the boundary
- * above is the *title's* — a failed episode read would blank the show's whole page, which
- * is a page that did not fail.
+ * It exists for the reason `titles/[entryId]/error.tsx` gives for its own: the boundary
+ * above would replace a wider surface than the one that failed, telling a reader something
+ * went wrong without telling them what. That was sharper still while this route lived
+ * under `[entryId]` — the boundary above was the *title's*, so a failed episode read
+ * blanked the show's whole page, which is a page that did not fail. Issue #289 moves the
+ * route out from under it and the reasoning survives the move: the boundary above is now
+ * `app/error.tsx`, which is the whole application.
  *
  * The back link stays on screen through the failure: it is `layout.tsx`'s, drawn around
  * this, so a route that failed to load is still a route a reader can leave. That is the
@@ -19,11 +21,12 @@ import { referenceForBoundary } from "@/errors/reference";
  *
  * ── What reaches this, and what deliberately does not ───────────────────────────────
  *
- * The mirrored read (`cachedTitleDetail`) throws into this: an entry that is not in this
- * account's library, or a database that is down. **An episode this show does not have does
- * not** — `page.tsx` answers that with `notFound()`, because a URL naming no episode is a
- * read that succeeded and found nothing, and rendering *this did not load* over it would be
- * `AGENTS.md`'s opening rule told backwards.
+ * A database that is down throws into this — either of the route's two reads, the entry
+ * resolution or the mirrored detail. **An episode this account cannot reach does not**:
+ * `libraryEntryIdForEpisode` answers `null` for an episode of a title the reader has not
+ * added and for an id naming nothing at all, and the body turns both into `notFound()`,
+ * because a URL naming no episode is a read that succeeded and found nothing and rendering
+ * *this did not load* over it would be `AGENTS.md`'s opening rule told backwards.
  *
  * A failed **synopsis** does not reach here either, and that is the ticket's own criterion:
  * it is caught into an `Outcome` (`live-facts.ts`) and rendered as one section's inline

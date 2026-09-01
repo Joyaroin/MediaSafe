@@ -6,7 +6,7 @@ import { BackToListsBar } from "../back-to-lists-bar";
 
 /**
  * A list did not load. The segment boundary for `[listId]` — same shape as
- * `library/[entryId]/error.tsx`: the root boundary (`app/error.tsx`) would replace the
+ * `titles/[entryId]/error.tsx`: the root boundary (`app/error.tsx`) would replace the
  * whole page rather than saying which surface failed, and `lists/error.tsx` covers the
  * index but not a row's own contents underneath it.
  *

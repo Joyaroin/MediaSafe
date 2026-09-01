@@ -4174,7 +4174,7 @@ export interface TitleDetailRow {
  *
  * ── There is no `try` here ────────────────────────────────────────────────────────────
  *
- * Called directly from the phone route (`app/(signed-in)/library/[entryId]/page.tsx`),
+ * Called directly from the phone route (`app/(signed-in)/titles/[entryId]/page.tsx`),
  * a throw here is what reaches that route's own `error.tsx`. The desktop pane cannot
  * lean on a route boundary — it never navigates — so it calls this through
  * `titleDetailAction`, which is what does the catching, for the reason
@@ -4365,7 +4365,7 @@ export interface UnownedTitleDetailRow {
  * ── The page does not call this directly any more — issue #225 ───────────────────────
  *
  * `cache/borrowed-facts.ts`'s `cachedUnownedTitleDetail` wraps it, and that is what
- * `titles/[kind]/[tmdbId]/page.tsx` calls. Nothing about the query changed, and the throws
+ * `catalogue/[kind]/[tmdbId]/page.tsx` calls. Nothing about the query changed, and the throws
  * above still leave through `unstable_cache` untouched, because it stores resolved values
  * only.
  *
@@ -4481,6 +4481,52 @@ export async function libraryEntryIdForTitle(
     .where(
       and(ownedBy(userId, libraryEntry), eq(title.kind, kind), eq(title.tmdbId, tmdbId)),
     );
+
+  return row?.id ?? null;
+}
+
+/**
+ * **The library entry one episode is held through, or `null`** — issue #289, and the read
+ * that lets `/episodes/{episodeId}` carry one id instead of two.
+ *
+ * ── Why the route stopped carrying the entry ─────────────────────────────────────────
+ *
+ * The episode page used to live at `/library/{entryId}/episode/{episodeId}`, and two ids
+ * in one path can disagree: an entry from one account beside an episode of another
+ * title is a URL anybody can type. Resolving the entry *from* the episode removes the
+ * disagreement rather than checking for it — there is one id, and it cannot contradict
+ * itself.
+ *
+ * ── The check is `ownedBy`, and it is the only thing standing here ───────────────────
+ *
+ * `episode` and `title` are global (ADR-0001), so an episode id names a row every account
+ * can see. What makes the answer *this* reader's is `ownedBy(userId, libraryEntry)`
+ * combined with the join — exactly `libraryEntryIdForTitle` above, one table further
+ * along. Without it this would answer whichever account happened to have added the show,
+ * which is the failure mode worth naming: not a leak of a *row*, but the episode page
+ * rendering somebody else's marks over a title the reader does not hold.
+ *
+ * ── `null` is a state, not a failure ─────────────────────────────────────────────────
+ *
+ * `SPEC.md` §3.2 again. An episode of a title the reader has not added, and an episode id
+ * that names nothing at all, are both *a read that succeeded and found nothing* — and the
+ * route above turns them into `notFound()`, which is what an address with no episode
+ * beneath it is. A database that is down still throws, with no `catch` in the way.
+ *
+ * The join is inner on both sides for that reason: a `leftJoin` would answer an entry row
+ * for an episode that has nothing to do with it, which is the one wrong answer this read
+ * must never give.
+ */
+export async function libraryEntryIdForEpisode(
+  userId: UserId,
+  episodeId: string,
+  executor: Executor = getDb(),
+): Promise<string | null> {
+  const [row] = await executor
+    .select({ id: libraryEntry.id })
+    .from(libraryEntry)
+    .innerJoin(episode, eq(episode.titleId, libraryEntry.titleId))
+    .where(and(ownedBy(userId, libraryEntry), eq(episode.id, episodeId)));
 
   return row?.id ?? null;
 }

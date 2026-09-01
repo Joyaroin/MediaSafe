@@ -19,7 +19,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * ── It navigates, and the navigation is the ceremony ─────────────────────────────────
  *
  * A `Link`, not a button — nothing is written from here. The press leads to
- * `library/[entryId]/remove`, which reads this title's real watch count and rating from the
+ * `titles/[entryId]/remove`, which reads this title's real watch count and rating from the
  * database and asks. That page's own docblock carries the argument for why it is a page
  * rather than a dialog; what matters here is that this control cannot destroy anything on
  * its own, so a mis-tap costs a navigation and nothing else.
@@ -92,7 +92,7 @@ export function RemoveControl({
   return (
     <div>
       <Link
-        href={`/library/${libraryEntryId}/remove`}
+        href={`/titles/${libraryEntryId}/remove`}
         aria-label={`Remove ${titleName} from your library`}
         className={GHOST_RECOVERY}
       >

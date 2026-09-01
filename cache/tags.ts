@@ -4,6 +4,7 @@ import {
   accountFigures,
   getListDetail,
   getTitleDetail,
+  libraryEntryIdForEpisode,
   libraryEntryIdForTitle,
   listLibraryEntries,
   listLists,
@@ -225,6 +226,16 @@ export const CACHED_READS = {
   /** *Is this title in my library* — `library_entry` joined to `title`, by account. No
    *  derived view, so no clock: an add or a remove is the only thing that changes it. */
   libraryEntryIdForTitle: { cachedAs: "library", readsCurrentDate: false },
+  /**
+   * *Which of my entries holds this episode* — issue #289's episode route, which carries
+   * the episode's id alone. `library_entry` joined to `episode` through the title, by
+   * account: the same fact `libraryEntryIdForTitle` above reads, reached one table
+   * further along, so it carries the same tag rather than declaring one of its own.
+   *
+   * No clock. It touches no derived view and compares no `air_date` — an add or a remove
+   * is the only thing that can change the answer, and both bust `library` already.
+   */
+  libraryEntryIdForEpisode: { cachedAs: "library", readsCurrentDate: false },
   listUpNextRails: { cachedAs: "up-next", readsCurrentDate: true },
   listWatchlistFilms: { cachedAs: "up-next", readsCurrentDate: true },
   /**
@@ -602,7 +613,7 @@ export function cachedListDetail(
 }
 
 /**
- * One title, as the programme note and the phone's `library/[entryId]` route show it.
+ * One title, as the programme note and the phone's `titles/[entryId]` route show it.
  *
  * `libraryEntryId` is an argument for `cachedListDetail`'s reason. **Its ownership check is
  * still the query's**: `getTitleDetail` scopes by `ownedBy(userId, libraryEntry)` and the
@@ -655,6 +666,36 @@ export function cachedLibraryEntryIdForTitle(
   );
 
   return read(userId, kind, tmdbId);
+}
+
+/**
+ * *Which entry holds this episode* — `episodes/[episodeId]`'s first read, made by the
+ * route's layout for the back bar's destination and by its body for the detail read that
+ * follows.
+ *
+ * **Two callers, one entry, one query.** The layout draws the bar around the pending and
+ * failed renders as well as the loaded one, so it cannot wait for the page's own read;
+ * this is the read they share, and sharing it through the cache is what keeps the second
+ * call from being a second round trip.
+ *
+ * Tagged `library` rather than `title-detail`, on `cachedLibraryEntryIdForTitle`'s own
+ * reasoning: the fact it reads is a row in `library_entry` for this account, and every
+ * write that can create or destroy one already busts `library`. Its ownership check is
+ * still the query's — `libraryEntryIdForEpisode` scopes by `ownedBy(userId, libraryEntry)`
+ * and the episode id together, so the key being this account's is not what makes the
+ * answer this account's.
+ */
+export function cachedLibraryEntryIdForEpisode(
+  userId: UserId,
+  episodeId: string,
+): Promise<string | null> {
+  const read = unstable_cache(
+    libraryEntryIdForEpisode,
+    ["libraryEntryIdForEpisode", userId],
+    { tags: [tagFor("library", userId)] },
+  );
+
+  return read(userId, episodeId);
 }
 
 /**

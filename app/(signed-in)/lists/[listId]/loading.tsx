@@ -7,7 +7,7 @@ import { BackToListsBar } from "../back-to-lists-bar";
  * `DESIGN.md` §9: *`loading.tsx` renders what the segment's `error.tsx` already renders,
  * less the failure.* `error.tsx` renders the back bar and no `<h1>` at all, because
  * `{detail.name}` is exactly the thing being waited for — the identical shape
- * `library/[entryId]/loading.tsx` follows for the same reason.
+ * `titles/[entryId]/loading.tsx` follows for the same reason.
  *
  * This file exists because a boundary above it would speak for it: without it, this route
  * would show `lists/loading.tsx`'s *Lists* heading over one list's own page.

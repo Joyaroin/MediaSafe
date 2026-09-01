@@ -2,9 +2,9 @@
  * One figure and its label, on a page that is about to destroy what it counts.
  *
  * Two surfaces render these — `settings/delete-account/page.tsx`'s three (titles, watches,
- * ratings) and `library/[entryId]/remove/page.tsx`'s two (this title's watches, and its
+ * ratings) and `titles/[entryId]/remove/page.tsx`'s two (this title's watches, and its
  * rating if it has one). It is written once for the reason
- * `library/[entryId]/remove/remove-frame.tsx` gives for its own heading and
+ * `titles/[entryId]/remove/remove-frame.tsx` gives for its own heading and
  * `errors/failure-treatment.ts` gives for its class strings: *written out twice, the two
  * drift* — and these are the two screens in the product where the figure a reader acts on
  * cannot be taken back, so the pair drifting apart is not a cosmetic outcome.

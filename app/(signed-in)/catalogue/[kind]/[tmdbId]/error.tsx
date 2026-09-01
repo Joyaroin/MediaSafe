@@ -6,7 +6,7 @@ import { referenceForBoundary } from "@/errors/reference";
 
 /**
  * Title detail did not load, for a title you do not own. The segment boundary for this
- * route, and it exists for the reason `library/[entryId]/error.tsx` exists: the root
+ * route, and it exists for the reason `titles/[entryId]/error.tsx` exists: the root
  * boundary (`app/error.tsx`) would replace the whole page, telling a reader something
  * failed without telling them what.
  *

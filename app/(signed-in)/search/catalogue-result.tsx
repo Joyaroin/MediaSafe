@@ -4,13 +4,14 @@ import Link from "next/link";
 
 import { useRef, useState } from "react";
 
+import { NAV_DEEPER } from "@/app/(signed-in)/nav-deeper";
 import { referenceFor } from "@/errors/reference";
 import { QUIET_RECORDING_CONTROL_LABELLED_COMPACT } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
   addWatchedAccessibleLabel,
   addWatchedLabel,
-} from "@/app/(signed-in)/titles/add-watched";
-import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/titles/lost-add";
+} from "@/app/(signed-in)/catalogue/add-watched";
+import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost-add";
 import { Poster } from "@/app/poster";
 import {
   addToLibraryAction,
@@ -174,7 +175,7 @@ export function CatalogueResultRow({
             A result had exactly one affordance, *Add*, so the only way to find out what a
             title was before taking it into your library was to add it and look. That is
             the wrong order for the one screen whose whole job is titles you have never
-            seen. `/titles/[kind]/[tmdbId]` already existed for an unowned title, and a
+            seen. `/catalogue/[kind]/[tmdbId]` already existed for an unowned title, and a
             press here is an ordinary navigation to it. It was intercepted into a dialog
             from #254 until #273 deleted the route interceptions: a reader who asked to
             open a result gets the title's full page, not a sheet over the search.
@@ -184,7 +185,8 @@ export function CatalogueResultRow({
             near the edge would have to guess which of the two was meant. */}
         <h2 className="text-card font-semibold leading-tight tracking-[-0.012em] text-ink">
           <Link
-            href={`/titles/${result.kind}/${result.tmdbId}`}
+            href={`/catalogue/${result.kind}/${result.tmdbId}`}
+            transitionTypes={NAV_DEEPER}
             className="transition-opacity duration-[var(--dur-fast)] hover:opacity-80"
           >
             {result.name}

@@ -887,7 +887,7 @@ away in the panel it opens.
 - **Clicking a rail tile swaps the panel; it is never a navigation — on `lg` and up.**
   The page never routes, so it never loses its place, so comparing two candidates costs
   nothing. **Narrowed by [#274](https://github.com/Joyaroin/MediaSafe/issues/274)**: the
-  tile is a `Link` to `/library/{entryId}` whose click the desktop intercepts, rather than a
+  tile is a `Link` to `/titles/{entryId}` whose click the desktop intercepts, rather than a
   `button` that could only ever select. Below `lg` the link is followed and the reader gets
   the title's page — see *Opening a title opens the title* below. The desktop half of this
   bullet is unchanged, and the interception is what keeps it true.
@@ -993,7 +993,7 @@ when it carries neither.
 > #194**: bulk *Add to list* and bulk *Abandon* are reached from `/library` and its status
 > filters rather than from the landing screen.
 
-### Opening a title opens the title — issue #274
+### Opening a title opens the title, and a card opens its episode — issues #274 and #291
 
 > **⚠️ This section is a reversal, and it reverses itself.** It used to open: *"Tapping a
 > tile on the phone's Up next tab **raises a sheet over the tab**. It does not navigate."*
@@ -1004,15 +1004,31 @@ when it carries neither.
 > that amendment. The paragraphs the sheet argued for are kept below, in the past tense,
 > because a note that simply disappeared would read as a decision nobody made.
 
-**Every tile and every card on Up next opens the title's own page**, and there is one
-mechanism for it: a `Link` to `/library/{entryId}`.
+> **⚠️ And one row of it has now been reversed a second time — issue
+> [#291](https://github.com/Joyaroin/MediaSafe/issues/291), under spec
+> [#287](https://github.com/Joyaroin/MediaSafe/issues/287).** The next-episodes card is
+> pointed back at the episode's own page. **#274's reasoning is kept below rather than
+> overwritten**, because the same decision has now been made in both directions and a note
+> that quietly replaced the losing argument would invite a third pass to re-derive it and
+> swing back. What it said, and it was not wrong: *every tile and every card on this tab
+> should lead to the same kind of place, and the next-episodes card was the one thing that
+> did not — so a show, a film and a card reached three different kinds of destination from
+> one surface.* What outranks it: **a card leads to the thing it names.** The card names
+> one episode in its code line and offers a control that records that same episode, so a
+> destination that opened the show left the card saying one thing, doing a second and
+> going to a third — and the tiles, which name titles, are unaffected either way.
+
+**Every tile and every card on Up next opens the page it names**, and there is one
+mechanism for it: a `Link`. A show tile, a film tile and a pending tile each
+opens the title's own page, `/titles/{entryId}`; a next-episodes card opens the
+episode's own page, `/episodes/{episodeId}`.
 
 | What is pressed | Where it goes |
 | --- | --- |
 | A show tile on a rail (`up-next-tile.tsx`) | the library entry's page |
 | A film card (`up-next-film-rail.tsx`) | the same, unchanged |
 | A pending tile (`up-next-pending-card.tsx`) | the same, unchanged |
-| A next-episodes card (`up-next-episode-card.tsx`) | **the show's page** — retargeted from the episode's |
+| A next-episodes card (`up-next-episode-card.tsx`) | **the episode it names** — `/episodes/{episodeId}`, pointed back there by #291 |
 | A search result (`catalogue-result.tsx`) | the title's full page |
 
 - **A show and a film behave the same way on the same tab.** They reached their
@@ -1022,14 +1038,25 @@ mechanism for it: a `Link` to `/library/{entryId}`.
   about. One mechanism now, and it is the film card's, because a real anchor can be
   middle-clicked, opened in a new tab and read as a link, and a `button` calling
   `router.push` can do none of those.
-- **The next-episodes card retargets to the title.**
-  [#250](https://github.com/Joyaroin/MediaSafe/issues/250) was written expecting exactly
-  this and settled for the episode because
-  [#253](https://github.com/Joyaroin/MediaSafe/issues/253) built an episode page first. The
-  card was then the one thing on the tab that led somewhere other than a title. **The
-  episode's page is not deleted**: it keeps a season row inside the title and a deep link,
-  and the route is still keyed by both ids. What it stops having is a second front door
-  from a surface whose whole subject is titles.
+- **The next-episodes card opens the episode it names** — reversed back by
+  [#291](https://github.com/Joyaroin/MediaSafe/issues/291), and the third time this one
+  href has been decided. [#250](https://github.com/Joyaroin/MediaSafe/issues/250) meant it
+  for the title and settled for the episode because
+  [#253](https://github.com/Joyaroin/MediaSafe/issues/253) built an episode page first;
+  #274 took it to the title; #287 takes it back. **The episode is the one the card is
+  drawing**, not `UpNextEntry.episodeId` — a card advances through its run as marks land,
+  so the head of the entry's run is stale the moment the first check is pressed, and the
+  href, the code line and the check all read the same episode or the card is lying about
+  one of them. The card is a **second** door to that page and not its only one: a season
+  row inside the title reaches it too, and the route is deep-linkable.
+
+  > **What #274 argued, kept because it is not a bad argument.** *"#250 was written
+  > expecting exactly this and settled for the episode because #253 built an episode page
+  > first. The card was then the one thing on the tab that led somewhere other than a
+  > title. The episode's page is not deleted: it keeps a season row inside the title and a
+  > deep link. What it stops having is a second front door from a surface whose whole
+  > subject is titles."* Living with it is what settled it: the surface's subject turned
+  > out to be a weaker rule than the card's own words.
 - **The desktop side pane stays, and is not what this removes.** On `lg` and up a tile's
   click is stopped and `select()` swaps the programme note beside it, exactly as
   [#137](https://github.com/Joyaroin/MediaSafe/issues/137) built it. Selection state, the
@@ -1341,10 +1368,11 @@ across them would pair the wrong two elements* — with a further note that the 
 sheet shared the second family with the phone route rather than opening a third.
 
 That rule described a phone with **two** destinations: a title sheet raised over `/up-next`
-by a route interception, and the `/library/{id}` route underneath it. #268 deleted both
-interceptions and the sheet with them, so every tile and card on Up next navigates to the
-same page. The two surfaces that needed separate names are one surface, the second family
-had nothing left to keep apart, and it is gone along with the function that minted it.
+by a route interception, and the title's own route underneath it — `/library/{id}` then,
+`/titles/{entryId}` since #290. #268 deleted both interceptions and the sheet with them, so
+every tile and card on Up next navigates to the same page. The two surfaces that needed
+separate names are one surface, the second family had nothing left to keep apart, and it is
+gone along with the function that minted it.
 `app/(signed-in)/library/poster-transition-name.ts` is now one function with three callers
 — the rail tile, the desktop pane and the title's own page.
 
@@ -1510,7 +1538,7 @@ own three. **Pending is the fourth caller of a component that was built to be sh
 this kind of set**, and the sentence it makes true is *the library, which is still reading*.
 
 **Where the heading is itself the answer, it is pending too — and the build already says what
-takes its place.** `/lists/[listId]` and `/titles/[kind]/[tmdbId]` set their `<h1>` from the
+takes its place.** `/lists/[listId]` and `/catalogue/[kind]/[tmdbId]` set their `<h1>` from the
 read (`{detail.name}`), so there is no heading to render early: the name is exactly what is
 being waited for. Their `error.tsx` files already answer this, and answer it the same way for
 the same reason — they render the segment's **back link** (`‹ Lists`) in the heading bar and
@@ -2068,6 +2096,35 @@ marks land on one cell at once. `press-pop` is declared first and the arrival wi
 the flourish meaning *that was a tap* playing over the arrival meaning *this is now
 selected* is one gesture saying two things. That ordering is a tested property now rather
 than a typing order.
+
+**And the phone tab bar finally wears it — issue #295.** The four tabs were the most
+pressed controls in the application and the only ones that answered nothing: #279's press
+reached every tile, cell, row and button, and of the `pressable` call sites the one bar
+that is on screen at all times was not one. It joins at the **control** register — a tab is
+a 44px hit box, the same kind of thing as the search screen's add, not a 262px card — so it
+takes `--press-register: 1` and not one of the six amplitudes above moves. What felt wrong
+was the motion around the numbers, not the tuning.
+
+**The icon leads the label**, by a factor rather than by a fourth register. A nested
+transform composes with its parent's, so a child wearing `press-lead` multiplies whatever
+compression the element it sits in resolved to: `0.920 × 0.98 = 0.9016` for a tab's icon
+against `0.920` for its label. A tab is an icon *over* a word, and four cells compressing
+flat read as a search row that happens to have tabs in it. A factor keeps the register table
+at three rows, leaves the call site saying exactly one thing, and makes a lead placed in a
+quieter register lead by the same *proportion* rather than by a copied number. It stays
+short of `0.900`, so the recording checkmark is still the deepest press there is, and it is
+one direction only — the release is the tab's own `press-pop` over the whole cell, because
+an icon popping on its own would be the bar answering twice for one tap. Reduced motion
+drops it in the same `@media` block that drops the compression and the pop, since it *is*
+the compression one element down.
+
+**The tab's colour transition went, and that was forced.** `pressable` declares
+`transition` and `transition-colors` declares `transition`; two of them on one element in
+the `utilities` layer make *which wins* a question about the order Tailwind emits them in,
+and the losing branch is either a hover tint that stops fading or a compression that stops
+easing — the press broken outright. The bar is `lg:hidden`, so what it gives up is a hover
+fade on a surface that exists only where there is no pointer to hover with. `hover:text-ink`
+still applies; it applies instantly.
 
 **There is no skeleton, and no token for one.** No `--skeleton-*`, no shimmer keyframe, no
 placeholder utility, and no greyed stand-in for content that has not arrived. §9 settles what

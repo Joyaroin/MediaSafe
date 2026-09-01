@@ -9,7 +9,7 @@ import ListsLoading from "@/app/(signed-in)/lists/loading";
 import ListDetailLoading from "@/app/(signed-in)/lists/[listId]/loading";
 import DeleteAccountLoading from "@/app/(signed-in)/settings/delete-account/loading";
 import SettingsLoading from "@/app/(signed-in)/settings/loading";
-import UnownedTitleLoading from "@/app/(signed-in)/titles/[kind]/[tmdbId]/loading";
+import UnownedTitleLoading from "@/app/(signed-in)/catalogue/[kind]/[tmdbId]/loading";
 
 /**
  * The surfaces [#181](https://github.com/Joyaroin/MediaSafe/issues/181) converts — eleven
@@ -39,7 +39,7 @@ describe("Lists and its detail route", () => {
 
   /**
    * `lists/[listId]`'s `<h1>` is `{detail.name}`, read from the database — DESIGN.md §9's
-   * back-link shape, the same one `library/[entryId]/loading.tsx` follows. The list's own
+   * back-link shape, the same one `titles/[entryId]/loading.tsx` follows. The list's own
    * page is never reached by `lists/loading.tsx`'s boundary, which would print *Lists* over
    * one list's own contents.
    */
@@ -96,9 +96,11 @@ describe("An unowned title's detail", () => {
  * `/up-next/{ongoing,coming-back,old-friends,watchlist,abandoned}` along with the five
  * vertical groups that were the only links into them. The property they held — *a route
  * below a converted one paints its own label rather than inheriting the ancestor's* — is
- * still held here by `lists/[listId]` and by `library/[entryId]`, which are the routes that
- * still have an ancestor to inherit from. `tests/route-manifest.test.ts` is what proves the
- * five are really gone rather than merely unlinked.
+ * still held here by `lists/[listId]` and by `titles/[entryId]/remove`, which are the routes
+ * that still have an ancestor to inherit from — the title's own route stopped being one of
+ * them when #290 moved it out from under `/library`, and its remove child took its place.
+ * `tests/route-manifest.test.ts` is what proves the five are really gone rather than merely
+ * unlinked.
  */
 
 /**

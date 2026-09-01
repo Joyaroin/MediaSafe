@@ -57,7 +57,7 @@ describe("the remove control", () => {
   it("leads to the confirmation for this entry, and writes nothing itself", () => {
     const markup = render();
 
-    expect(markup).toContain('href="/library/entry-1/remove"');
+    expect(markup).toContain('href="/titles/entry-1/remove"');
     // A link, not a form or a button: nothing is destroyed from the page the control is on.
     expect(markup).not.toMatch(/<button|<form/);
   });
@@ -160,16 +160,16 @@ describe("where the remove control appears", () => {
       .sort();
 
     expect(routes).toEqual([
-      "app/(signed-in)/library/[entryId]/remove/actions.ts",
-      "app/(signed-in)/library/[entryId]/remove/error.tsx",
+      "app/(signed-in)/titles/[entryId]/remove/actions.ts",
+      "app/(signed-in)/titles/[entryId]/remove/error.tsx",
       // Issue #180's pending boundary. It belongs on this list for the reason the list
       // exists — it is a render of this route, and the thing worth knowing about it is the
       // same thing worth knowing about `error.tsx`: there is no form on it. That half is
       // asserted in `tests/library-pending.test.ts`, beside the other two states.
-      "app/(signed-in)/library/[entryId]/remove/loading.tsx",
-      "app/(signed-in)/library/[entryId]/remove/page.tsx",
-      "app/(signed-in)/library/[entryId]/remove/remove-frame.tsx",
-      "app/(signed-in)/library/[entryId]/remove/remove-title-form.tsx",
+      "app/(signed-in)/titles/[entryId]/remove/loading.tsx",
+      "app/(signed-in)/titles/[entryId]/remove/page.tsx",
+      "app/(signed-in)/titles/[entryId]/remove/remove-frame.tsx",
+      "app/(signed-in)/titles/[entryId]/remove/remove-title-form.tsx",
     ]);
   });
 });
@@ -179,13 +179,13 @@ describe("a count that could not be read", () => {
     // Its existence is the assertion: without it a failed count reaches the library's
     // boundary or the root's, and the reader is told something failed without being told it
     // was the thing they came here to read.
-    expect(sourceAt("app/(signed-in)/library/[entryId]/remove/error.tsx")).toContain(
+    expect(sourceAt("app/(signed-in)/titles/[entryId]/remove/error.tsx")).toContain(
       "ReadFailure",
     );
   });
 
   it("offers no confirmation under it — the form is not in that render at all", () => {
-    const boundary = sourceAt("app/(signed-in)/library/[entryId]/remove/error.tsx");
+    const boundary = sourceAt("app/(signed-in)/titles/[entryId]/remove/error.tsx");
 
     expect(boundary).not.toContain("RemoveTitleForm");
     expect(boundary).not.toContain("removeTitleAction");
@@ -194,7 +194,7 @@ describe("a count that could not be read", () => {
   it("never turns a failed count into a zero", () => {
     // `titleFootprint` throws, and the page calls it without a `try`. Both halves are the
     // rule; the second is the one a well-meaning edit would break.
-    const page = sourceAt("app/(signed-in)/library/[entryId]/remove/page.tsx");
+    const page = sourceAt("app/(signed-in)/titles/[entryId]/remove/page.tsx");
 
     expect(page).toContain("await titleFootprint(");
     expect(page).not.toMatch(/\btry\s*\{/);

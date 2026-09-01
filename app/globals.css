@@ -987,6 +987,33 @@
   --press-rise: calc(var(--press-pop) - var(--press-compress));
   --press-overshoot: calc(var(--press-pop) - 1);
 
+  /* ── The lead — issue #295 ────────────────────────────────────────────────────────
+     The phone tab bar presses at the control register like any other small hit box, and
+     inside that press the icon goes a little further than the word under it. A tab is an
+     icon *over* a label; without this the four cells compress as flat blocks and the bar
+     reads as a search row that happens to have tabs in it. The icon leading is the whole
+     of the difference, which is why #295 is the motion around #279's numbers rather than
+     a re-tune of them: not one of the six amplitudes above moves.
+
+     **A factor, not a fourth register.** A nested transform composes with its parent's,
+     so a leading child multiplies whatever compression the element it sits in resolved
+     to — `0.920 × 0.98 = 0.9016` inside a tab, `0.960 × 0.98` inside a card. The register
+     table stays three rows, the call site still says exactly one thing, and a lead placed
+     in a quieter register leads by the same *proportion* rather than by a copied number.
+     A fourth register would have been a row nobody chose and a second property to set.
+
+     **It stays short of `0.900`**, the recording checkmark's, which is deliberately the
+     deepest press in the application (#283) — and it is *one direction only*. The release
+     is the tab's own `press-pop` over the whole cell: an icon that popped on its own
+     would be the bar answering twice for one tap, and the lead is a character the
+     compression has rather than a second flourish.
+
+     Declared here rather than beside the tab bar because the press has one vocabulary and
+     this is it. `tests/press-spring.test.ts` resolves the icon's compression the way a
+     browser would — the tab's own register through this factor — and asserts that it
+     exceeds the label's and falls short of the recording one. */
+  --press-lead: 0.98;
+
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     background-color var(--dur-press) var(--ease-out-quart),
@@ -995,6 +1022,18 @@
   &:active,
   &[data-pressed="true"] {
     transform: scale(var(--press-compress));
+  }
+
+  /* The lead — issue #295, and `--press-lead` above holds the whole of why. The child
+     that leads carries the press's own timing, because it is the same compression one
+     element down and not a second animation with an opinion of its own. */
+  & .press-lead {
+    transition: transform var(--dur-press) var(--ease-out-quart);
+  }
+
+  &:active .press-lead,
+  &[data-pressed="true"] .press-lead {
+    transform: scale(var(--press-lead));
   }
 
   /* ── The depth, and the whole of it — issue #284 ─────────────────────────────────
@@ -1158,6 +1197,17 @@
   }
   .pressable[data-popped="true"] {
     animation: none;
+  }
+  /* The lead (#295) is the compression again, one element down, so it is dropped here
+     rather than in a block of its own: a second `@media` would be a second answer to one
+     preference, and a reader who asked for no movement would still get icons shrinking
+     under a thumb. The tap itself is untouched — the tab still navigates. */
+  .pressable .press-lead {
+    transition: none;
+  }
+  .pressable:active .press-lead,
+  .pressable[data-pressed="true"] .press-lead {
+    transform: none;
   }
 }
 
@@ -1325,12 +1375,14 @@
    derives the direction from the two tabs' positions rather than from history, so it is
    the bar's own geometry that decides.
 
-   **Settings uses the same pair, in its hierarchical sense.** It is reached from the
-   masthead rather than from the bar, so it is a push *out of* the four rather than a move
-   along them: `nav-forward` on the way in, and `nav-back` on any tab tapped from a screen
-   that is on none of them. That symmetry is why the classes are named for the *direction*
-   and not for the tab bar — one vocabulary covers both the lateral move and the push, and
-   a second pair of near-identical classes would only invite the two to drift apart.
+   **Settings used to borrow this pair and no longer does — issue #294.** It is reached
+   from the masthead rather than from the bar, so it is a push *out of* the four rather
+   than a move along them, and dressing that push in the lateral motion made the one
+   navigation that leaves the bar look exactly like the four that stay on it. It has its
+   own type now (*Out of the tabs*, below). What is still lateral here is the way a tab
+   tapped from any screen off the bar comes back out: `nav-back`, which is what Import,
+   `/welcome` and every nested settings page get, because they are ordinary pages behind
+   ordinary links rather than a step out of anything.
 
    **Phone-only, without a media query.** The types are attached by `tab-bar.tsx`'s `Link`s
    and by `masthead.tsx`'s Settings entrance, both of which are `lg:hidden`.
@@ -1409,6 +1461,131 @@
   to {
     translate: 0;
     scale: 1;
+  }
+}
+
+/* ── Going deeper, which is a different move from going along ───────────────────────
+   Issue #293. Tapping a tab moves the reader *along* a row of four; opening a title or an
+   episode moves them *into* something. Until this they were the same nothing: a card's
+   link passed no transition type at all, so `default: "none"` applied and the poster
+   morphed over a page that had already cut underneath it. The morph was never the problem
+   — the missing half was.
+
+   **A type in the same vocabulary, not a second mechanism.** `nav-transition.tsx`'s one
+   mapping gained a third entry and every wrapped page reads it; the links listed in
+   `nav-deeper.ts` attach it. Nothing here is a new wrapper, a new component or a media
+   query.
+
+   **A scale-up and a fade for the arriving page, and its reverse on the way out.** The
+   `reverse` keyword rather than a second pair of keyframes running the other way: the
+   round trip has to mirror, and two curves that merely look alike today drift apart at
+   the next tuning. One animation read in both directions cannot.
+
+   **`0.94`, against the lateral slide's `0.985`.** The slide's scale is a hint riding on
+   a translate that is already carrying the direction; here the scale *is* the whole
+   message, so it has to be legible on its own. It is still small enough that nothing has
+   to be tracked across the screen, and it never touches layout.
+
+   **It costs no scrolling smoothness.** `opacity` and `scale` on a view-transition
+   snapshot — already a texture on the compositor — are the same work the slide does. No
+   filter, no shadow, no geometry: nothing here can contend for the main thread with a
+   list the reader is flicking.
+
+   **The poster morph is untouched and composes over this.** The poster carries its own
+   `view-transition-name`, so it leaves this snapshot and travels in its own group at
+   `--dur-slow` on `--ease-press` (above). The poster is the subject; this is the ground it
+   arrives on. The timings are deliberately the ones the lateral pair already uses —
+   `--dur-fast` out against `--dur-base` in — so the ground settles before the subject
+   does. */
+::view-transition-old(.nav-deeper) {
+  --nav-depth: 0.94;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
+    var(--dur-base) var(--ease-in-out-soft) both nav-depth reverse;
+}
+::view-transition-new(.nav-deeper) {
+  --nav-depth: 0.94;
+  animation:
+    var(--dur-base) var(--ease-out-quart) both nav-fade,
+    var(--dur-base) var(--ease-in-out-soft) both nav-depth;
+}
+
+/* `scale` alone, with no `translate` beside it: depth is the whole of what this says, and
+   a page that also drifted sideways would be claiming two moves at once. Separate
+   properties rather than one `transform` for the same reason `nav-slide` uses them — it is
+   what lets a future composition add to this without restating it. */
+@keyframes nav-depth {
+  from {
+    scale: var(--nav-depth);
+  }
+  to {
+    scale: 1;
+  }
+}
+
+/* ── Out of the tabs, which is neither along them nor into something ─────────────
+   Issue #294, and the third and last motion this vocabulary needs. Tapping a tab moves the
+   reader *along* a row of four; opening a title moves them *into* something; opening
+   Settings from the masthead pushes them *out of* the four altogether. Until this, the
+   push wore the lateral pair above — so the one navigation that leaves the bar looked
+   exactly like the four that stay on it, and the motion said the wrong thing about the
+   move the reader had just made.
+
+   **Up from below on the way in, downward on the way out.** `--nav-rise` is a positive `y`
+   offset, so the arriving page starts below the fold of the viewport and settles; the
+   snapshot that is leaving plays the *same* animation with `reverse` and travels down.
+   `reverse` rather than a second pair of keyframes running the other way, for the reason
+   *Going deeper* gives: a round trip has to mirror, and two curves that merely look alike
+   today drift apart at the next tuning. One animation read in both directions cannot.
+
+   **`60px`, the lateral slide's own offset.** Depth needed its own number because a scale
+   is a different kind of cue; a translate is a translate, and a vertical push that
+   travelled further than a horizontal one would read as a bigger move rather than a
+   different one. It is far enough to say *direction*, short enough that nothing has to be
+   tracked across the screen.
+
+   **It costs no scrolling smoothness.** `translate` and `opacity` on a view-transition
+   snapshot — already a texture on the compositor — are the same work the lateral slide
+   does. No filter, no shadow, no geometry.
+
+   > **This type has exactly one caller, and that is a known cost recorded here rather
+   > than discovered later.** `masthead.tsx`'s Settings link is the only push out of the
+   > bar this application has: a whole class, this block and one line of
+   > `nav-transition.tsx`'s mapping, for one `Link`. It was paid deliberately, because the
+   > alternative was Settings keeping a lateral motion that means something else. A second
+   > masthead push arriving later costs one `transitionTypes` array and nothing more —
+   > read that as this decision vindicated rather than as a coincidence. Import,
+   > delete-account and every nested settings page are deliberately *not* callers: they are
+   > already outside the bar, so a push out of it would claim a move nobody made, and they
+   > land on `default: "none"` like every other ordinary link.
+
+   The timings are the ones both other families use — `--dur-fast` out against `--dur-base`
+   in — and reduced motion is handled once for all three motions by the `*` rule at the
+   foot of this file, so this type inherited it the moment it existed. */
+::view-transition-old(.nav-upward) {
+  --nav-rise: 60px;
+  animation:
+    var(--dur-fast) var(--ease-out-quart) both nav-fade reverse,
+    var(--dur-base) var(--ease-in-out-soft) both nav-rise reverse;
+}
+::view-transition-new(.nav-upward) {
+  --nav-rise: 60px;
+  animation:
+    var(--dur-base) var(--ease-out-quart) both nav-fade,
+    var(--dur-base) var(--ease-in-out-soft) both nav-rise;
+}
+
+/* `translate` on the `y` axis alone, with no `scale` beside it: `nav-slide` pairs its
+   translate with a hint of scale because a sideways move needs help reading as a change of
+   place, but a page arriving from below is already saying where it came from. A scale here
+   would be the depth cue, and this is not a move into anything. Separate properties rather
+   than one `transform`, as everywhere else in this section. */
+@keyframes nav-rise {
+  from {
+    translate: 0 var(--nav-rise);
+  }
+  to {
+    translate: 0 0;
   }
 }
 
