@@ -143,12 +143,16 @@ describe("locateEpisode", () => {
 
 describe("episodePath", () => {
   /**
-   * Beneath the owning library entry — #253's first criterion, and the shape that makes
-   * *an unowned title has no episode page* structural: a title you have not added has no
-   * entry id, so there is no URL to build.
+   * **Its own surface, carrying one id** — issue #289. It sat beneath the owning library
+   * entry until then, on #253's reasoning that a title you have not added has no entry id
+   * and so no URL to build. The entry has left the address: two ids in one path can
+   * disagree, and the ownership that used to be structural in the URL's shape is now the
+   * `ownedBy` in `libraryEntryIdForEpisode`, which is where every other read in this
+   * codebase keeps it.
    */
-  it("sits beneath the library entry that owns the episode", () => {
-    expect(episodePath("entry-1", "episode-9")).toBe("/library/entry-1/episode/episode-9");
+  it("is the episode's own route, under no entry", () => {
+    expect(episodePath("episode-9")).toBe("/episodes/episode-9");
+    expect(episodePath("episode-9")).not.toContain("/library/");
   });
 
   /**
@@ -159,7 +163,7 @@ describe("episodePath", () => {
    * something else is worse than one that 404s.
    */
   it("names the episode by id, so a renumbering cannot repoint a bookmark", () => {
-    const path = episodePath("entry-1", "episode-9");
+    const path = episodePath("episode-9");
 
     expect(path).toContain("episode-9");
     expect(path).not.toMatch(/\/s\d|season|\/\d+\/\d+$/);

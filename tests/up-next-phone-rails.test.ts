@@ -577,16 +577,12 @@ describe("every tile and card on Up next opens the title's page", () => {
    * and #253's surface is not this ticket's to remove.
    */
   it("leaves the episode's own page reachable from a season row and by deep link", () => {
+    // #289 lifted the route out from under the entry: it carries the episode's id alone.
     expect(codeOf(sourceAt(SEASON_ROWS))).toMatch(
-      /href=\{`\/library\/\$\{libraryEntryId\}\/episode\/\$\{episode\.id\}`\}/,
+      /href=\{`\/episodes\/\$\{episode\.id\}`\}/,
     );
     expect(
-      existsSync(
-        path.join(
-          REPOSITORY_ROOT,
-          "app/(signed-in)/library/[entryId]/episode/[episodeId]/page.tsx",
-        ),
-      ),
+      existsSync(path.join(REPOSITORY_ROOT, "app/(signed-in)/episodes/[episodeId]/page.tsx")),
     ).toBe(true);
   });
 

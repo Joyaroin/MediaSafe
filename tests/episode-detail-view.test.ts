@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { EpisodeDetailView } from "@/app/(signed-in)/library/[entryId]/episode/[episodeId]/episode-detail-view";
+import { EpisodeDetailView } from "@/app/(signed-in)/episodes/[episodeId]/episode-detail-view";
 import { locateEpisode } from "@/app/(signed-in)/library/episode-run";
 import type { EpisodeDetail } from "@/db/access";
 
@@ -206,8 +206,11 @@ describe("moving through the run", () => {
   it("links to the previous and next episode by their own routes", () => {
     const html = view("s1e2");
 
-    expect(html).toContain('href="/library/entry-1/episode/s1e1"');
-    expect(html).toContain('href="/library/entry-1/episode/s1e3"');
+    // #289: an episode's route carries the episode's id and nothing else, so stepping the
+    // run cannot carry an entry id along beside it and cannot get one wrong.
+    expect(html).toContain('href="/episodes/s1e1"');
+    expect(html).toContain('href="/episodes/s1e3"');
+    expect(html).not.toContain("/library/entry-1/episode/");
   });
 
   /**

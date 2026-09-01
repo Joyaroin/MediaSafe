@@ -266,7 +266,7 @@ export function EpisodeDetailView({
         {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}
       </div>
 
-      <EpisodeRunControls libraryEntryId={libraryEntryId} located={located} />
+      <EpisodeRunControls located={located} />
 
       {confirming === null ? null : (
         /**
@@ -310,10 +310,8 @@ export function EpisodeDetailView({
  * same division `MarkUpToButton` makes between what is drawn and what is spoken.
  */
 function EpisodeRunControls({
-  libraryEntryId,
   located,
 }: {
-  readonly libraryEntryId: string;
   readonly located: EpisodeInRun<EpisodeDetail>;
   /**
    * ── Stepping the run took two extra props until issue #273 ────────────────────────
@@ -330,6 +328,11 @@ function EpisodeRunControls({
    * *Next* at the foot of one episode looking at the foot of a different one, and
    * `replace` would make Back skip past every episode they had read. So the flag is
    * gone and these are two ordinary links, which is what they were before #254.
+   *
+   * ── And it stopped taking the entry id at #289 ────────────────────────────────────
+   *
+   * An episode's route carries the episode's id alone, so a link to the one either side
+   * of this one has nothing else to carry — and nothing else to get wrong.
    */
 }) {
   const { previous, next } = located;
@@ -346,7 +349,7 @@ function EpisodeRunControls({
         <span aria-hidden />
       ) : (
         <Link
-          href={episodePath(libraryEntryId, previous.id)}
+          href={episodePath(previous.id)}
           aria-label={`Previous episode: ${episodeFullName(previous)}`}
           className={GHOST_RECOVERY}
         >
@@ -358,7 +361,7 @@ function EpisodeRunControls({
         <span aria-hidden />
       ) : (
         <Link
-          href={episodePath(libraryEntryId, next.id)}
+          href={episodePath(next.id)}
           aria-label={`Next episode: ${episodeFullName(next)}`}
           className={GHOST_RECOVERY}
         >

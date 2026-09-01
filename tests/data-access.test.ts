@@ -2,8 +2,9 @@ import { sql, type SQL } from "drizzle-orm";
 import { pgTable, text } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
-import { asUserId, ownedBy } from "@/db/access";
+import { asUserId, libraryEntryIdForEpisode, ownedBy, type UserId } from "@/db/access";
 import { getDb, type Transaction } from "@/db/client";
+import { episode, libraryEntry, title, user } from "@/db/schema";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
@@ -199,6 +200,104 @@ describe("the data-access choke point", () => {
         .where(ownedBy(asUserId("carol"), fixtureOwned));
 
       expect(carols).toEqual([]);
+    });
+  });
+});
+
+/**
+ * **The episode-to-entry read** — issue #289, and the one query that makes
+ * `/episodes/{episodeId}` legal.
+ *
+ * The episode route carries one id. Two ids in a path can disagree — an entry from one
+ * account beside an episode of another title is a URL anybody can type — and the answer
+ * to that used to be a second `ownedBy` check inside `getTitleDetail`. One id cannot
+ * disagree with itself, so the entry is resolved *from* the episode, and the ownership
+ * check is the module's existing one rather than a new rule beside it.
+ *
+ * Against real Postgres, in the harness this file already stands up, because the property
+ * is about a join and a predicate: an `ownedBy` that had drifted to `or` rather than
+ * `and`, or an `innerJoin` that had become a `leftJoin`, is exactly the shape of mistake
+ * that returns *somebody else's entry* while every unit test over a fake still passes.
+ */
+describe("resolving an episode to the library entry that holds it", () => {
+  let seeded = 0;
+  const nextNumber = () => ++seeded;
+
+  async function seedUser(tx: Transaction, name: string): Promise<UserId> {
+    const id = `${name}-${nextNumber()}`;
+    await tx.insert(user).values({ id, name, email: `${id}@example.test` });
+    return asUserId(id);
+  }
+
+  /** A show with one episode, and nobody holding it yet. */
+  async function seedShow(tx: Transaction): Promise<{
+    titleId: string;
+    episodeId: string;
+  }> {
+    const number = nextNumber();
+    const [row] = await tx
+      .insert(title)
+      .values({ kind: "show", tmdbId: number, name: `Show ${number}`, releaseYear: 2022 })
+      .returning({ id: title.id });
+
+    const [inserted] = await tx
+      .insert(episode)
+      .values({
+        titleId: row.id,
+        tmdbEpisodeId: nextNumber(),
+        seasonNo: 1,
+        episodeNo: 1,
+        name: "Winter Is Coming",
+      })
+      .returning({ id: episode.id });
+
+    return { titleId: row.id, episodeId: inserted.id };
+  }
+
+  async function addToLibrary(
+    tx: Transaction,
+    userId: UserId,
+    titleId: string,
+  ): Promise<string> {
+    const [row] = await tx
+      .insert(libraryEntry)
+      .values({ userId, titleId })
+      .returning({ id: libraryEntry.id });
+    return row.id;
+  }
+
+  it("answers the entry the reader holds the episode's title through", async () => {
+    await inTransaction(async (tx) => {
+      const alice = await seedUser(tx, "alice");
+      const show = await seedShow(tx);
+      const entryId = await addToLibrary(tx, alice, show.titleId);
+
+      expect(await libraryEntryIdForEpisode(alice, show.episodeId, tx)).toBe(entryId);
+    });
+  });
+
+  it("answers nothing to a reader who does not hold the title", async () => {
+    await inTransaction(async (tx) => {
+      const alice = await seedUser(tx, "alice");
+      const bob = await seedUser(tx, "bob");
+      const show = await seedShow(tx);
+      // Alice holds it; Bob is typing the same episode id into the same address.
+      await addToLibrary(tx, alice, show.titleId);
+
+      expect(await libraryEntryIdForEpisode(bob, show.episodeId, tx)).toBeNull();
+    });
+  });
+
+  it("answers nothing — never someone else's entry — for an episode in no library", async () => {
+    await inTransaction(async (tx) => {
+      const alice = await seedUser(tx, "alice");
+      // Alice holds a different show, so there is an entry of hers for a wrong join to
+      // reach. A `leftJoin`, or a predicate that stopped naming the episode, answers it.
+      const held = await seedShow(tx);
+      await addToLibrary(tx, alice, held.titleId);
+      const unheld = await seedShow(tx);
+
+      expect(await libraryEntryIdForEpisode(alice, unheld.episodeId, tx)).toBeNull();
     });
   });
 });

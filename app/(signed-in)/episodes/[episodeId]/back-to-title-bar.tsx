@@ -17,6 +17,10 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * a bookmarked episode there is no history to pop, and the show's own page is the answer
  * to *where is this episode from*.
  *
+ * **The id comes from a read since issue #289**, not from the URL — the route carries the
+ * episode's id alone now. `layout.tsx` holds the argument for making that read there; what
+ * is unchanged here is the destination and the label, both of which issue #292 replaces.
+ *
  * ── It is the whole heading of the pending and failed renders ───────────────────────
  *
  * `DESIGN.md` §9 on a route whose `<h1>` is itself the answer: the heading is **whatever
