@@ -371,8 +371,7 @@ describe("both detail routes leave by that bar", () => {
     "app/(signed-in)/titles/[entryId]/error.tsx",
     // The episode route draws its bar once, in the layout that wraps its page and both
     // of its boundaries.
-    "app/(signed-in)/episodes/[episodeId]/layout.tsx",
-  ]) {
+    ]) {
     it(`${file} renders the shared bar`, () => {
       expect(readFileSync(file, "utf8")).toContain("<BackBar />");
     });

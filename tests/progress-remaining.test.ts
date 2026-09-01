@@ -28,6 +28,10 @@ const ep = (seasonNo: number, episodeNo: number, watched: boolean): EpisodeDetai
   seasonNo,
   episodeNo,
   name: `Episode ${episodeNo}`,
+  // Derived rather than passed: this factory's one input about watching is `watched`, and
+  // a count that disagreed with it would be a fixture describing a row the read cannot
+  // produce (`db/access.ts` computes both from one number).
+  watches: watched ? 1 : 0,
   stillPath: null,
   airDate: null,
   runtimeMins: null,

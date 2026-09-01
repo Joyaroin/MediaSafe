@@ -16,7 +16,7 @@ import {
 import { watchMarks } from "@/app/(signed-in)/library/watch-marks";
 import { PendingLine } from "@/app/pending-line";
 import { posterSrc } from "@/app/poster";
-import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import {
   isPendingEntry,
   type QueuedEpisode,
@@ -78,7 +78,6 @@ export function UpNextEpisodeRow({
     return (
       <RowBody
         entry={entry}
-        episodeId={entry.episodeId}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         picture={cardPicture(watchMarks, entry)}
@@ -117,7 +116,6 @@ function MarkableRow({
   return (
     <RowBody
       entry={entry}
-      episodeId={showing.episodeId}
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       picture={mark.picture}
@@ -152,7 +150,6 @@ const STILL = "w-[104px] shrink-0 [--still-radius:8px]";
 
 function RowBody({
   entry,
-  episodeId,
   code,
   episodeName,
   picture,
@@ -165,7 +162,6 @@ function RowBody({
   sweep,
 }: {
   entry: UpNextEntry;
-  episodeId: string;
   code: string;
   episodeName: string | null;
   picture: CardPicture;
@@ -186,7 +182,7 @@ function RowBody({
        divided by `UpNextGroup`'s hairline rather than drawn as a card, so there is no
        corner for the wash to escape. */
     <li className={ROW}>
-      <RowLink entry={entry} episodeId={episodeId} press={press} label={label}>
+      <RowLink entry={entry} press={press} label={label}>
         <RowFrame
           entry={entry}
           picture={picture}
@@ -242,13 +238,11 @@ function RowBody({
  */
 function RowLink({
   entry,
-  episodeId,
   press,
   label,
   children,
 }: {
   entry: UpNextEntry;
-  episodeId: string;
   press: RowPress;
   label: string;
   children: React.ReactNode;
@@ -282,7 +276,11 @@ function RowLink({
   }
 
   return (
-    <Link href={`/episodes/${episodeId}`} aria-label={label} className={shared}>
+    <Link
+      href={`/titles/${entry.libraryEntryId}`}
+      aria-label={label}
+      className={shared}
+    >
       {children}
     </Link>
   );
@@ -348,21 +346,19 @@ function RowFrame({
 const CHECK_HIT_BOX = `${RECORDING_HIT_BOX} ${IN_FLIGHT}`;
 
 function MarkControl({ mark }: { mark: UpNextMark }) {
-  const { episode, undoable, pending } = mark;
+  const { episode, pending } = mark;
 
-  if (undoable !== null) {
-    return (
-      <button
-        type="button"
-        onClick={mark.undo}
-        aria-label={`Undo marking ${queuedEpisodeFullName(undoable)} watched`}
-        className={`${RECORDING_HIT_BOX} ${IN_FLIGHT} w-auto px-2`}
-      >
-        <span className={GHOST_RECOVERY_COMPACT}>Undo</span>
-      </button>
-    );
-  }
-
+  /**
+   * **No *Undo* here.** It was a text pill in this slot, offered for the length of one
+   * visit after a mark. Up next has no hold panel to put the item in — every episode this
+   * surface shows is the *next unwatched* one, so there is nothing on a row here to
+   * rewatch or unwatch, and a panel with one item in it is a gesture nobody would find.
+   *
+   * A misfire on this screen is taken back where the episode lives: the title's season
+   * list, whose rows hold all three acts behind a hold (`watch-menu.tsx`). That costs a
+   * navigation, and it is the trade — the landing screen keeps one control and one
+   * meaning, which is what it was rebuilt around.
+   */
   /* A capped run that went dry, and a group whose episode has not aired — `UpNextQueue`'s
      own table has the cases. The slot offers nothing and the row keeps its height from
      `ROW`'s own floor. */

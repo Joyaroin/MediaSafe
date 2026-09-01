@@ -4183,6 +4183,20 @@ export interface EpisodeDetail {
    * reading the one that was wrong.
    */
   readonly watched: boolean;
+  /**
+   * **How many watches this episode has** — `0` where it has none, so `watched` is
+   * `watches > 0` and the two are read off one number at one site rather than kept in
+   * step.
+   *
+   * It exists because the season row prints it. `CONTEXT.md` used to say a rewatch is
+   * *never a number kept on a title*, and that sentence is amended rather than dodged:
+   * the number is not kept on anything, it is counted from the `watch` rows on every
+   * read — and *how many times have I seen this* is content on the row that answers it,
+   * which is `DESIGN.md` §11's own test for when a numeral is allowed.
+   *
+   * `1` is never drawn. A single watch is what the mark itself says.
+   */
+  readonly watches: number;
   /** This is `library_entry_up_next`'s episode, if it has one. */
   readonly upNext: boolean;
 }
@@ -4320,9 +4334,22 @@ export async function getTitleDetail(
    * a watch this application recorded, which were the only ones allowed to offer an
    * unwatch — and #145 removes that rule, so the column has nothing left to answer here.
    */
-  const watchedEpisodeIds = new Set(
-    watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
-  );
+  /**
+   * **How many times each episode has been watched**, not merely whether it has.
+   *
+   * The rows this counts were already being read — the query above selects one row per
+   * watch and #89's version threw the multiplicity away by building a `Set`. So the count
+   * costs nothing: no second query, no view change, no column. It was there the whole time.
+   *
+   * `watched` below is derived from this in the same expression, which is what keeps the
+   * pair from becoming the disagreement `EpisodeDetail`'s own docblock warns about: they
+   * are one number read two ways at one site, not two fields kept in step by hand.
+   */
+  const watchesPerEpisode = new Map<string, number>();
+  for (const one of watchedRows) {
+    if (one.episodeId === null) continue;
+    watchesPerEpisode.set(one.episodeId, (watchesPerEpisode.get(one.episodeId) ?? 0) + 1);
+  }
 
   const episodeRows = await executor
     .select({
@@ -4363,7 +4390,8 @@ export async function getTitleDetail(
       stillPath: one.stillPath,
       airDate: one.airDate,
       runtimeMins: one.runtimeMins,
-      watched: watchedEpisodeIds.has(one.id),
+      watches: watchesPerEpisode.get(one.id) ?? 0,
+      watched: (watchesPerEpisode.get(one.id) ?? 0) > 0,
       upNext: one.id === upNextEpisodeId,
     })),
   };

@@ -2334,6 +2334,14 @@ rails, no placeholder tabs, no "coming soon".
   the landing screen does not become a progress ledger, and a total over a rail is exactly
   the ledger.
 
+  **The third case, and it is on the row rather than on a destination.** A season row draws
+  `×2` where an episode has been watched twice. It is the same test as the card's remainder
+  applied to the other axis — *have I seen this once, or five times* — asked on the only
+  surface where that fact exists, and `CONTEXT.md`'s *never a number kept on a title* is
+  amended in the same batch on the grounds that nothing is kept: the number is counted from
+  the `watch` rows on every read. `1` is never drawn, because a column of `×1` down a
+  finished season is exactly the ledger this exclusion was written against.
+
   A number is allowed where **the number is the content**. That is one destination, it is
   reached deliberately, and it is not passed through on the way to anything.
 - **No badges** of any kind.

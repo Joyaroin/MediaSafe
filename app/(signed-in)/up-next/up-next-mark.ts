@@ -133,7 +133,12 @@ function subjectOf(libraryEntryId: string, episode: QueuedEpisode): WatchSubject
  * argument in this module's docblock. Frozen at module scope so every subscription hands
  * the store the same object rather than a fresh one per render.
  */
-const UNWATCHED: WatchMarkView = { watched: false, phase: "unwatched", pending: false };
+const UNWATCHED: WatchMarkView = {
+  watched: false,
+  watches: 0,
+  phase: "unwatched",
+  pending: false,
+};
 
 /**
  * Where a card stands in its own run: how far along it is, whether that episode's write is

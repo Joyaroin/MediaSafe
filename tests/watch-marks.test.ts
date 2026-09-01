@@ -49,6 +49,7 @@ const NAMING = { title: "Better Call Saul", episode: "Season 1, Episode 2 — Mi
 /** What every surface but the programme note's seeds an episode with. */
 const UNWATCHED: WatchMarkView = {
   watched: false,
+  watches: 0,
   phase: "unwatched",
   pending: false,
 };
@@ -56,6 +57,7 @@ const UNWATCHED: WatchMarkView = {
 /** An episode the server already knows this account has watched. */
 const WATCHED: WatchMarkView = {
   watched: true,
+  watches: 1,
   phase: "settled",
   pending: false,
 };
@@ -355,7 +357,7 @@ describe("a lost write, across surfaces", () => {
     // watch or the earlier half of a rewatch could have survived the delete and left the
     // row struck. #145 removes every watch of the episode, so the guess the press made is
     // simply right, and `ok` is all that comes back.
-    expect(row.view()).toEqual({ watched: false, phase: "unwatched", pending: false });
+    expect(row.view()).toEqual({ watched: false, watches: 0, phase: "unwatched", pending: false });
     expect(note.view()).toEqual(row.view());
   });
 
@@ -523,7 +525,7 @@ describe("marking watched up to an episode", () => {
       // `settled`, never `marking` — `EpisodeLine` draws `WatchSweep` only for `marking`,
       // so this is what "nothing sweeps; rows arrive settled" is, at the seam that
       // decides it.
-      expect(row.view()).toEqual({ watched: true, phase: "settled", pending: false });
+      expect(row.view()).toEqual({ watched: true, watches: 1, phase: "settled", pending: false });
     }
   });
 
@@ -634,7 +636,7 @@ describe("marking watched up to an episode", () => {
     // Nothing is on the wire, so nothing is busy. Reading the surviving key as *in
     // flight* would leave this row's controls dead for the life of the page — a landed
     // write that takes the row with it.
-    expect(row.view()).toEqual({ watched: true, phase: "settled", pending: false });
+    expect(row.view()).toEqual({ watched: true, watches: 1, phase: "settled", pending: false });
   });
 
   it("does not un-strike a row whose own write landed, when the press is lost", async () => {

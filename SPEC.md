@@ -342,6 +342,17 @@ fourth.
    says and is recorded again under *Up next — the three rails* below. The two devices were
    showing different facts about the same list, and the phone's version is the one that
    answers *what do I put on*.
+3. **The episode page is deleted.** `/episodes/[episodeId]` and everything on it — the
+   still, the streamed synopsis, the facts — are gone, and with them #254's *press an
+   episode row and get the same page*. **Every press now leads to a title**: Up next's rows
+   and cards, and Upcoming's rows, open `/titles/[entryId]`; a season row does not navigate
+   at all, because it is already rendered on the only page an episode could lead to.
+
+   #274's rule — *a card leads to the thing it names* — was the argument for pointing those
+   presses at an episode, and it is overturned rather than quietly dropped: what a row names
+   is still an episode, and there is no longer anywhere for that to lead. What replaces the
+   navigation on a season row is the **hold**, which is where the row's three acts live.
+
 3. **Title detail's topology.** Phone: a route you push and pop. Desktop: the right pane, **replaced
    rather than navigated**, so the grid keeps its scroll position.
    **True again since [#273](https://github.com/Joyaroin/MediaSafe/issues/273), and it was not

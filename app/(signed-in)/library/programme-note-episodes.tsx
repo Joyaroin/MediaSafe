@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { PendingLine } from "@/app/pending-line";
@@ -8,7 +7,6 @@ import type { EpisodeDetail } from "@/db/access";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { CheckmarkIcon } from "./checkmark-icon";
-import { UndoIcon } from "./undo-icon";
 import {
   EPISODE_NAME_CELL,
   EPISODE_NUMBER,
@@ -610,74 +608,45 @@ function EpisodeLine({
 }) {
   const fullName = episodeFullName(episode);
 
-  /**
-   * Whether the reader recorded this episode's watch **on this visit, from this row** —
-   * which is the whole of what decides between offering *Undo* and offering *Unwatch*.
-   * The two call the same write; they differ in what they are claiming to be, and a row
-   * that was already watched when the page rendered has nothing to undo.
-   *
-   * Local state and not `watch-marks.ts`'s, deliberately. That store is keyed by episode
-   * because two surfaces can show one episode at once (#103) and its contents are facts
-   * about the **episode**; *I have just pressed this* is a fact about a reader looking at
-   * a page, it expires when they leave, and putting it in the store would hand it to
-   * every other surface showing the same episode as though they had pressed it too.
-   *
-   * There is no timer, and that is `AGENTS.md`'s rule restated rather than a coincidence:
-   * an undo that expires on its own is a control that vanishes while a reader is reaching
-   * for it. It ends when they leave the page, and what is behind it — the settled mark,
-   * which unwatches — never goes away at all.
-   */
-  const [justMarked, setJustMarked] = useState(false);
-
-  const { watched, phase, pending, attempt, undo, settle } = useWatchMark({
+  const { watched, watches, phase, pending, attempt, settle } = useWatchMark({
     initialWatched: episode.watched,
+    initialWatches: episode.watches,
     libraryEntryId,
     episodeId: episode.id,
     titleName,
     episodeName: fullName,
-    onRecorded: () => setJustMarked(true),
   });
 
   /**
-   * **Two writes, not one, and the paragraph this replaces had it wrong.** It read: *one
-   * write behind both controls — `unwatch` removes every watch of the episode (#145),
-   * which is exactly right for undoing a mark made seconds ago and exactly right for
-   * taking back one made last year.* The second half of that is true and the first half
-   * was the bug: on an episode carrying imported rewatches, *Undo* was deleting every
-   * earlier watch while offering to reverse one press.
-   *
-   * `undo` takes back the newest watch and puts the row back to whatever it looked like
-   * before the press. `unwatch` still removes them all, because #145 settled that *"one
-   * press, one meaning: the episode is unwatched"* — and it is now reached only from the
-   * row's menu, deliberately, rather than from a glyph that looks like a state.
+   * The count the row prints, read from the store rather than off the prop — so a rewatch
+   * recorded from the panel shows `×2` on the press rather than after a refresh, which is
+   * the same optimism the mark itself has always had. `episode.watches` seeds it.
    */
+  const watchCount = watches;
+
   /**
-   * **Hold the row — or right-click it — to reach *Rewatch* and *Unwatch*.**
+   * **Hold the row — or right-click it — for *Rewatch*, *Undo* and *Unwatch*.**
    *
-   * Offered only on a watched row, because both items are about a watch that exists: an
-   * unwatched row's whole vocabulary is the check beside it, and a menu there would open
-   * on two words that could not do anything.
+   * Offered only on a watched row, because all three items are about a watch that exists:
+   * an unwatched row's whole vocabulary is the check beside it, and a panel there would
+   * open on three words that could not do anything.
    *
    * `useHoldGesture` is the library grid's own press, extracted rather than re-derived
-   * (`use-hold-to-select.ts`) — the same 500ms, the same 10px slop, and the same swallowed
-   * click, so the hold that opens this does not also navigate to the episode when the
-   * finger lifts.
+   * (`use-hold-to-select.ts`) — the same 500ms, the same 10px slop, the same swallowed
+   * click. The swallow matters less than it did now that the row is not a link, and it
+   * still matters: without it the hold's release would land as a click on whatever is
+   * under the finger.
    *
-   * `onContextMenu` is doing two jobs. On a phone the hook's own handler suppresses the
+   * `onContextMenu` does two jobs. On a phone the hook's own handler suppresses the
    * text-selection callout the browser would otherwise raise over the row being held. On a
-   * desktop, where there is no hold to make, the same event **is** the gesture: a
-   * right-click opens the menu, which is the only route a mouse has to either item.
+   * desktop, where there is no hold to make, the same event **is** the gesture — a
+   * right-click opens the panel, which is the only route a mouse has to any of the three.
    */
   const hold = useHoldGesture(watched ? () => onOpenMenu(episode) : null);
 
   function openMenu(event: React.MouseEvent): void {
     event.preventDefault();
     if (watched) onOpenMenu(episode);
-  }
-
-  function takeItBack(): void {
-    setJustMarked(false);
-    void undo();
   }
 
   return (
@@ -689,52 +658,23 @@ function EpisodeLine({
       data-landed={hold.landed ? "true" : undefined}
     >
       {/**
-       * **The row is a destination now** — issue #254, #245's story 63: *press an episode
-       * row in a season list and get the same page.* The same href the rail card carries,
-       * so both origins reach one route and one modal.
+       * **The row is not a destination any more.** It was a `<Link>` to
+       * `/episodes/{id}` — #254's *press an episode row and get the same page* — and that
+       * page is deleted, so there is nowhere for the press to go: this row is already
+       * rendered on the title's own page, which is the only other thing an episode could
+       * lead to.
        *
-       * ── What is inside the link, and what is emphatically not ──────────────────────
+       * What the row still has is a **hold**, and that is now its whole gesture
+       * vocabulary: press the mark to record, hold the row for the panel. Nothing is lost
+       * to the deletion except a navigation that arrived at a page carrying a synopsis and
+       * a still.
        *
-       * The number and the name, and nothing else. `TRAILING` — the check, *Watched up to
-       * here*, *Rewatch*, *Unwatch* — stays a **sibling** of this link rather than a child
-       * of it, which is `SPEC.md`'s own rule for this row and #254's acceptance criterion:
-       * *a season row's check remains a separate target of at least 44px.* A control
-       * nested inside a link is a control every press of which is also a navigation, and
-       * the daily gesture is the one press in this application that must never turn into
-       * one. The check's own `44px` box is `RECORDING_HIT_BOX`'s and is untouched by this.
-       *
-       * `self-stretch -my-2 py-2` is what makes the link's own target the full height of
-       * the row rather than the height of one line of text. Both halves are needed and the
-       * second is the one that is easy to leave out: `EPISODE_ROW` is `min-h-11 py-2`, so
-       * `self-stretch` alone gives the link the row's **content** box — `44 - 16 = 28px`,
-       * comfortably under the floor — and the margin is what lets it back out into the
-       * row's own padding to reach `44`. This is `RECORDING_HIT_BOX`'s own `-my-2` trick
-       * (`watch-mark-motion.tsx`), used here for the identical reason, and the row's height
-       * is untouched by it because a negative margin takes up no space.
-       *
-       * **Re-measured, because `DESIGN.md` §6 says to re-measure if you touch this row** —
-       * and its own history says the first attempt does not pass. In Chromium against the
-       * compiled CSS, with the linked row and the row as it was rendered side by side in
-       * one document: identical at `420 / 375 / 340px` in all four states, name cell
-       * identical too, and the check's box `44.00 × 44.00` flush with the row's top edge.
-       * §6's *the fifth time was the row becoming a link* has the table.
-       *
-       * This row carried `scroll={false}` until issue #273, for
-       * `up-next-episode-card.tsx`'s reason: the press was intercepted, the season list
-       * stayed underneath, and the router would otherwise have sent the page behind the
-       * backdrop to the top before the modal even opened. Nothing is underneath now — the
-       * episode is a page, this is an ordinary navigation, and it goes to the top of that
-       * page like every other navigation in the application.
-       *
-       * The label is the episode's **full** name rather than the two cells' text, because
-       * `E1 Brigade` read aloud does not say which season it is in — the same words the
-       * row's own controls already use (`season-grouping.ts`).
+       * The cells keep the layout the link gave them — `flex-1` over `min-w-0`, the same
+       * `gap-3` — because that geometry is the row's, not the anchor's. What goes with the
+       * anchor is `-my-2 self-stretch py-2`, which existed only to make a text-height link
+       * fill the row's own 44px.
        */}
-      <Link
-        href={`/episodes/${episode.id}`}
-        aria-label={fullName}
-        className="-my-2 flex min-w-0 flex-1 items-center gap-3 self-stretch py-2"
-      >
+      <span className="flex min-w-0 flex-1 items-center gap-3">
         <span
           className={episode.upNext && !watched ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
           data-numeric
@@ -746,14 +686,13 @@ function EpisodeLine({
             TMDB not having named it yet — not a licence to print the number a second time
             in its place. */}
         <span className={EPISODE_NAME_CELL}>
-          {/* `line-clamp-2`, not `truncate` — a long episode name now wraps to a second
-              line and is cut only past that, instead of being cut at the first width it
+          {/* `line-clamp-2`, not `truncate` — a long episode name wraps to a second line
+              and is cut only past that, instead of being cut at the first width it
               exceeds. `EPISODE_ROW`'s `min-h-11` is a floor and not a fixed height, so a
               two-line row is legal; what `min-h-11` was measured to protect is that a row
-              does not change height **across its own states**, and the clamp is a
-              property of the name rather than of the mark, so it holds still while a
-              watch is recorded. Rows differ from each other in height, and always could
-              — this is what makes it visible. */}
+              does not change height **across its own states**, and the clamp is a property
+              of the name rather than of the mark, so it holds still while a watch is
+              recorded. */}
           <span
             className={`block line-clamp-2 ${
               watched && phase === "settled"
@@ -766,7 +705,7 @@ function EpisodeLine({
             {episode.name === null ? "Not yet named" : episode.name}
           </span>
         </span>
-      </Link>
+      </span>
 
       <span className={TRAILING}>
         {/* Left of whatever the row's own state offers, so the daily gesture keeps the
@@ -805,31 +744,51 @@ function EpisodeLine({
               <CheckmarkIcon className="block h-4 w-4" />
             </span>
           </span>
-        ) : justMarked ? (
-          <UndoMarkButton
-            label={`Undo marking ${fullName} watched`}
-            onClick={takeItBack}
-            disabled={pending}
-          />
         ) : (
           /**
-           * **A mark, not a button.** This was a `<button>` calling `unwatch` — a glyph
-           * that reads as a *state* removing every watch of the episode on one tap, which
-           * on the 1,156 episodes carrying imported rewatches (`docs/adr/0001`) is years
-           * of record gone to a stray press with nothing to confirm it.
+           * **A mark, not a button, and beside it the count.**
            *
-           * So the settled mark says *watched* and does nothing, and *Unwatch* is one of
-           * the two items behind the row's hold (`watch-menu.tsx`), where it has a word
-           * attached and a sentence saying what it takes.
+           * The undo glyph that used to sit here is gone: *Undo* is an item in the row's
+           * panel now, with *Rewatch* and *Unwatch*, which is the whole of what a watched
+           * row offers. That removes the last control this slot ever swapped for another
+           * — every watched row is this, whatever happened a second ago.
            *
-           * `aria-hidden`, because a screen reader is already told: the name in the cell
-           * beside this carries `WATCHED_NAME`, and the row's menu is what offers the acts.
+           * `aria-hidden` on the mark, because the name beside it already carries
+           * `WATCHED_NAME` and the count below is real text; a screen reader hearing
+           * "watched, watched, twice" is being told once too often.
            */
-          <span className={RECORDING_HIT_BOX} aria-hidden="true">
-            <span className={SETTLED_GLYPH}>
-              <CheckmarkIcon className="block h-4 w-4" />
+          <>
+            {/**
+             * **×2, and this is the numeral `CONTEXT.md` used to forbid.**
+             *
+             * That sentence — *a rewatch is never a number kept on a title* — is amended
+             * rather than dodged, and the amendment turns on the word **kept**: nothing is
+             * stored. `EpisodeDetail.watches` is counted from the `watch` rows on every
+             * read, out of rows the query was already selecting.
+             *
+             * `DESIGN.md` §11's own test is whether the number is **content**, and its
+             * worked example is Up next's remainder — *am I three from the end of this
+             * show, or thirty*. This is the same shape of question about the other axis:
+             * *have I seen this once, or five times*, on the row that is the only place
+             * that fact exists. What §11 still forbids is a count as **chrome**, and this
+             * adds none: no total on the season head, no tally on the title.
+             *
+             * **`1` is never drawn.** A single watch is what the mark itself says, and a
+             * column of `×1` down a finished season would be the ledger §11 was written
+             * against. The numeral appears at two and counts up from there.
+             */}
+            {watchCount > 1 ? (
+              <span className="code-line text-dim" data-numeric>
+                ×{watchCount}
+              </span>
+            ) : null}
+
+            <span className={RECORDING_HIT_BOX} aria-hidden="true">
+              <span className={SETTLED_GLYPH}>
+                <CheckmarkIcon className="block h-4 w-4" />
+              </span>
             </span>
-          </span>
+          </>
         )}
       </span>
 
@@ -857,44 +816,6 @@ function EpisodeLine({
  * this module and two outside it, and still one control rather than three that resemble
  * each other (`DESIGN.md` §7 names the show page as exactly this reuse).
  */
-/**
- * *Undo* — the mark this row itself just recorded, taken back.
- *
- * `RECORDING_GLYPH` and not `SETTLED_GLYPH`: an undo offered seconds after a press is the
- * live half of the gesture the reader is still in the middle of, and the accent is what
- * `app/globals.css` gives that. It is also the one state in this row where the accent is
- * **not** claiming *press me to record* — which is exactly why the glyph changes with it.
- * A vermilion checkmark and a vermilion undo arrow are two different offers in the same
- * colour, and the shape is what tells them apart.
- *
- * `UndoIcon` rather than the word, and `undo-icon.tsx` holds that argument: the slot is a
- * fixed `80px` and a text pill on the one row a reader just pressed would reflow the name
- * beside it. The Up next card keeps the word, because its own slot has the room.
- */
-function UndoMarkButton({
-  label,
-  onClick,
-  disabled = false,
-}: {
-  readonly label: string;
-  readonly onClick: () => void;
-  readonly disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
-    >
-      <span className={RECORDING_GLYPH}>
-        <UndoIcon className="block h-4 w-4" />
-      </span>
-    </button>
-  );
-}
-
 export function MarkWatchedButton({
   label,
   onClick,

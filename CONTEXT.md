@@ -75,8 +75,14 @@ from what you watched counts it like any other.
 _Avoid_: legacy watch, historical watch, unknown watch
 
 **Rewatch**:
-A watch of something you had already watched. A kind of watch, not a separate record, and never a
-number kept on a title.
+A watch of something you had already watched. A kind of watch, not a separate record.
+
+**The count is drawn, and the old rule said it must not be.** That sentence read *…and never a
+number kept on a title*, and the amendment turns on the word **kept**: nothing is stored. A
+season row prints `×2`, `×3` and so on, counted from the `watch` rows on every read, out of rows
+the query was already selecting. What is still forbidden is a number *kept* — no `watch_count`
+column, no tally on a title, no total on a season head. `1` is never drawn either: one watch is
+what the mark itself says.
 Recorded by **holding a watched episode row** (or right-clicking it) and choosing *Rewatch* —
 one gesture away rather than on the row, because it is pressed a few times a year against a
 check pressed every evening. The control was deleted outright for one ticket and came back:

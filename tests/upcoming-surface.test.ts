@@ -258,7 +258,9 @@ describe("where a row goes", () => {
     const one = episodeOn(TODAY);
     const markup = render([one]);
 
-    expect(markup).toContain(`href="/episodes/${one.episodeId}"`);
+    /* The title, not the episode: `/episodes/[episodeId]` is deleted, and what an
+       upcoming row can lead to is the show it announces. */
+    expect(markup).toContain(`href="/titles/${one.libraryEntryId}"`);
     expect(markup).not.toContain(`/library/${one.libraryEntryId}/episode/`);
   });
 });
@@ -654,9 +656,12 @@ describe("the page hands the pager both surfaces and one day", () => {
 });
 
 /** How many episode rows the surface drew — one `<li>` each, counted by the link inside
- *  it, which no other part of this screen renders. */
+ *  it, which no other part of this screen renders.
+ *
+ *  It counted `/episodes/` links until that route was deleted; an upcoming row leads to the
+ *  title now, like every other press in the application. */
 function rowCount(markup: string): number {
-  return (markup.match(/href="\/episodes\//g) ?? []).length;
+  return (markup.match(/href="\/titles\//g) ?? []).length;
 }
 
 describe("one row per show, not one per episode", () => {

@@ -391,9 +391,18 @@ describe("every dynamic surface has a loading boundary", () => {
    * is what a check that has stopped looking returns too. The boundary **moved with the
    * route**; it was not dropped and re-added.
    */
-  it("finds the boundary on the episode page, at the route #289 moved it to", () => {
-    expect(hasBoundary("(signed-in)/episodes/[episodeId]")).toBe(true);
-  });
+  /*
+   * **The episode page's boundary assertion is deleted with the page**, and not replaced
+   * with its negation: `loadingBoundaryReader` *throws* for a directory the source tree
+   * does not have rather than answering `false` — deliberately, so that a build and a tree
+   * out of step fail loudly instead of reporting *no boundary here* about nothing. There is
+   * no `false` to assert.
+   *
+   * The job that assertion did — anchoring the audits above positively, so that an
+   * `toEqual([])` which has stopped looking cannot pass as a clean result — is done by the
+   * `(signed-in)/library` check beside it, which is a route that is not going anywhere.
+   * *That the episode route is gone* is asserted over the build's own manifest below.
+   */
 
   /**
    * And the route itself is in the build, behind the matcher like everything else.
@@ -408,9 +417,14 @@ describe("every dynamic surface has a loading boundary", () => {
    * silently**, which is why the matcher is asserted against the new path rather than
    * trusted to a catch-all it happens to fall under today.
    */
-  it("builds the episode route at its own address, carrying one id", () => {
-    expect(built.routes).toContain("/episodes/[episodeId]");
-    expect(matcherRunsOn(built.matcher, "/episodes/episode-9")).toBe(true);
+  it("builds no episode route at all", () => {
+    /**
+     * **Reorganising the address space is exactly the change that could breach constraint 5
+     * silently**, and a deletion is that change too — which is why this is read off the
+     * build's own manifest rather than off the source tree. A `page.tsx` restored by a merge
+     * would rebuild the route and serve an address nothing links to.
+     */
+    expect(built.routes).not.toContain("/episodes/[episodeId]");
   });
 
   /**
@@ -806,8 +820,6 @@ describe("nothing intercepts, so opening a title is an ordinary navigation", () 
     // is about how a route opens, not where it lives, so the property is asserted against
     // wherever the route is now.
     "/titles/[entryId]",
-    // #289's address for the episode, for the same reason.
-    "/episodes/[episodeId]",
     "/titles/[entryId]/remove",
     "/catalogue/[kind]/[tmdbId]",
   ])("still builds %s as an ordinary page behind the matcher", (route) => {
