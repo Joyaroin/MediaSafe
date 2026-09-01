@@ -338,12 +338,12 @@ describe("the films you are waiting for", () => {
     expect(without).toContain("In 12 days");
   });
 
-  /** A card navigates to the film's own page under its library entry, like every other
-   *  film card in the build. */
-  it("links to the film under its library entry", () => {
+  /** A card navigates to the film's own page — `/titles/{entryId}` since #290, like every
+   *  other film card in the build. */
+  it("links to the film at the address a held title has", () => {
     const film = filmOn("2026-09-05");
 
-    expect(renderFilms([film])).toContain(`href="/library/${film.libraryEntryId}"`);
+    expect(renderFilms([film])).toContain(`href="/titles/${film.libraryEntryId}"`);
   });
 
   /**

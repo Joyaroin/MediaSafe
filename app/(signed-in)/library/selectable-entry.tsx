@@ -82,7 +82,7 @@ export function SelectableEntry({
       select(title.libraryEntryId);
       return;
     }
-    router.push(`/library/${title.libraryEntryId}`);
+    router.push(`/titles/${title.libraryEntryId}`);
   }
 
   return (

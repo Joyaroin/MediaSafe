@@ -35,11 +35,11 @@ export function RemoveTitleHeading() {
  *
  * ── Why the library, and not the title the reader came from ──────────────────────────
  *
- * `/library/{entryId}` was the first draft and is wrong on desktop: that route's own
- * docblock calls it *title detail, on the phone — a route you push and pop*, and the desktop
- * reader pressed the control on the pane, which never navigates. Backing out would have
- * dropped them on a layout they otherwise never reach, on the one path whose whole point is
- * that changing your mind costs nothing.
+ * The title itself — `/titles/{entryId}` since #290 — was the first draft and is wrong on
+ * desktop: that route's own docblock calls it *title detail, on the phone — a route you push
+ * and pop*, and the desktop reader pressed the control on the pane, which never navigates.
+ * Backing out would have dropped them on a layout they otherwise never reach, on the one
+ * path whose whole point is that changing your mind costs nothing.
  *
  * `router.back()` would be exactly right on both — the pane leaves the URL at `/library`,
  * the phone leaves it at the title — and is not used, because it answers nothing on a cold

@@ -33,7 +33,7 @@ import { isPendingEntry, type UpNextRailEntry } from "@/db/access";
  * > about the phone's two rails, and a tile that can only ever write selection state is the
  * > one surface that cannot obey it.
  *
- * The tile is now a **`Link` to `/library/{entryId}`** — the same mechanism the film card
+ * The tile is now a **`Link` to `/titles/{entryId}`** — the same mechanism the film card
  * on the phone's rail already had, so a film and a show behave the same way on the same
  * tab. Being a real anchor is the point rather than an implementation detail: it can be
  * middle-clicked, opened in a new tab, and read as a link by a screen reader, none of
@@ -125,7 +125,7 @@ export function UpNextTile({
        the other half (`up-next-rail.tsx`). */
     <li className={`${TILE} shrink-0 snap-start`}>
       <Link
-        href={`/library/${entry.libraryEntryId}`}
+        href={`/titles/${entry.libraryEntryId}`}
         onClick={onClick}
         aria-current={selected ? "true" : undefined}
         className="pressable group block w-full"

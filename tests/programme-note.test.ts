@@ -346,7 +346,7 @@ describe("the watched-up-to-here control", () => {
      */
     const surfaces = [
       "app/(signed-in)/library/programme-note.tsx",
-      "app/(signed-in)/library/[entryId]/title-detail-view.tsx",
+      "app/(signed-in)/titles/[entryId]/title-detail-view.tsx",
     ];
 
     for (const surface of surfaces) {

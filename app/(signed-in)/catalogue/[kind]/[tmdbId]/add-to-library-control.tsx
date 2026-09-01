@@ -56,7 +56,7 @@ import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost
  * instead would be building the second kind.
  *
  * `replace`, not `push`. The page being left is a page for a title this account now owns,
- * and `page.tsx` sends any such request on to `library/[entryId]` — so a history entry
+ * and `page.tsx` sends any such request on to `titles/[entryId]` — so a history entry
  * for it is a back button that bounces the reader forward again. Replacing it means back
  * does what back does: it returns to the list the title was tapped in.
  *
@@ -136,7 +136,7 @@ export function AddToLibraryControl({
       raised.current = null;
       // `pending` is deliberately left set: the control is on its way off screen, and
       // re-enabling it would offer a second press during the navigation.
-      router.replace(`/library/${outcome.libraryEntryId}`);
+      router.replace(`/titles/${outcome.libraryEntryId}`);
       return;
     }
 

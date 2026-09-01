@@ -6,7 +6,7 @@ import { UpNextHeading } from "./up-next-heading";
 
 /**
  * Up next did not load. The same shape `app/(signed-in)/library/error.tsx` and
- * `app/(signed-in)/library/[entryId]/error.tsx` already use, for the identical reason:
+ * `app/(signed-in)/titles/[entryId]/error.tsx` already use, for the identical reason:
  * `app/error.tsx` would replace the whole page, telling a reader something failed without
  * telling them it was the deck.
  *

@@ -345,7 +345,7 @@ fourth.
    each surface pushes. On Up next a show tile still wrote **selection state** and a
    next-episodes card still pushed the **episode's** page, so a show, a film and a card
    reached three different kinds of place from one tab. They reach one now: **the title's
-   own page**, by one mechanism — a `Link` to `/library/{entryId}` — with a search result
+   own page**, by one mechanism — a `Link` to `/titles/{entryId}` — with a search result
    opening `/catalogue/{kind}/{tmdbId}` for the same reason. The episode's page is retargeted
    away from rather than deleted, and keeps a season row and a deep link. The phone's use
    of selection is what goes; on `lg` and up the tile's click is stopped and the programme

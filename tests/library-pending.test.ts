@@ -4,11 +4,11 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import TitleDetailLoading from "@/app/(signed-in)/library/[entryId]/loading";
-import RemoveTitleLoading from "@/app/(signed-in)/library/[entryId]/remove/loading";
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import LibraryLoading from "@/app/(signed-in)/library/loading";
 import { ProgrammeNoteEpisodes } from "@/app/(signed-in)/library/programme-note-episodes";
+import TitleDetailLoading from "@/app/(signed-in)/titles/[entryId]/loading";
+import RemoveTitleLoading from "@/app/(signed-in)/titles/[entryId]/remove/loading";
 import { PendingLine } from "@/app/pending-line";
 import { ReadFailure } from "@/errors/read-failure";
 
@@ -207,16 +207,23 @@ describe("a title whose episodes have not mirrored reads as pending, not as empt
 });
 
 /**
- * The two routes under `/library` that Next's own inheritance would otherwise hand the
- * library's heading to.
+ * The two routes that Next's own inheritance would otherwise hand the library's heading
+ * to — **and since #290 moved them to `/titles/{entryId}` and `/titles/{entryId}/remove`,
+ * would not.**
  *
- * A `loading.tsx` wraps its segment **and every segment below it**, so the boundary added
- * for the grid is what `/library/[entryId]` and `/library/[entryId]/remove` would show
+ * A `loading.tsx` wraps its segment **and every segment below it**, so while these lived
+ * under `/library/[entryId]` the boundary added for the grid is what they would have shown
  * while they read — printing *The library* over a title's own page. §9 already answers
- * this shape: *whatever the segment's `error.tsx` renders above the failure*, which for a
+ * that shape: *whatever the segment's `error.tsx` renders above the failure*, which for a
  * route whose `<h1>` is the thing being waited for is the back link and no `<h1>` at all.
+ *
+ * The move takes the inheritance away and the assertions stay, because what they hold is
+ * not *the grid's boundary is not inherited* but **each of these two says which page is
+ * reading**. That is the same property at the old address and the new one, and it is still
+ * live between the pair: the remove confirmation sits under the title, so the title's
+ * pending render is what it would inherit if its own boundary went missing.
  */
-describe("the routes below the library say which page is reading", () => {
+describe("the routes below a title say which page is reading", () => {
   const detail = markupOf(createElement(TitleDetailLoading));
   const remove = markupOf(createElement(RemoveTitleLoading));
 

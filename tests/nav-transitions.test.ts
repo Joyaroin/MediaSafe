@@ -246,7 +246,7 @@ describe("both directions are drawn, and only on the phone", () => {
  */
 const TILE = readFileSync("app/(signed-in)/up-next/up-next-tile.tsx", "utf8");
 const DETAIL_VIEW = readFileSync(
-  "app/(signed-in)/library/[entryId]/title-detail-view.tsx",
+  "app/(signed-in)/titles/[entryId]/title-detail-view.tsx",
   "utf8",
 );
 const PANE = readFileSync("app/(signed-in)/library/programme-note.tsx", "utf8");

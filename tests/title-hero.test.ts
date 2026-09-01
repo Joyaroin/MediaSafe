@@ -253,7 +253,7 @@ describe("the order of the screen", () => {
   /**
    * Remove lost its scroll and keeps the guard that was always the real one.
    *
-   * The control writes nothing: it is a `Link` to `/library/[entryId]/remove`, a whole
+   * The control writes nothing: it is a `Link` to `/titles/[entryId]/remove`, a whole
    * confirmation route with its own form. The distance down the page was a second line of
    * defence in front of that, and moving the control up costs a scroll rather than the
    * confirmation — which is why this asserts on the destination and not on the position.

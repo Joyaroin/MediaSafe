@@ -65,7 +65,7 @@ export function UpNextPendingCard({
   return (
     <li className={`${CARD} relative overflow-hidden rounded-2xl bg-raised`}>
       <Link
-        href={`/library/${entry.libraryEntryId}`}
+        href={`/titles/${entry.libraryEntryId}`}
         className="pressable block"
         /* The frame is `aria-hidden` and the pending line is a live region rather than a
            label, so this is the whole of what a screen reader hears for the link. */

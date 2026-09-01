@@ -69,7 +69,7 @@ describe("a list row for a title this account does not own", () => {
     // row and a never-added title's row are the same row, and neither points at an entry.
     const markup = render(titleRow({ libraryEntryId: null }));
 
-    expect(markup).not.toContain("/library/");
+    expect(markup).not.toContain("/titles/");
   });
 });
 
@@ -77,6 +77,6 @@ describe("a list row for a title this account owns", () => {
   it("links to this account's own entry, including one it re-added after removing", () => {
     const markup = render(titleRow({ libraryEntryId: "entry-42" }));
 
-    expect(markup).toContain('href="/library/entry-42"');
+    expect(markup).toContain('href="/titles/entry-42"');
   });
 });

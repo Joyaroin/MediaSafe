@@ -208,15 +208,15 @@ const NAVIGATING_CONTROLS = [
   },
   { file: "app/(signed-in)/lists/back-to-lists-bar.tsx", label: "‹ Lists" },
   {
-    file: "app/(signed-in)/library/[entryId]/remove/remove-frame.tsx",
+    file: "app/(signed-in)/titles/[entryId]/remove/remove-frame.tsx",
     label: "‹ Back to your library",
   },
   { file: "app/(signed-in)/library/remove-control.tsx", label: "Remove from library ›" },
   {
-    file: "app/(signed-in)/library/[entryId]/remove/remove-title-form.tsx",
+    file: "app/(signed-in)/titles/[entryId]/remove/remove-title-form.tsx",
     label: "Open your library ›",
   },
-  { file: "app/(signed-in)/library/[entryId]/back-to-library-bar.tsx", label: "‹ Library" },
+  { file: "app/(signed-in)/titles/[entryId]/back-to-library-bar.tsx", label: "‹ Library" },
 ] as const;
 
 const ACTING_CONTROLS = [

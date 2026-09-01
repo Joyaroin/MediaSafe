@@ -109,7 +109,7 @@ function FilmCard({
 }) {
   return (
     <li className={FILM_CARD}>
-      <Link href={`/library/${film.libraryEntryId}`} className="pressable group block">
+      <Link href={`/titles/${film.libraryEntryId}`} className="pressable group block">
         <Poster
           posterPath={film.posterPath}
           name={film.titleName}

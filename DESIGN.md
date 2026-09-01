@@ -887,7 +887,7 @@ away in the panel it opens.
 - **Clicking a rail tile swaps the panel; it is never a navigation — on `lg` and up.**
   The page never routes, so it never loses its place, so comparing two candidates costs
   nothing. **Narrowed by [#274](https://github.com/Joyaroin/MediaSafe/issues/274)**: the
-  tile is a `Link` to `/library/{entryId}` whose click the desktop intercepts, rather than a
+  tile is a `Link` to `/titles/{entryId}` whose click the desktop intercepts, rather than a
   `button` that could only ever select. Below `lg` the link is followed and the reader gets
   the title's page — see *Opening a title opens the title* below. The desktop half of this
   bullet is unchanged, and the interception is what keeps it true.
@@ -1005,7 +1005,7 @@ when it carries neither.
 > because a note that simply disappeared would read as a decision nobody made.
 
 **Every tile and every card on Up next opens the title's own page**, and there is one
-mechanism for it: a `Link` to `/library/{entryId}`.
+mechanism for it: a `Link` to `/titles/{entryId}`.
 
 | What is pressed | Where it goes |
 | --- | --- |
@@ -1341,10 +1341,11 @@ across them would pair the wrong two elements* — with a further note that the 
 sheet shared the second family with the phone route rather than opening a third.
 
 That rule described a phone with **two** destinations: a title sheet raised over `/up-next`
-by a route interception, and the `/library/{id}` route underneath it. #268 deleted both
-interceptions and the sheet with them, so every tile and card on Up next navigates to the
-same page. The two surfaces that needed separate names are one surface, the second family
-had nothing left to keep apart, and it is gone along with the function that minted it.
+by a route interception, and the title's own route underneath it — `/library/{id}` then,
+`/titles/{entryId}` since #290. #268 deleted both interceptions and the sheet with them, so
+every tile and card on Up next navigates to the same page. The two surfaces that needed
+separate names are one surface, the second family had nothing left to keep apart, and it is
+gone along with the function that minted it.
 `app/(signed-in)/library/poster-transition-name.ts` is now one function with three callers
 — the rail tile, the desktop pane and the title's own page.
 

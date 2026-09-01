@@ -36,7 +36,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 export function BackToTitleBar({ libraryEntryId }: { libraryEntryId: string }) {
   return (
     <div className="border-b border-hair px-6 py-4">
-      <Link href={`/library/${libraryEntryId}`} className={GHOST_RECOVERY}>
+      <Link href={`/titles/${libraryEntryId}`} className={GHOST_RECOVERY}>
         ‹ Show
       </Link>
     </div>

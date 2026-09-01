@@ -46,11 +46,13 @@ import { isCurrentRoute } from "./nav-route";
  * ── `isCurrentRoute`, not equality ───────────────────────────────────────────────────
  *
  * `nav-route.ts`'s one function, shared with `tab-bar.tsx` rather than each file keeping
- * its own copy of the same `startsWith` check: *Library* and *Search* carry pushed and
- * replaced routes under them, and a reader three screens into either is still in that
- * section. *Lists* has no route under it — `/lists` is flat — but the check costs
- * nothing to apply uniformly, the same reasoning `tab-bar.tsx` gives for *Up next*.
- * *Settings* gets the pushed-route treatment for real, for `/settings/delete-account`.
+ * its own copy of the same `startsWith` check. *Library* used to carry title detail under
+ * it and *Search* the catalogue's page, so a reader three screens into either was still in
+ * that section; #288 and #290 moved both to top-level addresses of their own, and
+ * `nav-route.ts` records what that costs. *Lists* has no route under it — `/lists` is flat
+ * — but the check costs nothing to apply uniformly, the same reasoning `tab-bar.tsx` gives
+ * for *Up next*. *Settings* is the one row that gets the pushed-route treatment for real,
+ * for `/settings/delete-account`.
  *
  * ── The fifth row here, and the sixth destination overall ────────────────────────────
  *
