@@ -43,12 +43,22 @@ const row = (state: LibraryState) =>
   );
 
 describe("the film's watched mark", () => {
-  it("offers the mark on an unwatched film, and not on one already watched", () => {
+  it("offers the mark on an unwatched film, and the way back on a watched one", () => {
     expect(row("watchlist")).toContain("Mark Arrival watched");
 
+    /**
+     * **A watched film is a control now, not a word.** This assertion used to read
+     * `toContain("Watched")` — the dim `<span>` that was the whole of what a finished
+     * film's row carried, and which `film-watch-row.tsx`'s own docblock recorded as a
+     * deliberate gap: *"No unwatch, and it is a scope statement rather than a rule …
+     * what is missing is the decision and the design, not the write."*
+     *
+     * Both arrived with the episode row's redraw, and the write is the one that was
+     * always there: `unwatch` takes a null `episodeId` and is tested for a film.
+     */
     const finished = row("finished");
     expect(finished).not.toContain("Mark Arrival watched");
-    expect(finished).toContain("Watched");
+    expect(finished).toContain("Unwatch Arrival");
   });
 
   it("dims a finished film's own name and says so, the same as a watched episode", () => {

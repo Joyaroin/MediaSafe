@@ -3,7 +3,7 @@ import { cachedListDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
 import { BackToListsBar } from "../back-to-lists-bar";
 import { EmptyListDetail } from "./empty-list-detail";
-import { ReorderableTitleList } from "./reorderable-title-list";
+import { ListDetailBody } from "./list-detail-body";
 
 /**
  * One list's contents, in order — issue #147. `lists/page.tsx`'s own row said *"nothing
@@ -48,7 +48,7 @@ export default async function ListDetailPage({
       {detail.titles.length === 0 ? (
         <EmptyListDetail />
       ) : (
-        <ReorderableTitleList listId={detail.id} initialTitles={detail.titles} />
+        <ListDetailBody listId={detail.id} titles={detail.titles} />
       )}
 
       {detail.titles.length === 0 ? null : (

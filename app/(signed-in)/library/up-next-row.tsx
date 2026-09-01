@@ -7,11 +7,16 @@ import {
   EPISODE_ROW,
   SEASON_LIST,
 } from "./episode-line";
+import { CheckmarkIcon } from "./checkmark-icon";
 import { MarkWatchedButton } from "./programme-note-episodes";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { episodeFullName } from "./season-grouping";
 import { useWatchMark } from "./use-watch-mark";
-import { WatchSweep } from "./watch-mark-motion";
+import {
+  RECORDING_HIT_BOX,
+  SETTLED_GLYPH,
+  WatchSweep,
+} from "./watch-mark-motion";
 
 /**
  * The trailing slot — this row only ever holds one of two things, the `44px`
@@ -22,7 +27,11 @@ import { WatchSweep } from "./watch-mark-motion";
  * family is (`episode-line.ts`'s own docblock) — a width buried in the JSX is a width
  * nothing stops from drifting the day this row is touched again.
  */
-const TRAILING = "flex w-14 shrink-0 items-center justify-end";
+/* `w-11`, down from `w-14`. This row only ever holds the mark — it removes itself the
+   moment the watch settles — and every state of that mark is `RECORDING_HIT_BOX`'s `44px`
+   square now that the mid-sweep `Watched` text is gone. The extra `12px` was measured for
+   a text pill that no longer exists here. */
+const TRAILING = "flex w-11 shrink-0 items-center justify-end";
 
 /**
  * The up-next episode, markable without picking a season first — issue #228.
@@ -81,14 +90,24 @@ export function UpNextRow({
           </span>
 
           <span className={EPISODE_NAME_CELL}>
-            <span className="block truncate font-medium">
+            {/* `line-clamp-2`, matching the season list's own row (`episode-line.ts`) —
+                one design at two placements, and a long name is cut in neither. */}
+            <span className="block line-clamp-2 font-medium">
               {episode.name === null ? "Not yet named" : episode.name}
             </span>
           </span>
 
           <span className={TRAILING}>
+            {/* The settled mark rather than the word `Watched`, for the season row's own
+                reason: this is on screen for the length of one sweep and is then gone with
+                the whole row, and a text pill that wide would move the name beside it for
+                exactly that long. A `<span>`, because the row is about to unmount. */}
             {watched ? (
-              <span className="code-line whitespace-nowrap text-dim">Watched</span>
+              <span className={RECORDING_HIT_BOX}>
+                <span className={SETTLED_GLYPH}>
+                  <CheckmarkIcon className="block h-4 w-4" />
+                </span>
+              </span>
             ) : (
               <MarkWatchedButton
                 label={`Mark ${fullName} watched`}

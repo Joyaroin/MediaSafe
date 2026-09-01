@@ -1,36 +1,19 @@
 import Link from "next/link";
 
-import { Poster } from "@/app/poster";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
+import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
-import { RailSection, FIRST_RUN } from "./up-next-phone-rail";
+import { UpNextGroup } from "./up-next-group";
 
 /**
- * The landing screen's second rail — the films standing at Watchlist (#250).
+ * The phone's films-to-watch group — the watchlist films, in a list rather than a rail.
  *
- * `listWatchlistFilms` is the membership and it is there rather than here: this file
- * decides the words and the measure, and knows nothing about what put a title on the rail.
+ * The name is kept while its callers and tests are; what it renders is `UpNextGroup`'s
+ * vertical list, for the reason that file gives.
  *
- * ── A card navigates, and carries no check ──────────────────────────────────────────
- *
- * The handoff draws a watched check on the film card. **It is not built**, and #250 is
- * explicit about why: *the mark is unchanged — no new marking path*. A film's watch is one
- * row rather than a run of episodes, so a check here would be a second marking path with
- * its own optimism, its own rollback and its own toast, standing beside the one this
- * ticket deliberately left alone. Recording a film stays where it already is, on the
- * title's own page.
- *
- * So the whole card is a link, which is also the ticket's own words — *a film card
- * navigates to the title* — and `SPEC.md`'s *a destination is a destination*. It is the
- * same route the deleted title sheet used to open over this screen, reached directly now
- * rather than through a sheet with no other caller.
- *
- * ── A server component, with nothing to hydrate ─────────────────────────────────────
- *
- * No `"use client"`: there is no mark, no selection and no scroll state on this rail. The
- * episode rail beside it needs a boundary and takes one; this one costs the bundle
- * nothing, which is the same split `library-grid.tsx` and `selectable-entry.tsx` already
- * draw.
+ * A film row is a poster, a name and a meta line, and it carries **no mark** — same as the
+ * card it replaces. Recording a film's watch is a decision made on the film's own page,
+ * where the one control now also takes it back (`film-watch-row.tsx`).
  */
 export function UpNextFilmRail({
   films,
@@ -40,43 +23,27 @@ export function UpNextFilmRail({
   if (films.length === 0) return null;
 
   return (
-    <RailSection label="Films to watch">
+    <UpNextGroup label="Films to watch">
       {films.map((film, index) => (
-        <FilmCard key={film.libraryEntryId} film={film} aboveFold={index < FIRST_RUN} />
+        <FilmRow key={film.libraryEntryId} film={film} aboveFold={index < FIRST_RUN} />
       ))}
-    </RailSection>
+    </UpNextGroup>
   );
 }
 
-/**
- * The prototype's film card: a `2/3` poster at `132px`, the title under it, and the year
- * and runtime under that.
- *
- * `132px` is the desktop rail tile's measure (`up-next-tile.tsx`) rather than
- * the deleted groups' `116px`, because this is the number the handoff draws for a film card
- * on this rail. Height is not fixed — the `poster` utility's `2/3` derives it, so a real
- * poster is never cropped (#135).
- *
- * `items-start` on the track (`up-next-phone-rail.tsx`) is what keeps a two-line title from
- * dragging its neighbours' posters down: the cards top-align rather than stretching.
- */
-const FILM_WIDTH = 132;
-const FILM_CARD = "w-[132px] shrink-0 snap-start";
+const FIRST_RUN = 3;
 
-function FilmCard({
+/** A poster at the row's own measure — `2/3`, so `48px` of width is `72px` of picture,
+ *  which is what sets the row's height against the episode row's `72px` floor. */
+const POSTER_WIDTH = 48;
+
+function FilmRow({
   film,
   aboveFold,
 }: {
   film: LibraryStateGroupEntry;
   aboveFold: boolean;
 }) {
-  /**
-   * `titleMetaLine`'s `year · runtime`, reused rather than re-cut. It is the line title
-   * detail already prints for a film, so the same film reads the same way here and there —
-   * and it already answers both absences by dropping the part it does not have rather than
-   * placeholding it. `kind` is `"film"` by construction: `listWatchlistFilms` filters on
-   * exactly that column, which is what makes the runtime half of the line reachable at all.
-   */
   const meta = titleMetaLine({
     kind: "film",
     releaseYear: film.releaseYear,
@@ -84,31 +51,33 @@ function FilmCard({
   });
 
   return (
-    <li className={FILM_CARD}>
+    <li className="flex min-h-[72px] items-center py-2.5">
       <Link
         href={`/titles/${film.libraryEntryId}`}
-        className="pressable group block"
+        className="pressable group flex min-w-0 flex-1 items-center gap-3.5"
       >
         <Poster
           posterPath={film.posterPath}
           name={film.titleName}
-          width={FILM_WIDTH}
-          className="w-full transition duration-150 group-hover:brightness-110 [--poster-radius:12px]"
+          width={POSTER_WIDTH}
+          className="w-12 shrink-0 transition duration-150 group-hover:brightness-110 [--poster-radius:8px]"
           aboveFold={aboveFold}
         />
 
-        <p className="mt-[9px] line-clamp-2 text-item leading-snug font-medium text-text">
-          {film.titleName}
-        </p>
-
-        {/* No line at all for a film TMDB has neither dated nor timed, rather than a
-            placeholder — `library-entry-cell.tsx` makes the same choice for the identical
-            fact, and `app/poster.tsx` makes it for artwork it does not have. */}
-        {meta === null ? null : (
-          <p className="code-line mt-[3px] text-dim" data-numeric>
-            {meta}
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-item leading-snug font-medium text-text">
+            {film.titleName}
           </p>
-        )}
+
+          {/* No line at all for a film TMDB has neither dated nor timed, rather than a
+              placeholder — `library-entry-cell.tsx` makes the same choice for the identical
+              fact, and `app/poster.tsx` makes it for artwork it does not have. */}
+          {meta === null ? null : (
+            <p className="code-line mt-[3px] text-dim" data-numeric>
+              {meta}
+            </p>
+          )}
+        </div>
       </Link>
     </li>
   );

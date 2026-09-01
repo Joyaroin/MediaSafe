@@ -5,9 +5,10 @@ import { useState } from "react";
 
 import { PendingLine } from "@/app/pending-line";
 import type { EpisodeDetail } from "@/db/access";
-import { GHOST_RECOVERY_COMPACT, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { TitleKind } from "@/tmdb/mirror";
 import { CheckmarkIcon } from "./checkmark-icon";
+import { UndoIcon } from "./undo-icon";
 import {
   EPISODE_NAME_CELL,
   EPISODE_NUMBER,
@@ -27,6 +28,7 @@ import {
   QUIET_RECORDING_CONTROL,
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
+  SETTLED_GLYPH,
   WATCHED_NAME,
   WatchSweep,
 } from "./watch-mark-motion";
@@ -363,7 +365,50 @@ function SeasonList({
  * `44px` box paints exactly flush with the row's own top and bottom edge, at every one of
  * the three pane widths.
  */
-const TRAILING = "flex w-48 shrink-0 items-center justify-end gap-2";
+/**
+ * ── The slot is `80px` now, and *Rewatch* and *Unwatch* are gone ─────────────────────
+ *
+ * Everything above is the history of a `192px` slot. It is `w-20` — `80px` — from this
+ * ticket,
+ * and the two text pills that made `192px` necessary are deleted — `SETTLED_GLYPH`
+ * (`watch-mark-motion.tsx`) is what a watched row carries instead, and that constant
+ * holds the argument for the deletion, including why the **rewatch concept** in the
+ * `watch` table survives it untouched.
+ *
+ * `80px` and not `44px`, which the first draft of this had: *watched up to here* is
+ * offered on **both** sides of the watched branch, so the widest state this slot must
+ * hold is that control beside the mark — `26px + 8px gap + 44px = 78px`, which is the
+ * `up-to · checkmark` row of the table above, unchanged by any of this. A `44px` slot
+ * would have overflowed on exactly the rows a reader is most likely to be looking at.
+ *
+ * `w-20` and not `w-[78px]`: `78` is not on Tailwind's four-pixel scale, and every fixed
+ * measure in this row — `w-48` before it, `w-9`, `w-11` — is. The `2px` of slack is the
+ * same shape as the `8.1px` the `192px` slot carried over its own widest state.
+ *
+ * **The one thing that left the slot besides the pills is the *Up next* label.** It was
+ * `42.6px` of text saying what `EPISODE_NUMBER_UP_NEXT` already says two cells to the
+ * left, in the accent, on the same row — and it was the only reason this slot ever had to
+ * hold prose. The inverted `E5` chip is the whole signal now.
+ *
+ * That is `112px` back to `EPISODE_NAME_CELL`, which is the point of the ticket: at a
+ * `420px` pane the name had about `190px` and the long ones truncated. The names were
+ * never too long.
+ *
+ * | Trailing slot state | Contents, of `80px` |
+ * |---|---|
+ * | checkmark alone | `44px` |
+ * | settled mark alone | `44px` |
+ * | undo alone | `44px` |
+ * | up-to · checkmark | `78px` |
+ * | up-to · settled mark | `78px` |
+ * | up-to · undo | `78px` |
+ *
+ * Every state that carries the mark at all is `RECORDING_HIT_BOX`'s `44px` square, and
+ * every glyph inside it is `26px`, so the slot's contents no longer change width when a
+ * mark lands, settles, or is taken back. `tests/episode-row-trailing-slot.test.ts` is
+ * what holds that.
+ */
+const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
 
 /**
  * `DESIGN.md`, Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
@@ -544,13 +589,43 @@ function EpisodeLine({
   }) => void;
 }) {
   const fullName = episodeFullName(episode);
+
+  /**
+   * Whether the reader recorded this episode's watch **on this visit, from this row** —
+   * which is the whole of what decides between offering *Undo* and offering *Unwatch*.
+   * The two call the same write; they differ in what they are claiming to be, and a row
+   * that was already watched when the page rendered has nothing to undo.
+   *
+   * Local state and not `watch-marks.ts`'s, deliberately. That store is keyed by episode
+   * because two surfaces can show one episode at once (#103) and its contents are facts
+   * about the **episode**; *I have just pressed this* is a fact about a reader looking at
+   * a page, it expires when they leave, and putting it in the store would hand it to
+   * every other surface showing the same episode as though they had pressed it too.
+   *
+   * There is no timer, and that is `AGENTS.md`'s rule restated rather than a coincidence:
+   * an undo that expires on its own is a control that vanishes while a reader is reaching
+   * for it. It ends when they leave the page, and what is behind it — the settled mark,
+   * which unwatches — never goes away at all.
+   */
+  const [justMarked, setJustMarked] = useState(false);
+
   const { watched, phase, pending, attempt, unwatch, settle } = useWatchMark({
     initialWatched: episode.watched,
     libraryEntryId,
     episodeId: episode.id,
     titleName,
     episodeName: fullName,
+    onRecorded: () => setJustMarked(true),
   });
+
+  /* One write behind both controls: `unwatch` removes every watch of the episode (#145),
+     which is exactly right for undoing a mark made seconds ago and exactly right for
+     taking back one made last year. `setJustMarked(false)` is what stops the row offering
+     *Undo* for a mark that is no longer there. */
+  function takeItBack(): void {
+    setJustMarked(false);
+    void unwatch();
+  }
 
   return (
     <li className={`relative ${EPISODE_ROW}`}>
@@ -612,8 +687,16 @@ function EpisodeLine({
             TMDB not having named it yet — not a licence to print the number a second time
             in its place. */}
         <span className={EPISODE_NAME_CELL}>
+          {/* `line-clamp-2`, not `truncate` — a long episode name now wraps to a second
+              line and is cut only past that, instead of being cut at the first width it
+              exceeds. `EPISODE_ROW`'s `min-h-11` is a floor and not a fixed height, so a
+              two-line row is legal; what `min-h-11` was measured to protect is that a row
+              does not change height **across its own states**, and the clamp is a
+              property of the name rather than of the mark, so it holds still while a
+              watch is recorded. Rows differ from each other in height, and always could
+              — this is what makes it visible. */}
           <span
-            className={`block truncate ${
+            className={`block line-clamp-2 ${
               watched && phase === "settled"
                 ? WATCHED_NAME
                 : episode.upNext && !watched
@@ -627,20 +710,11 @@ function EpisodeLine({
       </Link>
 
       <span className={TRAILING}>
-        {/* The label first, then the controls — it is a fact about the row rather than
-            something to press, and issue #196's control arriving between the two would
-            put a button between a label and the state it labels. Lifted out of the
-            unwatched branch it used to sit inside, which changes nothing about when it
-            renders: an up-next episode is by definition unwatched, and `!watched` is
-            restated here so a still-optimistic mark takes it off the row at once. */}
-        {episode.upNext && !watched ? (
-          <span className="code-line text-accent">Up next</span>
-        ) : null}
-
         {/* Left of whatever the row's own state offers, so the daily gesture keeps the
             outside edge under the thumb. It sits outside the branch below because it is
             offered on **both** sides of it: a watched row with a gap behind it is exactly
-            the row this control is for. */}
+            the row this control is for, and it is why `TRAILING` is `80px` rather than
+            the `44px` a mark alone would need. */}
         {covered === null ? null : (
           <MarkUpToButton
             label={markUpToLabel(episode)}
@@ -649,6 +723,17 @@ function EpisodeLine({
           />
         )}
 
+        {/* Three states, one `44px` box, no text in any of them.
+
+            The *Up next* label that used to open this slot is gone — `EPISODE_NUMBER_UP_NEXT`
+            says it two cells to the left, in the accent, on the same row, and this was the
+            only thing that ever made the slot hold prose (`TRAILING`).
+
+            **Mid-sweep draws the settled mark rather than the word *Watched*.** The sweep is
+            already washing the row; a `49.1px` text pill that exists for the length of one
+            animation and is then replaced by a `44px` control is a slot that changes width
+            twice per press. It is a `<span>` and not a `<button>` for the same beat: a write
+            is in flight, and `pending` would only have to disable a control drawn for it. */}
         {!watched ? (
           <MarkWatchedButton
             label={`Mark ${fullName} watched`}
@@ -656,39 +741,23 @@ function EpisodeLine({
             disabled={pending}
           />
         ) : phase === "marking" ? (
-          <span className="code-line text-dim">Watched</span>
+          <span className={RECORDING_HIT_BOX}>
+            <span className={SETTLED_GLYPH}>
+              <CheckmarkIcon className="block h-4 w-4" />
+            </span>
+          </span>
+        ) : justMarked ? (
+          <UndoMarkButton
+            label={`Undo marking ${fullName} watched`}
+            onClick={takeItBack}
+            disabled={pending}
+          />
         ) : (
-          <>
-            {/* Issue #195: both rows lose their underline for the same ghost treatment
-                the rest of this batch takes. Rewatch already painted accent — it
-                re-records a watch, which is what the accent is for — so this is no
-                widening for that one; Unwatch was dim and moves onto the accent register
-                knowingly, the same call the abandon and remove controls make below.
-
-                Issue #203: at `GHOST_RECOVERY_COMPACT` rather than `GHOST_RECOVERY` —
-                the same register at the row's own compact measure, so the row does not
-                grow when a mark settles. `TRAILING` above holds the re-measurement, #217's
-                own entry included. */}
-            <button
-              type="button"
-              onClick={() => void attempt()}
-              disabled={pending}
-              aria-label={`Watch ${fullName} again`}
-              className={`${GHOST_RECOVERY_COMPACT} ${IN_FLIGHT}`}
-            >
-              Rewatch
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void unwatch()}
-              disabled={pending}
-              aria-label={`Unwatch ${fullName}`}
-              className={`${GHOST_RECOVERY_COMPACT} ${IN_FLIGHT}`}
-            >
-              Unwatch
-            </button>
-          </>
+          <UnwatchButton
+            label={`Unwatch ${fullName}`}
+            onClick={takeItBack}
+            disabled={pending}
+          />
         )}
       </span>
 
@@ -716,6 +785,77 @@ function EpisodeLine({
  * this module and two outside it, and still one control rather than three that resemble
  * each other (`DESIGN.md` §7 names the show page as exactly this reuse).
  */
+/**
+ * *Undo* — the mark this row itself just recorded, taken back.
+ *
+ * `RECORDING_GLYPH` and not `SETTLED_GLYPH`: an undo offered seconds after a press is the
+ * live half of the gesture the reader is still in the middle of, and the accent is what
+ * `app/globals.css` gives that. It is also the one state in this row where the accent is
+ * **not** claiming *press me to record* — which is exactly why the glyph changes with it.
+ * A vermilion checkmark and a vermilion undo arrow are two different offers in the same
+ * colour, and the shape is what tells them apart.
+ *
+ * `UndoIcon` rather than the word, and `undo-icon.tsx` holds that argument: the slot is a
+ * fixed `80px` and a text pill on the one row a reader just pressed would reflow the name
+ * beside it. The Up next card keeps the word, because its own slot has the room.
+ */
+function UndoMarkButton({
+  label,
+  onClick,
+  disabled = false,
+}: {
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
+    >
+      <span className={RECORDING_GLYPH}>
+        <UndoIcon className="block h-4 w-4" />
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The settled mark, which is also how a watch is taken back — the whole of what a watched
+ * row carries now that *Rewatch* and *Unwatch* are deleted. `SETTLED_GLYPH`
+ * (`watch-mark-motion.tsx`) holds the argument for both halves of that sentence.
+ *
+ * The same `RECORDING_HIT_BOX` as the other two, so the `44px` target and the loud press
+ * register are identical in every state this row can be in, and nothing in the trailing
+ * slot moves as it passes between them.
+ */
+function UnwatchButton({
+  label,
+  onClick,
+  disabled = false,
+}: {
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
+    >
+      <span className={SETTLED_GLYPH}>
+        <CheckmarkIcon className="block h-4 w-4" />
+      </span>
+    </button>
+  );
+}
+
 export function MarkWatchedButton({
   label,
   onClick,

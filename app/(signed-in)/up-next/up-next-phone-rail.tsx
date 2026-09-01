@@ -28,7 +28,7 @@ import { RememberedTrack } from "./remembered-rail";
  *
  * ── No arrows, and no rule line beside the head ──────────────────────────────────────
  *
- * `up-next-rail.tsx`'s arrows exist because a mouse without a horizontal wheel cannot
+ * `up-next-group.tsx`'s arrows exist because a mouse without a horizontal wheel cannot
  * reach a track at all; that reason has no phone equivalent, and an arrow under a thumb
  * that can already swipe is decoration. The desktop rail's dim rule beside its head goes
  * for the handoff's reason: it draws the phone head as a label alone.

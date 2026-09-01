@@ -198,7 +198,7 @@ describe("the chrome stays still", () => {
 });
 
 
-const TILE = readFileSync("app/(signed-in)/up-next/up-next-tile.tsx", "utf8");
+const ROW = readFileSync("app/(signed-in)/up-next/up-next-episode-row.tsx", "utf8");
 const DETAIL_VIEW = readFileSync(
   "app/(signed-in)/titles/[entryId]/title-detail-view.tsx",
   "utf8",
@@ -206,9 +206,9 @@ const DETAIL_VIEW = readFileSync(
 const PANE = readFileSync("app/(signed-in)/library/programme-note.tsx", "utf8");
 
 describe("the poster morph, on one transition-name family", () => {
-  it("gives the rail tile and the page it opens the same name", () => {
-    // Same minting function, same argument shape: the tile's entry id and the page's.
-    expect(TILE).toContain("railPosterTransitionName(entry.libraryEntryId)");
+  it("gives the Up next row and the page it opens the same name", () => {
+    // Same minting function, same argument shape: the row's entry id and the page's.
+    expect(ROW).toContain("railPosterTransitionName(entry.libraryEntryId)");
     expect(DETAIL_VIEW).toContain(
       "posterTransitionName={railPosterTransitionName(current.libraryEntryId)}",
     );
@@ -216,7 +216,7 @@ describe("the poster morph, on one transition-name family", () => {
 
   it("keeps every half minting from the shared module rather than spelling the name", () => {
     for (const [label, source] of [
-      ["up-next-tile.tsx", TILE],
+      ["up-next-episode-row.tsx", ROW],
       ["title-detail-view.tsx", DETAIL_VIEW],
       ["programme-note.tsx", PANE],
     ] as const) {
@@ -231,13 +231,21 @@ describe("the poster morph, on one transition-name family", () => {
     }
   });
 
-  it("drops the tile's name once its destination holds it", () => {
-    // A name can only mark one on-screen element at a time. The tile carries it in exactly
-    // one branch — the unselected one — so the moment the desktop pane is showing that
-    // poster the tile has already let go, and the browser never sees the name twice.
-    expect(TILE.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(TILE.indexOf("selected ? (")).toBeGreaterThan(-1);
-    expect(TILE.indexOf("selected ? (")).toBeLessThan(TILE.indexOf("<ViewTransition"));
+  it("drops the row's name once its destination holds it", () => {
+    // A name can only mark one on-screen element at a time, so the moment the desktop pane
+    // is showing that poster the row must already have let go, or the browser sees the
+    // name twice.
+    //
+    // The tile this replaced expressed that as two branches of a ternary — one with the
+    // wrapper, one without — and this asserted their order. The row states the condition
+    // directly instead, which is the same rule with one `<ViewTransition>` and no
+    // duplicated frame beneath it: it returns early, unwrapped, when the entry is the
+    // selected one.
+    expect(ROW.match(/<ViewTransition/g)).toHaveLength(1);
+    expect(ROW).toMatch(/if \(press !== "select" \|\| selected\) return frame;/);
+    expect(ROW.indexOf('if (press !== "select" || selected) return frame;')).toBeLessThan(
+      ROW.indexOf("<ViewTransition"),
+    );
   });
 
   it("still hands the desktop programme note pane the morph, in both its frames", () => {

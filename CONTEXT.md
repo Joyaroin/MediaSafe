@@ -77,6 +77,12 @@ _Avoid_: legacy watch, historical watch, unknown watch
 **Rewatch**:
 A watch of something you had already watched. A kind of watch, not a separate record, and never a
 number kept on a title.
+**No control in the application records one.** The term stays in the language because the data
+does: `docs/adr/0001` counts 1,156 of them in the imported library, and the `watch` table's
+identity rule and every read that groups by episode exist to handle them correctly. What was
+deleted is the *Rewatch* button on a watched episode row, not the thing it named. Note that
+unwatching and marking again is not a rewatch — it destroys the first watch rather than adding
+a second.
 _Avoid_: replay, second watch, watch count
 
 **Progress**:
