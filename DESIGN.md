@@ -1441,20 +1441,43 @@ about the product, and it outranks a rule this file wrote while describing a bui
 not been asked the question yet. Recorded as a reversal rather than quietly overwritten, so
 the next reader can see it was decided and not drifted into.
 
-What is authored, and why each half differs:
+What is authored, and why each half differs — quoted from `app/globals.css`, not re-derived
+here, on the same rule §10 states for the #221 quotation below: if this ever disagrees with
+the stylesheet, the stylesheet is right and this quotation is stale. **This block itself was
+stale until #301** — it named `--dur-slow`/`--ease-press` on the group and a shared
+`--dur-base`/`--ease-out-quart` on the root, which had not been true since #221 moved the
+navigation onto `nav-fade`/`nav-rise` and gave the outgoing and incoming root two different
+rules rather than one:
 
 ```css
-::view-transition-group(*)                    { animation-duration: var(--dur-slow);  animation-timing-function: var(--ease-press); }
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out-quart); }
+::view-transition-group(*) {
+  animation-duration: var(--dur-quick);
+  animation-timing-function: var(--ease-press);
+}
+
+::view-transition-old(root) {
+  animation: var(--dur-fast) var(--ease-out-quart) both nav-fade reverse;
+}
+
+::view-transition-new(root) {
+  animation:
+    var(--dur-quick) var(--ease-out-quart) both nav-fade,
+    var(--dur-quick) var(--ease-out-quart) both nav-rise;
+}
 ```
 
 - **The group is what moves and resizes the shared poster**, so it gets the long confident
-  arrival — `--dur-slow` on `--ease-press`, an exponential ease-out that covers most of the
-  distance immediately and then settles. That asymmetry is what makes a morph read as a
-  thing with mass being carried rather than a box being tweened.
-- **The root cross-fade underneath is deliberately shorter than the morph.** The poster is
-  the subject and should be the last thing to settle; a full-length fade on the whole
-  document is what makes a view transition feel like a slideshow.
+  arrival curve — `--ease-press`, an exponential ease-out that covers most of the distance
+  immediately and then settles. That is what makes a morph read as a thing with mass being
+  carried rather than a box being tweened.
+- **The group and the arriving root now share one clock, `--dur-quick`, and that is a fix
+  rather than the original design.** The morph ran `--dur-slow` against a `--dur-base` page
+  and was already the last thing settling; once #221 brought the page down to `--dur-quick`
+  a 380ms morph left the poster still travelling long after the screen it landed on had
+  finished — the *"unfinished transition"* problem this file warns about, reintroduced from
+  the other side. Leaving is still faster than arriving, the asymmetry this file has always
+  held: the outgoing root fades out alone at `--dur-fast`, and the incoming root fades and
+  rises in at `--dur-quick`.
 - **`--ease-press` is not a second curve.** It is the value #88 chose for the watch strike,
   reused rather than re-picked — one arrival curve across the app is what makes two
   unrelated surfaces feel like the same hand made them.
@@ -1739,6 +1762,39 @@ for the library and Up next it is the full heading. The formula does not change 
   array. Giving any of them a boundary fails the audit rather than passing quietly, which is
   what makes this paragraph enforced rather than remembered.
 
+### Radius 1 waits behind a named delay before it paints — issue #301
+
+**Instrumenting the shipped build found the treatment attached to the wrong moment.** A tab
+press repaints in ~65ms, but what it repaints to is radius 1's own pending line, and that
+swap carries no transition at all — a hard cut. The fade and rise that this file's navigation
+section describes then run ~300ms later, animating the pending→content swap, which is a
+moment nobody caused. On a fast connection the reader never asked to see a pending state at
+all: the server renders Up next in 175–235ms and the library in 156–235ms, well inside the
+time a reader tolerates as an ordinary press.
+
+**`--dur-pending-hold` (`app/globals.css`) holds every radius 1 render invisible for 300ms
+before it paints.** Not a motion — nothing here travels or eases — but named and kept on the
+duration ramp for the reason the ramp exists at all: a delay a reader can feel is a decision,
+not a literal at a call site. 300ms clears the slower of the two measured renders with room
+for jitter, so a navigation that resolves before the hold ends never shows the bars at all —
+the reader presses, and the next thing painted is the destination itself, with the existing
+fade and rise landing on it. A navigation slower than the hold still gets the pending state
+exactly as it always has, once the hold ends.
+
+The mechanism is CSS alone: `opacity: 0`, flipped to `1` by a `1ms` animation gated by
+`animation-delay: var(--dur-pending-hold)`. Opacity rather than `display`, so nothing reserves
+or drops layout across the flip; a `1ms` flip rather than a fade, because held is a state to
+be in and not a second entrance to animate over the hold itself. If the read resolves first,
+React tears the node down before the delay ever elapses and the animation never runs — no
+timer, no client boundary, and no change to `loading.tsx`'s own rendering mode.
+
+**This stops at radius 1, and does not reach radius 2 or radius 3.** Both already paint
+beside content that has already rendered — the region's own head, or the pane's carried
+poster — and a delayed region there is a blank gap where something was already on screen,
+which reads as broken rather than as reading. Radius 4's tile is the same argument again: the
+poster and name are already in hand and render at once, and the one line that waits is
+already the smallest thing on the tile. None of the three carry `--dur-pending-hold`.
+
 ### Radius 2 — one region is pending, beside rendered content
 
 **The region's head renders at once, in its settled form, and nothing is reserved beneath it.**
@@ -1986,8 +2042,17 @@ transition token* — an accurate description of a build whose entire vocabulary
 easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
 the app; all four of those absences are now present on purpose. What governs it:
 
-- **Five duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
-  (`380ms`), `--dur-press` (`100ms`), `--dur-pop` (`260ms`) — and three easings:
+- **Seven duration tokens** — `--dur-fast` (`140ms`), `--dur-quick` (`190ms`), `--dur-base`
+  (`220ms`), `--dur-slow` (`380ms`), `--dur-press` (`100ms`), `--dur-pop` (`260ms`),
+  `--dur-pending-hold` (`300ms`) — and three easings:
+
+  **This said *five* and omitted `--dur-quick` until #301 corrected it while adding the
+  seventh.** `--dur-quick` shipped with #221's nav-fade/nav-rise pair and was never added
+  here — the drift this section itself warns a reader against trusting without checking the
+  stylesheet. `--dur-pending-hold` is #301's own addition: not a motion — nothing on it
+  travels or eases — but named and kept on this ramp for the reason the ramp exists at all,
+  and it is what §9's radius 1 now waits behind before it paints.
+
   `--ease-press` (unchanged, the arrival curve, and misnamed — it is not the press),
   `--ease-out-quart` and `--ease-in-out-soft`.
 

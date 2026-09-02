@@ -76,9 +76,25 @@ function Row({ w, sub }: { w: string; sub: string }) {
  * unclassified caller gets one bar, which is what those surfaces drew before shapes
  * existed, and a caller that wants more has to say so.
  */
-export function PendingLine({ shape = "line" }: { shape?: PendingShape }) {
+export function PendingLine({
+  shape = "line",
+  held = false,
+}: {
+  shape?: PendingShape;
+  /**
+   * Issue #301, and true only from a `loading.tsx` at a route's own segment — §9 radius
+   * 1. `route-pending-hold` (`app/globals.css`) keeps this render invisible for
+   * `--dur-pending-hold`, so a navigation that resolves before the hold ends never
+   * shows it at all. Radius 2 and radius 4 callers — a region or a tile pending beside
+   * content that already rendered — leave this at its default and keep painting
+   * immediately, on §9's own reasoning: a delayed region beside rendered content is a
+   * blank gap, not a read in progress.
+   */
+  held?: boolean;
+}) {
   return (
-    <div role="status" className="pending">
+    <div role="status" className={held ? "pending route-pending-hold" : "pending"}>
+
       {/* The word §9 chose, unchanged and still the only thing a screen reader gets. The
           bars are `aria-hidden` by being empty spans with no text; this is the label. */}
       <span className="sr-only">Reading</span>

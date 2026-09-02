@@ -151,6 +151,64 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
   });
 });
 
+/**
+ * ── Held, before it ever paints — issue #301 ────────────────────────────────────────
+ *
+ * `DESIGN.md` §9 radius 1 only: a whole route's own pending state waits behind
+ * `--dur-pending-hold` (`tests/palette.test.ts` owns the token itself and the sweep over
+ * which callers carry it). What belongs here is `PendingLine`'s own half of the
+ * contract — the prop that turns the class on, and nothing else about the render.
+ */
+describe("the held prop, and only the held prop, gates the hold", () => {
+  it("carries no hold class by default", () => {
+    const bare = markupOf(createElement(PendingLine));
+    expect(bare).toContain('class="pending"');
+    expect(bare).not.toContain("route-pending-hold");
+  });
+
+  it("adds the hold class when told to, without losing the plain one", () => {
+    const held = markupOf(createElement(PendingLine, { held: true }));
+    expect(held).toContain('class="pending route-pending-hold"');
+  });
+
+  it("changes nothing else about the render", () => {
+    // Same bars, same word, same role — the hold is a class on the wrapper and nothing
+    // about what §9's treatment actually draws.
+    const bare = markupOf(createElement(PendingLine, { shape: "rows" }));
+    const held = markupOf(createElement(PendingLine, { shape: "rows", held: true }));
+    expect(held.replace(' route-pending-hold', '')).toEqual(bare);
+  });
+
+  /**
+   * The library boundary is this ticket's own worked example: §9 radius 1, and one of
+   * the ten `loading.tsx` files converted. `tests/palette.test.ts` sweeps all ten by
+   * source; this is the one rendered here already, checked for the actual markup rather
+   * than for the prop being passed.
+   */
+  it("holds the library's own boundary, which is a route-level render", () => {
+    const boundary = markupOf(createElement(LibraryLoading));
+    expect(boundary).toContain("route-pending-hold");
+  });
+
+  /**
+   * The episode region is §9 radius 2 — beside content (`programme-note-episodes.tsx`)
+   * that has already rendered — and must keep painting immediately. `DESIGN.md` §9 is
+   * explicit that a delayed region there is a blank gap, not a read in progress.
+   */
+  it("does not hold the episode region, which is beside content that already rendered", () => {
+    const region = markupOf(
+      createElement(ProgrammeNoteEpisodes, {
+        kind: "show",
+        episodes: [],
+        libraryEntryId: "entry-1",
+        titleName: "Andor",
+        episodesPending: true,
+      }),
+    );
+    expect(region).not.toContain("route-pending-hold");
+  });
+});
+
 describe("a pending library is not an empty one and not a failed one", () => {
   const pending = markupOf(createElement(LibraryLoading));
   const empty = markupOf(createElement(EmptyLibrary));

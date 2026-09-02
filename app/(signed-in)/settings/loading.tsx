@@ -15,7 +15,7 @@ export default function SettingsLoading() {
       <SettingsHeading />
 
       <div className="mt-12">
-        <PendingLine shape="form" />
+        <PendingLine shape="form" held />
       </div>
     </main>
   );

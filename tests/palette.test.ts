@@ -840,3 +840,95 @@ describe("the contrast the palette actually ships", () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+/**
+ * ── The route-level pending state waits behind a named delay — issue #301 ────────────
+ *
+ * `DESIGN.md` §9 measured the server render at 175–235ms for Up next and 156–235ms for
+ * the library. Held invisible past the slower of those, a navigation that resolves before
+ * the hold ends never shows the pending bars at all, and the existing fade and rise land
+ * on real content instead of on a swap nobody caused.
+ *
+ * Asserted here in the same shape the motion tokens above already are — `motionToken()`
+ * reads the one declaration site, the way `--dur-press` and `--dur-pop` are read for the
+ * press — so the interval cannot drift from the ramp without this file noticing.
+ */
+describe("the route-level pending state waits behind a named delay", () => {
+  it("declares the delay once, on the same ramp as every other duration", () => {
+    // `motionToken` itself asserts there is exactly one declaration site.
+    expect(motionToken("--dur-pending-hold")).toMatch(/^\d+ms$/);
+  });
+
+  it("clears the slower of the two measured renders, with room for jitter", () => {
+    const ms = Number(motionToken("--dur-pending-hold").replace("ms", ""));
+    // DESIGN.md §9: Up next 175–235ms, library 156–235ms.
+    expect(ms).toBeGreaterThan(235);
+  });
+
+  it("holds with opacity, not display, so nothing reserves or drops layout", () => {
+    const utility = CSS_CODE.match(/@utility route-pending-hold \{[\s\S]*?\n\}/);
+    expect(utility, "globals.css must declare `route-pending-hold`").not.toBeNull();
+    expect(utility![0]).toMatch(/opacity:\s*0;/);
+    expect(utility![0]).not.toMatch(/display:\s*none/);
+  });
+
+  it("flips visible off the token, once, rather than fading over it", () => {
+    // `animation-delay` is what gates the flip on `--dur-pending-hold`; the animation's
+    // own duration is `1ms` — the flip itself, not a second entrance to animate. A read
+    // that resolves first tears this node down before the delay ever elapses.
+    const utility = CSS_CODE.match(/@utility route-pending-hold \{[\s\S]*?\n\}/)![0];
+    expect(utility).toMatch(/animation:\s*route-pending-reveal\s+1ms\s+var\(--dur-pending-hold\)\s+forwards;/);
+
+    const keyframes = CSS_CODE.match(/@keyframes route-pending-reveal \{[\s\S]*?\n\}/);
+    expect(keyframes, "globals.css must declare the reveal keyframes").not.toBeNull();
+    expect(keyframes![0]).toMatch(/opacity:\s*1;/);
+  });
+
+  /**
+   * The ten `loading.tsx` files this ticket converts — `DESIGN.md` §9 radius 1, a whole
+   * route's own pending state. `PendingLine`'s other three callers are radius 2
+   * (`programme-note-episodes.tsx`) and radius 4 (`up-next-pending-card.tsx`,
+   * `up-next-episode-row.tsx`) — a region or a tile pending beside content that has
+   * already rendered — and §9 is explicit that a delayed region there is a blank gap,
+   * not a read in progress, so those three must keep painting immediately.
+   */
+  const ROUTE_LOADING_FILES = [
+    "app/(signed-in)/library/loading.tsx",
+    "app/(signed-in)/up-next/loading.tsx",
+    "app/(signed-in)/you/loading.tsx",
+    "app/(signed-in)/lists/loading.tsx",
+    "app/(signed-in)/lists/[listId]/loading.tsx",
+    "app/(signed-in)/titles/[entryId]/loading.tsx",
+    "app/(signed-in)/titles/[entryId]/remove/loading.tsx",
+    "app/(signed-in)/catalogue/[kind]/[tmdbId]/loading.tsx",
+    "app/(signed-in)/settings/loading.tsx",
+    "app/(signed-in)/settings/delete-account/loading.tsx",
+  ];
+
+  const IMMEDIATE_PENDING_FILES = [
+    "app/(signed-in)/library/programme-note-episodes.tsx",
+    "app/(signed-in)/up-next/up-next-pending-card.tsx",
+    "app/(signed-in)/up-next/up-next-episode-row.tsx",
+  ];
+
+  const pendingLineTag = (source: string): string => {
+    const match = source.match(/<PendingLine[\s\S]*?\/>/);
+    expect(match, "must render <PendingLine />").not.toBeNull();
+    return match![0];
+  };
+
+  it("finds all ten route boundaries this ticket converts", () => {
+    // Without this the two properties below would hold vacuously against a wrong path.
+    for (const path of ROUTE_LOADING_FILES) {
+      expect(existsSync(join(ROOT, path)), path).toBe(true);
+    }
+  });
+
+  it.each(ROUTE_LOADING_FILES)("%s holds its pending render", (path) => {
+    expect(pendingLineTag(readFileSync(join(ROOT, path), "utf8"))).toMatch(/\bheld\b/);
+  });
+
+  it.each(IMMEDIATE_PENDING_FILES)("%s keeps painting immediately, unheld", (path) => {
+    expect(pendingLineTag(readFileSync(join(ROOT, path), "utf8"))).not.toMatch(/\bheld\b/);
+  });
+});
