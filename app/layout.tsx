@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { ActionToasts } from "@/app/(signed-in)/library/action-toast-toasts";
 import { OfflineBanner } from "@/errors/offline-banner";
@@ -7,6 +7,7 @@ import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from "@/lib/theme";
 
 import { archivo } from "./fonts";
 import { MotionProvider } from "./motion-provider";
+import { THEME_COLOR_SCHEME } from "./theme-color";
 import "./globals.css";
 
 /**
@@ -40,6 +41,20 @@ const THEME_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(THEME_STOR
 export const metadata: Metadata = {
   title: "MediaSafe",
   description: "A personal tracker for the films and shows you watch.",
+};
+
+/**
+ * The status bar's colour, in both colour schemes — issue #308. `next/font`'s
+ * deprecation of `metadata.themeColor` in favour of this `viewport` export is why the
+ * pair lives here and not above: `node_modules/next/dist/docs/.../generate-viewport.md`.
+ *
+ * `THEME_COLOR_SCHEME` (`app/theme-color.ts`) is the pair, not typed out here, so the
+ * one place asserting these colours against `app/globals.css`
+ * (`tests/manifest.test.ts`) is asserting the same values this page renders rather than
+ * a second copy of them.
+ */
+export const viewport: Viewport = {
+  themeColor: THEME_COLOR_SCHEME,
 };
 
 /**
