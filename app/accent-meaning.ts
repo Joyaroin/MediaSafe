@@ -42,6 +42,14 @@
  * strictly a rename with no visible effect, since the strings resolve identically either
  * way, and is left to whichever ticket next touches those files rather than done here as a
  * drive-by across modules this ticket has no other reason to open.
+ *
+ * **Issue #311 is that ticket for `errors/recovery-buttons.ts`.** `GHOST_RECOVERY`,
+ * `GHOST_RECOVERY_COMPACT`, `SOLID_RECOVERY` and `SOLID_RECOVERY_COMPACT` now build their
+ * accent tokens from `THE_BUTTON_REGISTER.ink`/`.solid` rather than typing them — see that
+ * file's own docblock. `watch-mark-motion.tsx`'s recording controls remain untouched: #311
+ * names the button register alone, and the recording glyph is `RECORDS_A_WATCH`'s own call
+ * site, not this one's, so rewiring it is still left to whichever ticket next opens that
+ * file.
  */
 
 /** What a class list built from a meaning claims to a reader, and how it is built. */
@@ -89,8 +97,9 @@ export const LIVE_EDGE_OF_THE_RECORD: AccentMeaning = meaning(
  * The third meaning: issue #195 moved fourteen controls onto the accent as their shared
  * register (`DESIGN.md` §10's Buttons subsection), overriding two files' own prior *never
  * accent* reasoning in the open. `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/
- * `SOLID_RECOVERY` and their compact variants are this meaning's `ink`/`solid` today. Not
- * migrated onto this constant here — see this file's own docblock for why.
+ * `SOLID_RECOVERY` and their compact variants are this meaning's `ink`/`solid` today.
+ * Migrated onto this constant by issue #311, rendering exactly as before — the fourteen
+ * controls this describes are unchanged, only the declaration is.
  */
 export const THE_BUTTON_REGISTER: AccentMeaning = meaning(
   "this is one of the fourteen controls #195 moved onto the accent as their shared register, not a state and not a fresh write",

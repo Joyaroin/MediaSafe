@@ -152,6 +152,12 @@ export function FilterField({
  * removed and replaced by a solid vermilion triangle — the one place vermilion marks an
  * affordance rather than a state.*
  *
+ * **Reversed by issue #311.** `DESIGN.md` §12 named this caret, and `timezone-control.tsx`'s,
+ * as painting a *selection* — a fourth, unstated reason to reach for the accent, never one
+ * of the three `app/accent-meaning.ts` settles. The triangle survives; it takes `text-dim`
+ * now, the same ink `SortSelect`'s own value text already carries, so the caret still reads
+ * as a control by its shape rather than by borrowing a colour reserved for something else.
+ *
  * ── Why a selection here is a navigation and not a `setState` ────────────────────────
  *
  * `SPEC.md` §7 puts sort state in the URL, so choosing an order calls `router.push` rather
@@ -199,11 +205,14 @@ export function SortSelect({ value }: { value: LibrarySort }) {
           </option>
         ))}
       </select>
-      {/* The solid vermilion triangle survives the redesign unchanged — turn 9 keeps it,
-          and it is the one place the accent marks an affordance rather than a state. */}
+      {/* The solid triangle survives the redesign — turn 9 keeps it — but not in the
+          accent any more. Issue #311 re-narrows it: `DESIGN.md` §12 named this caret as
+          one of two places the accent marked a selection rather than one of the three
+          sanctioned meanings, so it takes the same dim ink `SortSelect`'s own value
+          text does, and still reads unambiguously as a control by its shape alone. */}
       <svg
         viewBox="0 0 12 8"
-        className="pointer-events-none absolute right-3 h-1.5 w-[9px] text-accent"
+        className="pointer-events-none absolute right-3 h-1.5 w-[9px] text-dim"
         aria-hidden="true"
       >
         <polygon points="0,0 12,0 6,8" fill="currentColor" />
