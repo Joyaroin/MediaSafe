@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ActionToasts } from "@/app/(signed-in)/library/action-toast-toasts";
 import { OfflineBanner } from "@/errors/offline-banner";
 import { WriteFailureToasts } from "@/errors/write-failure-toast";
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from "@/lib/theme";
@@ -52,6 +53,12 @@ export const metadata: Metadata = {
  *   that unmounts the moment the reader types the next query.
  * - **Read failures** are *not* here. They belong to the route that failed, so they live
  *   in `app/error.tsx`, which wraps the page and leaves this layout standing.
+ *
+ * **The action toast (issue #307) is not one of SPEC.md §6's four failure treatments** —
+ * it reports a watch that landed, not one that was lost — and it is mounted here for the
+ * same structural reason the write-failure toast is: `action-toast-store.ts`'s singleton
+ * has to outlive whichever row raised it, and this is the one place in the tree above
+ * every row.
  */
 export default function RootLayout({
   children,
@@ -87,6 +94,7 @@ export default function RootLayout({
             nothing about how they animate while adding a client boundary above them. */}
         <MotionProvider>{children}</MotionProvider>
         <WriteFailureToasts />
+        <ActionToasts />
       </body>
     </html>
   );
