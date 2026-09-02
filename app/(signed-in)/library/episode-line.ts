@@ -1,3 +1,5 @@
+import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
+
 /**
  * `DESIGN.md`'s Episode Line, as the four class strings that draw it — written once for
  * the reason `programme-note-section.ts` and `errors/recovery-buttons.ts` give for their
@@ -65,8 +67,12 @@ export const EPISODE_NUMBER = "code-line w-9 shrink-0 text-dim";
  * this and never the dim variant. Written once for the same reason every constant in this
  * file is: a second copy of this exact string is a second row that was never measured
  * against the first, and it would drift silently the day one of them changed.
+ *
+ * Issue #310: the accent here claims `LIVE_EDGE_OF_THE_RECORD` (`app/accent-meaning.ts`) —
+ * `DESIGN.md` §12's own words for it are *the strongest case for a second meaning: up next
+ * is the live edge of the record, and this is the one place it is marked*.
  */
-export const EPISODE_NUMBER_UP_NEXT = "code-line w-9 shrink-0 bg-accent px-1 py-0.5 text-center text-accent-ink";
+export const EPISODE_NUMBER_UP_NEXT = `code-line w-9 shrink-0 ${LIVE_EDGE_OF_THE_RECORD.solid} px-1 py-0.5 text-center`;
 
 /** The name's cell. `min-w-0` and the `truncate` inside it are what keep a long name from
  *  wrapping and taking the row's measured height with it. */

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
+import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
 import { LIBRARY_STATES, type LibraryState } from "@/db/access";
 import {
   DEFAULT_LIBRARY_SORT,
@@ -53,6 +54,11 @@ const CHIPS: { value: Chip; label: string }[] = [
  * selected or not — moved to `chip.tsx` for issue #224, which reuses it for the season
  * selector; only the one exception named above is local here, because it is a fact about
  * the Watching state and not about the register.
+ *
+ * Issue #310 names why this exception is sanctioned rather than a fourth, unstated reason
+ * to reach for the accent: `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the same
+ * meaning `library-state.ts`'s Watching label claims, because a chip naming a state and a
+ * label naming the same state are the same claim twice.
  */
 /* The selected chip's ground is drawn by `<ChipGround />` (`chip.tsx`) rather than by a
    `bg-ink` class, so every chip here is transparent-grounded and the same size whether it
@@ -61,7 +67,7 @@ function chipClassName(value: Chip, selected: boolean): string {
   if (value === "watching" && !selected) {
     // The one exception, and it survives the redesign intact: Watching keeps its accent
     // label even unselected, because the accent always means live.
-    return `${CHIP_BASE} bg-raised text-accent transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
+    return `${CHIP_BASE} bg-raised ${LIVE_EDGE_OF_THE_RECORD.ink} transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
   }
   return sharedChipClassName(selected);
 }
