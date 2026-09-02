@@ -116,7 +116,17 @@ export function WatchMenu({
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button type="button" onClick={rewatch} className={GHOST_RECOVERY}>
+        {/* Issue #314: `h-11 min-w-11` raises all four controls below to the 44px platform
+            minimum in both dimensions — measured at 34.2px tall, 26.2px for Cancel, against
+            it. `GHOST_RECOVERY`/`GHOST_RECOVERY_COMPACT` stay untouched: both are shared by
+            a dozen-plus surfaces with no sizing complaint of their own, and the established
+            way to reach 44px at one call site without moving the rest is composing it there
+            — `list-row.tsx`'s `h-11` and `selection-action-bar.tsx`'s `h-11` on its own
+            compact pair are the prior art. `h-11`/`min-w-11` are `2.75rem`, the same 44px
+            `RECORDING_HIT_BOX`'s `w-11 h-11` already resolves to, and Tailwind's border-box
+            preflight makes `h-11` exact regardless of the padding either treatment carries.
+            `tests/watch-menu-sweep.test.ts` holds all four to it. */}
+        <button type="button" onClick={rewatch} className={`${GHOST_RECOVERY} h-11 min-w-11`}>
           Rewatch
         </button>
 
@@ -127,20 +137,26 @@ export function WatchMenu({
             *Undo* is simply the middle item of the three things a watched row can be
             asked. It is the same write either way (`db/access.ts`'s `undoWatch` — the
             newest row, never all of them). */}
-        <button type="button" onClick={undo} className={GHOST_RECOVERY}>
+        <button type="button" onClick={undo} className={`${GHOST_RECOVERY} h-11 min-w-11`}>
           Undo
         </button>
 
-        <button type="button" onClick={unwatch} className={GHOST_RECOVERY}>
+        <button type="button" onClick={unwatch} className={`${GHOST_RECOVERY} h-11 min-w-11`}>
           Unwatch
         </button>
 
         {/* The way out, at the compact measure — `delete-list-dialog.tsx`'s own
             arrangement: the acts at the surface measure, the dismissal quieter beside
             them. `formMethod="dialog"` closes without a handler, which is what `<dialog>`
-            gives for free and what keeps `onClosed` the single close path. */}
+            gives for free and what keeps `onClosed` the single close path. Cancel is the
+            smallest and easiest to overlook of the four (#314), so it takes the same
+            `h-11 min-w-11` floor rather than being left at the compact treatment's own
+            26.2px. */}
         <form method="dialog" className="contents">
-          <button type="submit" className={GHOST_RECOVERY_COMPACT}>
+          <button
+            type="submit"
+            className={`${GHOST_RECOVERY_COMPACT} h-11 min-w-11`}
+          >
             Cancel
           </button>
         </form>
