@@ -278,8 +278,19 @@ copying whichever call site they happened to open:
 | **Recording a watch** | the sweep; the season row's check and its *Undo* glyph (`programme-note-episodes.tsx`); the Up next row's check and its *Undo* (`up-next/up-next-episode-row.tsx`, #220 → #250) | the reserved meaning |
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
-| **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
-| **The live edge of the record** | the *up next* episode's code badge and its *Up next* label (`programme-note-episodes.tsx`); the chosen rating cell (`rating-control.tsx`); the *Watching* state label and chip | **contested — see §12** |
+| **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx`, search's *Add* pill (`catalogue-result.tsx`) | one per surface, at most |
+| **The live edge of the record** | `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the *Watching* state label (`library-state.ts`), the *Watching* filter chip even unselected (`library-filter-bar.tsx`), the up-next episode's inverted code (`episode-line.ts`) | **the second sanctioned meaning — settled by #310, closes §12** |
+| **The button register** | `app/accent-meaning.ts`'s `THE_BUTTON_REGISTER` — the fourteen controls #195 moved onto the accent, through `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/`SOLID_RECOVERY` and their compact measures | **the third sanctioned meaning — settled by #311, closes §12** |
+
+**Three sanctioned meanings, not five roles.** The three above — recording a watch, the live
+edge of the record, the button register — are what `app/accent-meaning.ts` declares and what
+`tests/accent-sweep.test.ts` holds the tree to: every accent use in `app/`, `errors/` and
+`lib/` either imports one of the three constants (or is its own literal companion of the same
+meaning, where the constant has no form to reach for — a hover state, say) or is named in that
+suite's manifest as a documented literal exception, and a fourth meaning cannot be added
+without editing both files. The brand mark, the failure system and the primary action on a
+surface are not part of that ruling — they predate it, §12 never contested them, and the sweep
+carries them as exactly that: documented exceptions, not a fourth meaning.
 
 **`SOLID_RECOVERY` is misnamed for what it now does.** It began as *the one primary
 **recovery** action*, and it is still called that in `errors/recovery-buttons.ts`, but the
@@ -363,11 +374,13 @@ else.** Three things keep it from reopening the rule it sits inside:
 remaining* is a state label wearing a number and stays `dim`; §7's *no counts on a rail head*
 is the neighbouring rule and neither is loosened here.
 
-**Selection is the sharp edge of this.** The rule above says the accent is not selection,
+~~**Selection is the sharp edge of this.** The rule above says the accent is not selection,
 and `up-next-tile.tsx` obeys it — but `rating-control.tsx` paints the chosen cell
-`bg-accent text-accent-ink`, which is selection in the accent. Both are shipped. §12 is
-where that is argued, and until it is settled **the tile is the precedent to copy, not the
-rating scale.**
+`bg-accent text-accent-ink`, which is selection in the accent.~~ **Closed by #311.** Neither
+module exists in this tree any more — the entry was already stale when §12 was written. The
+real selection-in-the-accent case was the two select carets (`library-filter-bar.tsx`,
+`settings/timezone-control.tsx`), and #311 re-narrowed both off the accent to `text-dim`;
+`tests/accent-sweep.test.ts` holds that.
 
 ---
 
@@ -2532,51 +2545,29 @@ Read off the build, flagged on #144's pull request rather than written up as rul
 are defects to close, not precedent to copy.** Nothing below should be cited as
 justification in a new diff.
 
-### The accent means more than one thing, and one ticket has to settle which
+~~### The accent means more than one thing, and one ticket has to settle which~~
 
-This is the largest disagreement between #134's stated rule and the shipped build, and §3
-documents the build rather than the rule. Seven surfaces paint the accent for something
-other than recording a watch, the brand mark, a failure, or a surface's primary action.
-**None of them is a typo** — each was reasoned at its call site — but together they mean
-the product has no single answer to *what does amber mean?*
+**Closed by #310, #311 and #312.** This was the largest disagreement between #134's stated
+rule and the shipped build — seven surfaces painting a state or a selection, two dialogs
+borrowing the failure frame, and an eighth category of controls moved onto the accent with
+no ruling to cover them. It is not edited around; it is settled, in three tickets sequenced
+expand–contract because the blast radius fanned across roughly thirty files:
 
-Painting a **state**, which reads as the retired rule *"the accent always means live"*:
+- **#310** named the accent's three sanctioned meanings as constants
+  (`app/accent-meaning.ts`) and migrated the state-painting call sites — the *Watching*
+  label and chip, and the up-next episode's code — onto the second one, *the live edge of
+  the record*.
+- **#311** ratified the eighth category — the fourteen controls #195 moved onto the accent —
+  as the third meaning, *the button register*, and re-narrowed everything this section named
+  as a selection or a borrowed failure frame: the two select carets, and every dialog frame
+  built on the write-failure toast's `border-2 border-accent`, not only the two named above.
+- **#312** made it mechanical. `tests/accent-sweep.test.ts` walks the shipping tree and
+  fails on any accent use — present or future — that neither declares one of the three
+  meanings nor is named in its manifest as a documented exception (the brand mark, the
+  failure system, a surface's primary action), so a fourth meaning cannot be added the way
+  the seven above were: silently, one call site at a time.
 
-- `library-state.ts` — the **Watching** state label, the only one of the five that is
-  coloured.
-- `library-filter-bar.tsx` — the **Watching** chip, accent-coloured even when unselected
-  and named in its own docblock as "the one exception".
-- `programme-note-episodes.tsx` — the ***up next*** episode's code badge (solid accent) and
-  its *Up next* label. Arguably the strongest case for a second meaning: *up next* is the
-  live edge of the record, and this is the one place it is marked.
-
-Painting a **selection**, which §3's own table says the accent does not do:
-
-- `rating-control.tsx` — the chosen rating cell is `bg-accent text-accent-ink`, and every
-  unchosen cell hovers to it.
-
-Painting **chrome on a surface that is not a failure**:
-
-- `lists/delete-list-dialog.tsx` and `library/add-to-list-control.tsx` — `border-2
-  border-accent` framing a dialog. The same frame the write-failure toast uses, on two
-  dialogs that are neither a failure nor irreversible. (Both files reason carefully about
-  the *button* treatment and decline solid accent — then take the accent frame anyway.)
-- `library-filter-bar.tsx` and `settings/timezone-control.tsx` — both **select carets**.
-
-One ticket should decide between three coherent answers — narrow everything back to
-recording a watch; or state *the live edge of the record* as a second meaning and re-narrow
-only selection and the dialog frames; or accept the accent as "the one colour, spent on
-whatever is most alive on this surface" and say so. **What must not happen is each call site
-answering separately**, which is how it got here. Until then §3's table is the map, and the
-right precedent to copy is `up-next-tile.tsx`'s, not `rating-control.tsx`'s.
-
-**An eighth category, added knowingly rather than by accident, and the widest one here.**
-§10's Buttons subsection records that issue #195 put thirteen controls onto
-`GHOST_RECOVERY` — `abandon-control.tsx` and `remove-control.tsx` among them, overriding
-both files' own prior *never accent* reasoning in the open; the other eleven had no such
-rule to override, only no accent to begin with. It is filed here rather than argued twice:
-the same ticket that settles the three questions
-above has one more use of the accent to fold in once it does.
+§3's table is current as of #312 and is the map now, not this section.
 
 ### `app/tab-bar.tsx.bak` is committed, and contains merge-conflict markers
 
