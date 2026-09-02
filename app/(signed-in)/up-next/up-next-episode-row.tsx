@@ -1,5 +1,6 @@
 "use client";
 
+import * as m from "motion/react-m";
 import Link from "next/link";
 import { ViewTransition } from "react";
 
@@ -147,6 +148,23 @@ function countAfterShown(remaining: number, marked: number, spent: boolean): num
  *  every density, which is what `EpisodeStill` resolves it to. */
 export const ROW_STILL_WIDTH = 104;
 const ROW = "relative flex min-h-[72px] items-center gap-3.5 py-2.5";
+
+/**
+ * Issue #306 — both row kinds are `m.li layout` rather than a bare `<li>`, so the row
+ * *travels* when its position or size changes between renders instead of the browser
+ * painting the new layout in one frame. A title finishing above this row removes that
+ * `<li>` and every row below it reflows into the gap; a later render can put the row
+ * itself first once it is the most recently watched. Both are the same fact to Motion —
+ * a position that changed between two renders of an element it already knows — and
+ * `layout` is what makes it measure the difference and interpolate rather than snap.
+ *
+ * No local `transition` and no reduced-motion branch: `app/motion-provider.tsx`'s root
+ * `MotionConfig` supplies `smooth` to everything Motion animates and drops layout
+ * animation under `reducedMotion="user"`, so the reorder resolves instantly there without
+ * this file knowing the setting exists. The one thing this relies on that is not this
+ * file's own — every render below still keys on `entry.libraryEntryId`, never a position,
+ * which is what gives `layout` a stable identity to measure a move across at all.
+ */
 const STILL = "w-[104px] shrink-0 [--still-radius:8px]";
 
 function RowBody({
@@ -182,7 +200,7 @@ function RowBody({
        flow space (`watch-mark-motion.tsx`). No `overflow-hidden` and no radius: the row is
        divided by `UpNextGroup`'s hairline rather than drawn as a card, so there is no
        corner for the wash to escape. */
-    <li className={ROW}>
+    <m.li layout className={ROW}>
       <RowLink entry={entry} press={press} label={label}>
         <RowFrame entry={entry} picture={picture} aboveFold={aboveFold} />
 
@@ -222,7 +240,7 @@ function RowBody({
 
       {control}
       {sweep}
-    </li>
+    </m.li>
   );
 }
 
@@ -399,7 +417,7 @@ export function UpNextPendingRow({
   aboveFold?: boolean;
 }) {
   return (
-    <li className={ROW}>
+    <m.li layout className={ROW}>
       <Link
         href={`/titles/${entry.libraryEntryId}`}
         className="pressable flex min-w-0 flex-1 items-center gap-3.5"
@@ -440,7 +458,7 @@ export function UpNextPendingRow({
       {/* The mark slot, empty — there is nothing to record against a title with no
           episodes, and `ROW`'s own floor is what keeps this row the height of the row it
           becomes when the mirror lands. */}
-    </li>
+    </m.li>
   );
 }
 
