@@ -55,9 +55,18 @@ function sourceAt(relativePath: string): string {
  */
 const STEP_PX = 4;
 
-/** Pull a named `export const X = "…"` (or a file-local `const X = "…"`) class string. */
+/** Pull a named `export const X = "…"` (or a file-local `const X = "…"`) class string.
+ *
+ *  Backtick-delimited too, as of issue #311: `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`
+ *  and `GHOST_RECOVERY_COMPACT` moved to a template literal so they could interpolate
+ *  `THE_BUTTON_REGISTER.ink` (`app/accent-meaning.ts`) rather than typing the token by hand.
+ *  The extracted text still carries that unresolved `${…}` expression rather than its
+ *  runtime value — every check below reads spacing, `border`, or `shrink-0`, none of which
+ *  sit inside the interpolation, so the raw source text still answers every question this
+ *  file asks of it. `palette.test.ts`'s own `classTokens` makes the identical point about
+ *  quote style: "nothing in the linter makes a class list pick its quote." */
 function classStringNamed(source: string, name: string): string {
-  const match = new RegExp(`\\b${name}\\s*=\\s*\\n?\\s*"([^"]*)"`).exec(source);
+  const match = new RegExp(`\\b${name}\\s*=\\s*\\n?\\s*[\`"]([^\`"]*)[\`"]`).exec(source);
   if (match === null) throw new Error(`no class string named ${name}`);
   return match[1];
 }

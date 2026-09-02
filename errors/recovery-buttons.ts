@@ -1,3 +1,5 @@
+import { THE_BUTTON_REGISTER } from "@/app/accent-meaning";
+
 /**
  * DESIGN.md, Buttons: *Recovery buttons (`Try again`, `Clear the filter`): the same ghost
  * treatment at `0.5rem 1rem`. The one primary recovery action (`Bring your library in`,
@@ -52,11 +54,22 @@
  * radii the first time one of them is adjusted. `rounded-full` also needs no token, so
  * §12's argument against inventing a `--radius-sm/md/lg` ramp for a handful of one-off
  * numbers is untouched — there is still no radius *scale*, there is one keyword.
+ *
+ * ── The four constants declare `THE_BUTTON_REGISTER` — issue #311 ────────────────────
+ *
+ * `app/accent-meaning.ts`'s own docblock named this file as the ticket left to do it:
+ * *"their own call sites … keep their own direct literals for now … left to whichever
+ * ticket next touches those files rather than done here as a drive-by."* #311 is that
+ * ticket. All four constants below now reach `text-accent`/`bg-accent`+`text-accent-ink`
+ * through `THE_BUTTON_REGISTER.ink`/`.solid` rather than typing the token directly, so a
+ * fourth meaning cannot be slipped in here without this import changing. The rendered
+ * class sets are unchanged — this is a declaration change, not a visual one, the same
+ * property #310's own migration held itself to.
  */
 
 /** The recovery action a reader can take. Inverts to solid on hover. */
 export const GHOST_RECOVERY =
-  "code-line rounded-full border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
+  `code-line rounded-full border border-accent px-4 py-2 ${THE_BUTTON_REGISTER.ink} transition-colors duration-150 hover:bg-accent hover:text-accent-ink`;
 
 /**
  * `GHOST_RECOVERY` at the episode row's own measure — issue #203.
@@ -97,14 +110,14 @@ export const GHOST_RECOVERY =
  * hatch is a constant nobody can read the intent of.
  */
 export const GHOST_RECOVERY_COMPACT =
-  "code-line shrink-0 rounded-full border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink";
+  `code-line shrink-0 rounded-full border border-accent px-2.5 py-1 ${THE_BUTTON_REGISTER.ink} transition-colors duration-150 hover:bg-accent hover:text-accent-ink`;
 
 /**
  * The one primary recovery action on a surface. Pressed state is `brightness(0.9)` over
  * `200ms`, per DESIGN.md's recording control.
  */
 export const SOLID_RECOVERY =
-  "code-line rounded-full bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
+  `code-line rounded-full px-4 py-2 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-200 hover:brightness-90`;
 
 /**
  * `SOLID_RECOVERY` at `GHOST_RECOVERY_COMPACT`'s measure — issue #199.
@@ -142,7 +155,7 @@ export const SOLID_RECOVERY =
  * the status line beside them is the thing that gives.
  */
 export const SOLID_RECOVERY_COMPACT =
-  "code-line shrink-0 rounded-full bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-200 hover:brightness-90";
+  `code-line shrink-0 rounded-full px-2.5 py-1 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-200 hover:brightness-90`;
 
 /**
  * How a disabled control is dimmed — **the dim alone, and one string for all of them.**

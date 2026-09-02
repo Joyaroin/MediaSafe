@@ -152,10 +152,13 @@ export function AddToListControl({
         Add to list
       </button>
 
+      {/* Issue #311 re-narrows the frame: `DESIGN.md` §12 named this as one of the two
+          dialogs borrowing the write-failure toast's `border-2 border-accent` for a
+          routine, reversible action. `border-hair` keeps the same weight and surface. */}
       <dialog
         ref={dialogRef}
         aria-labelledby={`add-to-list-${titleId}-h`}
-        className="w-full max-w-[420px] border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
+        className="w-full max-w-[420px] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
       >
         <h2 id={`add-to-list-${titleId}-h`} className="bill-title text-bill-sm text-text">
           Add &ldquo;{titleName}&rdquo; to a list

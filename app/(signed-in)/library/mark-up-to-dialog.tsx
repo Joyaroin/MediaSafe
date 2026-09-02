@@ -93,11 +93,14 @@ export function MarkUpToDialog({
   }
 
   return (
+    // Issue #311 re-narrows the frame: this dialog shared `border-2 border-accent`, the
+    // write-failure toast's own frame, with the two `DESIGN.md` §12 named — a routine,
+    // reversible confirmation is not a failure. `border-hair` keeps the same weight.
     <dialog
       ref={ref}
       onClose={onClosed}
       aria-labelledby="mark-up-to-h"
-      className="border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
+      className="border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
     >
       <h2 id="mark-up-to-h" className="bill-title text-bill-sm text-text">
         Watched up to here?

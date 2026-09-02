@@ -90,11 +90,15 @@ export function WatchMenu({
   }
 
   return (
+    // Issue #311 re-narrows the frame: this dialog shared `border-2 border-accent`, the
+    // write-failure toast's own frame, though nothing here is a failure — *Unwatch* is
+    // a deliberate, confirmed act, not something that went wrong. `border-hair` keeps
+    // the same weight and surface.
     <dialog
       ref={ref}
       onClose={onClosed}
       aria-labelledby="watch-menu-h"
-      className="rounded-2xl border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
+      className="rounded-2xl border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
     >
       <h2 id="watch-menu-h" className="bill-title text-bill-sm text-text">
         {named}
