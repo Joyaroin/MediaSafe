@@ -42,7 +42,7 @@ export default function UpNextLoading() {
         <UpNextHeading />
 
         <div className="px-6 py-5">
-          <PendingLine shape="rail" />
+          <PendingLine shape="rail" held />
         </div>
       </div>
     </ProgrammeNoteLayout>

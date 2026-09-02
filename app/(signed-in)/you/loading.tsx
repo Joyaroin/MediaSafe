@@ -23,7 +23,7 @@ export default function YouLoading() {
       <YouHeading />
 
       <div className="px-6 py-5 lg:px-10">
-        <PendingLine shape="rows" />
+        <PendingLine shape="rows" held />
       </div>
     </main>
   );

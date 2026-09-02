@@ -447,6 +447,13 @@
   --dur-slow: 380ms; /* layout, overlay, cross-surface continuity   */
   --dur-press: 100ms; /* the compression, shorter than a tap        */
   --dur-pop: 260ms; /* the release, past rest and back              */
+  /* Issue #301. Not a motion — nothing here travels or eases — but named and kept on
+     this ramp for the same reason the ramp exists at all: a delay a reader can feel is
+     a decision, not a literal buried at a call site. Up next renders in 175–235ms and
+     the library in 156–235ms (`DESIGN.md` §9); this clears the slower of the two with
+     room for jitter, so a wifi navigation never shows the pending state it is held in
+     front of. */
+  --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
 }
 
 @layer base {
@@ -1454,6 +1461,34 @@
   .pending-bar {
     animation: none;
     opacity: 0.72;
+  }
+}
+
+/* ── Held, before it ever paints — issue #301 ────────────────────────────────────────
+   `DESIGN.md` §9 radius 1 only: a whole route's own pending state. Held invisible past
+   `--dur-pending-hold`, a navigation that resolves before the hold ends never shows the
+   bars at all — the reader presses, and the next thing painted is the destination
+   itself, with the existing fade and rise landing on it. A navigation slower than the
+   hold still gets the pending state exactly as it always has, once the hold ends.
+
+   Opacity, not `display`, so nothing here reserves or drops layout: the region is
+   exactly as tall throughout the hold as it is once the bars are visible, and there is
+   no swap to be seen when they appear. The flip itself is a `1ms` animation gated by
+   `animation-delay`, not a fade — held is a state to be in, not a second entrance to
+   animate over `--dur-pending-hold`. If the read resolves first, this node is gone
+   before the delay ever elapses and the animation never runs at all.
+
+   Radius 2 and radius 3 do not carry this class and keep painting immediately: a
+   delayed region beside content that has already rendered is a blank gap, and a blank
+   gap reads as broken rather than as reading. */
+@utility route-pending-hold {
+  opacity: 0;
+  animation: route-pending-reveal 1ms var(--dur-pending-hold) forwards;
+}
+
+@keyframes route-pending-reveal {
+  to {
+    opacity: 1;
   }
 }
 

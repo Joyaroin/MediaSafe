@@ -50,7 +50,7 @@ export default function LibraryLoading() {
       <LibraryHeading />
 
       <div className="px-6 py-5">
-        <PendingLine shape="rows" />
+        <PendingLine shape="rows" held />
       </div>
     </main>
   );

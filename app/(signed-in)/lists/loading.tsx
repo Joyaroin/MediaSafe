@@ -20,7 +20,7 @@ export default function ListsLoading() {
       <ListsHeading />
 
       <div className="px-6 py-5">
-        <PendingLine shape="rows" />
+        <PendingLine shape="rows" held />
       </div>
     </main>
   );
