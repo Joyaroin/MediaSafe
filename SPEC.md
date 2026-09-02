@@ -172,6 +172,20 @@ From the map, settled with Adham and not up for relitigation:
    throws into an error boundary; an empty state is reachable only by a successful zero-row query.
 3. **A lost write is never silent.** The watch write is optimistic with rollback and a persistent
    toast. The property bought is *never silent*, not *always lands*.
+
+   > **Amended 2026-09-02 — scoped to a lost write** ([#307](https://github.com/Joyaroin/MediaSafe/issues/307),
+   > under [#300](https://github.com/Joyaroin/MediaSafe/issues/300)).
+   >
+   > *A lost write is never silent* is a rule about **failure**, and it always was — the write-failure
+   > toast this clause describes still carries no timer and still keeps its notice until the reader
+   > dismisses it or the caller resolves it, exactly as before. What is new is a second toast for the
+   > opposite event: a watch that *landed*, offering *Undo* on the surface where it was recorded, so a
+   > mis-press costs one press rather than a hunt for the hold gesture. A landed write is a different
+   > event from a lost one, and this clause was never a rule about it — the action toast may expire on
+   > its own because nothing about a successful mark needs to stay on screen once the reader has had a
+   > moment to reverse it. `errors/write-failure.ts`'s own docblock has the argument for why the two are
+   > separate components rather than one with two modes: a dismiss timer inside the toast whose whole
+   > purpose is never dismissing is where a future edit gets it wrong.
 4. **Never a spreadsheet.** Adham's top-ranked principle, defined precisely: dense tables, form
    fields, bulk editing and admin chrome **on the everyday surfaces**. It bites on layout and
    information architecture only — it does not license losing data.

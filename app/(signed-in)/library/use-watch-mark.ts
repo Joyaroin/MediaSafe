@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 
+import { actionToasts } from "./action-toast-store";
 import {
   watchMarks,
   type WatchMarkView,
@@ -117,7 +118,25 @@ export function useWatchMark({
 
   return {
     ...view,
-    attempt: () => watchMarks.mark(subject, naming, onRecorded),
+    /**
+     * The checkmark. `watchMarks.mark`'s own `onRecorded` fires once, for the surface that
+     * pressed — this is the one hook every checkmark goes through, so raising the action
+     * toast here (issue #307) reaches every fresh mark without a fourth caller having to
+     * remember to. Two callers are deliberately not reached the same way: `watch-menu.tsx`'s
+     * *Rewatch* calls `watchMarks.mark` directly rather than through this hook, because it
+     * is pressed from inside a menu that already offers *Undo* as one of its three choices;
+     * and `up-next-mark.ts`'s rail cards have carried their own six-second inline *Undo*
+     * since issue #220, which this must not duplicate on top of.
+     */
+    attempt: () =>
+      watchMarks.mark(subject, naming, () => {
+        actionToasts.raise({
+          title: titleName,
+          episode: episodeName,
+          undo: () => void watchMarks.undo(subject, naming),
+        });
+        onRecorded?.();
+      }),
     unwatch: () => watchMarks.unwatch(subject, naming),
     /** Takes back the newest watch only, and restores the appearance the row had before
      *  the mark being undone — `watch-marks.ts`'s `undo`. Offered to every caller; drawn
