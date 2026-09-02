@@ -1501,7 +1501,9 @@ every tile and card on Up next navigates to the same page. The two surfaces that
 separate names are one surface, the second family had nothing left to keep apart, and it is
 gone along with the function that minted it.
 `app/(signed-in)/library/poster-transition-name.ts` is now one function with three callers
-— the rail tile, the desktop pane and the title's own page.
+— the rail tile, the desktop pane and the title's own page. **Two more joined them in
+issue #303**: the library grid cell and the phone title route's own pending frame, both
+below.
 
 The "same title at once" the old rule guarded against was a reader on the desktop pane with
 the phone route open **in another tab** — two documents, and a `view-transition-name` has
@@ -1520,6 +1522,44 @@ while the original was still on screen, and the browser skips a transition it fi
 duplicated rather than guessing which one wins. **On the phone there is nothing to drop**,
 which is what makes the single family safe on both sides: the navigation replaces the page
 and takes the tile with it, so the name is free before the destination's poster mounts.
+
+**The morph now runs on both entry paths — issue #303, and this closes the gap the
+paragraphs above described without naming.** Measured on production (see the problem
+statement this issue answers), a title took 1.2–1.5s to open from either the library grid
+or an Up next row, and the morph was skipped on both. Two things were missing, and neither
+was a curve or a duration:
+
+- **The library grid cell carried no transition name.** `selectable-entry.tsx` — the client
+  component that already wraps every server-rendered cell, so the 472-cell grid gains no
+  new client boundary — now wraps the cell's poster in the same `rail-poster-{id}` name,
+  dropped while the desktop pane already holds it, on the identical rule the paragraph
+  above states for the rail tile. It is a raw `viewTransitionName` style rather than
+  React's `<ViewTransition>` — `masthead.tsx` and `tab-bar.tsx` are this codebase's
+  existing precedent for the plain CSS property, and the browser's View Transition API
+  pairs on it exactly the same regardless of which mechanism set it. `selectable-entry.tsx`
+  states the rest of the reasoning, including why this component in particular has a
+  reason to prefer it.
+- **The pending frame destroyed the destination.** Both entry paths land on
+  `titles/[entryId]/loading.tsx`, which replaced the poster with pending bars before the
+  destination ever mounted — so even a correctly-named source had no pair to morph into.
+  The pending frame now shows the poster instead, from a path carried across the route
+  change in `app/poster-handoff-memory.ts`, a session-scoped client variable in the shape
+  `app/restoration-memory.ts` already establishes. `app/poster-handoff.ts` is the pure rule
+  over it: what is remembered, what a surface should show, and what an unvisited surface —
+  a cold load, a refresh, a back button, a second tab — falls back to, which is nothing,
+  exactly as this route has always answered when it had nothing in hand. The desktop pane's
+  own pending frame (`programme-note.tsx`'s `Loading`, described above) already showed a
+  poster this way; the two devices no longer disagree.
+
+**The Up next row wraps its poster on both presses now, and this reverses what this file
+implied for the phone's.** The row's own docblock until this issue read: *"the phone's row
+navigates to a different page and has nothing to share."* That was true only because the
+destination had nothing to receive a name into — once the pending frame carries a poster,
+the premise is gone, and `up-next-episode-row.tsx`'s `RowFrame` wraps every row's poster
+except the one the desktop pane is currently showing, on both presses, rather than only the
+desktop's. "On the phone there is nothing to drop" two paragraphs up is unchanged by this:
+the *drop* was always about the pane holding the name, which no phone press has ever
+triggered; what changed is that the phone's row now mounts the name it withheld before.
 
 ---
 

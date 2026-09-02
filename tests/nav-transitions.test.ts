@@ -242,9 +242,27 @@ describe("the poster morph, on one transition-name family", () => {
     // duplicated frame beneath it: it returns early, unwrapped, when the entry is the
     // selected one.
     expect(ROW.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(ROW).toMatch(/if \(press !== "select" \|\| selected\) return frame;/);
-    expect(ROW.indexOf('if (press !== "select" || selected) return frame;')).toBeLessThan(
+    expect(ROW).toMatch(/if \(selected\) return frame;/);
+    expect(ROW.indexOf("if (selected) return frame;")).toBeLessThan(
       ROW.indexOf("<ViewTransition"),
+    );
+  });
+
+  /**
+   * **Issue #303 reverses this suite's own prior assertion of the opposite.** Until this
+   * ticket the condition above read `if (press !== "select" || selected) return frame;`,
+   * and this test asserted exactly that string — the phone's `press="episode"` rows were
+   * deliberately unwrapped, on the reasoning quoted in `up-next-episode-row.tsx`'s own
+   * docblock: *"the phone's row navigates to a different page and has nothing to share."*
+   * The phone title route's pending frame carries a poster now
+   * (`app/poster-handoff-memory.ts`), so that premise no longer holds, and the row wraps
+   * on both presses. `selected` is unaffected: it still answers true only for the pane's
+   * own selection, which a `press="episode"` row never writes to.
+   */
+  it("wraps the phone's episode-press rows too, now that their destination has a poster", () => {
+    expect(ROW).not.toMatch(/press !== "select"/);
+    expect(ROW).toContain(
+      'onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}',
     );
   });
 

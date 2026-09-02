@@ -34,9 +34,13 @@ import { createContext, useContext } from "react";
  * in hand (`UpNextEntry.posterPath`) the moment it is pressed, so it is passed alongside
  * the id rather than re-read from the eventual `titleDetailAction` answer.
  *
- * A caller with no poster to hand over — `selectable-entry.tsx`, which selects by id
- * alone — omits it, and the pane simply mounts its loading poster nameless: no morph,
- * the same plain swap this selection gave every candidate before #141.
+ * A caller with no poster to hand over omits it, and the pane simply mounts its loading
+ * poster nameless: no morph, the same plain swap this selection gave every candidate
+ * before #141.
+ *
+ * **`selectable-entry.tsx` was that caller until issue #303**, which is the ticket that
+ * gave the library grid a transition name to hand over in the first place — quoted here as
+ * a reversal because this file's own reasoning was the citation for why it did not.
  */
 interface LibrarySelection {
   readonly selectedEntryId: string | null;
