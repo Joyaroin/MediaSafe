@@ -268,6 +268,19 @@ meaning to design towards: the sweep is the accent in motion (§6), and the chec
 because it records a watch. (*Rewatch* used to be the second half of that sentence and is
 deleted — see the Episode Line below.)
 
+**Issue #313 closed the one place this reservation leaked onto a gesture that writes
+nothing.** The unwatched checkmark used to invert to solid accent on hover — the same
+pattern `GHOST_RECOVERY` uses on the fourteen button-register controls elsewhere — except a
+hover here was claiming a write no press had made, the exact reasoning the Episode Line's own
+recording control already gives for why a *press* may not tint it either: *"a control that
+took the accent while being pressed would be claiming to have written something it has
+not."* Hover now fills `--hair`, the neutral tone step the settled mark already uses for its
+own ground, so the control still answers a pointer without spending the reserved colour on a
+gesture that has not recorded anything. The border and the glyph stay accent, at rest and on
+hover alike — that is the reservation in this section doing its job — and
+`watch-mark-motion.tsx`'s `RECORDING_GLYPH` now declares `app/accent-meaning.ts`'s
+`RECORDS_A_WATCH` rather than typing the token, in the same change.
+
 **Read the next part carefully, because the build is broader than that sentence.** This
 file describes what shipped, not what #134 intended, and what shipped paints the accent in
 four settled roles beyond the sweep. They are listed here so nobody re-derives them by

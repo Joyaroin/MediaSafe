@@ -162,11 +162,14 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   },
   "app/(signed-in)/library/watch-mark-motion.tsx": {
     meaning: "RECORDS_A_WATCH",
-    tokens: 10,
+    tokens: 8,
     reason:
-      "the recording checkmark and its watched-state siblings. app/accent-meaning.ts's " +
-      "own docblock names this file as left on its direct literal — RECORDS_A_WATCH's own " +
-      "call site, not rewired by #310 or #311, left to whichever ticket next opens it.",
+      "the recording checkmark and its watched-state siblings. Issue #313 migrated " +
+      "RECORDING_GLYPH onto RECORDS_A_WATCH.ink and dropped its group-hover fill — " +
+      "border-accent is the meaning's own literal companion, the way THE_BUTTON_REGISTER's " +
+      "ghost pair keeps its border literal in errors/recovery-buttons.ts. The three " +
+      "QUIET_RECORDING_CONTROL variants keep their own hover:border-accent/hover:text-accent " +
+      "literals — a different control (watched up to here), left untouched by this ticket.",
   },
 
   // ── Literal exceptions: the brand mark ─────────────────────────────────────────────

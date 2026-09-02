@@ -46,10 +46,16 @@
  * **Issue #311 is that ticket for `errors/recovery-buttons.ts`.** `GHOST_RECOVERY`,
  * `GHOST_RECOVERY_COMPACT`, `SOLID_RECOVERY` and `SOLID_RECOVERY_COMPACT` now build their
  * accent tokens from `THE_BUTTON_REGISTER.ink`/`.solid` rather than typing them — see that
- * file's own docblock. `watch-mark-motion.tsx`'s recording controls remain untouched: #311
- * names the button register alone, and the recording glyph is `RECORDS_A_WATCH`'s own call
- * site, not this one's, so rewiring it is still left to whichever ticket next opens that
- * file.
+ * file's own docblock.
+ *
+ * **Issue #313 is that ticket for `watch-mark-motion.tsx`'s recording checkmark.** It
+ * opened the file for an unrelated reason — the hover fill that was claiming a write before
+ * one happened — and migrated `RECORDING_GLYPH` onto `RECORDS_A_WATCH.ink` while it was
+ * there, rather than leaving a rename for a fourth ticket. The three
+ * `QUIET_RECORDING_CONTROL` variants in that file are a different control (*watched up to
+ * here*) and keep their own direct literals still — #313 names the recording checkmark
+ * alone, and rewiring those three is left to whichever ticket next opens them for their own
+ * reason.
  */
 
 /** What a class list built from a meaning claims to a reader, and how it is built. */
