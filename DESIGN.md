@@ -2084,6 +2084,22 @@ library ›` had already set the shape a control this ordinary takes, and a seco
 for the same weight of control would be exactly the drift `errors/recovery-buttons.ts`'s own
 docblock exists to prevent.
 
+**The watch menu's four controls reach 44px in both dimensions — issue #314.** `#300`'s
+problem statement measured `watch-menu.tsx`'s `GHOST_RECOVERY` controls at `34.2px` tall and
+`GHOST_RECOVERY_COMPACT`'s *Cancel* at `26.2px`, against the platform's own `44px` minimum —
+`Cancel` is the smallest of the four and the easiest to overlook, and it is the control a
+reader reaches for once they have already realised they are in the wrong place. Neither
+constant above is re-cut for it: both are shared well past this one dialog, and moving either
+would move every surface that shares it, not just the four this ticket names. Instead all
+four controls compose `h-11 min-w-11` at the one call site that needs them — the same way
+`list-row.tsx`'s `h-11` and `selection-action-bar.tsx`'s `h-11` on its own compact pair
+already reach 44px without touching either constant. `h-11`/`min-w-11` are `2.75rem`, the same
+44px `RECORDING_HIT_BOX`'s `w-11 h-11` already resolves to, and Tailwind's border-box preflight
+makes the height exact and the width a floor regardless of either treatment's own padding.
+`tests/watch-menu-sweep.test.ts` holds all four to it, in the manner `tests/press-spring
+.test.ts`'s register sweep holds the press to its own table, so a later edit cannot drop the
+composition back under the minimum without failing a test by name.
+
 **This spends the accent knowingly, on thirteen of the fourteen.** (*Rewatch* is since
 deleted and *Unwatch* is a glyph; the batch is twelve labelled controls now.) Only *Rewatch*
 (`programme-note-episodes.tsx`) already painted accent before this ticket — it records a
