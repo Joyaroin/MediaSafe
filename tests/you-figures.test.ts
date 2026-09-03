@@ -98,6 +98,39 @@ describe("watch time, in months, days and hours", () => {
   });
 });
 
+describe("watch time, with a years term above the ramp", () => {
+  /**
+   * Minutes for a whole number of mean Gregorian months, rounded up past the fraction —
+   * the same reasoning `twoMonths` above gives for why this must ceil rather than floor.
+   */
+  const monthsInMinutes = (months: number) =>
+    Math.ceil(months * 30.436875 * 24 * 60);
+
+  it("stays a months figure just under a year, unchanged from today's ramp", () => {
+    expect(watchTimeInWords(monthsInMinutes(11))).toBe("11 months");
+  });
+
+  it("reads exactly a year as a year, not twelve months", () => {
+    expect(watchTimeInWords(monthsInMinutes(12))).toBe("1 year");
+  });
+
+  it("drops a zero month while keeping the year", () => {
+    expect(watchTimeInWords(monthsInMinutes(12) + 4 * 24 * 60)).toBe("1 year, 4 days");
+  });
+
+  it("caps at three parts, dropping the smallest of what would be four", () => {
+    expect(
+      watchTimeInWords(monthsInMinutes(14) + 4 * 24 * 60 + 6 * 60),
+    ).toBe("1 year, 2 months, 4 days");
+  });
+
+  it("agrees with itself in the singular at one year, one month and one day", () => {
+    expect(watchTimeInWords(monthsInMinutes(13) + 1 * 24 * 60)).toBe(
+      "1 year, 1 month, 1 day",
+    );
+  });
+});
+
 describe("the initials an identity provider's missing avatar falls back to", () => {
   it("takes the first letter of the first and last names", () => {
     expect(initialsFrom("Adham Sedik")).toBe("AS");
