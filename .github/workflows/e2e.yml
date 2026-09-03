@@ -1,0 +1,148 @@
+# Browser suite — Playwright, in its own job, on a pull request. Issue #304.
+#
+# `ci.yml`'s `checks` job runs with **no database and no secrets, on purpose** — it is
+# the thing that lets that job say a compromised dependency in a pull request cannot
+# reach real infrastructure. This job needs both: a signed-in session is a database row
+# and a signed cookie, and there is no way to prove `--dur-pending-hold` (`app/globals.css`,
+# issue #301) without a browser actually painting a frame. So it is a second, isolated
+# job rather than a step bolted onto `checks` — its own database, its own throwaway
+# secret, generated fresh every run and never written anywhere `checks` or a builder's
+# `foundry.config.json` verify pass can see.
+#
+# **This is not part of the verify gate.** `foundry.config.json`'s `verify` array is
+# `typecheck`, `build`, `npm test` — vitest, over `tests/**/*.test.ts` — and runs in every
+# builder's worktree, in parallel, on every ticket. A browser harness there would
+# multiply that run time and fail tickets for reasons that have nothing to do with their
+# own diff. `tests/e2e/*.spec.ts` is a different glob `vitest.config.mts` never matches,
+# and `npm run test:e2e` is the only command that runs it — documented in
+# `docs/local-development.md`, and run here and nowhere else in CI.
+#
+# ── Postgres and wsproxy, the same topology `docker-compose.yml` runs locally ─────────
+#
+# `db/driver.ts`'s one rule holds here too: the app and the migration runner speak
+# `drizzle-orm/neon-serverless` over a WebSocket `Pool`, always — there is no second,
+# plain-TCP driver for CI to fall back to. `wsproxy` is what makes that driver work
+# against a Postgres that only speaks the wire protocol, and `docker-compose.yml`'s own
+# comment explains why it has to share Postgres's network namespace: `ALLOW_ADDR_REGEX`
+# only has to trust one address, `localhost:5432`, because from inside that shared
+# namespace that address *is* this job's Postgres and nothing else. GitHub's `services:`
+# block cannot express "share this other container's network namespace", so these two
+# are started with plain `docker run` instead, one `--network container:` flag away from
+# the compose file's own shape — same images, same environment, same trick, so a
+# migration or a query that works here is one that works on a laptop running
+# `npm run db:up`.
+#
+# ── The secret ──────────────────────────────────────────────────────────────────────
+#
+# `openssl rand -hex 32`, generated fresh in the job that uses it, written to
+# `$GITHUB_ENV` and nowhere else — never a repository secret, never committed, and gone
+# the moment the runner is torn down. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` stay
+# unset: the fixture session `tests/e2e/support/fixture-session.ts` mints is a `session`
+# row signed with this secret, the same way a real Google sign-in would leave one, so
+# nothing here ever needs to complete an OAuth round trip against Google at all.
+
+name: Browser suite
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright — pending-hold
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgres://mediasafe:mediasafe@localhost:5432/mediasafe
+      DATABASE_WS_PROXY: localhost:5433
+      BETTER_AUTH_URL: http://localhost:3100
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches ci.yml — the Node major Vercel runs.
+          node-version: "22"
+          cache: npm
+
+      # See ci.yml's own step for why: Node 22 ships npm 10, and npm 10 cannot read this
+      # repository's npm-11-written lock file.
+      - name: Use the npm that writes this lock file
+        run: npm install --global npm@11
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # A throwaway secret, generated once per run — see the file header. Nothing here
+      # persists past this job.
+      - name: Generate a per-run auth secret
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      # The same two containers and the same trick `docker-compose.yml` documents at
+      # length — Postgres, and wsproxy sharing its network namespace so `localhost:5432`
+      # means the same thing to both. Published on the exact ports the env above expects.
+      - name: Start Postgres
+        run: |
+          docker run -d --name mediasafe-postgres \
+            -e POSTGRES_USER=mediasafe \
+            -e POSTGRES_PASSWORD=mediasafe \
+            -e POSTGRES_DB=mediasafe \
+            -e POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256" \
+            -p 5432:5432 \
+            -p 5433:80 \
+            postgres:17-alpine
+
+      - name: Wait for Postgres
+        run: |
+          for _ in $(seq 1 30); do
+            if docker exec mediasafe-postgres pg_isready -U mediasafe -d mediasafe; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres never became ready" >&2
+          exit 1
+
+      - name: Start wsproxy
+        run: |
+          docker run -d --name mediasafe-wsproxy \
+            --network container:mediasafe-postgres \
+            -e LISTEN_PORT=":80" \
+            -e ALLOW_ADDR_REGEX="^localhost:5432$" \
+            ghcr.io/neondatabase/wsproxy:latest
+
+      # The production runner, applying every migration from a clean database — the same
+      # command `npm run db:up` runs locally, against this job's own throwaway Postgres.
+      - name: Migrate
+        run: npm run db:migrate
+
+      # Builds, starts `next start` on its own port, seeds the fixture account and its
+      # session (`tests/e2e/global-setup.ts`), and runs the two specs in
+      # `tests/e2e/pending-hold.spec.ts` — one command, `playwright.config.ts`'s
+      # `webServer` and `globalSetup` doing the rest. The same command
+      # `docs/local-development.md` documents for running this locally.
+      - name: Browser suite
+        run: npm run test:e2e
+
+      # `playwright.config.ts`'s HTML reporter writes this whether the run passed or
+      # failed; kept short-lived and uploaded every time rather than only on failure, since
+      # a run that flakes and then passes on retry is exactly the run worth having a trace
+      # for.
+      - name: Upload the Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

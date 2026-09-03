@@ -14,6 +14,12 @@ next-env.d.ts
 # testing
 /coverage
 
+# Playwright (issue #304). The fixture session it mints per run — a throwaway secret
+# signs it and it names no real account — and the run's own report/trace output.
+/tests/e2e/.auth/
+/playwright-report/
+/test-results/
+
 # misc
 .DS_Store
 *.pem
