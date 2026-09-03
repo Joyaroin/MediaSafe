@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { seedFixtureSession } from "./support/fixture-session";
+import { toStorageState } from "./support/storage-state";
 
 /**
  * Runs once before the suite. Writes the seeded fixture account's session into a
@@ -18,26 +19,5 @@ export default async function globalSetup(): Promise<void> {
   mkdirSync(authDir, { recursive: true });
 
   const storageStatePath = path.join(authDir, "fixture-session.json");
-  writeFileSync(
-    storageStatePath,
-    JSON.stringify(
-      {
-        cookies: [
-          {
-            name: session.cookie.name,
-            value: session.cookie.value,
-            domain: "localhost",
-            path: session.cookie.path,
-            expires: session.cookie.expires,
-            httpOnly: session.cookie.httpOnly,
-            secure: session.cookie.secure,
-            sameSite: session.cookie.sameSite,
-          },
-        ],
-        origins: [],
-      },
-      null,
-      2,
-    ),
-  );
+  writeFileSync(storageStatePath, JSON.stringify(toStorageState(session), null, 2));
 }
