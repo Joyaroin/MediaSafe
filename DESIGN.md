@@ -2100,6 +2100,22 @@ makes the height exact and the width a floor regardless of either treatment's ow
 .test.ts`'s register sweep holds the press to its own table, so a later edit cannot drop the
 composition back under the minimum without failing a test by name.
 
+**Unwatch is separated from Undo, and confirms inside the menu — issue #315.** `Undo` and
+`Unwatch` sat 12px apart at identical size, weight and colour, differing by one word, and
+`Unwatch` removes every watch of an episode, imported ones included, unconfirmed. `Unwatch`
+now sits in a row of its own, below a `border-hair` rule rather than beside `Undo` in its
+`gap-3` group, and carries `UnwatchIcon` beside its label — a shape `Undo` does not have.
+Neither is a new button tier: both stay on `GHOST_RECOVERY`, the same register `Rewatch` and
+`Undo` already wear, so this does not reopen the "no third, neutral tier" ruling two
+paragraphs up, and it spends no colour this world does not already have (there is still one
+accent and nothing named "warning" or "danger" in `app/globals.css`'s palette). Pressing it
+no longer writes: it swaps this dialog's lower half for a confirmation naming the episode and
+`unwatch-confirm.ts`'s own count of the watches it would remove, in `mark-up-to-dialog.tsx`'s
+own wording style, with `Unwatch it` to proceed and `Keep it` to back out without writing
+anything — one dialog throughout, never two, and the episode's name (the dialog's own `<h2>`)
+never leaves the screen while any of this is happening. `tests/watch-menu-sweep.test.ts`
+holds the separation, the icon, and both new controls' sizes to the same 44px floor above.
+
 **This spends the accent knowingly, on thirteen of the fourteen.** (*Rewatch* is since
 deleted and *Unwatch* is a glyph; the batch is twelve labelled controls now.) Only *Rewatch*
 (`programme-note-episodes.tsx`) already painted accent before this ticket — it records a

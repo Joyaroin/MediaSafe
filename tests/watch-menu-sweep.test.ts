@@ -41,6 +41,16 @@ import { describe, expect, it } from "vitest";
  * sweep asserts registers" — `tests/press-spring.test.ts`'s `PRESS_CALL_SITES` — so a later
  * edit that drops `h-11`/`min-w-11` back off one of these four fails here rather than
  * shipping a control back under the minimum.
+ *
+ * ── Issue #315 adds a second group, not a fifth control ──────────────────────────────
+ *
+ * `Unwatch` now opens a confirmation rather than writing directly, and that confirmation
+ * carries two controls of its own — `Unwatch it` (proceed) and `Keep it` (the way back).
+ * Both are new text, not new wording for the four above, so they get their own group
+ * (`CONFIRM_CONTROLS`) rather than being folded into `CONTROLS`: the two groups render in
+ * mutually exclusive branches (`confirming ? … : …`), never both at once, and this file
+ * reads raw source regardless of which branch a render would take — the same reason
+ * `CONTROLS` below still finds `Unwatch` even though pressing it no longer writes anything.
  */
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -56,7 +66,12 @@ const STEP_PX = 4;
 const MINIMUM_PX = 44;
 
 /** The four controls, in the order the menu presents them — `WatchMenu`'s own reading order. */
-const CONTROLS = ["Rewatch", "Undo", "Unwatch", "Cancel"] as const;
+const CONTROLS = ["Rewatch", "Undo", "Cancel", "Unwatch"] as const;
+
+/** The confirmation's own two controls — issue #315. Deliberately not named `Unwatch`
+ *  again: a second literal `Unwatch` in this file would make `classesFor` below ambiguous
+ *  about which button it found, so the proceed control is `Unwatch it` instead. */
+const CONFIRM_CONTROLS = ["Unwatch it", "Keep it"] as const;
 
 /**
  * The `className={...}` expression immediately guarding one `<button>...Label</button>`,
@@ -88,7 +103,46 @@ function stepValue(classes: string, prefix: string): number | null {
   return match === null ? null : Number(match[1]) * STEP_PX;
 }
 
-describe("the watch menu's four controls reach the platform minimum", () => {
+/**
+ * The full `<button>…</button>` markup guarding one control — `classesFor`'s own lookup,
+ * extended past the opening tag so a test can see what sits *inside* the button (an icon)
+ * rather than only its className. Issue #315's `Unwatch` carries `<UnwatchIcon />` before
+ * its label; nothing else in this file needs to look inside a button, which is why this
+ * lives beside `classesFor` rather than replacing it.
+ */
+function buttonMarkupFor(label: string): string {
+  const labelMatch = new RegExp(`>\\s*\\n\\s*${label}\\s*\\n`).exec(SOURCE);
+  if (labelMatch === null) throw new Error(`no <button>…${label}</button> found in ${WATCH_MENU}`);
+
+  const tagStart = SOURCE.lastIndexOf("<button", labelMatch.index);
+  if (tagStart < 0) throw new Error(`${label}'s </button> has no opening <button before it`);
+
+  const closeTag = SOURCE.indexOf("</button>", labelMatch.index);
+  if (closeTag < 0) throw new Error(`${label}'s <button> has no closing </button> after it`);
+
+  return SOURCE.slice(tagStart, closeTag + "</button>".length);
+}
+
+/**
+ * The nearest enclosing `<div className="…">` around one control — issue #315's distance
+ * check. `Unwatch` moving out of `Undo`'s own `gap-3` group and into a row of its own is
+ * exactly the property `#300`'s problem statement asks for ("separated … by distance"),
+ * and a class string is the only place that survives a source-only sweep to prove it: two
+ * controls in the same container share one `<div>`, and two that do not, do not.
+ */
+function containerFor(label: string): string {
+  const labelMatch = new RegExp(`>\\s*\\n\\s*${label}\\s*\\n`).exec(SOURCE);
+  if (labelMatch === null) throw new Error(`no <button>…${label}</button> found in ${WATCH_MENU}`);
+
+  const tagStart = SOURCE.lastIndexOf("<button", labelMatch.index);
+  const divStart = SOURCE.lastIndexOf("<div", tagStart);
+  if (divStart < 0) throw new Error(`${label}'s <button> has no enclosing <div before it`);
+
+  const divTagEnd = SOURCE.indexOf(">", divStart);
+  return SOURCE.slice(divStart, divTagEnd + 1);
+}
+
+describe("the watch menu's controls reach the platform minimum", () => {
   it("finds all four controls, and no others, in the menu's own reading order", () => {
     for (const label of CONTROLS) expect(() => classesFor(label)).not.toThrow();
   });
@@ -112,5 +166,56 @@ describe("the watch menu's four controls reach the platform minimum", () => {
       expect(classesFor(label)).toMatch(/\bGHOST_RECOVERY\b(?!_COMPACT)/);
     }
     expect(classesFor("Cancel")).toMatch(/\bGHOST_RECOVERY_COMPACT\b/);
+  });
+});
+
+/**
+ * Issue #315's acceptance criteria: the confirmation's own controls reach the same 44px
+ * floor as the four above, and are on the same two registers — a confirmation is not the
+ * ticket that invents a fifth treatment any more than moving `Unwatch` invents a fourth
+ * button tier (`DESIGN.md` §10 already declined one).
+ */
+describe("the confirmation's own controls reach the platform minimum", () => {
+  it("finds both confirmation controls", () => {
+    for (const label of CONFIRM_CONTROLS) expect(() => classesFor(label)).not.toThrow();
+  });
+
+  it.each(CONFIRM_CONTROLS)("%s's height is fixed at exactly the 44px minimum", (label) => {
+    expect(stepValue(classesFor(label), "h"), `${label} must declare h-11`).toBe(MINIMUM_PX);
+  });
+
+  it.each(CONFIRM_CONTROLS)("%s's width is floored at the 44px minimum", (label) => {
+    const width = stepValue(classesFor(label), "min-w");
+    expect(width, `${label} must declare min-w-11`).toBe(MINIMUM_PX);
+    expect(width).toBeGreaterThanOrEqual(MINIMUM_PX);
+  });
+
+  it("proceeds on GHOST_RECOVERY and backs out on GHOST_RECOVERY_COMPACT", () => {
+    expect(classesFor("Unwatch it")).toMatch(/\bGHOST_RECOVERY\b(?!_COMPACT)/);
+    expect(classesFor("Keep it")).toMatch(/\bGHOST_RECOVERY_COMPACT\b/);
+  });
+});
+
+/**
+ * `#300`'s problem statement, and this ticket's first two acceptance criteria: `Unwatch`
+ * is separated from `Undo` "by distance and by a redundant visual signal … not by wording
+ * alone". Both are properties of the source this file already reads for the sizing sweep
+ * above, so they are asserted the same way rather than by rendering the dialog.
+ */
+describe("Unwatch is separated from Undo by distance and by a redundant visual signal", () => {
+  it("does not share Undo's container", () => {
+    expect(containerFor("Unwatch")).not.toBe(containerFor("Undo"));
+  });
+
+  it("sits below a rule, with a gap of its own above it", () => {
+    const container = containerFor("Unwatch");
+    expect(container).toMatch(/\bborder-t\b/);
+    expect(container).toMatch(/\bborder-hair\b/);
+    expect(container).toMatch(/\bmt-4\b/);
+  });
+
+  it("carries an icon Undo does not — the redundant signal beyond wording", () => {
+    expect(buttonMarkupFor("Unwatch")).toMatch(/<UnwatchIcon\b/);
+    expect(buttonMarkupFor("Undo")).not.toMatch(/<UnwatchIcon\b/);
   });
 });
