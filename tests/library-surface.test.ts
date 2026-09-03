@@ -181,31 +181,43 @@ describe("the library entry cell", () => {
     // accident — `group-tile.tsx` carries the same number.
     expect(abandoned).toContain("opacity-55");
     expect(abandoned).toContain("text-dim");
-    expect(abandoned).toContain("Abandoned");
+
+    // The dimming is the whole of it now: the state word left the card, so an abandoned
+    // title is marked by the poster/name pair and nothing else on this surface.
+    expect(abandoned).not.toContain("Abandoned");
 
     // And leaves both alone otherwise — the poster is modified in exactly one place.
     expect(cell()).not.toContain("opacity-55");
   });
 
-  it("names every state in CONTEXT.md's words", () => {
-    expect(cell({ state: "watching" })).toContain("Watching");
-    expect(cell({ state: "caught_up", upNext: null })).toContain("Caught up");
-    expect(cell({ state: "finished", upNext: null })).toContain("Finished");
-    expect(cell({ state: "watchlist", upNext: null })).toContain("Watchlist");
-    expect(cell({ state: "abandoned", upNext: null })).toContain("Abandoned");
+  /**
+   * The reverse of what this asserted before the state word left the card, and
+   * deliberately so. `STATE_LABELS` is still the one table naming the five states in
+   * `CONTEXT.md`'s words — `title-hero.tsx` prints it on the title's own page — but the
+   * bill does not repeat it 472 times. The library is the surface organised *by* state,
+   * and the filter chips above the grid are where the reader reads it; a word under every
+   * card was the same fact restated once per cell.
+   */
+  it("names no state on the card at all — the chips above the grid carry that", () => {
+    for (const state of ["watching", "caught_up", "finished", "watchlist", "abandoned"] as const) {
+      const markup = cell({ state, upNext: null });
+      for (const word of ["Watching", "Caught up", "Finished", "Watchlist", "Abandoned"]) {
+        expect(markup).not.toContain(word);
+      }
+    }
   });
 
   /**
-   * ── Three lines became one, and it is the state ──────────────────────────────────────
+   * ── Four lines became none, and the bar is what is left ──────────────────────────────
    *
    * The cell was a row: a `66px` poster beside a name, a year, the state, and a sentence
-   * about what is next (*Nothing to watch now*, *Next — Hands*). It is a column now — the
-   * poster is the width of the cell and the text sits under it — which leaves room for one
-   * line, and the state is the line that earned it: the library is the surface organised
-   * *by* state and its filter chips are the six states.
+   * about what is next (*Nothing to watch now*, *Next — Hands*). Becoming a column cut
+   * that to the state alone; this turn cuts the state too, leaving the name and — for a
+   * show with something released — the progress bar, which says how far through you are
+   * without spending a word on it.
    *
-   * The three assertions this replaces are deleted rather than rewritten because the
-   * strings they checked no longer exist anywhere. `NEXT_LINES` is gone from
+   * The assertions this replaces are deleted rather than rewritten because the strings
+   * they checked no longer exist anywhere. `NEXT_LINES` is gone from
    * `library-entry-cell.tsx`, and the fact it carried is on Up next, which since the rails
    * became lists prints the episode's actual name in a full-width row rather than one
    * truncated clause. The two surfaces had been saying the same thing, one of them badly.
@@ -214,14 +226,14 @@ describe("the library entry cell", () => {
    * carries the year. A list's icon cell keeps its year precisely because a list has no
    * state to print there.
    */
-  it("prints the state and nothing else under the name", () => {
+  it("prints the name and nothing else under the poster", () => {
     const one = cell();
 
     expect(one).toContain("Severance");
-    expect(one).toContain("Watching");
 
     // The lines that left. Asserted as absences so that re-adding one is a decision
     // somebody has to make against this test rather than a line that quietly reappears.
+    expect(one).not.toContain("Watching");
     expect(one).not.toContain("Next — Hands");
     expect(one).not.toContain("2022");
     expect(cell({ state: "caught_up", upNext: null })).not.toContain("Nothing to watch now");
@@ -454,12 +466,16 @@ describe("a library cell with no selection provider above it", () => {
     expect(plain).not.toContain("outline-ink");
   });
 
-  it("still keeps the accent for Watching alone", () => {
-    // `globals.css`: the accent's role 1 is the **Watching** state wherever it is named,
-    // and a screen may show only one role. #197 draws selection in `--ink` precisely so
-    // this stays the only accent in the cell — see `selectable-entry.tsx`'s `SELECTED`.
-    expect(plain).toContain("text-accent");
-    expect(plain).not.toContain("bg-accent");
+  it("spends its one accent on the progress bar and nothing else", () => {
+    // The accent's role here is still the live edge of the record — it just moved off the
+    // *Watching* word, which left the card, and onto the bar that says the same thing
+    // without a word. A screen may show only one role, and #197 draws selection in `--ink`
+    // precisely so this stays the only accent in the cell (`selectable-entry.tsx`'s
+    // `SELECTED`).
+    // `plain` has no progress and so draws no bar — the cell carries no accent at all,
+    // which is the point: the accent is the bar's and only the bar's.
+    expect(plain).not.toContain("accent");
+    expect(cell({ progress: { watched: 2, released: 4 } })).toContain("bg-accent");
   });
 
   it("still lets a reader select the title's text and long-press its poster", () => {

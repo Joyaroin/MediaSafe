@@ -279,6 +279,15 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "the watched-progress bar fill — its own docblock: 'how far through you are right " +
       "now is the most literal reading of live on this page'",
   },
+  "app/(signed-in)/library/library-entry-cell.tsx": {
+    meaning: "LITERAL_EXCEPTION",
+    tokens: 1,
+    reason:
+      "the bill cell's watched-progress bar fill — the same role title-hero.tsx's bar " +
+      "spends, and the cell's own docblock records the trade: the Watching state word " +
+      "left the card entirely so the bar could take the accent, leaving one accent role " +
+      "on this screen rather than two",
+  },
   "app/(signed-in)/lists/list-name-form.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 1,

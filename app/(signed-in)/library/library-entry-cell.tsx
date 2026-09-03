@@ -2,7 +2,6 @@ import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { libraryProgressFraction } from "./library-progress-fraction";
 import { railPosterTransitionName } from "./poster-transition-name";
-import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
 
@@ -47,7 +46,7 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  *
  * ── The bar at the foot, since issue #324 ────────────────────────────────────────────
  *
- * A show's card gains a thin bar under the state line, filled by
+ * A show's card gains a thin bar under its name, filled by
  * `libraryProgressFraction` (watched against released — never against every mirrored
  * episode, which `library-progress-fraction.ts`'s own docblock explains is a different
  * question `progress-remaining.ts`'s `watchProgress` answers instead, on title detail).
@@ -55,11 +54,18 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * a show with nothing released yet (`progress.released === 0`): two different reasons for
  * the same absence, and neither reads as *started and empty*.
  *
- * **Not the accent.** `DESIGN.md` §0 rations it to one live thing per screen, and the
- * grid already spends it on the *Watching* label (`STATE_LABELS`, `LIVE_EDGE_OF_THE_
- * RECORD`) — a bar on every card regardless of state would be 472 chances to spend a
- * token reserved for one. `bg-dim` on `bg-hair`, the same quiet pairing `STATE_LABELS`
- * already uses for every state that is not *Watching*.
+ * **The bar takes the accent, and the state word is gone** — the same trade
+ * `title-hero.tsx` made on the title's own page, settled here the other way round. That
+ * file kept the word in `--dim` and gave the bar the accent because the two sat in one
+ * block saying the same thing; on the bill the word said it 472 times over, once per
+ * card, and a reader scanning the grid is reading the *filter* they are inside, not each
+ * cell's repetition of it. So the word goes entirely and the bar keeps the accent: *how
+ * far through you are right now* is the most literal reading of live, and it is the same
+ * `LIVE_EDGE_OF_THE_RECORD` role the filter bar's unselected *Watching* chip already
+ * spends on this screen — one role, not two.
+ *
+ * The bar is drawn for every state that has progress at all, not only *Watching*. A
+ * finished show's bar is simply full, which is the fact rather than a second colour.
  *
  * **No numeral anywhere near it** — DESIGN.md §11's own remaining rule, amended by this
  * ticket rather than reopened: a count may not stand as chrome on a surface reached to do
@@ -106,7 +112,6 @@ export function LibraryEntryCell({
   aboveFold?: boolean;
 }) {
   const abandoned = entry.state === "abandoned";
-  const state = STATE_LABELS[entry.state];
   const progress =
     entry.progress === null
       ? null
@@ -153,8 +158,8 @@ export function LibraryEntryCell({
 
           `line-clamp-2` is new and is what a column costs: the row this replaced let a
           name run to as many lines as it wanted, because nothing was underneath it. Here a
-          third line would push the state label of one cell out of step with its
-          neighbours' across the whole grid.
+          third line would push one cell's progress bar out of step with its neighbours'
+          across the whole grid.
         */}
         <p
           className={`mt-2 line-clamp-2 break-words text-item leading-snug font-medium ${abandoned ? "text-dim" : "text-ink"}`}
@@ -162,29 +167,13 @@ export function LibraryEntryCell({
           {entry.name}
         </p>
 
-        {/*
-          **The state, and it is the one line that survived the re-layout.**
-          
-          The cell used to carry three lines under the name — the year, the state, and what
-          is next (`Next — Winter Is Coming`, `Nothing to watch now`). A column has room for
-          one, and this is it: the library is the surface organised *by* state, its filter
-          chips are the six states, and it is the fact a reader is scanning for.
-
-          The year went because the poster identifies the title and the title's own page
-          carries it. The next-episode line went to Up next, which since the rails became
-          lists is a full-width row with room to print the episode's actual name rather
-          than one truncated clause — the two surfaces stopped duplicating each other.
-          `NEXT_LINES` is deleted with it; nothing else read those strings.
-        */}
-        <p className={`label-line mt-1.5 ${state.className}`}>{state.label}</p>
-
         {progress === null ? null : (
           <div
             aria-hidden="true"
-            className="mt-1.5 h-1 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair"
+            className="mt-2 h-1 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair"
           >
             <div
-              className="h-full rounded-[var(--radius-full)] bg-dim"
+              className="h-full rounded-[var(--radius-full)] bg-accent"
               style={{ width: `${progress * 100}%` }}
             />
           </div>

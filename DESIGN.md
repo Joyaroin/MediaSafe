@@ -292,7 +292,7 @@ copying whichever call site they happened to open:
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
 | **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx`, search's *Add* pill (`catalogue-result.tsx`) | one per surface, at most |
-| **The live edge of the record** | `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the *Watching* state label (`library-state.ts`), the *Watching* filter chip even unselected (`library-filter-bar.tsx`), the up-next episode's inverted code (`episode-line.ts`) | **the second sanctioned meaning — settled by #310, closes §12** |
+| **The live edge of the record** | `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the *Watching* filter chip even unselected (`library-filter-bar.tsx`), the up-next episode's inverted code (`episode-line.ts`), and the bill card's watched-progress bar (`library-entry-cell.tsx`). ~~The *Watching* state label (`library-state.ts`)~~ no longer paints anywhere: the bill card dropped the state word so the bar could take the accent, and `title-hero.tsx` had already set the word in `--dim` for the same reason. `STATE_LABELS.watching.className` still declares the ink and is read by nothing — a dead declaration to retire in a ticket that owns the table. | **the second sanctioned meaning — settled by #310, closes §12** |
 | **The button register** | `app/accent-meaning.ts`'s `THE_BUTTON_REGISTER` — the fourteen controls #195 moved onto the accent, through `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/`SOLID_RECOVERY` and their compact measures | **the third sanctioned meaning — settled by #311, closes §12** |
 
 **Three sanctioned meanings, not five roles.** The three above — recording a watch, the live
@@ -2620,8 +2620,20 @@ rails, no placeholder tabs, no "coming soon".
   than a reason to drop it: it carries no numeral anywhere, so *a count may not appear as
   chrome on a surface the reader came to do something else on* (this section, above) is
   exactly as true of the bar as it was of a rating. A film draws no bar — it has two states
-  and the word already says which — and a show with nothing released draws none either,
-  because an empty bar there would report the catalogue's gap as the reader's.
+  and neither is a position through anything — and a show with nothing released draws none
+  either, because an empty bar there would report the catalogue's gap as the reader's.
+
+  **Amended again: the state word left the card, and the bar took the accent.** The card
+  used to print *Watching*, *Caught up*, *Finished*, *Watchlist* or *Abandoned* under the
+  name, and the bar was `--dim` on `--hair` precisely so it would not compete with the
+  accented *Watching*. The word is gone — the library is the surface organised *by* state,
+  its filter chips are where a reader reads which state they are inside, and a word under
+  every one of 472 cards restated that once per cell — so the bar is now `--accent`, the
+  same trade `title-hero.tsx` made on the title's own page (§0's title-detail row above)
+  and the same `LIVE_EDGE_OF_THE_RECORD` role the unselected *Watching* chip already spends
+  on this screen. One role on the screen, not two. The card is now a poster, a name and,
+  for a show with something released, a bar; an abandoned title is still marked by its
+  dimmed poster and name, which is the one state cue that survives on the bill.
 - **No sort on Up next.** The order is the rails' own, and it is not a control.
 - **No home rails other than Up next's three.** Not for genres, not for upcoming. **Amended
   by #223.** Lists used to be this bullet's third example, and is not any more: #215's
