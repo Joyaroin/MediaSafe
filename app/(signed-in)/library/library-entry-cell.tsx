@@ -181,10 +181,10 @@ export function LibraryEntryCell({
         {progress === null ? null : (
           <div
             aria-hidden="true"
-            className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-hair"
+            className="mt-1.5 h-1 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair"
           >
             <div
-              className="h-full rounded-full bg-dim"
+              className="h-full rounded-[var(--radius-full)] bg-dim"
               style={{ width: `${progress * 100}%` }}
             />
           </div>
