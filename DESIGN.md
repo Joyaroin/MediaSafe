@@ -268,6 +268,19 @@ meaning to design towards: the sweep is the accent in motion (§6), and the chec
 because it records a watch. (*Rewatch* used to be the second half of that sentence and is
 deleted — see the Episode Line below.)
 
+**Issue #313 closed the one place this reservation leaked onto a gesture that writes
+nothing.** The unwatched checkmark used to invert to solid accent on hover — the same
+pattern `GHOST_RECOVERY` uses on the fourteen button-register controls elsewhere — except a
+hover here was claiming a write no press had made, the exact reasoning the Episode Line's own
+recording control already gives for why a *press* may not tint it either: *"a control that
+took the accent while being pressed would be claiming to have written something it has
+not."* Hover now fills `--hair`, the neutral tone step the settled mark already uses for its
+own ground, so the control still answers a pointer without spending the reserved colour on a
+gesture that has not recorded anything. The border and the glyph stay accent, at rest and on
+hover alike — that is the reservation in this section doing its job — and
+`watch-mark-motion.tsx`'s `RECORDING_GLYPH` now declares `app/accent-meaning.ts`'s
+`RECORDS_A_WATCH` rather than typing the token, in the same change.
+
 **Read the next part carefully, because the build is broader than that sentence.** This
 file describes what shipped, not what #134 intended, and what shipped paints the accent in
 four settled roles beyond the sweep. They are listed here so nobody re-derives them by
@@ -278,8 +291,19 @@ copying whichever call site they happened to open:
 | **Recording a watch** | the sweep; the season row's check and its *Undo* glyph (`programme-note-episodes.tsx`); the Up next row's check and its *Undo* (`up-next/up-next-episode-row.tsx`, #220 → #250) | the reserved meaning |
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
-| **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx` | one per surface, at most |
-| **The live edge of the record** | the *up next* episode's code badge and its *Up next* label (`programme-note-episodes.tsx`); the chosen rating cell (`rating-control.tsx`); the *Watching* state label and chip | **contested — see §12** |
+| **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx`, search's *Add* pill (`catalogue-result.tsx`) | one per surface, at most |
+| **The live edge of the record** | `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the *Watching* state label (`library-state.ts`), the *Watching* filter chip even unselected (`library-filter-bar.tsx`), the up-next episode's inverted code (`episode-line.ts`) | **the second sanctioned meaning — settled by #310, closes §12** |
+| **The button register** | `app/accent-meaning.ts`'s `THE_BUTTON_REGISTER` — the fourteen controls #195 moved onto the accent, through `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/`SOLID_RECOVERY` and their compact measures | **the third sanctioned meaning — settled by #311, closes §12** |
+
+**Three sanctioned meanings, not five roles.** The three above — recording a watch, the live
+edge of the record, the button register — are what `app/accent-meaning.ts` declares and what
+`tests/accent-sweep.test.ts` holds the tree to: every accent use in `app/`, `errors/` and
+`lib/` either imports one of the three constants (or is its own literal companion of the same
+meaning, where the constant has no form to reach for — a hover state, say) or is named in that
+suite's manifest as a documented literal exception, and a fourth meaning cannot be added
+without editing both files. The brand mark, the failure system and the primary action on a
+surface are not part of that ruling — they predate it, §12 never contested them, and the sweep
+carries them as exactly that: documented exceptions, not a fourth meaning.
 
 **`SOLID_RECOVERY` is misnamed for what it now does.** It began as *the one primary
 **recovery** action*, and it is still called that in `errors/recovery-buttons.ts`, but the
@@ -363,11 +387,13 @@ else.** Three things keep it from reopening the rule it sits inside:
 remaining* is a state label wearing a number and stays `dim`; §7's *no counts on a rail head*
 is the neighbouring rule and neither is loosened here.
 
-**Selection is the sharp edge of this.** The rule above says the accent is not selection,
+~~**Selection is the sharp edge of this.** The rule above says the accent is not selection,
 and `up-next-tile.tsx` obeys it — but `rating-control.tsx` paints the chosen cell
-`bg-accent text-accent-ink`, which is selection in the accent. Both are shipped. §12 is
-where that is argued, and until it is settled **the tile is the precedent to copy, not the
-rating scale.**
+`bg-accent text-accent-ink`, which is selection in the accent.~~ **Closed by #311.** Neither
+module exists in this tree any more — the entry was already stale when §12 was written. The
+real selection-in-the-accent case was the two select carets (`library-filter-bar.tsx`,
+`settings/timezone-control.tsx`), and #311 re-narrowed both off the accent to `text-dim`;
+`tests/accent-sweep.test.ts` holds that.
 
 ---
 
@@ -1441,20 +1467,43 @@ about the product, and it outranks a rule this file wrote while describing a bui
 not been asked the question yet. Recorded as a reversal rather than quietly overwritten, so
 the next reader can see it was decided and not drifted into.
 
-What is authored, and why each half differs:
+What is authored, and why each half differs — quoted from `app/globals.css`, not re-derived
+here, on the same rule §10 states for the #221 quotation below: if this ever disagrees with
+the stylesheet, the stylesheet is right and this quotation is stale. **This block itself was
+stale until #301** — it named `--dur-slow`/`--ease-press` on the group and a shared
+`--dur-base`/`--ease-out-quart` on the root, which had not been true since #221 moved the
+navigation onto `nav-fade`/`nav-rise` and gave the outgoing and incoming root two different
+rules rather than one:
 
 ```css
-::view-transition-group(*)                    { animation-duration: var(--dur-slow);  animation-timing-function: var(--ease-press); }
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out-quart); }
+::view-transition-group(*) {
+  animation-duration: var(--dur-quick);
+  animation-timing-function: var(--ease-press);
+}
+
+::view-transition-old(root) {
+  animation: var(--dur-fast) var(--ease-out-quart) both nav-fade reverse;
+}
+
+::view-transition-new(root) {
+  animation:
+    var(--dur-quick) var(--ease-out-quart) both nav-fade,
+    var(--dur-quick) var(--ease-out-quart) both nav-rise;
+}
 ```
 
 - **The group is what moves and resizes the shared poster**, so it gets the long confident
-  arrival — `--dur-slow` on `--ease-press`, an exponential ease-out that covers most of the
-  distance immediately and then settles. That asymmetry is what makes a morph read as a
-  thing with mass being carried rather than a box being tweened.
-- **The root cross-fade underneath is deliberately shorter than the morph.** The poster is
-  the subject and should be the last thing to settle; a full-length fade on the whole
-  document is what makes a view transition feel like a slideshow.
+  arrival curve — `--ease-press`, an exponential ease-out that covers most of the distance
+  immediately and then settles. That is what makes a morph read as a thing with mass being
+  carried rather than a box being tweened.
+- **The group and the arriving root now share one clock, `--dur-quick`, and that is a fix
+  rather than the original design.** The morph ran `--dur-slow` against a `--dur-base` page
+  and was already the last thing settling; once #221 brought the page down to `--dur-quick`
+  a 380ms morph left the poster still travelling long after the screen it landed on had
+  finished — the *"unfinished transition"* problem this file warns about, reintroduced from
+  the other side. Leaving is still faster than arriving, the asymmetry this file has always
+  held: the outgoing root fades out alone at `--dur-fast`, and the incoming root fades and
+  rises in at `--dur-quick`.
 - **`--ease-press` is not a second curve.** It is the value #88 chose for the watch strike,
   reused rather than re-picked — one arrival curve across the app is what makes two
   unrelated surfaces feel like the same hand made them.
@@ -1478,7 +1527,9 @@ every tile and card on Up next navigates to the same page. The two surfaces that
 separate names are one surface, the second family had nothing left to keep apart, and it is
 gone along with the function that minted it.
 `app/(signed-in)/library/poster-transition-name.ts` is now one function with three callers
-— the rail tile, the desktop pane and the title's own page.
+— the rail tile, the desktop pane and the title's own page. **Two more joined them in
+issue #303**: the library grid cell and the phone title route's own pending frame, both
+below.
 
 The "same title at once" the old rule guarded against was a reader on the desktop pane with
 the phone route open **in another tab** — two documents, and a `view-transition-name` has
@@ -1497,6 +1548,44 @@ while the original was still on screen, and the browser skips a transition it fi
 duplicated rather than guessing which one wins. **On the phone there is nothing to drop**,
 which is what makes the single family safe on both sides: the navigation replaces the page
 and takes the tile with it, so the name is free before the destination's poster mounts.
+
+**The morph now runs on both entry paths — issue #303, and this closes the gap the
+paragraphs above described without naming.** Measured on production (see the problem
+statement this issue answers), a title took 1.2–1.5s to open from either the library grid
+or an Up next row, and the morph was skipped on both. Two things were missing, and neither
+was a curve or a duration:
+
+- **The library grid cell carried no transition name.** `selectable-entry.tsx` — the client
+  component that already wraps every server-rendered cell, so the 472-cell grid gains no
+  new client boundary — now wraps the cell's poster in the same `rail-poster-{id}` name,
+  dropped while the desktop pane already holds it, on the identical rule the paragraph
+  above states for the rail tile. It is a raw `viewTransitionName` style rather than
+  React's `<ViewTransition>` — `masthead.tsx` and `tab-bar.tsx` are this codebase's
+  existing precedent for the plain CSS property, and the browser's View Transition API
+  pairs on it exactly the same regardless of which mechanism set it. `selectable-entry.tsx`
+  states the rest of the reasoning, including why this component in particular has a
+  reason to prefer it.
+- **The pending frame destroyed the destination.** Both entry paths land on
+  `titles/[entryId]/loading.tsx`, which replaced the poster with pending bars before the
+  destination ever mounted — so even a correctly-named source had no pair to morph into.
+  The pending frame now shows the poster instead, from a path carried across the route
+  change in `app/poster-handoff-memory.ts`, a session-scoped client variable in the shape
+  `app/restoration-memory.ts` already establishes. `app/poster-handoff.ts` is the pure rule
+  over it: what is remembered, what a surface should show, and what an unvisited surface —
+  a cold load, a refresh, a back button, a second tab — falls back to, which is nothing,
+  exactly as this route has always answered when it had nothing in hand. The desktop pane's
+  own pending frame (`programme-note.tsx`'s `Loading`, described above) already showed a
+  poster this way; the two devices no longer disagree.
+
+**The Up next row wraps its poster on both presses now, and this reverses what this file
+implied for the phone's.** The row's own docblock until this issue read: *"the phone's row
+navigates to a different page and has nothing to share."* That was true only because the
+destination had nothing to receive a name into — once the pending frame carries a poster,
+the premise is gone, and `up-next-episode-row.tsx`'s `RowFrame` wraps every row's poster
+except the one the desktop pane is currently showing, on both presses, rather than only the
+desktop's. "On the phone there is nothing to drop" two paragraphs up is unchanged by this:
+the *drop* was always about the pane holding the name, which no phone press has ever
+triggered; what changed is that the phone's row now mounts the name it withheld before.
 
 ---
 
@@ -1739,6 +1828,39 @@ for the library and Up next it is the full heading. The formula does not change 
   array. Giving any of them a boundary fails the audit rather than passing quietly, which is
   what makes this paragraph enforced rather than remembered.
 
+### Radius 1 waits behind a named delay before it paints — issue #301
+
+**Instrumenting the shipped build found the treatment attached to the wrong moment.** A tab
+press repaints in ~65ms, but what it repaints to is radius 1's own pending line, and that
+swap carries no transition at all — a hard cut. The fade and rise that this file's navigation
+section describes then run ~300ms later, animating the pending→content swap, which is a
+moment nobody caused. On a fast connection the reader never asked to see a pending state at
+all: the server renders Up next in 175–235ms and the library in 156–235ms, well inside the
+time a reader tolerates as an ordinary press.
+
+**`--dur-pending-hold` (`app/globals.css`) holds every radius 1 render invisible for 300ms
+before it paints.** Not a motion — nothing here travels or eases — but named and kept on the
+duration ramp for the reason the ramp exists at all: a delay a reader can feel is a decision,
+not a literal at a call site. 300ms clears the slower of the two measured renders with room
+for jitter, so a navigation that resolves before the hold ends never shows the bars at all —
+the reader presses, and the next thing painted is the destination itself, with the existing
+fade and rise landing on it. A navigation slower than the hold still gets the pending state
+exactly as it always has, once the hold ends.
+
+The mechanism is CSS alone: `opacity: 0`, flipped to `1` by a `1ms` animation gated by
+`animation-delay: var(--dur-pending-hold)`. Opacity rather than `display`, so nothing reserves
+or drops layout across the flip; a `1ms` flip rather than a fade, because held is a state to
+be in and not a second entrance to animate over the hold itself. If the read resolves first,
+React tears the node down before the delay ever elapses and the animation never runs — no
+timer, no client boundary, and no change to `loading.tsx`'s own rendering mode.
+
+**This stops at radius 1, and does not reach radius 2 or radius 3.** Both already paint
+beside content that has already rendered — the region's own head, or the pane's carried
+poster — and a delayed region there is a blank gap where something was already on screen,
+which reads as broken rather than as reading. Radius 4's tile is the same argument again: the
+poster and name are already in hand and render at once, and the one line that waits is
+already the smallest thing on the tile. None of the three carry `--dur-pending-hold`.
+
 ### Radius 2 — one region is pending, beside rendered content
 
 **The region's head renders at once, in its settled form, and nothing is reserved beneath it.**
@@ -1962,6 +2084,38 @@ library ›` had already set the shape a control this ordinary takes, and a seco
 for the same weight of control would be exactly the drift `errors/recovery-buttons.ts`'s own
 docblock exists to prevent.
 
+**The watch menu's four controls reach 44px in both dimensions — issue #314.** `#300`'s
+problem statement measured `watch-menu.tsx`'s `GHOST_RECOVERY` controls at `34.2px` tall and
+`GHOST_RECOVERY_COMPACT`'s *Cancel* at `26.2px`, against the platform's own `44px` minimum —
+`Cancel` is the smallest of the four and the easiest to overlook, and it is the control a
+reader reaches for once they have already realised they are in the wrong place. Neither
+constant above is re-cut for it: both are shared well past this one dialog, and moving either
+would move every surface that shares it, not just the four this ticket names. Instead all
+four controls compose `h-11 min-w-11` at the one call site that needs them — the same way
+`list-row.tsx`'s `h-11` and `selection-action-bar.tsx`'s `h-11` on its own compact pair
+already reach 44px without touching either constant. `h-11`/`min-w-11` are `2.75rem`, the same
+44px `RECORDING_HIT_BOX`'s `w-11 h-11` already resolves to, and Tailwind's border-box preflight
+makes the height exact and the width a floor regardless of either treatment's own padding.
+`tests/watch-menu-sweep.test.ts` holds all four to it, in the manner `tests/press-spring
+.test.ts`'s register sweep holds the press to its own table, so a later edit cannot drop the
+composition back under the minimum without failing a test by name.
+
+**Unwatch is separated from Undo, and confirms inside the menu — issue #315.** `Undo` and
+`Unwatch` sat 12px apart at identical size, weight and colour, differing by one word, and
+`Unwatch` removes every watch of an episode, imported ones included, unconfirmed. `Unwatch`
+now sits in a row of its own, below a `border-hair` rule rather than beside `Undo` in its
+`gap-3` group, and carries `UnwatchIcon` beside its label — a shape `Undo` does not have.
+Neither is a new button tier: both stay on `GHOST_RECOVERY`, the same register `Rewatch` and
+`Undo` already wear, so this does not reopen the "no third, neutral tier" ruling two
+paragraphs up, and it spends no colour this world does not already have (there is still one
+accent and nothing named "warning" or "danger" in `app/globals.css`'s palette). Pressing it
+no longer writes: it swaps this dialog's lower half for a confirmation naming the episode and
+`unwatch-confirm.ts`'s own count of the watches it would remove, in `mark-up-to-dialog.tsx`'s
+own wording style, with `Unwatch it` to proceed and `Keep it` to back out without writing
+anything — one dialog throughout, never two, and the episode's name (the dialog's own `<h2>`)
+never leaves the screen while any of this is happening. `tests/watch-menu-sweep.test.ts`
+holds the separation, the icon, and both new controls' sizes to the same 44px floor above.
+
 **This spends the accent knowingly, on thirteen of the fourteen.** (*Rewatch* is since
 deleted and *Unwatch* is a glyph; the batch is twelve labelled controls now.) Only *Rewatch*
 (`programme-note-episodes.tsx`) already painted accent before this ticket — it records a
@@ -1986,8 +2140,17 @@ transition token* — an accurate description of a build whose entire vocabulary
 easing curve, one `200ms`, and 31 `transition-colors`. Adham asked for motion throughout
 the app; all four of those absences are now present on purpose. What governs it:
 
-- **Five duration tokens** — `--dur-fast` (`140ms`), `--dur-base` (`220ms`), `--dur-slow`
-  (`380ms`), `--dur-press` (`100ms`), `--dur-pop` (`260ms`) — and three easings:
+- **Seven duration tokens** — `--dur-fast` (`140ms`), `--dur-quick` (`190ms`), `--dur-base`
+  (`220ms`), `--dur-slow` (`380ms`), `--dur-press` (`100ms`), `--dur-pop` (`260ms`),
+  `--dur-pending-hold` (`300ms`) — and three easings:
+
+  **This said *five* and omitted `--dur-quick` until #301 corrected it while adding the
+  seventh.** `--dur-quick` shipped with #221's nav-fade/nav-rise pair and was never added
+  here — the drift this section itself warns a reader against trusting without checking the
+  stylesheet. `--dur-pending-hold` is #301's own addition: not a motion — nothing on it
+  travels or eases — but named and kept on this ramp for the reason the ramp exists at all,
+  and it is what §9's radius 1 now waits behind before it paints.
+
   `--ease-press` (unchanged, the arrival curve, and misnamed — it is not the press),
   `--ease-out-quart` and `--ease-in-out-soft`.
 
@@ -2427,51 +2590,29 @@ Read off the build, flagged on #144's pull request rather than written up as rul
 are defects to close, not precedent to copy.** Nothing below should be cited as
 justification in a new diff.
 
-### The accent means more than one thing, and one ticket has to settle which
+~~### The accent means more than one thing, and one ticket has to settle which~~
 
-This is the largest disagreement between #134's stated rule and the shipped build, and §3
-documents the build rather than the rule. Seven surfaces paint the accent for something
-other than recording a watch, the brand mark, a failure, or a surface's primary action.
-**None of them is a typo** — each was reasoned at its call site — but together they mean
-the product has no single answer to *what does amber mean?*
+**Closed by #310, #311 and #312.** This was the largest disagreement between #134's stated
+rule and the shipped build — seven surfaces painting a state or a selection, two dialogs
+borrowing the failure frame, and an eighth category of controls moved onto the accent with
+no ruling to cover them. It is not edited around; it is settled, in three tickets sequenced
+expand–contract because the blast radius fanned across roughly thirty files:
 
-Painting a **state**, which reads as the retired rule *"the accent always means live"*:
+- **#310** named the accent's three sanctioned meanings as constants
+  (`app/accent-meaning.ts`) and migrated the state-painting call sites — the *Watching*
+  label and chip, and the up-next episode's code — onto the second one, *the live edge of
+  the record*.
+- **#311** ratified the eighth category — the fourteen controls #195 moved onto the accent —
+  as the third meaning, *the button register*, and re-narrowed everything this section named
+  as a selection or a borrowed failure frame: the two select carets, and every dialog frame
+  built on the write-failure toast's `border-2 border-accent`, not only the two named above.
+- **#312** made it mechanical. `tests/accent-sweep.test.ts` walks the shipping tree and
+  fails on any accent use — present or future — that neither declares one of the three
+  meanings nor is named in its manifest as a documented exception (the brand mark, the
+  failure system, a surface's primary action), so a fourth meaning cannot be added the way
+  the seven above were: silently, one call site at a time.
 
-- `library-state.ts` — the **Watching** state label, the only one of the five that is
-  coloured.
-- `library-filter-bar.tsx` — the **Watching** chip, accent-coloured even when unselected
-  and named in its own docblock as "the one exception".
-- `programme-note-episodes.tsx` — the ***up next*** episode's code badge (solid accent) and
-  its *Up next* label. Arguably the strongest case for a second meaning: *up next* is the
-  live edge of the record, and this is the one place it is marked.
-
-Painting a **selection**, which §3's own table says the accent does not do:
-
-- `rating-control.tsx` — the chosen rating cell is `bg-accent text-accent-ink`, and every
-  unchosen cell hovers to it.
-
-Painting **chrome on a surface that is not a failure**:
-
-- `lists/delete-list-dialog.tsx` and `library/add-to-list-control.tsx` — `border-2
-  border-accent` framing a dialog. The same frame the write-failure toast uses, on two
-  dialogs that are neither a failure nor irreversible. (Both files reason carefully about
-  the *button* treatment and decline solid accent — then take the accent frame anyway.)
-- `library-filter-bar.tsx` and `settings/timezone-control.tsx` — both **select carets**.
-
-One ticket should decide between three coherent answers — narrow everything back to
-recording a watch; or state *the live edge of the record* as a second meaning and re-narrow
-only selection and the dialog frames; or accept the accent as "the one colour, spent on
-whatever is most alive on this surface" and say so. **What must not happen is each call site
-answering separately**, which is how it got here. Until then §3's table is the map, and the
-right precedent to copy is `up-next-tile.tsx`'s, not `rating-control.tsx`'s.
-
-**An eighth category, added knowingly rather than by accident, and the widest one here.**
-§10's Buttons subsection records that issue #195 put thirteen controls onto
-`GHOST_RECOVERY` — `abandon-control.tsx` and `remove-control.tsx` among them, overriding
-both files' own prior *never accent* reasoning in the open; the other eleven had no such
-rule to override, only no accent to begin with. It is filed here rather than argued twice:
-the same ticket that settles the three questions
-above has one more use of the accent to fold in once it does.
+§3's table is current as of #312 and is the map now, not this section.
 
 ### `app/tab-bar.tsx.bak` is committed, and contains merge-conflict markers
 

@@ -1,5 +1,6 @@
 import { BackBar } from "@/app/(signed-in)/back-bar";
 import { PendingLine } from "@/app/pending-line";
+import { PendingTitlePoster } from "./pending-poster";
 
 /**
  * Title detail, still reading — the phone route.
@@ -23,14 +24,26 @@ import { PendingLine } from "@/app/pending-line";
  * the reader arrived from, so the pending render offers the same way out as the loaded one
  * rather than a link to a grid.
  *
- * The poster is not mounted here, and that is the one place this differs from the desktop
- * pane. `programme-note.tsx`'s loading frame shows one because `selectedPosterPath` is a
- * fact the tile it was pressed from already held, and because the frame is the first half of
- * the `rail-poster-{id}` morph (§8). Neither is true on a cold route render: nothing has been
- * handed to this segment, so there is no poster path in hand and nothing to render at full
- * strength. Rendering a placeholder in its place is exactly §9's second reason for having no
- * skeleton — a `raised` rectangle at `2/3` is pixel-identical to a title TMDB has no artwork
- * for.
+ * ── The poster is mounted here now, and this reverses what this file said before #303 ──
+ *
+ * This used to read: *"The poster is not mounted here, and that is the one place this
+ * differs from the desktop pane... nothing has been handed to this segment, so there is no
+ * poster path in hand."* Nothing was, because both entry paths into a title minted no
+ * source name and this segment carried no destination for one — the morph was skipped on
+ * both halves. Issue #303 supplies both: the library grid and the Up next row now carry
+ * the poster path they already hold across the route change
+ * (`app/poster-handoff-memory.ts`), and `pending-poster.tsx` reads it back here, under the
+ * same `rail-poster-{id}` name the loaded hero (`title-hero.tsx`) uses — the same pairing
+ * `programme-note.tsx`'s own pending frame has always given the desktop pane, which is
+ * what stops the two devices disagreeing.
+ *
+ * `carriedPosterFor` answers `null` for a cold render — a refresh, a bookmark, a direct
+ * link — and `<Poster posterPath={null}>` is the quiet rectangle it has always drawn for a
+ * title with no artwork, not a placeholder: rendering it un-named would be exactly §9's
+ * second reason against a skeleton, and rendering it under the real name the moment one is
+ * in hand is what the acceptance criterion asks for instead — a title with no artwork is
+ * still distinguishable from one still loading, because both eventually show the identical
+ * poster the loaded page will.
  */
 export default function TitleDetailLoading() {
   return (
@@ -38,7 +51,16 @@ export default function TitleDetailLoading() {
       <BackBar />
 
       <div className="px-6 py-5">
-        <PendingLine shape="detail" />
+        <div className="flex items-start gap-4">
+          {/* Unheld, deliberately — the acceptance criterion is that the poster is visible
+              while the rest of the surface is still being read, so it does not wait behind
+              `--dur-pending-hold` the way the bars beside it do (#301). */}
+          <PendingTitlePoster />
+
+          <div className="min-w-0 flex-1">
+            <PendingLine shape="detail" held />
+          </div>
+        </div>
       </div>
     </main>
   );

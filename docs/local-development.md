@@ -228,6 +228,35 @@ what that buys and what it deliberately does not do.
 Note that `tests/migrator-transaction.test.ts` does **not** use this harness: those tests
 cannot roll back, because the transaction is the thing they are testing.
 
+### The browser suite
+
+`npm run test:e2e` — Playwright, and the whole of what it takes to run it. It builds,
+starts the built app on its own port (3100, so it never fights a `next dev` server
+already on 3000), seeds a fixture account and a session behind a real signed cookie, and
+runs every `tests/e2e/*.spec.ts`: `pending-hold.spec.ts` (issue #304) proves the two
+properties `--dur-pending-hold` (`app/globals.css`, issue #301) has to hold — a fast
+navigation paints no pending bars, and a slow one still does; `poster-morph.spec.ts` and
+`navigation-motion.spec.ts` (issue #305) prove the poster morph pairs on both entry paths
+into a title and that the navigation's own motion begins against the press rather than
+against a skeleton swap. `poster-morph.spec.ts` seeds and signs in as a second fixture
+account of its own — see its own docblock for why the shared one stays untouched.
+
+It needs the same local Postgres every other test does (`npm run db:up` first, if it is
+not already up) and the same `.env` — `BETTER_AUTH_SECRET` in particular, since the
+fixture session is signed with it. It needs nothing from `GOOGLE_CLIENT_ID` or
+`GOOGLE_CLIENT_SECRET`: the suite never drives a real Google sign-in, it writes the
+`session` row a successful one would have left and signs the cookie the same way Better
+Auth does (`tests/e2e/support/fixture-session.ts`).
+
+**Not part of `npm test`, and not part of the verify gate.** `vitest.config.mts` only
+ever looks at `tests/**/*.test.ts`; every spec here is `*.spec.ts`, a glob that pattern
+never matches, so this suite is invisible to `npm test` and to `foundry.config.json`'s
+verify pass. `.github/workflows/e2e.yml` runs it in its own isolated CI job, with its own
+database and its own per-run secret — never in the job that runs with neither.
+
+The first run downloads Chromium: `npx playwright install chromium` if
+`npm run test:e2e` reports it missing.
+
 ### The data-access choke point
 
 Owned rows are read and written through `db/access.ts`, and every function there takes

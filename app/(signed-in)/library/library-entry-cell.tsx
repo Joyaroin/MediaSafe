@@ -1,5 +1,6 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
+import { railPosterTransitionName } from "./poster-transition-name";
 import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
@@ -42,6 +43,14 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * `.55` since turn 9, up from `.45`, and the same number the phone's deleted group tile used on the
  * Up next Abandoned group — the handoff names this cell as the surface that already dims
  * a poster and asks that the two not be left different by accident.
+ *
+ * ── The poster leaves as its own prop, since issue #303 ──────────────────────────────
+ *
+ * The `relative` wrapper the check badge hangs off used to live here; it moved into
+ * `selectable-entry.tsx`, which is the one place that can put the morph's transition name
+ * on it without this file gaining a client boundary. This file still builds the poster —
+ * it stays a server component either way — it just hands the finished element over rather
+ * than rendering it directly inside the button.
  */
 
 /**
@@ -87,25 +96,28 @@ export function LibraryEntryCell({
           name: entry.name,
         }}
         className="pressable block w-full text-left"
+        posterPath={entry.posterPath}
+        // Issue #303: the one name family every poster morph pairs against
+        // (`poster-transition-name.ts`) — the cell's own half of it, the fourth caller
+        // beside the rail row, the desktop pane and the title's own page.
+        posterTransitionName={railPosterTransitionName(entry.libraryEntryId)}
+        poster={
+          <>
+            {/* `.55` for an abandoned title, on both surfaces that dim one. The linen
+                ground is lighter than the bone one this number was chosen against, so the
+                same title reads as further gone at the same opacity. */}
+            <Poster
+              posterPath={entry.posterPath}
+              name={entry.name}
+              width={BILL_POSTER_WIDTH}
+              className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
+              aboveFold={aboveFold}
+            />
+            {/* Renders nothing at all outside a selection provider — the desktop, always. */}
+            <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
+          </>
+        }
       >
-        {/* `relative` and nothing else: the check badge (#197) hangs off the poster's own
-            corner rather than the cell's, which is where the ticket puts it — and in a
-            column layout those two corners are finally the same place. */}
-        <div className="relative">
-          {/* `.55` for an abandoned title, on both surfaces that dim one. The linen ground
-              is lighter than the bone one this number was chosen against, so the same
-              title reads as further gone at the same opacity. */}
-          <Poster
-            posterPath={entry.posterPath}
-            name={entry.name}
-            width={BILL_POSTER_WIDTH}
-            className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
-            aboveFold={aboveFold}
-          />
-          {/* Renders nothing at all outside a selection provider — the desktop, always. */}
-          <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
-        </div>
-
         {/*
           `break-words` is not decoration, and the measurement behind it survives the
           re-layout intact: a long unbroken word — `ENGAGEMENT`, `Neighbourhood`, most of a

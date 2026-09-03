@@ -253,6 +253,59 @@ describe("the library entry cell", () => {
   });
 });
 
+/**
+ * Issue #303 — the morph's source. `selectable-entry.tsx`'s own docblock has the reasoning
+ * for the raw `viewTransitionName` style rather than React's `<ViewTransition>`: it is
+ * what keeps this cell renderable here at all, so this suite is the one place the actual
+ * name (not just its presence in source) can be asserted against a render.
+ */
+describe("the library entry cell's poster morph source", () => {
+  const withEntrySelected = (entryId: string, children: React.ReactNode) =>
+    createElement(
+      LibrarySelectionProvider,
+      { value: { selectedEntryId: entryId, selectedPosterPath: null, select: () => {} } },
+      children,
+    );
+
+  it("carries the same name family the title's own page and the pane use", () => {
+    const markup = cell();
+
+    // `poster-transition-name.ts`'s one function, not a hand-spelled copy of it — a rename
+    // there would otherwise leave this cell pairing against a stale name.
+    expect(markup).toContain('view-transition-name:rail-poster-entry-1');
+  });
+
+  it("names a different cell by its own entry id", () => {
+    const markup = renderToStaticMarkup(
+      withSelection(createElement(LibraryEntryCell, { entry: entry({ libraryEntryId: "e2" }) })),
+    );
+
+    expect(markup).toContain("view-transition-name:rail-poster-e2");
+  });
+
+  /**
+   * **Dropped while the desktop pane already holds it.** A name can mark only one
+   * on-screen element at a time; the moment this entry is the one open in the pane, the
+   * pane is showing its poster under the identical name, and the grid's own copy has to
+   * let go of it — the same rule `up-next-episode-row.tsx`'s `RowFrame` keeps for its row.
+   */
+  it("drops the name once the desktop pane is showing this entry", () => {
+    const markup = renderToStaticMarkup(
+      withEntrySelected("entry-1", createElement(LibraryEntryCell, { entry: entry() })),
+    );
+
+    expect(markup).not.toContain("view-transition-name");
+  });
+
+  it("keeps the name for every entry the pane is not currently showing", () => {
+    const markup = renderToStaticMarkup(
+      withEntrySelected("some-other-entry", createElement(LibraryEntryCell, { entry: entry() })),
+    );
+
+    expect(markup).toContain("view-transition-name:rail-poster-entry-1");
+  });
+});
+
 describe("the grid", () => {
   const grid = renderToStaticMarkup(
     withSelection(

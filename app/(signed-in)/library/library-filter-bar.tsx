@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
+import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
 import { LIBRARY_STATES, type LibraryState } from "@/db/access";
 import {
   DEFAULT_LIBRARY_SORT,
@@ -53,6 +54,11 @@ const CHIPS: { value: Chip; label: string }[] = [
  * selected or not — moved to `chip.tsx` for issue #224, which reuses it for the season
  * selector; only the one exception named above is local here, because it is a fact about
  * the Watching state and not about the register.
+ *
+ * Issue #310 names why this exception is sanctioned rather than a fourth, unstated reason
+ * to reach for the accent: `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the same
+ * meaning `library-state.ts`'s Watching label claims, because a chip naming a state and a
+ * label naming the same state are the same claim twice.
  */
 /* The selected chip's ground is drawn by `<ChipGround />` (`chip.tsx`) rather than by a
    `bg-ink` class, so every chip here is transparent-grounded and the same size whether it
@@ -61,7 +67,7 @@ function chipClassName(value: Chip, selected: boolean): string {
   if (value === "watching" && !selected) {
     // The one exception, and it survives the redesign intact: Watching keeps its accent
     // label even unselected, because the accent always means live.
-    return `${CHIP_BASE} bg-raised text-accent transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
+    return `${CHIP_BASE} bg-raised ${LIVE_EDGE_OF_THE_RECORD.ink} transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
   }
   return sharedChipClassName(selected);
 }
@@ -146,6 +152,12 @@ export function FilterField({
  * removed and replaced by a solid vermilion triangle — the one place vermilion marks an
  * affordance rather than a state.*
  *
+ * **Reversed by issue #311.** `DESIGN.md` §12 named this caret, and `timezone-control.tsx`'s,
+ * as painting a *selection* — a fourth, unstated reason to reach for the accent, never one
+ * of the three `app/accent-meaning.ts` settles. The triangle survives; it takes `text-dim`
+ * now, the same ink `SortSelect`'s own value text already carries, so the caret still reads
+ * as a control by its shape rather than by borrowing a colour reserved for something else.
+ *
  * ── Why a selection here is a navigation and not a `setState` ────────────────────────
  *
  * `SPEC.md` §7 puts sort state in the URL, so choosing an order calls `router.push` rather
@@ -193,11 +205,14 @@ export function SortSelect({ value }: { value: LibrarySort }) {
           </option>
         ))}
       </select>
-      {/* The solid vermilion triangle survives the redesign unchanged — turn 9 keeps it,
-          and it is the one place the accent marks an affordance rather than a state. */}
+      {/* The solid triangle survives the redesign — turn 9 keeps it — but not in the
+          accent any more. Issue #311 re-narrows it: `DESIGN.md` §12 named this caret as
+          one of two places the accent marked a selection rather than one of the three
+          sanctioned meanings, so it takes the same dim ink `SortSelect`'s own value
+          text does, and still reads unambiguously as a control by its shape alone. */}
       <svg
         viewBox="0 0 12 8"
-        className="pointer-events-none absolute right-3 h-1.5 w-[9px] text-accent"
+        className="pointer-events-none absolute right-3 h-1.5 w-[9px] text-dim"
         aria-hidden="true"
       >
         <polygon points="0,0 12,0 6,8" fill="currentColor" />

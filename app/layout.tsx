@@ -1,11 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
+import { ActionToasts } from "@/app/(signed-in)/library/action-toast-toasts";
 import { OfflineBanner } from "@/errors/offline-banner";
 import { WriteFailureToasts } from "@/errors/write-failure-toast";
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from "@/lib/theme";
 
 import { archivo } from "./fonts";
 import { MotionProvider } from "./motion-provider";
+import { THEME_COLOR_SCHEME } from "./theme-color";
 import "./globals.css";
 
 /**
@@ -42,6 +44,20 @@ export const metadata: Metadata = {
 };
 
 /**
+ * The status bar's colour, in both colour schemes — issue #308. `next/font`'s
+ * deprecation of `metadata.themeColor` in favour of this `viewport` export is why the
+ * pair lives here and not above: `node_modules/next/dist/docs/.../generate-viewport.md`.
+ *
+ * `THEME_COLOR_SCHEME` (`app/theme-color.ts`) is the pair, not typed out here, so the
+ * one place asserting these colours against `app/globals.css`
+ * (`tests/manifest.test.ts`) is asserting the same values this page renders rather than
+ * a second copy of them.
+ */
+export const viewport: Viewport = {
+  themeColor: THEME_COLOR_SCHEME,
+};
+
+/**
  * Two of the three error surfaces are mounted here, and the third is not, which is the
  * whole of SPEC.md §6's *errors are placed by blast radius*:
  *
@@ -52,6 +68,12 @@ export const metadata: Metadata = {
  *   that unmounts the moment the reader types the next query.
  * - **Read failures** are *not* here. They belong to the route that failed, so they live
  *   in `app/error.tsx`, which wraps the page and leaves this layout standing.
+ *
+ * **The action toast (issue #307) is not one of SPEC.md §6's four failure treatments** —
+ * it reports a watch that landed, not one that was lost — and it is mounted here for the
+ * same structural reason the write-failure toast is: `action-toast-store.ts`'s singleton
+ * has to outlive whichever row raised it, and this is the one place in the tree above
+ * every row.
  */
 export default function RootLayout({
   children,
@@ -87,6 +109,7 @@ export default function RootLayout({
             nothing about how they animate while adding a client boundary above them. */}
         <MotionProvider>{children}</MotionProvider>
         <WriteFailureToasts />
+        <ActionToasts />
       </body>
     </html>
   );

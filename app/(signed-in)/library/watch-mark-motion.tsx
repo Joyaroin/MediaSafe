@@ -1,3 +1,5 @@
+import { RECORDS_A_WATCH } from "@/app/accent-meaning";
+
 /**
  * The sweep — issue #139. A wash of the accent across the row's own bounding box
  * (`app/globals.css`'s `watch-sweep`), a full-row `<span>` belonging directly inside the
@@ -132,21 +134,47 @@ export const RECORDING_HIT_BOX =
   "pressable [--press-register:2] group -my-2 flex h-11 w-11 shrink-0 items-center justify-center";
 
 /**
- * The recording control's visible chip — the same ghost treatment (`DESIGN.md`, Buttons:
- * `1px` `accent` border, `accent` text on `ground`, inverting to solid on press) the old
- * `RECORDING_CONTROL` drew around its own text, now around `CheckmarkIcon` instead. Sized
- * to the glyph (`p-1` around `h-4 w-4`) rather than to a label, because there is no longer
- * a label to hold — `26px` square, unchanged from the `26.2px` box `MarkUpToIcon`'s own
+ * The recording control's visible chip — the old `RECORDING_CONTROL`'s `1px` `accent`
+ * border and `accent` text drawn around `CheckmarkIcon` instead of its own text. Sized to
+ * the glyph (`p-1` around `h-4 w-4`) rather than to a label, because there is no longer a
+ * label to hold — `26px` square, unchanged from the `26.2px` box `MarkUpToIcon`'s own
  * docblock already paired it with.
  *
- * `group-hover:`, not `hover:`: the element a pointer sits over is `RECORDING_HIT_BOX`,
- * `9px` wider than this on every side, so the invert has to answer to the group rather
- * than to itself. `MarkWatchedButton` composes both of these with
- * `errors/recovery-buttons.ts`'s `IN_FLIGHT`, on the hit box — a `filter: brightness()`
- * dims everything it paints, chip included, so `IN_FLIGHT` needs no second copy here.
+ * **Issue #313: hover no longer inverts to solid.** It used to, on the same reasoning
+ * `GHOST_RECOVERY` inverts on hover elsewhere — but this is not that register. `§3` rations
+ * the accent to *recording a watch*, and `errors/recovery-buttons.ts`'s ghost pair inverting
+ * under a pointer is fine precisely because none of those fourteen controls claim to have
+ * *written* anything by filling; this one does. An unwatched row's checkmark going
+ * `bg-accent`/`text-accent-ink` on a hover — no press, no write, sometimes no pointer device
+ * at all — painted the one colour `DESIGN.md` §3 reserves for *this was written* on a press
+ * that had not happened, the exact reasoning `RECORDING_HIT_BOX`'s own docblock already
+ * gives for why a *press* may not tint: *"a control that took the accent while being pressed
+ * would be claiming to have written something it has not."* Hover is a weaker gesture than a
+ * press and was making a stronger claim.
+ *
+ * `group-hover:bg-hair` replaces the fill: the same neutral tone step `SETTLED_GLYPH` uses
+ * for its own ground, so the box still visibly answers a pointer — it still reads as
+ * pressable — without spending the reserved colour on it. The border and the glyph stay
+ * `RECORDS_A_WATCH.ink`, unchanged at rest and on hover alike: this is still the one control
+ * allowed to be vermilion, because pressing it is what records the watch. Only the fill that
+ * used to arrive on hover is gone.
+ *
+ * `group-hover:`, not `hover:`, is unchanged and for its original reason: the element a
+ * pointer sits over is `RECORDING_HIT_BOX`, `9px` wider than this on every side, so the
+ * state has to answer to the group rather than to itself. `MarkWatchedButton` composes both
+ * of these with `errors/recovery-buttons.ts`'s `IN_FLIGHT`, on the hit box — a `filter:
+ * brightness()` dims everything it paints, chip included, so `IN_FLIGHT` needs no second
+ * copy here.
+ *
+ * **Declares `RECORDS_A_WATCH` — issue #313, the migration `app/accent-meaning.ts`'s own
+ * docblock left to whichever ticket next opened this file.** `border-accent` stays a
+ * literal: `AccentMeaning` exports no border form, the same gap `errors/recovery-buttons.ts`'s
+ * ghost pair fills the same way. `tests/accent-sweep.test.ts`'s manifest holds this file to
+ * eight accent tokens now, down from ten — the two the hover fill used to spend are gone,
+ * not migrated, because there is no fill left to declare.
  */
 export const RECORDING_GLYPH =
-  "flex items-center justify-center rounded-full border border-accent p-1 text-accent transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-ink";
+  `flex items-center justify-center rounded-full border border-accent p-1 ${RECORDS_A_WATCH.ink} transition-colors duration-150 group-hover:bg-hair`;
 
 /**
  * The **quiet** recording control — issue #196's *watched up to here*, and the only

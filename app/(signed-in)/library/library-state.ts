@@ -1,3 +1,4 @@
+import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
 import type { LibraryState } from "@/db/access";
 
 /**
@@ -11,7 +12,10 @@ import type { LibraryState } from "@/db/access";
  * itself.
  *
  * *Watching* is the only one in `accent` and *Caught up* the only one at full strength —
- * the other three are metadata, so they are dim.
+ * the other three are metadata, so they are dim. Issue #310 names *why* Watching may take
+ * the accent at all: `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD`, because this is
+ * the record's current position and not a fresh write — the same reasoning `SPEC.md` §3
+ * reserves a *different* accent constant, `RECORDS_A_WATCH`, for.
  *
  * *Caught up* moves from `text-text` to `text-ink` in the linen redesign. It is the same
  * decision it always was — *this one is at full strength* — resolved against a palette
@@ -20,7 +24,7 @@ import type { LibraryState } from "@/db/access";
  * would have been indistinguishable from the dim three beside it.
  */
 export const STATE_LABELS: Record<LibraryState, { label: string; className: string }> = {
-  watching: { label: "Watching", className: "text-accent" },
+  watching: { label: "Watching", className: LIVE_EDGE_OF_THE_RECORD.ink },
   caught_up: { label: "Caught up", className: "text-ink" },
   finished: { label: "Finished", className: "text-dim" },
   watchlist: { label: "Watchlist", className: "text-dim" },

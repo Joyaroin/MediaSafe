@@ -229,10 +229,14 @@ export function SelectionActionBar() {
       {/* Mounted for as long as there is a selection to be had, rather than only while one
           is open. The effect above closes it when the mode ends, and it can only do that if
           the element it closes is still here to be closed. */}
+      {/* Issue #311 re-narrows the frame: this dialog shares `add-to-list-control.tsx`'s
+          picker markup and had picked up the same borrowed `border-2 border-accent` —
+          the write-failure toast's own frame, on a routine, reversible pick. `border-hair`
+          keeps the same weight and surface. */}
       <dialog
         ref={dialogRef}
         aria-labelledby="bulk-add-to-list-h"
-        className="w-full max-w-[420px] border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
+        className="w-full max-w-[420px] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
       >
         <h2 id="bulk-add-to-list-h" className="bill-title text-bill-sm text-text">
           Add {formatTitleCount(view.selected.length)} to a list

@@ -76,10 +76,14 @@ export function DeleteListDialog({
   }
 
   return (
+    // Issue #311 re-narrows the frame: `DESIGN.md` §12 named this dialog as borrowing
+    // `border-2 border-accent` — the write-failure toast's own frame — for a routine
+    // dialog that is neither a failure nor irreversible. `border-hair` keeps the same
+    // weight and the same surface; only the colour that claimed *failure* is gone.
     <dialog
       ref={ref}
       aria-labelledby={`delete-list-${listId}-h`}
-      className="border-2 border-accent bg-ground p-6 text-text backdrop:bg-ground/80"
+      className="border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
     >
       <h2 id={`delete-list-${listId}-h`} className="bill-title text-bill-sm text-text">
         Delete &ldquo;{listName}&rdquo;?

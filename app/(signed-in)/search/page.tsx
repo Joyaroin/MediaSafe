@@ -5,6 +5,7 @@ import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { KIND_MODES } from "@/app/(signed-in)/library/kind-mode";
 import { NavTransition } from "../nav-transition";
 import { RecommendationRail } from "./recommendation-rail";
+import { SearchHeading } from "./search-heading";
 import { SearchSurface } from "./search-surface";
 
 /**
@@ -88,7 +89,7 @@ export default async function SearchPage() {
           its own `14px` instead, so that a card's edge sits inside the text gutter rather
           than on it. */}
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-[22px] pt-5 pb-12 lg:pb-16">
-        <h1 className="screen-title text-screen text-ink">Search</h1>
+        <SearchHeading />
 
         <p className="mt-4 max-w-[62ch] text-item leading-relaxed text-dim">
           The catalogue of everything there is. Your own library is somewhere else.

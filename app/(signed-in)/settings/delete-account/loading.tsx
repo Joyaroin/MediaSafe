@@ -18,7 +18,7 @@ export default function DeleteAccountLoading() {
       <DeleteAccountHeading />
 
       <div className="mt-8">
-        <PendingLine shape="form" />
+        <PendingLine shape="form" held />
       </div>
 
       <BackToSettings />

@@ -18,7 +18,7 @@ export default function ListDetailLoading() {
       <BackToListsBar />
 
       <div className="px-6 py-5">
-        <PendingLine shape="rows" />
+        <PendingLine shape="rows" held />
       </div>
     </main>
   );

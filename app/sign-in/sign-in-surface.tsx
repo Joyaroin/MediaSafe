@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { SignInFailure } from "@/errors/sign-in-failure";
+import { signInTreatment } from "@/errors/sign-in-treatment";
+import { StandaloneSignInInstruction } from "@/errors/standalone-sign-in-instruction";
 import { authClient } from "@/lib/auth-client";
 import { writeSignupTimezoneCookie } from "@/lib/timezone";
+
+import { readLaunchMode, serverLaunchMode, subscribeToLaunchMode } from "./launch-mode";
 
 /**
  * Screen 1 of `docs/design/v1-surfaces.md`: **one control and no form.**
@@ -27,6 +31,21 @@ import { writeSignupTimezoneCookie } from "@/lib/timezone";
  * oversight: success **is** the navigation away. Clearing it would make the button look
  * ready again for the frame or two before the browser leaves, which is exactly the
  * flicker `tvtracker` shipped.
+ *
+ * ── The fourth state: standalone, no session ─────────────────────────────────────────
+ *
+ * Issue #309. `launchMode` reads `app/sign-in/launch-mode.ts`'s store through
+ * `useSyncExternalStore` — the server renders `"browser"`, having no `window` to ask, and
+ * the browser corrects it in the same render pass rather than through a `setState` inside
+ * an effect (`lib/theme.ts` draws the identical line for the same lint rule).
+ * `errors/sign-in-treatment.ts` turns that plus *this surface only ever renders for a
+ * signed-out reader* (`app/sign-in/page.tsx`'s `isSignedIn()` redirect is the one caller
+ * of that check) into a treatment, and `"openInBrowser"` replaces the whole of what this
+ * component would otherwise return — button, in-flight state and failure region included
+ * — with `StandaloneSignInInstruction`. A standalone reader who has just failed a round
+ * trip still gets the instruction, not the failure region: the failure region's retry is
+ * the same broken round trip, and the instruction already tells them the one thing that
+ * works.
  */
 export function SignInSurface({
   /**
@@ -41,6 +60,11 @@ export function SignInSurface({
   const [failed, setFailed] = useState(arrivedFailed);
   const [reference, setReference] = useState<string | null>(null);
   const [inFlight, setInFlight] = useState(false);
+  const launchMode = useSyncExternalStore(
+    subscribeToLaunchMode,
+    readLaunchMode,
+    serverLaunchMode,
+  );
 
   async function continueWithGoogle() {
     setFailed(false);
@@ -78,6 +102,14 @@ export function SignInSurface({
       // half has neither, which is why the failure region renders without one there.
       setReference(referenceFor(new Error("Sign-in with Google could not be started.")));
     }
+  }
+
+  // `signedIn` is always `false` here: `app/sign-in/page.tsx` is the one caller of
+  // `isSignedIn()` and has already redirected a signed-in reader to `/` before this
+  // component renders. See the docblock above for what a standalone launch renders
+  // instead of everything below.
+  if (signInTreatment(launchMode, false) === "openInBrowser") {
+    return <StandaloneSignInInstruction />;
   }
 
   return (

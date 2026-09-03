@@ -1,5 +1,6 @@
 "use client";
 
+import * as m from "motion/react-m";
 import Link from "next/link";
 import { ViewTransition } from "react";
 
@@ -8,6 +9,7 @@ import { EpisodeStill } from "@/app/(signed-in)/library/episode-still";
 import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { DESKTOP_BREAKPOINT } from "@/app/(signed-in)/library/selectable-entry";
+import { carryPoster } from "@/app/poster-handoff-memory";
 import {
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
@@ -146,6 +148,23 @@ function countAfterShown(remaining: number, marked: number, spent: boolean): num
  *  every density, which is what `EpisodeStill` resolves it to. */
 export const ROW_STILL_WIDTH = 104;
 const ROW = "relative flex min-h-[72px] items-center gap-3.5 py-2.5";
+
+/**
+ * Issue #306 — both row kinds are `m.li layout` rather than a bare `<li>`, so the row
+ * *travels* when its position or size changes between renders instead of the browser
+ * painting the new layout in one frame. A title finishing above this row removes that
+ * `<li>` and every row below it reflows into the gap; a later render can put the row
+ * itself first once it is the most recently watched. Both are the same fact to Motion —
+ * a position that changed between two renders of an element it already knows — and
+ * `layout` is what makes it measure the difference and interpolate rather than snap.
+ *
+ * No local `transition` and no reduced-motion branch: `app/motion-provider.tsx`'s root
+ * `MotionConfig` supplies `smooth` to everything Motion animates and drops layout
+ * animation under `reducedMotion="user"`, so the reorder resolves instantly there without
+ * this file knowing the setting exists. The one thing this relies on that is not this
+ * file's own — every render below still keys on `entry.libraryEntryId`, never a position,
+ * which is what gives `layout` a stable identity to measure a move across at all.
+ */
 const STILL = "w-[104px] shrink-0 [--still-radius:8px]";
 
 function RowBody({
@@ -181,14 +200,9 @@ function RowBody({
        flow space (`watch-mark-motion.tsx`). No `overflow-hidden` and no radius: the row is
        divided by `UpNextGroup`'s hairline rather than drawn as a card, so there is no
        corner for the wash to escape. */
-    <li className={ROW}>
+    <m.li layout className={ROW}>
       <RowLink entry={entry} press={press} label={label}>
-        <RowFrame
-          entry={entry}
-          picture={picture}
-          press={press}
-          aboveFold={aboveFold}
-        />
+        <RowFrame entry={entry} picture={picture} aboveFold={aboveFold} />
 
         <div className="min-w-0 flex-1">
           <p className="label-line text-dim">{entry.titleName}</p>
@@ -226,7 +240,7 @@ function RowBody({
 
       {control}
       {sweep}
-    </li>
+    </m.li>
   );
 }
 
@@ -278,6 +292,10 @@ function RowLink({
   return (
     <Link
       href={`/titles/${entry.libraryEntryId}`}
+      // Issue #303: the phone's own press. A plain `Link` needs no `preventDefault` to
+      // carry the poster — this only has to run before the navigation it sits beside, and
+      // React runs a click handler before the browser follows the anchor either way.
+      onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}
       aria-label={label}
       className={shared}
     >
@@ -289,12 +307,10 @@ function RowLink({
 function RowFrame({
   entry,
   picture,
-  press,
   aboveFold,
 }: {
   entry: UpNextEntry;
   picture: CardPicture;
-  press: RowPress;
   aboveFold: boolean;
 }) {
   const { selectedEntryId } = useLibrarySelection();
@@ -325,17 +341,23 @@ function RowFrame({
       />
     );
 
-  /* The desktop's poster-to-hero transition, kept: a row that swaps the pane beside it is
-     the one press that has a shared element to hand over (`poster-transition-name.ts`).
-     The phone's row navigates to a different page and has nothing to share.
+  /* The poster-to-hero transition, on both presses — issue #303 reverses what this said
+     one ticket ago: *"The phone's row navigates to a different page and has nothing to
+     share."* That was true while the phone title route's pending frame replaced the
+     poster with bars before its own read resolved, which left no destination poster for
+     this row's name to pair against even once minted. The pending frame carries a poster
+     now (`app/poster-handoff-memory.ts`, read by `titles/[entryId]/pending-poster.tsx`),
+     so the phone's row has something to share and gets the same wrapper the desktop's
+     always had.
 
-     **`!selected` is load-bearing, and `up-next-tile.tsx` learned it first.** A view
+     **`!selected` is still load-bearing, and `up-next-tile.tsx` learned it first.** A view
      transition name may mark one on-screen element at a time, and the moment the pane
      beside this list is showing the poster it is holding the same name — so the row has to
-     have let go by then. The tile expressed this as two branches of a ternary; this
-     expresses it as the condition those branches were testing, which is the same rule
-     without the duplicated `<Poster>` beneath it. */
-  if (press !== "select" || selected) return frame;
+     have let go by then. `selected` only ever answers true for a `press="select"` row: the
+     phone's `press="episode"` rows render under a context no `select()` ever writes to
+     from that surface, so this is the one branch either press was already testing rather
+     than a second condition. */
+  if (selected) return frame;
   return (
     <ViewTransition name={railPosterTransitionName(entry.libraryEntryId)}>
       {frame}
@@ -395,7 +417,7 @@ export function UpNextPendingRow({
   aboveFold?: boolean;
 }) {
   return (
-    <li className={ROW}>
+    <m.li layout className={ROW}>
       <Link
         href={`/titles/${entry.libraryEntryId}`}
         className="pressable flex min-w-0 flex-1 items-center gap-3.5"
@@ -436,7 +458,7 @@ export function UpNextPendingRow({
       {/* The mark slot, empty — there is nothing to record against a title with no
           episodes, and `ROW`'s own floor is what keeps this row the height of the row it
           becomes when the mirror lands. */}
-    </li>
+    </m.li>
   );
 }
 

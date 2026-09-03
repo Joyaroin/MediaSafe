@@ -248,6 +248,7 @@ function SeasonList({
           episodeId={menuFor.id}
           titleName={titleName}
           episodeName={episodeFullName(menuFor)}
+          initialWatches={menuFor.watches}
           onClosed={() => setMenuFor(null)}
         />
       )}

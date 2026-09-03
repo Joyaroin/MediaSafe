@@ -10,6 +10,7 @@ import ListDetailLoading from "@/app/(signed-in)/lists/[listId]/loading";
 import DeleteAccountLoading from "@/app/(signed-in)/settings/delete-account/loading";
 import SettingsLoading from "@/app/(signed-in)/settings/loading";
 import UnownedTitleLoading from "@/app/(signed-in)/catalogue/[kind]/[tmdbId]/loading";
+import SearchLoading from "@/app/(signed-in)/search/loading";
 
 /**
  * The surfaces [#181](https://github.com/Joyaroin/MediaSafe/issues/181) converts — eleven
@@ -88,6 +89,26 @@ describe("An unowned title's detail", () => {
     // No poster either — unlike the desktop pane's `loading` frame, a cold route render
     // has no `selectedPosterPath` in hand to mount one from.
     expect(pending).not.toContain("<img");
+  });
+});
+
+/**
+ * Search — issue #302. Until now it was the one tab route with neither a pending nor a
+ * failure boundary: its rails streamed behind a fallback of `null`, so a slow connection
+ * saw nothing move for 243ms and then a hard cut. `search-heading.tsx` is the same
+ * three-caller shape `library-heading.tsx` and `you-heading.tsx` already use, so a reader
+ * waiting on search is never shown a different tab's heading — the property this test
+ * exists to pin down.
+ */
+describe("Search", () => {
+  it("names Search and carries a status role while its own boundary is pending", () => {
+    const pending = markupOf(createElement(SearchLoading));
+
+    expect(pending).toContain("Search");
+    expect(pending).toContain('role="status"');
+    // Never another surface's heading — the failure this boundary exists to rule out.
+    expect(pending).not.toContain("The library");
+    expect(pending).not.toContain(">You<");
   });
 });
 
