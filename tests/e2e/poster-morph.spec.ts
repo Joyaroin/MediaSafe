@@ -91,10 +91,31 @@ async function watchForMorphPair(page: Page, name: string): Promise<void> {
 
 /** Whether any transition observed since `watchForMorphPair` carried both halves of the
  *  named pair — the morph pairing rather than being skipped. */
+/**
+ * **Waits for the pair rather than sampling for it, and that is the whole of this
+ * helper.** Opening a title runs *two* transitions, not one: the first carries the grid
+ * or row away and records an old snapshot with no new half yet, and the second is the one
+ * that pairs — `::view-transition-group`, `-old` and `-new` all under the poster's name.
+ *
+ * The heading this spec waits on belongs to the destination, so it becomes visible while
+ * that second transition is still starting. Reading the observations at that moment sees
+ * only the first, reports no pair, and fails a morph that in fact ran — which is exactly
+ * what this asserted before, and it failed in CI against a build where the morph was
+ * working. A single sample cannot express *has not paired yet* and *did not pair*
+ * separately; polling until the timeout can, and the timeout is the only thing that means
+ * the morph is genuinely absent.
+ */
 async function morphPaired(page: Page): Promise<boolean> {
-  return page.evaluate(
-    () => window.__morphObservations?.some((o) => o.hasOld && o.hasNew) ?? false,
-  );
+  try {
+    await page.waitForFunction(
+      () => window.__morphObservations?.some((o) => o.hasOld && o.hasNew) ?? false,
+      undefined,
+      { timeout: 5_000 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 let seeded: SeededTitle;
