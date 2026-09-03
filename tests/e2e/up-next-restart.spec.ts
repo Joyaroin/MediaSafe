@@ -158,7 +158,27 @@ test("returning from a title still restores the pager's page and the rail's offs
    * So the first film tested the browser's scroll-into-view rather than this application's
    * memory, and a reader tapping a card they can see never meets that path at all.
    */
-  await page.getByRole("link", { name: new RegExp(filmNames[3]) }).click();
+  const film = page.getByRole("link", { name: new RegExp(filmNames[3]) });
+
+  /**
+   * **The offset is read after the card is in view, and asserted against itself.**
+   *
+   * How far the browser scrolls a card into view depends on where that card sits, which
+   * is a function of the viewport and the card width — so the offset the rail is *left*
+   * at differs between a developer's machine and a runner. Pinning a literal asserted the
+   * layout rather than the memory: the same correct application read `0` with the first
+   * card, `150` locally, and `300` in CI.
+   *
+   * So the card is brought into view first, the settled offset is read, and that is what
+   * returning has to restore. The guard keeps it from passing vacuously at zero.
+   */
+  await film.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
+    .toBeGreaterThan(0);
+  const leftAt = await upcomingMoviesRail(page).evaluate((el) => el.scrollLeft);
+
+  await film.click();
   await expect(page.getByRole("heading", { name: filmNames[3], level: 2 })).toBeVisible();
 
   await page.goBack();
@@ -169,5 +189,5 @@ test("returning from a title still restores the pager's page and the rail's offs
   );
   await expect
     .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
-    .toBe(150);
+    .toBe(leftAt);
 });
