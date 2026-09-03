@@ -22,6 +22,22 @@ import type { LibraryState } from "@/db/access";
  * where `--text` is a mid-tone body colour rather than the near-black it used to be, so
  * full strength is now `--ink`. The label sits on `--raised` inside a card, where `--text`
  * would have been indistinguishable from the dim three beside it.
+ *
+ * ── `className` is read by nothing today ─────────────────────────────────────────────
+ *
+ * Both surfaces that print a state word have stopped taking their colour from here.
+ * `title-hero.tsx` set the word in `--dim` when its progress bar took the accent, and the
+ * bill card has now dropped the word entirely for the same reason — its own bar takes the
+ * accent instead (`library-entry-cell.tsx`, `DESIGN.md` §11's second #324 amendment). So
+ * `label` is live and `className` is a declaration with no renderer.
+ *
+ * It is left standing rather than deleted here because `tests/accent-sweep.test.ts`'s
+ * manifest, `tests/accent-meaning.test.ts`'s live-edge block and `DESIGN.md` §3's role
+ * table all name this file as a `LIVE_EDGE_OF_THE_RECORD` call site, and retiring the
+ * field means changing that contract — a ticket that owns the accent table, not a
+ * drive-by inside a colour change to one card. **Do not add a caller to bring it back to
+ * life**: a state word painted in the accent anywhere on the bill puts two accent roles on
+ * the library screen, which §0 forbids.
  */
 export const STATE_LABELS: Record<LibraryState, { label: string; className: string }> = {
   watching: { label: "Watching", className: LIVE_EDGE_OF_THE_RECORD.ink },
