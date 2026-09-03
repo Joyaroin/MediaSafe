@@ -1,19 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  airDateInWords,
   episodeCode,
-  episodeMetaLine,
   remainingInWords,
 } from "@/app/(signed-in)/up-next/episode-card-line";
 
 /**
- * The four strings an episode card prints — issue #250.
+ * The two strings an episode card prints — issue #250, narrowed by #321.
  *
- * They are a module rather than four expressions inside the card precisely so this suite
- * can exist: `vitest.config.mts` runs in `node` with no DOM, which is the same split
+ * They are a module rather than expressions inside the card precisely so this suite can
+ * exist: `vitest.config.mts` runs in `node` with no DOM, which is the same split
  * `up-next-mark.ts` and `tests/up-next-tile-mark.test.ts` already draw. A rule that only
  * exists inside a component is a rule nothing here can assert.
+ *
+ * `airDateInWords` and `episodeMetaLine` were here too, and are deleted with #321: the air
+ * date and the runtime come off the meta line, and `episodeMetaLine` was the whole of what
+ * read either of them. `library/episode-facts.ts` keeps its own `airDateInWords`, in a
+ * longer register for a different surface, and its suite is untouched.
  */
 describe("episodeCode", () => {
   it("pads both numbers to two digits", () => {
@@ -50,52 +53,5 @@ describe("remainingInWords", () => {
    */
   it("prints zero rather than going absent", () => {
     expect(remainingInWords(0)).toBe("+0 remaining");
-  });
-});
-
-describe("airDateInWords", () => {
-  it("writes the short month, so the card's last line does not wrap", () => {
-    expect(airDateInWords("2026-03-12")).toBe("12 Mar 2026");
-  });
-
-  /**
-   * An `air_date` is a `date` column with no instant in it. Reading it in the runner's
-   * local zone would move a date across midnight for anyone west of UTC — the same
-   * exposure `db/views.ts` refuses for the comparison, refused here for the rendering.
-   */
-  it("does not shift the date into the local zone", () => {
-    expect(airDateInWords("2026-01-01")).toBe("1 Jan 2026");
-    expect(airDateInWords("2026-12-31")).toBe("31 Dec 2026");
-  });
-
-  it("is null where TMDB has not dated the episode", () => {
-    expect(airDateInWords(null)).toBeNull();
-  });
-});
-
-describe("episodeMetaLine", () => {
-  it("joins the date and the runtime with the build's own separator", () => {
-    expect(episodeMetaLine({ airDate: "2026-03-12", runtimeMins: 47 })).toBe(
-      "12 Mar 2026 · 47 min",
-    );
-  });
-
-  it("drops the date it does not have rather than placeholding it", () => {
-    expect(episodeMetaLine({ airDate: null, runtimeMins: 47 })).toBe("47 min");
-  });
-
-  it("drops the runtime it does not have", () => {
-    expect(episodeMetaLine({ airDate: "2026-03-12", runtimeMins: null })).toBe(
-      "12 Mar 2026",
-    );
-  });
-
-  /**
-   * `null` and not `""`: the card renders no `<p>` at all for it, rather than an empty one
-   * holding the space a real line would have. `title-meta-line.ts` states the same reason
-   * for the same shape.
-   */
-  it("is null when the catalogue has neither fact", () => {
-    expect(episodeMetaLine({ airDate: null, runtimeMins: null })).toBeNull();
   });
 });

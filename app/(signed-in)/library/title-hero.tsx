@@ -149,7 +149,7 @@ export function TitleHero({
             posterPath={detail.posterPath}
             name={detail.name}
             width={140}
-            className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:12px]"
+            className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:var(--radius-5)]"
             aboveFold
           />
         </div>
@@ -249,8 +249,8 @@ function WatchedBar({ watched, total }: { watched: number; total: number }) {
 
   return (
     <div className="mt-3">
-      <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-full bg-hair">
-        <div className="h-full rounded-full bg-accent" style={{ width: `${filled}%` }} />
+      <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair">
+        <div className="h-full rounded-[var(--radius-full)] bg-accent" style={{ width: `${filled}%` }} />
       </div>
 
       <p className="code-line mt-2 text-dim" data-numeric>

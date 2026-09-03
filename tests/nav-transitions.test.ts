@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { backOrigin, isCurrentRoute } from "@/app/nav-route";
+import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
 
 /**
  * Moving between the four phone tabs.
@@ -408,5 +408,42 @@ describe("both detail routes leave by that bar", () => {
     // is the whole of the complaint #292 answers, and it would read as a working link.
     expect(BACK_BAR).toContain("backOrigin(");
     expect(BACK_BAR).toContain("‹ {label}");
+  });
+});
+
+/**
+ * ── Is a press a re-press? — issue #323 ───────────────────────────────────────────────
+ *
+ * `isTabRepress` is the pure decision `use-up-next-repress.ts` binds to a click: whether
+ * the reader pressing `href` is already standing on it. It is built on `isCurrentRoute`
+ * rather than a second copy of its rule, so the two properties below are really one — a
+ * re-press is exactly `isCurrentRoute`'s own "current" — asserted here in the tab's own
+ * words rather than through the routing rule's.
+ */
+describe("whether a press is a re-press of the tab already showing", () => {
+  it("is a re-press when the reader is already exactly there", () => {
+    expect(isTabRepress("/up-next", "/up-next")).toBe(true);
+  });
+
+  it("is a re-press from anything pushed under the destination too", () => {
+    // The same prefix rule `isCurrentRoute` already applies for "current" styling — a
+    // second, disagreeing rule here would be the drift its own docblock warns about.
+    expect(isTabRepress("/up-next/anything", "/up-next")).toBe(true);
+  });
+
+  it("is not a re-press of a tab the reader is not on", () => {
+    expect(isTabRepress("/library", "/up-next")).toBe(false);
+  });
+
+  it("is not a re-press by bare prefix — a section is not every address near it", () => {
+    expect(isTabRepress("/up-nextish", "/up-next")).toBe(false);
+  });
+
+  it("agrees with isCurrentRoute for every sample the routing suite already covers", () => {
+    for (const previous of ORIGIN_SAMPLES) {
+      for (const destination of ["/up-next", "/library", "/search"]) {
+        expect(isTabRepress(previous, destination)).toBe(isCurrentRoute(previous, destination));
+      }
+    }
   });
 });

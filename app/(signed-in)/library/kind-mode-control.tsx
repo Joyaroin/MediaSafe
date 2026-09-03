@@ -41,7 +41,7 @@ export function KindModeControl({
     <div
       role="group"
       aria-label="Films or shows"
-      className="mt-4 flex w-full rounded-full bg-raised p-[3px]"
+      className="mt-4 flex w-full rounded-[var(--radius-full)] bg-raised p-[3px]"
     >
       {KIND_MODES.map((mode) => {
         const selected = mode.value === value;
@@ -52,7 +52,7 @@ export function KindModeControl({
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(mode.value)}
-            className={`relative flex h-9 flex-1 items-center justify-center rounded-full text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
+            className={`relative flex h-9 flex-1 items-center justify-center rounded-[var(--radius-full)] text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
               selected ? "text-ground" : "text-dim hover:text-ink"
             }`}
           >
@@ -62,7 +62,7 @@ export function KindModeControl({
             {selected ? (
               <m.span
                 layoutId="library-kind-mode"
-                className="absolute inset-0 rounded-full bg-ink"
+                className="absolute inset-0 rounded-[var(--radius-full)] bg-ink"
                 transition={snappy}
               />
             ) : null}

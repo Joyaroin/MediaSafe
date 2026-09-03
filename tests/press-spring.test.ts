@@ -1448,15 +1448,28 @@ describe("the tab bar's icon leads its label", () => {
    * so the bar is still a client component only for `usePathname` — the reason it has
    * been one since #102 — and the press's one delegated listener (asserted above) is
    * still the whole of its runtime.
+   *
+   * **Issue #323 reverses the narrower half of this: the bar now carries one handler,
+   * and only one.** Pressing Up next while already on Up next has something to do besides
+   * navigate, and `use-up-next-repress.ts` is where that gesture is decided — this bar
+   * only hands it to the one `<Link>` it belongs to. What the lead's own claim still holds:
+   * no state, no effect, no delegated listener of the bar's own and no `matchMedia` branch.
+   * The assertion below is narrowed to say exactly that, rather than widened to say
+   * nothing.
    */
-  it("adds no state, no handler and no listener to the bar", () => {
+  it("adds no state, no bare pointer listener and no matchMedia branch to the bar", () => {
     const source = codeOf(TAB_BAR);
 
     expect(source).not.toContain("useState");
     expect(source).not.toContain("useEffect");
     expect(source).not.toContain("addEventListener");
-    expect(source).not.toMatch(/onPointer|onClick|onTouch/);
+    expect(source).not.toMatch(/onPointer|onTouch/);
     expect(source).not.toContain("matchMedia");
+
+    // The one handler this bar wires up, and nowhere else — every other tab's `<Link>` is
+    // still bare.
+    expect(source.match(/onClick=/g)).toHaveLength(1);
+    expect(source).toContain('onClick={href === "/up-next" ? onUpNextLinkClick : undefined}');
   });
 
   /**

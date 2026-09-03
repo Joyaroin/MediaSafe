@@ -37,8 +37,9 @@ import { describe, expect, it } from "vitest";
  *
  * The behaviour that is *not* source-read is in `tests/up-next-card-mark.test.ts` (the
  * mark, the advance, the reversal and the arrived-empty rule, against a real store) and
- * `tests/up-next-episode-card-line.test.ts` (the four strings), both of which drive real
- * functions. This file covers only what is genuinely structural.
+ * `tests/up-next-episode-card-line.test.ts` (the two surviving strings, #250 narrowed by
+ * #321), both of which drive real functions. This file covers only what is genuinely
+ * structural.
  */
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
@@ -77,15 +78,95 @@ const codeOf = (source: string) =>
 
 /** Every source file a docblock could legitimately be citing. Built once — the citation
  *  check below asks it a question per reference. */
-const ALL_SOURCES = ["app", "db", "cache", "errors", "lib", "tmdb"].flatMap((directory) =>
-  sourceFiles(path.join(REPOSITORY_ROOT, directory)),
+const ALL_SOURCES = ["app", "db", "cache", "errors", "lib", "tmdb"].flatMap(
+  (directory) => sourceFiles(path.join(REPOSITORY_ROOT, directory)),
 );
+
+/**
+ * **Issue #320 — the Up next row draws the title's poster, and the episode's own still is
+ * retired from it.** `up-next-episode-row.tsx` cannot be rendered under Vitest — it reaches
+ * `@/db/access`'s `isPendingEntry`, which pulls in the `server-only`-guarded module
+ * `up-next-phone-rails.test.ts`'s own docblock names — so this is a rendered-markup
+ * property read the way this whole suite reads them: off the source, the same device
+ * `tests/nav-transitions.test.ts` and `tests/up-next-reorder.test.ts` already use for this
+ * exact file.
+ *
+ * Both row kinds are asserted: `RowFrame` (the markable and non-markable episode row) and
+ * `UpNextPendingRow`, which shares the same box and the same reason a taller still-shaped
+ * hole would be wrong for it too — a pending row becomes an episode row the moment the
+ * mirror lands, and the two must already agree on the frame's shape.
+ */
+describe("the Up next row draws a poster and not a still", () => {
+  const code = codeOf(sourceAt(TILE));
+
+  it("draws through Poster, on both row kinds", () => {
+    expect(code.match(/<Poster\b/g)).toHaveLength(2);
+  });
+
+  it("imports no still component and reads no still path", () => {
+    expect(code).not.toMatch(/\bEpisodeStill\b/);
+    expect(code).not.toMatch(/\bstillPath\b/);
+  });
+
+  it("draws the poster's own 2/3 box, not the still's 16/9 one", () => {
+    expect(code).not.toMatch(/\bstill-radius\b/);
+    // The row's own former constants — the still's width and its class string — renamed to
+    // `ROW_POSTER_WIDTH`/`POSTER` rather than left beside the new box under a stale name.
+    expect(code).not.toMatch(/\bSTILL\b/);
+    expect(code).not.toMatch(/\bROW_STILL_WIDTH\b/);
+    expect(code).toMatch(/\[--poster-radius:var\(--radius-2\)\]/);
+  });
+});
+
+/**
+ * **Issue #321 — the meta line drops the air date and the runtime.** Same device as the
+ * still's own describe block above, and for the identical reason: `up-next-episode-row.tsx`
+ * cannot be rendered under Vitest, so this reads what the rendered markup would carry off
+ * the source.
+ *
+ * `episode-card-line.ts`'s own suite (`tests/up-next-episode-card-line.test.ts`) proves the
+ * two surviving strings are correct; this proves the row still calls them and calls nothing
+ * else — the row's half of *removing two fields must not leave a gap*.
+ */
+describe("the Up next row's meta line carries no air date and no runtime", () => {
+  const code = codeOf(sourceAt(TILE));
+
+  it("reads the episode code, the remaining count, and nothing else, from episode-card-line", () => {
+    expect(code).toMatch(
+      /import \{ episodeCode, remainingInWords \} from "\.\/episode-card-line"/,
+    );
+    expect(code).not.toMatch(/\bepisodeMetaLine\b/);
+    expect(code).not.toMatch(/\bairDateInWords\b/);
+  });
+
+  it("never reads an air date or a runtime off the entry or the queue", () => {
+    expect(code).not.toMatch(/\bairDate\b/);
+    expect(code).not.toMatch(/\bruntimeMins\b/);
+  });
+
+  it("still names the episode as real text beside the code, never the code alone", () => {
+    // SPEC.md §4 — the code is a separate dim label, the episode's own name is the line
+    // underneath it, and shortening the meta line must not collapse the two into one.
+    expect(code).toMatch(
+      /className="bill-title text-bill-xs text-text">\{code\}/,
+    );
+    expect(code).toMatch(/\{episodeName\}/);
+  });
+
+  it("keeps the remaining count on the tabular-figures hook", () => {
+    expect(code).toMatch(
+      /data-numeric>\s*\{remainingInWords\(remainingAfter\)\}/,
+    );
+  });
+});
 
 describe("the landing screen shows two rails and the five groups are gone", () => {
   it("renders the two rails under the phone's own breakpoint", () => {
     const page = sourceAt(PAGE);
 
-    expect(page).toMatch(/<UpNextPhoneRails rails=\{rails\} films=\{films\} \/>/);
+    expect(page).toMatch(
+      /<UpNextPhoneRails rails=\{rails\} films=\{films\} \/>/,
+    );
     // The gate is the page's, and it is a Tailwind fact rather than a server one — #136
     // deleted this build's only `matchMedia` branch deliberately.
     expect(page).toMatch(/className="lg:hidden"/);
@@ -150,20 +231,29 @@ describe("the landing screen shows two rails and the five groups are gone", () =
   it("leaves no citation of the deleted title sheet anywhere in the app", () => {
     for (const file of sourceFiles(path.join(REPOSITORY_ROOT, "app"))) {
       const relative = path.relative(REPOSITORY_ROOT, file);
-      const cites = /`[^`]*title-sheet[^`]*\.tsx?`/.test(readFileSync(file, "utf8"));
-      expect({ file: relative, cites }).toEqual({ file: relative, cites: false });
+      const cites = /`[^`]*title-sheet[^`]*\.tsx?`/.test(
+        readFileSync(file, "utf8"),
+      );
+      expect({ file: relative, cites }).toEqual({
+        file: relative,
+        cites: false,
+      });
     }
   });
 
   /** The same, for the five group components — the deletion is only complete when nothing
    *  still points a reader at them. */
   it("leaves no citation of the five deleted group components", () => {
-    const gone = /`[^`]*(group-tile|home-group|group-screen|ongoing-tile|ongoing-group|up-next-groups)[^`]*\.tsx?`/;
+    const gone =
+      /`[^`]*(group-tile|home-group|group-screen|ongoing-tile|ongoing-group|up-next-groups)[^`]*\.tsx?`/;
 
     for (const file of sourceFiles(path.join(REPOSITORY_ROOT, "app"))) {
       const relative = path.relative(REPOSITORY_ROOT, file);
       const cites = gone.test(readFileSync(file, "utf8"));
-      expect({ file: relative, cites }).toEqual({ file: relative, cites: false });
+      expect({ file: relative, cites }).toEqual({
+        file: relative,
+        cites: false,
+      });
     }
   });
 
@@ -182,12 +272,16 @@ describe("the landing screen shows two rails and the five groups are gone", () =
    * `GroupSection` and says so in the past tense — is not caught by a substring.
    */
   it("leaves no citation of the deleted group components by name either", () => {
-    const gone = /\b(UpNextGroups|GroupTile|GroupScreen|HomeGroup|OngoingTile|OngoingGroup|TitleSheetProvider)\b/;
+    const gone =
+      /\b(UpNextGroups|GroupTile|GroupScreen|HomeGroup|OngoingTile|OngoingGroup|TitleSheetProvider)\b/;
 
     for (const file of sourceFiles(path.join(REPOSITORY_ROOT, "app"))) {
       const relative = path.relative(REPOSITORY_ROOT, file);
       const cites = gone.test(readFileSync(file, "utf8"));
-      expect({ file: relative, cites }).toEqual({ file: relative, cites: false });
+      expect({ file: relative, cites }).toEqual({
+        file: relative,
+        cites: false,
+      });
     }
   });
 
@@ -217,17 +311,23 @@ describe("the landing screen shows two rails and the five groups are gone", () =
 
     for (const file of mine) {
       const source = sourceAt(file);
-      const cited = [...source.matchAll(/`([a-z0-9-]+\/)*([a-z0-9-]+\.tsx?)`/g)].map(
-        ([whole]) => whole.slice(1, -1),
-      );
+      const cited = [
+        ...source.matchAll(/`([a-z0-9-]+\/)*([a-z0-9-]+\.tsx?)`/g),
+      ].map(([whole]) => whole.slice(1, -1));
       checked += cited.length;
 
       for (const reference of cited) {
         // A bare basename is cited relative to nothing in particular, so the check is that
         // some file of that name exists somewhere under `app/`, `db/` or `cache/`.
         const basename = path.basename(reference);
-        const found = ALL_SOURCES.some((one) => path.basename(one) === basename);
-        expect({ file, reference, found }).toEqual({ file, reference, found: true });
+        const found = ALL_SOURCES.some(
+          (one) => path.basename(one) === basename,
+        );
+        expect({ file, reference, found }).toEqual({
+          file,
+          reference,
+          found: true,
+        });
       }
     }
 
@@ -295,8 +395,15 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
   });
 
   it("names all three, so none can be dropped without this failing", () => {
-    for (const rail of ["rails.ongoing", "rails.comingBack", "rails.oldFriends"]) {
-      expect({ rail, present: source.includes(rail) }).toEqual({ rail, present: true });
+    for (const rail of [
+      "rails.ongoing",
+      "rails.comingBack",
+      "rails.oldFriends",
+    ]) {
+      expect({ rail, present: source.includes(rail) }).toEqual({
+        rail,
+        present: true,
+      });
     }
   });
 
@@ -305,8 +412,12 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
   it("leaves the read's three arrays as three", () => {
     const access = sourceAt("db/access.ts");
     expect(access).toMatch(/export interface UpNextRails \{[^}]*\bongoing\b/);
-    expect(access).toMatch(/export interface UpNextRails \{[^}]*\bcomingBack\b/);
-    expect(access).toMatch(/export interface UpNextRails \{[^}]*\boldFriends\b/);
+    expect(access).toMatch(
+      /export interface UpNextRails \{[^}]*\bcomingBack\b/,
+    );
+    expect(access).toMatch(
+      /export interface UpNextRails \{[^}]*\boldFriends\b/,
+    );
   });
 });
 
@@ -361,7 +472,9 @@ describe("both rails snap to the page gutter and leave the next card peeking", (
    */
   it("puts the gutter on the track rather than on the section around it", () => {
     expect(section).toMatch(/<section className="pt-\[26px\]">/);
-    expect(section).toMatch(/<RememberedTrack[\s\S]*?className="[^"]*px-\[22px\]/);
+    expect(section).toMatch(
+      /<RememberedTrack[\s\S]*?className="[^"]*px-\[22px\]/,
+    );
   });
 
   it("hides the scrollbar without hiding that there is more", () => {
@@ -378,7 +491,9 @@ describe("the count is on the card and never on a rail head", () => {
    * of 62* line with the words filed off.
    */
   it("puts the remaining count on the episode card", () => {
-    expect(sourceAt(EPISODE_CARD)).toMatch(/remainingInWords\(remainingAfter\)/);
+    expect(sourceAt(EPISODE_CARD)).toMatch(
+      /remainingInWords\(remainingAfter\)/,
+    );
   });
 
   it("gives the rail heads plain labels with no numeral in them", () => {
@@ -418,14 +533,18 @@ describe("the films rail", () => {
   /** Both predicates live in the read, and both are predicates rather than slices. */
   it("is the entries standing at Watchlist whose title is a film", () => {
     const access = sourceAt("db/access.ts");
-    expect(access).toMatch(/eq\(libraryEntryState\.state, "watchlist" satisfies LibraryState\)/);
+    expect(access).toMatch(
+      /eq\(libraryEntryState\.state, "watchlist" satisfies LibraryState\)/,
+    );
     expect(access).toMatch(/eq\(title\.kind, "film" satisfies TitleKind\)/);
   });
 
   it("navigates to the title rather than opening anything over the screen", () => {
     // `\s+` rather than one space: #293 gave the link a `transitionTypes` of its own, so
     // the attributes wrapped. What this asserts is the destination, not the formatting.
-    expect(source).toMatch(/<Link\s+href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/);
+    expect(source).toMatch(
+      /<Link\s+href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/,
+    );
   });
 
   /**
@@ -434,7 +553,9 @@ describe("the films rail", () => {
    * would be a second marking path with its own optimism, rollback and toast.
    */
   it("carries no mark control of its own", () => {
-    expect(source).not.toMatch(/useUpNextMark|WatchSweep|CheckmarkIcon|markFrom/);
+    expect(source).not.toMatch(
+      /useUpNextMark|WatchSweep|CheckmarkIcon|markFrom/,
+    );
   });
 
   /** A server component: no mark, no selection, no scroll state, so no bundle cost. */
@@ -451,13 +572,17 @@ describe("empty and failed are never the same thing", () => {
     expect(sourceAt(EPISODE_RAIL)).toMatch(
       /if \(pending\.length === 0 && showing\.length === 0\) return null;/,
     );
-    expect(sourceAt(FILM_RAIL)).toMatch(/if \(films\.length === 0\) return null;/);
+    expect(sourceAt(FILM_RAIL)).toMatch(
+      /if \(films\.length === 0\) return null;/,
+    );
   });
 
   /** A screen with nothing at all is a *different* fact from either rail being empty, and
    *  it gets the handoff's own sentence rather than a blank page. */
   it("gives a screen with nothing at all the handoff's sentence", () => {
-    expect(sourceAt(SURFACE)).toMatch(/if \(noEpisodes && films\.length === 0\) return <UpNextNothing \/>;/);
+    expect(sourceAt(SURFACE)).toMatch(
+      /if \(noEpisodes && films\.length === 0\) return <UpNextNothing \/>;/,
+    );
 
     const nothing = sourceAt(NOTHING);
     expect(nothing).toContain("Nothing queued for tonight");
@@ -487,14 +612,19 @@ describe("empty and failed are never the same thing", () => {
   it("routes a failed read to the inline treatment with a reference id", () => {
     const error = sourceAt(`${UP_NEXT}/error.tsx`);
     expect(error).toMatch(/referenceForBoundary\(error\)/);
-    expect(error).toMatch(/<ReadFailure reference=\{reference\} retry=\{retry\} \/>/);
+    expect(error).toMatch(
+      /<ReadFailure reference=\{reference\} retry=\{retry\} \/>/,
+    );
   });
 
   it("catches nothing anywhere on the read path", () => {
     for (const file of [PAGE, SURFACE, EPISODE_RAIL, FILM_RAIL]) {
       const relative = file;
       const catches = /\bcatch\b/.test(sourceAt(file));
-      expect({ file: relative, catches }).toEqual({ file: relative, catches: false });
+      expect({ file: relative, catches }).toEqual({
+        file: relative,
+        catches: false,
+      });
     }
   });
 });
@@ -567,7 +697,9 @@ describe("every tile and card on Up next opens the thing it names", () => {
    * reader it is a link.
    */
   it("makes the desktop row a link to the library entry's page", () => {
-    expect(tile).toMatch(/<Link\s+href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/);
+    expect(tile).toMatch(
+      /<Link\s+href=\{`\/titles\/\$\{entry\.libraryEntryId\}`\}/,
+    );
 
     /**
      * The tile this replaced carried **no** `<button>` at all, and that assertion was the
@@ -632,7 +764,9 @@ describe("every tile and card on Up next opens the thing it names", () => {
   it("leaves the recording control on the same episode it always recorded", () => {
     const card = codeOf(sourceAt(EPISODE_CARD));
 
-    expect(card).toMatch(/aria-label=\{`Mark \$\{queuedEpisodeFullName\(episode\)\} watched`\}/);
+    expect(card).toMatch(
+      /aria-label=\{`Mark \$\{queuedEpisodeFullName\(episode\)\} watched`\}/,
+    );
     expect(card).toMatch(/onClick=\{mark\.mark\}/);
   });
 
@@ -680,9 +814,12 @@ describe("every tile and card on Up next opens the thing it names", () => {
     const guard = tile.indexOf("matchMedia(DESKTOP_BREAKPOINT)");
     expect(guard).toBeGreaterThan(-1);
 
-    const writes = [...tile.matchAll(/\bselect\(/g)].map((match) => match.index);
+    const writes = [...tile.matchAll(/\bselect\(/g)].map(
+      (match) => match.index,
+    );
     expect(writes.length).toBeGreaterThan(0);
-    for (const at of writes) expect({ at, after: at > guard }).toEqual({ at, after: true });
+    for (const at of writes)
+      expect({ at, after: at > guard }).toEqual({ at, after: true });
   });
 
   /**
@@ -778,7 +915,7 @@ describe("the recording control has a dead zone from the card's tap area", () =>
   it("leaves the card's box and the rail's layout alone", () => {
     expect(code).toMatch(/CARD_WIDTH = 262/);
     expect(code).toMatch(/CARD = "w-\[262px\] shrink-0 snap-start"/);
-    expect(code).toMatch(/FRAME = "w-full \[--still-radius:0\]"/);
+    expect(code).toMatch(/FRAME = "w-full \[--still-radius:var\(--radius-none\)\]"/);
   });
 
   /**
@@ -806,7 +943,9 @@ describe("the recording control has a dead zone from the card's tap area", () =>
    * be the one thing the ticket rules out.
    */
   it("adds no instrumentation to the tap", () => {
-    expect(code).not.toMatch(/captureMessage|addBreadcrumb|Sentry|analytics|track\(|beacon/i);
+    expect(code).not.toMatch(
+      /captureMessage|addBreadcrumb|Sentry|analytics|track\(|beacon/i,
+    );
   });
 });
 
@@ -877,8 +1016,12 @@ describe("the documents record the reversal", () => {
     expect(section).toMatch(/a card leads to the thing it names/);
 
     const lines = section.split("\n");
-    const quoted = lines.filter((line) => line.trimStart().startsWith(">")).join("\n");
-    const asserted = lines.filter((line) => !line.trimStart().startsWith(">")).join("\n");
+    const quoted = lines
+      .filter((line) => line.trimStart().startsWith(">"))
+      .join("\n");
+    const asserted = lines
+      .filter((line) => !line.trimStart().startsWith(">"))
+      .join("\n");
 
     expect(quoted).toMatch(/the same kind of place/);
     expect(asserted).not.toMatch(/the same kind of place/);

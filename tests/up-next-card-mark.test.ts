@@ -51,15 +51,17 @@ function episodeAt(seasonNo: number, episodeNo: number, name: string | null = nu
 }
 
 /**
- * The two artwork paths are overridable because #269's rule is about exactly them: a card
- * whose episode has no still, and a title that has no poster either, are the two cases the
- * picture rule exists to answer. Everything else about the entry is fixed, so a test that
- * is not about artwork reads as though these were still constants.
+ * The poster path is overridable because `cardPicture`'s rule (#269, narrowed by #320) is
+ * about exactly it: a title with no poster is the one case the picture rule still has to
+ * answer. `stillPath` is fixed rather than parameterised — #320 retired it from the
+ * picture rule entirely, and it is set here only because `UpNextEntry` still carries the
+ * mirrored field (#246) for the episode page that owns it, unrelated to anything this file
+ * asserts.
  */
 function entryWith(
   episodes: readonly QueuedEpisode[],
   more = false,
-  artwork: { stillPath?: string | null; posterPath?: string | null } = {},
+  artwork: { posterPath?: string | null } = {},
 ): UpNextEntry {
   return {
     libraryEntryId: "entry-1",
@@ -73,7 +75,7 @@ function entryWith(
     episodeNo: episodes[0]?.episodeNo ?? 1,
     airDate: "2015-02-08",
     runtimeMins: 47,
-    stillPath: artwork.stillPath === undefined ? "/still.jpg" : artwork.stillPath,
+    stillPath: "/still.jpg",
     remaining: episodes.length,
     queue: { episodes, more },
   };
@@ -460,79 +462,60 @@ describe("an Ongoing tile's mark", () => {
 });
 
 /**
- * The picture a next-episodes card draws — issue #269.
- *
- * The complaint the ticket is written from: a reader marks tonight's episode, the card
- * advances, and the frame goes blank — because `QueuedEpisode` carries no still and the
- * card had nothing to put there. The card that was mostly artwork becomes a card with a
- * hole in it, and the reader did nothing but the one thing the card is for.
+ * The picture a next-episodes surface draws — issue #269, narrowed by issue #320.
  *
  * ── Why the rule is asserted here rather than through a render ────────────────────────
  *
  * It lives in `up-next-mark.ts`'s pure half for the reason everything else in that half
- * does: *which picture* is a consequence of *which episode the card is on*, which is the
- * one derivation this module owns. Asserting it against a rendered card would put the one
- * property the ticket exists for behind a DOM this suite deliberately does not have
- * (`SPEC.md` §6), and would let the rule drift into the component that renders it.
+ * does: *which picture* is a derivation this module owns. Asserting it against a rendered
+ * card would put the one property the ticket exists for behind a DOM this suite
+ * deliberately does not have (`SPEC.md` §6), and would let the rule drift into the
+ * component that renders it.
  *
- * The three properties, and they are the ticket's own: a card that has advanced still
- * names a picture; a missing still falls back to the poster; a title with neither is the
- * held frame.
+ * ── What #320 changed here ───────────────────────────────────────────────────────────
+ *
+ * Until #320 this answered *which episode is the card on* — the head-of-run episode's own
+ * still before anything was pressed, the title's poster once a mark advanced past it,
+ * because a stale still from the episode just watched would be a wrong picture rather than
+ * a missing one. The still is retired from the rule now: `cardPicture` reads the entry's
+ * poster and nothing else, so it takes no store and does not move with a mark, a rollback
+ * or *Undo* — there is no still left in the rule for a position to walk back to. The tests
+ * that used to prove the walk (a mark advancing the picture, a rollback restoring it) are
+ * replaced by their own negative: the picture is unchanged across every one of those
+ * events, because it was never a function of them.
  */
-describe("the picture a next-episodes card draws", () => {
-  it("names the episode's own still before anything is pressed", () => {
-    const { marks } = harness();
+describe("the picture a next-episodes surface draws", () => {
+  it("draws the title's poster, not the episode's own still", () => {
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
-    expect(cardPicture(marks, entry)).toEqual({ kind: "still", path: "/still.jpg" });
+    // `entryWith` sets a stillPath too (`/still.jpg`) — #246's mirrored field, still in the
+    // data (`SPEC.md`'s no-schema-change constraint) and still ignored by this rule.
+    expect(cardPicture(entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
   });
 
-  it("still names a picture once a mark has advanced the card", async () => {
-    const { marks } = harness();
-    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
-
-    void markFromCard(marks, entry, entry.queue.episodes[0]);
-    await settle();
-
-    // The whole ticket, in one assertion: the card advanced and the frame is not empty.
-    // The still is dropped because it belongs to the episode the reader just watched — a
-    // frame from *that* episode over the name of the next one is a wrong picture rather
-    // than a missing one — so the title's poster takes the slot.
-    expect(cardPicture(marks, entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
-  });
-
-  it("falls back to the title's poster when the episode has no still", () => {
-    const { marks } = harness();
-    const entry = entryWith([episodeAt(1, 2)], false, { stillPath: null });
-
-    expect(cardPicture(marks, entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
-  });
-
-  it("holds the frame when the title has neither a still nor a poster", () => {
-    const { marks } = harness();
-    const entry = entryWith([episodeAt(1, 2)], false, {
-      stillPath: null,
-      posterPath: null,
-    });
+  it("holds the frame when the title has no poster", () => {
+    const entry = entryWith([episodeAt(1, 2)], false, { posterPath: null });
 
     // The existing rule, unchanged: the frame keeps its space and nothing is drawn in it.
     // No glyph and no apology — `DESIGN.md` §8.
-    expect(cardPicture(marks, entry)).toEqual({ kind: "none" });
+    expect(cardPicture(entry)).toEqual({ kind: "none" });
   });
 
-  it("holds the frame for an advanced card whose title has no poster either", async () => {
+  it("does not move when a mark advances the card", async () => {
     const { marks } = harness();
-    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)], false, {
-      posterPath: null,
-    });
+    const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
+    const before = cardPicture(entry);
     void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
-    expect(cardPicture(marks, entry)).toEqual({ kind: "none" });
+    // The whole of #320's simplification, in one assertion: the picture is the entry's own
+    // fact and the mark that just advanced the episode has nothing to say about it.
+    expect(cardPicture(entry)).toEqual(before);
+    expect(cardPicture(entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
   });
 
-  it("puts the still back when the write is lost and the card walks back", async () => {
+  it("does not move when a write is lost and the card walks back", async () => {
     const { marks, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
@@ -541,21 +524,16 @@ describe("the picture a next-episodes card draws", () => {
     answerRecord[0]({ ok: false, reference: null });
     await settle();
 
-    // The picture walks back by the same rule the episode does, rather than by a second
-    // one that could disagree with it.
-    expect(cardPicture(marks, entry)).toEqual({ kind: "still", path: "/still.jpg" });
+    expect(cardPicture(entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
   });
 
   it("names a picture for a coming-back card, whose run arrived empty", () => {
-    const { marks } = harness();
     const comingBack = entryWith([]);
 
-    // Nothing has been marked and nothing can be, so the entry's own still is still the
-    // episode the card is announcing.
-    expect(cardPicture(marks, comingBack)).toEqual({ kind: "still", path: "/still.jpg" });
+    expect(cardPicture(comingBack)).toEqual({ kind: "poster", path: "/bcs.jpg" });
   });
 
-  it("names the poster for a capped run that has gone dry", async () => {
+  it("names a picture for a capped run that has gone dry", async () => {
     const { marks } = harness();
     const entry = entryWith([episodeAt(1, 2)], true);
 
@@ -565,6 +543,6 @@ describe("the picture a next-episodes card draws", () => {
     // `more` is true, so the card stays on the rail drawing the last episode it recorded
     // (`up-next-episode-card.tsx`) — and it keeps a picture while it does.
     expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode).toBeNull();
-    expect(cardPicture(marks, entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
+    expect(cardPicture(entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
   });
 });

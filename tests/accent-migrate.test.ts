@@ -79,7 +79,7 @@ describe("the button register is ratified — the fourteen controls paint throug
   it("renders GHOST_RECOVERY identically to the accent outline it always drew", () => {
     expect(new Set(GHOST_RECOVERY.split(" "))).toEqual(
       new Set(
-        "code-line rounded-full border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink".split(
+        "code-line rounded-[var(--radius-full)] border border-accent px-4 py-2 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink".split(
           " ",
         ),
       ),
@@ -89,7 +89,7 @@ describe("the button register is ratified — the fourteen controls paint throug
   it("renders GHOST_RECOVERY_COMPACT identically to the accent outline it always drew", () => {
     expect(new Set(GHOST_RECOVERY_COMPACT.split(" "))).toEqual(
       new Set(
-        "code-line shrink-0 rounded-full border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink".split(
+        "code-line shrink-0 rounded-[var(--radius-full)] border border-accent px-2.5 py-1 text-accent transition-colors duration-150 hover:bg-accent hover:text-accent-ink".split(
           " ",
         ),
       ),
@@ -99,7 +99,7 @@ describe("the button register is ratified — the fourteen controls paint throug
   it("renders SOLID_RECOVERY identically to the solid accent it always drew", () => {
     expect(new Set(SOLID_RECOVERY.split(" "))).toEqual(
       new Set(
-        "code-line rounded-full bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90".split(
+        "code-line rounded-[var(--radius-full)] bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90".split(
           " ",
         ),
       ),
@@ -109,7 +109,7 @@ describe("the button register is ratified — the fourteen controls paint throug
   it("renders SOLID_RECOVERY_COMPACT identically to the solid accent it always drew", () => {
     expect(new Set(SOLID_RECOVERY_COMPACT.split(" "))).toEqual(
       new Set(
-        "code-line shrink-0 rounded-full bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-200 hover:brightness-90".split(
+        "code-line shrink-0 rounded-[var(--radius-full)] bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-200 hover:brightness-90".split(
           " ",
         ),
       ),

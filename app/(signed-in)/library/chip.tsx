@@ -21,7 +21,7 @@ import { snappy } from "@/app/motion";
  * about the register.
  */
 export const CHIP_BASE =
-  "relative flex h-8 shrink-0 items-center rounded-2xl px-3.5 text-meta font-medium";
+  "relative flex h-8 shrink-0 items-center rounded-[var(--radius-6)] px-3.5 text-meta font-medium";
 
 /** The unselected and selected treatments every chip shares. */
 export function chipClassName(selected: boolean): string {
@@ -44,7 +44,7 @@ export function ChipGround({ layoutId }: { layoutId: string }) {
   return (
     <m.span
       layoutId={layoutId}
-      className="absolute inset-0 rounded-2xl bg-ink"
+      className="absolute inset-0 rounded-[var(--radius-6)] bg-ink"
       transition={snappy}
     />
   );

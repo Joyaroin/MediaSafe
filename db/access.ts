@@ -25,6 +25,7 @@ import { type Executor, getDb } from "./client";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
 import { episode, libraryEntry, list, listMembership, title, titleReconciliation, watch } from "./tables";
 import {
+  libraryEntryReleaseProgress,
   libraryEntryRemaining,
   libraryEntryState,
   libraryEntryUpNext,
@@ -2646,6 +2647,25 @@ export interface LibraryEntryRow {
   readonly kind: TitleKind;
   readonly state: LibraryState;
   readonly upNext: UpNext | null;
+  /**
+   * Watched-against-released, for the library card's progress bar (issue #324) — `null`
+   * for a film, exactly as `upNext` above is, and for the same reason: `library_entry_
+   * release_progress` (`db/views.ts`) is joined by title kind, not asked to guess.
+   *
+   * **Not `null` for a show with nothing released.** That show still gets an object here,
+   * `{ watched: 0, released: 0 }` — the view has a row for every show. Distinguishing
+   * *nothing released* from *a film* is `library-progress-fraction.ts`'s job, not this
+   * type's: it reads `released`, and this type only says whether a show exists to have a
+   * fraction at all.
+   */
+  readonly progress: LibraryReleaseProgress | null;
+}
+
+/** The two counts `libraryProgressFraction` (`library-progress-fraction.ts`) turns into
+ *  a bar's fill — see `LibraryEntryRow.progress` for why a film carries neither. */
+export interface LibraryReleaseProgress {
+  readonly watched: number;
+  readonly released: number;
 }
 
 /**
@@ -2707,23 +2727,24 @@ function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
  * ── One query, 472 rows, no N+1 ──────────────────────────────────────────────────────
  *
  * `docs/design/v1-surfaces.md` §7 sizes this at 472 titles, which is what makes the shape
- * of the read matter more than its cleverness: the state, the up-next episode and now the
- * remaining count are joined here rather than asked per cell, because 472 cells each
- * asking several questions is the request storm `tvtracker` shipped (its cold deck once
- * issued 114 requests for 57 shows). The derivation itself is not repeated — the views are
- * the definition, and this joins them. `library_entry_remaining` is joined unconditionally
- * rather than only for `closest-to-finishing`, so there is still one query behind this
- * screen and not four.
+ * of the read matter more than its cleverness: the state, the up-next episode, the
+ * remaining count and now the release-progress counts behind issue #324's bar are joined
+ * here rather than asked per cell, because 472 cells each asking several questions is the
+ * request storm `tvtracker` shipped (its cold deck once issued 114 requests for 57 shows).
+ * The derivation itself is not repeated — the views are the definition, and this joins
+ * them. `library_entry_remaining` and `library_entry_release_progress` are joined
+ * unconditionally rather than only where a sort or a bar needs them, so there is still one
+ * query behind this screen and not several.
  *
- * ── Why the state join is inner and the other two are not ───────────────────────────
+ * ── Why the state join is inner and the other three are not ─────────────────────────
  *
  * `library_entry_state` has a row for **every** library entry: its `case` has an `else`,
  * and it joins `title` through a `NOT NULL` foreign key. So an inner join drops nothing,
  * and it is the honest one — a `left` join here would type `state` as nullable and invite
  * a fallback, which is a state invented in TypeScript for a row the database could not
  * classify. `library_entry_up_next` genuinely has no row when nothing is next, and
- * `library_entry_remaining` genuinely has no row for a film — both absences are the answer
- * rather than a gap to fill.
+ * `library_entry_remaining` and `library_entry_release_progress` genuinely have no row
+ * for a film — all three absences are the answer rather than a gap to fill.
  *
  * ── There is no `try` here, and there will not be ────────────────────────────────────
  *
@@ -2757,6 +2778,12 @@ export async function listLibraryEntries(
       state: libraryEntryState.state,
       upNextEpisodeId: libraryEntryUpNext.episodeId,
       upNextEpisodeName: episode.name,
+      // Issue #324: the library card's progress bar. Joined here, beside `remaining`,
+      // for the reason this function's own docblock gives — 472 cells asking for
+      // themselves is the request storm this query exists to avoid, and a bar is one
+      // more fact about a cell, not a reason for a second query.
+      watched: libraryEntryReleaseProgress.watched,
+      released: libraryEntryReleaseProgress.released,
     })
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -2769,6 +2796,10 @@ export async function listLibraryEntries(
     .leftJoin(
       libraryEntryRemaining,
       eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
+    )
+    .leftJoin(
+      libraryEntryReleaseProgress,
+      eq(libraryEntryReleaseProgress.libraryEntryId, libraryEntry.id),
     )
     .where(ownedBy(userId, libraryEntry))
     .orderBy(...orderByFor(sort));
@@ -2789,6 +2820,14 @@ export async function listLibraryEntries(
      */
     upNext:
       row.upNextEpisodeId === null ? null : { episodeName: row.upNextEpisodeName },
+    // `released`/`watched` are null exactly when the left join found no row, which —
+    // like `libraryEntryRemaining` above — only happens for a film. A show always has a
+    // row, even at `released: 0`, so that case reaches `library-progress-fraction.ts` as
+    // a real `0` and not as this absence.
+    progress:
+      row.watched === null || row.released === null
+        ? null
+        : { watched: row.watched, released: row.released },
   }));
 }
 

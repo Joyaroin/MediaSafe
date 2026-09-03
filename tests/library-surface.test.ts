@@ -71,6 +71,10 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
     kind: "show" as TitleKind,
     state: "watching" as LibraryState,
     upNext: { episodeName: "Hands" },
+    // `null` by default — no bar — so the fixtures this suite already had keep
+    // rendering exactly as before. `tests/library-grid.test.ts` is where issue #324's
+    // bar itself is covered, case by case.
+    progress: null,
     ...overrides,
   };
 }
@@ -248,7 +252,7 @@ describe("the library entry cell", () => {
      */
     expect(one).not.toContain("rounded-[18px]");
     expect(one).not.toContain("bg-raised");
-    expect(one).toContain("[--poster-radius:10px]");
+    expect(one).toContain("[--poster-radius:var(--radius-4)]");
     expect(one).not.toMatch(/shadow|translate-y/);
   });
 });
@@ -388,10 +392,10 @@ describe("the filter chips", () => {
     expect(finishedButton).toContain('aria-pressed="true"');
     // `bg-ink` since the linen redesign, where `--text` became a mid-tone body colour
     // and full strength moved to `--ink` (`app/globals.css`). The travelling
-    // `layoutId` ground is unchanged in mechanism; it is a `16px`-radius pill now.
+    // `layoutId` ground is unchanged in mechanism; it is an `18px`-radius pill now.
     expect(finishedButton).toContain("bg-ink");
     expect(finishedButton).toContain("text-ground");
-    expect(finishedButton).toContain("rounded-2xl");
+    expect(finishedButton).toContain("rounded-[var(--radius-6)]");
   });
 
   it("keeps the Watching chip vermilion even unselected, and every other chip dim", () => {

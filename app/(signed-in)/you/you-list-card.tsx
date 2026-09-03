@@ -42,12 +42,12 @@ export function YouListCard({
       {list.posterPaths.length === 0 ? (
         <div
           aria-hidden="true"
-          className="grid aspect-square place-items-center rounded-2xl border border-dashed border-hair bg-raised"
+          className="grid aspect-square place-items-center rounded-[var(--radius-6)] border border-dashed border-hair bg-raised"
         >
           <span className="px-2 text-center text-meta text-dim">No artwork</span>
         </div>
       ) : (
-        <div className="grid aspect-square grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded-2xl bg-raised">
+        <div className="grid aspect-square grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded-[var(--radius-6)] bg-raised">
           {Array.from({ length: 4 }, (_, index) => list.posterPaths[index] ?? null).map(
             (posterPath, index) =>
               posterPath === null ? (

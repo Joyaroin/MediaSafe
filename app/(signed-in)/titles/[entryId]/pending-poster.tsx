@@ -57,7 +57,7 @@ export function PendingTitlePoster() {
     <Poster
       posterPath={entryId === null ? null : carriedPosterFor(entryId)}
       width={140}
-      className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:12px]"
+      className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:var(--radius-5)]"
       aboveFold
     />
   );

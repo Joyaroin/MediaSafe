@@ -8,15 +8,10 @@ import {
   RECORDING_GLYPH,
   WatchSweep,
 } from "@/app/(signed-in)/library/watch-mark-motion";
-import { watchMarks } from "@/app/(signed-in)/library/watch-marks";
 import { posterSrc } from "@/app/poster";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { QueuedEpisode, UpNextEntry } from "@/db/access";
-import {
-  episodeCode,
-  episodeMetaLine,
-  remainingInWords,
-} from "./episode-card-line";
+import { episodeCode, remainingInWords } from "./episode-card-line";
 import {
   cardPicture,
   queuedEpisodeFullName,
@@ -107,18 +102,12 @@ export function UpNextEpisodeCard({
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         /**
-         * `cardPicture` over the module-level store, rather than a still read straight off
-         * the entry — one rule for every card (#269), even the one that can never move.
-         *
-         * This branch has no `useUpNextMark` and must not grow one: the hook rule at the
-         * top of this file is why the branch exists at all. It does not need the
-         * subscription either — a run that arrived empty has nothing markable in it, so
-         * this card's position is nailed to zero and no press can change the answer. The
-         * store is passed because the rule takes one, not because this call is watching it.
+         * `cardPicture`, the one rule for every card (#269). Since #320 it reads the
+         * entry's poster alone and takes no store — a run that arrived empty had nothing
+         * markable in it before that ticket either, so this call never depended on the
+         * subscription; it is simply not there to depend on any more.
          */
-        picture={cardPicture(watchMarks, entry)}
-        airDate={entry.airDate}
-        runtimeMins={entry.runtimeMins}
+        picture={cardPicture(entry)}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
         aboveFold={aboveFold}
         control={null}
@@ -162,7 +151,9 @@ function MarkableCard({
    * marked. A run with nothing left on offer has had all of it marked.
    */
   const marked =
-    mark.episode === null ? entry.queue.episodes.length : indexOf(entry, mark.episode);
+    mark.episode === null
+      ? entry.queue.episodes.length
+      : indexOf(entry, mark.episode);
 
   /**
    * The episode the card draws, and the one case where it is not the one on offer.
@@ -177,7 +168,8 @@ function MarkableCard({
    * `db/access.ts` is at pains to make unreachable.
    */
   const spent = marked >= entry.queue.episodes.length;
-  const showing = entry.queue.episodes[spent ? entry.queue.episodes.length - 1 : marked];
+  const showing =
+    entry.queue.episodes[spent ? entry.queue.episodes.length - 1 : marked];
 
   return (
     <CardBody
@@ -188,24 +180,22 @@ function MarkableCard({
        * The picture is `up-next-mark.ts`'s answer, asked and not decided (#269).
        *
        * **This reverses what this file did one ticket ago, and the reversal is the ticket.**
-       * The air date and the runtime below are still the **entry's**, and still dropped the
-       * moment the card advances, for #220's unchanged reason: `QueuedEpisode` carries
-       * neither, so once the card has moved this surface does not know them, and
-       * `episodeMetaLine` renders no line at all rather than the wrong one.
+       * The still used to be dropped once the card advanced, and a card that advanced went
+       * to the `raised` ground — which held the card's shape and lost the artwork, on a
+       * card that is mostly artwork. #269 keeps the drop and adds what takes its place: the
+       * title's poster, in the still's own frame. The rule for which of the two, and for
+       * the title that has neither, is in the module and is exercised with no DOM.
        *
-       * The still used to be dropped with them, and a card that advanced went to the
-       * `raised` ground — which held the card's shape and lost the artwork, on a card that
-       * is mostly artwork. #269 keeps the drop and adds what takes its place: the title's
-       * poster, in the still's own frame. The rule for which of the two, and for the title
-       * that has neither, is in the module and is exercised with no DOM.
+       * The air date and the runtime this paragraph used to track through the advance are
+       * gone from the card entirely — issue #321, `episode-card-line.ts`'s own docblock.
        */
       picture={mark.picture}
-      airDate={marked === 0 ? entry.airDate : null}
-      runtimeMins={marked === 0 ? entry.runtimeMins : null}
       remainingAfter={countAfterShown(entry.remaining, marked, spent)}
       aboveFold={aboveFold}
       control={<MarkControl mark={mark} />}
-      sweep={mark.phase === "marking" ? <WatchSweep onSettled={mark.settle} /> : null}
+      sweep={
+        mark.phase === "marking" ? <WatchSweep onSettled={mark.settle} /> : null
+      }
     />
   );
 }
@@ -241,7 +231,11 @@ function indexOf(entry: UpNextEntry, episode: QueuedEpisode): number {
  * briefly make the two disagree, and a negative remainder is the one answer that is
  * certainly wrong.
  */
-function countAfterShown(remaining: number, marked: number, spent: boolean): number {
+function countAfterShown(
+  remaining: number,
+  marked: number,
+  spent: boolean,
+): number {
   const unwatched = Math.max(0, remaining - marked);
   return spent ? unwatched : Math.max(0, unwatched - 1);
 }
@@ -257,7 +251,7 @@ export const CARD_WIDTH = 262;
 export const CARD = "w-[262px] shrink-0 snap-start";
 /** The frame's measure, stated once so the three states of `CardFrame` cannot come to
  *  differ in size — which is the whole of *the rail never reflows under a thumb*. */
-export const FRAME = "w-full [--still-radius:0]";
+export const FRAME = "w-full [--still-radius:var(--radius-none)]";
 
 /**
  * **The dead zone between the card's tap area and the recording control — issue #277.**
@@ -307,8 +301,6 @@ function CardBody({
   code,
   episodeName,
   picture,
-  airDate,
-  runtimeMins,
   remainingAfter,
   aboveFold,
   control,
@@ -325,8 +317,6 @@ function CardBody({
   episodeName: string | null;
   /** What goes in the frame — chosen by `up-next-mark.ts`, drawn by `CardFrame` below. */
   picture: CardPicture;
-  airDate: string | null;
-  runtimeMins: number | null;
   remainingAfter: number;
   aboveFold: boolean;
   /** The check, or `null` for a card with nothing released to mark. */
@@ -334,8 +324,6 @@ function CardBody({
   /** The accent wash, mounted only while a mark is settling. */
   sweep: React.ReactNode;
 }) {
-  const meta = episodeMetaLine({ airDate, runtimeMins });
-
   return (
     /* `relative` is the sweep's, which is `position: absolute; inset: 0` and must not take
        up flow space (`watch-mark-motion.tsx`). `overflow-hidden` keeps both the still's
@@ -343,7 +331,7 @@ function CardBody({
 
        `snap-start` is the card's half of *a scroll comes to rest on a whole card* — the
        track carries the other half (`up-next-episode-rail.tsx`). */
-    <li className={`${CARD} relative overflow-hidden rounded-2xl bg-raised`}>
+    <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised`}>
       {/* The whole card bar the check. A `Link` rather than a button: this is a
           destination, and `SPEC.md`'s *a destination is a destination* is why a film card
           navigates too.
@@ -406,21 +394,19 @@ function CardBody({
               second time — `CONTEXT.md`'s *an episode is never referred to by number
               alone*, and the code line above has already said it once. */}
           {episodeName === null ? null : (
-            <p className="mt-1 text-item leading-snug text-text">{episodeName}</p>
+            <p className="mt-1 text-item leading-snug text-text">
+              {episodeName}
+            </p>
           )}
         </div>
       </Link>
 
       <div className="flex min-h-11 items-center justify-between gap-2 pr-2 pl-[14px]">
-        {/* No `<p>` at all when the catalogue has neither the date nor the runtime — the
+        {/* This row used to hold the air date and the runtime beside the check — gone with
+            `episodeMetaLine` (#321). The empty `<span />` keeps `justify-between` pushing
+            the control to the far edge now that it is the row's only other child, and the
             row keeps its height from `min-h-11` regardless, so nothing moves. */}
-        {meta === null ? (
-          <span />
-        ) : (
-          <span className="code-line text-dim" data-numeric>
-            {meta}
-          </span>
-        )}
+        <span />
         {control}
       </div>
 
@@ -444,10 +430,10 @@ function CardBody({
  * story 3's *tapping a checkmark does not make the rail jump under my thumb*, and is the
  * reason the poster is cropped into this frame rather than given its own `2/3` box.
  *
- * `--still-radius: 0` because the card already clips this frame at its own `16px` corner;
- * the utility's default `7px` would draw a notch inside it. Set through the variable
- * rather than as a competing class, for the reason `globals.css` gives beside both this
- * utility and `poster`.
+ * `--still-radius: var(--radius-none)` because the card already clips this frame at its
+ * own `--radius-6` corner; the utility's default `--radius-1` would draw a notch inside
+ * it. Set through the variable rather than as a competing class, for the reason
+ * `globals.css` gives beside both this utility and `poster`.
  *
  * ── The poster is a plain `<img>` here rather than `Poster` ─────────────────────────
  *

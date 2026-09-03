@@ -153,7 +153,7 @@ function RailArrow({
       onClick={onPress}
       disabled={!enabled}
       aria-label={`${back ? "Earlier" : "Later"} in ${label}`}
-      className={`absolute top-[38%] grid size-8 -translate-y-1/2 place-items-center rounded-full border border-hair bg-ground/80 text-text opacity-0 backdrop-blur-[2px] transition-opacity duration-150 group-hover/rail:opacity-100 focus-visible:opacity-100 disabled:text-dim ${
+      className={`absolute top-[38%] grid size-8 -translate-y-1/2 place-items-center rounded-[var(--radius-full)] border border-hair bg-ground/80 text-text opacity-0 backdrop-blur-[2px] transition-opacity duration-150 group-hover/rail:opacity-100 focus-visible:opacity-100 disabled:text-dim ${
         back ? "left-2" : "right-2"
       }`}
     >

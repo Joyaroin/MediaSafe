@@ -213,6 +213,65 @@ export const libraryEntryRemaining = pgView("library_entry_remaining", {
 `);
 
 /**
+ * Release progress: how many of a show's *released* `season_no > 0` episodes carry a
+ * watch, and how many are released at all — the two counts issue #324's library card bar
+ * is filled from.
+ *
+ * **Not `library_entry_progress` below, and not `library_entry_remaining` above.**
+ * `libraryEntryProgress` is a position — the furthest episode watched. `libraryEntryRemaining`
+ * is a count, but it is every unwatched episode, released or not, because *closest to
+ * finishing* ranks the whole series. This view answers a third, narrower question — *of
+ * what has aired, how much have you seen* — which is the one a bar filled watched-against-
+ * released needs and neither of the other two views answers.
+ *
+ * **Released is transcribed, not imported**, from `library_entry_state`'s own *caught up*
+ * branch a few lines up, on the same grounds that docblock gives for repeating it there
+ * rather than factoring it out: `season_no > 0 and air_date is not null and air_date <=
+ * current_date` is ADR-0001's rule, and each view that needs it writes it out so it can be
+ * read against the ADR directly.
+ *
+ * A film has no row here at all, same as `library_entry_remaining` and for the same
+ * reason — `db/access.ts` reads that absence as *no bar*. A show has a row even when
+ * `released` is `0`, which is what lets `db/access.ts` tell *nothing released yet* (a
+ * present row, `released = 0`) apart from *a film* (no row).
+ */
+export const libraryEntryReleaseProgress = pgView("library_entry_release_progress", {
+  libraryEntryId: uuid("library_entry_id").notNull(),
+  userId: text("user_id").notNull(),
+  titleId: uuid("title_id").notNull(),
+  watched: integer("watched").notNull(),
+  released: integer("released").notNull(),
+}).as(sql`
+  select
+    le.id as library_entry_id,
+    le.user_id as user_id,
+    le.title_id as title_id,
+    (
+      select count(*)::int
+      from episode e
+      where e.title_id = le.title_id
+        and e.season_no > 0
+        and e.air_date is not null
+        and e.air_date <= current_date
+        and exists (
+          select 1 from watch w
+          where w.library_entry_id = le.id and w.episode_id = e.id
+        )
+    ) as watched,
+    (
+      select count(*)::int
+      from episode e
+      where e.title_id = le.title_id
+        and e.season_no > 0
+        and e.air_date is not null
+        and e.air_date <= current_date
+    ) as released
+  from library_entry le
+  join title t on t.id = le.title_id
+  where t.kind = 'show'
+`);
+
+/**
  * Progress: the episode with the greatest `(season_no, episode_no)` among `season_no > 0`
  * episodes that have a watch.
  *

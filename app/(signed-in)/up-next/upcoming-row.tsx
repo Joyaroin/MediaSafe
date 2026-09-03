@@ -51,7 +51,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
     <li>
       <Link
         href={`/titles/${episode.libraryEntryId}`}
-        className="pressable flex items-center gap-3 rounded-2xl bg-raised p-2.5"
+        className="pressable flex items-center gap-3 rounded-[var(--radius-6)] bg-raised p-2.5"
         /* The poster is `aria-hidden` and the code is three tokens, so this is what a
            screen reader hears. The series first, because that is what a reader scanning a
            day is choosing between — and now what the row says first visually too. */
@@ -65,7 +65,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
           posterPath={episode.posterPath}
           name={episode.titleName}
           width={56}
-          className="w-14 shrink-0 [--poster-radius:10px]"
+          className="w-14 shrink-0 [--poster-radius:var(--radius-4)]"
         />
 
         <div className="min-w-0 flex-1">

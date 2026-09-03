@@ -178,3 +178,20 @@ export function withRailOffset(
 export function withPage(place: UpNextPlace, page: number): UpNextPlace {
   return { ...place, page };
 }
+
+/**
+ * Clear Up next's place — issue #323's *pressing Up next while already on Up next starts
+ * the screen over*. The next read of it answers `UP_NEXT_START` exactly as it would for a
+ * reader who has not been there this session: the pager's first page, every rail at its
+ * start. Search's place, if any, is untouched.
+ *
+ * Spelled as a write of `UP_NEXT_START` rather than an omitted key, unlike `NOTHING_REMEMBERED`'s
+ * own *never seen* — a re-press is not that. The reader has very much been here; what
+ * happened is that they asked for it back at the top, and `upNextPlace` cannot tell the
+ * two apart from an absence alone. Reusing `rememberUpNext` is what keeps this file's one
+ * rule — *a surface's place is a value written into the memory* — from gaining a second
+ * shape for the same fact.
+ */
+export function forgetUpNext<Result>(memory: Remembered<Result>): Remembered<Result> {
+  return rememberUpNext(memory, UP_NEXT_START);
+}

@@ -357,16 +357,46 @@
      hairlines, and this was zeroed deliberately rather than skipped.
 
      **Half of that is now false.** The linen redesign rounds every card, field, chip and
-     pill it draws (9–22px, per surface, at the call site). What survives untouched is the
-     other half: there are still **no drop shadows anywhere** in the application, and the
-     tone step between `--raised` and `--ground` is the only lift there is.
+     pill it draws. What survives untouched is the other half: there are still **no drop
+     shadows anywhere** in the application, and the tone step between `--raised` and
+     `--ground` is the only lift there is.
 
      The token stays because the bill's own surfaces — the programme note, Settings,
-     sign-in — are not redrawn and are still square. There is deliberately no radius
-     *scale* to go with the redesign's values: they are per-surface measures from one
-     handoff, not a ramp, and inventing `--radius-sm/md/lg` for seven one-off numbers
-     would be the fifth thing to keep in step that `DESIGN.md` §10 argues against. */
+     sign-in — are not redrawn and are still square.
+
+     ── The scale — issue #318 ────────────────────────────────────────────────────────
+     This said, until now, that a radius *scale* was deliberately not invented: the
+     redesign's values were per-surface measures from one handoff, not a ramp, and a
+     `--radius-sm/md/lg` for seven one-off numbers would have been a fifth thing to keep
+     in step against `DESIGN.md` §10's own argument. Reversed here, because "one-off"
+     stopped being true — nine distinct raw radii were doing nine different jobs across
+     roughly thirty call sites, and rounding the application further meant finding all
+     nine by hand, every time.
+
+     **Every step is one notch rounder than the raw value it replaces** — literally the
+     next rung a neighbouring value already sat on, so nothing had to be invented except
+     the top: `--radius-7` had no historical value above it, and `--radius-full` replaces
+     both `rounded-full` and the two pills (`catalogue-result.tsx`'s **Add**,
+     `create-list-form.tsx`'s **New list**) that were already a full round of their own
+     box and cannot be rounder than that. `tests/corners.test.ts` is where the mapping —
+     old value, new step — is written down and held against this declaration.
+
+     This is now the only way to round anything. A raw radius anywhere in the source
+     tree — a `rounded-2xl`, a `rounded-[10px]`, a `[--poster-radius:10px]` — fails that
+     sweep, on the same terms `--press-register`'s custom property already sets: two
+     utilities setting one property lose to Tailwind's emit order, so a variable the
+     call site sets is the one form with no ordering question in it, and it is why
+     `--poster-radius` and `--still-radius` keep their names below rather than being
+     replaced by a class. */
   --radius-none: 0px;
+  --radius-1: 8px;
+  --radius-2: 9px;
+  --radius-3: 10px;
+  --radius-4: 12px;
+  --radius-5: 16px;
+  --radius-6: 18px;
+  --radius-7: 24px;
+  --radius-full: 9999px;
 
   --tracking-code: 0.005em;
 
@@ -609,7 +639,7 @@
    layout, so thickening it to `2px` on focus moves the field's contents by a pixel, and
    at a fixed height that shows. A shadow is drawn inside the box and costs no space. */
 @utility field-well {
-  border-radius: 12px;
+  border-radius: var(--radius-5);
   background: var(--color-raised);
   box-shadow: inset 0 0 0 1px var(--color-hair);
 
@@ -795,17 +825,17 @@
   background: var(--color-raised);
   aspect-ratio: 2 / 3;
   /* Read through a custom property rather than set outright, because turn 9 gives the
-     poster a different radius on each of the three surfaces that render one — `14px` on
-     an Up next tile, `10px` in a library cell, `9px` on a search row — and a call site
-     cannot reliably win against this with a `rounded-*` class: both are utilities, so
-     which one applies is decided by the order Tailwind emits them in, not by the order
-     they appear in the `class` attribute. A variable the call site sets is the one form
-     that has no ordering question in it.
+     poster its own radius on each surface that redraws one, and a call site cannot
+     reliably win against this with a `rounded-*` class: both are utilities, so which one
+     applies is decided by the order Tailwind emits them in, not by the order they appear
+     in the `class` attribute. A variable the call site sets is the one form that has no
+     ordering question in it.
 
-     `7px` stays the default, so every surface that renders a poster and was not redrawn
-     by the handoff — the programme note's hero, the desktop rails, title detail — keeps
-     exactly what it had. */
-  border-radius: var(--poster-radius, 7px);
+     The default reads `--radius-1` rather than a literal `8px` — issue #318's scale is
+     now the only source for a corner, including this one's own default — so every
+     surface that renders a poster and was not redrawn by the handoff — the programme
+     note's hero, the desktop rails, title detail — keeps exactly what it had. */
+  border-radius: var(--poster-radius, var(--radius-1));
 }
 
 /* The still (#253) — the frame at the top of an episode's page, over the `still_path`
@@ -825,23 +855,26 @@
    **The variable this said it would grow, grown (#250).** It read *one radius, no custom
    property … the day a second surface wants a different one is the day this grows the
    variable*, and that day is the phone's next-episodes card: the still is flush with the
-   top of a `16px` card that already clips it, so its own `7px` would draw a notch inside
-   the card's corner. It wants `0`.
+   top of the card that already clips it, so its own default would draw a notch inside the
+   card's corner. It wants `--radius-none` — issue #318's scale names the same `0` this
+   used to spell as a literal.
 
    Read through a custom property rather than overridden at the call site, which is
    `--poster-radius`'s reason restated and is not a style preference: `still` and a
-   `[border-radius:0]` beside it are two utilities setting one property, and which one wins
-   is decided by the order Tailwind **emits** them in, not by the order they appear in the
-   `class` attribute. A variable the call site sets has no ordering question in it.
+   `[--still-radius:var(--radius-none)]` beside it are two utilities setting one property,
+   and which one wins is decided by the order Tailwind **emits** them in, not by the order
+   they appear in the `class` attribute. A variable the call site sets has no ordering
+   question in it.
 
-   `7px` stays the default, so the episode page's hero is untouched and still agrees with
-   `poster` by default rather than by coincidence. */
+   The default reads `--radius-1`, the same scale step `poster` falls back to, so the
+   episode page's hero is untouched and still agrees with `poster` by default rather than
+   by coincidence. */
 @utility still {
   position: relative;
   overflow: hidden;
   background: var(--color-raised);
   aspect-ratio: 16 / 9;
-  border-radius: var(--still-radius, 7px);
+  border-radius: var(--still-radius, var(--radius-1));
 }
 
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────
@@ -1422,7 +1455,7 @@
   /* The height is the call site's, off the type ramp — `pending-line.tsx`'s `H`. A bar
      stands in for a specific line of text, so it is that line's weight rather than one
      measure used everywhere. */
-  border-radius: var(--poster-radius, 7px);
+  border-radius: var(--poster-radius, var(--radius-1));
   background: var(--color-raised);
   animation: pending-breathe 1.7s var(--ease-in-out-soft) infinite;
 }

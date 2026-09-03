@@ -215,7 +215,7 @@ describe("a row that is missing something", () => {
     expect(markup).toContain("/severance.jpg");
     // The still's own frame is gone from this row entirely — it never had anything in it.
     expect(markup).not.toContain('class="still');
-    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:10px]"');
+    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:var(--radius-4)]"');
   });
 
   /**
@@ -227,7 +227,7 @@ describe("a row that is missing something", () => {
     const markup = render([episodeOn(TODAY, { posterPath: null })]);
 
     expect(markup).not.toContain("<img");
-    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:10px]"');
+    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:var(--radius-4)]"');
     // `Severance` — one word, one initial.
     expect(markup).toContain(">S<");
   });
@@ -618,11 +618,15 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page).toContain("cachedUpcomingFilms(userId)");
   });
 
-  /** The one clock on this route, read once, against the reader's own zone. A second
-   *  `new Date()` anywhere under `up-next/` would be a second answer to *what day is it*. */
-  it("reads the reader's day once, from their own timezone", () => {
+  /** The one clock on this route, read once, against the reader's own zone, and handed to
+   *  both `readerDay` and the heading's band rule (issue #319) — not read a second time
+   *  for either. A second `new Date()` anywhere in this file would be a second answer to
+   *  *what time is it*. */
+  it("reads the reader's instant once, from their own timezone, and hands it to both readers", () => {
     expect(page).toContain("requireTimezone()");
-    expect(page).toContain("readerDay(zone, new Date())");
+    expect(page).toContain("const now = new Date();");
+    expect(page).toContain("readerDay(zone, now)");
+    expect(page).toContain("<UpNextHeading zone={zone} at={now} />");
     expect(page.match(/new Date\(\)/g)).toHaveLength(1);
   });
 

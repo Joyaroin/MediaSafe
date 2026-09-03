@@ -13,7 +13,7 @@ import {
   releaseDrag,
   type DragRules,
 } from "@/app/gesture-rules";
-import { keepPage, rememberedPage } from "@/app/restoration-memory";
+import { keepPage, onUpNextRestart, rememberedPage } from "@/app/restoration-memory";
 
 /**
  * The landing screen's two-page pager — *Up next* and *Upcoming*, issue #251.
@@ -137,6 +137,22 @@ export function LandingPager({
     setMoved(true);
     keepPage(next);
   }, []);
+
+  /**
+   * **A re-press of the Up next tab, issue #323.** `use-up-next-repress.ts` is the only
+   * caller of `startUpNextOver()`, and this is the pager's own answer to it: back to page
+   * `0`, and `moved` false again so the jump lands the way a restore does rather than the
+   * way a tap on *Upcoming* does — instantly, with nothing sliding across to get there.
+   *
+   * Subscribed once for the component's whole life rather than read through `goToPage`:
+   * the listener fires from outside React's event system (`use-up-next-repress.ts`'s click
+   * handler calls it directly), and `setPage`/`setMoved` are ordinary state setters that
+   * do the right thing called from there.
+   */
+  useEffect(() => onUpNextRestart(() => {
+    setPage(0);
+    setMoved(false);
+  }), []);
 
   const track = useRef<HTMLDivElement>(null);
   const width = useTrackWidth(track);
