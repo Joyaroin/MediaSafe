@@ -49,6 +49,29 @@ export default defineConfig({
     baseURL: "http://localhost:3100",
     storageState: path.join(__dirname, "tests/e2e/.auth/fixture-session.json"),
     trace: "retain-on-failure",
+    /**
+     * **Pinned, because this whole suite is about motion and the application drops motion
+     * on request.** `app/globals.css`'s `@media (prefers-reduced-motion: reduce)` block
+     * zeroes `::view-transition-group`, `-old` and `-new` outright — that is §6's stated
+     * contract, *the event still happens, it just stops moving through space*. A browser
+     * reporting `reduce` therefore has no morph to pair and no motion to time, and every
+     * assertion here fails for the one reason that is not a defect.
+     *
+     * It is not hypothetical. Headless Chromium on a Linux runner reports `reduce` where a
+     * developer's own machine reports `no-preference`, so the three motion specs passed
+     * locally and failed in CI on a build where all of them were correct. Measured with
+     * both settings against the same commit: `no-preference` pairs the poster on both
+     * paths, `reduce` records one transition and never pairs.
+     *
+     * `contextOptions` rather than a bare `reducedMotion` key: it is a browser-context
+     * option in this version of Playwright and not one of `PlaywrightTestOptions`' own,
+     * which is why the obvious spelling does not typecheck.
+     *
+     * **This pins the default, it does not forbid the other value.** A spec that wants the
+     * reduced-motion path asks for it with `page.emulateMedia({ reducedMotion: "reduce" })`
+     * — and the contract above deserves its own test, which this suite does not yet have.
+     */
+    contextOptions: { reducedMotion: "no-preference" },
   },
 
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
