@@ -1,5 +1,6 @@
 import { ProgrammeNoteLayout } from "@/app/(signed-in)/library/programme-note-layout";
 import { PendingLine } from "@/app/pending-line";
+import { requireTimezone } from "@/lib/session";
 import { UpNextHeading } from "./up-next-heading";
 
 /**
@@ -29,17 +30,28 @@ import { UpNextHeading } from "./up-next-heading";
  * §9 also settles that the rails are radius 1, not radius 2, on their own account:
  * `listUpNextRails` returns one value for all three groups, so they cannot resolve
  * separately and a boundary around one would be a boundary around nothing. One dim line
- * under the *Tonight* heading is the whole of what is pending on the left, on both
+ * under the heading is the whole of what is pending on the left, on both
  * devices — `UpNextPhoneRails` and `UpNextRailsSurface` are two renders of the one read
  * this boundary is standing in for, not two reads with two states to draw. (#250 replaced
  * the phone's five vertical groups with two rails; it did not change how many reads are
  * behind them, which is why this file did not otherwise move.)
+ *
+ * ── The heading still reads the account's hour here (issue #319) ─────────────────────
+ *
+ * `requireTimezone()` is cheap to call again: `lib/session.ts`'s `currentSession` is
+ * wrapped in React's `cache()`, scoped to this one render, so this pays no second query —
+ * the masthead above this boundary has already resolved the same session. This file is a
+ * plain Server Component (unlike `error.tsx`, which Next.js requires to be a Client
+ * Component), so it is one of the two places, beside `page.tsx`, that can read the
+ * account's zone at all.
  */
-export default function UpNextLoading() {
+export default async function UpNextLoading() {
+  const zone = await requireTimezone();
+
   return (
     <ProgrammeNoteLayout>
       <div className="flex min-w-0 flex-1 flex-col">
-        <UpNextHeading />
+        <UpNextHeading zone={zone} at={new Date()} />
 
         <div className="px-6 py-5">
           <PendingLine shape="rail" held />
