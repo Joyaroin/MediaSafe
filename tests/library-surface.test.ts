@@ -71,6 +71,10 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
     kind: "show" as TitleKind,
     state: "watching" as LibraryState,
     upNext: { episodeName: "Hands" },
+    // `null` by default — no bar — so the fixtures this suite already had keep
+    // rendering exactly as before. `tests/library-grid.test.ts` is where issue #324's
+    // bar itself is covered, case by case.
+    progress: null,
     ...overrides,
   };
 }

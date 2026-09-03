@@ -1,10 +1,28 @@
 import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
 
-import { asUserId, listLibraryEntries, type UserId } from "@/db/access";
+import {
+  asUserId,
+  listLibraryEntries,
+  type LibraryEntryRow,
+  type LibraryState,
+  type UserId,
+} from "@/db/access";
 import type { Transaction } from "@/db/client";
 import { episode, libraryEntry, title, user, watch } from "@/db/schema";
+import type { TitleKind } from "@/tmdb/mirror";
+import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
+import { LibrarySelectionProvider } from "@/app/(signed-in)/library/library-selection";
 import { inTransaction, setUpTestDatabase } from "./support/database";
+
+/**
+ * `selectable-entry.tsx` wraps every cell's button in `useRouter()`, which throws outside
+ * a mounted Next.js app router — `tests/library-surface.test.ts`'s own stub, needed here
+ * too now that this file renders `LibraryEntryCell` rather than only querying for it.
+ */
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 /**
  * The one read behind the library grid (issue #56).
@@ -356,6 +374,80 @@ describe("listLibraryEntries", () => {
     });
   });
 
+  /**
+   * Issue #324: the two counts the library card's bar is filled from — joined here
+   * rather than read per cell, and matching `library_entry_release_progress`
+   * (`db/views.ts`) exactly, the same way `upNext` above matches `library_entry_up_next`.
+   */
+  it("carries watched and released counts for a show, counting only what has aired", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 }, // released, watched
+          { seasonNo: 1, episodeNo: 2 }, // released, watched
+          { seasonNo: 1, episodeNo: 3 }, // released, not watched
+          { seasonNo: 1, episodeNo: 4, airDate: UNRELEASED }, // unreleased
+        ],
+      });
+      await markWatched(tx, show, 0);
+      await markWatched(tx, show, 1);
+
+      const [row] = await listLibraryEntries(reader, "title", tx);
+
+      // Three released episodes, not four: the unreleased fourth counts toward neither
+      // number, which is `libraryProgressFraction`'s whole reason for existing rather
+      // than reusing `watchProgress`'s every-mirrored-episode denominator.
+      expect(row.progress).toEqual({ watched: 2, released: 3 });
+    });
+  });
+
+  it("carries no progress for a film", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedFilm(tx, reader);
+
+      const [row] = await listLibraryEntries(reader, "title", tx);
+
+      expect(row.progress).toBeNull();
+    });
+  });
+
+  it("carries a real zero, not an absence, for a show with nothing released yet", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedShow(tx, reader, {
+        episodes: [{ seasonNo: 1, episodeNo: 1, airDate: UNRELEASED }],
+      });
+
+      const [row] = await listLibraryEntries(reader, "title", tx);
+
+      // Not null: a film is the only case that reads as no progress at all
+      // (`db/access.ts`'s own docblock). This show gets a real `{ watched: 0, released:
+      // 0 }`, which is what lets `libraryProgressFraction` tell the two apart.
+      expect(row.progress).toEqual({ watched: 0, released: 0 });
+    });
+  });
+
+  it("issues one query whether the account holds one entry or many", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedShow(tx, reader, { name: "A", episodes: [{ seasonNo: 1, episodeNo: 1 }] });
+      await seedShow(tx, reader, { name: "B", episodes: [{ seasonNo: 1, episodeNo: 1 }] });
+      await seedFilm(tx, reader, { name: "C" });
+      await seedFilm(tx, reader, { name: "D" });
+
+      const selectSpy = vi.spyOn(tx, "select");
+      const rows = await listLibraryEntries(reader, "title", tx);
+
+      // Four entries and one statement: the counts a bar per card needs come from the
+      // join this test proves is still the only one, not from a query per row.
+      expect(rows).toHaveLength(4);
+      expect(selectSpy).toHaveBeenCalledTimes(1);
+      selectSpy.mockRestore();
+    });
+  });
+
   it("orders by title A-Z whatever the case, and never reshuffles a tie", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
@@ -574,5 +666,82 @@ describe("listLibraryEntries sort orders", () => {
       expect(rows.map((row) => row.name)).toEqual(["Caught Up", "Actually Finished"]);
       expect(rows[0].state).toBe("caught_up");
     });
+  });
+});
+
+/**
+ * The grid cell's rendered bar — issue #324's four cases. `tests/library-surface.test.ts`
+ * covers everything else about `LibraryEntryCell`'s markup; this covers only what that
+ * suite does not, on the same `entry()`-and-`renderToStaticMarkup` pattern it established.
+ *
+ * `bg-hair` is the track and only appears when a bar is drawn at all — asserted on
+ * directly, the way `up-next-row.test.ts` asserts on `bg-accent`'s presence — so "no bar"
+ * and "an empty bar" stay two different, checkable outcomes rather than one absence a
+ * missing `style` attribute could also explain.
+ */
+describe("LibraryEntryCell's progress bar", () => {
+  function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
+    return {
+      libraryEntryId: "entry-1",
+      titleId: "title-1",
+      name: "Severance",
+      releaseYear: 2022,
+      posterPath: "/severance.jpg",
+      kind: "show" as TitleKind,
+      state: "watching" as LibraryState,
+      upNext: null,
+      progress: { watched: 2, released: 4 },
+      ...overrides,
+    };
+  }
+
+  const NO_SELECTION = { selectedEntryId: null, selectedPosterPath: null, select: () => {} };
+
+  const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
+    renderToStaticMarkup(
+      createElement(
+        LibrarySelectionProvider,
+        { value: NO_SELECTION },
+        createElement(LibraryEntryCell, { entry: entry(overrides) }),
+      ),
+    );
+
+  it("draws a thin bar for a show, filled watched against released", () => {
+    const markup = cell({ progress: { watched: 2, released: 4 } });
+
+    expect(markup).toContain("bg-hair");
+    expect(markup).toContain('style="width:50%"');
+  });
+
+  it("draws no bar at all for a film", () => {
+    const markup = cell({ kind: "film" as TitleKind, progress: null });
+
+    expect(markup).not.toContain("bg-hair");
+  });
+
+  it("draws no bar at all for a show with nothing released — not an empty one", () => {
+    const markup = cell({ progress: { watched: 0, released: 0 } });
+
+    expect(markup).not.toContain("bg-hair");
+  });
+
+  it("draws an empty bar for a show with something released and nothing watched", () => {
+    const markup = cell({ progress: { watched: 0, released: 4 } });
+
+    // The bar is present — not the same absence as nothing released — sitting at 0%.
+    expect(markup).toContain("bg-hair");
+    expect(markup).toContain('style="width:0%"');
+  });
+
+  it("never prints a numeral on or beside the bar, whichever case draws it", () => {
+    for (const progress of [
+      { watched: 2, released: 4 },
+      { watched: 0, released: 4 },
+    ] as const) {
+      const markup = cell({ progress });
+      // A digit rendered as text sits between a `>` and a `<`; the width percentage
+      // lives inside a `style="…"` attribute instead, which this does not match.
+      expect(markup).not.toMatch(/>[^<]*\d[^<]*</);
+    }
   });
 });
