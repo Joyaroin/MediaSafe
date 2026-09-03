@@ -119,10 +119,25 @@ test("pressing Up next while already on Up next resets the scroll position, the 
     "aria-selected",
     "true",
   );
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+
+  /**
+   * **The rail is checked by going back to it, because the reset takes it off screen.**
+   *
+   * A restart returns the pager to its first page, and `landing-pager.tsx` renders only
+   * the page being read once the router has refreshed — so the Upcoming panel, and the
+   * rail inside it, are gone from the document. Polling that rail's `scrollLeft` here
+   * asked an element that does not exist and timed out forever, which reads as *the rail
+   * did not reset* and is really *the rail is not there*.
+   *
+   * Asking for Upcoming again is also the truer question. What the reader is promised is
+   * that the rails are back at their starts when they next look, and this is them next
+   * looking.
+   */
+  await page.getByRole("tab", { name: "Upcoming" }).click();
   await expect
     .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
     .toBe(0);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test("returning from a title still restores the pager's page and the rail's offset", async ({
@@ -130,8 +145,21 @@ test("returning from a title still restores the pager's page and the rail's offs
 }) => {
   await goToUpcomingPageAndScroll(page);
 
-  await page.getByRole("link", { name: new RegExp(filmNames[0]) }).click();
-  await expect(page.getByRole("heading", { name: filmNames[0], level: 2 })).toBeVisible();
+  /**
+   * **A film that is on screen at the offset above, and not the first one.**
+   *
+   * Clicking a card the rail has scrolled *past* is not a neutral act: focusing it makes
+   * the browser scroll it back into view, the track's own `onScroll` records that as the
+   * reader's position, and the offset this test is about is destroyed before the
+   * navigation even starts. Asserted against directly — with `filmNames[0]` the track
+   * records `150`, then `0`, and comes back to `0`; with a card already in view it records
+   * `150` and comes back to `150`.
+   *
+   * So the first film tested the browser's scroll-into-view rather than this application's
+   * memory, and a reader tapping a card they can see never meets that path at all.
+   */
+  await page.getByRole("link", { name: new RegExp(filmNames[3]) }).click();
+  await expect(page.getByRole("heading", { name: filmNames[3], level: 2 })).toBeVisible();
 
   await page.goBack();
 
