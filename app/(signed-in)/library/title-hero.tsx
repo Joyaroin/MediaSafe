@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ViewTransition } from "react";
 
 import { Poster } from "@/app/poster";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
@@ -111,7 +110,39 @@ export function TitleHero({
   return (
     <section className={`${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`}>
       <div className="flex items-start gap-4">
-        <ViewTransition key={posterTransitionName} name={posterTransitionName}>
+        {/**
+         * **The destination half of the morph, named the way every other half of it is —
+         * issue #305.**
+         *
+         * This was a React `<ViewTransition name={…}>`, and it was the only participant in
+         * the morph that was one. Every other half is a plain `view-transition-name` in a
+         * `style` — the library grid cell (`selectable-entry.tsx`), the Up next row
+         * (`up-next-episode-row.tsx`) and the pending frame's poster
+         * (`titles/[entryId]/pending-poster.tsx`). React only applies its own name for a
+         * transition it is tracking on both sides, so paired against a raw name it applied
+         * nothing, and the browser saw an old snapshot with no new half to travel to.
+         *
+         * **That made the morph depend on the pending frame committing.** Opening a title
+         * cold renders the pending frame first, so the chain was grid → pending → content
+         * and the raw-named pending poster bridged the two, pairing on the second
+         * transition. Opening one whose payload the router already holds — go back, open it
+         * again — resolves in a single commit, the bridge never renders, and the morph was
+         * skipped. Measured directly: cold records two transitions and pairs; warm records
+         * one, `{hasOld: true, hasNew: false}`. CI takes the single-commit path every time,
+         * which is why the browser suite failed there against a build that morphed
+         * perfectly by hand.
+         *
+         * A raw name here makes the morph one mechanism rather than two, and it no longer
+         * depends on how many commits a navigation happens to take.
+         *
+         * **The duplicate-name hazard is already handled and is not reopened.** Two
+         * elements carrying one `view-transition-name` at once makes the browser skip the
+         * whole transition, and on the desktop the grid and this pane can show the same
+         * entry together — which is exactly why `selectable-entry.tsx` drops its own name
+         * when `openInPane`. That guard is what keeps this safe, and it predates this
+         * change.
+         */}
+        <div style={{ viewTransitionName: posterTransitionName }}>
           {/* Still the hero poster of whichever surface holds this, so still `aboveFold`
               — smaller, but the first artwork the reader sees. */}
           <Poster
@@ -121,7 +152,7 @@ export function TitleHero({
             className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:12px]"
             aboveFold
           />
-        </ViewTransition>
+        </div>
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* `--dim`, not the accent — see the docblock. The word is still the state's own

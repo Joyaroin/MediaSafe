@@ -208,3 +208,48 @@ test("the poster morph pairs when opening a title from an Up next row", async ({
       (await morphDiagnostics(page, transitionName)),
   ).toBe(true);
 });
+
+/**
+ * **The single-commit path, which is the one that shipped broken — issue #305.**
+ *
+ * The two tests above open a title the router has never fetched, so React renders the
+ * pending frame first and the navigation is two commits: grid → pending → content. That
+ * hid a real defect for a whole ticket, because the morph's destination name lived only on
+ * the pending frame, and the pending frame is exactly what a two-commit navigation
+ * guarantees.
+ *
+ * Opening the same title a second time resolves from the router's own cache in **one**
+ * commit, the pending frame never renders, and until `title-hero.tsx` carried a raw name of
+ * its own there was no destination to travel to — `{hasOld: true, hasNew: false}`, the
+ * morph silently skipped. It is the ordinary case in real use: open a title, go back, open
+ * it again.
+ *
+ * CI took this path every time while a developer's machine took the other one, so the suite
+ * passed locally and failed on the runner against the same commit. This test is what makes
+ * that difference an assertion rather than a coincidence of timing.
+ */
+test("the poster morph pairs on a second opening, from the router's own cache", async ({
+  page,
+}) => {
+  const transitionName = `rail-poster-${seeded.libraryEntryId}`;
+
+  await page.goto("/library");
+  await page.getByRole("button", { name: new RegExp(seeded.titleName) }).click();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+
+  await page.goBack();
+  await expect(page.getByRole("button", { name: new RegExp(seeded.titleName) })).toBeVisible();
+
+  // Only now, so the observation is of the second navigation and not the first.
+  await watchForMorphPair(page, transitionName);
+  await page.getByRole("button", { name: new RegExp(seeded.titleName) }).click();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+
+  expect(
+    await morphPaired(page),
+    `The poster morph did not pair reopening "${seeded.titleName}" from the router's cache: ` +
+      `no view transition carried both an old and a new "${transitionName}". This is the ` +
+      "single-commit path — no pending frame renders, so the destination's own name is the " +
+      "only thing that can carry the morph. " + (await morphDiagnostics(page, transitionName)),
+  ).toBe(true);
+});
