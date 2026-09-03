@@ -89,7 +89,44 @@ test("the navigation's motion begins against the press, not hundreds of millisec
   await libraryLink(page).click();
   await expect(emptyLibraryMarker(page)).toBeVisible();
 
+  /**
+   * **Waited for, not sampled — and the distinction is the whole of this block.**
+   *
+   * `nav-fade` runs on `::view-transition-new(root)`, whose `animationstart` fires once the
+   * transition is ready, which is *after* the DOM update that reveals the marker above. So
+   * the marker being visible does not mean the animation has begun: reading the timing at
+   * that instant races a gap that is near zero on a fast machine and wide enough on a slow
+   * one to read `null` for a motion that ran perfectly. That is what it did — this passed
+   * locally and failed in CI against a build where the property held.
+   *
+   * A single sample cannot tell *has not started yet* from *never started*. Polling to a
+   * timeout can, and only the timeout means the motion is genuinely absent.
+   */
+  const started = await page
+    .waitForFunction(() => window.__navFadeElapsedMs !== null, undefined, { timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+
   const elapsedMs = await page.evaluate(() => window.__navFadeElapsedMs);
+
+  /**
+   * The diagnostics ride along with the failure rather than being reconstructed from a
+   * trace afterwards — #305's own acceptance criterion is that a failure names *which*
+   * property broke, and "never ran" has three quite different causes worth telling apart:
+   * the browser asking for reduced motion (where the application drops the animation on
+   * purpose), a transition the browser skipped, and one that never started at all.
+   */
+  const diagnostics = await page.evaluate(() => ({
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    viewTransitions: typeof document.startViewTransition === "function",
+    path: location.pathname,
+  }));
+
+  expect(
+    started,
+    "The navigation's motion (`nav-fade`) never started at all after the press — the root " +
+      `cross-fade this property depends on never ran. ${JSON.stringify(diagnostics)}`,
+  ).toBe(true);
 
   expect(
     elapsedMs,

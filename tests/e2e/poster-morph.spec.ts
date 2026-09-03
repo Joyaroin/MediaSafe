@@ -118,6 +118,32 @@ async function morphPaired(page: Page): Promise<boolean> {
   }
 }
 
+/**
+ * What the failure gets to say, gathered at the moment it failed rather than reconstructed
+ * from a trace afterwards. #305's acceptance criterion is that a failure names which
+ * property broke and on which path, and *no pair* has several quite different causes: the
+ * browser asking for reduced motion, where the application drops the morph on purpose; a
+ * source name that was never minted; a destination that never mounted; or a transition
+ * that ran and paired nothing. The observations tell those apart, and the names present at
+ * the end say which half of the pair was missing.
+ */
+async function morphDiagnostics(page: Page, transitionName: string): Promise<string> {
+  return JSON.stringify(
+    await page.evaluate((name) => {
+      const named = [...document.querySelectorAll<HTMLElement>("*")]
+        .map((el) => getComputedStyle(el).viewTransitionName)
+        .filter((n) => n && n !== "none");
+      return {
+        reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+        observations: window.__morphObservations ?? null,
+        expected: name,
+        namesOnDestination: named,
+        path: location.pathname,
+      };
+    }, transitionName),
+  );
+}
+
 let seeded: SeededTitle;
 
 test.beforeAll(async () => {
@@ -160,7 +186,8 @@ test("the poster morph pairs when opening a title from the library grid", async 
     await morphPaired(page),
     `The poster morph did not pair opening "${seeded.titleName}" from the library grid: ` +
       `no view transition carried both an old and a new "${transitionName}" — either the ` +
-      "grid cell minted no source name, or the pending frame mounted no destination for it.",
+      "grid cell minted no source name, or the pending frame mounted no destination for it. " +
+      (await morphDiagnostics(page, transitionName)),
   ).toBe(true);
 });
 
@@ -177,6 +204,7 @@ test("the poster morph pairs when opening a title from an Up next row", async ({
     await morphPaired(page),
     `The poster morph did not pair opening "${seeded.titleName}" from an Up next row: ` +
       `no view transition carried both an old and a new "${transitionName}" — either the ` +
-      "row minted no source name, or the pending frame mounted no destination for it.",
+      "row minted no source name, or the pending frame mounted no destination for it. " +
+      (await morphDiagnostics(page, transitionName)),
   ).toBe(true);
 });
