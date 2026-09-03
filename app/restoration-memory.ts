@@ -2,6 +2,7 @@
 
 import {
   NOTHING_REMEMBERED,
+  forgetUpNext,
   railOffset,
   rememberSearch,
   rememberUpNext,
@@ -78,4 +79,37 @@ export function rememberedSearch(): SearchPlace<MarkedResult> {
 /** Keep search's place for the rest of this session. */
 export function keepSearch(place: SearchPlace<MarkedResult>): void {
   memory = rememberSearch(memory, place);
+}
+
+/**
+ * Every mounted piece of Up next that has to reset itself on a re-press — issue #323's
+ * *pressing Up next while already on Up next starts the screen over*.
+ *
+ * A plain `Set` of listeners rather than a version number read through
+ * `useSyncExternalStore`: nothing here is ever rendered, so there is no snapshot to keep
+ * stable between a client and a server render, and no `getServerSnapshot` to invent for a
+ * value that only ever changes from a click. `landing-pager.tsx` and `remembered-rail.tsx`
+ * each add one listener for as long as they are mounted and act on the callback directly —
+ * the same shape `watch-marks.ts` already uses for a store nothing here needs to duplicate.
+ */
+const upNextRestartListeners = new Set<() => void>();
+
+/**
+ * Clear Up next's place and tell every mounted rail and the landing pager to reset
+ * themselves. This is the whole of what a re-press means to this file: it does not know
+ * a pager has a page or a rail has an offset, and it does not know which components are
+ * listening — `use-up-next-repress.ts` calls this and nothing else.
+ */
+export function startUpNextOver(): void {
+  memory = forgetUpNext(memory);
+  for (const listener of upNextRestartListeners) listener();
+}
+
+/**
+ * Be told about the next re-press, for as long as the caller stays subscribed. Returns the
+ * unsubscribe, in the shape an effect's own cleanup already wants.
+ */
+export function onUpNextRestart(listener: () => void): () => void {
+  upNextRestartListeners.add(listener);
+  return () => upNextRestartListeners.delete(listener);
 }

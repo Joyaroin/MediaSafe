@@ -14,6 +14,7 @@ import {
   YouIcon,
 } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
+import { useUpNextRepress } from "./use-up-next-repress";
 
 /**
  * The sidebar's six destinations, and the one thing about them that needs the browser —
@@ -104,6 +105,7 @@ function CurrentMarker() {
 export function SidebarNav() {
   const pathname = usePathname();
   const isCurrent = (href: string) => isCurrentRoute(pathname, href);
+  const onUpNextLinkClick = useUpNextRepress();
 
   return (
     <>
@@ -116,6 +118,10 @@ export function SidebarNav() {
               key={href}
               href={href}
               aria-current={current ? "page" : undefined}
+              // Only the Up next destination carries a handler at all — issue #323's one
+              // gesture. Every other tab's `<Link>` is exactly what it was before this
+              // ticket.
+              onClick={href === "/up-next" ? onUpNextLinkClick : undefined}
               className={current ? CURRENT : NOT_CURRENT}
             >
               {current ? <CurrentMarker /> : null}

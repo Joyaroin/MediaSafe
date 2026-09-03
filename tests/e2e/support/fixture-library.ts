@@ -101,3 +101,58 @@ export async function seedWatchingShow(userId: string): Promise<SeededTitle> {
     await pool.end();
   }
 }
+
+/**
+ * Seeds `count` films on the watchlist, each dated a day further into the future than the
+ * last — the "Upcoming movies" rail's own membership (`db/access.ts`'s `listUpcomingFilms`:
+ * *standing at Watchlist, a film, and a release date not before yesterday*). A library
+ * entry with no `watch` row is watchlist by construction (`db/views.ts`'s
+ * `library_entry_state`), so this writes no fourth table — a title, and a library entry,
+ * and nothing else.
+ *
+ * ── Why a whole rail's worth, rather than one film ────────────────────────────────────
+ *
+ * Issue #323's browser spec is the one caller: it has to scroll the rail horizontally to
+ * prove a re-press puts it back at its start, and one card has nowhere to scroll to. Six
+ * `138px` cards plus the track's `12px` gaps overflow the `500px` phone viewport
+ * `poster-morph.spec.ts` already standardises on, with room to spare.
+ */
+export async function seedWatchlistFilms(
+  userId: string,
+  count: number,
+): Promise<readonly string[]> {
+  const pool = createPool(requireDatabaseUrl());
+  const db = drizzle(pool, { schema });
+
+  try {
+    const names: string[] = [];
+
+    for (let day = 1; day <= count; day += 1) {
+      const unique = randomUUID();
+      const titleName = `E2E Fixture Film ${unique}`;
+      const releaseDate = new Date(Date.now() + day * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+
+      const [titleRow] = await db
+        .insert(schema.title)
+        .values({
+          kind: "film",
+          tmdbId: Math.floor(Math.random() * 200_000_000),
+          name: titleName,
+          releaseYear: new Date(releaseDate).getUTCFullYear(),
+          releaseDate,
+          posterPath: `/e2e-fixture-${unique}.jpg`,
+        })
+        .returning({ id: schema.title.id });
+
+      await db.insert(schema.libraryEntry).values({ userId, titleId: titleRow.id });
+
+      names.push(titleName);
+    }
+
+    return names;
+  } finally {
+    await pool.end();
+  }
+}

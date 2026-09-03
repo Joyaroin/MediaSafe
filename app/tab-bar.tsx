@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LibraryIcon, SearchIcon, UpNextIcon, YouIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 import { PHONE_BAR } from "./phone-bar";
+import { useUpNextRepress } from "./use-up-next-repress";
 
 /**
  * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
@@ -156,6 +157,7 @@ const TAB_LABEL = "text-tab font-medium leading-tight";
 
 export function TabBar() {
   const pathname = usePathname();
+  const onUpNextLinkClick = useUpNextRepress();
 
   return (
     <nav
@@ -182,6 +184,10 @@ export function TabBar() {
             key={href}
             href={href}
             aria-current={current ? "page" : undefined}
+            // Only the Up next destination carries a handler at all — issue #323's one
+            // gesture. Every other tab's `<Link>` is exactly what it was before this
+            // ticket.
+            onClick={href === "/up-next" ? onUpNextLinkClick : undefined}
             className={`${TAB} ${current ? "text-ink" : "text-dim hover:text-ink"}`}
           >
             <Icon className={TAB_ICON} />
