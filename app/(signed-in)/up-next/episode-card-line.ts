@@ -1,14 +1,22 @@
 import { seasonHeading } from "@/app/(signed-in)/library/season-grouping";
 
 /**
- * The four strings an episode card prints beside its still — issue #250, and no React in
- * any of them.
+ * The two strings an episode card prints beside its still — issue #250, narrowed by #321,
+ * and no React in either of them.
  *
  * They are here rather than inside the card for `up-next-mark.ts`'s reason, held one file
  * further out: `vitest.config.mts` runs in `node` with no DOM, and a rule that only exists
  * inside a component is a rule nothing can assert. Every one of these is a pure function
  * of facts the read already carries, and `tests/up-next-episode-card-line.test.ts` drives
- * all four directly.
+ * both directly.
+ *
+ * **The air date and the runtime are gone — issue #321.** #250's card carried four facts:
+ * this pair, the remaining count, and a last line joining an air date and a runtime. The
+ * date and the runtime are noise on a surface reached to decide what to watch next; the
+ * remaining count is not, and is untouched (`remainingInWords` below, and its own docblock
+ * says why). `episodeMetaLine` and this module's own `airDateInWords` are deleted with
+ * their one caller — `library/episode-facts.ts` has its own `airDateInWords`, in a longer
+ * register for a different surface, and is untouched.
  */
 
 /**
@@ -72,50 +80,4 @@ function pad(number: number): string {
  */
 export function remainingInWords(remainingAfter: number): string {
   return `+${remainingAfter} remaining`;
-}
-
-/**
- * `12 Mar 2026`, or `null` where TMDB has not dated the episode.
- *
- * **A shorter register than `library/episode-facts.ts`'s `airDateInWords`, and the measure
- * is why.** That function writes `1 March 2026` onto a detail screen with a line to spare;
- * this one shares a 262px card's last line with a runtime, and the long month is what makes
- * that line wrap. (The register this was first weighed against was the retired Stats page's
- * own day formatter, deleted with `/stats` by issue #249; the comparison outlived it because
- * the two survivors make exactly the same trade against each other.) The parsing is identical
- * across both and deliberately so — an `air_date` is a `date`
- * column with no instant in it, so it is read in UTC and must not be re-interpreted in the
- * reader's zone on the way to being printed (`db/views.ts` argues this at length for the
- * comparison; it holds just as hard for the rendering).
- */
-export function airDateInWords(airDate: string | null): string | null {
-  if (airDate === null) return null;
-  const [year, month, day] = airDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-/**
- * The card's last line — `12 Mar 2026 · 47 min` — and `null` when the catalogue has
- * neither fact, so the card renders no `<p>` at all rather than an empty one holding the
- * space a real line would have.
- *
- * `title-meta-line.ts`'s shape exactly, at a different pair of facts: parts pushed only
- * when they are known, joined by the same `·`. Neither absence is an error and neither
- * gets a placeholder — an undated episode is ordinary on this surface, since the rail
- * carries *coming back* shows whose next episode TMDB has announced without dating.
- */
-export function episodeMetaLine(episode: {
-  readonly airDate: string | null;
-  readonly runtimeMins: number | null;
-}): string | null {
-  const parts: string[] = [];
-  const date = airDateInWords(episode.airDate);
-  if (date !== null) parts.push(date);
-  if (episode.runtimeMins !== null) parts.push(`${episode.runtimeMins} min`);
-  return parts.length > 0 ? parts.join(" · ") : null;
 }

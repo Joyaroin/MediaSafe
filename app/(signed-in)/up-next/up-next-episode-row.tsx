@@ -24,11 +24,7 @@ import {
   type UpNextPendingEntry,
   type UpNextRailEntry,
 } from "@/db/access";
-import {
-  episodeCode,
-  episodeMetaLine,
-  remainingInWords,
-} from "./episode-card-line";
+import { episodeCode, remainingInWords } from "./episode-card-line";
 import {
   cardPicture,
   queuedEpisodeFullName,
@@ -56,6 +52,16 @@ import {
  * box rather than the `16:9` `still` utility, so the picture that travels is the same
  * picture at the same shape on both ends of the morph. The row is taller for it — a whole
  * poster is more picture than a cropped still — which is accepted deliberately.
+ *
+ * ── The meta line drops the air date and the runtime — issue #321 ────────────────────
+ *
+ * #250's card carried four facts beside the still: the code, the episode's name, the
+ * remaining count and a last line joining an air date and a runtime. The date and the
+ * runtime are noise on a surface reached to decide what to watch next, and are gone —
+ * `episode-card-line.ts`'s `episodeMetaLine` and its own `airDateInWords` are deleted with
+ * them, rather than left with no caller. The remaining count is not reopened: it is the one
+ * count `SPEC.md` §7 was amended for (#250), on the grounds that *am I three from the end or
+ * thirty* is the question this row exists to answer.
  *
  * ── The press, and the divergence it preserves ────────────────────────────────────────
  *
@@ -92,8 +98,6 @@ export function UpNextEpisodeRow({
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         picture={cardPicture(entry)}
-        airDate={entry.airDate}
-        runtimeMins={entry.runtimeMins}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
         press={press}
         aboveFold={aboveFold}
@@ -120,9 +124,12 @@ function MarkableRow({
   if (mark.finished) return null;
 
   const marked =
-    mark.episode === null ? entry.queue.episodes.length : indexOf(entry, mark.episode);
+    mark.episode === null
+      ? entry.queue.episodes.length
+      : indexOf(entry, mark.episode);
   const spent = marked >= entry.queue.episodes.length;
-  const showing = entry.queue.episodes[spent ? entry.queue.episodes.length - 1 : marked];
+  const showing =
+    entry.queue.episodes[spent ? entry.queue.episodes.length - 1 : marked];
 
   return (
     <RowBody
@@ -130,13 +137,13 @@ function MarkableRow({
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       picture={mark.picture}
-      airDate={marked === 0 ? entry.airDate : null}
-      runtimeMins={marked === 0 ? entry.runtimeMins : null}
       remainingAfter={countAfterShown(entry.remaining, marked, spent)}
       press={press}
       aboveFold={aboveFold}
       control={<MarkControl mark={mark} />}
-      sweep={mark.phase === "marking" ? <WatchSweep onSettled={mark.settle} /> : null}
+      sweep={
+        mark.phase === "marking" ? <WatchSweep onSettled={mark.settle} /> : null
+      }
     />
   );
 }
@@ -148,7 +155,11 @@ function indexOf(entry: UpNextEntry, episode: QueuedEpisode): number {
   return at < 0 ? 0 : at;
 }
 
-function countAfterShown(remaining: number, marked: number, spent: boolean): number {
+function countAfterShown(
+  remaining: number,
+  marked: number,
+  spent: boolean,
+): number {
   const unwatched = Math.max(0, remaining - marked);
   return spent ? unwatched : Math.max(0, unwatched - 1);
 }
@@ -185,8 +196,6 @@ function RowBody({
   code,
   episodeName,
   picture,
-  airDate,
-  runtimeMins,
   remainingAfter,
   press,
   aboveFold,
@@ -197,15 +206,12 @@ function RowBody({
   code: string;
   episodeName: string | null;
   picture: CardPicture;
-  airDate: string | null;
-  runtimeMins: number | null;
   remainingAfter: number;
   press: RowPress;
   aboveFold: boolean;
   control: React.ReactNode;
   sweep: React.ReactNode;
 }) {
-  const meta = episodeMetaLine({ airDate, runtimeMins });
   const label = `${entry.titleName} — ${code}${episodeName === null ? "" : `, ${episodeName}`}`;
 
   return (
@@ -224,15 +230,14 @@ function RowBody({
             <span className="bill-title text-bill-xs text-text">{code}</span>
             {/* The one count on this surface, and `SPEC.md` §7 was amended for it (#250).
                 `data-numeric` is the tabular-figures hook, so a list of rows does not
-                jitter as the numbers change width. */}
+                jitter as the numbers change width.
+
+                The air date and the runtime used to close this line with a third span —
+                deleted with `episodeMetaLine` (#321), rather than a placeholder. The
+                line is a flex row, so nothing is left to close a gap over. */}
             <span className="code-line text-dim" data-numeric>
               {remainingInWords(remainingAfter)}
             </span>
-            {meta === null ? null : (
-              <span className="code-line text-dim" data-numeric>
-                · {meta}
-              </span>
-            )}
           </p>
 
           {/* No line at all where TMDB has not named the episode, rather than the number a
@@ -280,13 +285,15 @@ function RowLink({
   function onSelectClick(event: React.MouseEvent<HTMLAnchorElement>): void {
     // A ⌘-click, a Ctrl-click, a Shift-click or a middle button is a request about the
     // link, and it is answered by the link on both sides of the breakpoint.
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+      return;
     if (!window.matchMedia(DESKTOP_BREAKPOINT).matches) return;
     event.preventDefault();
     select(entry.libraryEntryId, entry.posterPath);
   }
 
-  const shared = "pressable group flex min-w-0 flex-1 items-center gap-3.5 text-left";
+  const shared =
+    "pressable group flex min-w-0 flex-1 items-center gap-3.5 text-left";
 
   if (press === "select") {
     return (
