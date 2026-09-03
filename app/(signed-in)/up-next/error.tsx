@@ -2,6 +2,7 @@
 
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
+import { TIMEZONE_FALLBACK } from "@/lib/timezone";
 import { UpNextHeading } from "./up-next-heading";
 
 /**
@@ -13,6 +14,14 @@ import { UpNextHeading } from "./up-next-heading";
  * This is the surface `AGENTS.md`'s rule bites hardest on: a failed read here must never
  * be mistaken for `UpNextEmpty`'s *you're caught up* — the exact failure `tvtracker`
  * shipped for its whole life, on the one screen this app opens on.
+ *
+ * ── The heading's word here uses `TIMEZONE_FALLBACK`, not the account's zone ──────────
+ *
+ * Next.js requires an error boundary to be a Client Component, and `requireTimezone()`
+ * reaches through `next/headers` — a Server Component-only door `page.tsx` and
+ * `loading.tsx` can still knock on, and this file structurally cannot. `TIMEZONE_FALLBACK`
+ * is `lib/timezone.ts`'s own answer to *no zone is reachable*, reused rather than a device
+ * clock read (which issue #319 rules out by name) or a second fallback invented beside it.
  */
 export default function UpNextReadFailure({
   error,
@@ -25,7 +34,7 @@ export default function UpNextReadFailure({
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <UpNextHeading />
+      <UpNextHeading zone={TIMEZONE_FALLBACK} at={new Date()} />
 
       <div className="px-6 py-5">
         <ReadFailure reference={reference} retry={retry} />
