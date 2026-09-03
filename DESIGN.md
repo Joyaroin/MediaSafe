@@ -2522,6 +2522,13 @@ rails, no placeholder tabs, no "coming soon".
   end, or thirty* is the question that card exists to answer, so the number is **content**
   there, where the same number over a rail of posters would be chrome.
 
+  **#250's card also kept an air date and a runtime beside that count, and #321 takes them
+  back off.** They were never licensed by this bullet — a date and a duration are not
+  numerals standing in for a count, so removing them does not touch the narrowing above.
+  They are gone on their own argument instead: noise on a surface reached to decide what to
+  watch next. Only the remaining count survives, unreopened, on the same *three from the end
+  or thirty* test this paragraph states.
+
   **A second narrowing, #248's, in a separate pass and on a different card.** `/you`'s
   lists rail — a new surface, not #223's own — carries its list card's title count, for the
   same reason: a list you cannot tell full from started is a list card that has not done its
