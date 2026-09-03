@@ -303,14 +303,35 @@ const NO_PENDING_STATE = [
    * having to notice it happened.
    */
   "/sign-in",
-  /**
-   * §9's first shape. The page awaits only the session; the catalogue query belongs to
-   * `search-surface.tsx`, a client component running its own four-phase union through a
-   * server action. That region's pending state is radius 3 and is already built — a route
-   * boundary here would draw a second one for a read the route does not make.
-   */
-  "/search",
 ] as const;
+
+/**
+ * **`/search` was the fourth entry and is not one any more — issue #302.**
+ *
+ * Recorded as a reversal rather than a deletion, because the entry carried an argument and
+ * the argument was half right. It read:
+ *
+ * > §9's first shape. The page awaits only the session; the catalogue query belongs to
+ * > `search-surface.tsx`, a client component running its own four-phase union through a
+ * > server action. That region's pending state is radius 3 and is already built — a route
+ * > boundary here would draw a second one for a read the route does not make.
+ *
+ * Every clause about *where the catalogue query lives* is still true. What was wrong is the
+ * conclusion drawn from it — that a route awaiting *only* the session is a route that does
+ * not wait. It was measured on production at **243ms**, over which the previous screen sat
+ * frozen and was then replaced by a hard cut, because there was no boundary to paint and
+ * the view transition had nothing to animate between. `/search` was the only tab route
+ * with neither a pending nor a failure boundary, and it was the only tab that behaved that
+ * way.
+ *
+ * **The two pending states do not collide, and that is the half worth checking.** They are
+ * sequential rather than simultaneous: the route boundary is what stands while the session
+ * resolves, and it is gone by the time `search-surface.tsx` mounts and starts running its
+ * own four-phase union. Nothing draws both at once. And since the route-level delay
+ * (#301), the route boundary does not paint at all on a connection quick enough to beat
+ * it — which is every press of Search on wifi, against a server that answers this route in
+ * 175–235ms.
+ */
 
 /**
  * **The list [#181](https://github.com/Joyaroin/MediaSafe/issues/181) emptied.**
@@ -579,12 +600,18 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
-   * And negatively, on the three segments §9 decided genuinely have no pending state to
-   * draw — `/search`'s own read belongs to `search-surface.tsx`'s radius-3 union, not to a
-   * route boundary. `NO_PENDING_STATE` is where the reason for each of the three lives.
+   * And negatively, on a segment §9 decided genuinely has no pending state to draw.
+   * `NO_PENDING_STATE` is where the reason for each of them lives.
+   *
+   * **This asked about `/search` until #302 gave it a boundary**, and it is re-pointed
+   * rather than deleted, because what it is actually for is proving `hasBoundary` can
+   * still answer `false` — every other assertion in this block is a `toEqual([])` or a
+   * `toBe(true)`, and a reader that had broken into answering `true` for everything would
+   * pass all of them. `/import` carries that job now: it reads no data at all, so the
+   * whole screen is its own state and there is nothing for a dim line to stand in for.
    */
   it("does not find one where none was ever meant to land", () => {
-    expect(hasBoundary("(signed-in)/search")).toBe(false);
+    expect(hasBoundary("(signed-in)/import")).toBe(false);
   });
 
   /**
