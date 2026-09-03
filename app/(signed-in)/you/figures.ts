@@ -54,14 +54,21 @@ export function plural(count: number, noun: string, many = `${noun}s`): string {
 }
 
 /**
- * Watch time as months, days and hours — `"2 months, 4 days, 6 hours"`.
+ * Watch time as years, months, days and hours — `"1 year, 2 months, 4 days"`.
  *
- * **Three units here, where Stats printed two.** The ticket asks for the scale of a
- * watching life to be legible without arithmetic, and a television total that reaches
- * months is the figure that most needs it: *64 days* is a number a reader has to convert.
+ * **A years term above the months/days/hours ramp.** Past twelve months the total invites
+ * reading as a span rather than a count of months, so months past eleven roll into years.
+ * The conversion below years is unchanged — `MINUTES_PER_MONTH` still divides the total,
+ * and years is a term taken off the top of the resulting month count, not a re-derivation
+ * from `minutes`.
  *
- * **A unit that is zero is dropped rather than printed.** *2 months, 0 days, 6 hours* asks
+ * **A unit that is zero is dropped rather than printed.** *1 year, 0 months, 4 days* asks
  * the reader to read a zero to find out it says nothing.
+ *
+ * **The figure is capped at three parts, enforced explicitly.** The months/days/hours ramp
+ * got this for free by only having three units to print; a fourth unit means the cap has
+ * to say so itself. The largest three non-zero units are kept, so a total with all four
+ * parts drops hours rather than years.
  *
  * **The remainder is truncated, never rounded up.** A total assembled from borrowed
  * runtimes is already a floor (`CONTEXT.md`, Watch time), and rounding *23 hours* to *1
@@ -75,16 +82,22 @@ export function plural(count: number, noun: string, many = `${noun}s`): string {
 export function watchTimeInWords(minutes: number): string {
   if (minutes <= 0) return "none";
 
-  const months = Math.floor(minutes / MINUTES_PER_MONTH);
-  const afterMonths = minutes - months * MINUTES_PER_MONTH;
+  const totalMonths = Math.floor(minutes / MINUTES_PER_MONTH);
+  const afterMonths = minutes - totalMonths * MINUTES_PER_MONTH;
   const days = Math.floor(afterMonths / MINUTES_PER_DAY);
   const hours = Math.floor((afterMonths % MINUTES_PER_DAY) / MINUTES_PER_HOUR);
 
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+
   const parts = [
+    years > 0 ? plural(years, "year") : null,
     months > 0 ? plural(months, "month") : null,
     days > 0 ? plural(days, "day") : null,
     hours > 0 ? plural(hours, "hour") : null,
-  ].filter((part) => part !== null);
+  ]
+    .filter((part) => part !== null)
+    .slice(0, 3);
 
   // Nothing reached an hour, so minutes are the only honest unit left.
   if (parts.length === 0) return plural(minutes, "minute");
