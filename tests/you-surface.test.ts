@@ -209,7 +209,7 @@ describe("the hero", () => {
     );
 
     expect(markup).toContain("bg-raised");
-    expect(markup).toContain("rounded-full");
+    expect(markup).toContain("rounded-[var(--radius-full)]");
   });
 });
 

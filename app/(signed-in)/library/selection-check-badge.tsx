@@ -55,7 +55,7 @@ export function SelectionCheckBadge({ libraryEntryId }: { libraryEntryId: string
       // accent a couple of centimetres below. Ink against a poster is if anything the
       // louder mark — it is the darkest value in the palette, and it lands on artwork
       // rather than on the linen everything else here sits on.
-      className="badge-arrive pointer-events-none absolute -top-1.5 -right-1.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-ink text-ground"
+      className="badge-arrive pointer-events-none absolute -top-1.5 -right-1.5 flex h-[22px] w-[22px] items-center justify-center rounded-[var(--radius-full)] bg-ink text-ground"
     >
       {/* Drawn rather than typed: a `✓` is a font's opinion and this one has to read at
           12px against vermilion at every weight the variable face resolves to. */}

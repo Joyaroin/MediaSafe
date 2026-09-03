@@ -215,7 +215,7 @@ describe("a row that is missing something", () => {
     expect(markup).toContain("/severance.jpg");
     // The still's own frame is gone from this row entirely — it never had anything in it.
     expect(markup).not.toContain('class="still');
-    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:10px]"');
+    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:var(--radius-4)]"');
   });
 
   /**
@@ -227,7 +227,7 @@ describe("a row that is missing something", () => {
     const markup = render([episodeOn(TODAY, { posterPath: null })]);
 
     expect(markup).not.toContain("<img");
-    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:10px]"');
+    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:var(--radius-4)]"');
     // `Severance` — one word, one initial.
     expect(markup).toContain(">S<");
   });

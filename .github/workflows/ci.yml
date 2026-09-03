@@ -20,7 +20,7 @@
 # Postgres and the WebSocket proxy in front of it (`vitest.config.mts`), which is two
 # service containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set.
 #
-# Four files are the exception, and they are exceptions for the same reason: none of them
+# Five files are the exception, and they are exceptions for the same reason: none of them
 # needs a database.
 #
 #   - `tests/route-manifest.test.ts` reads two files `next build` just wrote and compares
@@ -30,14 +30,17 @@
 #   - `tests/tvtracker-conversion.test.ts` runs the pure import mapping over that archive.
 #   - `tests/palette.test.ts` reads the stylesheet, `DESIGN.md` and the committed design
 #     handoff, and asserts the three agree — #255.
+#   - `tests/corners.test.ts` reads the stylesheet's radius scale and sweeps the source
+#     tree for a raw radius outside it — #318.
 #
 # Each enforces a property *of a pull request*, and **a check that cannot run on a pull
 # request is a check that is not enforcing anything.** That is the whole admission rule,
-# and it is why these four run here and the rest of the suite does not.
+# and it is why these five run here and the rest of the suite does not.
 #
 # The count in this paragraph said *two* while three steps were already below it, which is
 # the drift the rule itself is about. Corrected when the fourth arrived (#255); it is a
-# count, so it goes stale the moment a step is added without reading this.
+# count, so it goes stale the moment a step is added without reading this — #318 is the
+# fifth, and this sentence was updated in the same change that added it.
 
 name: CI
 
@@ -164,6 +167,15 @@ jobs:
       - name: Palette
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:palette
+
+      # The corner scale (#318), on the same admission rule as the step above: it needs
+      # neither the database nor the build, only `app/globals.css` and the source tree, and
+      # it enforces a property *of a pull request* — a raw radius reintroduced anywhere
+      # under `app/` or `errors/` fails here rather than waiting for someone running the
+      # full local suite to notice a corner looked wrong.
+      - name: Corners
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:corners
 
       # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather

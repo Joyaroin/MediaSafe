@@ -55,7 +55,7 @@ export function ListsRail({ lists }: { readonly lists: readonly ListSummary[] })
           <li key={list.id} className={CARD}>
             <Link
               href={`/lists/${list.id}`}
-              className="pressable flex h-14 items-center rounded-2xl bg-raised px-3.5"
+              className="pressable flex h-14 items-center rounded-[var(--radius-6)] bg-raised px-3.5"
             >
               <span className="block w-full truncate text-card font-medium leading-[1.25] tracking-[-0.01em] text-ink">
                 {list.name}

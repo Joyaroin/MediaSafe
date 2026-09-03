@@ -155,7 +155,7 @@ export function CatalogueResultRow({
   }
 
   return (
-    <li className="flex items-center gap-3.5 rounded-2xl bg-raised px-3.5 py-3">
+    <li className="flex items-center gap-3.5 rounded-[var(--radius-6)] bg-raised px-3.5 py-3">
       {/* `52` is what this row now renders at, down from `78` — `Poster`'s contract is
           the real CSS width, and both land in the same `w92` bucket, so the honest number
           costs nothing on the wire. */}
@@ -163,7 +163,7 @@ export function CatalogueResultRow({
         posterPath={result.posterPath}
         name={result.name}
         width={52}
-        className="w-[52px] shrink-0 [--poster-radius:9px]"
+        className="w-[52px] shrink-0 [--poster-radius:var(--radius-3)]"
         aboveFold={aboveFold}
       />
 
@@ -313,7 +313,7 @@ export function CatalogueResultRow({
           aria-label={`Add ${result.name} to your library`}
           className="pressable [--press-register:1] flex h-11 shrink-0 items-center"
         >
-          <span className="flex h-[34px] items-center rounded-[17px] bg-accent px-4 text-item font-semibold text-accent-ink">
+          <span className="flex h-[34px] items-center rounded-[var(--radius-full)] bg-accent px-4 text-item font-semibold text-accent-ink">
             Add
           </span>
         </button>

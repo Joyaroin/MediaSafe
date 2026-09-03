@@ -251,7 +251,7 @@ export const CARD_WIDTH = 262;
 export const CARD = "w-[262px] shrink-0 snap-start";
 /** The frame's measure, stated once so the three states of `CardFrame` cannot come to
  *  differ in size — which is the whole of *the rail never reflows under a thumb*. */
-export const FRAME = "w-full [--still-radius:0]";
+export const FRAME = "w-full [--still-radius:var(--radius-none)]";
 
 /**
  * **The dead zone between the card's tap area and the recording control — issue #277.**
@@ -331,7 +331,7 @@ function CardBody({
 
        `snap-start` is the card's half of *a scroll comes to rest on a whole card* — the
        track carries the other half (`up-next-episode-rail.tsx`). */
-    <li className={`${CARD} relative overflow-hidden rounded-2xl bg-raised`}>
+    <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised`}>
       {/* The whole card bar the check. A `Link` rather than a button: this is a
           destination, and `SPEC.md`'s *a destination is a destination* is why a film card
           navigates too.
@@ -430,10 +430,10 @@ function CardBody({
  * story 3's *tapping a checkmark does not make the rail jump under my thumb*, and is the
  * reason the poster is cropped into this frame rather than given its own `2/3` box.
  *
- * `--still-radius: 0` because the card already clips this frame at its own `16px` corner;
- * the utility's default `7px` would draw a notch inside it. Set through the variable
- * rather than as a competing class, for the reason `globals.css` gives beside both this
- * utility and `poster`.
+ * `--still-radius: var(--radius-none)` because the card already clips this frame at its
+ * own `--radius-6` corner; the utility's default `--radius-1` would draw a notch inside
+ * it. Set through the variable rather than as a competing class, for the reason
+ * `globals.css` gives beside both this utility and `poster`.
  *
  * ── The poster is a plain `<img>` here rather than `Poster` ─────────────────────────
  *

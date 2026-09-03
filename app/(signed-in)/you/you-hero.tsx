@@ -47,7 +47,7 @@ export function YouHero({
          */
         <div
           aria-hidden="true"
-          className="flex h-[84px] w-[84px] shrink-0 items-center justify-center rounded-full bg-raised text-bill-md font-medium text-dim"
+          className="flex h-[84px] w-[84px] shrink-0 items-center justify-center rounded-[var(--radius-full)] bg-raised text-bill-md font-medium text-dim"
         >
           {initials}
         </div>
@@ -62,7 +62,7 @@ export function YouHero({
          */
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          className="h-[84px] w-[84px] shrink-0 rounded-full bg-raised object-cover"
+          className="h-[84px] w-[84px] shrink-0 rounded-[var(--radius-full)] bg-raised object-cover"
           src={avatarUrl}
           alt=""
           aria-hidden="true"

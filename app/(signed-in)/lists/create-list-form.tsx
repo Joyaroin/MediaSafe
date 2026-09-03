@@ -44,7 +44,7 @@ import { ListNameForm } from "./list-name-form";
  * the wait-cursor are not this string's to remember.
  */
 const NEW_LIST_PILL =
-  "flex h-11 shrink-0 items-center rounded-[22px] bg-accent px-[18px] text-item font-semibold text-accent-ink transition-[filter] duration-200 hover:brightness-95";
+  "flex h-11 shrink-0 items-center rounded-[var(--radius-full)] bg-accent px-[18px] text-item font-semibold text-accent-ink transition-[filter] duration-200 hover:brightness-95";
 
 export function CreateListForm({
   onCreated,

@@ -78,13 +78,13 @@ section exists so a reader does not take a superseded absolute below as current.
 | --- | --- | --- |
 | §2's light palette | Replaced by the handoff's seven values, with `--ink` re-derived *below* the new `--text` so headings stay darker than the body. Its proposed `--well`, `--body` and `--rule-soft` are **not** declared — they resolve to `--raised`, `--text` and `--hair`. Dark keeps #134's values and is re-checked on both paths. | `app/globals.css` |
 | The accent is reserved for recording a watch | The accent marks **what is live, and the one primary action of a screen** — one per screen, never two. `Add`, `New list` and the Up next group labels are now vermilion; the selected tab deliberately is **not**. | `app/globals.css` |
-| The Hairline Rule — *structure is drawn, not spaced*; library cells divided by `1px` borders, no radius, no gaps | Library cells, search results and list rows are `--raised` cards on gaps, at `16–18px` radii. Still no shadow anywhere: the `--raised`/`--ground` tone step is the only lift. | `library-grid.tsx`, `catalogue-result.tsx`, `list-row.tsx` |
+| The Hairline Rule — *structure is drawn, not spaced*; library cells divided by `1px` borders, no radius, no gaps | Library cells, search results and list rows are `--raised` cards on gaps, at `18–24px` radii (issue #318's scale; `16–18px` before it). Still no shadow anywhere: the `--raised`/`--ground` tone step is the only lift. | `library-grid.tsx`, `catalogue-result.tsx`, `list-row.tsx` |
 | §5 — the phone masthead on a `1px` rule, contents in bordered cells; chrome at `95%`/`2px` blur | No borders at all on the masthead. **The blur is no longer a divergence: it went to turn 9's `78%`/`22px` and has come back to `95%`/`2px`.** §5's repaint reasoning is a performance rule and it names one radius for the whole product; turn 9's heavier recipe made a second, and put it on the two bars that are fixed over every scrolling phone screen — and, because `tab-bar.tsx` holds itself out of the root snapshot, re-blurred across every frame of every tab slide. The `frosted` utility is now the single radius and `sidebar.tsx` reads it rather than spelling the same pair by hand. | `masthead.tsx`, `tab-bar.tsx`, `sidebar.tsx`, `app/globals.css` |
 | Navigation — *active is inverted to bone/ink*, cells divided by hairlines | No inverted cell and no dividers. Active is icon and label in `--ink`, inactive `--dim`; the travelling `layoutId` block went with the inversion it animated. The library chips keep theirs. | `tab-bar.tsx` |
 | §4's type ramp as the whole case of sizes | The bill ramp still sets every surface the handoff did not draw. The four phone tabs use a second, `px`-based register declared beside it, plus a `label-line` utility for the uppercase 11px label register. | `app/globals.css` |
 | The library heading is a step *below* Search's | All four phone tabs share one 34px `screen-title`, and none of the four carries a hairline under it. | the four `*-heading.tsx` |
-| §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | Cards, fields, chips and pills carry 9–22px radii, and the poster's radius is a `--poster-radius` variable with three per-surface values (`14`/`10`/`9`) over a `7px` default. There is still **no radius scale** — these are per-surface measures, not a ramp. | `app/globals.css`, the four screens |
-| *A pill would be the first radius in the application* | Two pills: `Add` (17px) and `New list` (22px). | `catalogue-result.tsx`, `create-list-form.tsx` |
+| §4/§12 — *there is no radius scale … the two exceptions and the list is closed*, and the poster's single `7px` | **No longer a divergence.** Issue #318 gave the application the scale §4 argued against — `--radius-none` through `--radius-7`, and `--radius-full` — and cards, fields, chips and posters all read a step of it rather than a per-surface literal. `--poster-radius` keeps its name and its `--radius-1` default; what it reads at each call site is now a scale step, not a literal like the `14`/`10`/`9` this row used to (wrongly) name. | `app/globals.css`, the four screens |
+| *A pill would be the first radius in the application* | Two pills, both now `--radius-full` rather than their own literal: `Add` (`17px` before #318) and `New list` (`22px` before it). | `catalogue-result.tsx`, `create-list-form.tsx` |
 | The phone page gutter is `px-4`, and §7's rails read *`scroll-pl-4` against the track's own `px-4`* | The gutter is `22px` on text and `14px` on lists that carry cards, so §7's sentence describes classes that no longer exist. The pairing itself still binds — #250's two rails hold `scroll-pl-[22px]` against `px-[22px]`. | `up-next/up-next-phone-rail.tsx` and the four screens |
 | §10's count — *25 `@theme` declarations and 6 `@utility` rules* | 33 and 11 — 10 after the redesign, and an eleventh (`still`) with issue #253. §10 carries the current figure and the `grep` that settles it. | `app/globals.css` |
 
@@ -94,7 +94,7 @@ The library and search gained a **mode**, and three things in the table above mo
 
 | Stated above | Now | Where |
 | --- | --- | --- |
-| *A pill would be the first radius in the application*, and then: two pills, `Add` and `New list` | Three shapes, and the third is a **track**: a fully-rounded raised rail with a fully-rounded `--ink` thumb sliding inside a `3px` inset. Still no radius *scale* — this is a per-surface measure like the others, and its reason is below. | `library/kind-mode-control.tsx` |
+| *A pill would be the first radius in the application*, and then: two pills, `Add` and `New list` | Three shapes, and the third is a **track**: a fully-rounded raised rail with a fully-rounded `--ink` thumb sliding inside a `3px` inset. Reads `--radius-full` since #318, the same step every other circle and pill does — no longer a divergence, and its reason is below. | `library/kind-mode-control.tsx` |
 | The accent marks what is live and the one primary action, one per screen | Unchanged, and this control is the case that tested it. The reference draws its selected segment in the accent; it is `--ink` here, because the library already spends its accent on the Watching chip's live label and a screen cannot have two. | `library/kind-mode-control.tsx` |
 | The library heading is one 34px `screen-title`, then chips, then the filter row | The mode control sits **above** the chips, and in Films mode the chips are not drawn at all. | `library/library-heading.tsx`, `library/library-surface.tsx` |
 
@@ -125,7 +125,7 @@ head and a column of **cards**, and four rules above move with it.
 
 | Stated above | Now | Where |
 | --- | --- | --- |
-| Library cells, search results and list rows are `--raised` cards on gaps at `16–18px`; *a card no longer needs a line around it* | Title detail's sections are cards on the same terms, at `18px` — the top of that range, because these are whole sections rather than single rows. The screen this follows outlines every block; the outlines are **not** taken, for exactly the reason §0 gives. | `programme-note-section.ts`, `programme-note-content.tsx` |
+| Library cells, search results and list rows are `--raised` cards on gaps at `18–24px` (issue #318's scale; `16–18px` before it); *a card no longer needs a line around it* | Title detail's sections are cards on the same terms, at `24px` — the top of that range, because these are whole sections rather than single rows. The screen this follows outlines every block; the outlines are **not** taken, for exactly the reason §0 gives. | `programme-note-section.ts`, `programme-note-content.tsx` |
 | §4's `text-bill-xl` is the title on both title screens | The **owned** screen's title is `text-bill-lg`, because it now sits in a hero beside a thumbnail rather than under a full-width poster, and `2.4rem` in a `420px` pane beside an image wraps before it reads. Catalogue detail is unchanged and keeps `text-bill-xl`. The two title screens no longer match, and that is the cost of restructuring one of them. | `title-hero.tsx` |
 | The accent marks what is live, one per screen | Unchanged, and title detail is where it was tested hardest: `STATE_LABELS` draws *Watching* in the accent and the new **progress bar** wants it too. The bar takes it — *how far through you are right now* is the most literal reading of *live* on the page — and the state word goes `--dim`, directly above a bar saying the same thing. | `title-hero.tsx`, `library-state.ts` |
 | Live-fact sections are a dim `code-line` label over a run of text | Each is a card with a real heading at `text-bill-sm`, and one carries an **eyebrow**: the region the watch providers are actually for. Inside a card the heading is the card's name; a dim monospace line there reads as metadata about the content rather than as what it is called. | `live-title-facts.tsx` |
@@ -507,35 +507,54 @@ buttons — the last square things in the application — are pills.
 
 **There are two shapes and a poster.**
 
-- **A pill**, `rounded-full`, on anything carrying a label. `GHOST_RECOVERY` and
+- **A pill**, `--radius-full`, on anything carrying a label. `GHOST_RECOVERY` and
   `SOLID_RECOVERY` and their compact measures (`errors/recovery-buttons.ts`), and the
   quiet hairline variants (`watch-mark-motion.tsx`). At `px-4 py-2` on a `code-line` that
-  is a `34.2px` control, so the pill is a `17px` radius — which is what **Add** has drawn
-  since the redesign, with **New list** at `22px` beside it. The pill was never a new shape;
-  it was the shape the two primary actions already had while every other control disagreed
-  with them.
-- **A circle**, `rounded-full`, on anything carrying a glyph and no label. The recording
+  is a `34.2px` control, a full round is a `17px` radius — which is what **Add** drew
+  since the redesign, with **New list** at `22px` beside it, and both now read
+  `--radius-full` rather than their own literal: a shape already at half its own box's
+  height cannot be rounder than that, so issue #318's ratchet retires them into the same
+  step every circle already used. The pill was never a new shape; it was the shape the two
+  primary actions already had while every other control disagreed with them.
+- **A circle**, `--radius-full`, on anything carrying a glyph and no label. The recording
   check and the settled mark (`RECORDING_GLYPH`, `SETTLED_GLYPH`), *watched up to here*,
   the selection badge, the segmented controls' track and thumb, the avatar.
-- **The poster**, still at `border-radius: 7px` by default, and still the only radius that
-  touches content — read through `--poster-radius` because three surfaces draw it at
-  `14`/`10`/`9`.
+- **The poster**, still the only radius that touches content, read through
+  `--poster-radius` because every surface that redraws one wants its own step — the
+  variable keeps its name and its `--radius-1` default; only the literals it and its
+  call sites used to carry are gone.
 
-Cards, fields and chips keep the per-surface `9–22px` measures the handoff gave them.
+Cards, fields and chips read the scale below rather than the per-surface measures the
+handoff gave them.
 
-**There is still no radius *scale*, and that part of the old rule survives intact.** No
-`--radius-sm/md/lg` ramp is invented: `rounded-full` needs no token at all, and the card
-values are per-surface measures from one handoff rather than steps on a ladder. §12's
-argument against a fifth thing to keep in step is untouched.
+**A radius *scale* now exists, reversing this section's own sentence — issue #318.** It
+used to say: *There is still no radius scale … No `--radius-sm/md/lg` ramp is invented:
+`rounded-full` needs no token at all, and the card values are per-surface measures from
+one handoff rather than steps on a ladder. §12's argument against a fifth thing to keep in
+step is untouched.* That held while nine distinct raw numbers were doing nine distinct
+jobs and nobody had yet been asked to round all nine at once. Being asked is what changed
+it: making every surface read rounder meant finding every one of those numbers by hand,
+which is exactly the drift a scale exists to close.
+
+`app/globals.css` declares the whole of it once — `--radius-none` through `--radius-7`,
+and `--radius-full` — and it is now the only way to round anything: `tests/corners.test.ts`
+sweeps the source tree and fails a raw `rounded-2xl`, a `rounded-[10px]`, a literal
+`[--poster-radius:10px]`, exactly as `tests/palette.test.ts` fails a drifted colour.
+**Every step is one notch rounder than the raw value it replaced** — the next rung a
+neighbouring old value already sat on, so a `9px` poster becomes `10px` and a `16px` card
+becomes `18px` rather than either being invented from nothing. §12's argument against a
+fifth thing to keep in step is answered rather than avoided: this is a fifth thing, and it
+is now the one place radius is decided rather than thirty places that could each drift on
+their own.
 
 A **soft rectangle** for the buttons — `6px`, `10px` — was drawn and declined. It reads
 well on its own, but beside a pill primary it is a third shape family answering one
 question, and adopting it would have meant re-cutting **Add** and **New list** down to it
 too. The cheaper-looking option was the more expensive one.
 
-`--radius-none: 0px` stays declared. What it now means is the bill-era surfaces the
-redesign has not reached — the programme note, Settings, sign-in — rather than a rule about
-the world.
+`--radius-none: 0px` stays declared, and is now the scale's own floor rather than a
+standalone exception. What it means is unchanged: the bill-era surfaces the redesign has
+not reached — the programme note, Settings, sign-in — rather than a rule about the world.
 
 ---
 

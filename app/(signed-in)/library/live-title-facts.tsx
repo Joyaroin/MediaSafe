@@ -559,7 +559,7 @@ function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) 
         {providers.map((provider) => (
           <li
             key={provider.id}
-            className="flex w-[168px] shrink-0 items-center gap-2.5 rounded-2xl bg-ground px-2.5 py-2.5"
+            className="flex w-[168px] shrink-0 items-center gap-2.5 rounded-[var(--radius-6)] bg-ground px-2.5 py-2.5"
           >
             {provider.logoPath === null ? null : (
               /* eslint-disable-next-line @next/next/no-img-element -- the artwork is
@@ -573,7 +573,7 @@ function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) 
                 height={36}
                 loading="lazy"
                 decoding="async"
-                className="h-9 w-9 shrink-0 rounded-[10px] object-cover"
+                className="h-9 w-9 shrink-0 rounded-[var(--radius-4)] object-cover"
               />
             )}
 
@@ -629,7 +629,7 @@ function CastAndCrewLine({ credit }: { credit: CastAndCrew }) {
                 posterPath={one.profilePath}
                 name={one.name}
                 width={104}
-                className="w-full [--poster-radius:12px]"
+                className="w-full [--poster-radius:var(--radius-5)]"
               />
 
               <p className="mt-2 truncate text-meta font-medium text-ink">{one.name}</p>

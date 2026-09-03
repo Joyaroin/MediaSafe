@@ -114,7 +114,7 @@ describe("the Up next row draws a poster and not a still", () => {
     // `ROW_POSTER_WIDTH`/`POSTER` rather than left beside the new box under a stale name.
     expect(code).not.toMatch(/\bSTILL\b/);
     expect(code).not.toMatch(/\bROW_STILL_WIDTH\b/);
-    expect(code).toMatch(/\[--poster-radius:8px\]/);
+    expect(code).toMatch(/\[--poster-radius:var\(--radius-2\)\]/);
   });
 });
 
@@ -915,7 +915,7 @@ describe("the recording control has a dead zone from the card's tap area", () =>
   it("leaves the card's box and the rail's layout alone", () => {
     expect(code).toMatch(/CARD_WIDTH = 262/);
     expect(code).toMatch(/CARD = "w-\[262px\] shrink-0 snap-start"/);
-    expect(code).toMatch(/FRAME = "w-full \[--still-radius:0\]"/);
+    expect(code).toMatch(/FRAME = "w-full \[--still-radius:var\(--radius-none\)\]"/);
   });
 
   /**

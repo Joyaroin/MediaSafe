@@ -146,7 +146,7 @@ export function WatchMenu({
       ref={ref}
       onClose={onClosed}
       aria-labelledby="watch-menu-h"
-      className="rounded-2xl border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+      className="rounded-[var(--radius-6)] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
     >
       {/* Never swapped out by `confirming` — issue #315's acceptance criterion that the
           episode being acted on stays identifiable while the confirmation is shown. */}

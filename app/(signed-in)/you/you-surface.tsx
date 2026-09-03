@@ -53,7 +53,7 @@ import { YouTitleRail } from "./you-title-rail";
  */
 function Figure({ label, value }: { readonly label: string; readonly value: string }) {
   return (
-    <div className="rounded-[16px] bg-raised px-4 py-4">
+    <div className="rounded-[var(--radius-6)] bg-raised px-4 py-4">
       <dt className="label-line text-dim">{label}</dt>
       <dd data-numeric className="mt-2 text-bill-md font-medium text-ink">
         {value}

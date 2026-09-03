@@ -73,7 +73,7 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * image per title across the application.
  */
 const BILL_POSTER_WIDTH = 132;
-const BILL_POSTER = "w-full [--poster-radius:10px]";
+const BILL_POSTER = "w-full [--poster-radius:var(--radius-4)]";
 
 export function LibraryEntryCell({
   entry,

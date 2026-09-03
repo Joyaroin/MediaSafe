@@ -29,7 +29,7 @@ export function ListViewControl({
     <div
       role="group"
       aria-label="View"
-      className="flex shrink-0 rounded-full bg-raised p-[3px]"
+      className="flex shrink-0 rounded-[var(--radius-full)] bg-raised p-[3px]"
     >
       {LIST_VIEW_MODES.map((mode) => {
         const selected = mode === value;
@@ -39,14 +39,14 @@ export function ListViewControl({
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(mode)}
-            className={`relative flex h-8 items-center justify-center rounded-full px-3.5 text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
+            className={`relative flex h-8 items-center justify-center rounded-[var(--radius-full)] px-3.5 text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
               selected ? "text-ground" : "text-dim hover:text-ink"
             }`}
           >
             {selected ? (
               <m.span
                 layoutId="list-view-mode"
-                className="absolute inset-0 rounded-full bg-ink"
+                className="absolute inset-0 rounded-[var(--radius-full)] bg-ink"
                 transition={snappy}
               />
             ) : null}
