@@ -233,9 +233,13 @@ cannot roll back, because the transaction is the thing they are testing.
 `npm run test:e2e` — Playwright, and the whole of what it takes to run it. It builds,
 starts the built app on its own port (3100, so it never fights a `next dev` server
 already on 3000), seeds a fixture account and a session behind a real signed cookie, and
-runs `tests/e2e/pending-hold.spec.ts` — the two properties `--dur-pending-hold`
-(`app/globals.css`, issue #301) has to hold that only a real browser can show: a fast
-navigation paints no pending bars, and a slow one still does.
+runs every `tests/e2e/*.spec.ts`: `pending-hold.spec.ts` (issue #304) proves the two
+properties `--dur-pending-hold` (`app/globals.css`, issue #301) has to hold — a fast
+navigation paints no pending bars, and a slow one still does; `poster-morph.spec.ts` and
+`navigation-motion.spec.ts` (issue #305) prove the poster morph pairs on both entry paths
+into a title and that the navigation's own motion begins against the press rather than
+against a skeleton swap. `poster-morph.spec.ts` seeds and signs in as a second fixture
+account of its own — see its own docblock for why the shared one stays untouched.
 
 It needs the same local Postgres every other test does (`npm run db:up` first, if it is
 not already up) and the same `.env` — `BETTER_AUTH_SECRET` in particular, since the
