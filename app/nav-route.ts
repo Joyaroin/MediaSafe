@@ -19,6 +19,25 @@ export function isCurrentRoute(pathname: string, href: string): boolean {
 }
 
 /**
+ * Whether a press on `href` is a **re-press** — the reader already standing on the tab it
+ * points to — issue #323's *pressing Up next while already on Up next starts the screen
+ * over*.
+ *
+ * Built on `isCurrentRoute`'s own rule for what "already there" means, rather than a
+ * second `startsWith` beside it that could disagree — the exact drift that function's own
+ * docblock names as the reason it exists in the first place.
+ *
+ * Generic over every destination, even though today exactly one caller ever does anything
+ * with a `true` answer: `tab-bar.tsx` and `sidebar-nav.tsx` decide which tab's press this
+ * changes anything for (`use-up-next-repress.ts`), and that decision is theirs, not this
+ * function's. It holds no element, no event and no React — the shape `restoration.ts` and
+ * `gesture-rules.ts` already have — so `tests/nav-transitions.test.ts` drives it directly.
+ */
+export function isTabRepress(pathname: string, href: string): boolean {
+  return isCurrentRoute(pathname, href);
+}
+
+/**
  * Where a reader on a detail page came from, as the two things a way out needs: the name
  * of the surface, and the address of it.
  *

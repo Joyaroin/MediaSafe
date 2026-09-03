@@ -7,6 +7,7 @@ import {
   NOTHING_REMEMBERED,
   SEARCH_START,
   UP_NEXT_START,
+  forgetUpNext,
   railOffset,
   rememberSearch,
   rememberUpNext,
@@ -142,6 +143,38 @@ describe("the two surfaces are remembered apart", () => {
     );
     expect(upNextPlace(memory)).toEqual(WHERE_UP_NEXT_WAS);
     expect(searchPlace(memory)).toEqual(WHERE_SEARCH_WAS);
+  });
+});
+
+describe("a re-press clears Up next without touching search — issue #323", () => {
+  it("puts a seen Up next back at the default a first visit gets", () => {
+    const memory = rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS);
+    expect(upNextPlace(forgetUpNext(memory))).toEqual(UP_NEXT_START);
+  });
+
+  it("puts every rail back at its start, not only the pager's page", () => {
+    const memory = rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS);
+    const cleared = forgetUpNext(memory);
+    expect(railOffset(upNextPlace(cleared), "Ongoing")).toBe(0);
+    expect(railOffset(upNextPlace(cleared), "Old friends")).toBe(0);
+  });
+
+  it("leaves search exactly where it was", () => {
+    const memory = rememberSearch(
+      rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS),
+      WHERE_SEARCH_WAS,
+    );
+    expect(searchPlace(forgetUpNext(memory))).toEqual(WHERE_SEARCH_WAS);
+  });
+
+  it("is a no-op on a surface that was already at its default", () => {
+    expect(upNextPlace(forgetUpNext(NOTHING_REMEMBERED))).toEqual(UP_NEXT_START);
+  });
+
+  it("does not touch the memory it was handed", () => {
+    const memory = rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS);
+    forgetUpNext(memory);
+    expect(upNextPlace(memory)).toEqual(WHERE_UP_NEXT_WAS);
   });
 });
 

@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 
-import { keepRailOffset, rememberedRailOffset } from "@/app/restoration-memory";
+import {
+  keepRailOffset,
+  onUpNextRestart,
+  rememberedRailOffset,
+} from "@/app/restoration-memory";
 
 /**
  * The phone rail's track, and the whole of what a rail has to do to come back to where the
@@ -60,6 +64,23 @@ export function RememberedTrack({
     if (element === null) return;
     element.scrollLeft = rememberedRailOffset(rail);
   }, [rail]);
+
+  /**
+   * **A re-press of the Up next tab, issue #323.** `startUpNextOver()` has already cleared
+   * the memory by the time this fires, so `rememberedRailOffset(rail)` reads `0` — the same
+   * call the mount effect above makes, reused rather than hand-written as a second
+   * `element.scrollLeft = 0`, which is exactly the kind of copy that drifts from the rule
+   * it was copied from the day the rule changes.
+   */
+  useEffect(
+    () =>
+      onUpNextRestart(() => {
+        const element = track.current;
+        if (element === null) return;
+        element.scrollLeft = rememberedRailOffset(rail);
+      }),
+    [rail],
+  );
 
   function recordScroll() {
     const element = track.current;

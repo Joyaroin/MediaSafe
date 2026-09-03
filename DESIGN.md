@@ -1233,6 +1233,22 @@ recorded it as a debt rather than a design. It is settled here.
   rails keep their offsets anyway, because they are the same component and the memory costs
   them a `scrollLeft`.
 
+> **⚠️ One gesture now overrides this section — issue
+> [#323](https://github.com/Joyaroin/MediaSafe/issues/323).** Pressing **Up next** while
+> Up next is already the tab showing does not restore anything: it takes the reader back
+> to the pager's first page, every rail's start, and reads fetched fresh, exactly as a
+> first visit would. Everything above is otherwise unchanged — arriving from anywhere
+> else, including back from a title just opened, still restores exactly as it always has,
+> because that is the case #276 was written for. `app/restoration.ts` gains one function
+> for this, `forgetUpNext`, which writes `UP_NEXT_START` over whatever Up next's place
+> was rather than reading it; the reader has very much been on the tab, so this is not the
+> *never seen* absence the rest of this section argues for. The decision that a given press
+> **is** that one gesture is a second pure module beside it — `isTabRepress`
+> (`app/nav-route.ts`) — driven directly by `tests/nav-transitions.test.ts`, and bound to
+> the phone tab bar and the desktop sidebar alike by `app/use-up-next-repress.ts`, so the
+> two chrome surfaces cannot answer the question differently. Every other tab, on both
+> surfaces, presses exactly as it did before this ticket.
+
 ### The Android tap is hardened against, and not fixed — issue #277
 
 > **⚠️ Read this as a hypothesis.** Nothing below was reproduced. The report is
