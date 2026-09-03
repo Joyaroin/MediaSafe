@@ -1430,27 +1430,64 @@ Three things differ, and all three follow from what a still *is*:
   would be a knob with nothing on the other end of it. It takes `poster`'s own `7px`
   default, so the two agree by default rather than by coincidence.
 
-**A card that has advanced draws the title's poster in this frame — issue #269.** The
-next-episodes card's still belongs to the **head** of its run and to nobody else:
-`QueuedEpisode` carries no artwork, and widening that read was considered and rejected in
-favour of the poster the entry already has. So a card that has been marked cannot draw the
-new episode's frame, and must not draw the old one — a frame from the episode just watched,
-over the name of the episode on offer, is a *wrong* picture rather than a missing one.
-What fills the gap is the poster, cropped to centre, at this frame's measure and not the
-poster's; §8's amendment above is where that reversal is argued. **The rule for which of
-the two lives in `app/(signed-in)/up-next/up-next-mark.ts`**, with the rest of that card's
-derivations, and not in the component that draws it.
+**A card that has advanced draws the title's poster in this frame — issue #269, and this
+paragraph is reversed for the row by issue #320 below.** The next-episodes card's still
+belonged to the **head** of its run and to nobody else:
 
-**The missing-artwork state is the frame, and nothing inside it.** It is now reached when
-the title has **neither** a still nor a poster, which is the only remaining case and is
-unchanged in every other respect. Issue #245's user story
-48 asks for *a deliberate placeholder, so that a missing still does not collapse the row*,
-and it is worth being exact that this is the same answer §3 already gives for the poster
-rather than an exception to it: what was asked for is that the space is **held**, not that
-it is captioned, and holding it is what an `aspect-ratio` does. No glyph, no wordmark, no
-"no image" apology goes in the well — `app/poster.tsx` refuses one on the grounds that it
-*would be the only apology in a world that has none*, and nothing about an episode makes
-that less true.
+> `QueuedEpisode` carries no artwork, and widening that read was considered and rejected in
+> favour of the poster the entry already has. So a card that has been marked cannot draw the
+> new episode's frame, and must not draw the old one — a frame from the episode just
+> watched, over the name of the episode on offer, is a *wrong* picture rather than a missing
+> one. What fills the gap is the poster, cropped to centre, at this frame's measure and not
+> the poster's; §8's amendment above is where that reversal is argued.
+
+**The rule for which of the two lives in `app/(signed-in)/up-next/up-next-mark.ts`**, with
+the rest of that card's derivations, and not in the component that draws it — true before
+issue #320 and true after it, and the reason the paragraph above is quoted rather than
+deleted: the rule moved, the *place* it lives did not.
+
+**Retired from the Up next row entirely — issue #320.** The paragraph above described
+`up-next-episode-card.tsx`'s `262px` card, and by the time this ticket opened the rails had
+already stopped rendering it (#250): `up-next-episode-row.tsx`'s full-width row draws every
+next episode now, on both densities, and it inherited the still — `104px` wide in the
+identical `16:9` frame, a wide frame squeezed into a small one, which reads as a poster that
+has been cut off. That box was also why the poster morph paired wrong: opening a title from
+the row asked this `16:9` still to travel into the title's own `2:3` poster, two different
+pictures at two different shapes travelling as though they were one thing.
+
+So the still is retired from the rule the row reads, not merely cropped smaller or boxed
+differently. `cardPicture` (`up-next-mark.ts`) never names a still any more — its own
+docblock has the argument — and the row's frame is `Poster`'s own `2/3` box, the same
+component and the same ratio the title's own page draws, rather than `still` at `16/9`.
+Retiring it *is* the morph's repair and not a second fix beside it: the shared element on
+both ends of the transition becomes the same poster at the same ratio, because there is no
+still left in the rule for the two ends to disagree about. The row is taller for it — a
+whole poster is more picture than a cropped still — which is accepted deliberately.
+
+**The retired card keeps the paragraph above, because nothing renders it to contradict.**
+`up-next-episode-card.tsx` still exists, for `CARD`/`CARD_WIDTH`/`FRAME`, which
+`up-next-pending-card.tsx` still imports, and for two sweeps
+(`tests/press-spring.test.ts`, `tests/refresh-rate.test.ts`) that still assert on its
+source. It is simply not on the page any more, and `cardPicture` feeding it a poster where
+it once could have read a still changes nothing on a screen nobody reaches.
+
+**The episode page's own still is untouched.** `episode-still.tsx`'s hero, described at the
+top of this section, was never `up-next-mark.ts`'s to begin with — it reads `still_path`
+directly off the episode being viewed, which is the mirrored fact issue #320 leaves in the
+data (the repository's own *expand-contract, forward-only* rule) precisely because this
+surface still draws it.
+
+**The missing-artwork state is the frame, and nothing inside it.** On the episode page it is
+reached when the title has **neither** a still nor a poster, which is the only remaining
+case there and is unchanged in every other respect; on the Up next row, since #320, it is
+reached whenever the title has no poster; `Poster`'s own rule now, not `EpisodeStill`'s.
+Issue #245's user story 48 asks for *a deliberate placeholder, so that a missing still does
+not collapse the row*, and it is worth being exact that this is the same answer §3 already
+gives for the poster rather than an exception to it: what was asked for is that the space is
+**held**, not that it is captioned, and holding it is what an `aspect-ratio` does. No glyph,
+no wordmark, no "no image" apology goes in the well — `app/poster.tsx` refuses one on the
+grounds that it *would be the only apology in a world that has none*, and nothing about an
+episode makes that less true.
 
 ### The morph
 

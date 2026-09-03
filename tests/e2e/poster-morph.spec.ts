@@ -210,6 +210,48 @@ test("the poster morph pairs when opening a title from an Up next row", async ({
 });
 
 /**
+ * **Issue #320's own property: the morph pairs like with like.** The three tests above
+ * prove the transition *runs* — both an old and a new snapshot under the shared name — but
+ * say nothing about what either snapshot looks like. Before #320 the Up next row drew the
+ * episode's still at `16:9` and the title's own page always drew its poster at `2:3`, so
+ * every one of those transitions above was already pairing two different shapes; it ran and
+ * still looked wrong, which no observation of `document.getAnimations()` alone can catch.
+ *
+ * `seedWatchingShow` mints episodes with no `stillPath` at all, so this fixture already
+ * exercised the bug on every run of the suite above without any test noticing: `cardPicture`
+ * fell back to the poster even before #320, and the row cropped it into the `16:9` box
+ * regardless. This test is the one that would have failed against that build — not on
+ * whether the transition ran, but on whether the two ends agreed on a shape.
+ */
+test("the poster morph pairs the row's picture and the title's poster at one ratio", async ({
+  page,
+}) => {
+  await page.goto("/up-next");
+
+  const rowPicture = page.locator('img[src*="image.tmdb.org"]').first();
+  await expect(rowPicture).toBeVisible();
+  const rowBox = await rowPicture.boundingBox();
+  expect(rowBox, "the Up next row draws no TMDB image at all").not.toBeNull();
+
+  await page.getByRole("link", { name: new RegExp(seeded.titleName) }).click();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+
+  const destinationPicture = page.locator('img[src*="image.tmdb.org"]').first();
+  await expect(destinationPicture).toBeVisible();
+  const destinationBox = await destinationPicture.boundingBox();
+  expect(destinationBox, "the title's own page draws no TMDB image at all").not.toBeNull();
+
+  const rowRatio = rowBox!.width / rowBox!.height;
+  const destinationRatio = destinationBox!.width / destinationBox!.height;
+
+  // Both ends of the morph are the poster's own `2/3`, never the row's former `16/9` still
+  // — the property the morph repair depends on: the shared element travels as one picture
+  // at one shape rather than two mismatched ones.
+  expect(rowRatio).toBeCloseTo(2 / 3, 1);
+  expect(destinationRatio).toBeCloseTo(2 / 3, 1);
+});
+
+/**
  * **The single-commit path, which is the one that shipped broken — issue #305.**
  *
  * The two tests above open a title the router has never fetched, so React renders the
