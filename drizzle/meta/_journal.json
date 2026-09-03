@@ -71,6 +71,13 @@
       "when": 1788199296819,
       "tag": "0009_title-episodes-mirrored-at",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788467805563,
+      "tag": "0010_library-entry-release-progress-view",
+      "breakpoints": true
     }
   ]
 }

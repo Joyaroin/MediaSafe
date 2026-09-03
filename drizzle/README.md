@@ -19,6 +19,7 @@ One history, from one tool, in one order:
 | `0007_list-membership-drop-library-entry-id.sql` | Drops `list_membership.library_entry_id`, expand-contract's leftover from 0006 (#150) |
 | `0008_title-release-date-and-episode-still.sql` | `title.release_date` and `episode.still_path` — ADR-0001 amendment 10 (#246) |
 | `0009_title-episodes-mirrored-at.sql` | `title.episodes_mirrored_at` — pending is a fact the database holds, ADR-0001 amendment 11 (#271) |
+| `0010_library-entry-release-progress-view.sql` | `library_entry_release_progress`, the fifth view — watched-against-released counts for the library card's bar (#324) |
 
 **Name the file after what it brings.** drizzle-kit generates a random tag —
 `0005_noisy_maddog` — and the file is renamed, along with its `tag` in `meta/_journal.json`,

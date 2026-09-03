@@ -2612,8 +2612,16 @@ rails, no placeholder tabs, no "coming soon".
   pending ticket behind it — #229 specced four charts for the page #249 deleted and is closed
   won't-do. And **year in review is still out**, on `SPEC.md` §9's own grounds rather than on
   this bullet's — it needs a year of dated watches.
-- **No rating on a tile.** A tile is a poster, a name and a year. Ratings live on the
-  programme note.
+- **No rating on a tile.** ~~A tile is a poster, a name and a year.~~ Ratings live on the
+  programme note. **The middle sentence is amended by #324.** A show's library card now
+  also draws a thin bar at its foot, watched against released — a fifth thing on the tile,
+  and *a tile is a poster, a name and a year* stopped being true the moment it did. What is
+  not reopened is the bullet's own rule, and the bar is the proof it still holds rather
+  than a reason to drop it: it carries no numeral anywhere, so *a count may not appear as
+  chrome on a surface the reader came to do something else on* (this section, above) is
+  exactly as true of the bar as it was of a rating. A film draws no bar — it has two states
+  and the word already says which — and a show with nothing released draws none either,
+  because an empty bar there would report the catalogue's gap as the reader's.
 - **No sort on Up next.** The order is the rails' own, and it is not a control.
 - **No home rails other than Up next's three.** Not for genres, not for upcoming. **Amended
   by #223.** Lists used to be this bullet's third example, and is not any more: #215's

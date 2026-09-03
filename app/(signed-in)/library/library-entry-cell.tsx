@@ -1,5 +1,6 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
+import { libraryProgressFraction } from "./library-progress-fraction";
 import { railPosterTransitionName } from "./poster-transition-name";
 import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
@@ -44,6 +45,26 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * Up next Abandoned group — the handoff names this cell as the surface that already dims
  * a poster and asks that the two not be left different by accident.
  *
+ * ── The bar at the foot, since issue #324 ────────────────────────────────────────────
+ *
+ * A show's card gains a thin bar under the state line, filled by
+ * `libraryProgressFraction` (watched against released — never against every mirrored
+ * episode, which `library-progress-fraction.ts`'s own docblock explains is a different
+ * question `progress-remaining.ts`'s `watchProgress` answers instead, on title detail).
+ * `null` draws nothing, which is both a film (no `progress` at all — `db/access.ts`) and
+ * a show with nothing released yet (`progress.released === 0`): two different reasons for
+ * the same absence, and neither reads as *started and empty*.
+ *
+ * **Not the accent.** `DESIGN.md` §0 rations it to one live thing per screen, and the
+ * grid already spends it on the *Watching* label (`STATE_LABELS`, `LIVE_EDGE_OF_THE_
+ * RECORD`) — a bar on every card regardless of state would be 472 chances to spend a
+ * token reserved for one. `bg-dim` on `bg-hair`, the same quiet pairing `STATE_LABELS`
+ * already uses for every state that is not *Watching*.
+ *
+ * **No numeral anywhere near it** — DESIGN.md §11's own remaining rule, amended by this
+ * ticket rather than reopened: a count may not stand as chrome on a surface reached to do
+ * something else, and this bar is chrome by construction.
+ *
  * ── The poster leaves as its own prop, since issue #303 ──────────────────────────────
  *
  * The `relative` wrapper the check badge hangs off used to live here; it moved into
@@ -86,6 +107,10 @@ export function LibraryEntryCell({
 }) {
   const abandoned = entry.state === "abandoned";
   const state = STATE_LABELS[entry.state];
+  const progress =
+    entry.progress === null
+      ? null
+      : libraryProgressFraction(entry.progress.watched, entry.progress.released);
 
   return (
     <li className="offscreen-skippable">
@@ -152,6 +177,18 @@ export function LibraryEntryCell({
           `NEXT_LINES` is deleted with it; nothing else read those strings.
         */}
         <p className={`label-line mt-1.5 ${state.className}`}>{state.label}</p>
+
+        {progress === null ? null : (
+          <div
+            aria-hidden="true"
+            className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-hair"
+          >
+            <div
+              className="h-full rounded-full bg-dim"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        )}
       </SelectableEntry>
     </li>
   );
