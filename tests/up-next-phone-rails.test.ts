@@ -81,6 +81,42 @@ const ALL_SOURCES = ["app", "db", "cache", "errors", "lib", "tmdb"].flatMap((dir
   sourceFiles(path.join(REPOSITORY_ROOT, directory)),
 );
 
+/**
+ * **Issue #320 — the Up next row draws the title's poster, and the episode's own still is
+ * retired from it.** `up-next-episode-row.tsx` cannot be rendered under Vitest — it reaches
+ * `@/db/access`'s `isPendingEntry`, which pulls in the `server-only`-guarded module
+ * `up-next-phone-rails.test.ts`'s own docblock names — so this is a rendered-markup
+ * property read the way this whole suite reads them: off the source, the same device
+ * `tests/nav-transitions.test.ts` and `tests/up-next-reorder.test.ts` already use for this
+ * exact file.
+ *
+ * Both row kinds are asserted: `RowFrame` (the markable and non-markable episode row) and
+ * `UpNextPendingRow`, which shares the same box and the same reason a taller still-shaped
+ * hole would be wrong for it too — a pending row becomes an episode row the moment the
+ * mirror lands, and the two must already agree on the frame's shape.
+ */
+describe("the Up next row draws a poster and not a still", () => {
+  const code = codeOf(sourceAt(TILE));
+
+  it("draws through Poster, on both row kinds", () => {
+    expect(code.match(/<Poster\b/g)).toHaveLength(2);
+  });
+
+  it("imports no still component and reads no still path", () => {
+    expect(code).not.toMatch(/\bEpisodeStill\b/);
+    expect(code).not.toMatch(/\bstillPath\b/);
+  });
+
+  it("draws the poster's own 2/3 box, not the still's 16/9 one", () => {
+    expect(code).not.toMatch(/\bstill-radius\b/);
+    // The row's own former constants — the still's width and its class string — renamed to
+    // `ROW_POSTER_WIDTH`/`POSTER` rather than left beside the new box under a stale name.
+    expect(code).not.toMatch(/\bSTILL\b/);
+    expect(code).not.toMatch(/\bROW_STILL_WIDTH\b/);
+    expect(code).toMatch(/\[--poster-radius:8px\]/);
+  });
+});
+
 describe("the landing screen shows two rails and the five groups are gone", () => {
   it("renders the two rails under the phone's own breakpoint", () => {
     const page = sourceAt(PAGE);

@@ -8,7 +8,6 @@ import {
   RECORDING_GLYPH,
   WatchSweep,
 } from "@/app/(signed-in)/library/watch-mark-motion";
-import { watchMarks } from "@/app/(signed-in)/library/watch-marks";
 import { posterSrc } from "@/app/poster";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import type { QueuedEpisode, UpNextEntry } from "@/db/access";
@@ -107,16 +106,12 @@ export function UpNextEpisodeCard({
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         /**
-         * `cardPicture` over the module-level store, rather than a still read straight off
-         * the entry — one rule for every card (#269), even the one that can never move.
-         *
-         * This branch has no `useUpNextMark` and must not grow one: the hook rule at the
-         * top of this file is why the branch exists at all. It does not need the
-         * subscription either — a run that arrived empty has nothing markable in it, so
-         * this card's position is nailed to zero and no press can change the answer. The
-         * store is passed because the rule takes one, not because this call is watching it.
+         * `cardPicture`, the one rule for every card (#269). Since #320 it reads the
+         * entry's poster alone and takes no store — a run that arrived empty had nothing
+         * markable in it before that ticket either, so this call never depended on the
+         * subscription; it is simply not there to depend on any more.
          */
-        picture={cardPicture(watchMarks, entry)}
+        picture={cardPicture(entry)}
         airDate={entry.airDate}
         runtimeMins={entry.runtimeMins}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
