@@ -447,3 +447,58 @@ describe("whether a press is a re-press of the tab already showing", () => {
     }
   });
 });
+
+/**
+ * ── Both progress bars follow the mark — issue #335 ──────────────────────────────────
+ *
+ * The state already updates at the sweep's settle (`WatchProgress` recomputes on the
+ * watched count), so the only thing missing was a transition on the fill's `width`. Width,
+ * never a transform: the fill is the only child of a clipped, rounded track, and a scale
+ * would flatten that rounded end instead of sliding it.
+ */
+const POSTER_PROGRESS_BAR = readFileSync("app/poster-progress-bar.tsx", "utf8");
+const TITLE_HERO = readFileSync("app/(signed-in)/library/title-hero.tsx", "utf8");
+
+describe("both progress bars follow the mark instead of jumping after it", () => {
+  it("declares a width transition off the duration ramp, not a raw literal", () => {
+    for (const [label, source] of [
+      ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
+      ["title-hero.tsx", TITLE_HERO],
+    ] as const) {
+      expect(source, `${label} has no width transition`).toMatch(/transition-\[width\]/);
+      expect(source, `${label} times it off a raw literal instead of the ramp`).toMatch(
+        /duration-\[var\(--dur-[a-z]+\)\]/,
+      );
+    }
+  });
+
+  it("transitions width, never a transform, so the fill's rounded end is never scaled", () => {
+    for (const [label, source] of [
+      ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
+      ["title-hero.tsx", TITLE_HERO],
+    ] as const) {
+      expect(source, `${label} scales the fill instead of widening it`).not.toMatch(
+        /transition-\[(transform|scale)\]/,
+      );
+    }
+  });
+
+  it("still reaches its new value under reduced motion, because the mark must survive", () => {
+    // The established shape for this preference (`.watch-sweep`'s own reduced-motion
+    // rule, above) is to collapse the duration rather than remove the property: the width
+    // still lands on its new value, it just does not travel to get there.
+    const reduced = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
+    )!.join("\n");
+    expect(reduced).toMatch(/\.progress-fill\s*\{[^}]*transition-duration:\s*1ms/);
+
+    for (const [label, source] of [
+      ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
+      ["title-hero.tsx", TITLE_HERO],
+    ] as const) {
+      expect(source, `${label} never wears the class the reduced-motion rule targets`).toMatch(
+        /progress-fill/,
+      );
+    }
+  });
+});
