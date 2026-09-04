@@ -146,7 +146,10 @@ export function WatchMenu({
       ref={ref}
       onClose={onClosed}
       aria-labelledby="watch-menu-h"
-      className="rounded-[var(--radius-6)] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+      // `dialog-transition` (issue #333, `app/globals.css`): arrives and leaves on a
+      // transition rather than a keyframe, because Cancel or Escape can end this dialog
+      // before its own entrance has finished.
+      className="dialog-transition rounded-[var(--radius-6)] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
     >
       {/* Never swapped out by `confirming` — issue #315's acceptance criterion that the
           episode being acted on stays identifiable while the confirmation is shown. */}
