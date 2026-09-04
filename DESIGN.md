@@ -1105,7 +1105,7 @@ when it carries neither.
   **This is not contradicted by the progress bar that now sits on a poster's foot**
   (`app/poster-progress-bar.tsx`, §11's #324 bullet). The sweep is a wash over the whole
   tile for 380ms — at that size and that speed the artwork is what changes colour. The bar
-  is a `3px` rule at the bottom edge, permanent, and reads as a measure on the frame rather
+  is a `5px` rule at the bottom edge, permanent, and reads as a measure on the frame rather
   than as a colour applied to the picture. The rule above is about the wash and is
   unchanged: nothing washes a poster.
 - **The tile still prints no episode name** (see *A tile* above, unchanged). The control's
@@ -2643,7 +2643,7 @@ rails, no placeholder tabs, no "coming soon".
   dimmed poster and name, which is the one state cue that survives on the bill.
 
   **And a third time: the bar moved onto the artwork, and lists draw one too.** It is a
-  `3px` rule flush to the poster's bottom edge rather than a line under the name, which
+  `5px` rule flush to the poster's bottom edge rather than a line under the name, which
   gives the bill its height back — a row per cell, 472 times, to say a thing that is about
   the poster above it — and puts the name back against the artwork it names. It renders
   inside the poster box (`app/poster.tsx`'s `children`), so the surface's own radius clips

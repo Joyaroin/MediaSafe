@@ -23,9 +23,17 @@ import { libraryProgressFraction } from "@/app/(signed-in)/library/library-progr
  * would be the accent painting artwork*. This is the accent on artwork, so the difference
  * has to be said rather than assumed. The sweep is a **wash over the whole tile** for
  * 380ms — at that size and that speed it is the artwork that changes colour. This is a
- * `3px` rule at the bottom edge, permanent, reading as a measure on the frame rather than
+ * `5px` rule at the bottom edge, permanent, reading as a measure on the frame rather than
  * as a colour applied to the picture, and it is the same `LIVE_EDGE_OF_THE_RECORD` role
  * the bar already claimed under the name. §6's rule is about the wash and is untouched.
+ *
+ * ── `5px`, which is thicker than it was under the name ───────────────────────────────
+ *
+ * `4px` under the card's name, then `3px` when it moved onto the artwork — a rule on a
+ * poster looked like it wanted to be finer than one on the ground, and at the sizes this
+ * actually draws it read as a hairline instead. `5px` is the measured answer: on the bill's
+ * `132px` poster it is 2.5% of the height, and on a list row's `56px` one it is the
+ * smallest rule that still reads as a bar rather than as an edge of the artwork.
  *
  * ── The track is `--ground` at `70%`, not `--hair` ───────────────────────────────────
  *
@@ -62,7 +70,7 @@ export function PosterProgressBar({
      * page, and a `progressbar` role would announce a percentage nobody wrote — the same
      * decision `title-hero.tsx` records for the bar that *does* have a sentence under it.
      */
-    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px] bg-ground/70">
+    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[5px] bg-ground/70">
       <div className="h-full bg-accent" style={{ width: `${fraction * 100}%` }} />
     </div>
   );
