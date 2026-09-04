@@ -1744,18 +1744,70 @@
   }
 }
 
-/* ── The bar that replaces the tab bar while selecting — issue #197 ─────────────────
+/* ── The bar that trades places with the tab bar while selecting — issue #197, and its
+   crossfade issue #334 ───────────────────────────────────────────────────────────────
    `selection-action-bar.tsx` puts `data-selecting` on the document element for as long as
-   the mode is open, and this is the whole of what it buys: the four destinations leave.
+   the mode is open. Until #334 that attribute drove a single `display: none` here — an
+   instant cut against the action bar's own transition (`selection-action-bar-transition`
+   above), which read as two cuts in one slot rather than one swap.
 
-   `display: none` and not a `z-index` the action bar outranks. The two look identical and
-   only one of them is true — a covered tab bar is still four `Link`s in the accessibility
-   tree, reachable by a screen reader's own navigation, which is a set of controls the
-   ticket calls irrelevant mid-selection sitting invisibly live under the reader's thumb.
-   The action bar takes the same `75px` this leaves behind (`--tab-bar-height`, which
-   `(signed-in)/layout.tsx` still clears), so nothing below moves. */
+   So this bar gets the same transition shape as the six surfaces in #333: `display`
+   deferred with `allow-discrete`, a `@starting-style` for the way back in, opacity and a
+   short rise alongside it. Leaving is the fast, impatient half —
+   `--dur-fast`/`--ease-out-quart`, the six surfaces' own close — and arriving back is the
+   slow, confident half — `--dur-slow`/`--ease-press` — the same asymmetry `nav-fade`/
+   `nav-rise` state for a navigation: leaving is where impatience lives, arriving is where
+   the character does.
+
+   **`display: none` no longer carries the accessibility guarantee on its own.** A
+   transition means this bar is genuinely visible, in flow, for the length of the fade — a
+   screen reader's own navigation could still reach the four destinations while `display`
+   is still something other than `none`. `tab-bar.tsx` carries the guarantee instead,
+   imperatively: a `MutationObserver` on this same attribute sets `inert` on the `<nav>`
+   the instant `data-selecting` appears — synchronously with the attribute write, and
+   therefore before this transition has painted its first frame — and clears it the
+   instant the attribute is removed. `display: none` is still the bar's resting state; it
+   now *lands* at the end of the leaving transition rather than *being* the transition. */
+.phone-tab-bar {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press),
+    display var(--dur-slow) var(--ease-press) allow-discrete;
+}
+
+@starting-style {
+  .phone-tab-bar {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 :root[data-selecting] .phone-tab-bar {
   display: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart),
+    display var(--dur-fast) var(--ease-out-quart) allow-discrete;
+}
+
+/* The swap still happens — the tab bar still leaves and returns, `inert` still lands the
+   instant it does — only the travel drops, §6's contract applied to the crossfade the same
+   way it is applied to the six surfaces above. */
+@media (prefers-reduced-motion: reduce) {
+  .phone-tab-bar,
+  :root[data-selecting] .phone-tab-bar {
+    transform: none;
+  }
+
+  @starting-style {
+    .phone-tab-bar {
+      transform: none;
+    }
+  }
 }
 
 /* ── The poster morph, now authored ─────────────────────────────────────────────────

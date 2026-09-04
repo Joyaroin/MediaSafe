@@ -836,3 +836,71 @@ describe("the rows making way for a dragged row get a spring", () => {
     expect(LIST_TITLE_ROW).not.toMatch(/prefers-reduced-motion|useReducedMotion/);
   });
 });
+
+/**
+ * ── The selection swap, and the guarantee that moves onto `inert` — issue #334 ───────
+ *
+ * Until this ticket `:root[data-selecting] .phone-tab-bar` was a single `display: none`,
+ * an instant cut against the action bar's own transition. The tab bar now fades and rises
+ * the way the six surfaces above do, and `display: none` lands at the *end* of that fade
+ * instead of *being* the whole of it — so the accessibility guarantee that used to ride on
+ * `display` alone moves to `tab-bar.tsx`, off the same `data-selecting` attribute the CSS
+ * reacts to.
+ */
+describe("the tab bar crosses with the action bar instead of cutting, and inert carries the guarantee", () => {
+  const restingBlock = GLOBALS.match(/\n\.phone-tab-bar \{[\s\S]*?\n\}/)![0];
+  const selectingBlock = GLOBALS.match(
+    /:root\[data-selecting\] \.phone-tab-bar \{[\s\S]*?\n\}/,
+  )![0];
+
+  it("still hides at rest behind data-selecting", () => {
+    expect(selectingBlock).toMatch(/display:\s*none;/);
+  });
+
+  it("transitions opacity, transform and display off the timing ramp, not a raw literal", () => {
+    for (const block of [restingBlock, selectingBlock]) {
+      expect(block).toContain("var(--dur-");
+      expect(block.replace(/var\([^)]*\)/g, "")).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+    }
+  });
+
+  it("defers display with allow-discrete on both halves of the swap", () => {
+    // Arriving back is the slow, confident half — shared with the six surfaces' own
+    // arrival — and leaving is the fast, impatient half shared with their own close.
+    expect(restingBlock).toMatch(
+      /display var\(--dur-slow\) var\(--ease-press\) allow-discrete/,
+    );
+    expect(selectingBlock).toMatch(
+      /display var\(--dur-fast\) var\(--ease-out-quart\) allow-discrete/,
+    );
+  });
+
+  it("gives the tab bar a starting style to rise back in from", () => {
+    expect(GLOBALS).toMatch(/@starting-style\s*\{\s*\.phone-tab-bar\s*\{/);
+  });
+
+  it("drops travel under reduced motion but keeps the swap eventful", () => {
+    const reducedBlocks = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}\n/g,
+    )!.join("\n");
+    expect(reducedBlocks).toContain(".phone-tab-bar");
+    // `display: none` and the fade itself are untouched — only travel drops, never the
+    // event, the same contract the six surfaces above and the width transitions keep.
+    expect(reducedBlocks).toMatch(/\.phone-tab-bar[^{]*\{[^}]*transform:\s*none/);
+  });
+
+  it("carries the accessibility guarantee itself, off the same attribute the CSS reacts to", () => {
+    expect(TAB_BAR).toMatch(
+      /import \{[^}]*SELECTING_ATTRIBUTE[^}]*\} from "\.\/phone-bar"/,
+    );
+    expect(TAB_BAR).toContain("MutationObserver");
+    expect(TAB_BAR).toMatch(/\.inert\s*=\s*document\.documentElement\.hasAttribute\(\s*SELECTING_ATTRIBUTE\s*\)/);
+  });
+
+  it("shares the attribute name with the action bar rather than a second string literal", () => {
+    expect(SELECTION_ACTION_BAR).toMatch(
+      /import \{[^}]*SELECTING_ATTRIBUTE[^}]*\} from "@\/app\/phone-bar"/,
+    );
+    expect(SELECTION_ACTION_BAR).not.toContain('"data-selecting"');
+  });
+});
