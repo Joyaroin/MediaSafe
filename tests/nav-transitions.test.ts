@@ -34,20 +34,11 @@ const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
 const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
-/** The navigation pair's rule body. One motion, one class, and the class is the point:
- * these rules said `(root)` until the arriving half was measured and found never to run —
- * React unnames `<html>` mid-transition, so `::view-transition-new(root)` is never built.
- * `*.nav` selects the class React's `default` prop assigns instead. Still no *choice* of
- * class: the four `nav-*` directions remain gone, and with them the question of which
- * navigation gets which. */
-const navBlock = (side: "old" | "new") =>
-  GLOBALS.match(
-    new RegExp(
-      side === "old"
-        ? `::view-transition-old\\(root\\)\\s*\\{[^}]*\\}`
-        : `::view-transition-new\\(\\*\\.nav\\)\\s*\\{[^}]*\\}`,
-    ),
-  )![0];
+/** The root pair's rule body. There is one motion now and it is drawn on `root`, so this
+ * takes no class: the four `nav-*` classes it used to select are gone, and with them the
+ * question of which navigation gets which. */
+const rootBlock = (side: "old" | "new") =>
+  GLOBALS.match(new RegExp(`::view-transition-${side}\\(root\\)\\s*\\{[^}]*\\}`))![0];
 
 /**
  * Every screen that participates — the four tabs, and Settings, which is a push out of
@@ -106,37 +97,26 @@ describe("one motion, and nothing that has to choose between motions", () => {
     }
   });
 
-  it("gives the wrapper one class, and never deactivates the name it selects", () => {
-    // `"none"` is not a class — React's own types call it the value that *"deactivates the
-    // view transition name under that condition"*. The wrapper mapped it onto `enter`,
-    // `exit` and `default`, which is why `::view-transition-new(*.nav)` had nothing to
-    // attach to and the arriving screen never animated. One class, and no `"none"`.
-    // Against the code, not the prose. The docblock quotes the old `{ default: "none" }`
-    // to explain what was wrong with it, and a reversal a reader cannot read about is how
-    // the same decision gets made a fourth time — the same reason the direction names are
-    // forbidden in code but allowed in comments two tests above.
-    const wrapperCode = WRAPPER.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-    expect(wrapperCode).toMatch(/const NAV_CLASS = "nav"/);
-    expect(wrapperCode).toMatch(/default=\{NAV_CLASS\}/);
-    expect(wrapperCode).not.toMatch(/(default|enter|exit)[=:]\s*\{?\s*"none"/);
-    // Still one class for every navigation: the four directions stay gone.
+  it("maps nothing but the default, on the mapping and on the component", () => {
+    expect(WRAPPER).toMatch(/default:\s*"none"/);
+    expect(WRAPPER).toMatch(/default="none"/);
     expect(WRAPPER).not.toMatch(/"nav-(forward|back|deeper|upward)"/);
   });
 
   it("fades the leaving screen and rises the arriving one into place", () => {
-    expect(navBlock("new")).toMatch(/nav-fade/);
-    expect(navBlock("new")).toMatch(/nav-rise/);
-    expect(navBlock("old")).toMatch(/nav-fade/);
+    expect(rootBlock("new")).toMatch(/nav-fade/);
+    expect(rootBlock("new")).toMatch(/nav-rise/);
+    expect(rootBlock("old")).toMatch(/nav-fade/);
     // Nothing travels on the way out: a screen that is leaving has nowhere to arrive.
-    expect(navBlock("old")).not.toMatch(/nav-rise/);
+    expect(rootBlock("old")).not.toMatch(/nav-rise/);
   });
 
   it("leaves quickly and arrives slowly, off this file's own motion tokens", () => {
     // The asymmetry this file has always held — arriving is where the character lives,
     // leaving is where impatience does — now stated once instead of three times.
-    expect(navBlock("old")).toContain("var(--dur-fast)");
-    expect(navBlock("new")).toContain("var(--dur-quick)");
-    expect(navBlock("new")).not.toContain("var(--dur-fast)");
+    expect(rootBlock("old")).toContain("var(--dur-fast)");
+    expect(rootBlock("new")).toContain("var(--dur-quick)");
+    expect(rootBlock("new")).not.toContain("var(--dur-fast)");
 
     // And the whole thing settles sooner than the slide it replaced, which ran at base.
     const quick = Number(GLOBALS.match(/--dur-quick:\s*(\d+)ms/)![1]);
