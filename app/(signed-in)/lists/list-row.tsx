@@ -48,7 +48,7 @@ export function ListRow({
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   return (
-    <li className="flex min-h-16 items-center justify-between gap-3.5 rounded-[var(--radius-6)] bg-raised px-4 py-3">
+    <li className="flex min-h-16 items-center justify-between gap-3.5 rounded-[var(--radius-6)] bg-raised plate-line px-4 py-3">
       <Link href={`/lists/${list.id}`} className="min-w-0 flex-1">
         <span className="block truncate text-card font-medium leading-[1.25] tracking-[-0.01em] text-ink">
           {list.name}

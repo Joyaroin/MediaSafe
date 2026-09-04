@@ -716,6 +716,34 @@
   }
 }
 
+/* ── The plate line — issue #330 ─────────────────────────────────────────────────────
+   `DESIGN.md` §4's one sanctioned exception to *no shadow, no second hairline weight*: an
+   inset hairline at 9% ink, mixed `in oklab` for the same reason `frosted` mixes `in oklab`
+   rather than `in srgb` — these tokens live in OKLCH, and an `srgb` mix of them can visibly
+   shift hue partway through. It is what lets a `--raised` card read as raised without a
+   shadow, and what lets artwork read as mounted on the sheet rather than pasted onto it.
+
+   **A call-site expression, not a token.** `DESIGN.md`'s own argument against declaring a
+   value nothing else needs — the wash and the tinted track keep the same discipline. This
+   utility exists only so the expression is written once rather than pasted at every raised
+   container the way `field-well` and `frosted` record their own pre-naming history; nothing
+   here is a custom property, and nothing new is added to §2's palette.
+
+   **Applied to every raised container — result rows, list rows, rail cards, programme-note
+   panels — and never to a field.** `field-well`'s own inset ring above is load-bearing: it
+   thickens to `2px` on focus and *is* the focus indicator, so a second inset shadow on the
+   same element would either stack at rest or fight the state that already owns this
+   mechanism. `tests/plate-line.test.ts` sweeps every `bg-raised` site in `app/` and holds
+   the two apart.
+
+   **Artwork does not read this class.** `.poster` and `.still` below carry the identical
+   expression as their own light-scheme default, and swap it for the hairline-token ring in
+   dark — see the note beside them for why a poster needs the stronger value and a card does
+   not. */
+@utility plate-line {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);
+}
+
 /* The app's static chrome, at the one blur radius §5's repaint reasoning allows.
 
    **This value came back down from turn 9's `78%`/`22px`, and the reason is the rule
@@ -911,6 +939,12 @@
      surface that renders a poster and was not redrawn by the handoff — the programme
      note's hero, the desktop rails, title detail — keeps exactly what it had. */
   border-radius: var(--poster-radius, var(--radius-1));
+  /* The plate line, issue #330's own light-scheme default — the same expression
+     `plate-line` above declares, read here rather than added as a second class at every
+     poster call site, the way `border-radius` above already reads a property instead of
+     asking each call site to add a class. Overridden for dark just below, to the poster
+     ring — one ring per element, always, never both. */
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);
 }
 
 /* The still (#253) — the frame at the top of an episode's page, over the `still_path`
@@ -950,6 +984,38 @@
   background: var(--color-raised);
   aspect-ratio: 16 / 9;
   border-radius: var(--still-radius, var(--radius-1));
+  /* The plate line's light-scheme default, `.poster`'s own note above and the reason
+     restated rather than repeated: two crops of one treatment, not two treatments. */
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);
+}
+
+/* ── The dark poster ring — issue #330 ───────────────────────────────────────────────
+   In dark, 9% ink mixed against near-black is invisible — `--ink` is `--dark-ink` there,
+   the brightest neutral on the sheet, so the plate line above would need to seat a poster
+   by drawing 9% of *light* into a *dark* corner, which the eye reads as nothing at all.
+   What actually seats a white-background poster into a dark sheet is the stronger value:
+   `--hair`, full strength, not mixed. So dark does not darken the plate line — it replaces
+   it outright, on exactly the two artwork utilities above and nothing else. A raised
+   container's plate line is untouched by this block, because `--ink` flips to the bright
+   neutral automatically and 9% of it reads correctly on a dark card without any override —
+   the ring is artwork's own exception, not a second dark palette rule.
+
+   **One ring per element, always.** Both selectors below repaint the whole `box-shadow`
+   rather than layering a second one, so a poster in dark carries the ring and never the
+   plate line beneath it. Two selectors, and both are needed, for the identical reason the
+   palette's own dark values are mapped twice a few hundred lines up: *the system asked, or
+   the reader answered* are two rules that cannot share one declaration block, because one
+   of them lives inside a media query the other cannot enter. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .poster,
+  :root:not([data-theme="light"]) .still {
+    box-shadow: inset 0 0 0 1px var(--color-hair);
+  }
+}
+
+:root[data-theme="dark"] .poster,
+:root[data-theme="dark"] .still {
+  box-shadow: inset 0 0 0 1px var(--color-hair);
 }
 
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────

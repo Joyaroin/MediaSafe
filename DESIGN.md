@@ -509,6 +509,42 @@ A `2px` rule in any other role is a bug. What there is **not** is a `border-hair
 used to make one ordinary division outrank another — the tab bar's is the single `2px`
 hairline in the build and it is an outer edge, not a division between two pieces of content.
 
+### The plate line — the one sanctioned hairline on content, since issue #330
+
+**Amended by [#330](https://github.com/Joyaroin/MediaSafe/issues/330), for one shape, and
+the narrowness is the point.** A card reads as raised without a shadow, and artwork reads as
+mounted on the sheet rather than pasted onto it, through an inset hairline at **9% ink**,
+mixed `in oklab` — `box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%,
+transparent)`, applied to artwork and to every raised container: result rows, list rows,
+rail cards, programme-note panels. **Not fields**: the field well's own inset ring
+(`field-well`, `app/globals.css`) is load-bearing — it thickens to `2px` on focus and *is*
+the focus indicator, so a second inset shadow on the same element would either stack at rest
+or fight the state that already owns it.
+
+**In dark, the poster ring replaces the plate line on posters and stills — one ring per
+element, always, never both.** 9% ink mixed against near-black is invisible, because
+`--ink` is the brightest neutral on that sheet rather than the darkest; what actually seats
+a white-background poster into a dark sheet is the full-strength hairline token, `--hair`,
+not a weaker mix of it. So dark does not darken the plate line on artwork — it replaces the
+whole `box-shadow` outright. A raised container that is not artwork needs no such override:
+`--ink` itself flips per scheme, so the same 9%-ink expression reads correctly on a dark
+card without a second rule.
+
+What the amendment covers is **elevation for a raised surface, and nothing else.** Three
+things keep it from reopening the rule above:
+
+- **It is not a division.** The `1px`/`2px` table above is about two things that abut and
+  what separates them; the plate line does not sit between two pieces of content; it
+  outlines one surface's own edge, the job `field-well`'s ring already does elsewhere in
+  this world.
+- **It is a call-site expression, not a token or a third rationed weight.** `color-mix()`
+  at 9% ink, declared nowhere as a custom property — no third row joins the `1px`/`2px`
+  table above, and §2's palette gains nothing.
+- **One ring per element, always.** Nothing carries both the plate line and a division at
+  once, and a poster in dark carries the ring in place of the plate line, never alongside
+  it. `tests/plate-line.test.ts` sweeps every raised container in `app/` and holds the two
+  apart, the way `tests/accent-sweep.test.ts` holds the accent to its own three meanings.
+
 ### The type ramp is closed
 
 One typeface — **Archivo**, self-hosted through `next/font` — at two widths. Eight size
