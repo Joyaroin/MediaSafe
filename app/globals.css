@@ -1254,6 +1254,22 @@
   }
 }
 
+/* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
+   The state that drives each bar's `width` already updates at the sweep's settle
+   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), so the only thing
+   missing was a transition on that `width` — declared at each call site, on the ramp,
+   as `transition-[width] duration-[var(--dur-base)]`. `progress-fill` carries no rule
+   of its own; it exists only so this block has one selector to reach both bars.
+
+   Same shape as the sweep just above: the same unconditional-event, no-lingering-
+   animation rule. The width still lands on the mark's new value — it just stops
+   travelling to get there. */
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    transition-duration: 1ms;
+  }
+}
+
 /* ── Press ──────────────────────────────────────────────────────────────────────────
    The acknowledgement every tappable surface owes a finger. Scale only, and only
    downward on the way in: colour is not available for this, because in this world colour

@@ -270,7 +270,17 @@ function WatchedBar({ watched, total }: { watched: number; total: number }) {
   return (
     <div className="mt-3">
       <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair">
-        <div className="h-full rounded-[var(--radius-full)] bg-accent" style={{ width: `${filled}%` }} />
+        {/**
+         * `transition-[width]`, never a transform — see `poster-progress-bar.tsx`'s own
+         * note, which this mirrors: the fill is the clipped track's only child, and a
+         * scale would flatten the rounded end. `progress-fill` is what the reduced-motion
+         * block in `globals.css` targets to collapse the duration rather than remove the
+         * transition, so the mark still lands on its new value.
+         */}
+        <div
+          className="progress-fill h-full rounded-[var(--radius-full)] bg-accent transition-[width] duration-[var(--dur-base)]"
+          style={{ width: `${filled}%` }}
+        />
       </div>
 
       <p className="code-line mt-2 text-dim" data-numeric>
