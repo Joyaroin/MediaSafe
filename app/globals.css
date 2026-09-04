@@ -306,6 +306,37 @@
   color-scheme: light;
 }
 
+/* ── The reader has asked for more contrast — issue #329 ─────────────────────────────
+   `prefers-contrast: more` used to be ignored outright. It now closes the ramp by one
+   step, in both schemes, with no value declared beyond the two tokens already on it:
+   **the dim register moves to the primary text colour, and the hairline moves to the
+   dim register's own value.** Nothing is drawn in a register the reader has said they
+   cannot read, and the tonal structure survives rather than collapsing to one colour.
+
+   This overrides `--color-dim`/`--color-hair` rather than `--dim`/`--hair` themselves,
+   and that is load-bearing, not a style choice. `--dim` is also the *source* half of
+   this mapping — `--hair`'s new value is `--dim`'s own — and a custom property has
+   exactly one resolved value per element. Reassigning `--dim` here would make
+   `var(--dim)` inside this very rule read the *value this rule just gave it*, so
+   `--hair` would land on `--text` too and the ramp would collapse by two steps instead
+   of the one this rule is for. `--color-dim` and `--color-hair` are the one place
+   `--dim` and `--hair` are read without being read back by anything else — every
+   `text-dim`, `border-hair` and the scrollbar's own `var(--color-hair)` all consume
+   them, and nothing consumes `--color-dim`/`--color-hair` in turn — so moving the
+   value everything actually draws with is possible here without touching the tokens
+   the mapping is defined against.
+
+   Neither `--text` nor `--dim` is reassigned, so whichever scheme is active keeps
+   supplying its own values through them and one rule serves both — dark's `--dark-text`
+   and `--dark-dim` are already flowing through `--text`/`--dim` by the time this reads
+   them, exactly as every other consumer of those two tokens already relies on. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-dim: var(--text);
+    --color-hair: var(--dim);
+  }
+}
+
 @theme {
   /* Tailwind's generated utilities (`bg-ground`, `text-dim`, `border-hair`, …) read
      these, which read the plain custom properties above — the indirection is what lets
