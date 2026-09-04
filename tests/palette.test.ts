@@ -399,6 +399,70 @@ describe("both dark paths", () => {
     );
   });
 });
+
+describe("the reader has asked for prefers-contrast: more — issue #329", () => {
+  /**
+   * Structural, like every other assertion in this file — no DOM, no `matchMedia`. The
+   * block is read straight out of the stylesheet text, the same way `darkBlocks()` and
+   * `declaredOnce()` above read the palette without a browser.
+   */
+  const CONTRAST_BLOCK = /@media \(prefers-contrast: more\) \{\s*:root\s*\{([\s\S]*?)\}\s*\}/;
+
+  it("declares the block exactly once", () => {
+    const all = [...CSS_CODE.matchAll(new RegExp(CONTRAST_BLOCK.source, "g"))];
+    expect(all, "`@media (prefers-contrast: more) { :root { … } }`").toHaveLength(1);
+  });
+
+  const body = () => {
+    const match = CONTRAST_BLOCK.exec(CSS_CODE);
+    expect(match, "must declare `@media (prefers-contrast: more) { :root { … } }`").not.toBeNull();
+    return match![1];
+  };
+
+  it("maps the dim register to the primary text colour, and the hairline to the dim value", () => {
+    expect(body()).toMatch(/--color-dim:\s*var\(--text\);/);
+    expect(body()).toMatch(/--color-hair:\s*var\(--dim\);/);
+  });
+
+  it("is written against the declared tokens, not a fourth set of literal colour values", () => {
+    // No fresh `oklch()` anywhere in the block — both new values are `var()` reads of
+    // tokens the stylesheet already declares once, above.
+    expect(body()).not.toMatch(/oklch\(/);
+  });
+
+  /**
+   * `--text` and `--dim` are not themselves reassigned by the block above — only
+   * `--color-dim`/`--color-hair`, which is what every `text-dim`, `border-hair` and the
+   * scrollbar's own `var(--color-hair)` actually read. That is deliberate: `--dim` is
+   * also the *source* half of this mapping, and a custom property resolves to exactly
+   * one value per element, so reassigning `--dim` in this same rule would make
+   * `var(--dim)` read the value this rule just gave it rather than the one the mapping
+   * means. Because neither source token moves, one rule serves both schemes — whichever
+   * scheme is active keeps supplying `--text`/`--dim` through the ordinary cascade, and
+   * "resolves in both schemes" is exactly the property the assertions below check.
+   */
+  it("resolves in both schemes: the mapping does not collapse the ramp, it closes it by one step", () => {
+    for (const prefix of ["", "dark-"] as const) {
+      const ground = resolvedHex(`${prefix}ground`);
+
+      const oldHair = contrast(resolvedHex(`${prefix}hair`), ground);
+      const oldDim = contrast(resolvedHex(`${prefix}dim`), ground);
+      const newHair = contrast(resolvedHex(`${prefix}dim`), ground); // --hair's new value
+      const newDim = contrast(resolvedHex(`${prefix}text`), ground); // --dim's new value
+
+      // The hairline becomes as present as the metadata register used to be — the
+      // "quiet register stops being quiet" half of the acceptance criteria.
+      expect(newHair).toBeGreaterThan(oldHair);
+      // The metadata register becomes at least as legible as it already was — never a
+      // regression, in either scheme.
+      expect(newDim).toBeGreaterThanOrEqual(oldDim);
+      // And the two new positions stay distinct — the tonal structure surviving,
+      // rather than everything landing on `--text`.
+      expect(resolvedHex(`${prefix}dim`)).not.toBe(resolvedHex(`${prefix}text`));
+    }
+  });
+});
+
 /**
  * The directories that ship, walked from their own roots.
  *

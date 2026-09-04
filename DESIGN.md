@@ -268,6 +268,26 @@ throughout. Nothing new is declared to get this — the wash and the tinted trac
 expressions, on the same argument this file already makes against adding tokens nothing else
 needs.
 
+### The reader who asks for more contrast gets an answer — issue #329
+
+`prefers-contrast: more` used to be ignored outright. It now closes the ramp by one step, in
+both schemes, declaring nothing beyond the two tokens already on it: **the dim register moves
+to the primary text colour, and the hairline moves to the dim register's own value.** A year, a
+runtime or an episode count stops being drawn in a register the reader has said they cannot
+read, and the divider that used to sit a half-step off the ground becomes as present as the
+metadata used to be — while the tonal structure survives, because the two moved values still
+land in different places rather than both collapsing onto `--text`.
+
+The mapping is written against `--text` and `--dim` themselves, not as a fourth set of literal
+values — `app/globals.css` carries the full reasoning, but the shape of it is: the override sets
+`--color-dim`/`--color-hair` (the tokens every `text-dim`, `border-hair` and the scrollbar's own
+hover state actually read) rather than `--dim`/`--hair`, because `--dim` is also the *source*
+half of the mapping and a custom property resolves to one value per element — reassigning `--dim`
+in the same rule that reads it for `--hair` would make `--hair` land on `--text` too, collapsing
+the ramp by two steps instead of the one this is for. Neither `--text` nor `--dim` moves, so one
+rule, unconditioned on scheme, is enough for both — whichever scheme is active keeps supplying
+its own values through them.
+
 ### The system setting decides unless the reader has answered otherwise
 
 **Neither theme is "the" theme.** The phone at 11pm and the desktop in daylight are both
