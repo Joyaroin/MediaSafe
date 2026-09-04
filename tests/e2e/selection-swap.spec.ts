@@ -112,12 +112,6 @@ test("the tab bar is inert the instant selection starts, not from the end of the
   await page.goto("/library");
   const cell = page.getByRole("button", { name: new RegExp(seeded.titleName) });
   await expect(cell).toBeVisible();
-  // Visible is not the same as interactive. The cell is server-rendered, so it paints
-  // before `selectable-entry.tsx` hydrates — and the hold this test performs is recognised
-  // by a pointer handler that only exists once it has. Pressing in that window lands on a
-  // button with nothing listening, the selection never starts, and the assertion below
-  // fails on a locator that was never going to appear. Seen once in ten gate runs.
-  await page.waitForLoadState("networkidle");
 
   await watchTabBarGoInert(page);
 
