@@ -1,6 +1,6 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
-import { libraryProgressFraction } from "./library-progress-fraction";
+import { PosterProgressBar } from "@/app/poster-progress-bar";
 import { railPosterTransitionName } from "./poster-transition-name";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
@@ -44,15 +44,17 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * Up next Abandoned group — the handoff names this cell as the surface that already dims
  * a poster and asks that the two not be left different by accident.
  *
- * ── The bar at the foot, since issue #324 ────────────────────────────────────────────
+ * ── The bar, since issue #324, and on the artwork since ─────────────────────────────
  *
- * A show's card gains a thin bar under its name, filled by
- * `libraryProgressFraction` (watched against released — never against every mirrored
- * episode, which `library-progress-fraction.ts`'s own docblock explains is a different
- * question `progress-remaining.ts`'s `watchProgress` answers instead, on title detail).
- * `null` draws nothing, which is both a film (no `progress` at all — `db/access.ts`) and
- * a show with nothing released yet (`progress.released === 0`): two different reasons for
- * the same absence, and neither reads as *started and empty*.
+ * A show's card carries a thin bar of watched-against-released. It is `PosterProgressBar`
+ * (`app/poster-progress-bar.tsx`), which owns the whole of it now — the fraction, the
+ * absences that draw nothing, and the argument for being on the poster's bottom edge
+ * rather than on a line of its own under the name. This file passes `entry.progress` and
+ * decides nothing about it.
+ *
+ * What it cost to move: nothing this cell had to give up. The bar under the name added a
+ * row of height to every one of 472 cells to say a thing about the poster above it; inside
+ * the poster it is free, and the name sits back against the artwork it names.
  *
  * **The bar takes the accent, and the state word is gone** — the same trade
  * `title-hero.tsx` made on the title's own page, settled here the other way round. That
@@ -65,7 +67,10 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * spends on this screen — one role, not two.
  *
  * The bar is drawn for every state that has progress at all, not only *Watching*. A
- * finished show's bar is simply full, which is the fact rather than a second colour.
+ * finished show's bar is simply full, which is the fact rather than a second colour. An
+ * abandoned title's bar dims with the poster, because it is inside it — the one place this
+ * cell modifies the artwork now modifies the bar with it, which is right: they are the
+ * same title in the same state.
  *
  * **No numeral anywhere near it** — DESIGN.md §11's own remaining rule, amended by this
  * ticket rather than reopened: a count may not stand as chrome on a surface reached to do
@@ -112,10 +117,6 @@ export function LibraryEntryCell({
   aboveFold?: boolean;
 }) {
   const abandoned = entry.state === "abandoned";
-  const progress =
-    entry.progress === null
-      ? null
-      : libraryProgressFraction(entry.progress.watched, entry.progress.released);
 
   return (
     <li className="offscreen-skippable">
@@ -142,7 +143,12 @@ export function LibraryEntryCell({
               width={BILL_POSTER_WIDTH}
               className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
               aboveFold={aboveFold}
-            />
+            >
+              {/* On the artwork, not under the name — `poster-progress-bar.tsx` has the
+                  argument. An abandoned title's bar dims with the poster it is inside,
+                  which is the pairing this cell has always drawn. */}
+              <PosterProgressBar progress={entry.progress} />
+            </Poster>
             {/* Renders nothing at all outside a selection provider — the desktop, always. */}
             <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
           </>
@@ -158,26 +164,14 @@ export function LibraryEntryCell({
 
           `line-clamp-2` is new and is what a column costs: the row this replaced let a
           name run to as many lines as it wanted, because nothing was underneath it. Here a
-          third line would push one cell's progress bar out of step with its neighbours'
-          across the whole grid.
+          third line makes one cell taller than its neighbours, and in a grid that is a
+          ragged row rather than one long name.
         */}
         <p
           className={`mt-2 line-clamp-2 break-words text-item leading-snug font-medium ${abandoned ? "text-dim" : "text-ink"}`}
         >
           {entry.name}
         </p>
-
-        {progress === null ? null : (
-          <div
-            aria-hidden="true"
-            className="mt-2 h-1 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair"
-          >
-            <div
-              className="h-full rounded-[var(--radius-full)] bg-accent"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-        )}
       </SelectableEntry>
     </li>
   );

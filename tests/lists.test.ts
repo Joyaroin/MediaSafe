@@ -16,7 +16,7 @@ import {
   type UserId,
 } from "@/db/access";
 import type { Transaction } from "@/db/client";
-import { libraryEntry, list, listMembership, title, user, watch } from "@/db/schema";
+import { episode, libraryEntry, list, listMembership, title, user, watch } from "@/db/schema";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
@@ -747,6 +747,159 @@ describe("reordering a list by dragging", () => {
 
       await expect(reorderListMembership(reader, listId, titleIds[0], 0, tx)).rejects.toThrow();
       await expect(reorderListMembership(reader, listId, titleIds[0], 4, tx)).rejects.toThrow();
+    });
+  });
+});
+
+/**
+ * The progress a list's posters draw a bar from — `db/access.ts`'s
+ * `ListDetailTitleRow.progress`, read at the boundary the list page itself uses.
+ *
+ * `tests/library-grid.test.ts` already holds the view's own arithmetic (released counted
+ * against air date, specials excluded, unaired episodes not counted). What is only true
+ * here is the **third absence**: a list holds anything in the catalogue, so a row can have
+ * no library entry at all, and that must arrive as the same `null` a film does rather than
+ * as a bar at zero. Nothing on the library screen can produce that case.
+ */
+describe("the progress a list carries for each of its titles", () => {
+  function daysFromToday(days: number): string {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  async function seedEpisodes(
+    tx: Transaction,
+    titleId: string,
+    specs: readonly { seasonNo: number; airDate: string }[],
+  ): Promise<string[]> {
+    const ids: string[] = [];
+    for (const [index, one] of specs.entries()) {
+      const [row] = await tx
+        .insert(episode)
+        .values({
+          titleId,
+          tmdbEpisodeId: nextNumber(),
+          seasonNo: one.seasonNo,
+          episodeNo: index + 1,
+          name: `Episode ${index + 1}`,
+          airDate: one.airDate,
+        })
+        .returning({ id: episode.id });
+      ids.push(row.id);
+    }
+    return ids;
+  }
+
+  async function seedFilm(tx: Transaction): Promise<string> {
+    const number = nextNumber();
+    const [row] = await tx
+      .insert(title)
+      .values({ kind: "film", tmdbId: number, name: `Film ${number}`, runtimeMins: 104 })
+      .returning({ id: title.id });
+    return row.id;
+  }
+
+  it("counts watched against released for a show this account owns", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      const released = daysFromToday(-30);
+      const episodes = await seedEpisodes(tx, show, [
+        { seasonNo: 1, airDate: released },
+        { seasonNo: 1, airDate: released },
+        { seasonNo: 1, airDate: released },
+        { seasonNo: 1, airDate: daysFromToday(30) },
+      ]);
+      const { list: target } = unwrap(await createList(reader, "Comfort shows", tx));
+      await addTitleToList(reader, target.id, show, tx);
+
+      const [entry] = await tx
+        .insert(libraryEntry)
+        .values({ userId: reader, titleId: show })
+        .returning({ id: libraryEntry.id });
+      await tx.insert(watch).values({
+        userId: reader,
+        libraryEntryId: entry.id,
+        titleId: show,
+        episodeId: episodes[0],
+        watchedAt: new Date(),
+        source: "app",
+        sourceKey: `test-${nextNumber()}`,
+      });
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      // Three released, one not — the unaired episode is not part of the denominator, the
+      // same fact `library-grid.test.ts` pins for the bill.
+      expect(detail.titles[0].progress).toEqual({ watched: 1, released: 3 });
+    });
+  });
+
+  it("carries none for a title this account does not own — the case only a list has", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx);
+      await seedEpisodes(tx, show, [{ seasonNo: 1, airDate: daysFromToday(-30) }]);
+      const { list: target } = unwrap(await createList(reader, "Comfort shows", tx));
+      await addTitleToList(reader, target.id, show, tx);
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      // Episodes exist and are released; what is missing is a library entry to have
+      // watched any of them, so there is no fraction to draw and no bar.
+      expect(detail.titles[0].libraryEntryId).toBeNull();
+      expect(detail.titles[0].progress).toBeNull();
+    });
+  });
+
+  it("carries none for a film, owned or not", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const owned = await seedFilm(tx);
+      const unowned = await seedFilm(tx);
+      const { list: target } = unwrap(await createList(reader, "Films", tx));
+      await addTitleToList(reader, target.id, owned, tx);
+      await addTitleToList(reader, target.id, unowned, tx);
+      await tx.insert(libraryEntry).values({ userId: reader, titleId: owned });
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      expect(detail.titles.map((one) => one.progress)).toEqual([null, null]);
+    });
+  });
+
+  it("reads another account's watches as none of this account's business", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const show = await seedShow(tx);
+      const episodes = await seedEpisodes(tx, show, [
+        { seasonNo: 1, airDate: daysFromToday(-30) },
+      ]);
+      const { list: target } = unwrap(await createList(reader, "Comfort shows", tx));
+      await addTitleToList(reader, target.id, show, tx);
+
+      // The other account owns it and has watched it; the reader has not added it at all.
+      const [theirs] = await tx
+        .insert(libraryEntry)
+        .values({ userId: other, titleId: show })
+        .returning({ id: libraryEntry.id });
+      await tx.insert(watch).values({
+        userId: other,
+        libraryEntryId: theirs.id,
+        titleId: show,
+        episodeId: episodes[0],
+        watchedAt: new Date(),
+        source: "app",
+        sourceKey: `test-${nextNumber()}`,
+      });
+
+      const detail = await getListDetail(reader, target.id, tx);
+
+      // The progress join hangs off the user-scoped library-entry join, so somebody
+      // else's copy of the title cannot leak a fraction onto this reader's list.
+      expect(detail.titles[0].progress).toBeNull();
     });
   });
 });

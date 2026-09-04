@@ -292,7 +292,7 @@ copying whichever call site they happened to open:
 | **The brand mark** | the wordmark's struck bar (`press-mark.tsx`, `app/icon.svg`) | permanent; not a state and it does not vary |
 | **Failure, and the way out of it** | `errors/` — `GHOST_RECOVERY`, `SOLID_RECOVERY`, the offline banner, the write-failure toast, `global-error.tsx` | a coherent system, described below |
 | **The primary action on a surface** | sign-in's *Continue with Google*, import's *Choose your file*, welcome's *Bring your library in*, `delete-account-form.tsx`, search's *Add* pill (`catalogue-result.tsx`) | one per surface, at most |
-| **The live edge of the record** | `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the *Watching* filter chip even unselected (`library-filter-bar.tsx`), the up-next episode's inverted code (`episode-line.ts`), and the bill card's watched-progress bar (`library-entry-cell.tsx`). ~~The *Watching* state label (`library-state.ts`)~~ no longer paints anywhere: the bill card dropped the state word so the bar could take the accent, and `title-hero.tsx` had already set the word in `--dim` for the same reason. `STATE_LABELS.watching.className` still declares the ink and is read by nothing — a dead declaration to retire in a ticket that owns the table. | **the second sanctioned meaning — settled by #310, closes §12** |
+| **The live edge of the record** | `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the *Watching* filter chip even unselected (`library-filter-bar.tsx`), the up-next episode's inverted code (`episode-line.ts`), and the watched-progress bar on a poster's foot (`app/poster-progress-bar.tsx`, drawn by the bill card and by both of a list's views). ~~The *Watching* state label (`library-state.ts`)~~ no longer paints anywhere: the bill card dropped the state word so the bar could take the accent, and `title-hero.tsx` had already set the word in `--dim` for the same reason. `STATE_LABELS.watching.className` still declares the ink and is read by nothing — a dead declaration to retire in a ticket that owns the table. | **the second sanctioned meaning — settled by #310, closes §12** |
 | **The button register** | `app/accent-meaning.ts`'s `THE_BUTTON_REGISTER` — the fourteen controls #195 moved onto the accent, through `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/`SOLID_RECOVERY` and their compact measures | **the third sanctioned meaning — settled by #311, closes §12** |
 
 **Three sanctioned meanings, not five roles.** The three above — recording a watch, the live
@@ -1101,6 +1101,13 @@ when it carries neither.
   either of these.
 - **The sweep plays over the slot, not the tile.** §6's wash is over the box that was
   pressed; across a poster it would be the accent painting artwork.
+
+  **This is not contradicted by the progress bar that now sits on a poster's foot**
+  (`app/poster-progress-bar.tsx`, §11's #324 bullet). The sweep is a wash over the whole
+  tile for 380ms — at that size and that speed the artwork is what changes colour. The bar
+  is a `3px` rule at the bottom edge, permanent, and reads as a measure on the frame rather
+  than as a colour applied to the picture. The rule above is about the wash and is
+  unchanged: nothing washes a poster.
 - **The tile still prints no episode name** (see *A tile* above, unchanged). The control's
   accessible label is what names the episode it records — `season-grouping.ts`'s full name,
   the same words the write-failure toast would use. **This is a recorded cost**: a sighted
@@ -2634,6 +2641,27 @@ rails, no placeholder tabs, no "coming soon".
   on this screen. One role on the screen, not two. The card is now a poster, a name and,
   for a show with something released, a bar; an abandoned title is still marked by its
   dimmed poster and name, which is the one state cue that survives on the bill.
+
+  **And a third time: the bar moved onto the artwork, and lists draw one too.** It is a
+  `3px` rule flush to the poster's bottom edge rather than a line under the name, which
+  gives the bill its height back — a row per cell, 472 times, to say a thing that is about
+  the poster above it — and puts the name back against the artwork it names. It renders
+  inside the poster box (`app/poster.tsx`'s `children`), so the surface's own radius clips
+  it and no call site restates a corner. The track is `--ground` at `70%` rather than
+  `--hair`: a hairline tone is a tone against a known ground and disappears over a pale
+  poster, and §5 already sanctions a translucent ground for the one case of chrome over
+  artwork (the rail arrows' `bg-ground/80`).
+
+  **A list's titles draw it on both views.** A list is the library's titles in a hand
+  order, and how far through one you are does not change with the surface you meet it on.
+  The icon view and the row view both draw it, because a bar on only one of them would read
+  as a fact about the view. A list adds one absence the bill has none of: it holds anything
+  in the catalogue, so a title this account does not own has no watches to be a fraction of
+  and draws nothing — the same nothing a film draws, and never an empty bar, which would
+  say *you started this and watched none of it* about a title they never added.
+
+  One component, three call sites — `app/poster-progress-bar.tsx`. The numeral rule above
+  survives all of it untouched: still no count anywhere near the bar, on any of the three.
 - **No sort on Up next.** The order is the rails' own, and it is not a control.
 - **No home rails other than Up next's three.** Not for genres, not for upcoming. **Amended
   by #223.** Lists used to be this bullet's third example, and is not any more: #215's

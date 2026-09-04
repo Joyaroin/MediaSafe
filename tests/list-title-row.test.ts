@@ -41,6 +41,9 @@ function titleRow(overrides: Partial<ListDetailTitleRow> = {}): ListDetailTitleR
     releaseYear: 2020,
     posterPath: null,
     position: 1,
+    // `null` by default — no bar — the way an unowned title arrives, which is what most
+    // of this file is about. A case that wants one overrides it.
+    progress: null,
     ...overrides,
   };
 }

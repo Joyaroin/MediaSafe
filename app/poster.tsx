@@ -24,6 +24,8 @@
  * CSS pixel width this call site actually renders the poster at, and `bucketFor` below
  * picks the smallest TMDB size that covers it without upscaling past the source.
  */
+import type { ReactNode } from "react";
+
 const POSTER_BUCKETS = [92, 154, 185, 342, 500, 780] as const;
 
 function bucketFor(width: number): string {
@@ -48,6 +50,7 @@ export function Poster({
   width,
   className,
   aboveFold = false,
+  children,
 }: {
   /** TMDB's `poster_path`, or `null` when TMDB has no artwork for this title. */
   posterPath: string | null;
@@ -75,6 +78,23 @@ export function Poster({
    * before — only a surface that opts a poster in starts fetching it eagerly.
    */
   aboveFold?: boolean;
+  /**
+   * Something drawn **over** the artwork, inside the poster's own box — today the
+   * watched-progress bar (`poster-progress-bar.tsx`), on the library bill and on both of a
+   * list's views.
+   *
+   * It goes here rather than beside the poster in the caller's markup because the `poster`
+   * utility is `position: relative` with `overflow: hidden` and the radius on it: a bar
+   * positioned against a sibling wrapper would square off the corners this box rounds, and
+   * would need the radius restated to fix it — a second copy of a number the utility's own
+   * comment explains why call sites must not spell.
+   *
+   * **Never the title, and never anything a reader has to read.** The `img` and the
+   * initials below are both `aria-hidden` because the name is real text on every surface
+   * that draws a poster; an overlay carrying text would be the one thing that breaks that,
+   * and a control here would be a target sitting on top of whatever the poster is inside.
+   */
+  children?: ReactNode;
 }) {
   return (
     <div className={`poster ${className}`}>
@@ -129,6 +149,8 @@ export function Poster({
           {initialsOf(name)}
         </span>
       ) : null}
+
+      {children}
     </div>
   );
 }
