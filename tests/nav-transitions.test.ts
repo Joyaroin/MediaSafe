@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 
 import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
@@ -621,5 +622,77 @@ describe("both progress bars follow the mark instead of jumping after it", () =>
         /progress-fill/,
       );
     }
+  });
+});
+
+/**
+ * ── The rows displaced during a reorder get a spring — issue #337 ────────────────────
+ *
+ * `reorderable-title-list.tsx` used to close the gap a drag opens with a hand-written CSS
+ * transition (`transform var(--dur-fast) ease`), which restarts from a standstill whenever
+ * the drag reverses mid-gesture — the one surface in the app that moved under a finger on
+ * anything but a spring. The fix is `app/motion.ts`'s own interruptible spring: the
+ * displaced rows are `m.li` from `motion/react-m`, animated by Motion's `animate` prop
+ * rather than by a CSS transition, so a target that changes mid-flight carries velocity
+ * into the new one instead of restarting from rest. The dragged row's own tracking is
+ * untouched — it still writes `transform` directly, the one value `shiftFor` never moves
+ * for the row it belongs to, so it never competes with Motion for the same property.
+ */
+const REORDERABLE_TITLE_LIST = readFileSync(
+  "app/(signed-in)/lists/[listId]/reorderable-title-list.tsx",
+  "utf8",
+);
+const LIST_TITLE_ROW = readFileSync("app/(signed-in)/lists/[listId]/list-title-row.tsx", "utf8");
+
+/** Block comments stripped, so a docblock's prose about the literal this ticket removed
+ *  (quoted for the reader in backticks) cannot be mistaken for the literal surviving in
+ *  code. */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*\*[\s\S]*?\*\//g, "");
+}
+
+describe("the rows making way for a dragged row get a spring", () => {
+  it("carries the row through Motion's mini component, not a bare <li>", () => {
+    expect(LIST_TITLE_ROW).toContain('from "motion/react-m"');
+    expect(LIST_TITLE_ROW).toMatch(/<m\.li\b/);
+    expect(withoutComments(LIST_TITLE_ROW)).not.toMatch(/<li\b/);
+  });
+
+  it("animates the displaced rows on the motion module's own spring", () => {
+    expect(LIST_TITLE_ROW).toMatch(/import \{ smooth \} from "@\/app\/motion"/);
+    expect(LIST_TITLE_ROW).toMatch(/animate=\{[^}]*shift[^}]*\}/);
+    expect(LIST_TITLE_ROW).toMatch(/transition=\{smooth\}/);
+  });
+
+  it("leaves no hand-written duration or easing literal in the reorder list", () => {
+    for (const [label, source] of [
+      ["reorderable-title-list.tsx", REORDERABLE_TITLE_LIST],
+      ["list-title-row.tsx", LIST_TITLE_ROW],
+    ] as const) {
+      const code = withoutComments(source);
+      expect(code, label).not.toMatch(/transition:\s*["'`]transform/);
+      expect(code, label).not.toMatch(/\bease\b/);
+    }
+  });
+
+  it("keeps the dragged row's own tracking a direct pointer read, unchanged", () => {
+    expect(REORDERABLE_TITLE_LIST).toContain(
+      "transform: `translateY(${dragState.translateY}px)`",
+    );
+  });
+
+  it("reports no duration-ramp lint violation in either file", async () => {
+    const eslint = new ESLint();
+    const results = await eslint.lintFiles([
+      "app/(signed-in)/lists/[listId]/reorderable-title-list.tsx",
+      "app/(signed-in)/lists/[listId]/list-title-row.tsx",
+    ]);
+    const ruleIds = results.flatMap((result) => result.messages.map((message) => message.ruleId));
+    expect(ruleIds).not.toContain("mediasafe/duration-on-the-ramp");
+  });
+
+  it("adds no reduced-motion branch of its own — MotionConfig's is the only one", () => {
+    expect(REORDERABLE_TITLE_LIST).not.toMatch(/prefers-reduced-motion|useReducedMotion/);
+    expect(LIST_TITLE_ROW).not.toMatch(/prefers-reduced-motion|useReducedMotion/);
   });
 });
