@@ -24,3 +24,19 @@
  */
 export const PHONE_BAR =
   "fixed inset-x-0 bottom-0 z-30 border-t border-hair frosted pt-2 pb-[22px] lg:hidden";
+
+/**
+ * The attribute `selection-action-bar.tsx` puts on `document.documentElement` for as long
+ * as the mode is open, and the one signal `tab-bar.tsx` reads back — issue #197's whole
+ * mechanism, named once and shared since #334 rather than spelled as `"data-selecting"` at
+ * both ends. It lives here rather than in either bar's own file for the same reason
+ * `PHONE_BAR` does: this is the one file both already import, and a second copy of the
+ * string is exactly the kind of drift this file exists to prevent (see the docblock above,
+ * and `tab-bar.tsx`'s own account of a height that drifted five pixels before anyone
+ * noticed).
+ *
+ * `app/globals.css`'s `:root[data-selecting]` selectors spell the same string by hand —
+ * CSS cannot import a TypeScript constant — so it is the one copy this export cannot
+ * remove, only match.
+ */
+export const SELECTING_ATTRIBUTE = "data-selecting";

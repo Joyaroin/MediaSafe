@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import { LibraryIcon, SearchIcon, UpNextIcon, YouIcon } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
-import { PHONE_BAR } from "./phone-bar";
+import { PHONE_BAR, SELECTING_ATTRIBUTE } from "./phone-bar";
 import { useUpNextRepress } from "./use-up-next-repress";
 
 /**
@@ -155,12 +156,57 @@ const TAB_ICON = "press-lead h-[19px] w-[19px]";
  *  being a lead at all. */
 const TAB_LABEL = "text-tab font-medium leading-tight";
 
+/**
+ * ── `inert` carries the accessibility guarantee now — issue #334 ─────────────────────
+ *
+ * Until this ticket `app/globals.css` took this bar out of the layout with a single
+ * `display: none` the instant `data-selecting` appeared, so *gone from layout* and *gone
+ * from the accessibility tree* were the same event. This bar now crosses with the action
+ * bar instead of cutting — `app/globals.css`'s `.phone-tab-bar` rules fade and rise it,
+ * with `display` itself deferred to the *end* of that fade by `allow-discrete` — so for the
+ * length of the fade this bar is visible, in flow, and would otherwise still be four
+ * `Link`s a screen reader's own navigation can reach under the reader's thumb.
+ *
+ * So the guarantee moves here, off the same attribute the CSS reacts to rather than off
+ * `display`: a `MutationObserver` on `document.documentElement`'s `data-selecting` sets
+ * `inert` on the `<nav>` directly, synchronously with the attribute write and therefore
+ * before the browser has painted a single frame of the transition — not at the end of it,
+ * which is what reading `display` instead would have given back. Imperative and off the
+ * DOM rather than a second `useState` and a re-render: the property that has to land
+ * "the instant selection becomes active" is not one to route through a commit that might
+ * land a frame late.
+ *
+ * A `MutationObserver` rather than reaching into `bulk-selection-context.ts` for the same
+ * reason `selection-action-bar.tsx`'s own docblock gives for writing the attribute in the
+ * first place: there is no component above both this bar and the Library's selection
+ * provider that has any other reason to know either exists, and threading the state up
+ * would create one.
+ */
 export function TabBar() {
   const pathname = usePathname();
   const onUpNextLinkClick = useUpNextRepress();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const element = navRef.current;
+    if (element === null) return;
+
+    function sync(): void {
+      element!.inert = document.documentElement.hasAttribute(SELECTING_ATTRIBUTE);
+    }
+
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: [SELECTING_ATTRIBUTE],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <nav
+      ref={navRef}
       aria-label="Primary"
       // `viewTransitionName` takes this bar out of the `root` snapshot so it can be held
       // still while the content slides underneath it — see `globals.css`. The name is a
@@ -168,8 +214,9 @@ export function TabBar() {
       style={{ viewTransitionName: "phone-tab-bar" }}
       // `phone-tab-bar` carries no styling of its own — it is the handle
       // `app/globals.css` takes this bar out of the layout by while the Library is in
-      // selection mode (issue #197), and the reason that rule can be written without any
-      // state reaching this component from a grid three routes down.
+      // selection mode (issue #197), fading and rising it since #334 rather than cutting
+      // it — see this component's own docblock for the `inert` guarantee that used to
+      // ride on `display` alone.
       //
       // `PHONE_BAR` is the frosting, the hairline and the four numbers that add up to
       // `--tab-bar-height`, shared with the bar that replaces this one (`app/phone-bar.ts`).

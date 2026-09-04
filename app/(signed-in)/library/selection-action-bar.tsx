@@ -7,7 +7,7 @@ import {
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
-import { PHONE_BAR } from "@/app/phone-bar";
+import { PHONE_BAR, SELECTING_ATTRIBUTE } from "@/app/phone-bar";
 import type { ListSummary } from "@/db/access";
 import {
   GHOST_RECOVERY,
@@ -110,9 +110,6 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  * one rather than being handed a second, differently-behaved write on the busiest bar in
  * the app.
  */
-
-/** The attribute `app/globals.css` hangs the tab bar's disappearance off. */
-const SELECTING_ATTRIBUTE = "data-selecting";
 
 type Phase =
   | { readonly kind: "loading" }
