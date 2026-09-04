@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Poster } from "@/app/poster";
+import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
 
 /**
@@ -90,7 +91,14 @@ function IconCell({
             width={POSTER_WIDTH}
             className="w-full transition duration-150 group-hover:brightness-110 [--poster-radius:var(--radius-4)]"
             aboveFold={aboveFold}
-          />
+          >
+            {/* The same bar the bill draws, on the same edge of the same poster — a list
+                is the library's titles in a hand order, and how far through one you are
+                does not change with the surface you meet it on. `null` for a title this
+                account does not own, which is a case the bill never has to draw
+                (`db/access.ts`'s `ListDetailTitleRow.progress`). */}
+            <PosterProgressBar progress={title.progress} />
+          </Poster>
 
           {/* `--ink` on the poster, not the accent: this is the order the reader set, and
               `app/globals.css` gives the accent three roles, none of which is *a fact

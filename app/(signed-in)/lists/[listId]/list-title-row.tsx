@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Poster } from "@/app/poster";
+import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
 
 /**
@@ -76,7 +77,12 @@ export function ListTitleRow({
         width={56}
         className="w-14 shrink-0"
         aboveFold={aboveFold}
-      />
+      >
+        {/* The icon view's bar, on the row view's smaller poster. Both views of one list
+            answer the same question the same way; a bar that appeared on only one of them
+            would read as a fact about the view rather than about the title. */}
+        <PosterProgressBar progress={title.progress} />
+      </Poster>
 
       <div className="min-w-0 flex-1">
         {/* `text-ink`, not `text-text` (#255). `bill-title text-bill-md` is a heading

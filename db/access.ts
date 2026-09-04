@@ -5018,6 +5018,20 @@ export interface ListDetailTitleRow {
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
   readonly position: number;
+  /**
+   * Watched-against-released, for the progress bar both of a list's views draw on the
+   * poster (`app/poster-progress-bar.tsx`).
+   *
+   * `null` covers one case more than `LibraryEntryRow.progress` does. There it is a film,
+   * and here it is a film **or** a title this account does not own — a list holds anything
+   * in the catalogue (ADR-0001 amendment 7), and a title with no `libraryEntryId` has no
+   * watches to be a fraction of. Both are the same absence to a caller: no bar.
+   *
+   * As on the library, a show with nothing released is *not* this absence — it arrives as
+   * `{ watched: 0, released: 0 }` and `library-progress-fraction.ts` is what turns that
+   * into nothing drawn.
+   */
+  readonly progress: { readonly watched: number; readonly released: number } | null;
 }
 
 /** A list's own facts, and its titles in order — issue #147. */
@@ -5071,6 +5085,11 @@ export async function getListDetail(
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
       position: listMembership.position,
+      // The progress bar on a list's posters. Joined onto the library-entry left join
+      // above rather than queried per cell, for `listLibraryEntries`' own reason: a view
+      // of eleven posters asking for themselves is eleven round trips for one fact.
+      watched: libraryEntryReleaseProgress.watched,
+      released: libraryEntryReleaseProgress.released,
     })
     .from(listMembership)
     .innerJoin(title, eq(title.id, listMembership.titleId))
@@ -5078,13 +5097,24 @@ export async function getListDetail(
       libraryEntry,
       and(eq(libraryEntry.userId, userId), eq(libraryEntry.titleId, title.id)),
     )
+    // Keyed on the entry, not the title: the join above is already scoped to this
+    // account, so an unowned title finds no entry, finds no progress row through it, and
+    // arrives as the `null` the type documents — the same absence a film arrives as.
+    .leftJoin(
+      libraryEntryReleaseProgress,
+      eq(libraryEntryReleaseProgress.libraryEntryId, libraryEntry.id),
+    )
     .where(eq(listMembership.listId, listId))
     .orderBy(asc(listMembership.position));
 
   return {
     id: row.id,
     name: row.name,
-    titles: titleRows.map((one) => ({ ...one, kind: kindFrom(one.kind) })),
+    titles: titleRows.map(({ watched, released, ...one }) => ({
+      ...one,
+      kind: kindFrom(one.kind),
+      progress: watched === null || released === null ? null : { watched, released },
+    })),
   };
 }
 

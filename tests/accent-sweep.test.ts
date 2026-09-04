@@ -279,14 +279,17 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "the watched-progress bar fill — its own docblock: 'how far through you are right " +
       "now is the most literal reading of live on this page'",
   },
-  "app/(signed-in)/library/library-entry-cell.tsx": {
+  "app/poster-progress-bar.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 1,
     reason:
-      "the bill cell's watched-progress bar fill — the same role title-hero.tsx's bar " +
-      "spends, and the cell's own docblock records the trade: the Watching state word " +
-      "left the card entirely so the bar could take the accent, leaving one accent role " +
-      "on this screen rather than two",
+      "the watched-progress bar drawn on a poster's bottom edge — one component, three " +
+      "call sites (the library bill and both of a list's views), which is why the token " +
+      "is here and not in any of them. The same role title-hero.tsx's bar spends: the " +
+      "bill's Watching state word left the card entirely so this bar could take the " +
+      "accent, leaving one accent role on that screen rather than two. Its own docblock " +
+      "answers DESIGN.md §6's 'across a poster it would be the accent painting artwork', " +
+      "which is a rule about the press sweep and not about a 3px rule at the foot.",
   },
   "app/(signed-in)/lists/list-name-form.tsx": {
     meaning: "LITERAL_EXCEPTION",
