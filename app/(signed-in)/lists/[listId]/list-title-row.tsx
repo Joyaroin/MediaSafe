@@ -108,7 +108,7 @@ export function ListTitleRow({
           ? `/catalogue/${title.kind}/${title.tmdbId}`
           : `/titles/${title.libraryEntryId}`
       }
-      className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-150 hover:bg-raised"
+      className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-[var(--dur-fast)] hover:bg-raised"
     >
       {content}
     </Link>

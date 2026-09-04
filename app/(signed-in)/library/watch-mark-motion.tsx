@@ -71,7 +71,7 @@ export const WATCHED_NAME = "text-dim";
  * answer to the group rather than to this element.
  */
 export const SETTLED_GLYPH =
-  "flex items-center justify-center rounded-[var(--radius-full)] border border-hair bg-hair p-1 text-ground transition-colors duration-150 group-hover:bg-transparent group-hover:text-dim";
+  "flex items-center justify-center rounded-[var(--radius-full)] border border-hair bg-hair p-1 text-ground transition-colors duration-[var(--dur-fast)] group-hover:bg-transparent group-hover:text-dim";
 
 /**
  * The recording control's hit box — issue #217, which took *Strike it* from a `code-line`
@@ -174,7 +174,7 @@ export const RECORDING_HIT_BOX =
  * not migrated, because there is no fill left to declare.
  */
 export const RECORDING_GLYPH =
-  `flex items-center justify-center rounded-[var(--radius-full)] border border-accent p-1 ${RECORDS_A_WATCH.ink} transition-colors duration-150 group-hover:bg-hair`;
+  `flex items-center justify-center rounded-[var(--radius-full)] border border-accent p-1 ${RECORDS_A_WATCH.ink} transition-colors duration-[var(--dur-fast)] group-hover:bg-hair`;
 
 /**
  * The **quiet** recording control — issue #196's *watched up to here*, and the only
@@ -206,7 +206,7 @@ export const RECORDING_GLYPH =
  * #195. Naming this one is what stops a third copy; settling the register is #194's.
  */
 export const QUIET_RECORDING_CONTROL =
-  "shrink-0 rounded-[var(--radius-full)] border border-hair p-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+  "shrink-0 rounded-[var(--radius-full)] border border-hair p-1 text-dim transition-colors duration-[var(--dur-fast)] hover:border-accent hover:text-accent";
 
 /**
  * `QUIET_RECORDING_CONTROL` at a measure that can hold words — issue #222's *Add —
@@ -255,7 +255,7 @@ export const QUIET_RECORDING_CONTROL =
  * all three constants move together.
  */
 export const QUIET_RECORDING_CONTROL_LABELLED =
-  "code-line rounded-[var(--radius-full)] border border-hair px-4 py-2 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+  "code-line rounded-[var(--radius-full)] border border-hair px-4 py-2 text-dim transition-colors duration-[var(--dur-fast)] hover:border-accent hover:text-accent";
 
 /**
  * The same again at `errors/recovery-buttons.ts`'s compact measure — `px-2.5 py-1` — for
@@ -292,4 +292,4 @@ export const QUIET_RECORDING_CONTROL_LABELLED =
  * the constant above and this one exist to keep.
  */
 export const QUIET_RECORDING_CONTROL_LABELLED_COMPACT =
-  "code-line rounded-[var(--radius-full)] border border-hair px-2.5 py-1 text-dim transition-colors duration-150 hover:border-accent hover:text-accent";
+  "code-line rounded-[var(--radius-full)] border border-hair px-2.5 py-1 text-dim transition-colors duration-[var(--dur-fast)] hover:border-accent hover:text-accent";
