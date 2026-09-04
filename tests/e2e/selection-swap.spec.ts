@@ -125,7 +125,12 @@ test("the tab bar is inert the instant selection starts, not from the end of the
   await page.waitForTimeout(HOLD_MS + 150);
   await page.mouse.up();
 
-  await expect(page.getByRole("status", { name: /selected/ })).toBeVisible();
+  // Filtered by text, not by accessible name. `status` is not a name-from-content role —
+  // `selection-action-bar.tsx` renders a bare `<p role="status">6 selected</p>`, whose
+  // accessible name is empty because nothing labels it, so `{ name: /selected/ }` matched
+  // nothing however well the swap worked. The count line is the thing to wait on, and its
+  // text is what identifies it.
+  await expect(page.getByRole("status").filter({ hasText: /\d+ selected/ })).toBeVisible();
 
   const [inertAtRun, displayAtRun, searchFocused] = await page.evaluate(() => [
     window.__tabBarInertAtTransitionRun,
