@@ -97,48 +97,78 @@
      `docs/design/prototypes/mediasafe-mobile-handoff.md` and drawn at
      `docs/design/prototypes/mediasafe-mobile.html`.
 
-     **These seven values are the handoff's, not an approximation of them.** They used to be
-     turn 9 of the *earlier exploration board* — the one now committed beside it as
+     **These seven values are the handoff's, not an approximation of them** — that was
+     issue #255's claim, and it still holds for six of the seven. They used to be turn 9 of
+     the *earlier exploration board* — the one now committed beside it as
      `mediasafe-phone-up-next.html`, which this file cited as `design_handoff_phone_linen`
      against no path at all. That board was the direction; this table is the brief that
-     landed after it, and the two differ in all seven values. Issue #255 closed the gap.
+     landed after it, and the two differed in all seven values. Issue #255 closed that gap.
+     Issue #327 reopened exactly one cell of it, deliberately: `--dim` no longer carries the
+     handoff's own number, for the reason at its declaration below. **The handoff itself is
+     no longer the source of truth these values are checked against** — `DESIGN.md` §2 is,
+     since #327 — though the handoff stays committed, unedited, as the record of what was
+     actually asked for.
 
-     The tone relationship inverting is still the point — `--raised` at `#eeede6` sits
-     *below* `#f7f5ed`, so a card reads as a well pressed into the sheet rather than a panel
-     floating above it, which is what lets the whole redesign carry no shadows at all. The
-     handoff's Geometry table says so in as many words: *none on cards — the `--raised` /
-     `--ground` step is the only lift*. */
-  --ground: #f7f5ed;
-  --raised: #eeede6;
-  --hair: #d7d4c8;
-  --text: #34342f;
-  --dim: #929086;
-  --accent: #a52518;
-  --accent-ink: #f7f5ed;
+     The tone relationship inverting is still the point — `--raised` sits *below*
+     `--ground` (they were `#eeede6` on `#f7f5ed` before this file restated them below;
+     the OKLCH lightness positions are unchanged), so a card reads as a well pressed into
+     the sheet rather than a panel floating above it, which is what lets the whole redesign
+     carry no shadows at all. The handoff's Geometry table says so in as many words: *none
+     on cards — the `--raised` / `--ground` step is the only lift*.
 
-  /* ── `--dim` is adopted as given and is the weakest thing in this file ───────────────
-     Recorded here because it is a regression, it was taken deliberately, and the next
-     person to look at a metadata line deserves to find the number rather than re-measure
-     it. `#929086` on `--ground` is **2.93:1**, and on `--raised` 2.73:1. The value it
-     replaces managed 3.32:1 and 3.04:1.
+     ── Restated in OKLCH — issue #327 ──────────────────────────────────────────────────
+     Every value below used to be a hex triplet copied from the handoff's table. It is now
+     `oklch()`, on one hue (95°, the linen's own), because a hex triplet hides exactly the
+     three things a palette lives or dies on: whether a hue has drifted, whether a divider
+     has picked up more chroma than the sheet it divides, and where a value actually sits on
+     the lightness axis relative to its neighbours. All three are a glance at an `oklch()`
+     value and an exercise in mental colour math at a hex one.
 
-     That crosses a floor rather than merely dropping. The old value failed WCAG AA for
-     normal text (4.5:1) but cleared the 3:1 large-text threshold; this one clears
-     neither, and `--dim` carries the metadata line at 12–13px, which is normal text by
-     any reading. The handoff's own Accessibility section asks for visible focus rings and
-     ≥44px targets and then sets its metadata colour below the contrast floor.
+     **Lightness is held at the shipped position for every token but one.** The light
+     values here render within a rounding error of the hex they replace — `#f7f5ed` and
+     `#eeede6` above are what a browser now computes from `--ground` and `--raised`, not a
+     second source of truth — so the page's tone is unchanged. Chroma falls as lightness
+     leaves the ground (`0.012` at the top of the ramp down to `0.006` at the bottom), so no
+     hairline is ever more chromatic than the sheet it divides. The full derivation and the
+     gamut check are in the research note committed on the `docs/visual-refinement-research`
+     branch (§2.2, not yet on the default branch as of this writing); `DESIGN.md` §0's
+     fourth amendment carries the summary that lives here instead. */
+  --ground: oklch(96.9% 0.012 95);
+  --raised: oklch(94.5% 0.012 95);
+  --hair: oklch(86.9% 0.012 95);
+  --text: oklch(32.3% 0.008 95);
+  --dim: oklch(52.8% 0.010 95);
+  --accent: oklch(47.4% 0.166 30);
+  --accent-ink: oklch(96.9% 0.012 95);
 
-     It is adopted anyway because issue #255's first acceptance criterion is that the seven
-     tokens carry *the handoff's* values, and quietly darkening one while claiming to have
-     adopted the table would be worse than the contrast: it would make this file's values
-     un-diffable against the document it cites. The fix belongs in a ticket that changes
-     the number on purpose and says so — not in the commit whose whole claim is fidelity.
+  /* ── `--dim` is the one value whose lightness moves, and it moves on purpose ─────────
+     Every other token above is the shipped tone re-expressed; this one is a real repaint,
+     recorded here because it is a fix and the next person to look at a metadata line
+     deserves to find the number rather than re-measure it.
 
-     What softens it in practice, and what does not: `--dim` is never load-bearing on its
-     own — every state it colours is also carried by the label register or a dimmed name
-     (`library-state.ts`, `library-entry-cell.tsx`), so nothing is colour-only. What it
-     does not soften is a year, a runtime or an episode count, which are `--dim` and
-     nothing else. Those are now harder to read than they were. */
+     The hex it replaced, `#929086`, was **2.93:1** on `--ground` and **2.73:1** on
+     `--raised` — below WCAG 2.2's 4.5:1 floor for normal text on both, and `--dim` carries
+     the metadata line (year, runtime, episode count) at 12–13px, which is normal text by
+     any reading. It was adopted anyway in issue #255 because that ticket's whole claim was
+     fidelity to the handoff's table, and quietly darkening one value while claiming to have
+     adopted it unchanged would have made the file un-diffable against the document it
+     cited. That ticket named the fix out of scope and pointed at "a ticket that changes the
+     number on purpose and says so" — this is that ticket.
+
+     **Light is the lightest value on the hue that clears 4.5:1 on `--raised`**, the harder
+     of the two grounds a metadata line sits on. **Dark is the darkest value on the hue that
+     reaches the perceptual content-text floor** rather than the WCAG 2 floor: WCAG 2 has
+     nothing useful to say near black, and it passed the shipped dark value while that value
+     sat under the floor a human reader actually needs. Both land **20 L from `--text`** —
+     `52.8 − 32.3` in light, `96.3 − 76.5` in dark — derived independently from two different
+     standards, which is why that relationship and not either raw number is the rule to
+     carry forward: the next re-tint should hold the 20 L step, not this ticket's two
+     lightnesses.
+
+     `--dim` is still never load-bearing on its own — every state it colours is also carried
+     by the label register or a dimmed name (`library-state.ts`, `library-entry-cell.tsx`) —
+     but a year, a runtime or an episode count is `--dim` and nothing else, and that is
+     exactly the text this fix was for. */
 
   /* ── The three tokens the handoff proposes to add, and why none of them is here ──────
      Its table names `--well` for the artwork placeholder, and offers `--body` for synopsis
@@ -160,11 +190,11 @@
      one failure mode this token exists to prevent.
 
      So the value is re-derived below the new primary rather than the token being retired.
-     `#1f1f1b` is 15.2:1 on `--ground` against `--text`'s 11.5:1 — a 1.32× step, narrower
-     than the old 1.55× because the new body colour is itself far stronger and a
-     proportional step would have landed on near-black. It keeps the handoff's warm cast
-     (`#34342f` runs its blue channel five below red and green; `#1f1f1b` runs it four). */
-  --ink: #1f1f1b;
+     It is 15.1:1 on `--ground` against `--text`'s 11.5:1 — a 1.32× step, narrower than the
+     old 1.55× because the new body colour is itself far stronger and a proportional step
+     would have landed on near-black. Restated in `oklch()` by #327 alongside every other
+     token here, its lightness position is unchanged. */
+  --ink: oklch(23.8% 0.006 95);
 
   /* ── The phone tab bar's height, and why it is declared here ──────────────────────
      `44px` cell + `8px` top padding + `22px` bottom padding + the `1px` `hair` top
@@ -181,42 +211,47 @@
   --tab-bar-height: 75px;
 
   /* ── The dark palette's values, declared here and applied below ───────────────────
-     Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s `:root`,
-     unchanged: the linen redesign is a light-palette change and says so.
+     Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s `:root`
+     until issue #327, unchanged because the linen redesign was a light-palette change and
+     said so. #327 is not that — it restates every neutral on the light palette's own hue
+     (95°, up from the blue-violet cast `catalogue-wall.html` inherited from an older
+     exploration board) and moves the accent, so night reads as the same product as day
+     rather than a cool-blue variant of it. The research note on the
+     `docs/visual-refinement-research` branch, §2.2, carries the derivation.
 
-     `--dark-ink` is the exception, and it is not a redesign of anything. `--ink` is
-     declared on `:root`, so without a dark value it would keep `#1f1f1b` in dark too and
-     paint every heading near-black on a near-black ground. In dark `--text` is already
-     the brightest neutral on the sheet, so there is no darker-than-body step to give a
-     heading and `--ink` is `--text` — the same colour, so that `text-ink` means *full
-     strength for a heading* in both schemes rather than meaning nothing in one of them.
+     **The dark accent moves onto the vermilion family, off amber.** `#ffb020` read warm but
+     was a different hue from the light accent — a reader marking a watch at 6pm and again
+     at 11pm saw the app's one semantic colour change what colour it was. The value that
+     reaches the perceptual text floor on this ground has to drop chroma far enough to read
+     as coral rather than brick, so the slightly deeper, still-conformant value is taken
+     instead and the brick character is kept. The higher contrast amber offered was never the
+     reason it was chosen in the first place.
 
-     **Why this is still the answer after the palette change.** Issue #255 asks for the
-     heading step re-derived "in light and dark", and in dark the word *darker* inverts: a
-     heading one step darker than `#f4f4f2` on a `#0a0a0b` ground is a heading receding into
-     the page. What the light theme is buying with `--ink` is *more* contrast for a heading,
-     and dark already spends it — `--dark-text` is 18:1 on `--dark-ground`, with only
-     `#ffffff` above it and nothing but halation on 34px type to gain there. So the dark
-     counterpart is declared, deliberately equal, and the property the ticket is actually
-     protecting holds in both schemes: **no heading renders lighter than the body beneath
-     it.** Equal is not lighter.
+     `--dark-ink` is still not a redesign of anything, and the reasoning is unchanged by the
+     restatement: `--ink` is declared on `:root`, so without a dark value it would carry the
+     light value into dark too and paint every heading near-black on a near-black ground. In
+     dark `--text` is already the brightest neutral on the sheet, so there is no
+     darker-than-body step to give a heading, and `--ink` is declared equal to `--text` —
+     same value, so `text-ink` means *full strength for a heading* in both schemes rather
+     than meaning nothing in one of them. Equal is not lighter, which is the property this
+     token protects.
 
      **Why the dark palette is a named set rather than a second `:root` block.** There are
-     now two ways to be in dark — the system asked, or the reader answered — and they are
-     two different selectors that cannot share one declaration block, because one of them
-     lives inside a media query. Writing the palette out twice would put every dark hex in
-     the file twice, and this file's whole argument is that a token has **one declaration
+     two ways to be in dark — the system asked, or the reader answered — and they are two
+     different selectors that cannot share one declaration block, because one of them lives
+     inside a media query. Writing the palette out twice would put every dark value in the
+     file twice, and this file's whole argument is that a token has **one declaration
      site**. Declared once here and mapped twice below, each colour still appears exactly
      once; what repeats is the mapping, where a mistake is a visibly wrong colour rather
      than a silent drift between two copies. */
-  --dark-ground: #0a0a0b;
-  --dark-raised: #17171a;
-  --dark-hair: #242429;
-  --dark-text: #f4f4f2;
-  --dark-dim: #8c8c8a;
-  --dark-accent: #ffb020;
-  --dark-accent-ink: #0a0a0b;
-  --dark-ink: #f4f4f2;
+  --dark-ground: oklch(13.9% 0.004 95);
+  --dark-raised: oklch(20.5% 0.005 95);
+  --dark-hair: oklch(26.5% 0.006 95);
+  --dark-text: oklch(96.3% 0.006 95);
+  --dark-dim: oklch(76.5% 0.008 95);
+  --dark-accent: oklch(75% 0.153 35);
+  --dark-accent-ink: oklch(13.9% 0.004 95);
+  --dark-ink: oklch(96.3% 0.006 95);
 }
 
 /* ── The three theme states ──────────────────────────────────────────────────────────
@@ -670,9 +705,16 @@
    One utility, one radius, and the sidebar now reads it rather than spelling the same
    pair by hand. The rail arrows keep `bg-ground/80` at the same `2px`: they sit over
    moving artwork rather than over type, which is the one place §5 sanctions a second
-   *opacity* — never a second radius. */
+   *opacity* — never a second radius.
+
+   **Mixed `in oklab`, not `in srgb`, since issue #327.** Every colour this file declares is
+   now `oklch()`, and `srgb` interpolation walks the gamma-compressed channels of a colour
+   space these tokens no longer live in — an sRGB mix between two greys can visibly shift
+   hue partway through, exactly the drift the OKLCH restatement exists to make visible
+   rather than hide. `oklab` interpolates the perceptually uniform space `oklch()` is a
+   polar form of, so a mix of `--ground` with itself stays on the same hue throughout. */
 @utility frosted {
-  background: color-mix(in srgb, var(--color-ground) 95%, transparent);
+  background: color-mix(in oklab, var(--color-ground) 95%, transparent);
   backdrop-filter: blur(2px);
 }
 

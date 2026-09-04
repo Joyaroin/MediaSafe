@@ -79,8 +79,10 @@ describe("the three theme states in CSS", () => {
       "--dark-accent-ink",
       "--dark-ink",
     ]) {
-      // One declaration (`--dark-x: #hex;`), and then the two mappings that read it.
-      const declarations = GLOBALS.match(new RegExp(`${token}:\\s*#`, "g")) ?? [];
+      // One declaration (`--dark-x: oklch(…);`, since issue #327 — see
+      // `tests/palette.test.ts`'s own `declaredOnce` for why), and then the two mappings
+      // that read it.
+      const declarations = GLOBALS.match(new RegExp(`${token}:\\s*oklch\\(`, "g")) ?? [];
       expect(declarations, `${token} is declared more than once`).toHaveLength(1);
     }
   });
