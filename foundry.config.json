@@ -3,11 +3,13 @@
     "rm -rf .next",
     "npm run typecheck",
     "npm run build",
-    "npm test"
+    "npm test",
+    "npm run test:e2e"
   ],
   "maxParallel": 3,
   "verifyEnv": {
-    "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_foundry"
+    "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_foundry",
+    "CI": "true"
   },
   "builderEnv": {
     "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_t{ticket}"
