@@ -87,9 +87,18 @@ async function watchForMorphPair(page: Page, name: string): Promise<void> {
               animation.effect instanceof KeyframeEffect &&
               animation.effect.pseudoElement === `::view-transition-group(${transitionName})`,
           );
+          // **The curve is on the keyframes, not on the effect.** `getComputedTiming()`
+          // reports the *effect's* own timing function, which for a CSS animation is
+          // always the `linear` default — `animation-timing-function` is applied to each
+          // keyframe instead. Reading the effect returned that bare `linear` no matter
+          // what `--spring-poster` held, so this assertion failed against a correct
+          // implementation. `getKeyframes()[0].easing` is where the declared curve
+          // actually lands.
           const groupEasing =
             group?.effect instanceof KeyframeEffect
-              ? group.effect.getComputedTiming().easing ?? null
+              ? ((group.effect.getKeyframes()[0]?.easing as string | undefined) ??
+                group.effect.getComputedTiming().easing ??
+                null)
               : null;
           window.__morphObservations?.push({ hasOld, hasNew, groupEasing });
         })
