@@ -289,7 +289,7 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "bill's Watching state word left the card entirely so this bar could take the " +
       "accent, leaving one accent role on that screen rather than two. Its own docblock " +
       "answers DESIGN.md §6's 'across a poster it would be the accent painting artwork', " +
-      "which is a rule about the press sweep and not about a 3px rule at the foot.",
+      "which is a rule about the press sweep and not about a 5px rule at the foot.",
   },
   "app/(signed-in)/lists/list-name-form.tsx": {
     meaning: "LITERAL_EXCEPTION",

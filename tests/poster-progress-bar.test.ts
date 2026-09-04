@@ -18,7 +18,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * The bar on the poster, and the three surfaces that draw it.
  *
  * It used to be a line under the library card's name and nothing else drew one. It is a
- * `3px` rule across the foot of the artwork now, in one component with three call sites —
+ * `5px` rule across the foot of the artwork now, in one component with three call sites —
  * the bill, and both of a list's views. This file is about the two things that stopped
  * being local to `library-entry-cell.tsx` when it moved: **where in the markup it sits**,
  * which is what makes the poster's own radius clip it, and **that all three surfaces agree
