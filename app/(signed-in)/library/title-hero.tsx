@@ -161,7 +161,11 @@ export function TitleHero({
             container*. `w-full` on the poster fills whatever this resolves to. */}
         <div
           className="w-[34%] max-w-[140px] shrink-0"
-          style={{ viewTransitionName: posterTransitionName }}
+          // `viewTransitionClass` is issue #338's scoping handle: `app/globals.css`'s
+          // `::view-transition-group(*.poster)` reads it to give this element the
+          // sampled spring, and to leave `phone-masthead`/`phone-tab-bar` — which carry
+          // no class — out of that rule entirely.
+          style={{ viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }}
         >
           {/* Still the hero poster of whichever surface holds this, so still `aboveFold`
               — smaller, but the first artwork the reader sees. */}

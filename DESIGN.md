@@ -1673,9 +1673,9 @@ navigation onto `nav-fade`/`nav-rise` and gave the outgoing and incoming root tw
 rules rather than one:
 
 ```css
-::view-transition-group(*) {
+::view-transition-group(*.poster) {
   animation-duration: var(--dur-quick);
-  animation-timing-function: var(--ease-press);
+  animation-timing-function: var(--spring-poster);
 }
 
 ::view-transition-old(root) {
@@ -1690,9 +1690,22 @@ rules rather than one:
 ```
 
 - **The group is what moves and resizes the shared poster**, so it gets the long confident
-  arrival curve — `--ease-press`, an exponential ease-out that covers most of the distance
-  immediately and then settles. That is what makes a morph read as a thing with mass being
-  carried rather than a box being tweened.
+  arrival curve. **Issue #338 reverses what this said one ticket ago** — it used to be
+  `--ease-press`, an exponential ease-out standing in for "a thing with mass being carried".
+  It is now `--spring-poster`: `app/motion.ts`'s `smooth`, the motion module's one
+  non-bouncing spring, sampled into a `linear()` curve the way `--spring-press` (#270)
+  sampled `snappy`. The CSS arrival and a Motion-driven `smooth` are now literally the same
+  curve rather than two that resemble each other — a full-range animation, unlike the press,
+  so the objection that sent `--spring-press` back out of a transition's easing (#281: a
+  curve scaling a tiny delta to an invisible effect) does not apply here.
+- **Scoped to posters by `view-transition-class`, not to every group.** `::view-transition-
+  group(*)` used to reach `root`, `phone-masthead` and `phone-tab-bar` as well, and the
+  chrome pair only stayed still because a later, more specific rule zeroed their `animation`
+  back out — applying the curve everywhere and clawing it back for two groups, which is the
+  failure mode #338 names outright. `*.poster` reads the `poster` class every morph call
+  site now sets (`title-hero.tsx`, `selectable-entry.tsx`, `pending-poster.tsx`,
+  `programme-note.tsx`, `up-next-episode-row.tsx`), so the masthead and tab-bar groups —
+  which carry no class — were never in this rule's scope to begin with.
 - **The group and the arriving root now share one clock, `--dur-quick`, and that is a fix
   rather than the original design.** The morph ran `--dur-slow` against a `--dur-base` page
   and was already the last thing settling; once #221 brought the page down to `--dur-quick`
@@ -1700,10 +1713,8 @@ rules rather than one:
   finished — the *"unfinished transition"* problem this file warns about, reintroduced from
   the other side. Leaving is still faster than arriving, the asymmetry this file has always
   held: the outgoing root fades out alone at `--dur-fast`, and the incoming root fades and
-  rises in at `--dur-quick`.
-- **`--ease-press` is not a second curve.** It is the value #88 chose for the watch strike,
-  reused rather than re-picked — one arrival curve across the app is what makes two
-  unrelated surfaces feel like the same hand made them.
+  rises in at `--dur-quick`. Unchanged by #338 — only the curve's shape moved, not its
+  length.
 
 **Selecting a different tile mid-view is two morphs, not one** (desktop only): the panel's
 poster morphs into the newly-selected tile's on the way out, and that tile's morphs into

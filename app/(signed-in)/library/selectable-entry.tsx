@@ -151,7 +151,14 @@ export function SelectableEntry({
     >
       <div
         className="relative"
-        style={openInPane ? undefined : { viewTransitionName: posterTransitionName }}
+        // `viewTransitionClass` scopes the morph's spring to posters (#338) — dropped in
+        // the same breath as the name when the pane already holds it, so there is never a
+        // classed element with no name to pair it against.
+        style={
+          openInPane
+            ? undefined
+            : { viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }
+        }
       >
         {poster}
       </div>

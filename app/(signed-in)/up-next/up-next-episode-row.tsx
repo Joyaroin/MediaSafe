@@ -380,7 +380,10 @@ function RowFrame({
      than a second condition. */
   if (selected) return frame;
   return (
-    <ViewTransition name={railPosterTransitionName(entry.libraryEntryId)}>
+    // `default="poster"` assigns `view-transition-class` to the underlying node — issue
+    // #338 — which is what scopes `app/globals.css`'s sampled-spring rule to posters and
+    // leaves the masthead and tab-bar groups, which carry no class, out of it.
+    <ViewTransition name={railPosterTransitionName(entry.libraryEntryId)} default="poster">
       {frame}
     </ViewTransition>
   );

@@ -84,5 +84,15 @@ export function PendingTitlePoster() {
 
   if (entryId === null) return poster;
 
-  return <div style={{ viewTransitionName: railPosterTransitionName(entryId) }}>{poster}</div>;
+  return (
+    // `viewTransitionClass` scopes the morph's spring to posters — issue #338.
+    <div
+      style={{
+        viewTransitionName: railPosterTransitionName(entryId),
+        viewTransitionClass: "poster",
+      }}
+    >
+      {poster}
+    </div>
+  );
 }
