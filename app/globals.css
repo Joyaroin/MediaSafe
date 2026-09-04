@@ -621,6 +621,7 @@
   font-variation-settings: "wdth" 85, "wght" 700;
   letter-spacing: -0.015em;
   line-height: 1.05;
+  text-wrap: balance;
 }
 
 /* ── The linen redesign's two bundles ───────────────────────────────────────────────
@@ -638,6 +639,7 @@
   font-variation-settings: "wdth" 100, "wght" 700;
   letter-spacing: -0.022em;
   line-height: 1.1;
+  text-wrap: balance;
 }
 
 /* The label register — group labels, state labels, the wordmark's own line. Uppercase
