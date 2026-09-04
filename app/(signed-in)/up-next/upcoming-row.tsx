@@ -51,7 +51,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
     <li>
       <Link
         href={`/titles/${episode.libraryEntryId}`}
-        className="pressable flex items-center gap-3 rounded-[var(--radius-6)] bg-raised p-2.5"
+        className="pressable flex items-center gap-3 rounded-[var(--radius-6)] bg-raised plate-line p-2.5"
         /* The poster is `aria-hidden` and the code is three tokens, so this is what a
            screen reader hears. The series first, because that is what a reader scanning a
            day is choosing between — and now what the row says first visually too. */

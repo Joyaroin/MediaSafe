@@ -59,7 +59,7 @@ export const SYNOPSIS_PROSE = "max-w-[68ch] text-note leading-relaxed text-dim t
  * tracks (providers, cast) that bleed to the card's edge, and without it a track's first
  * card would square off the corner it sits in.
  */
-export const PROGRAMME_NOTE_CARD = "overflow-hidden rounded-[var(--radius-7)] bg-raised";
+export const PROGRAMME_NOTE_CARD = "overflow-hidden rounded-[var(--radius-7)] bg-raised plate-line";
 
 /**
  * The padding inside a card — separate from the card itself because the two tracks do not
