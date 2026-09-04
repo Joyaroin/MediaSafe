@@ -70,6 +70,20 @@ import { titleMetaLine } from "./title-meta-line";
  * would crowd the third — 420px less the gutters leaves roughly 340px for a poster, a
  * title, a bar and two controls. `w-[34%]` with a cap keeps one component honest in all
  * three rather than branching on a breakpoint that cannot see the pane anyway.
+ *
+ * **The measure has to sit on the flex item, and for a while it did not.** Issue #305
+ * wrapped the poster in a plain `<div>` to carry the `view-transition-name`, which made
+ * that wrapper the flex item and left `w-[34%]` on the poster *inside* it. A percentage
+ * width resolves against a parent that is itself sized shrink-to-fit from its content, and
+ * the content here is an `<img>` at `width: 100%` — so the pair sized each other down to
+ * almost nothing and the hero poster drew at roughly a third of the measure this section
+ * describes. Measured in Chromium at a 393px viewport: the old nesting gives a 7px-wide
+ * poster, the wrapper carrying the measure gives the 125px `w-[34%]` is asking for.
+ *
+ * So the wrapper carries `w-[34%] max-w-[140px] shrink-0` and the poster carries `w-full`.
+ * `--poster-radius` stays on the poster, which is the element the `poster` utility reads it
+ * from. `titles/[entryId]/pending-poster.tsx` is built the same way for the same reason —
+ * the morph's two halves have to be one size, and its own docblock promises it.
  */
 export function TitleHero({
   detail,
@@ -142,14 +156,20 @@ export function TitleHero({
          * when `openInPane`. That guard is what keeps this safe, and it predates this
          * change.
          */}
-        <div style={{ viewTransitionName: posterTransitionName }}>
+        {/* The measure is on this element and not on the `Poster` inside it, because
+            this is the flex item — see the docblock's *The poster sizes off its
+            container*. `w-full` on the poster fills whatever this resolves to. */}
+        <div
+          className="w-[34%] max-w-[140px] shrink-0"
+          style={{ viewTransitionName: posterTransitionName }}
+        >
           {/* Still the hero poster of whichever surface holds this, so still `aboveFold`
               — smaller, but the first artwork the reader sees. */}
           <Poster
             posterPath={detail.posterPath}
             name={detail.name}
             width={140}
-            className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:var(--radius-5)]"
+            className="w-full [--poster-radius:var(--radius-5)]"
             aboveFold
           />
         </div>

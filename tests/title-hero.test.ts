@@ -111,6 +111,41 @@ describe("the hero", () => {
   });
 });
 
+/**
+ * ── The measure has to be on the flex item ──────────────────────────────────────────
+ *
+ * The regression this guards against shipped once and was visible on every phone title
+ * page: issue #305 wrapped the poster in a plain `<div>` to carry the transition name,
+ * which made that wrapper the flex item and left `w-[34%]` on the poster inside it. A
+ * percentage width against a parent sized shrink-to-fit from that same poster collapses
+ * both — measured in Chromium at a 393px viewport, the hero poster drew 7px wide against
+ * the 125px the measure asks for.
+ *
+ * Asserted as *where the classes sit* rather than as a rendered width, because this file
+ * reads source text (see the top of the file) and because a width is a layout fact no
+ * `renderToStaticMarkup` suite could see either. Both halves of the pair are checked: the
+ * measure on the wrapper, `w-full` on the poster.
+ */
+describe("the hero poster's measure", () => {
+  it("puts the measure on the wrapper that is the flex item, not on the poster inside it", () => {
+    expect(HERO).toMatch(/className="w-\[34%\] max-w-\[140px\] shrink-0"/);
+  });
+
+  it("lets the poster fill whatever that resolves to", () => {
+    expect(HERO).toMatch(/className="w-full \[--poster-radius:var\(--radius-5\)\]"/);
+    // The old nesting, asserted as an absence so re-introducing it is a decision made
+    // against this test rather than a class quietly moving back one element.
+    expect(HERO).not.toMatch(/className="w-\[34%\][^"]*--poster-radius/);
+  });
+
+  it("is the same measure the pending frame's poster uses, on the same element", () => {
+    // `pending-poster.tsx`'s own docblock: the morph's two halves have to be one size.
+    const PENDING = code("app/(signed-in)/titles/[entryId]/pending-poster.tsx");
+    expect(PENDING).toContain('"w-[34%] max-w-[140px] shrink-0"');
+    expect(PENDING).toMatch(/className="w-full \[--poster-radius:var\(--radius-5\)\]"/);
+  });
+});
+
 describe("the states, and what the hero may do with them", () => {
   /**
    * The most important property on this screen, and it has survived the hero being rebuilt

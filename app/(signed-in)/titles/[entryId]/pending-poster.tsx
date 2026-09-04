@@ -45,21 +45,41 @@ import { Poster } from "@/app/poster";
  * ── The same name, the same measure, as the loaded hero ───────────────────────────────
  *
  * `railPosterTransitionName` is the one function `title-hero.tsx` also mints its name
- * from, and the poster below is built at the hero's own width and classes, so nothing
- * visibly moves a second time when `page.tsx`'s read resolves and hands the identical name
- * to the identical poster — only the rest of the hero's card appears around it.
+ * from, and the poster below is built at the hero's own width and classes — the same
+ * measure on the same element of the same nesting, `HERO_POSTER_MEASURE` below — so
+ * nothing visibly moves a second time when `page.tsx`'s read resolves and hands the
+ * identical name to the identical poster; only the rest of the hero's card appears around
+ * it.
  */
+/**
+ * The hero poster's measure, on the element that is the flex item — `loading.tsx` puts
+ * this straight into a `flex items-start gap-4` row, exactly as `title-hero.tsx` does.
+ *
+ * Kept off the `Poster` itself for the reason `title-hero.tsx`'s docblock works through in
+ * full: a percentage width on a poster nested inside a shrink-to-fit wrapper resolves
+ * against a parent that is being sized from that same poster, and the two collapse each
+ * other to almost nothing. The wrapper takes the measure and the poster takes `w-full`.
+ *
+ * The string is `title-hero.tsx`'s, character for character. Two copies rather than one
+ * shared constant is what this pair has always been — the transition *name* is shared
+ * through `poster-transition-name.ts` because it has to be computed; the measure is a
+ * literal in both files, and this comment is what says they must move together.
+ */
+const HERO_POSTER_MEASURE = "w-[34%] max-w-[140px] shrink-0";
+
 export function PendingTitlePoster() {
   const params = useParams<{ entryId: string }>();
   const entryId = typeof params?.entryId === "string" ? params.entryId : null;
 
   const poster = (
-    <Poster
-      posterPath={entryId === null ? null : carriedPosterFor(entryId)}
-      width={140}
-      className="w-[34%] max-w-[140px] shrink-0 [--poster-radius:var(--radius-5)]"
-      aboveFold
-    />
+    <div className={HERO_POSTER_MEASURE}>
+      <Poster
+        posterPath={entryId === null ? null : carriedPosterFor(entryId)}
+        width={140}
+        className="w-full [--poster-radius:var(--radius-5)]"
+        aboveFold
+      />
+    </div>
   );
 
   if (entryId === null) return poster;
