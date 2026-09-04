@@ -1,8 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 
+import { smooth } from "@/app/motion";
 import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
 
 /**
@@ -139,8 +141,8 @@ describe("one motion, and nothing that has to choose between motions", () => {
   it("puts the poster morph on the same clock as the page it lands on", () => {
     // The morph ran `--dur-slow` against a `--dur-base` page and was already the last
     // thing settling. Against a `--dur-quick` page that gap widens rather than closes, so
-    // the morph came down to meet it.
-    const group = GLOBALS.match(/::view-transition-group\(\*\)\s*\{[^}]*\}/)![0];
+    // the morph came down to meet it. Unaffected by #338: only the curve's shape moved.
+    const group = GLOBALS.match(/::view-transition-group\(\*\.poster\)\s*\{[^}]*\}/)![0];
     expect(group).toContain("var(--dur-quick)");
     expect(group).not.toContain("var(--dur-slow)");
   });
@@ -152,6 +154,145 @@ describe("one motion, and nothing that has to choose between motions", () => {
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
     )!.join("\n");
     expect(reduced).toMatch(/view-transition/);
+  });
+});
+
+/**
+ * ── The poster morph's spring, scoped rather than universal — issue #338 ─────────────
+ *
+ * `::view-transition-group(*)` used to mean *every* named group — the poster, `root`,
+ * `phone-masthead`, `phone-tab-bar` — and the chrome pair only escaped the curve because a
+ * later, more specific rule zeroed their `animation` back out. That is the failure this
+ * ticket names outright: a rule that reaches every group and is corrected after the fact
+ * for two of them, rather than a rule that only ever reached the one it was meant for.
+ *
+ * `*.poster` fixes the scope by reading `view-transition-class`, which the five poster call
+ * sites set and nothing else does. The easing itself is `app/motion.ts`'s `smooth` — the
+ * module's one non-bouncing spring — sampled into `linear()` the same way `--spring-press`
+ * (#270) sampled `snappy`, recomputed here from the source cited rather than copied, so the
+ * CSS curve and a Motion-driven `smooth` cannot drift into two curves that merely resemble
+ * each other.
+ */
+describe("the poster morph's spring is scoped to posters, not to every group", () => {
+  /** The body of a `::view-transition-group(...)` rule, keyed by its selector text. */
+  function groupRule(selector: string): string {
+    const match = GLOBALS.match(
+      new RegExp(`::view-transition-group\\(${selector}\\)\\s*\\{[^}]*\\}`),
+    );
+    expect(match, `::view-transition-group(${selector}) not found`).not.toBeNull();
+    return match![0];
+  }
+
+  it("scopes the spring to a view-transition class rather than to every group", () => {
+    // The universal selector must not carry the spring at all — only the classed one may.
+    expect(GLOBALS).not.toMatch(/::view-transition-group\(\*\)\s*\{[^}]*var\(--spring-poster\)/);
+    expect(groupRule("\\*\\.poster")).toContain("var(--spring-poster)");
+  });
+
+  it("leaves the masthead and tab-bar groups out of the poster rule's scope", () => {
+    // Neither chrome group carries the `poster` class, and the selector that reaches them
+    // is a name, not `*` — so the scoped rule above cannot address them at all, rather
+    // than addressing them and being overridden afterwards.
+    const posterRule = groupRule("\\*\\.poster");
+    expect(posterRule).not.toContain("phone-masthead");
+    expect(posterRule).not.toContain("phone-tab-bar");
+
+    // And the existing override — `animation: none` on the two named chrome groups — is
+    // still the rule that keeps them still, unaffected by where the spring now lives.
+    expect(GLOBALS).toMatch(
+      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+    );
+  });
+
+  it("every poster call site sets the `poster` view-transition class", () => {
+    // The five halves of the morph named in `app/globals.css`'s own note beside the rule —
+    // a call site that mints a name without the class is a poster the scoped rule cannot
+    // reach, and the morph silently reverts to the browser's stock curve for it alone.
+    const POSTER_CALL_SITES = [
+      "app/(signed-in)/library/title-hero.tsx",
+      "app/(signed-in)/library/selectable-entry.tsx",
+      "app/(signed-in)/titles/[entryId]/pending-poster.tsx",
+      "app/(signed-in)/library/programme-note.tsx",
+      "app/(signed-in)/up-next/up-next-episode-row.tsx",
+    ];
+
+    for (const file of POSTER_CALL_SITES) {
+      const source = readFileSync(file, "utf8");
+      // The raw-style call sites spell the CSS property in camelCase; the two using
+      // React's `<ViewTransition>` spell the class through its `default` prop instead —
+      // both are read for, rather than assuming one mechanism.
+      expect(source, file).toMatch(/viewTransitionClass:\s*"poster"|default="poster"/);
+    }
+  });
+
+  it("carries smooth's own step response, sample for sample", () => {
+    // `smooth` is `app/motion.ts`'s non-bouncing spring: `duration: 0.3, bounce: 0`, which
+    // is `dampingFraction` 1 — critically damped, so the closed form used for `snappy`
+    // (`tests/press-spring.test.ts`) collapses at its own limit rather than applying as
+    // written: `ω_d = ωₙ√(1 − ζ²)` is zero at `ζ = 1`, and the formula that divides by it
+    // is undefined there. The step response at critical damping is the limit of that
+    // formula as `ζ → 1`, taken analytically rather than by perturbing `ζ` numerically:
+    //
+    //   x(t) = 1 − e^(−ωₙt)·(1 + ωₙt)
+    expect(smooth.bounce).toBe(0);
+    const response = smooth.duration as number;
+    const damping = 1 - (smooth.bounce as number);
+    expect(damping).toBe(1);
+
+    const naturalFrequency = (2 * Math.PI) / response;
+    const SETTLED = 0.001;
+
+    function travelled(t: number): number {
+      return 1 - Math.exp(-naturalFrequency * t) * (1 + naturalFrequency * t);
+    }
+
+    // Where `e^(−ωₙt)·(1 + ωₙt)` falls under one part in a thousand, found the way
+    // `press-spring.test.ts`'s closed form is found for the underdamped case — except
+    // there is no closed form here, so it is bisected instead of solved.
+    let lo = 0;
+    let hi = 5;
+    for (let i = 0; i < 100; i += 1) {
+      const mid = (lo + hi) / 2;
+      const excess = Math.exp(-naturalFrequency * mid) * (1 + naturalFrequency * mid);
+      if (excess > SETTLED) lo = mid;
+      else hi = mid;
+    }
+    const settleMs = Math.ceil(((lo + hi) / 2) * 1000);
+
+    const STOPS = 33;
+    const stops = GLOBALS.match(/--spring-poster:\s*linear\(([^)]*)\)/)![1]
+      .split(",")
+      .map((stop) => Number(stop.trim()));
+
+    expect(stops).toHaveLength(STOPS);
+    stops.forEach((stop, index) => {
+      const expected =
+        index === STOPS - 1 ? 1 : travelled((index / (STOPS - 1)) * (settleMs / 1000));
+      expect(
+        Math.abs(stop - expected),
+        `stop ${index} is ${stop}, and smooth is at ${expected.toFixed(4)} there`,
+      ).toBeLessThanOrEqual(5e-4);
+    });
+
+    // Monotonic and never overshoots — the property `bounce: 0` names.
+    for (let i = 1; i < stops.length; i += 1) expect(stops[i]).toBeGreaterThanOrEqual(stops[i - 1]);
+    expect(Math.max(...stops)).toBe(1);
+    expect(stops[0]).toBe(0);
+    expect(stops[STOPS - 1]).toBe(1);
+  });
+
+  it("keeps the spring out of app/motion.ts, spelled once in the stylesheet", () => {
+    // The same rule `tests/press-spring.test.ts` holds for `snappy`: a copy of a sampled
+    // curve in TypeScript is the drift this file exists to prevent, arriving from the
+    // other direction. `app/motion.ts`'s prose is allowed to say `linear()` — it is
+    // describing what CSS does with `smooth` — so comments are blanked before the check.
+    const motionCode = readFileSync("app/motion.ts", "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    expect(motionCode).not.toMatch(/linear\(|cubic-bezier/);
+
+    // And `smooth` itself is untouched — no spring value in the motion module changes.
+    expect(smooth).toEqual({ type: "spring", duration: 0.3, bounce: 0 });
   });
 });
 
@@ -420,6 +561,127 @@ describe("both detail routes leave by that bar", () => {
  * re-press is exactly `isCurrentRoute`'s own "current" — asserted here in the tab's own
  * words rather than through the routing rule's.
  */
+/**
+ * ── The six surfaces that mount and may unmount fast — issue #333 ────────────────────
+ *
+ * `app/motion.ts`'s dividing line: what a finger can interrupt gets a transition, what it
+ * cannot gets a keyframe. These six can all be cut short mid-arrival by the reader's own
+ * press (Escape, the backdrop, Cancel, Dismiss, Done), so they get `@starting-style` with
+ * `transition-behavior: allow-discrete` in `app/globals.css` instead of `rise-in`, the
+ * keyframe every other surface keeps.
+ */
+const MARK_UP_TO_DIALOG = readFileSync(
+  "app/(signed-in)/library/mark-up-to-dialog.tsx",
+  "utf8",
+);
+const DELETE_LIST_DIALOG = readFileSync("app/(signed-in)/lists/delete-list-dialog.tsx", "utf8");
+const WATCH_MENU = readFileSync("app/(signed-in)/library/watch-menu.tsx", "utf8");
+const OFFLINE_BANNER = readFileSync("errors/offline-banner.tsx", "utf8");
+const WRITE_FAILURE_TOAST = readFileSync("errors/write-failure-toast.tsx", "utf8");
+const WRITE_FAILURE_STORE = readFileSync("errors/write-failure.ts", "utf8");
+const SELECTION_ACTION_BAR = readFileSync(
+  "app/(signed-in)/library/selection-action-bar.tsx",
+  "utf8",
+);
+
+const SIX_SURFACES = [
+  ["mark-up-to-dialog.tsx", MARK_UP_TO_DIALOG, "dialog-transition"],
+  ["delete-list-dialog.tsx", DELETE_LIST_DIALOG, "dialog-transition"],
+  ["watch-menu.tsx", WATCH_MENU, "dialog-transition"],
+  ["offline-banner.tsx", OFFLINE_BANNER, "offline-banner-transition"],
+  ["write-failure-toast.tsx", WRITE_FAILURE_TOAST, "write-failure-toast-transition"],
+  ["selection-action-bar.tsx", SELECTION_ACTION_BAR, "selection-action-bar-transition"],
+] as const;
+
+const TRANSITION_UTILITIES = [
+  "dialog-transition",
+  "offline-banner-transition",
+  "selection-action-bar-transition",
+  "write-failure-toast-transition",
+] as const;
+
+describe("the six fast-mounting surfaces get a transition, not the arrival keyframe", () => {
+  it("wires each surface to its own transition utility", () => {
+    for (const [label, source, utility] of SIX_SURFACES) {
+      expect(source, label).toContain(utility);
+    }
+  });
+
+  it("draws none of the six with rise-in, stagger-rise or the arrive keyframe utilities", () => {
+    for (const [label, source] of SIX_SURFACES) {
+      expect(source, label).not.toMatch(/\brise-in\b/);
+      expect(source, label).not.toMatch(/\bstagger-rise\b/);
+      expect(source, label).not.toMatch(/(^|[^-])\barrive(-panel)?\b/);
+    }
+  });
+
+  it("declares every transition utility in app/globals.css, off the timing ramp", () => {
+    for (const utility of TRANSITION_UTILITIES) {
+      const declaration = GLOBALS.match(new RegExp(`@utility ${utility} \\{[\\s\\S]*?\\n\\}`));
+      expect(declaration, `@utility ${utility} not found`).not.toBeNull();
+      const body = declaration![0];
+      expect(body, utility).toContain("var(--dur-");
+      // Every raw millisecond/second value inside the utility's own block, once every
+      // `var(...)` reference is stripped out — the same check `duration-on-the-ramp.mjs`
+      // makes for class names and style objects, applied here to the one place this
+      // ticket writes CSS by hand instead of a class name.
+      expect(body.replace(/var\([^)]*\)/g, ""), utility).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+    }
+  });
+
+  it("gives each surface a starting style to transition in from", () => {
+    for (const utility of TRANSITION_UTILITIES) {
+      expect(GLOBALS, utility).toMatch(
+        new RegExp(`@starting-style\\s*\\{[\\s\\S]*?\\.${utility}`),
+      );
+    }
+  });
+
+  it("defers the discrete display and overlay swap with allow-discrete", () => {
+    // The dialogs and the banner/action-bar toggle `display` (natively via `open`, or via
+    // `data-open`) rather than being unmounted in place, so both need the property in the
+    // transition list with `allow-discrete` or the browser drops to `none` in one frame.
+    expect(GLOBALS).toMatch(/overlay var\(--dur-\w+\) var\(--ease-[\w-]+\) allow-discrete/);
+    expect(GLOBALS).toMatch(
+      /display var\(--dur-fast\) var\(--ease-out-quart\) allow-discrete/,
+    );
+    expect(GLOBALS).toMatch(/display var\(--dur-slow\) var\(--ease-press\) allow-discrete/);
+  });
+
+  it("leaves the write-failure toast with no timer anywhere near it", () => {
+    expect(WRITE_FAILURE_TOAST).not.toMatch(/setTimeout/);
+    expect(WRITE_FAILURE_STORE).not.toMatch(/setTimeout/);
+  });
+
+  it("keeps raise/resolve/dismiss/standing exactly as they were", () => {
+    expect(WRITE_FAILURE_STORE).toMatch(/raise\(lost\)/);
+    expect(WRITE_FAILURE_STORE).toContain("dismiss: remove,");
+    expect(WRITE_FAILURE_STORE).toContain("standing: () => raised.some(");
+  });
+
+  it("still shows and hides the offline banner and the action bar off existing state", () => {
+    // Neither component gained a new prop, state or handler for this — `data-open` reads
+    // off the same booleans (`connectivity`'s state, `selecting`) each already computed.
+    expect(OFFLINE_BANNER).toContain('data-open={state === "online" ? undefined : "true"}');
+    expect(SELECTION_ACTION_BAR).toContain('data-open={selecting ? "true" : undefined}');
+  });
+
+  it("drops travel under reduced motion but keeps every one of the six eventful", () => {
+    const reducedBlocks = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}\n/g,
+    )!.join("\n");
+    for (const utility of TRANSITION_UTILITIES) {
+      expect(reducedBlocks, utility).toContain(utility);
+    }
+    expect(reducedBlocks).toMatch(/transform:\s*none/);
+  });
+
+  it("leaves the grid stagger a keyframe, untouched", () => {
+    expect(GLOBALS).toContain("@utility stagger-rise");
+    expect(GLOBALS).toMatch(/@utility stagger-rise \{[\s\S]*?animation: rise-in/);
+  });
+});
+
 describe("whether a press is a re-press of the tab already showing", () => {
   it("is a re-press when the reader is already exactly there", () => {
     expect(isTabRepress("/up-next", "/up-next")).toBe(true);
@@ -445,5 +707,200 @@ describe("whether a press is a re-press of the tab already showing", () => {
         expect(isTabRepress(previous, destination)).toBe(isCurrentRoute(previous, destination));
       }
     }
+  });
+});
+
+/**
+ * ── Both progress bars follow the mark — issue #335 ──────────────────────────────────
+ *
+ * The state already updates at the sweep's settle (`WatchProgress` recomputes on the
+ * watched count), so the only thing missing was a transition on the fill's `width`. Width,
+ * never a transform: the fill is the only child of a clipped, rounded track, and a scale
+ * would flatten that rounded end instead of sliding it.
+ */
+const POSTER_PROGRESS_BAR = readFileSync("app/poster-progress-bar.tsx", "utf8");
+const TITLE_HERO = readFileSync("app/(signed-in)/library/title-hero.tsx", "utf8");
+
+describe("both progress bars follow the mark instead of jumping after it", () => {
+  it("declares a width transition off the duration ramp, not a raw literal", () => {
+    for (const [label, source] of [
+      ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
+      ["title-hero.tsx", TITLE_HERO],
+    ] as const) {
+      expect(source, `${label} has no width transition`).toMatch(/transition-\[width\]/);
+      expect(source, `${label} times it off a raw literal instead of the ramp`).toMatch(
+        /duration-\[var\(--dur-[a-z]+\)\]/,
+      );
+    }
+  });
+
+  it("transitions width, never a transform, so the fill's rounded end is never scaled", () => {
+    for (const [label, source] of [
+      ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
+      ["title-hero.tsx", TITLE_HERO],
+    ] as const) {
+      expect(source, `${label} scales the fill instead of widening it`).not.toMatch(
+        /transition-\[(transform|scale)\]/,
+      );
+    }
+  });
+
+  it("still reaches its new value under reduced motion, because the mark must survive", () => {
+    // The established shape for this preference (`.watch-sweep`'s own reduced-motion
+    // rule, above) is to collapse the duration rather than remove the property: the width
+    // still lands on its new value, it just does not travel to get there.
+    const reduced = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
+    )!.join("\n");
+    expect(reduced).toMatch(/\.progress-fill\s*\{[^}]*transition-duration:\s*1ms/);
+
+    for (const [label, source] of [
+      ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
+      ["title-hero.tsx", TITLE_HERO],
+    ] as const) {
+      expect(source, `${label} never wears the class the reduced-motion rule targets`).toMatch(
+        /progress-fill/,
+      );
+    }
+  });
+});
+
+/**
+ * ── The rows displaced during a reorder get a spring — issue #337 ────────────────────
+ *
+ * `reorderable-title-list.tsx` used to close the gap a drag opens with a hand-written CSS
+ * transition (`transform var(--dur-fast) ease`), which restarts from a standstill whenever
+ * the drag reverses mid-gesture — the one surface in the app that moved under a finger on
+ * anything but a spring. The fix is `app/motion.ts`'s own interruptible spring: the
+ * displaced rows are `m.li` from `motion/react-m`, animated by Motion's `animate` prop
+ * rather than by a CSS transition, so a target that changes mid-flight carries velocity
+ * into the new one instead of restarting from rest. The dragged row's own tracking is
+ * untouched — it still writes `transform` directly, the one value `shiftFor` never moves
+ * for the row it belongs to, so it never competes with Motion for the same property.
+ */
+const REORDERABLE_TITLE_LIST = readFileSync(
+  "app/(signed-in)/lists/[listId]/reorderable-title-list.tsx",
+  "utf8",
+);
+const LIST_TITLE_ROW = readFileSync("app/(signed-in)/lists/[listId]/list-title-row.tsx", "utf8");
+
+/** Block comments stripped, so a docblock's prose about the literal this ticket removed
+ *  (quoted for the reader in backticks) cannot be mistaken for the literal surviving in
+ *  code. */
+function withoutComments(source: string): string {
+  return source.replace(/\/\*\*[\s\S]*?\*\//g, "");
+}
+
+describe("the rows making way for a dragged row get a spring", () => {
+  it("carries the row through Motion's mini component, not a bare <li>", () => {
+    expect(LIST_TITLE_ROW).toContain('from "motion/react-m"');
+    expect(LIST_TITLE_ROW).toMatch(/<m\.li\b/);
+    expect(withoutComments(LIST_TITLE_ROW)).not.toMatch(/<li\b/);
+  });
+
+  it("animates the displaced rows on the motion module's own spring", () => {
+    expect(LIST_TITLE_ROW).toMatch(/import \{ smooth \} from "@\/app\/motion"/);
+    expect(LIST_TITLE_ROW).toMatch(/animate=\{[^}]*shift[^}]*\}/);
+    expect(LIST_TITLE_ROW).toMatch(/transition=\{smooth\}/);
+  });
+
+  it("leaves no hand-written duration or easing literal in the reorder list", () => {
+    for (const [label, source] of [
+      ["reorderable-title-list.tsx", REORDERABLE_TITLE_LIST],
+      ["list-title-row.tsx", LIST_TITLE_ROW],
+    ] as const) {
+      const code = withoutComments(source);
+      expect(code, label).not.toMatch(/transition:\s*["'`]transform/);
+      expect(code, label).not.toMatch(/\bease\b/);
+    }
+  });
+
+  it("keeps the dragged row's own tracking a direct pointer read, unchanged", () => {
+    expect(REORDERABLE_TITLE_LIST).toContain(
+      "transform: `translateY(${dragState.translateY}px)`",
+    );
+  });
+
+  it("reports no duration-ramp lint violation in either file", async () => {
+    const eslint = new ESLint();
+    const results = await eslint.lintFiles([
+      "app/(signed-in)/lists/[listId]/reorderable-title-list.tsx",
+      "app/(signed-in)/lists/[listId]/list-title-row.tsx",
+    ]);
+    const ruleIds = results.flatMap((result) => result.messages.map((message) => message.ruleId));
+    expect(ruleIds).not.toContain("mediasafe/duration-on-the-ramp");
+  });
+
+  it("adds no reduced-motion branch of its own — MotionConfig's is the only one", () => {
+    expect(REORDERABLE_TITLE_LIST).not.toMatch(/prefers-reduced-motion|useReducedMotion/);
+    expect(LIST_TITLE_ROW).not.toMatch(/prefers-reduced-motion|useReducedMotion/);
+  });
+});
+
+/**
+ * ── The selection swap, and the guarantee that moves onto `inert` — issue #334 ───────
+ *
+ * Until this ticket `:root[data-selecting] .phone-tab-bar` was a single `display: none`,
+ * an instant cut against the action bar's own transition. The tab bar now fades and rises
+ * the way the six surfaces above do, and `display: none` lands at the *end* of that fade
+ * instead of *being* the whole of it — so the accessibility guarantee that used to ride on
+ * `display` alone moves to `tab-bar.tsx`, off the same `data-selecting` attribute the CSS
+ * reacts to.
+ */
+describe("the tab bar crosses with the action bar instead of cutting, and inert carries the guarantee", () => {
+  const restingBlock = GLOBALS.match(/\n\.phone-tab-bar \{[\s\S]*?\n\}/)![0];
+  const selectingBlock = GLOBALS.match(
+    /:root\[data-selecting\] \.phone-tab-bar \{[\s\S]*?\n\}/,
+  )![0];
+
+  it("still hides at rest behind data-selecting", () => {
+    expect(selectingBlock).toMatch(/display:\s*none;/);
+  });
+
+  it("transitions opacity, transform and display off the timing ramp, not a raw literal", () => {
+    for (const block of [restingBlock, selectingBlock]) {
+      expect(block).toContain("var(--dur-");
+      expect(block.replace(/var\([^)]*\)/g, "")).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+    }
+  });
+
+  it("defers display with allow-discrete on both halves of the swap", () => {
+    // Arriving back is the slow, confident half — shared with the six surfaces' own
+    // arrival — and leaving is the fast, impatient half shared with their own close.
+    expect(restingBlock).toMatch(
+      /display var\(--dur-slow\) var\(--ease-press\) allow-discrete/,
+    );
+    expect(selectingBlock).toMatch(
+      /display var\(--dur-fast\) var\(--ease-out-quart\) allow-discrete/,
+    );
+  });
+
+  it("gives the tab bar a starting style to rise back in from", () => {
+    expect(GLOBALS).toMatch(/@starting-style\s*\{\s*\.phone-tab-bar\s*\{/);
+  });
+
+  it("drops travel under reduced motion but keeps the swap eventful", () => {
+    const reducedBlocks = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}\n/g,
+    )!.join("\n");
+    expect(reducedBlocks).toContain(".phone-tab-bar");
+    // `display: none` and the fade itself are untouched — only travel drops, never the
+    // event, the same contract the six surfaces above and the width transitions keep.
+    expect(reducedBlocks).toMatch(/\.phone-tab-bar[^{]*\{[^}]*transform:\s*none/);
+  });
+
+  it("carries the accessibility guarantee itself, off the same attribute the CSS reacts to", () => {
+    expect(TAB_BAR).toMatch(
+      /import \{[^}]*SELECTING_ATTRIBUTE[^}]*\} from "\.\/phone-bar"/,
+    );
+    expect(TAB_BAR).toContain("MutationObserver");
+    expect(TAB_BAR).toMatch(/\.inert\s*=\s*document\.documentElement\.hasAttribute\(\s*SELECTING_ATTRIBUTE\s*\)/);
+  });
+
+  it("shares the attribute name with the action bar rather than a second string literal", () => {
+    expect(SELECTION_ACTION_BAR).toMatch(
+      /import \{[^}]*SELECTING_ATTRIBUTE[^}]*\} from "@\/app\/phone-bar"/,
+    );
+    expect(SELECTION_ACTION_BAR).not.toContain('"data-selecting"');
   });
 });

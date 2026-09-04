@@ -1,6 +1,8 @@
 import Link from "next/link";
+import * as m from "motion/react-m";
 import type { CSSProperties, ReactNode } from "react";
 
+import { smooth } from "@/app/motion";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
@@ -45,20 +47,38 @@ import type { ListDetailTitleRow } from "@/db/access";
  * Issue #149's drag handle is a real button — it has to be, for the keyboard path — so it
  * sits beside `Link` in the `<li>` rather than inside it, and `ReorderableTitleList` is
  * the only caller, which is why this prop is required rather than optional.
+ *
+ * ── The row is `m.li`, and the spring only ever drives `shift` — issue #337 ───────────
+ *
+ * The row that `ReorderableTitleList` is actively dragging writes its own `transform`
+ * directly in `style`, exactly as before: a finger reads at one pixel per pixel, and a spring
+ * chasing a value that is already tracking the pointer is the glassiness `app/motion.ts`
+ * describes, not a fix for it. Every other row is a gap opening or closing around that
+ * drag, and that is what `shift` animates — on the motion module's own spring rather than
+ * the hand-written `transform var(--dur-fast) ease` this replaces, so reversing the drag
+ * mid-gesture carries the row's velocity into the new target instead of restarting it from
+ * rest. `shiftFor` never moves the row it belongs to, so `style` and `shift` never fight
+ * over the same row at once.
  */
 export function ListTitleRow({
   title,
   dragHandle,
   liRef,
   style,
+  shift = 0,
   aboveFold = false,
 }: {
   readonly title: ListDetailTitleRow;
   readonly dragHandle: ReactNode;
   /** How `ReorderableTitleList` measures this row's height at the start of a drag. */
   readonly liRef?: (element: HTMLLIElement | null) => void;
-  /** The live transform a drag or a keyboard move applies to this row. */
+  /** The dragged row's own live transform, written directly and never through Motion —
+   *  `undefined` for every row except the one currently under a finger. */
   readonly style?: CSSProperties;
+  /** How far this row springs to open or close the gap a neighbour's drag leaves, in
+   *  pixels. Ignored (never applied) while `style` is set, since a row is never both the
+   *  one being dragged and one making way for it. */
+  readonly shift?: number;
   /** This row is the list's first — `ReorderableTitleList`'s to say, since a list renders
    *  one row per title (`app/poster.tsx`). */
   readonly aboveFold?: boolean;
@@ -108,21 +128,23 @@ export function ListTitleRow({
           ? `/catalogue/${title.kind}/${title.tmdbId}`
           : `/titles/${title.libraryEntryId}`
       }
-      className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-150 hover:bg-raised"
+      className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-[var(--dur-fast)] hover:bg-raised"
     >
       {content}
     </Link>
   );
 
   return (
-    <li
+    <m.li
       ref={liRef}
       style={style}
+      animate={style === undefined ? { y: shift } : undefined}
+      transition={smooth}
       className="flex items-center gap-1 border-b border-hair bg-ground"
     >
       {dragHandle}
       {inner}
-    </li>
+    </m.li>
   );
 }
 

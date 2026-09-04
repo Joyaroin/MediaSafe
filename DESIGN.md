@@ -156,6 +156,26 @@ Two things below are **not** superseded, and were checked rather than assumed:
 - **No shadows, and no second hairline weight.** The redesign removes lines; it does not
   replace them with elevation.
 
+### Amended a fourth time by the linen refit's OKLCH restatement
+
+Issue #327. The palette was sixteen hex values — seven from the handoff plus `--ink`, each
+mapped once for dark — and it is now sixteen `oklch()` values on one hue, with two of them
+genuinely repainted rather than merely restated.
+
+| Stated above | Now | Where |
+|---|---|---|
+| §2's palette is declared as hex, seven values from the handoff plus `--ink`, mapped once for dark | All sixteen values (both schemes of all eight tokens) are `oklch()` on hue 95°. Lightness is held at the shipped position for every token but `--dim`, so the page's tone is unchanged; chroma falls as lightness leaves `--ground`, so no hairline outchromas the sheet it divides. | `app/globals.css`, `DESIGN.md` §2 |
+| `--dim`'s hex (`#929086` light, `#8c8c8a` dark) is adopted from the handoff/#134 as given, a known-regression 2.93:1 on `--ground` | Repainted in both schemes, deliberately: light is the lightest value on the hue clearing 4.5:1 on `--raised`; dark is the darkest reaching the perceptual content-text floor, where WCAG 2 passed the old value while it sat under a floor a reader needs. Both land 20 L from `--text` — the rule to carry forward, not either raw lightness. | `app/globals.css` |
+| The dark accent is `#ffb020`, amber, unchanged since #134 | Moves onto the vermilion family — the light accent's own hue, at a higher lightness and lower chroma than the amber it replaces — so the app's one semantic colour stops changing hue between day and night. The value reaching the perceptual text floor on this ground has to drop chroma far enough to read as coral rather than brick, so the deeper, still-conformant value is taken and the brick character kept; the amber's higher contrast was never the reason it was chosen. | `app/globals.css` |
+| The palette test reads the stylesheet, the handoff and `DESIGN.md` §2 as hex, and asserts the handoff's seven values are the source of truth the stylesheet is checked against | Its parser reads `oklch()` and converts to sRGB for the contrast assertions. The handoff stays committed and byte-identical — it is not edited — but it is **no longer** what the stylesheet is checked against: `DESIGN.md` §2 is, and the test that used to assert agreement with the handoff now asserts the two have parted (`--dim`, at minimum) rather than silently stopping being true. | `tests/palette.test.ts` |
+| `frosted`'s `color-mix()` mixes `in srgb` | Mixes `in oklab`, because `srgb` interpolation walks the gamma-compressed channels of a space these tokens no longer live in and can visibly shift hue mid-mix; `oklab` is the space `oklch()` is a polar form of. Nothing new is declared to get this — the wash and the tinted track stay call-site expressions. | `app/globals.css` |
+| The status bar's colour module (`app/theme-color.ts`) hard-codes `--ground`/`--dark-ground` as hex | Hard-codes them as the same `oklch()` strings the stylesheet declares — still a literal, for the same static-markup reason, and still asserted equal to the stylesheet by `tests/manifest.test.ts` rather than left to drift. | `app/theme-color.ts` |
+
+Full derivation, the gamut check and the rejected alternatives are in the research note
+committed on the `docs/visual-refinement-research` branch, §2.2 — not yet on the default
+branch as of this writing, so it is named here rather than cited as a path; the summary
+above is everything a reader of this file needs.
+
 ---
 
 ## 1. The prototype is now historical reference
@@ -177,34 +197,96 @@ which recorded the world before it.
 
 ## 2. The palette
 
-Seven colour tokens, declared once as plain custom properties on `:root`, with a single
-`prefers-color-scheme: dark` override. `@theme` then points Tailwind's generated utilities
-at those properties rather than at fixed hex — that indirection is the whole mechanism, and
-it is what lets one declared token resolve differently per system setting with **no theme
-class, no second copy of the palette and no picker.**
+Eight colour tokens, declared once as plain custom properties on `:root`, with a single
+`prefers-color-scheme: dark` override — sixteen values in total, since every token carries a
+light one and a dark one. `@theme` then points Tailwind's generated utilities at those
+properties rather than at fixed colours — that indirection is the whole mechanism, and it is
+what lets one declared token resolve differently per system setting with **no theme class,
+no second copy of the palette and no picker.**
+
+**Declared as `oklch()`, on one hue, since issue #327.** All sixteen values sit on hue 95° —
+the linen's own hue — because a hex triplet hides exactly what an OKLCH value states plainly:
+whether a hue has drifted, whether a divider has picked up more chroma than the sheet it
+divides, and where a value sits on the lightness axis relative to its neighbours. Lightness
+is held at the shipped position for every token but `--dim`; chroma falls as lightness leaves
+the ground, so no hairline is ever more chromatic than the sheet it divides. The full
+derivation and the gamut check are in the research note committed on the
+`docs/visual-refinement-research` branch, §2.2; the summary is in §0's fourth amendment,
+below.
 
 | Token | Utility | Light — the desktop in daylight | Dark — the phone at 11pm |
 |---|---|---|---|
-| `--ground` | `bg-ground` | `#f7f5ed` | `#0a0a0b` |
-| `--raised` | `bg-raised` | `#eeede6` | `#17171a` |
-| `--hair` | `border-hair` | `#d7d4c8` | `#242429` |
-| `--text` | `text-text` | `#34342f` | `#f4f4f2` |
-| `--dim` | `text-dim` | `#929086` | `#8c8c8a` |
-| `--accent` | `text-accent` | `#a52518` | `#ffb020` |
-| `--accent-ink` | `text-accent-ink` | `#f7f5ed` | `#0a0a0b` |
+| `--ground` | `bg-ground` | `oklch(96.9% 0.012 95)` | `oklch(13.9% 0.004 95)` |
+| `--raised` | `bg-raised` | `oklch(94.5% 0.012 95)` | `oklch(20.5% 0.005 95)` |
+| `--hair` | `border-hair` | `oklch(86.9% 0.012 95)` | `oklch(26.5% 0.006 95)` |
+| `--dim` | `text-dim` | `oklch(52.8% 0.010 95)` | `oklch(76.5% 0.008 95)` |
+| `--text` | `text-text` | `oklch(32.3% 0.008 95)` | `oklch(96.3% 0.006 95)` |
+| `--ink` | `text-ink` | `oklch(23.8% 0.006 95)` | = `--text` |
+| `--accent` | `text-accent` | `oklch(47.4% 0.166 30)` | `oklch(75% 0.153 35)` |
+| `--accent-ink` | `text-accent-ink` | = `--ground` | = `--ground` |
 
-Light is the handoff's table, adopted whole in issue #255. Dark is unchanged from #134: the
-handoff says dark is out of scope, which does not survive the primary type colour changing
-meaning, but what it needed was **re-checking on both paths**, not new values.
+Light is the handoff's table (issue #255), restated in `oklch()` rather than approximated by
+it — every light value but `--dim` renders within a rounding error of the hex it replaces.
+**`--dim` is the one value whose lightness moves, in both schemes, and it is the fix this
+ticket exists for**: the handoff's own number was 2.93:1 on `--ground` and 2.73:1 on
+`--raised`, under WCAG 2.2's 4.5:1 floor for normal text on both, and `--dim` carries the
+metadata line at 12–13px. Light is now the lightest value on the hue that clears 4.5:1 on
+`--raised`, the harder of the two grounds. Dark is now the darkest value on the hue that
+reaches the perceptual content-text floor, because WCAG 2 has nothing useful to say near
+black and passed the old value while it sat under a floor a reader actually needs. **Both
+land 20 L from `--text`** — derived independently from two different standards — and that
+relationship, not either raw lightness, is the rule the next re-tint should hold.
 
-**An eighth token, derived rather than given.** `--ink` (`text-ink`) is the heading step —
-headings, title names and filled-field text — and it is the only colour here the handoff does
-not supply. It is `#1f1f1b` in light, one step below `--text`, and `#f4f4f2` in dark, equal to
-it. `app/globals.css` carries the derivation and the reason dark cannot take a darker step.
+**The dark accent moves onto the vermilion family, off amber**, so the app's one semantic
+colour stops changing hue at sunset. The value that clears the perceptual text floor on this
+ground has to drop chroma far enough to read as coral rather than brick, so the slightly
+deeper, still-conformant value is taken instead and the brick character is kept — the amber's
+higher contrast was never the reason it was chosen.
+
+Dark was otherwise unchanged from #134 until this restatement: the handoff said dark was out
+of scope, which did not survive the primary type colour changing meaning, but what it needed
+then was re-checking on both paths, not new values. This ticket is the first change to touch
+the dark values themselves, and it touches exactly two things — the hue restatement every
+token gets, and `--dim`/`--accent`'s deliberate moves.
+
+**`--ink` (`text-ink`) is the heading step** — headings, title names and filled-field text —
+and it is the only colour here the handoff does not supply. It sits one step below `--text`
+in light, and equal to it in dark. `app/globals.css` carries the derivation and the reason
+dark cannot take a darker step.
 
 **Three names the handoff proposes and this repository does not declare.** Its `--well` is
 `--raised`, its `--rule-soft` is `--hair`, and its `--body` is `--text`. Reach for the existing
-token; there is no `bg-well`, `border-rule-soft` or `text-body`.
+token; there is no `bg-well`, `border-rule-soft` or `text-body`. Unchanged by the OKLCH
+restatement: the argument against declaring three more values to map twice for dark applies
+exactly as before.
+
+**Derived states mix `in oklab`, never `in srgb`.** `color-mix()` interpolating in `srgb`
+walks the gamma-compressed channels of a colour space these tokens no longer live in, which
+can visibly shift hue partway through a mix; `oklab` is the perceptually uniform space
+`oklch()` is a polar form of, so a mix between two of these tokens stays on their shared hue
+throughout. Nothing new is declared to get this — the wash and the tinted track stay call-site
+expressions, on the same argument this file already makes against adding tokens nothing else
+needs.
+
+### The reader who asks for more contrast gets an answer — issue #329
+
+`prefers-contrast: more` used to be ignored outright. It now closes the ramp by one step, in
+both schemes, declaring nothing beyond the two tokens already on it: **the dim register moves
+to the primary text colour, and the hairline moves to the dim register's own value.** A year, a
+runtime or an episode count stops being drawn in a register the reader has said they cannot
+read, and the divider that used to sit a half-step off the ground becomes as present as the
+metadata used to be — while the tonal structure survives, because the two moved values still
+land in different places rather than both collapsing onto `--text`.
+
+The mapping is written against `--text` and `--dim` themselves, not as a fourth set of literal
+values — `app/globals.css` carries the full reasoning, but the shape of it is: the override sets
+`--color-dim`/`--color-hair` (the tokens every `text-dim`, `border-hair` and the scrollbar's own
+hover state actually read) rather than `--dim`/`--hair`, because `--dim` is also the *source*
+half of the mapping and a custom property resolves to one value per element — reassigning `--dim`
+in the same rule that reads it for `--hair` would make `--hair` land on `--text` too, collapsing
+the ramp by two steps instead of the one this is for. Neither `--text` nor `--dim` moves, so one
+rule, unconditioned on scheme, is enough for both — whichever scheme is active keeps supplying
+its own values through them.
 
 ### The system setting decides unless the reader has answered otherwise
 
@@ -426,6 +508,42 @@ exactly three roles:
 A `2px` rule in any other role is a bug. What there is **not** is a `border-hair` at `2px`
 used to make one ordinary division outrank another — the tab bar's is the single `2px`
 hairline in the build and it is an outer edge, not a division between two pieces of content.
+
+### The plate line — the one sanctioned hairline on content, since issue #330
+
+**Amended by [#330](https://github.com/Joyaroin/MediaSafe/issues/330), for one shape, and
+the narrowness is the point.** A card reads as raised without a shadow, and artwork reads as
+mounted on the sheet rather than pasted onto it, through an inset hairline at **9% ink**,
+mixed `in oklab` — `box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%,
+transparent)`, applied to artwork and to every raised container: result rows, list rows,
+rail cards, programme-note panels. **Not fields**: the field well's own inset ring
+(`field-well`, `app/globals.css`) is load-bearing — it thickens to `2px` on focus and *is*
+the focus indicator, so a second inset shadow on the same element would either stack at rest
+or fight the state that already owns it.
+
+**In dark, the poster ring replaces the plate line on posters and stills — one ring per
+element, always, never both.** 9% ink mixed against near-black is invisible, because
+`--ink` is the brightest neutral on that sheet rather than the darkest; what actually seats
+a white-background poster into a dark sheet is the full-strength hairline token, `--hair`,
+not a weaker mix of it. So dark does not darken the plate line on artwork — it replaces the
+whole `box-shadow` outright. A raised container that is not artwork needs no such override:
+`--ink` itself flips per scheme, so the same 9%-ink expression reads correctly on a dark
+card without a second rule.
+
+What the amendment covers is **elevation for a raised surface, and nothing else.** Three
+things keep it from reopening the rule above:
+
+- **It is not a division.** The `1px`/`2px` table above is about two things that abut and
+  what separates them; the plate line does not sit between two pieces of content; it
+  outlines one surface's own edge, the job `field-well`'s ring already does elsewhere in
+  this world.
+- **It is a call-site expression, not a token or a third rationed weight.** `color-mix()`
+  at 9% ink, declared nowhere as a custom property — no third row joins the `1px`/`2px`
+  table above, and §2's palette gains nothing.
+- **One ring per element, always.** Nothing carries both the plate line and a division at
+  once, and a poster in dark carries the ring in place of the plate line, never alongside
+  it. `tests/plate-line.test.ts` sweeps every raised container in `app/` and holds the two
+  apart, the way `tests/accent-sweep.test.ts` holds the accent to its own three meanings.
 
 ### The type ramp is closed
 
@@ -1555,9 +1673,9 @@ navigation onto `nav-fade`/`nav-rise` and gave the outgoing and incoming root tw
 rules rather than one:
 
 ```css
-::view-transition-group(*) {
+::view-transition-group(*.poster) {
   animation-duration: var(--dur-quick);
-  animation-timing-function: var(--ease-press);
+  animation-timing-function: var(--spring-poster);
 }
 
 ::view-transition-old(root) {
@@ -1572,9 +1690,22 @@ rules rather than one:
 ```
 
 - **The group is what moves and resizes the shared poster**, so it gets the long confident
-  arrival curve — `--ease-press`, an exponential ease-out that covers most of the distance
-  immediately and then settles. That is what makes a morph read as a thing with mass being
-  carried rather than a box being tweened.
+  arrival curve. **Issue #338 reverses what this said one ticket ago** — it used to be
+  `--ease-press`, an exponential ease-out standing in for "a thing with mass being carried".
+  It is now `--spring-poster`: `app/motion.ts`'s `smooth`, the motion module's one
+  non-bouncing spring, sampled into a `linear()` curve the way `--spring-press` (#270)
+  sampled `snappy`. The CSS arrival and a Motion-driven `smooth` are now literally the same
+  curve rather than two that resemble each other — a full-range animation, unlike the press,
+  so the objection that sent `--spring-press` back out of a transition's easing (#281: a
+  curve scaling a tiny delta to an invisible effect) does not apply here.
+- **Scoped to posters by `view-transition-class`, not to every group.** `::view-transition-
+  group(*)` used to reach `root`, `phone-masthead` and `phone-tab-bar` as well, and the
+  chrome pair only stayed still because a later, more specific rule zeroed their `animation`
+  back out — applying the curve everywhere and clawing it back for two groups, which is the
+  failure mode #338 names outright. `*.poster` reads the `poster` class every morph call
+  site now sets (`title-hero.tsx`, `selectable-entry.tsx`, `pending-poster.tsx`,
+  `programme-note.tsx`, `up-next-episode-row.tsx`), so the masthead and tab-bar groups —
+  which carry no class — were never in this rule's scope to begin with.
 - **The group and the arriving root now share one clock, `--dur-quick`, and that is a fix
   rather than the original design.** The morph ran `--dur-slow` against a `--dur-base` page
   and was already the last thing settling; once #221 brought the page down to `--dur-quick`
@@ -1582,10 +1713,8 @@ rules rather than one:
   finished — the *"unfinished transition"* problem this file warns about, reintroduced from
   the other side. Leaving is still faster than arriving, the asymmetry this file has always
   held: the outgoing root fades out alone at `--dur-fast`, and the incoming root fades and
-  rises in at `--dur-quick`.
-- **`--ease-press` is not a second curve.** It is the value #88 chose for the watch strike,
-  reused rather than re-picked — one arrival curve across the app is what makes two
-  unrelated surfaces feel like the same hand made them.
+  rises in at `--dur-quick`. Unchanged by #338 — only the curve's shape moved, not its
+  length.
 
 **Selecting a different tile mid-view is two morphs, not one** (desktop only): the panel's
 poster morphs into the newly-selected tile's on the way out, and that tile's morphs into

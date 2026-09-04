@@ -259,7 +259,7 @@ function ListPickerRow({
           onClick={onAdd}
           disabled={pending}
           aria-label={`Add to ${list.name}`}
-          className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground ${IN_FLIGHT}`}
+          className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-[var(--dur-fast)] hover:bg-text hover:text-ground ${IN_FLIGHT}`}
         >
           Add
         </button>

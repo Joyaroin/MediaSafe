@@ -28,8 +28,13 @@ export const PROGRAMME_NOTE_SECTION = "mt-7";
  * alone. `DESIGN.md` §10 — *where a treatment must not drift, it is a named class string
  * in the module that owns it* — and three copies of a measure is three paragraphs that
  * can come to be set three widths.
+ *
+ * `text-pretty` (issue #331) is set here and nowhere else: the spec's performance
+ * guidance for `text-wrap: pretty` rules it out where many items render at once, and a
+ * synopsis is the one block of running prose in the application long enough to read as a
+ * paragraph rather than a line — a list row or grid cell never reads this constant.
  */
-export const SYNOPSIS_PROSE = "max-w-[68ch] text-note leading-relaxed text-dim";
+export const SYNOPSIS_PROSE = "max-w-[68ch] text-note leading-relaxed text-dim text-pretty";
 
 /**
  * The card every block of title detail now sits in.
@@ -54,7 +59,7 @@ export const SYNOPSIS_PROSE = "max-w-[68ch] text-note leading-relaxed text-dim";
  * tracks (providers, cast) that bleed to the card's edge, and without it a track's first
  * card would square off the corner it sits in.
  */
-export const PROGRAMME_NOTE_CARD = "overflow-hidden rounded-[var(--radius-7)] bg-raised";
+export const PROGRAMME_NOTE_CARD = "overflow-hidden rounded-[var(--radius-7)] bg-raised plate-line";
 
 /**
  * The padding inside a card — separate from the card itself because the two tracks do not

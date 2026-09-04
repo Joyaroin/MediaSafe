@@ -63,7 +63,7 @@ export function UpNextPendingCard({
   aboveFold?: boolean;
 }) {
   return (
-    <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised`}>
+    <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised plate-line`}>
       <Link
         href={`/titles/${entry.libraryEntryId}`}
         className="pressable block"

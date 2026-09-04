@@ -40,7 +40,7 @@ import { toStorageState } from "./support/storage-state";
 
 declare global {
   interface Window {
-    __morphObservations?: { hasOld: boolean; hasNew: boolean }[];
+    __morphObservations?: { hasOld: boolean; hasNew: boolean; groupEasing: string | null }[];
   }
 }
 
@@ -50,6 +50,12 @@ declare global {
  * that is meant to trigger one — the same ordering `pending-hold.spec.ts` uses for its own
  * `animationstart` listener, for the same reason: the patch has to be in place before the
  * event it is meant to observe can fire.
+ *
+ * **Also records the group's own easing — issue #338.** `::view-transition-group(name)` is
+ * the pseudo-element the shared poster actually moves and resizes on, so its animation's
+ * `getComputedTiming().easing` is what a browser genuinely runs the morph with — the same
+ * kind of real-browser signal `hasOld`/`hasNew` already are, rather than a duration or a
+ * poll racing CI.
  */
 async function watchForMorphPair(page: Page, name: string): Promise<void> {
   await page.evaluate((transitionName) => {
@@ -76,17 +82,45 @@ async function watchForMorphPair(page: Page, name: string): Promise<void> {
               animation.effect instanceof KeyframeEffect &&
               animation.effect.pseudoElement === `::view-transition-new(${transitionName})`,
           );
-          window.__morphObservations?.push({ hasOld, hasNew });
+          const group = animations.find(
+            (animation) =>
+              animation.effect instanceof KeyframeEffect &&
+              animation.effect.pseudoElement === `::view-transition-group(${transitionName})`,
+          );
+          // **The curve is on the keyframes, not on the effect.** `getComputedTiming()`
+          // reports the *effect's* own timing function, which for a CSS animation is
+          // always the `linear` default — `animation-timing-function` is applied to each
+          // keyframe instead. Reading the effect returned that bare `linear` no matter
+          // what `--spring-poster` held, so this assertion failed against a correct
+          // implementation. `getKeyframes()[0].easing` is where the declared curve
+          // actually lands.
+          const groupEasing =
+            group?.effect instanceof KeyframeEffect
+              ? ((group.effect.getKeyframes()[0]?.easing as string | undefined) ??
+                group.effect.getComputedTiming().easing ??
+                null)
+              : null;
+          window.__morphObservations?.push({ hasOld, hasNew, groupEasing });
         })
         .catch(() => {
           // A transition the browser skips outright rejects `ready` rather than resolving
           // it — recorded as neither half showing up, which is exactly the failure this
           // suite exists to catch, not a reason to lose the observation.
-          window.__morphObservations?.push({ hasOld: false, hasNew: false });
+          window.__morphObservations?.push({ hasOld: false, hasNew: false, groupEasing: null });
         });
       return transition;
     }) as typeof document.startViewTransition;
   }, name);
+}
+
+/**
+ * The group's easing from the observation that actually paired — `null` if none did, which
+ * the pairing assertion right beside every call of this already catches on its own.
+ */
+async function morphGroupEasing(page: Page): Promise<string | null> {
+  return page.evaluate(
+    () => window.__morphObservations?.find((o) => o.hasOld && o.hasNew)?.groupEasing ?? null,
+  );
 }
 
 /** Whether any transition observed since `watchForMorphPair` carried both halves of the
@@ -189,6 +223,18 @@ test("the poster morph pairs when opening a title from the library grid", async 
       "grid cell minted no source name, or the pending frame mounted no destination for it. " +
       (await morphDiagnostics(page, transitionName)),
   ).toBe(true);
+
+  // **Issue #338's own property: the group actually runs the sampled spring.** Not a
+  // cubic-bezier standing in for one — the browser's own computed easing on the pseudo-
+  // element that moves and resizes the poster, which is `linear()` only if `--spring-poster`
+  // reached it. A `null` here, or a `cubic-bezier(...)`, is the scope missing the element
+  // entirely (the `poster` view-transition class never landed on it) rather than the curve
+  // being merely different.
+  const easing = await morphGroupEasing(page);
+  expect(easing, "the view-transition-group's animation carried no easing at all").not.toBeNull();
+  expect(easing!.startsWith("linear("), `::view-transition-group's easing is ${easing}`).toBe(
+    true,
+  );
 });
 
 test("the poster morph pairs when opening a title from an Up next row", async ({ page }) => {

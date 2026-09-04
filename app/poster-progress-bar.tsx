@@ -71,7 +71,18 @@ export function PosterProgressBar({
      * decision `title-hero.tsx` records for the bar that *does* have a sentence under it.
      */
     <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[5px] bg-ground/70">
-      <div className="h-full bg-accent" style={{ width: `${fraction * 100}%` }} />
+      {/**
+       * `transition-[width]`, never a transform — this is the only child of the clipped
+       * track above, and a scale would flatten its rounded end along with the track's.
+       * `--dur-base` because a watch landing is a routine state change, the same ramp
+       * position `WatchedBar` below ties itself to. `progress-fill` carries no rule of its
+       * own; it is only what `globals.css`'s reduced-motion block targets to collapse the
+       * duration — issue #335's *the event survives, the animation does not*.
+       */}
+      <div
+        className="progress-fill h-full bg-accent transition-[width] duration-[var(--dur-base)]"
+        style={{ width: `${fraction * 100}%` }}
+      />
     </div>
   );
 }

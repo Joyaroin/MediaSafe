@@ -155,7 +155,7 @@ export function CatalogueResultRow({
   }
 
   return (
-    <li className="flex items-center gap-3.5 rounded-[var(--radius-6)] bg-raised px-3.5 py-3">
+    <li className="flex items-center gap-3.5 rounded-[var(--radius-6)] bg-raised plate-line px-3.5 py-3">
       {/* `52` is what this row now renders at, down from `78` — `Poster`'s contract is
           the real CSS width, and both land in the same `w92` bucket, so the honest number
           costs nothing on the wire. */}

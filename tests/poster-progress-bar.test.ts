@@ -28,7 +28,12 @@ import type { TitleKind } from "@/tmdb/mirror";
  * bill's four cases are `tests/library-grid.test.ts`'s. Neither is restated here.
  */
 
-const FILL = /<div class="h-full bg-accent" style="width:(\d+(?:\.\d+)?)%"><\/div>/;
+// `progress-fill transition-[width] duration-[var(--dur-base)]` since #335 — the width
+// transition timed off the ramp that makes the bar follow the mark instead of jumping
+// after it. `tests/nav-transitions.test.ts` owns asserting that class exists and is wired
+// to a ramp token; this only needs the fill to still carry it.
+const FILL =
+  /<div class="progress-fill h-full bg-accent transition-\[width\] duration-\[var\(--dur-base\)\]" style="width:(\d+(?:\.\d+)?)%"><\/div>/;
 
 describe("the bar itself", () => {
   const bar = (progress: { watched: number; released: number } | null) =>

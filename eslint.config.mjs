@@ -3,6 +3,7 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 import cacheKeyCarriesAccount from "./eslint-rules/cache-key-carries-account.mjs";
+import durationOnTheRamp from "./eslint-rules/duration-on-the-ramp.mjs";
 import noEmptyCatch from "./eslint-rules/no-empty-catch.mjs";
 
 /**
@@ -237,23 +238,38 @@ const eslintConfig = defineConfig([
     // spelling and it ignores too much: the prototypes are `.html` and `.js` today, and a
     // `.tsx` one dropped in there later would go unlinted with nothing to say it had.
     "docs/design/prototypes/support.js",
+    // Playwright's own output, and the reason it has to be named here rather than left to
+    // `.gitignore`. Both directories are already git-ignored (`.gitignore:20-21`), but
+    // ESLint's flat config does not read `.gitignore` — so the moment the browser suite
+    // has run, `npm run lint` walks a few thousand lines of Playwright's bundled trace
+    // viewer and fails on somebody else's minified JavaScript.
+    //
+    // That never surfaced while the suite was something you ran by hand, because lint and
+    // e2e were never run in the same working tree. `foundry.config.json` now runs
+    // `npm run test:e2e` inside the gate, which puts the report on disk beside the source
+    // for every later command — and lint is one of the three things CI runs.
+    "playwright-report/**",
+    "test-results/**",
   ]),
   {
-    // SPEC.md §3.2 — no `catch` returns `[]` — and SPEC.md §3.1's amendment — no cache
-    // key without an account — both enforced rather than remembered. `npm run lint` is
-    // one of the three things CI runs (SPEC.md §6), which is why the two constraints live
-    // here and not in a test: a test would never see a pull request.
+    // SPEC.md §3.2 — no `catch` returns `[]` — SPEC.md §3.1's amendment — no cache key
+    // without an account — and issue #332's timing ramp are all enforced rather than
+    // remembered. `npm run lint` is one of the three things CI runs (SPEC.md §6), which
+    // is why these constraints live here and not in a test: a test would never see a
+    // pull request.
     plugins: {
       mediasafe: {
         rules: {
           "no-empty-catch": noEmptyCatch,
           "cache-key-carries-account": cacheKeyCarriesAccount,
+          "duration-on-the-ramp": durationOnTheRamp,
         },
       },
     },
     rules: {
       "mediasafe/no-empty-catch": "error",
       "mediasafe/cache-key-carries-account": "error",
+      "mediasafe/duration-on-the-ramp": "error",
     },
   },
 ]);

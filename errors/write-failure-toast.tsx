@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { GHOST_RECOVERY, SOLID_RECOVERY } from "./recovery-buttons";
 import { ReferenceLine } from "./reference-line";
@@ -36,15 +36,60 @@ import { type RaisedWriteFailure, writeFailures } from "./write-failure";
  * title and the episode, so there is no route by which an exception's text reaches the
  * screen — DESIGN.md allows exactly one technical string anywhere, and it is the
  * reference id.
+ *
+ * ── It leaves visibly now, and that is this file's own state, not the store's — #333 ──
+ *
+ * `writeFailures` still raises, resolves and dismisses exactly as it always did — nothing
+ * here changes when a failure leaves `writeFailures.get()`'s array. What changes is when
+ * this component lets the DOM node *for* it go: `useRetainedFailures` below keeps a
+ * failure rendered, with `data-leaving="true"` and `write-failure-toast-transition`
+ * (`app/globals.css`) doing the fading, until its own `transitionend` reports the exit is
+ * actually over. React's own unmount is immediate and cannot be told to wait for a CSS
+ * transition, which is the one thing a toast that "gains an entrance and an exit" needs.
  */
+function useRetainedFailures(
+  current: readonly RaisedWriteFailure[],
+): {
+  readonly retained: readonly RaisedWriteFailure[];
+  readonly isLeaving: (id: string) => boolean;
+  readonly settle: (id: string) => void;
+} {
+  const [retained, setRetained] = useState(current);
+  // React's own "adjust state during rendering" shape, not an effect: comparing against
+  // the previous `current` here (rather than in a `useEffect`) is what lets a failure
+  // that both arrives and leaves inside one tick — raised, then immediately resolved —
+  // still get one render with it present, instead of an effect running one paint late.
+  const [previousCurrent, setPreviousCurrent] = useState(current);
+
+  if (current !== previousCurrent) {
+    setPreviousCurrent(current);
+    const retainedIds = new Set(retained.map((failure) => failure.id));
+    const arriving = current.filter((failure) => !retainedIds.has(failure.id));
+    // Never removes here — a failure that dropped out of `current` stays in `retained`
+    // exactly until `settle` below takes it out, which is what gives it somewhere to play
+    // its exit. Removing it here the moment `current` changed would be the bug this hook
+    // exists to fix, one line further down.
+    if (arriving.length > 0) setRetained((prev) => [...prev, ...arriving]);
+  }
+
+  const currentIds = new Set(current.map((failure) => failure.id));
+
+  return {
+    retained,
+    isLeaving: (id) => !currentIds.has(id),
+    settle: (id) => setRetained((previous) => previous.filter((failure) => failure.id !== id)),
+  };
+}
+
 export function WriteFailureToasts() {
   const failures = useSyncExternalStore(
     writeFailures.subscribe,
     writeFailures.get,
     writeFailures.get,
   );
+  const { retained, isLeaving, settle } = useRetainedFailures(failures);
 
-  if (failures.length === 0) return null;
+  if (retained.length === 0) return null;
 
   return (
     <div
@@ -62,20 +107,42 @@ export function WriteFailureToasts() {
       // wait for; this is that lift.
       className="pointer-events-none fixed inset-x-0 bottom-[var(--tab-bar-height)] z-40 flex flex-col gap-px lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[420px]"
     >
-      {failures.map((failure) => (
-        <WriteFailureToast key={failure.id} failure={failure} />
+      {retained.map((failure) => (
+        <WriteFailureToast
+          key={failure.id}
+          failure={failure}
+          leaving={isLeaving(failure.id)}
+          onLeft={() => settle(failure.id)}
+        />
       ))}
     </div>
   );
 }
 
-function WriteFailureToast({ failure }: { failure: RaisedWriteFailure }) {
+function WriteFailureToast({
+  failure,
+  leaving,
+  onLeft,
+}: {
+  readonly failure: RaisedWriteFailure;
+  readonly leaving: boolean;
+  /** The exit transition finished; this failure's own node can go now. */
+  readonly onLeft: () => void;
+}) {
   return (
     <div
       // Assertive, unlike the offline banner: this is the result of something the reader
       // just did, and it says that the thing did not happen.
       role="alert"
-      className="pointer-events-auto border-2 border-accent bg-ground p-4"
+      data-leaving={leaving ? "true" : undefined}
+      // `opacity` and `transform` finish together, off the same duration — gating on one
+      // property name is what keeps `onLeft` from firing twice for the one exit.
+      onTransitionEnd={(event) => {
+        if (leaving && event.target === event.currentTarget && event.propertyName === "opacity") {
+          onLeft();
+        }
+      }}
+      className="write-failure-toast-transition pointer-events-auto border-2 border-accent bg-ground p-4"
     >
       <h2 className="bill-title text-bill-sm text-accent">That did not save</h2>
 

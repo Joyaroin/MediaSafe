@@ -1453,15 +1453,20 @@ describe("the tab bar's icon leads its label", () => {
    * and only one.** Pressing Up next while already on Up next has something to do besides
    * navigate, and `use-up-next-repress.ts` is where that gesture is decided — this bar
    * only hands it to the one `<Link>` it belongs to. What the lead's own claim still holds:
-   * no state, no effect, no delegated listener of the bar's own and no `matchMedia` branch.
-   * The assertion below is narrowed to say exactly that, rather than widened to say
-   * nothing.
+   * no state, no delegated listener of the bar's own and no `matchMedia` branch.
+   *
+   * **Issue #334 narrows the "no effect" half the same way.** The accessibility guarantee
+   * that used to ride on `display: none` alone cannot survive as a class or a delegated
+   * listener now that the bar fades instead of cutting (`tab-bar.tsx`'s own docblock has
+   * the reasoning): it has to react to `data-selecting` off the DOM, synchronously with
+   * the mutation, which is exactly what a `useEffect` and a `MutationObserver` are for.
+   * The assertion below is narrowed again to say exactly that one exception, rather than
+   * widened to say nothing.
    */
   it("adds no state, no bare pointer listener and no matchMedia branch to the bar", () => {
     const source = codeOf(TAB_BAR);
 
     expect(source).not.toContain("useState");
-    expect(source).not.toContain("useEffect");
     expect(source).not.toContain("addEventListener");
     expect(source).not.toMatch(/onPointer|onTouch/);
     expect(source).not.toContain("matchMedia");
@@ -1470,6 +1475,12 @@ describe("the tab bar's icon leads its label", () => {
     // still bare.
     expect(source.match(/onClick=/g)).toHaveLength(1);
     expect(source).toContain('onClick={href === "/up-next" ? onUpNextLinkClick : undefined}');
+
+    // The one effect this bar wires up, and nowhere else: the `inert` guarantee, off a
+    // `MutationObserver` rather than a bare `addEventListener` (still forbidden above)
+    // or a second `useState` (also still forbidden above).
+    expect(source.match(/useEffect\(/g)).toHaveLength(1);
+    expect(source).toContain("new MutationObserver(sync)");
   });
 
   /**

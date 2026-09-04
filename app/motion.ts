@@ -14,15 +14,19 @@ import type { Transition } from "motion/react";
  *
  * SwiftUI describes a spring as a **response** (how long the settle takes) and a
  * **damping fraction** (how much it overshoots). Motion's spring accepts the same
- * perceptual pair as `duration` and `bounce`, where `bounce ≈ 1 - dampingFraction`. So
- * these are not invented numbers that felt about right; they are the platform's own
- * defaults, transcribed:
+ * perceptual pair as `duration` and `bounce`, where `bounce ≈ 1 - dampingFraction`.
  *
- * | here      | SwiftUI    | response | dampingFraction |
- * | --------- | ---------- | -------- | --------------- |
- * | `smooth`  | `.smooth`  | 0.30     | 1.00            |
- * | `snappy`  | `.snappy`  | 0.30     | 0.85            |
- * | `bouncy`  | `.bouncy`  | 0.40     | 0.70            |
+ * The bounce values below **are** the platform's own damping fractions, transcribed
+ * exactly — `.smooth`/`.snappy`/`.bouncy` read as `dampingFraction` 1.00/0.85/0.70, which
+ * is `bounce` 0/0.15/0.30. The durations are not a transcription: SwiftUI's own
+ * `response` for all three presets is a flat `0.5`, and what ships below runs roughly 40%
+ * shorter. That is a choice made for the web, not a number decoded from the platform.
+ *
+ * | here      | SwiftUI    | duration (here) | SwiftUI's response | dampingFraction |
+ * | --------- | ---------- | ---------------- | ------------------- | --------------- |
+ * | `smooth`  | `.smooth`  | 0.30              | 0.50                 | 1.00            |
+ * | `snappy`  | `.snappy`  | 0.30              | 0.50                 | 0.85            |
+ * | `bouncy`  | `.bouncy`  | 0.40              | 0.50                 | 0.70            |
  *
  * "Multiplied to the max gracefully" is spent on **where** these are used and on the
  * authored moments they serve — not on winding the numbers past the platform's, which is

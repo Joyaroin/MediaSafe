@@ -55,16 +55,79 @@ const HANDOFF_TOKENS = [
  * Reads a declaration out of the stylesheet **and proves there is only one of it**.
  * `--ground: …` appearing twice is the drift this file's one-declaration-site argument
  * exists to prevent, so two matches is a failure rather than a first-wins read.
+ *
+ * Reads `oklch()` since issue #327, not hex — every token restated on one hue so a
+ * drifted hue or an over-chromatic hairline is visible in the value itself. Returns the
+ * declaration's own text (`"oklch(96.9% 0.012 95)"`), not a parsed form, so an equality
+ * check against `DESIGN.md` §2 or another declaration site is a plain string compare.
  */
 function declaredOnce(name: string): string {
-  const all = [...CSS_CODE.matchAll(new RegExp(`^\\s*--${name}:\\s*(#[0-9a-f]{6});`, "gim"))];
+  const all = [...CSS_CODE.matchAll(new RegExp(`^\\s*--${name}:\\s*(oklch\\([^;]+?\\));`, "gim"))];
   expect(all, `--${name} must have exactly one declaration site`).toHaveLength(1);
-  return all[0][1].toLowerCase();
+  return all[0][1].trim();
+}
+
+/**
+ * OKLCH → sRGB, Björn Ottosson's closed form (the one the CSS Color 4 spec itself cites).
+ * Needed because the contrast assertions below are WCAG 2.x, which is defined over sRGB —
+ * there is no way to ask "is this legible" without leaving OKLCH at some point, and this is
+ * that point. Verified against pure red (`oklch(62.796% 0.25768 29.234)` → `#ff0000`).
+ */
+function oklchToHex(L: number, C: number, hueDeg: number): string {
+  const h = (hueDeg * Math.PI) / 180;
+  const a = C * Math.cos(h);
+  const b = C * Math.sin(h);
+
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+
+  const l = l_ ** 3;
+  const m = m_ ** 3;
+  const s = s_ ** 3;
+
+  const linear = {
+    r: 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    b: -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  };
+
+  const toSrgbByte = (c: number) => {
+    const gamma = c <= 0.0031308 ? c * 12.92 : 1.055 * Math.abs(c) ** (1 / 2.4) - 0.055;
+    return Math.round(Math.min(1, Math.max(0, gamma)) * 255)
+      .toString(16)
+      .padStart(2, "0");
+  };
+
+  return `#${toSrgbByte(linear.r)}${toSrgbByte(linear.g)}${toSrgbByte(linear.b)}`;
+}
+
+/** Parses one `oklch(L% C H)` declaration into its three numbers. */
+function parseOklch(declaration: string): [number, number, number] {
+  const match = declaration.match(/oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)\s*\)/);
+  expect(match, `not a plain oklch() declaration: ${declaration}`).not.toBeNull();
+  const [, l, c, h] = match!;
+  return [Number(l), Number(c), Number(h)];
+}
+
+/** A token's declared value, resolved to the sRGB hex a browser would actually paint. */
+function resolvedHex(name: string): string {
+  // `parseOklch` returns `L` as the declared percentage (e.g. `96.9`), matching how the
+  // 20 L relationship above reads naturally; `oklchToHex` wants the 0–1 fraction.
+  const [L, C, H] = parseOklch(declaredOnce(name));
+  return oklchToHex(L / 100, C, H);
 }
 
 function channels(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)) as [number, number, number];
+}
+
+/** The largest single-channel gap between two hex colours, 0–255. */
+function channelDelta(a: string, b: string): number {
+  const [r1, g1, b1] = channels(a);
+  const [r2, g2, b2] = channels(b);
+  return Math.max(Math.abs(r1 - r2), Math.abs(g1 - g2), Math.abs(b1 - b2));
 }
 
 /** WCAG 2.x relative luminance. */
@@ -81,11 +144,16 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe("the seven tokens carry the handoff's values", () => {
+describe("the seven handoff tokens, and the handoff's fall from source of truth", () => {
   /**
    * The handoff's table is fenced CSS inside the committed Markdown. Parsed rather than
    * transcribed, so this test cannot agree with a stylesheet that both drifted the same
    * way — the document is the authority and the code is what is being checked.
+   *
+   * The handoff itself is frozen byte-identical (issue #327's own acceptance criterion) —
+   * it is still hex, because it is a record of what was asked for in August and editing it
+   * to speak OKLCH would make that record false. Nothing here reads it as anything but a
+   * historical hex table.
    */
   const fromHandoff = new Map(
     [...HANDOFF.matchAll(/^\s*--([a-z-]+):\s*(#[0-9a-f]{6});/gim)].map(
@@ -103,33 +171,83 @@ describe("the seven tokens carry the handoff's values", () => {
     }
   });
 
-  it.each(HANDOFF_TOKENS)("--%s matches, and is declared once", (token) => {
-    expect(declaredOnce(token)).toBe(fromHandoff.get(token));
+  /**
+   * Until issue #327 this suite asserted the opposite of what follows: that every one of
+   * the seven, resolved from the stylesheet, was byte-identical to the handoff's own hex.
+   * That assertion is **inverted, not deleted**, per #327's own acceptance criterion — it
+   * must now fail if the handoff ever becomes the source again.
+   *
+   * Six of the seven still land within a rounding error of the handoff: the OKLCH
+   * restatement holds lightness at the shipped position, so a browser now computes
+   * something a shade off the original hex rather than something identical to it. `--dim`
+   * is the one real repaint — the fix this ticket exists to ship — and its gap is an order
+   * of magnitude bigger than rounding noise, which is the property this test is actually
+   * checking for: not "did every value change" but "did the one value that was supposed to
+   * change, change, and by enough to mean it".
+   */
+  it("no longer agrees with the handoff — the fix landed, and drift would be visible here", () => {
+    const heldTokens = HANDOFF_TOKENS.filter((token) => token !== "dim");
+
+    for (const token of heldTokens) {
+      expect(
+        channelDelta(resolvedHex(token), fromHandoff.get(token)!),
+        `--${token} should be a restatement of the handoff's value, not a fresh one`,
+      ).toBeLessThanOrEqual(5);
+    }
+
+    expect(
+      channelDelta(resolvedHex("dim"), fromHandoff.get("dim")!),
+      "--dim must be a deliberate repaint, not a rounding error — that is #327's whole point",
+    ).toBeGreaterThan(20);
   });
 
   /**
-   * `DESIGN.md`'s §2 table is the third place these seven appear, and until #255 nothing
-   * read it — so it had gone on quoting #134's Catalogue Wall values through two palette
-   * changes, describing a `#ffffff` raised step against a `#f6f5f3` ground that no build
-   * had produced in months. A table nobody checks is not documentation of the palette, it
-   * is a second palette, and it is the exact drift this ticket exists to end.
+   * `DESIGN.md`'s §2 table is the third place these values appear, and it is what the
+   * stylesheet is checked against now that the handoff no longer is (#255 made this table
+   * something the suite reads at all; #327 makes it the authority rather than a mirror of
+   * the handoff). A table nobody checks is not documentation of the palette, it is a second
+   * palette, and it is the exact drift this suite exists to end.
+   *
+   * Every row carries both schemes, so this resolves all eight tokens rather than the
+   * handoff's seven — `--ink` and both `--accent-ink` cells included. A cell may be a
+   * literal `` `oklch(...)` `` or an alias like `` = `--ground` ``, which is resolved by
+   * following it into the row it names, in the same column, recursively — exactly how a
+   * reader would read "= `--ground`" by eye.
    */
-  const fromDesignDoc = new Map(
-    [...DESIGN_DOC.matchAll(/^\|\s*`--([a-z-]+)`\s*\|[^|]*\|\s*`(#[0-9a-f]{6})`\s*\|/gim)].map(
-      ([, name, hex]) => [name, hex.toLowerCase()] as const,
-    ),
+  const DESIGN_ROWS = new Map(
+    [
+      ...DESIGN_DOC.matchAll(
+        /^\|\s*`--([a-z-]+)`\s*\|[^|\n]*\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|/gim,
+      ),
+    ].map(([, name, light, dark]) => [name, { light: light.trim(), dark: dark.trim() }] as const),
   );
 
-  it("finds the seven in DESIGN.md's own table", () => {
-    for (const token of HANDOFF_TOKENS) {
-      expect(fromDesignDoc.get(token), `DESIGN.md §2 must list --${token}`).toMatch(
-        /^#[0-9a-f]{6}$/,
-      );
+  function resolveDesignCell(cell: string, column: "light" | "dark", seen: Set<string> = new Set()): string {
+    const literal = cell.match(/^`(oklch\([^`]+)`$/);
+    if (literal) return literal[1];
+
+    const alias = cell.match(/^=\s*`--([a-z-]+)`$/);
+    expect(alias, `unrecognised §2 cell: ${cell}`).not.toBeNull();
+    const [, aliasName] = alias!;
+    expect(seen.has(aliasName), `circular §2 alias through --${aliasName}`).toBe(false);
+
+    const row = DESIGN_ROWS.get(aliasName);
+    expect(row, `§2 aliases --${aliasName}, which the table does not itself declare`).toBeDefined();
+    return resolveDesignCell(row![column], column, new Set(seen).add(aliasName));
+  }
+
+  const EIGHT_TOKENS = ["ground", "raised", "hair", "dim", "text", "ink", "accent", "accent-ink"] as const;
+
+  it("finds all eight tokens, both schemes, in DESIGN.md's own table", () => {
+    for (const token of EIGHT_TOKENS) {
+      expect(DESIGN_ROWS.get(token), `DESIGN.md §2 must list --${token}`).toBeDefined();
     }
   });
 
-  it.each(HANDOFF_TOKENS)("DESIGN.md's --%s agrees with the stylesheet", (token) => {
-    expect(fromDesignDoc.get(token)).toBe(declaredOnce(token));
+  it.each(EIGHT_TOKENS)("DESIGN.md's --%s agrees with the stylesheet, in both schemes", (token) => {
+    const row = DESIGN_ROWS.get(token)!;
+    expect(resolveDesignCell(row.light, "light")).toBe(declaredOnce(token));
+    expect(resolveDesignCell(row.dark, "dark")).toBe(declaredOnce(`dark-${token}`));
   });
 });
 
@@ -196,33 +314,34 @@ describe("every design path a comment cites resolves to a committed file", () =>
 
 describe("the heading step", () => {
   it("is darker than the body colour in light, which is the whole reason it survives", () => {
-    // The handoff's `--text` (`#34342f`) is darker than the `--ink` it replaced
-    // (`#3d3c35`). Adopting the table without re-deriving `--ink` would have rendered
-    // every heading in the application lighter than the body beneath it.
-    const ink = declaredOnce("ink");
-    const text = declaredOnce("text");
+    // The handoff's `--text` is darker than the `--ink` it replaced. Adopting the table
+    // without re-deriving `--ink` would have rendered every heading in the application
+    // lighter than the body beneath it.
+    const ink = resolvedHex("ink");
+    const text = resolvedHex("text");
 
     expect(luminance(ink)).toBeLessThan(luminance(text));
   });
 
   it("keeps a real step rather than merely clearing the bar", () => {
-    const ground = declaredOnce("ground");
+    const ground = resolvedHex("ground");
 
     // A heading a rounding error darker than the body is not a hierarchy. The old
     // palette's step was 1.55x; the new body colour is far stronger, so a proportional
-    // step would land on black. 1.2x is the floor this holds well above (1.32x).
-    expect(contrast(declaredOnce("ink"), ground)).toBeGreaterThan(
-      contrast(declaredOnce("text"), ground) * 1.2,
+    // step would land on black. 1.2x is the floor this holds well above (1.32x), and the
+    // OKLCH restatement holds both lightness positions, so the ratio survives unchanged.
+    expect(contrast(resolvedHex("ink"), ground)).toBeGreaterThan(
+      contrast(resolvedHex("text"), ground) * 1.2,
     );
   });
 
   it("is never lighter than the body colour in dark either", () => {
-    // In dark the word "darker" inverts — a heading below `--dark-text` on a `#0a0a0b`
-    // ground recedes into the page. `--dark-text` is already 18:1 there, so the dark
+    // In dark the word "darker" inverts — a heading below `--dark-text` on `--dark-ground`
+    // recedes into the page. `--dark-text` is already very high-contrast there, so the dark
     // counterpart is declared deliberately equal. Equal is not lighter, which is the
     // property #255 is actually protecting.
-    expect(luminance(declaredOnce("dark-ink"))).toBeGreaterThanOrEqual(
-      luminance(declaredOnce("dark-text")),
+    expect(luminance(resolvedHex("dark-ink"))).toBeGreaterThanOrEqual(
+      luminance(resolvedHex("dark-text")),
     );
   });
 });
@@ -280,6 +399,70 @@ describe("both dark paths", () => {
     );
   });
 });
+
+describe("the reader has asked for prefers-contrast: more — issue #329", () => {
+  /**
+   * Structural, like every other assertion in this file — no DOM, no `matchMedia`. The
+   * block is read straight out of the stylesheet text, the same way `darkBlocks()` and
+   * `declaredOnce()` above read the palette without a browser.
+   */
+  const CONTRAST_BLOCK = /@media \(prefers-contrast: more\) \{\s*:root\s*\{([\s\S]*?)\}\s*\}/;
+
+  it("declares the block exactly once", () => {
+    const all = [...CSS_CODE.matchAll(new RegExp(CONTRAST_BLOCK.source, "g"))];
+    expect(all, "`@media (prefers-contrast: more) { :root { … } }`").toHaveLength(1);
+  });
+
+  const body = () => {
+    const match = CONTRAST_BLOCK.exec(CSS_CODE);
+    expect(match, "must declare `@media (prefers-contrast: more) { :root { … } }`").not.toBeNull();
+    return match![1];
+  };
+
+  it("maps the dim register to the primary text colour, and the hairline to the dim value", () => {
+    expect(body()).toMatch(/--color-dim:\s*var\(--text\);/);
+    expect(body()).toMatch(/--color-hair:\s*var\(--dim\);/);
+  });
+
+  it("is written against the declared tokens, not a fourth set of literal colour values", () => {
+    // No fresh `oklch()` anywhere in the block — both new values are `var()` reads of
+    // tokens the stylesheet already declares once, above.
+    expect(body()).not.toMatch(/oklch\(/);
+  });
+
+  /**
+   * `--text` and `--dim` are not themselves reassigned by the block above — only
+   * `--color-dim`/`--color-hair`, which is what every `text-dim`, `border-hair` and the
+   * scrollbar's own `var(--color-hair)` actually read. That is deliberate: `--dim` is
+   * also the *source* half of this mapping, and a custom property resolves to exactly
+   * one value per element, so reassigning `--dim` in this same rule would make
+   * `var(--dim)` read the value this rule just gave it rather than the one the mapping
+   * means. Because neither source token moves, one rule serves both schemes — whichever
+   * scheme is active keeps supplying `--text`/`--dim` through the ordinary cascade, and
+   * "resolves in both schemes" is exactly the property the assertions below check.
+   */
+  it("resolves in both schemes: the mapping does not collapse the ramp, it closes it by one step", () => {
+    for (const prefix of ["", "dark-"] as const) {
+      const ground = resolvedHex(`${prefix}ground`);
+
+      const oldHair = contrast(resolvedHex(`${prefix}hair`), ground);
+      const oldDim = contrast(resolvedHex(`${prefix}dim`), ground);
+      const newHair = contrast(resolvedHex(`${prefix}dim`), ground); // --hair's new value
+      const newDim = contrast(resolvedHex(`${prefix}text`), ground); // --dim's new value
+
+      // The hairline becomes as present as the metadata register used to be — the
+      // "quiet register stops being quiet" half of the acceptance criteria.
+      expect(newHair).toBeGreaterThan(oldHair);
+      // The metadata register becomes at least as legible as it already was — never a
+      // regression, in either scheme.
+      expect(newDim).toBeGreaterThanOrEqual(oldDim);
+      // And the two new positions stay distinct — the tonal structure surviving,
+      // rather than everything landing on `--text`.
+      expect(resolvedHex(`${prefix}dim`)).not.toBe(resolvedHex(`${prefix}text`));
+    }
+  });
+});
+
 /**
  * The directories that ship, walked from their own roots.
  *
@@ -802,42 +985,103 @@ describe("no heading renders lighter than the body beneath it", () => {
 });
 
 describe("the contrast the palette actually ships", () => {
-  it("keeps body text and headings well clear of WCAG AA on both surfaces", () => {
-    for (const surface of ["ground", "raised"] as const) {
-      const bg = declaredOnce(surface);
-      expect(contrast(declaredOnce("text"), bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(declaredOnce("ink"), bg)).toBeGreaterThanOrEqual(4.5);
+  it("keeps body text and headings well clear of WCAG AA on both surfaces, in both schemes", () => {
+    for (const prefix of ["", "dark-"] as const) {
+      for (const surface of ["ground", "raised"] as const) {
+        const bg = resolvedHex(`${prefix}${surface}`);
+        expect(contrast(resolvedHex(`${prefix}text`), bg)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(resolvedHex(`${prefix}ink`), bg)).toBeGreaterThanOrEqual(4.5);
+      }
     }
   });
 
-  it("holds --dim to a floor it currently sits on, and never lets it get lighter", () => {
-    /**
-     * `--dim` is the weakest thing in the palette. The handoff's `#929086` is 2.93:1 on
-     * `--ground`, down from the 3.32:1 it replaced — below AA for normal text (4.5:1)
-     * and now below the large-text floor (3:1) too, while carrying the metadata line at
-     * 12–13px. It is adopted as given because #255's first criterion is fidelity to the
-     * handoff's table, and the argument for that sits at the declaration site.
-     *
-     * **A floor, not a window.** The first draft asserted `< 3.0` as well, to pin the
-     * number — which would have failed the day somebody darkened `--dim` to fix exactly
-     * the problem the comment complains about. A test that blocks its own remedy is
-     * worse than no test. Drift *back* toward the light is what this catches; drift
-     * toward legibility is what it is supposed to allow.
-     *
-     * Nothing is lost by dropping the ceiling: `--dim` is already pinned to the
-     * handoff's own value by the seven-token comparison above, so a change in either
-     * direction still has to be deliberate and still has to update the document.
-     */
-    expect(contrast(declaredOnce("dim"), declaredOnce("ground"))).toBeGreaterThanOrEqual(2.9);
+  /**
+   * `--dim` used to be the weakest thing in the palette: the handoff's value was 2.93:1 on
+   * `--ground` and 2.73:1 on `--raised` — below AA for normal text (4.5:1) on both, while
+   * carrying the metadata line at 12–13px, which is normal text by any reading. It was
+   * adopted anyway in #255 for fidelity to the handoff's table; issue #327 is the ticket
+   * that changes the number on purpose, named at the old value's own declaration site as
+   * the fix still owed.
+   *
+   * **Now a floor on the harder of the two grounds, not a ceiling.** `--raised` is checked
+   * because it is the surface a metadata line actually sits on inside a card, and it is
+   * the harder of the two to clear. Only a floor is asserted, deliberately: a test that
+   * blocked `--dim` from getting darker still would be a test that forbade its own fix
+   * being improved on.
+   */
+  it("clears 4.5:1 for --dim on both grounds, in both schemes — the regression this ticket fixes", () => {
+    for (const prefix of ["", "dark-"] as const) {
+      for (const surface of ["ground", "raised"] as const) {
+        const bg = resolvedHex(`${prefix}${surface}`);
+        expect(contrast(resolvedHex(`${prefix}dim`), bg)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  /**
+   * The rule behind the fix, not just its result: `--dim`'s lightness is deliberately
+   * `--text`'s lightness plus 20 L, in both schemes — light moves toward the ground (a
+   * higher L, since the ground is light), dark moves toward its own ground too (a lower L,
+   * since the ground is dark), which is why the raw difference flips sign between the two
+   * and only the magnitude is the invariant. Derived independently from two different
+   * standards (WCAG 2 in light, the perceptual content-text floor in dark), which is why
+   * this relationship — not either lightness alone — is what the next re-tint should hold.
+   */
+  it("holds --dim 20 L from --text in both schemes", () => {
+    const lightnessOf = (name: string) => parseOklch(declaredOnce(name))[0];
+    const withinOneL = (delta: number) => Math.abs(delta - 20) <= 1;
+
+    // Light moves `--dim` toward its (light) ground, a higher L; dark moves it toward its
+    // own (dark) ground, a lower L — so the raw difference flips sign between the two
+    // schemes and only the 20 L magnitude is the invariant.
+    expect(withinOneL(lightnessOf("dim") - lightnessOf("text"))).toBe(true);
+    expect(withinOneL(lightnessOf("dark-text") - lightnessOf("dark-dim"))).toBe(true);
   });
 
   it("keeps type on the accent legible, which the accent-ink pairing exists for", () => {
-    expect(contrast(declaredOnce("accent-ink"), declaredOnce("accent"))).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(contrast(resolvedHex("accent-ink"), resolvedHex("accent"))).toBeGreaterThanOrEqual(4.5);
     expect(
-      contrast(declaredOnce("dark-accent-ink"), declaredOnce("dark-accent")),
+      contrast(resolvedHex("dark-accent-ink"), resolvedHex("dark-accent")),
     ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("moves the dark accent off amber and onto the light accent's own hue family", () => {
+    // Not identical hues — the dark value trades chroma for the perceptual text floor,
+    // per DESIGN.md §0's fourth amendment — but close enough that it reads as the same
+    // colour rather than the amber it replaces (was hue ~70 for `#ffb020`).
+    const [, , lightHue] = parseOklch(declaredOnce("accent"));
+    const [, , darkHue] = parseOklch(declaredOnce("dark-accent"));
+
+    expect(Math.abs(darkHue - lightHue)).toBeLessThanOrEqual(15);
+  });
+});
+
+describe("derived states mix in oklab, never in srgb", () => {
+  // Every `color-mix()` this application ships — currently one, `frosted`'s chrome wash —
+  // swept across the same shipping tree the shadow sweep above walks, so a second mix
+  // introduced anywhere in `app/`, `errors/` or `lib/` is caught on the same terms as the
+  // first: an `srgb` interpolation walks the gamma-compressed channels of a space these
+  // `oklch()` tokens no longer live in, which can visibly shift hue mid-mix.
+  it("finds at least the one mix this file already knows about", () => {
+    const hits = sourceFiles().flatMap((path) => [
+      ...readFileSync(path, "utf8").matchAll(/color-mix\(\s*in\s+([a-z0-9-]+)/gi),
+    ]);
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("never mixes in srgb", () => {
+    const offenders: string[] = [];
+
+    for (const path of sourceFiles()) {
+      const source = readFileSync(path, "utf8");
+      for (const match of code(source).matchAll(/color-mix\(\s*in\s+([a-z0-9-]+)/gi)) {
+        if (/^srgb(-linear)?$/i.test(match[1])) {
+          offenders.push(`${relative(path)}:${lineOf(source, match.index ?? 0)} — in ${match[1]}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
   });
 });
 

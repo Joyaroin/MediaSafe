@@ -331,7 +331,7 @@ function CardBody({
 
        `snap-start` is the card's half of *a scroll comes to rest on a whole card* — the
        track carries the other half (`up-next-episode-rail.tsx`). */
-    <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised`}>
+    <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised plate-line`}>
       {/* The whole card bar the check. A `Link` rather than a button: this is a
           destination, and `SPEC.md`'s *a destination is a destination* is why a film card
           navigates too.

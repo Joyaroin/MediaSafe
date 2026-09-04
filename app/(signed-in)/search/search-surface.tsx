@@ -419,12 +419,16 @@ function InFlight() {
  * No *Clear the filter* button either: the zero-match button belongs to the library, where
  * a filter is a thing you applied to rows you own. Here the field is already the control,
  * and it already has what you typed in it.
+ *
+ * `arrive` (issue #336) — the same single-element entrance every other whole-region reveal
+ * in the app already uses. Nothing new authored: `globals.css`'s own note on the utility is
+ * *a region that arrives whole*, and a sentence replacing the spinner is exactly that.
  */
 function NoResults({ query }: { query: string }) {
   return (
     // Still centred, still `--ink` rather than the accent, and still not the failure's
     // shape — the redesign restyles this state and does not merge it with any other.
-    <section className="mx-auto max-w-[60ch] py-10 text-center">
+    <section className="arrive mx-auto max-w-[60ch] py-10 text-center">
       {/* `text-bill-md`, unchanged — the same step the read-failure headline takes, so
           the two states stay distinguishable by colour and border rather than by size.
           Only the colour moves, `--text` to `--ink`. */}
@@ -443,7 +447,11 @@ function Results({ results }: { results: readonly MarkedResult[] }) {
     // `-mx-2` pulls the list out to a `14px` gutter against the page's own `22px`, so a
     // card's *edge* lands on 22px rather than its padding box — turn 9's rule for every
     // list that carries cards.
-    <ol className="-mx-2 flex flex-col gap-2">
+    //
+    // `stagger-rise` (issue #336) — the same utility `recommendation-rail.tsx`'s track
+    // already runs, so results and the rail beside them read as one rhythm rather than two:
+    // a list that arrives at once next to one that arrives a beat at a time.
+    <ol className="stagger-rise -mx-2 flex flex-col gap-2">
       {results.map((result, index) => (
         <CatalogueResultRow
           key={catalogueKeyOf(result)}

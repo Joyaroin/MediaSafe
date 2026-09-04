@@ -72,7 +72,7 @@ import { THE_BUTTON_REGISTER } from "@/app/accent-meaning";
 
 /** The recovery action a reader can take. Inverts to solid on hover. */
 export const GHOST_RECOVERY =
-  `code-line rounded-[var(--radius-full)] border border-accent px-4 py-2 ${THE_BUTTON_REGISTER.ink} transition-colors duration-150 hover:bg-accent hover:text-accent-ink`;
+  `code-line rounded-[var(--radius-full)] border border-accent px-4 py-2 ${THE_BUTTON_REGISTER.ink} transition-colors duration-[var(--dur-fast)] hover:bg-accent hover:text-accent-ink`;
 
 /**
  * `GHOST_RECOVERY` at the episode row's own measure — issue #203.
@@ -113,14 +113,14 @@ export const GHOST_RECOVERY =
  * hatch is a constant nobody can read the intent of.
  */
 export const GHOST_RECOVERY_COMPACT =
-  `code-line shrink-0 rounded-[var(--radius-full)] border border-accent px-2.5 py-1 ${THE_BUTTON_REGISTER.ink} transition-colors duration-150 hover:bg-accent hover:text-accent-ink`;
+  `code-line shrink-0 rounded-[var(--radius-full)] border border-accent px-2.5 py-1 ${THE_BUTTON_REGISTER.ink} transition-colors duration-[var(--dur-fast)] hover:bg-accent hover:text-accent-ink`;
 
 /**
  * The one primary recovery action on a surface. Pressed state is `brightness(0.9)` over
- * `200ms`, per DESIGN.md's recording control.
+ * `--dur-base`, per DESIGN.md's recording control.
  */
 export const SOLID_RECOVERY =
-  `code-line rounded-[var(--radius-full)] px-4 py-2 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-200 hover:brightness-90`;
+  `code-line rounded-[var(--radius-full)] px-4 py-2 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-[var(--dur-base)] hover:brightness-90`;
 
 /**
  * `SOLID_RECOVERY` at `GHOST_RECOVERY_COMPACT`'s measure — issue #199.
@@ -158,7 +158,7 @@ export const SOLID_RECOVERY =
  * the status line beside them is the thing that gives.
  */
 export const SOLID_RECOVERY_COMPACT =
-  `code-line shrink-0 rounded-[var(--radius-full)] px-2.5 py-1 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-200 hover:brightness-90`;
+  `code-line shrink-0 rounded-[var(--radius-full)] px-2.5 py-1 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-[var(--dur-base)] hover:brightness-90`;
 
 /**
  * How a disabled control is dimmed — **the dim alone, and one string for all of them.**

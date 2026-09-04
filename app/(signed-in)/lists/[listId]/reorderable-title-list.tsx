@@ -31,6 +31,11 @@ import { ListTitleRow } from "./list-title-row";
  * the pointer's current row by one row height. `order` itself changes exactly once, on
  * release — `commit` below — which is also the one moment position numbers move.
  *
+ * `shiftFor`'s pixel figure is handed to `ListTitleRow` as `shift` and animated there on
+ * `app/motion.ts`'s spring rather than a CSS transition — issue #337. A spring is what
+ * makes reversing the drag mid-gesture carry the row's velocity into the new gap instead
+ * of restarting it from a standstill, which a duration-and-endpoint transition cannot do.
+ *
  * ── Optimistic, in the shape every write on this surface uses ─────────────────────────
  *
  * `commit` reorders `order` — and renumbers every row's `position` to match — before the
@@ -219,19 +224,14 @@ export function ReorderableTitleList({
                   touchAction: "none",
                   transform: `translateY(${dragState.translateY}px)`,
                 }
-              : shift === 0
-                ? undefined
-                : {
-                    position: "relative",
-                    transform: `translateY(${shift}px)`,
-                    transition: "transform 150ms ease",
-                  };
+              : undefined;
 
           return (
             <ListTitleRow
               key={title.titleId}
               title={title}
               style={style}
+              shift={shift}
               aboveFold={index === 0}
               liRef={(element) => {
                 if (element) rowElements.current.set(title.titleId, element);
@@ -241,7 +241,7 @@ export function ReorderableTitleList({
                 <button
                   type="button"
                   aria-label={`Reorder ${title.name}, position ${index + 1} of ${order.length}`}
-                  className="touch-none cursor-grab select-none p-2 text-dim transition-colors duration-150 hover:text-text active:cursor-grabbing"
+                  className="touch-none cursor-grab select-none p-2 text-dim transition-colors duration-[var(--dur-fast)] hover:text-text active:cursor-grabbing"
                   onPointerDown={(event) => onHandlePointerDown(event, index, title.titleId)}
                   onPointerMove={onHandlePointerMove}
                   onPointerUp={endDrag}

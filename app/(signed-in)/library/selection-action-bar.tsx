@@ -7,7 +7,7 @@ import {
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
-import { PHONE_BAR } from "@/app/phone-bar";
+import { PHONE_BAR, SELECTING_ATTRIBUTE } from "@/app/phone-bar";
 import type { ListSummary } from "@/db/access";
 import {
   GHOST_RECOVERY,
@@ -111,9 +111,6 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  * the app.
  */
 
-/** The attribute `app/globals.css` hangs the tab bar's disappearance off. */
-const SELECTING_ATTRIBUTE = "data-selecting";
-
 type Phase =
   | { readonly kind: "loading" }
   | { readonly kind: "loaded"; readonly lists: readonly ListSummary[] }
@@ -190,41 +187,48 @@ export function SelectionActionBar() {
 
   return (
     <>
-      {selecting ? (
-        <nav
-          // Not `Primary` — that name belongs to the tab bar, and while this is on screen
-          // the tab bar is gone rather than renamed.
-          aria-label="Selected titles"
-          // `PHONE_BAR` is the tab bar's own recipe, shared rather than restated
-          // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
-          // treatment and the space the layout reserves* a fact about one string instead
-          // of a claim about two. The row inside it is this bar's own.
-          className={`${PHONE_BAR} flex items-center gap-2 px-[22px]`}
+      {/* Always mounted while a provider exists above — issue #333. `selection-action-
+          bar-transition` (`app/globals.css`) arrives and leaves on a transition rather
+          than the arrival keyframe, and a transition needs the box it animates to still
+          be in the document on the frame `selecting` flips — a node React removes
+          outright cannot be animated on its way out. `data-open="true"` is the one
+          boolean this component still owns; `display: none` at rest keeps every control
+          below out of the accessibility tree and the tab order exactly as the old
+          conditional render did. */}
+      <nav
+        // Not `Primary` — that name belongs to the tab bar, and while this is on screen
+        // the tab bar is gone rather than renamed.
+        aria-label="Selected titles"
+        data-open={selecting ? "true" : undefined}
+        // `PHONE_BAR` is the tab bar's own recipe, shared rather than restated
+        // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
+        // treatment and the space the layout reserves* a fact about one string instead
+        // of a claim about two. The row inside it is this bar's own.
+        className={`selection-action-bar-transition ${PHONE_BAR} items-center gap-2 px-[22px]`}
+      >
+        {/* Polite, not assertive: the count changes on every tap and this is the
+            reader's own running total, not news about something that went wrong. */}
+        <p role="status" className="code-line min-w-0 flex-1 truncate text-dim" data-numeric>
+          {view.selected.length.toLocaleString("en-GB")} selected
+        </p>
+
+        <button
+          type="button"
+          onClick={openPicker}
+          disabled={busy}
+          className={`${SOLID_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
         >
-          {/* Polite, not assertive: the count changes on every tap and this is the
-              reader's own running total, not news about something that went wrong. */}
-          <p role="status" className="code-line min-w-0 flex-1 truncate text-dim" data-numeric>
-            {view.selected.length.toLocaleString("en-GB")} selected
-          </p>
+          {view.adding ? "Adding" : "Add to list"}
+        </button>
 
-          <button
-            type="button"
-            onClick={openPicker}
-            disabled={busy}
-            className={`${SOLID_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
-          >
-            {view.adding ? "Adding" : "Add to list"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => selection.end()}
-            className={`${GHOST_RECOVERY_COMPACT} h-11`}
-          >
-            Done
-          </button>
-        </nav>
-      ) : null}
+        <button
+          type="button"
+          onClick={() => selection.end()}
+          className={`${GHOST_RECOVERY_COMPACT} h-11`}
+        >
+          Done
+        </button>
+      </nav>
 
       {/* Mounted for as long as there is a selection to be had, rather than only while one
           is open. The effect above closes it when the mode ends, and it can only do that if
@@ -280,7 +284,7 @@ export function SelectionActionBar() {
                       onClick={() => addTo(list.id)}
                       disabled={busy}
                       aria-label={`Add to ${list.name}`}
-                      className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground ${IN_FLIGHT}`}
+                      className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-[var(--dur-fast)] hover:bg-text hover:text-ground ${IN_FLIGHT}`}
                     >
                       Add
                     </button>

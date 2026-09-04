@@ -190,7 +190,7 @@ export function AddToLibraryControl({
          * is written out in full where search's is one word: search's row is the context
          * that lets *Add* be understood, and this page has no row.
          */
-        className={`code-line border border-hair px-4 py-2 text-text transition-colors duration-150 hover:bg-text hover:text-ground ${IN_FLIGHT}`}
+        className={`code-line border border-hair px-4 py-2 text-text transition-colors duration-[var(--dur-fast)] hover:bg-text hover:text-ground ${IN_FLIGHT}`}
       >
         {ADD_LABELS[kind]}
       </button>
