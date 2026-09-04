@@ -4,6 +4,7 @@ import path from "node:path";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 
+import { smooth } from "@/app/motion";
 import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
 
 /**
@@ -140,8 +141,8 @@ describe("one motion, and nothing that has to choose between motions", () => {
   it("puts the poster morph on the same clock as the page it lands on", () => {
     // The morph ran `--dur-slow` against a `--dur-base` page and was already the last
     // thing settling. Against a `--dur-quick` page that gap widens rather than closes, so
-    // the morph came down to meet it.
-    const group = GLOBALS.match(/::view-transition-group\(\*\)\s*\{[^}]*\}/)![0];
+    // the morph came down to meet it. Unaffected by #338: only the curve's shape moved.
+    const group = GLOBALS.match(/::view-transition-group\(\*\.poster\)\s*\{[^}]*\}/)![0];
     expect(group).toContain("var(--dur-quick)");
     expect(group).not.toContain("var(--dur-slow)");
   });
@@ -153,6 +154,145 @@ describe("one motion, and nothing that has to choose between motions", () => {
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
     )!.join("\n");
     expect(reduced).toMatch(/view-transition/);
+  });
+});
+
+/**
+ * ── The poster morph's spring, scoped rather than universal — issue #338 ─────────────
+ *
+ * `::view-transition-group(*)` used to mean *every* named group — the poster, `root`,
+ * `phone-masthead`, `phone-tab-bar` — and the chrome pair only escaped the curve because a
+ * later, more specific rule zeroed their `animation` back out. That is the failure this
+ * ticket names outright: a rule that reaches every group and is corrected after the fact
+ * for two of them, rather than a rule that only ever reached the one it was meant for.
+ *
+ * `*.poster` fixes the scope by reading `view-transition-class`, which the five poster call
+ * sites set and nothing else does. The easing itself is `app/motion.ts`'s `smooth` — the
+ * module's one non-bouncing spring — sampled into `linear()` the same way `--spring-press`
+ * (#270) sampled `snappy`, recomputed here from the source cited rather than copied, so the
+ * CSS curve and a Motion-driven `smooth` cannot drift into two curves that merely resemble
+ * each other.
+ */
+describe("the poster morph's spring is scoped to posters, not to every group", () => {
+  /** The body of a `::view-transition-group(...)` rule, keyed by its selector text. */
+  function groupRule(selector: string): string {
+    const match = GLOBALS.match(
+      new RegExp(`::view-transition-group\\(${selector}\\)\\s*\\{[^}]*\\}`),
+    );
+    expect(match, `::view-transition-group(${selector}) not found`).not.toBeNull();
+    return match![0];
+  }
+
+  it("scopes the spring to a view-transition class rather than to every group", () => {
+    // The universal selector must not carry the spring at all — only the classed one may.
+    expect(GLOBALS).not.toMatch(/::view-transition-group\(\*\)\s*\{[^}]*var\(--spring-poster\)/);
+    expect(groupRule("\\*\\.poster")).toContain("var(--spring-poster)");
+  });
+
+  it("leaves the masthead and tab-bar groups out of the poster rule's scope", () => {
+    // Neither chrome group carries the `poster` class, and the selector that reaches them
+    // is a name, not `*` — so the scoped rule above cannot address them at all, rather
+    // than addressing them and being overridden afterwards.
+    const posterRule = groupRule("\\*\\.poster");
+    expect(posterRule).not.toContain("phone-masthead");
+    expect(posterRule).not.toContain("phone-tab-bar");
+
+    // And the existing override — `animation: none` on the two named chrome groups — is
+    // still the rule that keeps them still, unaffected by where the spring now lives.
+    expect(GLOBALS).toMatch(
+      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+    );
+  });
+
+  it("every poster call site sets the `poster` view-transition class", () => {
+    // The five halves of the morph named in `app/globals.css`'s own note beside the rule —
+    // a call site that mints a name without the class is a poster the scoped rule cannot
+    // reach, and the morph silently reverts to the browser's stock curve for it alone.
+    const POSTER_CALL_SITES = [
+      "app/(signed-in)/library/title-hero.tsx",
+      "app/(signed-in)/library/selectable-entry.tsx",
+      "app/(signed-in)/titles/[entryId]/pending-poster.tsx",
+      "app/(signed-in)/library/programme-note.tsx",
+      "app/(signed-in)/up-next/up-next-episode-row.tsx",
+    ];
+
+    for (const file of POSTER_CALL_SITES) {
+      const source = readFileSync(file, "utf8");
+      // The raw-style call sites spell the CSS property in camelCase; the two using
+      // React's `<ViewTransition>` spell the class through its `default` prop instead —
+      // both are read for, rather than assuming one mechanism.
+      expect(source, file).toMatch(/viewTransitionClass:\s*"poster"|default="poster"/);
+    }
+  });
+
+  it("carries smooth's own step response, sample for sample", () => {
+    // `smooth` is `app/motion.ts`'s non-bouncing spring: `duration: 0.3, bounce: 0`, which
+    // is `dampingFraction` 1 — critically damped, so the closed form used for `snappy`
+    // (`tests/press-spring.test.ts`) collapses at its own limit rather than applying as
+    // written: `ω_d = ωₙ√(1 − ζ²)` is zero at `ζ = 1`, and the formula that divides by it
+    // is undefined there. The step response at critical damping is the limit of that
+    // formula as `ζ → 1`, taken analytically rather than by perturbing `ζ` numerically:
+    //
+    //   x(t) = 1 − e^(−ωₙt)·(1 + ωₙt)
+    expect(smooth.bounce).toBe(0);
+    const response = smooth.duration as number;
+    const damping = 1 - (smooth.bounce as number);
+    expect(damping).toBe(1);
+
+    const naturalFrequency = (2 * Math.PI) / response;
+    const SETTLED = 0.001;
+
+    function travelled(t: number): number {
+      return 1 - Math.exp(-naturalFrequency * t) * (1 + naturalFrequency * t);
+    }
+
+    // Where `e^(−ωₙt)·(1 + ωₙt)` falls under one part in a thousand, found the way
+    // `press-spring.test.ts`'s closed form is found for the underdamped case — except
+    // there is no closed form here, so it is bisected instead of solved.
+    let lo = 0;
+    let hi = 5;
+    for (let i = 0; i < 100; i += 1) {
+      const mid = (lo + hi) / 2;
+      const excess = Math.exp(-naturalFrequency * mid) * (1 + naturalFrequency * mid);
+      if (excess > SETTLED) lo = mid;
+      else hi = mid;
+    }
+    const settleMs = Math.ceil(((lo + hi) / 2) * 1000);
+
+    const STOPS = 33;
+    const stops = GLOBALS.match(/--spring-poster:\s*linear\(([^)]*)\)/)![1]
+      .split(",")
+      .map((stop) => Number(stop.trim()));
+
+    expect(stops).toHaveLength(STOPS);
+    stops.forEach((stop, index) => {
+      const expected =
+        index === STOPS - 1 ? 1 : travelled((index / (STOPS - 1)) * (settleMs / 1000));
+      expect(
+        Math.abs(stop - expected),
+        `stop ${index} is ${stop}, and smooth is at ${expected.toFixed(4)} there`,
+      ).toBeLessThanOrEqual(5e-4);
+    });
+
+    // Monotonic and never overshoots — the property `bounce: 0` names.
+    for (let i = 1; i < stops.length; i += 1) expect(stops[i]).toBeGreaterThanOrEqual(stops[i - 1]);
+    expect(Math.max(...stops)).toBe(1);
+    expect(stops[0]).toBe(0);
+    expect(stops[STOPS - 1]).toBe(1);
+  });
+
+  it("keeps the spring out of app/motion.ts, spelled once in the stylesheet", () => {
+    // The same rule `tests/press-spring.test.ts` holds for `snappy`: a copy of a sampled
+    // curve in TypeScript is the drift this file exists to prevent, arriving from the
+    // other direction. `app/motion.ts`'s prose is allowed to say `linear()` — it is
+    // describing what CSS does with `smooth` — so comments are blanked before the check.
+    const motionCode = readFileSync("app/motion.ts", "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    expect(motionCode).not.toMatch(/linear\(|cubic-bezier/);
+
+    // And `smooth` itself is untouched — no spring value in the motion module changes.
+    expect(smooth).toEqual({ type: "spring", duration: 0.3, bounce: 0 });
   });
 });
 

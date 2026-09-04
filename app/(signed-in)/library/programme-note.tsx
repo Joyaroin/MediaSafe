@@ -221,7 +221,9 @@ function Loading({
 }) {
   return (
     <div className="px-6 py-5">
-      <ViewTransition key={transitionName} name={transitionName}>
+      {/* `default` assigns `view-transition-class` to the underlying node (issue #338),
+          which is what scopes `app/globals.css`'s sampled-spring rule to posters. */}
+      <ViewTransition key={transitionName} name={transitionName} default="poster">
         {/* Always the pane's one poster, already known selected before this even mounts
             (`useLibrarySelection`'s own `selectedPosterPath`) — the two-pane surface this
             ticket's own wording names as already knowing its poster is visible. */}

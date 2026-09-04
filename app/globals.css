@@ -490,6 +490,40 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* ── The poster morph's spring — issue #338 ──────────────────────
+     `app/motion.ts`'s `smooth` — the module's one *non-bouncing*
+     spring, `duration: 0.3, bounce: 0` — transcribed into a `linear()`
+     curve the way `--spring-press` (#270) transcribed `snappy`: the
+     closed form for a damped oscillator's step response, sampled at
+     33 even intervals. `bounce: 0` is `dampingFraction` `1.00` —
+     critically damped, so the response never overshoots and the
+     underdamped formula's `ω_d` collapses to its limit at `ζ = 1`:
+
+       ωₙ = 2π / response                 the undamped natural frequency
+       x(t) = 1 − e^(−ωₙt) · (1 + ωₙt)    the step response at ζ = 1
+
+     `x` is the fraction of the distance travelled at `t`, which is
+     exactly what an easing function returns — sampled here the same
+     way `--spring-press` was, over the settle time where the curve
+     falls under one part in a thousand from its target (≈441ms for
+     this spring). `tests/nav-transitions.test.ts` recomputes every
+     sample from `smooth`, imported rather than copied, so the CSS
+     arrival and a Motion-driven one cannot drift into two curves that
+     merely resemble each other.
+
+     Unlike the press, this is a full-range animation — the poster
+     travels the whole distance between two real layouts — so the
+     objection that sent `--spring-press` back out of a transition's
+     easing does not apply here: that was a curve scaling a 3% delta
+     down to a hundredth of a pixel of visible effect, and a poster
+     crossing the screen has no such collapse. */
+  --spring-poster: linear(
+    0, 0.0344, 0.1145, 0.2151, 0.3209, 0.423, 0.5166, 0.5995, 0.6712, 0.7322, 0.7832,
+    0.8255, 0.8602, 0.8885, 0.9114, 0.9298, 0.9445, 0.9563, 0.9657, 0.9731, 0.9789,
+    0.9835, 0.9872, 0.99, 0.9922, 0.994, 0.9953, 0.9964, 0.9972, 0.9978, 0.9983, 0.9987,
+    1
+  );
+
   /* ── The press's timing — issues #270 and #281 ──────────────────
      **#270 put a spring in this slot and #281 took it out again**,
      and the reversal is worth keeping because the mistake is easy to
@@ -536,7 +570,10 @@
 
      `--ease-press` is NOT the press, despite reading like it. It is
      the arrival curve #88 cut for the watch strike and the name has
-     been wrong since; it times view transitions and the sweep. */
+     been wrong since; it times the root's own fade-and-rise and the
+     sweep. **It no longer times the poster morph** — issue #338 gives
+     the morph its own sampled spring, `--spring-poster` above, rather
+     than reusing this hand-picked one. */
   --dur-fast: 140ms; /* immediate feedback, and every exit          */
   --dur-quick: 190ms; /* a screen arriving — the one nav motion     */
   --dur-base: 220ms; /* routine state change                        */
@@ -1729,25 +1766,39 @@
    it was the one moment nobody had timed.
 
    `::view-transition-group` is what moves and resizes the shared poster, so it gets the
-   long confident arrival: `--dur-slow` on `--ease-press`, an exponential ease-out that
-   covers most of the distance immediately and then settles. That asymmetry is what makes
-   a morph read as a thing with mass being carried rather than a box being tweened.
+   long confident arrival. Until issue #338 that was `--ease-press` — a hand-picked
+   exponential ease-out standing in for "a thing with mass being carried". It is now
+   `--spring-poster` (declared above, beside `--ease-press`): `app/motion.ts`'s `smooth`,
+   the motion module's one non-bouncing spring, sampled into a `linear()` curve. The CSS
+   arrival and a Motion-driven one are now literally the same curve, not two that merely
+   resemble each other — `--ease-press` was never the spring, only a stand-in for its
+   shape.
 
    The root cross-fade underneath it is deliberately *shorter* than the morph. The poster
    is the subject and should be the last thing to settle; the page it is travelling over
    has no business competing for that attention, and a full-length fade on the whole
    document is what makes a view transition feel like a slideshow.
 
-   `--ease-press` is unchanged from the value #88 chose for the watch strike. Reusing it
-   rather than picking a second curve is deliberate: one arrival curve across the app is
-   what makes two unrelated surfaces feel like the same hand made them. */
-::view-transition-group(*) {
+   ── Scoped to posters, not to every group — issue #338 ────────────────────────────
+   `::view-transition-group(*)` used to mean exactly that: *every* named group, including
+   `root`, `phone-masthead` and `phone-tab-bar`. The chrome pair only escaped it because a
+   later, more specific rule zeroed their `animation` back out — the failure mode this
+   ticket names outright, applying a curve everywhere and clawing back the two places it
+   was wrong. `*.poster` is the fix: the selector matches by `view-transition-class`
+   (Chrome's `view-transition-class` addition), which every poster call site sets to
+   `poster` and nothing else does — `title-hero.tsx`, `selectable-entry.tsx`,
+   `pending-poster.tsx`, `programme-note.tsx` and `up-next-episode-row.tsx`. The masthead
+   and tab-bar groups carry no class at all, so they were never in this rule's scope to
+   begin with, and `root`'s own group — which never visibly resizes — no longer picks up
+   a spring it has no use for either. */
+::view-transition-group(*.poster) {
   /* Was `--dur-slow`. With the page settling in `--dur-quick`, a 380ms morph left the
      poster still travelling long after the screen it landed on had finished — the
      "unfinished transition" this file warned about, reintroduced from the other side.
-     `--dur-quick` on both keeps the subject and its ground on one clock. */
+     `--dur-quick` on both keeps the subject and its ground on one clock. Unchanged by
+     #338: only the shape of the curve moved, not its length. */
   animation-duration: var(--dur-quick);
-  animation-timing-function: var(--ease-press);
+  animation-timing-function: var(--spring-poster);
 }
 
 ::view-transition-old(root) {
