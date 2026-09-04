@@ -163,7 +163,7 @@ function FilePicker({ onChoose }: { onChoose: (files: FileList | null) => void }
         again finishes it, because nothing already written is touched twice.
       </p>
 
-      <label className="code-line mt-8 inline-block cursor-pointer bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-200 hover:brightness-90">
+      <label className="code-line mt-8 inline-block cursor-pointer bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-90">
         Choose your file
         <input
           type="file"

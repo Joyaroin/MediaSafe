@@ -45,7 +45,7 @@ export function YouTitleTile({
         posterPath={entry.posterPath}
         name={entry.titleName}
         width={TILE_WIDTH}
-        className="w-full transition duration-150 group-hover:brightness-110"
+        className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110"
         aboveFold={aboveFold}
       />
 

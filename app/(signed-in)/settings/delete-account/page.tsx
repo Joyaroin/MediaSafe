@@ -112,7 +112,7 @@ export default async function DeleteAccountPage() {
             href="https://myaccount.google.com/permissions"
             target="_blank"
             rel="noreferrer"
-            className="text-text underline decoration-hair underline-offset-4 transition-colors duration-150 hover:decoration-accent"
+            className="text-text underline decoration-hair underline-offset-4 transition-colors duration-[var(--dur-fast)] hover:decoration-accent"
           >
             Your Google connected apps ›
           </a>

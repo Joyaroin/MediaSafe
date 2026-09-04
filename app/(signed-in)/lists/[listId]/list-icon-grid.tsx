@@ -89,7 +89,7 @@ function IconCell({
             posterPath={title.posterPath}
             name={title.name}
             width={POSTER_WIDTH}
-            className="w-full transition duration-150 group-hover:brightness-110 [--poster-radius:var(--radius-4)]"
+            className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-4)]"
             aboveFold={aboveFold}
           >
             {/* The same bar the bill draws, on the same edge of the same poster — a list

@@ -96,7 +96,7 @@ function Rail({ rail }: { rail: Recommendations }) {
                 posterPath={result.posterPath}
                 name={result.name}
                 width={124}
-                className="w-full transition duration-150 group-hover:brightness-110 [--poster-radius:var(--radius-5)]"
+                className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-5)]"
                 // The first two are on screen without scrolling at every width this rail
                 // is drawn at; the rest arrive as the track is swiped.
                 aboveFold={index < 2}
