@@ -84,12 +84,37 @@ import { ViewTransition } from "react";
  * The default stays `"none"` rather than becoming a name, because a name here would be a
  * class nothing selects — one motion needs no vocabulary at all.
  */
-const NAV_DIRECTIONS = { default: "none" } as const;
+/**
+ * ── Why this is a class and not `"none"` ────────────────────────────────────────────
+ *
+ * This mapped `{ default: "none" }` onto `enter`, `exit` and `default`, and React's own
+ * types say what that does: `"none"` *"deactivates the view transition name under that
+ * condition"*. Three instructions to switch the name off, on every navigation.
+ *
+ * The cost was invisible because the stylesheet appeared to cover it. `globals.css` drew
+ * `::view-transition-old(root)` and `::view-transition-new(root)`, and the leaving fade
+ * did run — so navigation looked animated. It was half animated. **React sets
+ * `view-transition-name: none` on `<html>` for the length of the transition**, so the
+ * *old* snapshot is captured while the root is still named and the *new* one is not: the
+ * `::view-transition-new(root)` pseudo-element is never created, and `nav-rise` and the
+ * arriving half of `nav-fade` had never run at all. Measured in Chromium 151 by sampling
+ * `document.getAnimations()` either side of `transition.ready`; issue #339 carries the
+ * numbers and the three alternatives that were ruled out.
+ *
+ * `name` is left at its default `"auto"`, so React names the node itself. What this
+ * supplies is the `view-transition-class` those names can be selected through — the same
+ * mechanism the poster morph already runs on (`::view-transition-group(*.poster)`, issue
+ * #338), rather than a second one invented here.
+ *
+ * **This is not the four-type vocabulary coming back.** There is one class, it is on
+ * every navigation, and it carries exactly the motion the stylesheet has been declaring
+ * all along. `DESIGN.md` §7's reversal was about *differentiating* navigations from one
+ * another; this differentiates nothing.
+ */
+const NAV_CLASS = "nav";
 
 export function NavTransition({ children }: { children: React.ReactNode }) {
   return (
-    <ViewTransition enter={NAV_DIRECTIONS} exit={NAV_DIRECTIONS} default="none">
-      {children}
-    </ViewTransition>
+    <ViewTransition default={NAV_CLASS}>{children}</ViewTransition>
   );
 }

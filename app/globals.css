@@ -1853,14 +1853,45 @@
   animation-timing-function: var(--spring-poster);
 }
 
+/* ── Selected through React's class, not through `root` ──────────────────────────────
+   These two rules said `(root)` until the arriving half was measured and found never to
+   have run. `nav-transition.tsx` has the full account; the short version is that React's
+   `<ViewTransition>` sets `view-transition-name: none` on `<html>` while the transition
+   is in flight, so `::view-transition-new(root)` is never created. The leaving rule
+   worked only because the old snapshot is taken before that happens — which made the
+   navigation look animated while `nav-rise` and the arriving `nav-fade` were dead code.
+
+   `*.nav` selects by `view-transition-class`, which is what React's `default` prop
+   assigns, against the name React mints itself. It is the same selector shape the poster
+   morph uses (`::view-transition-group(*.poster)` above), so there is one way to reach a
+   React-named transition in this file rather than two.
+
+   The motion is unchanged: the same two keyframes, the same tokens, the same asymmetry
+   of a quick exit against a slower arrival. Only the selector moved. */
+/* **The leaving half stays on `root`, and that is not an oversight.** React still takes an
+   *old* snapshot of the root — it is unnamed only in time to lose the *new* one — so this
+   rule has always worked and still does. It also fires as soon as the press is handled,
+   before React has the destination tree, which is the property
+   `navigation-motion.spec.ts` guards: *the motion begins against the press, not hundreds
+   of milliseconds later*. Moving it onto `*.nav` measured 277ms on a cold navigation
+   against that spec's 250ms ceiling, because React's own transition cannot start until the
+   arriving tree is ready. The leaving screen has nothing to wait for, so it does not. */
 ::view-transition-old(root) {
   animation: var(--dur-fast) var(--ease-out-quart) both nav-fade reverse;
 }
 
-::view-transition-new(root) {
+::view-transition-new(*.nav) {
   animation:
     var(--dur-quick) var(--ease-out-quart) both nav-fade,
     var(--dur-quick) var(--ease-out-quart) both nav-rise;
+}
+
+/* One exit, not two. React's own outgoing snapshot picks up the browser's default
+   `-ua-view-transition-fade-out`, which lands on top of the `root` rule above — the same
+   pixels fading twice, over two different durations. The leaving screen is `root`'s to
+   draw, so this stands its double down. */
+::view-transition-old(*.nav) {
+  animation: none;
 }
 
 /* ── Arriving ───────────────────────────────────────────────────────────────────────
