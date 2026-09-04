@@ -913,6 +913,199 @@
   }
 }
 
+/* ── Surfaces that mount and may unmount fast — issue #333 ───────────────────────────
+   `app/motion.ts`'s own dividing line: what a finger can interrupt gets a transition,
+   what it cannot gets a keyframe. `rise-in` above is the keyframe answer — declarative,
+   uncatchable, right for a grid nobody's finger is inside. These four surfaces are the
+   opposite case: a reader's own press (Escape, the backdrop, Cancel, Dismiss, Done) can
+   end any one of them before its own entrance has finished, and a running `animation`
+   cannot be redirected mid-flight any more than the grid's stagger could be.
+
+   `@starting-style` with `transition-behavior: allow-discrete` is CSS's own answer for
+   animating a *discrete* property — `display`, a `<dialog>`'s `overlay` — across the
+   instant it flips, which is what turns a jump straight to `none` into a visible exit.
+   Grids and rails are deliberately untouched: `stagger-rise`'s own reason above still
+   holds for them, unwidened. */
+
+/* The three confirmation dialogs — `mark-up-to-dialog.tsx`, `delete-list-dialog.tsx`,
+   `watch-menu.tsx` — and their `::backdrop`s. A native `<dialog>` already toggles
+   `display` through its own `open` attribute rather than through React unmounting it, so
+   this is pure CSS and costs no JavaScript: `.close()` (Cancel, Escape, the backdrop,
+   `formMethod="dialog"`) no longer drops the box in the same frame it is called in — the
+   browser defers the fall to `display: none` until the transition below finishes, which
+   is the platform doing the whole of what this ticket asks for. */
+@utility dialog-transition {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart),
+    overlay var(--dur-fast) var(--ease-out-quart) allow-discrete,
+    display var(--dur-fast) var(--ease-out-quart) allow-discrete;
+}
+
+/* The open state carries its own, slower transition — read on the *new* style at the
+   moment the attribute is added, exactly as `nav-transitions.test.ts` already holds the
+   view-transition root pair to: arriving is where the character lives, leaving is where
+   impatience does. `--ease-press` is the same confident arrival curve `arrive`/`rise-in`
+   already draw everywhere else, so a dialog settling and a row settling read as one hand. */
+.dialog-transition[open] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press),
+    overlay var(--dur-slow) var(--ease-press) allow-discrete,
+    display var(--dur-slow) var(--ease-press) allow-discrete;
+}
+
+@starting-style {
+  .dialog-transition[open] {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.dialog-transition::backdrop {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out-quart) allow-discrete;
+}
+
+.dialog-transition[open]::backdrop {
+  opacity: 1;
+  transition: opacity var(--dur-slow) var(--ease-press) allow-discrete;
+}
+
+@starting-style {
+  .dialog-transition[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* The offline banner (`errors/offline-banner.tsx`). Unlike the dialogs this is a plain
+   `div` with no native open state, so the component supplies the boolean the CSS toggles
+   on — `data-open="true"`, present exactly while `connectivity.get()` is not `"online"`,
+   the same `data-landed="true"` shape `programme-note-episodes.tsx` and
+   `selectable-entry.tsx` already write a boolean attribute in. The banner is mounted for
+   the life of the page rather than only while offline, precisely so the box the browser
+   needs to keep animating is still there for the transition to run against — the same
+   reason the dialogs above stay mounted and only their `open` attribute moves. */
+@utility offline-banner-transition {
+  display: none;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart),
+    display var(--dur-fast) var(--ease-out-quart) allow-discrete;
+}
+
+.offline-banner-transition[data-open="true"] {
+  display: block;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press),
+    display var(--dur-slow) var(--ease-press) allow-discrete;
+}
+
+@starting-style {
+  .offline-banner-transition[data-open="true"] {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* The selection action bar (`selection-action-bar.tsx`). Same reasoning and the same
+   `data-open="true"` mechanism as the banner above: present exactly while `selecting` is
+   true, so *Done*, the last cell being deselected, and a landed add all take the bar down
+   visibly instead of swapping the tab bar back in on the same frame. */
+@utility selection-action-bar-transition {
+  display: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart),
+    display var(--dur-fast) var(--ease-out-quart) allow-discrete;
+}
+
+.selection-action-bar-transition[data-open="true"] {
+  display: flex;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press),
+    display var(--dur-slow) var(--ease-press) allow-discrete;
+}
+
+@starting-style {
+  .selection-action-bar-transition[data-open="true"] {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* The write-failure toast (`errors/write-failure-toast.tsx`). Each toast is its own DOM
+   node, raised and resolved or dismissed independently, so there is no single boolean to
+   gate `display` on the way the banner and the action bar do — the mechanism here is
+   `data-leaving="true"` rather than `data-open`, held by the component for exactly as
+   long as this transition takes. `raise()`/`resolve()`/`dismiss()` still fire the instant
+   they are called; only the DOM node's own removal waits on the transition below, which
+   is `errors/write-failure-toast.tsx`'s own docblock to explain, not this file's. No
+   `display` toggle and no `allow-discrete` here — the node is genuinely removed rather
+   than hidden in place, so opacity and transform are the whole of it. */
+@utility write-failure-toast-transition {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press);
+}
+
+@starting-style {
+  .write-failure-toast-transition {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.write-failure-toast-transition[data-leaving="true"] {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
+/* The event still happens under reduced motion — a dialog still opens and closes, the
+   banner and the action bar still appear and disappear, a toast still arrives and
+   leaves — only the travel drops, the same rule `rise-in`'s own reduced-motion block
+   states above. */
+@media (prefers-reduced-motion: reduce) {
+  .dialog-transition,
+  .dialog-transition[open],
+  .offline-banner-transition,
+  .offline-banner-transition[data-open="true"],
+  .selection-action-bar-transition,
+  .selection-action-bar-transition[data-open="true"],
+  .write-failure-toast-transition,
+  .write-failure-toast-transition[data-leaving="true"] {
+    transform: none;
+  }
+
+  @starting-style {
+    .dialog-transition[open],
+    .offline-banner-transition[data-open="true"],
+    .selection-action-bar-transition[data-open="true"],
+    .write-failure-toast-transition {
+      transform: none;
+    }
+  }
+}
+
 /* The poster (#135) — what replaces the plate. Full-colour TMDB artwork at its own
    `2/3` ratio, uncropped: no grayscale, no ground ink standing in for missing artwork's
    colour, no half-tone screen. `app/poster.tsx`'s own docblock has the rest — one

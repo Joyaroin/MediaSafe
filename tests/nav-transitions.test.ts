@@ -420,6 +420,127 @@ describe("both detail routes leave by that bar", () => {
  * re-press is exactly `isCurrentRoute`'s own "current" — asserted here in the tab's own
  * words rather than through the routing rule's.
  */
+/**
+ * ── The six surfaces that mount and may unmount fast — issue #333 ────────────────────
+ *
+ * `app/motion.ts`'s dividing line: what a finger can interrupt gets a transition, what it
+ * cannot gets a keyframe. These six can all be cut short mid-arrival by the reader's own
+ * press (Escape, the backdrop, Cancel, Dismiss, Done), so they get `@starting-style` with
+ * `transition-behavior: allow-discrete` in `app/globals.css` instead of `rise-in`, the
+ * keyframe every other surface keeps.
+ */
+const MARK_UP_TO_DIALOG = readFileSync(
+  "app/(signed-in)/library/mark-up-to-dialog.tsx",
+  "utf8",
+);
+const DELETE_LIST_DIALOG = readFileSync("app/(signed-in)/lists/delete-list-dialog.tsx", "utf8");
+const WATCH_MENU = readFileSync("app/(signed-in)/library/watch-menu.tsx", "utf8");
+const OFFLINE_BANNER = readFileSync("errors/offline-banner.tsx", "utf8");
+const WRITE_FAILURE_TOAST = readFileSync("errors/write-failure-toast.tsx", "utf8");
+const WRITE_FAILURE_STORE = readFileSync("errors/write-failure.ts", "utf8");
+const SELECTION_ACTION_BAR = readFileSync(
+  "app/(signed-in)/library/selection-action-bar.tsx",
+  "utf8",
+);
+
+const SIX_SURFACES = [
+  ["mark-up-to-dialog.tsx", MARK_UP_TO_DIALOG, "dialog-transition"],
+  ["delete-list-dialog.tsx", DELETE_LIST_DIALOG, "dialog-transition"],
+  ["watch-menu.tsx", WATCH_MENU, "dialog-transition"],
+  ["offline-banner.tsx", OFFLINE_BANNER, "offline-banner-transition"],
+  ["write-failure-toast.tsx", WRITE_FAILURE_TOAST, "write-failure-toast-transition"],
+  ["selection-action-bar.tsx", SELECTION_ACTION_BAR, "selection-action-bar-transition"],
+] as const;
+
+const TRANSITION_UTILITIES = [
+  "dialog-transition",
+  "offline-banner-transition",
+  "selection-action-bar-transition",
+  "write-failure-toast-transition",
+] as const;
+
+describe("the six fast-mounting surfaces get a transition, not the arrival keyframe", () => {
+  it("wires each surface to its own transition utility", () => {
+    for (const [label, source, utility] of SIX_SURFACES) {
+      expect(source, label).toContain(utility);
+    }
+  });
+
+  it("draws none of the six with rise-in, stagger-rise or the arrive keyframe utilities", () => {
+    for (const [label, source] of SIX_SURFACES) {
+      expect(source, label).not.toMatch(/\brise-in\b/);
+      expect(source, label).not.toMatch(/\bstagger-rise\b/);
+      expect(source, label).not.toMatch(/(^|[^-])\barrive(-panel)?\b/);
+    }
+  });
+
+  it("declares every transition utility in app/globals.css, off the timing ramp", () => {
+    for (const utility of TRANSITION_UTILITIES) {
+      const declaration = GLOBALS.match(new RegExp(`@utility ${utility} \\{[\\s\\S]*?\\n\\}`));
+      expect(declaration, `@utility ${utility} not found`).not.toBeNull();
+      const body = declaration![0];
+      expect(body, utility).toContain("var(--dur-");
+      // Every raw millisecond/second value inside the utility's own block, once every
+      // `var(...)` reference is stripped out — the same check `duration-on-the-ramp.mjs`
+      // makes for class names and style objects, applied here to the one place this
+      // ticket writes CSS by hand instead of a class name.
+      expect(body.replace(/var\([^)]*\)/g, ""), utility).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+    }
+  });
+
+  it("gives each surface a starting style to transition in from", () => {
+    for (const utility of TRANSITION_UTILITIES) {
+      expect(GLOBALS, utility).toMatch(
+        new RegExp(`@starting-style\\s*\\{[\\s\\S]*?\\.${utility}`),
+      );
+    }
+  });
+
+  it("defers the discrete display and overlay swap with allow-discrete", () => {
+    // The dialogs and the banner/action-bar toggle `display` (natively via `open`, or via
+    // `data-open`) rather than being unmounted in place, so both need the property in the
+    // transition list with `allow-discrete` or the browser drops to `none` in one frame.
+    expect(GLOBALS).toMatch(/overlay var\(--dur-\w+\) var\(--ease-[\w-]+\) allow-discrete/);
+    expect(GLOBALS).toMatch(
+      /display var\(--dur-fast\) var\(--ease-out-quart\) allow-discrete/,
+    );
+    expect(GLOBALS).toMatch(/display var\(--dur-slow\) var\(--ease-press\) allow-discrete/);
+  });
+
+  it("leaves the write-failure toast with no timer anywhere near it", () => {
+    expect(WRITE_FAILURE_TOAST).not.toMatch(/setTimeout/);
+    expect(WRITE_FAILURE_STORE).not.toMatch(/setTimeout/);
+  });
+
+  it("keeps raise/resolve/dismiss/standing exactly as they were", () => {
+    expect(WRITE_FAILURE_STORE).toMatch(/raise\(lost\)/);
+    expect(WRITE_FAILURE_STORE).toContain("dismiss: remove,");
+    expect(WRITE_FAILURE_STORE).toContain("standing: () => raised.some(");
+  });
+
+  it("still shows and hides the offline banner and the action bar off existing state", () => {
+    // Neither component gained a new prop, state or handler for this — `data-open` reads
+    // off the same booleans (`connectivity`'s state, `selecting`) each already computed.
+    expect(OFFLINE_BANNER).toContain('data-open={state === "online" ? undefined : "true"}');
+    expect(SELECTION_ACTION_BAR).toContain('data-open={selecting ? "true" : undefined}');
+  });
+
+  it("drops travel under reduced motion but keeps every one of the six eventful", () => {
+    const reducedBlocks = GLOBALS.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}\n/g,
+    )!.join("\n");
+    for (const utility of TRANSITION_UTILITIES) {
+      expect(reducedBlocks, utility).toContain(utility);
+    }
+    expect(reducedBlocks).toMatch(/transform:\s*none/);
+  });
+
+  it("leaves the grid stagger a keyframe, untouched", () => {
+    expect(GLOBALS).toContain("@utility stagger-rise");
+    expect(GLOBALS).toMatch(/@utility stagger-rise \{[\s\S]*?animation: rise-in/);
+  });
+});
+
 describe("whether a press is a re-press of the tab already showing", () => {
   it("is a re-press when the reader is already exactly there", () => {
     expect(isTabRepress("/up-next", "/up-next")).toBe(true);

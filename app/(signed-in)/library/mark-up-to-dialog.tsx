@@ -100,7 +100,10 @@ export function MarkUpToDialog({
       ref={ref}
       onClose={onClosed}
       aria-labelledby="mark-up-to-h"
-      className="border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+      // `dialog-transition` (issue #333, `app/globals.css`): arrives and leaves on a
+      // transition rather than a keyframe, because Cancel or Escape can end this dialog
+      // before its own entrance has finished.
+      className="dialog-transition border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
     >
       <h2 id="mark-up-to-h" className="bill-title text-bill-sm text-text">
         Watched up to here?
