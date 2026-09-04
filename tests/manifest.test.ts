@@ -24,11 +24,13 @@ const CSS = readFileSync(join(ROOT, "app/globals.css"), "utf8");
 
 /** Reads a token's single declaration site — the palette test's own `declaredOnce`,
  *  reused here so the expected colours come from the stylesheet rather than from a
- *  second typed copy of the hex this file would then have to keep in sync by hand. */
+ *  second typed copy of the value this file would then have to keep in sync by hand.
+ *  Reads `oklch()` since issue #327, not hex — see `tests/palette.test.ts`'s own
+ *  `declaredOnce` for why. */
 function declaredOnce(name: string): string {
-  const all = [...CSS.matchAll(new RegExp(`^\\s*--${name}:\\s*(#[0-9a-f]{6});`, "gim"))];
+  const all = [...CSS.matchAll(new RegExp(`^\\s*--${name}:\\s*(oklch\\([^;]+?\\));`, "gim"))];
   expect(all, `--${name} must have exactly one declaration site`).toHaveLength(1);
-  return all[0][1].toLowerCase();
+  return all[0][1].trim();
 }
 
 describe("the web app manifest", () => {

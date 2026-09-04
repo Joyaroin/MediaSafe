@@ -156,6 +156,26 @@ Two things below are **not** superseded, and were checked rather than assumed:
 - **No shadows, and no second hairline weight.** The redesign removes lines; it does not
   replace them with elevation.
 
+### Amended a fourth time by the linen refit's OKLCH restatement
+
+Issue #327. The palette was sixteen hex values — seven from the handoff plus `--ink`, each
+mapped once for dark — and it is now sixteen `oklch()` values on one hue, with two of them
+genuinely repainted rather than merely restated.
+
+| Stated above | Now | Where |
+|---|---|---|
+| §2's palette is declared as hex, seven values from the handoff plus `--ink`, mapped once for dark | All sixteen values (both schemes of all eight tokens) are `oklch()` on hue 95°. Lightness is held at the shipped position for every token but `--dim`, so the page's tone is unchanged; chroma falls as lightness leaves `--ground`, so no hairline outchromas the sheet it divides. | `app/globals.css`, `DESIGN.md` §2 |
+| `--dim`'s hex (`#929086` light, `#8c8c8a` dark) is adopted from the handoff/#134 as given, a known-regression 2.93:1 on `--ground` | Repainted in both schemes, deliberately: light is the lightest value on the hue clearing 4.5:1 on `--raised`; dark is the darkest reaching the perceptual content-text floor, where WCAG 2 passed the old value while it sat under a floor a reader needs. Both land 20 L from `--text` — the rule to carry forward, not either raw lightness. | `app/globals.css` |
+| The dark accent is `#ffb020`, amber, unchanged since #134 | Moves onto the vermilion family — the light accent's own hue, at a higher lightness and lower chroma than the amber it replaces — so the app's one semantic colour stops changing hue between day and night. The value reaching the perceptual text floor on this ground has to drop chroma far enough to read as coral rather than brick, so the deeper, still-conformant value is taken and the brick character kept; the amber's higher contrast was never the reason it was chosen. | `app/globals.css` |
+| The palette test reads the stylesheet, the handoff and `DESIGN.md` §2 as hex, and asserts the handoff's seven values are the source of truth the stylesheet is checked against | Its parser reads `oklch()` and converts to sRGB for the contrast assertions. The handoff stays committed and byte-identical — it is not edited — but it is **no longer** what the stylesheet is checked against: `DESIGN.md` §2 is, and the test that used to assert agreement with the handoff now asserts the two have parted (`--dim`, at minimum) rather than silently stopping being true. | `tests/palette.test.ts` |
+| `frosted`'s `color-mix()` mixes `in srgb` | Mixes `in oklab`, because `srgb` interpolation walks the gamma-compressed channels of a space these tokens no longer live in and can visibly shift hue mid-mix; `oklab` is the space `oklch()` is a polar form of. Nothing new is declared to get this — the wash and the tinted track stay call-site expressions. | `app/globals.css` |
+| The status bar's colour module (`app/theme-color.ts`) hard-codes `--ground`/`--dark-ground` as hex | Hard-codes them as the same `oklch()` strings the stylesheet declares — still a literal, for the same static-markup reason, and still asserted equal to the stylesheet by `tests/manifest.test.ts` rather than left to drift. | `app/theme-color.ts` |
+
+Full derivation, the gamut check and the rejected alternatives are in the research note
+committed on the `docs/visual-refinement-research` branch, §2.2 — not yet on the default
+branch as of this writing, so it is named here rather than cited as a path; the summary
+above is everything a reader of this file needs.
+
 ---
 
 ## 1. The prototype is now historical reference
@@ -177,34 +197,76 @@ which recorded the world before it.
 
 ## 2. The palette
 
-Seven colour tokens, declared once as plain custom properties on `:root`, with a single
-`prefers-color-scheme: dark` override. `@theme` then points Tailwind's generated utilities
-at those properties rather than at fixed hex — that indirection is the whole mechanism, and
-it is what lets one declared token resolve differently per system setting with **no theme
-class, no second copy of the palette and no picker.**
+Eight colour tokens, declared once as plain custom properties on `:root`, with a single
+`prefers-color-scheme: dark` override — sixteen values in total, since every token carries a
+light one and a dark one. `@theme` then points Tailwind's generated utilities at those
+properties rather than at fixed colours — that indirection is the whole mechanism, and it is
+what lets one declared token resolve differently per system setting with **no theme class,
+no second copy of the palette and no picker.**
+
+**Declared as `oklch()`, on one hue, since issue #327.** All sixteen values sit on hue 95° —
+the linen's own hue — because a hex triplet hides exactly what an OKLCH value states plainly:
+whether a hue has drifted, whether a divider has picked up more chroma than the sheet it
+divides, and where a value sits on the lightness axis relative to its neighbours. Lightness
+is held at the shipped position for every token but `--dim`; chroma falls as lightness leaves
+the ground, so no hairline is ever more chromatic than the sheet it divides. The full
+derivation and the gamut check are in the research note committed on the
+`docs/visual-refinement-research` branch, §2.2; the summary is in §0's fourth amendment,
+below.
 
 | Token | Utility | Light — the desktop in daylight | Dark — the phone at 11pm |
 |---|---|---|---|
-| `--ground` | `bg-ground` | `#f7f5ed` | `#0a0a0b` |
-| `--raised` | `bg-raised` | `#eeede6` | `#17171a` |
-| `--hair` | `border-hair` | `#d7d4c8` | `#242429` |
-| `--text` | `text-text` | `#34342f` | `#f4f4f2` |
-| `--dim` | `text-dim` | `#929086` | `#8c8c8a` |
-| `--accent` | `text-accent` | `#a52518` | `#ffb020` |
-| `--accent-ink` | `text-accent-ink` | `#f7f5ed` | `#0a0a0b` |
+| `--ground` | `bg-ground` | `oklch(96.9% 0.012 95)` | `oklch(13.9% 0.004 95)` |
+| `--raised` | `bg-raised` | `oklch(94.5% 0.012 95)` | `oklch(20.5% 0.005 95)` |
+| `--hair` | `border-hair` | `oklch(86.9% 0.012 95)` | `oklch(26.5% 0.006 95)` |
+| `--dim` | `text-dim` | `oklch(52.8% 0.010 95)` | `oklch(76.5% 0.008 95)` |
+| `--text` | `text-text` | `oklch(32.3% 0.008 95)` | `oklch(96.3% 0.006 95)` |
+| `--ink` | `text-ink` | `oklch(23.8% 0.006 95)` | = `--text` |
+| `--accent` | `text-accent` | `oklch(47.4% 0.166 30)` | `oklch(75% 0.153 35)` |
+| `--accent-ink` | `text-accent-ink` | = `--ground` | = `--ground` |
 
-Light is the handoff's table, adopted whole in issue #255. Dark is unchanged from #134: the
-handoff says dark is out of scope, which does not survive the primary type colour changing
-meaning, but what it needed was **re-checking on both paths**, not new values.
+Light is the handoff's table (issue #255), restated in `oklch()` rather than approximated by
+it — every light value but `--dim` renders within a rounding error of the hex it replaces.
+**`--dim` is the one value whose lightness moves, in both schemes, and it is the fix this
+ticket exists for**: the handoff's own number was 2.93:1 on `--ground` and 2.73:1 on
+`--raised`, under WCAG 2.2's 4.5:1 floor for normal text on both, and `--dim` carries the
+metadata line at 12–13px. Light is now the lightest value on the hue that clears 4.5:1 on
+`--raised`, the harder of the two grounds. Dark is now the darkest value on the hue that
+reaches the perceptual content-text floor, because WCAG 2 has nothing useful to say near
+black and passed the old value while it sat under a floor a reader actually needs. **Both
+land 20 L from `--text`** — derived independently from two different standards — and that
+relationship, not either raw lightness, is the rule the next re-tint should hold.
 
-**An eighth token, derived rather than given.** `--ink` (`text-ink`) is the heading step —
-headings, title names and filled-field text — and it is the only colour here the handoff does
-not supply. It is `#1f1f1b` in light, one step below `--text`, and `#f4f4f2` in dark, equal to
-it. `app/globals.css` carries the derivation and the reason dark cannot take a darker step.
+**The dark accent moves onto the vermilion family, off amber**, so the app's one semantic
+colour stops changing hue at sunset. The value that clears the perceptual text floor on this
+ground has to drop chroma far enough to read as coral rather than brick, so the slightly
+deeper, still-conformant value is taken instead and the brick character is kept — the amber's
+higher contrast was never the reason it was chosen.
+
+Dark was otherwise unchanged from #134 until this restatement: the handoff said dark was out
+of scope, which did not survive the primary type colour changing meaning, but what it needed
+then was re-checking on both paths, not new values. This ticket is the first change to touch
+the dark values themselves, and it touches exactly two things — the hue restatement every
+token gets, and `--dim`/`--accent`'s deliberate moves.
+
+**`--ink` (`text-ink`) is the heading step** — headings, title names and filled-field text —
+and it is the only colour here the handoff does not supply. It sits one step below `--text`
+in light, and equal to it in dark. `app/globals.css` carries the derivation and the reason
+dark cannot take a darker step.
 
 **Three names the handoff proposes and this repository does not declare.** Its `--well` is
 `--raised`, its `--rule-soft` is `--hair`, and its `--body` is `--text`. Reach for the existing
-token; there is no `bg-well`, `border-rule-soft` or `text-body`.
+token; there is no `bg-well`, `border-rule-soft` or `text-body`. Unchanged by the OKLCH
+restatement: the argument against declaring three more values to map twice for dark applies
+exactly as before.
+
+**Derived states mix `in oklab`, never `in srgb`.** `color-mix()` interpolating in `srgb`
+walks the gamma-compressed channels of a colour space these tokens no longer live in, which
+can visibly shift hue partway through a mix; `oklab` is the perceptually uniform space
+`oklch()` is a polar form of, so a mix between two of these tokens stays on their shared hue
+throughout. Nothing new is declared to get this — the wash and the tinted track stay call-site
+expressions, on the same argument this file already makes against adding tokens nothing else
+needs.
 
 ### The system setting decides unless the reader has answered otherwise
 

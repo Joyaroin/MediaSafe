@@ -11,9 +11,16 @@
  * *and* `app/globals.css`'s own declarations and asserts they agree, in the palette
  * test's own manner (`tests/palette.test.ts`'s `declaredOnce`) — so a repaint of the
  * ground step fails this file's test rather than leaving the status bar behind.
+ *
+ * **`oklch()` strings since issue #327, not hex.** This is still the one copy of a palette
+ * value outside the stylesheet — the constraint that keeps it a hard-coded literal rather
+ * than a `var()` is unchanged — but a literal copied from `--ground` now has to be copied
+ * whole, format included, or the equality check above stops meaning anything. A browser
+ * that accepts `oklch()` in a stylesheet accepts it in `theme-color` and a manifest's
+ * `theme_color` on the same terms — both are "a CSS `<color>`", not "a hex triplet".
  */
-export const LIGHT_THEME_COLOR = "#f7f5ed";
-export const DARK_THEME_COLOR = "#0a0a0b";
+export const LIGHT_THEME_COLOR = "oklch(96.9% 0.012 95)";
+export const DARK_THEME_COLOR = "oklch(13.9% 0.004 95)";
 
 /**
  * The pair `Viewport["themeColor"]` wants — `app/layout.tsx` exports this directly rather
