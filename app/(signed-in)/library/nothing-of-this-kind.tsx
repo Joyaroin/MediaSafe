@@ -13,7 +13,7 @@ import type { KindMode } from "./kind-mode";
  *
  * | State | Means | Owner |
  * | --- | --- | --- |
- * | The bill is blank | Nothing stored at all | `empty-library.tsx`, from `page.tsx` |
+ * | Your library is empty | Nothing stored at all | `empty-library.tsx`, from `page.tsx` |
  * | **Nothing of this kind** | Titles, but none in this mode | **this file** |
  * | Nothing under that filter | A chip or a search narrowed to nothing | `ZeroMatches` |
  * | A read failed | The database did not answer | `errors/read-failure.tsx` |

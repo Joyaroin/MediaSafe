@@ -138,7 +138,9 @@ describe("where it sits on a list", () => {
   });
 
   const iconGrid = (overrides: Partial<ListDetailTitleRow> = {}) =>
-    renderToStaticMarkup(createElement(ListIconGrid, { titles: [listTitle(overrides)] }));
+    renderToStaticMarkup(
+      createElement(ListIconGrid, { titles: [listTitle(overrides)], onTakeOff: () => {} }),
+    );
 
   const row = (overrides: Partial<ListDetailTitleRow> = {}) =>
     renderToStaticMarkup(

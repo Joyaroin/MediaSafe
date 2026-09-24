@@ -54,6 +54,12 @@ export interface ActionOffer {
    * unwatched episodes before it. Absent on every other toast.
    */
   readonly also?: { readonly label: string; readonly run: () => void };
+  /**
+   * The one sentence the toast says about the write — *Watched.* unless the write that
+   * raised it says otherwise (issue #357's *Taken off a list.*). A plain sentence, never an
+   * exception's text: the error discipline's rule for every user-facing string.
+   */
+  readonly message?: string;
 }
 
 export interface RaisedAction extends ActionOffer {

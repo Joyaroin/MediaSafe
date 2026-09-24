@@ -236,8 +236,8 @@ describe("a pending library is not an empty one and not a failed one", () => {
 
   /** The empty state's headline, prose and button are three things pending does not have. */
   it("makes no assertion and offers no action", () => {
-    expect(empty).toContain("The bill is blank");
-    expect(pending).not.toContain("The bill is blank");
+    expect(empty).toContain("Your library is empty");
+    expect(pending).not.toContain("Your library is empty");
     expect(pending).not.toContain("<a");
   });
 
@@ -260,7 +260,7 @@ describe("a pending library is not an empty one and not a failed one", () => {
    * page.
    */
   it("paints the library's own heading immediately", () => {
-    expect(pending).toContain("The library");
+    expect(pending).toContain(">Library<");
     expect(pending).toContain('id="library-heading"');
   });
 });
@@ -351,7 +351,7 @@ describe("the routes below a title say which page is reading", () => {
   const remove = markupOf(createElement(RemoveTitleLoading));
 
   it("does not print the library's heading over a title", () => {
-    expect(detail).not.toContain("The library");
+    expect(detail).not.toContain(">Library<");
     // The back bar, which since #292 names the surface the reader arrived from rather
     // than the library. This render has no previous pathname — nothing has navigated —
     // so what it draws is the stated fallback, and the property held here is unchanged:

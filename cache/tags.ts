@@ -12,12 +12,10 @@ import {
   listUpcomingFilms,
   listUpNextRails,
   listWatchlistFilms,
-  listYouListCards,
   listYouRails,
   type AccountFigures,
   type LibraryEntryRow,
   type LibraryStateGroupEntry,
-  type ListCard,
   type ListDetailRow,
   type ListSummary,
   type TitleDetailRow,
@@ -303,7 +301,6 @@ export const CACHED_READS = {
    * `list_membership` and `title.poster_path` are stored columns, and nothing here joins
    * a derived view or compares an `air_date`.
    */
-  listYouListCards: { cachedAs: "lists", readsCurrentDate: false },
   /**
    * Issue #248's shows and films rails on `/you`. Shares `up-next` with `listUpNextRails`
    * and `listWatchlistFilms`: all three are `library_entry_state`, filtered to different
@@ -734,19 +731,6 @@ export function cachedAccountFigures(userId: UserId): Promise<AccountFigures> {
 }
 
 /**
- * You's lists rail — issue #248. One entry per account, no second argument: `/you` reads
- * every list's card in one visit, the same shape `cachedLists` already takes for the
- * unfiltered destination.
- */
-export function cachedYouListCards(userId: UserId): Promise<readonly ListCard[]> {
-  const read = unstable_cache(listYouListCards, ["listYouListCards", userId], {
-    tags: [tagFor("lists", userId)],
-  });
-
-  return read(userId);
-}
-
-/**
  * You's shows and films rails — issue #248. `cachedUpNextRails`'s own shape: the day is in
  * the key because the query it wraps reads `current_date` through `library_entry_state`.
  */
@@ -866,6 +850,8 @@ export const INVALIDATES = {
   addTitleToList: ["lists"],
   addTitlesToList: ["lists"],
   reorderListMembership: ["lists"],
+  removeTitleFromList: ["lists"],
+  renameList: ["lists"],
 } as const satisfies Record<string, readonly CachedRead[]>;
 
 /** A write in `db/access.ts`, named by the function that performs it. */

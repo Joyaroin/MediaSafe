@@ -75,7 +75,6 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     getListDetail: vi.fn(),
     getTitleDetail: vi.fn(),
     accountFigures: vi.fn(),
-    listYouListCards: vi.fn(),
     listYouRails: vi.fn(),
     getUnownedTitleDetail: vi.fn(),
   },
@@ -212,7 +211,6 @@ const {
   cachedUpcomingFilms,
   cachedUpNextRails,
   cachedWatchlistFilms,
-  cachedYouListCards,
   cachedYouRails,
   invalidateFor,
   invalidateForOtherAccounts,
@@ -278,7 +276,6 @@ const CACHED = {
   accountFigures: (userId: typeof mine) => cachedAccountFigures(userId),
   /** Issue #248's lists rail on `/you`. Tagged `lists` alongside `listLists` and
    *  `getListDetail`, so the bust assertions below hold all three against one tag. */
-  listYouListCards: (userId: typeof mine) => cachedYouListCards(userId),
   /** Issue #248's shows and films rails on `/you`. Tagged `up-next` alongside the three
    *  reads above it in this table that share that fact. */
   listYouRails: (userId: typeof mine) => cachedYouRails(userId),
@@ -1458,8 +1455,8 @@ describe("the reads that are cached, and the one that must never be", () => {
       // `tags.ts` — the owned reads, in file order. #250 replaced two of #138's reads
       // (`listWatchlist`, `listAbandoned`) with the one `listWatchlistFilms`; #251 added
       // `listUpcomingEpisodes` beside it under the same `up-next` tag, #252 added
-      // `listUpcomingFilms` beside that one; #248 added `listYouListCards` and
-      // `listYouRails`; and #249 retired `accountStats`.
+      // `listUpcomingFilms` beside that one; #248 added `listYouRails` (its lists read
+      // went with You's lists rail in #357); and #249 retired `accountStats`.
       //
       // **No count, in the name above or here.** It has been wrong or conflicting on
       // three of the last four tickets to touch this file, because a total is a second
@@ -1480,7 +1477,6 @@ describe("the reads that are cached, and the one that must never be", () => {
       "libraryEntryIdForEpisode",
       // #247's. #249 retired `accountStats`, which used to sit above it.
       "accountFigures",
-      "listYouListCards",
       "listYouRails",
       // `borrowed-facts.ts` — the six, in file order. `episodeSynopsis` is #253's, and
       // it sits second because it is written directly beneath the title-level synopsis

@@ -6,7 +6,7 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * Nothing is watching — reachable two ways that read as one screen: a library with
  * nothing imported yet, and a library that is entirely finished, watchlist or abandoned.
  * *These read differently and must not share copy* —
- * with `empty-library.tsx`'s "The bill is blank", which is what this deliberately does
+ * with `empty-library.tsx`'s "Your library is empty", which is what this deliberately does
  * not say. This is reachable only because a read succeeded and found nothing; a failed read
  * throws past this into `error.tsx`.
  *

@@ -306,6 +306,11 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "answers 'across a poster it would be the accent painting artwork', " +
       "which is a rule about the press sweep and not about a 5px rule at the foot.",
   },
+  "app/(signed-in)/lists/[listId]/list-name-heading.tsx": {
+    meaning: "LITERAL_EXCEPTION",
+    tokens: 1,
+    reason: "the duplicate-name message when renaming — list-name-form.tsx's own message, restated",
+  },
   "app/(signed-in)/lists/list-name-form.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 1,

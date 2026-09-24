@@ -85,7 +85,7 @@ export function LibraryChips({
     // tracks use. `-mx-[22px] px-[22px]` lets it bleed to the viewport edges while the
     // first chip still starts on the page gutter.
     <div
-      className="-mx-[22px] mt-4 flex items-center gap-2 overflow-x-auto px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="-mx-[22px] flex items-center gap-2 overflow-x-auto px-[22px] lg:mx-0 lg:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="group"
       aria-label="Filter by where a title stands"
     >

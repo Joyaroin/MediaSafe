@@ -27,7 +27,7 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * *Nothing queued for tonight* / *Add a show and its next episode turns up here* /
  * *Search the catalogue* — the prototype's states column,
  * which #245 makes binding. It is deliberately not
- * `empty-library.tsx`'s *The bill is blank* and deliberately not `UpNextEmpty`'s *you're
+ * `empty-library.tsx`'s *Your library is empty* and deliberately not `UpNextEmpty`'s *you're
  * caught up*: these read differently and must not
  * share copy, and there are now three of them.
  *

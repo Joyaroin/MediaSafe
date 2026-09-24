@@ -127,3 +127,15 @@ describe("a second action — issue #357", () => {
     expect(without).not.toContain("Also mark");
   });
 });
+
+describe("what the toast says — issue #357", () => {
+  it("says Watched unless the write says something else", () => {
+    actionToasts.raise({ title: "Severance", undo: () => {} });
+    expect(renderToStaticMarkup(createElement(ActionToasts))).toContain(">Watched.<");
+
+    actionToasts.raise({ title: "Severance", message: "Taken off Comfort shows.", undo: () => {} });
+    const markup = renderToStaticMarkup(createElement(ActionToasts));
+    expect(markup).toContain(">Taken off Comfort shows.<");
+    expect(markup).not.toContain("Watched.");
+  });
+});

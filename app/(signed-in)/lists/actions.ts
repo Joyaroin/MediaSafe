@@ -7,6 +7,8 @@ import {
   createList,
   createListAndAddTitle,
   deleteList,
+  removeTitleFromList,
+  renameList,
   reorderListMembership,
   type ListSummary,
 } from "@/db/access";
@@ -213,4 +215,55 @@ export async function reorderListAction(
   // though the set of them is identical.
   invalidateFor("reorderListMembership", userId);
   return { ok: true };
+}
+
+/**
+ * Take a title off a list — issue #357. `removed: false` is a success too: the title was
+ * already off (a retry after the first attempt landed), so there is nothing to announce.
+ */
+export type RemoveFromListActionOutcome =
+  | { readonly ok: true; readonly removed: boolean }
+  | { readonly ok: false; readonly reference: string | null };
+
+export async function removeTitleFromListAction(
+  listId: string,
+  titleId: string,
+): Promise<RemoveFromListActionOutcome> {
+  const userId = await requireUserId();
+  let removed: boolean;
+
+  try {
+    removed = (await removeTitleFromList(userId, listId, titleId)).removed;
+  } catch (error) {
+    return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
+  }
+
+  if (removed) invalidateFor("removeTitleFromList", userId);
+  return { ok: true, removed };
+}
+
+/** Rename a list — issue #357. A clash with another list's name is the reader's to fix,
+ *  so it is an answer (`duplicate`), not a failure. */
+export type RenameListActionOutcome =
+  | { readonly ok: true; readonly name: string }
+  | { readonly ok: false; readonly reason: "duplicate" }
+  | { readonly ok: false; readonly reason: "failed"; readonly reference: string | null };
+
+export async function renameListAction(
+  listId: string,
+  name: string,
+): Promise<RenameListActionOutcome> {
+  const userId = await requireUserId();
+  let renamed: string;
+
+  try {
+    const outcome = await renameList(userId, listId, name);
+    if (!outcome.ok) return outcome;
+    renamed = outcome.name;
+  } catch (error) {
+    return { ok: false, reason: "failed", reference: referenceFor(error, { surface: "lists" }) };
+  }
+
+  invalidateFor("renameList", userId);
+  return { ok: true, name: renamed };
 }

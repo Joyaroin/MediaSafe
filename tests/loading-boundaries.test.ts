@@ -107,7 +107,7 @@ describe("Search", () => {
     expect(pending).toContain("Search");
     expect(pending).toContain('role="status"');
     // Never another surface's heading — the failure this boundary exists to rule out.
-    expect(pending).not.toContain("The library");
+    expect(pending).not.toContain(">Library<");
     expect(pending).not.toContain(">You<");
   });
 });

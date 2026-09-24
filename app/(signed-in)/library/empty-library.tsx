@@ -49,12 +49,11 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
 export function EmptyLibrary() {
   return (
     <section className="px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-lg text-text">The bill is blank</h2>
+      <h2 className="bill-title text-bill-lg text-text">Your library is empty</h2>
 
       <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
-        There is nothing in your library yet. Bring it in from an export file in one pass,
-        or search the catalogue and add titles one at a time — everything you keep about a
-        title after that is yours.
+        Bring your library in from an export file in one go, or search for films and shows
+        and add them one at a time.
       </p>
 
       <Link href="/import" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>

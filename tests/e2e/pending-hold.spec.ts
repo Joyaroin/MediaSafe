@@ -22,7 +22,7 @@ import { expect, test, type Page } from "@playwright/test";
  *
  * Both are radius-1 `loading.tsx` boundaries reachable from the sidebar
  * without a click through any intermediate screen. The fixture account carries no library
- * entries, so `/library` resolves to `EmptyLibrary` ("The bill is blank") once the read
+ * entries, so `/library` resolves to `EmptyLibrary` ("Your library is empty") once the read
  * completes — a marker that only ever paints once the navigation is genuinely finished,
  * on a real seeded account behind a minted session, against the real route the reader's
  * own browser would hit.
@@ -101,7 +101,7 @@ async function delayClientNavigations(page: Page, delayMs: number): Promise<void
 // the same way twice.
 const libraryLink = (page: Page) =>
   page.locator('aside nav[aria-label="Primary"] a[href="/library"]');
-const emptyLibraryMarker = (page: Page) => page.getByText("The bill is blank");
+const emptyLibraryMarker = (page: Page) => page.getByText("Your library is empty");
 
 test("a navigation resolving faster than the delay paints no pending bars", async ({
   page,

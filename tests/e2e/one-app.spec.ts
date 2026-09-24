@@ -182,3 +182,49 @@ test("one search finds films and shows together, in two groups", async ({ page }
   await expect(page.getByRole("heading", { name: "Shows", level: 2 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Films", level: 2 })).toBeVisible();
 });
+
+// ── Library and lists ───────────────────────────────────────────────────────────────
+
+test("a phone reaches Lists from Library even with no lists yet", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/library");
+
+  await page.getByRole("button", { name: "Lists", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: /list/i })).toBeVisible();
+});
+
+test("a title taken off a list, and a renamed list, both survive a reload", async ({ page }) => {
+  const kept = await seedShowWithSeason(userId, { episodes: 1, watched: [] });
+  const dropped = await seedShowWithSeason(userId, { episodes: 1, watched: [] });
+
+  await page.setViewportSize(DESKTOP);
+
+  // Make a list with both titles through the app itself.
+  for (const title of [kept, dropped]) {
+    await page.goto(`/titles/${title.libraryEntryId}`);
+    await page.getByRole("button", { name: `Add ${title.titleName} to a list` }).click();
+    const dialog = page.getByRole("dialog");
+    if (title === kept) {
+      await dialog.getByRole("textbox").fill("E2E Shelf");
+      await dialog.getByRole("textbox").press("Enter");
+    } else {
+      await dialog.getByRole("button", { name: "Add to E2E Shelf" }).click();
+    }
+    await dialog.getByRole("button", { name: "Done" }).click();
+  }
+
+  await page.goto("/library?view=lists");
+  await page.getByRole("link", { name: /E2E Shelf/ }).click();
+
+  await page.getByRole("button", { name: `Take ${dropped.titleName} off this list` }).click();
+  await expect(page.getByRole("status")).toContainText("Taken off E2E Shelf.");
+
+  await page.getByRole("button", { name: "Rename E2E Shelf" }).click();
+  await page.getByRole("textbox", { name: "List name" }).fill("E2E Shelf Renamed");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "E2E Shelf Renamed", level: 1 })).toBeVisible();
+  await expect(page.getByText(kept.titleName)).toBeVisible();
+  await expect(page.getByText(dropped.titleName)).toHaveCount(0);
+});

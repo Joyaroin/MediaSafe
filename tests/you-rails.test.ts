@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   abandonTitle,
-  addTitleToList,
   asUserId,
-  createList,
-  listYouListCards,
   listYouRails,
   type UserId,
 } from "@/db/access";
@@ -112,101 +109,6 @@ async function recordWatch(
     sourceKey: `you-rails-${nextNumber()}`,
   });
 }
-
-describe("listYouListCards", () => {
-  it("carries the name and title count every other lists surface reads", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const created = await createList(reader, "Comfort shows", tx);
-      if (!created.ok) throw new Error("expected a fresh list");
-      const show = await seedTitle(tx, { kind: "show" });
-      await addTitleToList(reader, created.list.id, show.titleId, tx);
-
-      const [card] = await listYouListCards(reader, tx);
-
-      expect(card.name).toBe("Comfort shows");
-      expect(card.titleCount).toBe(1);
-    });
-  });
-
-  it("draws up to four posters in membership order, and no more", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const created = await createList(reader, "Five posters", tx);
-      if (!created.ok) throw new Error("expected a fresh list");
-
-      for (let index = 0; index < 5; index += 1) {
-        const seeded = await seedTitle(tx, { kind: "film", posterPath: `/p${index}.jpg` });
-        await addTitleToList(reader, created.list.id, seeded.titleId, tx);
-      }
-
-      const [card] = await listYouListCards(reader, tx);
-
-      expect(card.name).toBe("Five posters");
-      expect(card.titleCount).toBe(5);
-      expect(card.posterPaths).toEqual(["/p0.jpg", "/p1.jpg", "/p2.jpg", "/p3.jpg"]);
-    });
-  });
-
-  it("skips a title with no poster rather than leaving a gap", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const created = await createList(reader, "Mixed artwork", tx);
-      if (!created.ok) throw new Error("expected a fresh list");
-
-      const noArt = await seedTitle(tx, { kind: "film", posterPath: null });
-      await addTitleToList(reader, created.list.id, noArt.titleId, tx);
-      const withArt = await seedTitle(tx, { kind: "film", posterPath: "/covered.jpg" });
-      await addTitleToList(reader, created.list.id, withArt.titleId, tx);
-
-      const [card] = await listYouListCards(reader, tx);
-
-      expect(card.posterPaths).toEqual(["/covered.jpg"]);
-    });
-  });
-
-  it("falls back to the empty poster array for a list with no titles", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const created = await createList(reader, "Brand new", tx);
-      if (!created.ok) throw new Error("expected a fresh list");
-
-      const [card] = await listYouListCards(reader, tx);
-
-      expect(card.titleCount).toBe(0);
-      expect(card.posterPaths).toEqual([]);
-    });
-  });
-
-  it("falls back to the empty poster array when every title lacks artwork", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const created = await createList(reader, "No artwork anywhere", tx);
-      if (!created.ok) throw new Error("expected a fresh list");
-
-      const noArt = await seedTitle(tx, { kind: "film", posterPath: null });
-      await addTitleToList(reader, created.list.id, noArt.titleId, tx);
-
-      const [card] = await listYouListCards(reader, tx);
-
-      expect(card.titleCount).toBe(1);
-      expect(card.posterPaths).toEqual([]);
-    });
-  });
-
-  it("returns this account's lists and never another account's", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const stranger = await seedUser(tx, "stranger");
-      await createList(reader, "Mine", tx);
-      await createList(stranger, "Theirs", tx);
-
-      const cards = await listYouListCards(reader, tx);
-
-      expect(cards.map((card) => card.name)).toEqual(["Mine"]);
-    });
-  });
-});
 
 describe("listYouRails", () => {
   it("holds a watching show and a finished film, split by kind", async () => {

@@ -38,7 +38,7 @@ export function LibraryHeading({ children }: { children?: React.ReactNode }) {
     // themselves rather than being spaced from here.
     <div className="flex flex-col px-[22px] pt-5">
       <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-ink">
-        The library
+        Library
       </h1>
 
       {children}

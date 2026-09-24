@@ -12,6 +12,8 @@ import {
   listLists,
   ownedBy,
   removeTitleFromLibrary,
+  removeTitleFromList,
+  renameList,
   reorderListMembership,
   type UserId,
 } from "@/db/access";
@@ -994,3 +996,138 @@ function unwrap<T extends { ok: boolean }>(outcome: T): Extract<T, { ok: true }>
   if (!outcome.ok) throw new Error("Expected createList to succeed.");
   return outcome as Extract<T, { ok: true }>;
 }
+
+describe("taking a title off a list — issue #357", () => {
+  async function seedList(
+    tx: Transaction,
+    reader: UserId,
+    count: number,
+  ): Promise<{ listId: string; titleIds: string[] }> {
+    const { list: target } = unwrap(await createList(reader, "Trimmed", tx));
+    const titleIds: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const show = await seedShow(tx);
+      await addTitleToList(reader, target.id, show, tx);
+      titleIds.push(show);
+    }
+    return { listId: target.id, titleIds };
+  }
+
+  async function membersOf(tx: Transaction, listId: string) {
+    return tx
+      .select({ titleId: listMembership.titleId, position: listMembership.position })
+      .from(listMembership)
+      .where(eq(listMembership.listId, listId))
+      .orderBy(asc(listMembership.position));
+  }
+
+  it("removes the title and closes the gap it leaves, keeping everyone else's order", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedList(tx, reader, 4);
+
+      const outcome = await removeTitleFromList(reader, listId, titleIds[1], tx);
+
+      expect(outcome).toEqual({ removed: true });
+      expect(await membersOf(tx, listId)).toEqual([
+        { titleId: titleIds[0], position: 1 },
+        { titleId: titleIds[2], position: 2 },
+        { titleId: titleIds[3], position: 3 },
+      ]);
+    });
+  });
+
+  it("is not an error to take off a title that is already gone — a retry after it landed", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedList(tx, reader, 2);
+
+      await removeTitleFromList(reader, listId, titleIds[0], tx);
+      const again = await removeTitleFromList(reader, listId, titleIds[0], tx);
+
+      expect(again).toEqual({ removed: false });
+      expect(await membersOf(tx, listId)).toEqual([{ titleId: titleIds[1], position: 1 }]);
+    });
+  });
+
+  it("never touches another account's list", async () => {
+    await inTransaction(async (tx) => {
+      const owner = await seedUser(tx, "owner");
+      const stranger = await seedUser(tx, "stranger");
+      const { listId, titleIds } = await seedList(tx, owner, 2);
+
+      const outcome = await removeTitleFromList(stranger, listId, titleIds[0], tx);
+
+      expect(outcome).toEqual({ removed: false });
+      expect(await membersOf(tx, listId)).toHaveLength(2);
+    });
+  });
+
+  it("leaves the title itself, and the library, alone", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { listId, titleIds } = await seedList(tx, reader, 1);
+
+      await removeTitleFromList(reader, listId, titleIds[0], tx);
+
+      const [still] = await tx.select({ id: title.id }).from(title).where(eq(title.id, titleIds[0]));
+      expect(still?.id).toBe(titleIds[0]);
+    });
+  });
+});
+
+describe("renaming a list — issue #357", () => {
+  it("renames it, trimming the new name", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { list: target } = unwrap(await createList(reader, "Comfrot shows", tx));
+
+      const outcome = await renameList(reader, target.id, "  Comfort shows  ", tx);
+
+      expect(outcome).toEqual({ ok: true, name: "Comfort shows" });
+      expect((await listLists(reader, tx)).map((one) => one.name)).toEqual(["Comfort shows"]);
+    });
+  });
+
+  it("refuses a name another of the same account's lists already has, and writes nothing", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      unwrap(await createList(reader, "Anime", tx));
+      const { list: target } = unwrap(await createList(reader, "MCU", tx));
+
+      const outcome = await renameList(reader, target.id, "Anime", tx);
+
+      expect(outcome).toEqual({ ok: false, reason: "duplicate" });
+      expect((await listLists(reader, tx)).map((one) => one.name)).toEqual(["Anime", "MCU"]);
+    });
+  });
+
+  it("is not a duplicate to rename a list to its own name", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { list: target } = unwrap(await createList(reader, "MCU", tx));
+
+      expect(await renameList(reader, target.id, "MCU", tx)).toEqual({ ok: true, name: "MCU" });
+    });
+  });
+
+  it("refuses an empty name", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const { list: target } = unwrap(await createList(reader, "MCU", tx));
+
+      await expect(renameList(reader, target.id, "   ", tx)).rejects.toThrow();
+    });
+  });
+
+  it("refuses to rename another account's list", async () => {
+    await inTransaction(async (tx) => {
+      const owner = await seedUser(tx, "owner");
+      const stranger = await seedUser(tx, "stranger");
+      const { list: target } = unwrap(await createList(owner, "Mine", tx));
+
+      await expect(renameList(stranger, target.id, "Yours", tx)).rejects.toThrow();
+      expect((await listLists(owner, tx)).map((one) => one.name)).toEqual(["Mine"]);
+    });
+  });
+});

@@ -46,7 +46,7 @@ export function ActionToasts() {
         <p className="text-item text-text">{offer.title}</p>
         {offer.episode ? <p className="text-item text-dim">{offer.episode}</p> : null}
 
-        <p className="mt-3 text-note leading-relaxed text-text">Watched.</p>
+        <p className="mt-3 text-note leading-relaxed text-text">{offer.message ?? "Watched."}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button

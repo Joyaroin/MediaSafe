@@ -911,7 +911,6 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // Surfaces — cards, cells, rows and tiles. They keep the default and say nothing, and a
   // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
   "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
-  "app/(signed-in)/library/lists-rail.tsx": ["surface"],
   /* A custom list's icon view (`list-icon-grid.tsx`). A poster with a name under it is the
      same surface the library grid and the Up next groups draw, at the same register. */
   "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
@@ -925,7 +924,6 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/up-next-episode-row.tsx": ["surface", "surface"],
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
-  "app/(signed-in)/you/you-list-card.tsx": ["surface"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
 
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and

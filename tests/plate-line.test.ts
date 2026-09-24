@@ -145,8 +145,6 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
   { file: "app/(signed-in)/search/catalogue-result.tsx", count: 1 }, // a result row
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/up-next/upcoming-row.tsx", count: 1 }, // a list row
-  { file: "app/(signed-in)/library/lists-rail.tsx", count: 1 }, // a rail card
-  { file: "app/(signed-in)/you/you-list-card.tsx", count: 2 }, // a rail card, two states
   { file: "app/(signed-in)/library/programme-note-section.ts", count: 1 }, // a programme-note panel
 ];
 
@@ -158,11 +156,10 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
 const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number; readonly reason: string }[] = [
   { file: "app/(signed-in)/settings/theme-control.tsx", count: 1, reason: "a segmented control option" },
   { file: "app/(signed-in)/lists/[listId]/list-view-control.tsx", count: 1, reason: "a segmented control track" },
-  { file: "app/(signed-in)/library/kind-mode-control.tsx", count: 1, reason: "a segmented control track" },
   { file: "app/(signed-in)/library/chip.tsx", count: 1, reason: "a filter chip" },
   { file: "app/(signed-in)/library/library-filter-bar.tsx", count: 1, reason: "the Watching chip" },
+  { file: "app/(signed-in)/library/library-surface.tsx", count: 1, reason: "the Shows/Films/Lists segmented control track" },
   { file: "app/(signed-in)/lists/[listId]/list-title-row.tsx", count: 1, reason: "raised only on hover, not at rest" },
-  { file: "app/(signed-in)/you/you-list-card.tsx", count: 1, reason: "an internal filler cell inside a card the plate line already rings" },
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1, reason: "a stat figure card outside this ticket's named categories" },
   { file: "app/(signed-in)/you/you-hero.tsx", count: 2, reason: "the account avatar well" },
   { file: "app/(signed-in)/you/you-heading.tsx", count: 1, reason: "the Settings button, a control rather than a container" },

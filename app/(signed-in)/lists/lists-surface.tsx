@@ -57,6 +57,19 @@ import { ListsHeading } from "./lists-heading";
  * told had been destroyed. A create is cheap to be late about; a destruction is not.
  */
 export function ListsSurface({ initial }: { readonly initial: readonly ListSummary[] }) {
+  return (
+    <main className="flex w-full flex-1 flex-col">
+      <ListsHeading />
+      <ListsPanel initial={initial} />
+    </main>
+  );
+}
+
+/**
+ * The lists themselves — the create form and a row per list — without a page around them,
+ * so Library's Lists tab (issue #357) and this route draw the same thing.
+ */
+export function ListsPanel({ initial }: { readonly initial: readonly ListSummary[] }) {
   const [lists, setLists] = useState<readonly ListSummary[]>(initial);
 
   function onCreated(created: ListSummary): void {
@@ -70,9 +83,7 @@ export function ListsSurface({ initial }: { readonly initial: readonly ListSumma
   }
 
   return (
-    <main className="flex w-full flex-1 flex-col">
-      <ListsHeading />
-
+    <>
       <div className="px-[22px] pt-[18px]">
         <CreateListForm onCreated={onCreated} />
       </div>
@@ -80,15 +91,12 @@ export function ListsSurface({ initial }: { readonly initial: readonly ListSumma
       {lists.length === 0 ? (
         <EmptyLists />
       ) : (
-        // Cards on an `8px` gap at the `14px` list gutter — the same treatment the
-        // search results and the library grid carry, so the three lists on this app
-        // read as one device rather than three.
         <ul className="flex flex-col gap-2 px-[14px] pt-6 pb-6">
           {lists.map((list) => (
             <ListRow key={list.id} list={list} onDeleted={onDeleted} />
           ))}
         </ul>
       )}
-    </main>
+    </>
   );
 }

@@ -67,6 +67,7 @@ export function ListTitleRow({
   style,
   shift = 0,
   aboveFold = false,
+  trailing,
 }: {
   readonly title: ListDetailTitleRow;
   readonly dragHandle: ReactNode;
@@ -82,6 +83,8 @@ export function ListTitleRow({
   /** This row is the list's first — `ReorderableTitleList`'s to say, since a list renders
    *  one row per title (`app/poster.tsx`). */
   readonly aboveFold?: boolean;
+  /** A control after the row's link — list detail's *take it off this list*. */
+  readonly trailing?: ReactNode;
 }) {
   const meta = metaLine(title);
 
@@ -144,6 +147,7 @@ export function ListTitleRow({
     >
       {dragHandle}
       {inner}
+      {trailing}
     </m.li>
   );
 }

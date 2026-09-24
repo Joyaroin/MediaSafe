@@ -264,7 +264,7 @@ export function SelectionActionBar() {
           {phase?.kind === "loaded" ? (
             phase.lists.length === 0 ? (
               <p className="text-note leading-relaxed text-dim">
-                You have no lists yet. Make one on the Lists tab, then come back.
+                You have no lists yet. Make one in Library → Lists, then come back.
               </p>
             ) : (
               <ul>
