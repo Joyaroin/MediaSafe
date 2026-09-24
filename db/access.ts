@@ -5211,7 +5211,6 @@ export async function reorderListMembership(
   });
 }
 
-/** How many posters a list card draws before it stops, in membership order. */
 export interface RemoveFromListOutcome {
   /** `false` when the title was not on this account's list — already taken off, or the
    *  list is not this account's. Not an error: a retry after a removal that landed is the

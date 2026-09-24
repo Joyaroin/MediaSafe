@@ -1,4 +1,4 @@
-import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
+import { BackBar } from "@/app/(signed-in)/back-bar";
 import { PendingLine } from "@/app/pending-line";
 
 /**
@@ -12,7 +12,7 @@ import { PendingLine } from "@/app/pending-line";
 export default function UnownedTitleLoading() {
   return (
     <main className="flex w-full flex-1 flex-col">
-      <BackToListsBar />
+      <BackBar />
 
       <div className="px-gutter py-5">
         <PendingLine shape="detail" held />

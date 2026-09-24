@@ -72,7 +72,7 @@ export function RailSection({
           a card's last row. What would violate the rule is a third — an accent badge, tile
           or state label alongside either. */}
       <div className="px-gutter pb-3">
-        <h2 className="label-line text-accent">{label}</h2>
+        <h2 className="label-line text-dim">{label}</h2>
       </div>
 
       {/* The track is a client component and the rest of this file is not — it carries the

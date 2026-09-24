@@ -163,8 +163,7 @@ const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1, reason: "a stat figure card outside this ticket's named categories" },
   { file: "app/(signed-in)/you/you-hero.tsx", count: 2, reason: "the account avatar well" },
   { file: "app/(signed-in)/you/you-heading.tsx", count: 1, reason: "the Settings button, a control rather than a container" },
-  { file: "app/buttons.ts", count: 1, reason: "the secondary button, a control rather than a container" },
-  { file: "app/(signed-in)/library/title-actions.tsx", count: 3, reason: "menu items, raised only on hover" },
+  { file: "app/buttons.ts", count: 2, reason: "the secondary button and the menu item, controls rather than containers" },
   { file: "app/(signed-in)/library/watch-menu.tsx", count: 1, reason: "a menu item, raised only on hover" },
 ];
 

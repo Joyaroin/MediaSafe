@@ -68,7 +68,7 @@ test("Settings is reached from You", async ({ page }) => {
   await expect(page).toHaveURL(/\/settings$/);
 });
 
-test("Up next is called Up next, and the desktop shows what is coming up beside it", async ({
+test("Up next is called Up next, and the desktop shows what is coming up under it", async ({
   page,
 }) => {
   await page.setViewportSize(DESKTOP);

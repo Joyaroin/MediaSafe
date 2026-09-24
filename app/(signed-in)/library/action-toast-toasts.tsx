@@ -6,7 +6,8 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { actionToasts } from "./action-toast-store";
 
 /**
- * The action toast — issue #307. The same `border-2 border-accent bg-ground` treatment
+ * The action toast — issue #307. Framed like the dialogs since issue #357 (a hairline, not
+ * the accent — the accent is for the one main action and for watches). Once the same `border-2 border-accent bg-ground` treatment
  * `errors/write-failure-toast.tsx` draws for a lost write, spent here for the opposite
  * event: a watch that landed, with one press to take it back before the offer times out.
  *
@@ -38,7 +39,7 @@ export function ActionToasts() {
     <div className="pointer-events-none fixed inset-x-0 top-4 z-40 flex justify-center px-4 lg:inset-x-auto lg:right-6 lg:top-6 lg:justify-end lg:px-0">
       <div
         role="status"
-        className="pointer-events-auto w-full border-2 border-accent bg-ground p-4 lg:w-[420px]"
+        className="pointer-events-auto w-full rounded-[var(--radius-5)] border border-hair bg-ground p-4 shadow-[0_16px_40px_rgb(0_0_0/0.25)] lg:w-[420px]"
       >
         {/* Named in full, both of them, the same restraint `write-failure-toast.tsx` keeps
             for the same reason: episodes have real names, and a sentence with

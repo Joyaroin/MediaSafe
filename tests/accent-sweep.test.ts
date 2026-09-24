@@ -206,15 +206,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 2,
     reason: "the lost-write toast's frame and heading — the failure system",
   },
-  "app/(signed-in)/library/action-toast-toasts.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason:
-      "the Undo action toast (#307) — its own docblock: 'the same border-2 border-accent " +
-      "bg-ground treatment errors/write-failure-toast.tsx draws for a lost write, spent " +
-      "here for the opposite event'. A deliberate mirror of the failure system's frame for " +
-      "a landed write, not one of the routine dialogs #311 re-narrowed off it.",
-  },
 
   // ── Literal exceptions: the primary action on a surface ───────────────────────────
 
@@ -236,28 +227,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
 
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────
 
-  "app/(signed-in)/up-next/up-next-group.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason:
-      "the vertical list's group label and its 'More ›' link — the label register #310 " +
-      "left unmigrated; its own docblock cites up-next-phone-rail.tsx's argument",
-  },
-  "app/(signed-in)/up-next/up-next-phone-rail.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "the rail head's label register — same role as up-next-group.tsx's",
-  },
-  "app/(signed-in)/up-next/upcoming-surface.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "'Upcoming episodes' — the same rail-head label register",
-  },
-  "app/(signed-in)/search/recommendation-rail.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "'Because you watched' — the same rail-head label register",
-  },
 
   // ── Literal exceptions: the two amendments §3 already records by number ──────────
 
@@ -297,18 +266,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "accent, leaving one accent role on that screen rather than two. Its own docblock " +
       "answers 'across a poster it would be the accent painting artwork', " +
       "which is a rule about the press sweep and not about a 5px rule at the foot.",
-  },
-  "app/(signed-in)/lists/[listId]/list-name-heading.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "the duplicate-name message when renaming — list-name-form.tsx's own message, restated",
-  },
-  "app/(signed-in)/lists/list-name-form.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason:
-      "the duplicate-name message, shared by create-list-form.tsx and add-to-list-control.tsx " +
-      "— its own comment: 'stays --accent … unchanged by the redesign'",
   },
   "app/(signed-in)/settings/delete-account/page.tsx": {
     meaning: "LITERAL_EXCEPTION",

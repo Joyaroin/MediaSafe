@@ -30,15 +30,18 @@ export function ListNameHeading({
   const [duplicate, setDuplicate] = useState(false);
   const [pending, setPending] = useState(false);
   const raised = useRef<WriteFailureHandle | null>(null);
+  // The name as it stands, for a retry that runs after later renders have moved on.
+  const current = useRef(initialName);
+  current.current = name;
 
   async function save(next: string): Promise<void> {
     const trimmed = next.trim();
-    if (trimmed.length === 0 || trimmed === name) {
+    const before = current.current;
+    if (trimmed.length === 0 || trimmed === before) {
       setEditing(false);
       return;
     }
 
-    const before = name;
     setPending(true);
     setDuplicate(false);
     setName(trimmed);
@@ -125,7 +128,7 @@ export function ListNameHeading({
         Cancel
       </button>
       {duplicate ? (
-        <p id="rename-duplicate" role="alert" className="w-full text-meta text-accent">
+        <p id="rename-duplicate" role="alert" className="w-full text-meta text-danger">
           You already have a list with that name.
         </p>
       ) : null}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
+import { ICON_BUTTON, MENU_ITEM, PRIMARY_BUTTON } from "@/app/buttons";
 import type { EpisodeDetail, LibraryState } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
@@ -14,6 +14,7 @@ import { giveUpAction, resumeAction } from "./give-up-action";
 import { episodeFullName } from "./season-grouping";
 import { titlePrimaryAction } from "./title-page";
 import { useWatchMark } from "./use-watch-mark";
+import { watchMarks } from "./watch-marks";
 
 /**
  * An owned title's actions — issue #357: one main button that does the likely next thing,
@@ -181,15 +182,18 @@ function MoreMenu({
 
   const givenUp = state === "abandoned";
 
-  async function toggleGiveUp(): Promise<void> {
+  /**
+   * `resuming` is the intent of the press, carried into its own retry — a *Try again* must
+   * repeat what was pressed, not re-read a state that may have moved on since.
+   */
+  async function toggleGiveUp(resuming: boolean, before: LibraryState): Promise<void> {
     detailsRef.current?.removeAttribute("open");
     setPending(true);
 
-    const before = state;
     // Optimistic: the pill changes on the press, and a lost write puts it back.
-    if (!givenUp) onStateChange(libraryEntryId, "abandoned");
+    if (!resuming) onStateChange(libraryEntryId, "abandoned");
 
-    const outcome = givenUp ? await resume(libraryEntryId) : await giveUp(libraryEntryId);
+    const outcome = resuming ? await resume(libraryEntryId) : await giveUp(libraryEntryId);
     setPending(false);
 
     if (!outcome.ok) {
@@ -198,7 +202,7 @@ function MoreMenu({
       raised.current = writeFailures.raise({
         title: titleName,
         reference: outcome.reference,
-        retry: () => void toggleGiveUp(),
+        retry: () => void toggleGiveUp(resuming, before),
       });
       return;
     }
@@ -213,7 +217,7 @@ function MoreMenu({
     <details ref={detailsRef} className="relative">
       <summary
         aria-label="More actions"
-        className={`${SECONDARY_BUTTON} cursor-pointer list-none px-0 [&::-webkit-details-marker]:hidden`}
+        className={`${ICON_BUTTON} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="currentColor">
           <circle cx="5.5" cy="12" r="1.8" />
@@ -236,9 +240,9 @@ function MoreMenu({
         {kind === "show" ? (
           <button
             type="button"
-            onClick={() => void toggleGiveUp()}
+            onClick={() => void toggleGiveUp(givenUp, state)}
             disabled={pending}
-            className="flex h-11 items-center rounded-[var(--radius-1)] px-3 text-left text-item text-text hover:bg-raised"
+            className={`${MENU_ITEM} text-text`}
           >
             {givenUp ? "Resume watching" : "Give up on this show"}
           </button>
@@ -246,7 +250,7 @@ function MoreMenu({
         <Link
           href={`/titles/${libraryEntryId}/remove`}
           aria-label={`Remove ${titleName} from your library`}
-          className="flex h-11 items-center rounded-[var(--radius-1)] px-3 text-item text-danger hover:bg-raised"
+          className={`${MENU_ITEM} text-danger`}
         >
           Remove from library
         </Link>
@@ -276,15 +280,19 @@ function FilmUnwatchItem({
     titleName,
   });
 
+  async function takeBack(): Promise<void> {
+    await unwatch();
+    // `unwatch` resolves either way; the store says whether it landed. A lost write has
+    // already put the mark back and raised its toast, so the state is left alone.
+    if (watchMarks.read({ libraryEntryId, episodeId: null })?.watched === false) onUnwatched();
+  }
+
   return (
     <button
       type="button"
       disabled={pending}
-      onClick={() => {
-        onUnwatched();
-        void unwatch();
-      }}
-      className="flex h-11 items-center rounded-[var(--radius-1)] px-3 text-left text-item text-text hover:bg-raised"
+      onClick={() => void takeBack()}
+      className={`${MENU_ITEM} text-text`}
     >
       Mark as not watched
     </button>

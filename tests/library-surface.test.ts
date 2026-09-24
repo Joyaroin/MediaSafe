@@ -196,9 +196,11 @@ describe("the library entry cell", () => {
    */
   it("names no state on the card at all — the chips above the grid carry that", () => {
     for (const state of ["watching", "caught_up", "finished", "watchlist", "abandoned"] as const) {
-      const markup = cell({ state, upNext: null });
-      for (const word of ["Watching", "Caught up", "Finished", "Watchlist", "Abandoned"]) {
-        expect(markup).not.toContain(word);
+      // Visible text only: a finished title's check badge names itself to a screen reader
+      // (issue #357), which is the badge's job, not a state word printed on the card.
+      const visible = cell({ state, upNext: null }).replace(/<[^>]+>/g, " ");
+      for (const word of ["Watching", "Caught up", "Finished", "Watchlist", "Abandoned", "Dropped"]) {
+        expect(visible).not.toContain(word);
       }
     }
   });

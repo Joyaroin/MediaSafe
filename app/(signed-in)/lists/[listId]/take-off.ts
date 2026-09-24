@@ -71,13 +71,33 @@ export function useTakeOff({
     setOrder((current) => renumbered(inserted(current, title, position)));
 
     const added = await attemptAdd(listId, title.titleId);
-    const placed = added.ok ? await attemptReorder(listId, title.titleId, position) : added;
-    if (!placed.ok) {
+    if (!added.ok) {
+      // Nothing landed, so the row comes back off the screen.
       setOrder((current) => renumbered(current.filter((one) => one.titleId !== title.titleId)));
-      raiseLost(title, placed.reference, () => void putBack(title, position));
+      raiseLost(title, added.reference, () => void putBack(title, position));
       return;
     }
 
+    // The title is back on the list — at its end, which is where an add lands. Only the
+    // move to its old place is left, and a lost move must not take the row off a screen
+    // whose list still holds it: the row goes to the end, where the server has it.
+    const placed = await attemptReorder(listId, title.titleId, position);
+    if (!placed.ok) {
+      setOrder((current) =>
+        renumbered([...current.filter((one) => one.titleId !== title.titleId), title]),
+      );
+      raiseLost(title, placed.reference, () => void moveBack(title, position));
+      return;
+    }
+
+    settleLost(title);
+  }
+
+  /** The retry for a put-back whose add landed and whose move did not. */
+  async function moveBack(title: ListDetailTitleRow, position: number) {
+    const placed = await attemptReorder(listId, title.titleId, position);
+    if (!placed.ok) return raiseLost(title, placed.reference, () => void moveBack(title, position));
+    setOrder((current) => renumbered(inserted(current, title, position)));
     settleLost(title);
   }
 

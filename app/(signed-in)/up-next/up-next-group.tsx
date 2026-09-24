@@ -48,11 +48,11 @@ export function UpNextGroup({
     <section className="pt-[26px] first:pt-0">
       <div className="flex items-baseline justify-between gap-3 px-gutter pb-1">
         <div className="flex items-baseline gap-3">
-          <h2 className="label-line text-accent">{label}</h2>
+          <h2 className="label-line text-dim">{label}</h2>
           {rule === undefined ? null : <p className="code-line text-dim">{rule}</p>}
         </div>
         {more === undefined ? null : (
-          <a href={more} className="code-line text-accent">
+          <a href={more} className="code-line text-dim hover:text-text">
             More ›
           </a>
         )}

@@ -156,7 +156,7 @@ export function ListNameForm({
 
         {/* Stays `--accent` and stays under the field — unchanged by the redesign. */}
         {duplicate ? (
-          <p role="alert" className="mt-2 text-item text-accent">
+          <p role="alert" className="mt-2 text-item text-danger">
             You already have a list called &ldquo;{trimmed}&rdquo;.
           </p>
         ) : null}

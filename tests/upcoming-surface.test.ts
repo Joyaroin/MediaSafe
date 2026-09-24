@@ -618,10 +618,10 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page.match(/new Date\(\)/g)).toHaveLength(1);
   });
 
-  /** One structure on every screen size: the desktop shows the same two halves the phone
-   *  pages between, side by side, rather than a desktop-only arrangement of its own. */
-  it("gives the desktop the same two halves, side by side", () => {
-    expect(page).toMatch(/className="hidden lg:grid[^"]*"[\s\S]*\{watching\}[\s\S]*\{comingUp\}/);
+  /** One structure on every screen size: the desktop stacks the same two halves the
+   *  phone pages between, rather than a desktop-only arrangement of its own. */
+  it("gives the desktop the same two halves, stacked", () => {
+    expect(page).toMatch(/className="hidden [^"]*lg:block"[\s\S]*\{watching\}[\s\S]*\{comingUp\}/);
   });
 
   /**

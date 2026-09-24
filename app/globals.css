@@ -312,9 +312,8 @@
   --color-hair: var(--hair);
   --color-text: var(--text);
   --color-dim: var(--dim);
-  /* Headings, title names and filled-field text — one step darker than `--text` in
-     light, identical to it in dark. See `:root` above for why it exists at all. */
-  /* The one reserved accent: recording a watch, and nothing else. */
+  /* The accent: the one main action on a surface, and a watch — `app/accent-meaning.ts`
+     names every reason it may be spent. */
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
@@ -389,7 +388,7 @@
      replaced by a class. */
   --radius-none: 0px;
   /* One small corner, not three: 8, 9 and 10px could not be told apart on screen, so
-     `--radius-1` and `--radius-1` folded into this step (issue #357). */
+     the 9px and 10px steps folded into this one (issue #357). */
   --radius-1: 8px;
   --radius-4: 12px;
   --radius-5: 16px;

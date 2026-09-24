@@ -137,19 +137,16 @@ export default async function UpNextPage() {
         <UpNextHeading />
 
         {/* One structure on every screen size: what you are watching, and what is coming
-            up. A phone pages between the two; a desktop has the width to show both side
-            by side. Each half answers its own empty case, and a failure in any read throws
-            past both into `error.tsx`. */}
+            up. A phone pages between the two; a desktop stacks them. Each half answers its
+            own empty case, and a failure in any read throws past both into `error.tsx`. */}
         <div className="lg:hidden">
           <LandingPager upNext={watching} upcoming={comingUp} />
         </div>
 
-        <div className="hidden lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-6 lg:pr-4">
-          <div className="min-w-0">{watching}</div>
-          <div className="min-w-0">
-            <h2 className="px-gutter pt-[26px] text-bill-sm font-semibold text-text">Coming up</h2>
-            {comingUp}
-          </div>
+        <div className="hidden max-w-4xl lg:block">
+          {watching}
+          <h2 className="px-gutter pt-10 text-bill-sm font-semibold text-text">Coming up</h2>
+          {comingUp}
         </div>
       </main>
     </NavTransition>

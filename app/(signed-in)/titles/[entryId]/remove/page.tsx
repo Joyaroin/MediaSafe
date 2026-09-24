@@ -124,9 +124,9 @@ export default async function RemoveTitlePage({
         </h2>
 
         <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
-          Give up on it instead. That keeps every watch, takes the show out of Up next, and
-          undoes itself the moment you watch it again. It is in the &hellip; menu on the
-          show&rsquo;s own page.
+          If this is a show, give up on it instead. That keeps every watch, takes it out of Up
+          next, and undoes itself the moment you watch it again. It is in the &hellip; menu on
+          the show&rsquo;s own page.
         </p>
       </section>
 

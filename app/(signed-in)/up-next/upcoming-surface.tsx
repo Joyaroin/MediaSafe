@@ -117,7 +117,7 @@ function UpcomingEpisodes({
   return (
     <section className="pt-[26px]">
       <div className="px-gutter pb-1">
-        <h2 className="label-line text-accent">Upcoming episodes</h2>
+        <h2 className="label-line text-dim">Upcoming episodes</h2>
       </div>
 
       <ul className="stagger-rise mt-2.5 flex flex-col gap-2 px-gutter">

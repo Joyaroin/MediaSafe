@@ -1,6 +1,7 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
+import { CheckmarkIcon } from "./checkmark-icon";
 import { railPosterTransitionName } from "./poster-transition-name";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
@@ -66,11 +67,11 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * `LIVE_EDGE_OF_THE_RECORD` role the filter bar's unselected *Watching* chip already
  * spends on this screen — one role, not two.
  *
- * The bar is drawn for every state that has progress at all, not only *Watching*. A
- * finished show's bar is simply full, which is the fact rather than a second colour. An
- * abandoned title's bar dims with the poster, because it is inside it — the one place this
- * cell modifies the artwork now modifies the bar with it, which is right: they are the
- * same title in the same state.
+ * **Two overlays, and only two** — issue #357. A title being watched carries the bar; a
+ * finished one carries a check in the corner; every other state carries nothing. The bar
+ * used to be drawn for every state with progress, which put a full bar on every finished
+ * show and a stub on every watchlist one, and made the grid a wall of bars that said
+ * nothing a reader scanning for *what am I in the middle of* could use.
  *
  * **No numeral anywhere near it** — the remaining rule, amended by this
  * ticket rather than reopened: a count may not stand as chrome on a surface reached to do
@@ -147,7 +148,18 @@ export function LibraryEntryCell({
               {/* On the artwork, not under the name — `poster-progress-bar.tsx` has the
                   argument. An abandoned title's bar dims with the poster it is inside,
                   which is the pairing this cell has always drawn. */}
-              <PosterProgressBar progress={entry.progress} />
+              {entry.state === "watching" ? (
+                <PosterProgressBar progress={entry.progress} />
+              ) : null}
+              {entry.state === "finished" ? (
+                <span
+                  aria-label="Finished"
+                  role="img"
+                  className="absolute bottom-1.5 left-1.5 flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-text text-ground"
+                >
+                  <CheckmarkIcon className="h-3 w-3" />
+                </span>
+              ) : null}
             </Poster>
             {/* Renders nothing at all outside a selection provider — the desktop, always. */}
             <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />

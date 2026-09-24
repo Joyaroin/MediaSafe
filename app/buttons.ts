@@ -34,6 +34,13 @@ export const PRIMARY_BUTTON_COMPACT = `${BASE} ${COMPACT} ${PRIMARY}`;
 export const SECONDARY_BUTTON = `${BASE} ${REGULAR} ${SECONDARY}`;
 export const SECONDARY_BUTTON_COMPACT = `${BASE} ${COMPACT} ${SECONDARY}`;
 
+/** A secondary button that is only an icon — square, so no padding to override. */
+export const ICON_BUTTON = `${BASE} h-11 w-11 ${SECONDARY}`;
+
+/** One row of a menu — the title page's *…* menu. Colour is the caller's: text, or danger. */
+export const MENU_ITEM =
+  "flex h-11 w-full items-center rounded-[var(--radius-1)] px-3 text-left text-item hover:bg-raised";
+
 export const DESTRUCTIVE_BUTTON = `${BASE} ${REGULAR} ${DESTRUCTIVE}`;
 export const DESTRUCTIVE_BUTTON_COMPACT = `${BASE} ${COMPACT} ${DESTRUCTIVE}`;
 

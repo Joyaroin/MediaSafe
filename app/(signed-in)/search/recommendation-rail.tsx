@@ -68,7 +68,7 @@ function Rail({ rail }: { rail: Recommendations }) {
           phone for any title of normal length, and this heading register is a single
           11px line. */}
       <div className="flex items-baseline justify-between gap-3 px-gutter pb-3">
-        <h2 id="because-you-watched" className="label-line text-accent">
+        <h2 id="because-you-watched" className="label-line text-dim">
           Because you watched
         </h2>
         <span className="min-w-0 truncate text-meta text-dim">{rail.seed.name}</span>

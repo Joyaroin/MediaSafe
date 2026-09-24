@@ -80,10 +80,12 @@ describe("Settings and delete-account", () => {
 
 describe("An unowned title's detail", () => {
   /** Back-link shape again: the name is exactly what is being waited for. */
-  it("says which list this title was reached from, and prints no name early", () => {
+  it("offers the way back, and prints no name early", () => {
     const pending = markupOf(createElement(UnownedTitleLoading));
 
-    expect(pending).toContain("‹ Lists");
+    // The same back bar the loaded page draws — back to wherever the reader came from
+    // (issue #357), which a cold render with no history names as Up next.
+    expect(pending).toContain("‹ Up next");
     expect(pending).toContain('role="status"');
     expect(pending).not.toContain("<h1");
     // No poster either — unlike the desktop pane's `loading` frame, a cold route render

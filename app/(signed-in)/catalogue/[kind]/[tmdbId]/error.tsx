@@ -1,6 +1,6 @@
 "use client";
 
-import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
+import { BackBar } from "@/app/(signed-in)/back-bar";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
 
@@ -25,7 +25,7 @@ export default function UnownedTitleReadFailure({
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <BackToListsBar />
+      <BackBar />
 
       <div className="px-gutter py-5">
         <ReadFailure reference={reference} retry={retry} />
