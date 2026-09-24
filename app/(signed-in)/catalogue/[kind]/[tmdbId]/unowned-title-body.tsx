@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { AddToListControl } from "@/app/(signed-in)/library/add-to-list-control";
 import { LiveTitleFactsStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
-import { BackToListsBar } from "@/app/(signed-in)/lists/back-to-lists-bar";
-import { Poster } from "@/app/poster";
+import { BackBar } from "@/app/(signed-in)/back-bar";
+import { TitleHero } from "@/app/(signed-in)/library/title-hero";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedFindUnownedTitleDetail } from "@/cache/borrowed-facts";
 import { cachedLibraryEntryIdForTitle } from "@/cache/tags";
@@ -60,104 +60,59 @@ export async function UnownedTitleBody({
 }: {
   readonly kind: TitleKind;
   readonly tmdbId: number;
-  /**
-   * There was an `overlaid` flag here until issue #273 — *rendered inside the intercepting
-   * dialog rather than as the page* — and it changed the back bar and nothing else. The
-   * interception is deleted, this route has one render, and the back bar is the only way
-   * out of it again.
-   */
 }) {
   const userId = await requireUserId();
 
-  /**
-   * You already own this. The route redirects to the library entry, because a screen
-   * offering to add what you have is worse than a navigation nobody asked for.
-   *
-   * It was written when this route had a second, intercepted render and `redirect()` had
-   * to work from inside a dialog as well. Issue #273 deleted that render; the redirect is
-   * unchanged, because it was never the half that varied.
-   */
+  // A title already in the library has its own page; this one is for titles that are not.
   const owned = await cachedLibraryEntryIdForTitle(userId, kind, tmdbId);
   if (owned !== null) redirect(`/titles/${owned}`);
 
   const detail = await catalogueDetail(userId, kind, tmdbId);
-  const meta = titleMetaLine(detail);
 
   return (
     <>
-      {/* Back to Lists, because a list is the only thing that links to the *route*. It is
-          a destination rather than a history pop for the reason `titles/[entryId]`'s own
-          back link is: a link still works on a tab opened cold, where nothing has been
-          popped from yet. */}
-      <BackToListsBar />
+      {/* Back to wherever the reader came from — Search, Up next, a list — rather than a
+          hard-coded *Lists* that sent a reader who came from Search somewhere else. */}
+      <BackBar />
 
-      <div className="px-6 py-5">
-        {/* `382` is `programme-note-content.tsx`'s number, taken rather than re-derived:
-            the borrowed half of this screen is the same borrowed half, and a poster served
-            at a different size on one of the two title screens would be the first place
-            they stopped being that. Every width in play lands in TMDB's `w500` bucket
-            (`app/poster.tsx`), so nothing served differs meanwhile. */}
-        <Poster
-          posterPath={detail.posterPath}
+      <div className="arrive-panel pb-10">
+        <TitleHero
           name={detail.name}
-          width={382}
-          className="w-full"
-          aboveFold
+          posterPath={detail.posterPath}
+          meta={titleMetaLine(detail)}
+          actions={
+            <>
+              <AddToLibraryControl
+                key={`${detail.kind}:${detail.tmdbId}`}
+                kind={detail.kind}
+                tmdbId={detail.tmdbId}
+                titleName={detail.name}
+              />
+              {detail.titleId === null ? null : (
+                <AddToListControl
+                  key={detail.titleId}
+                  titleId={detail.titleId}
+                  titleName={detail.name}
+                />
+              )}
+            </>
+          }
         />
 
-        {/* An `h1` where the owned screen's shared content renders an `h2`: that component
-            is also the desktop pane, which sits inside the library screen and under its
-            heading. This is about one title and nothing else. `text-ink` is #255's — the
-            largest heading in the application was the only one drawn at the body colour. */}
-        <h1 className="bill-title mt-5 text-bill-xl text-ink">{detail.name}</h1>
+        <div className="mt-6 flex flex-col gap-8 px-[22px] lg:px-10">
+          <LiveTitleFactsStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
 
-        {meta === null ? null : (
-          <p className="code-line mt-3 text-dim" data-numeric>
-            {meta}
-          </p>
-        )}
-
-        {/* Where the owned screen puts the line saying where this title stands with you.
-            It stands nowhere with you yet, and this is the control that changes that, so
-            it takes the slot rather than sitting at the foot of something you would have
-            to scroll to reach.
-
-            Keyed, and inert for it: the success path unmounts this by navigating away, so
-            only a *failed* add leaves state — a standing toast's handle — that a
-            reconciled remount could otherwise carry onto another title. */}
-        <AddToLibraryControl
-          key={`${detail.kind}:${detail.tmdbId}`}
-          kind={detail.kind}
-          tmdbId={detail.tmdbId}
-          titleName={detail.name}
-        />
-
-        <LiveTitleFactsStreamed
-          userId={userId}
-          kind={detail.kind}
-          tmdbId={detail.tmdbId}
-        />
-
-        {/* Issue #147's acceptance criterion — *title detail offers Add to list, on an
-            owned title and an untracked one alike* — and it is offered exactly as far as
-            it can be. A list membership is keyed on a `title` **row**, so a title this
-            database has never mirrored has nothing for a membership to point at. Showing
-            the control anyway would be offering an action that cannot be taken. */}
-        {detail.titleId === null ? null : (
-          <AddToListControl
-            key={detail.titleId}
-            titleId={detail.titleId}
-            titleName={detail.name}
-          />
-        )}
-
-        {/* Empty for an unmirrored title, and `UnownedEpisodes` renders nothing for an
-            empty list — see `catalogueDetail` for why the seasons are not fetched. */}
-        <UnownedEpisodes kind={detail.kind} episodes={detail.episodes} />
+          {detail.kind === "show" ? (
+            <section aria-labelledby="episodes-h" className="min-w-0">
+              <h2 id="episodes-h" className="bill-title text-bill-sm text-ink">
+                Episodes
+              </h2>
+              <UnownedEpisodes kind={detail.kind} episodes={detail.episodes} />
+            </section>
+          ) : null}
+        </div>
       </div>
 
-      {/* Always on screen: nothing above renders until a read has succeeded, so borrowed
-          data is attributed the moment there is anything to attribute. */}
       <TmdbAttribution className="mt-4 px-6 py-3" />
     </>
   );

@@ -179,7 +179,7 @@ test("returning from a title still restores the pager's page and the rail's offs
   const leftAt = await upcomingMoviesRail(page).evaluate((el) => el.scrollLeft);
 
   await film.click();
-  await expect(page.getByRole("heading", { name: filmNames[3], level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: filmNames[3], level: 1 })).toBeVisible();
 
   await page.goBack();
 

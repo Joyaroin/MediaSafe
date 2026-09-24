@@ -40,9 +40,9 @@ function sourceAt(relativePath: string): string {
 }
 
 describe("the watched add's label", () => {
-  it("says watched for a film and watched all for a show", () => {
-    expect(addWatchedLabel("film")).toBe("Add — watched");
-    expect(addWatchedLabel("show")).toBe("Add — watched all");
+  it("says seen it for a film and seen it all for a show", () => {
+    expect(addWatchedLabel("film")).toBe("I've seen it");
+    expect(addWatchedLabel("show")).toBe("I've seen it all");
   });
 
   it("names the title in the accessible name, on both kinds", () => {
@@ -67,7 +67,7 @@ describe("where that label comes from", () => {
     expect(source).toMatch(/from "@\/app\/\(signed-in\)\/catalogue\/add-watched"/);
     // Not the literal. A second copy on one of the two surfaces is the drift this module
     // exists to prevent, and it would read as perfectly ordinary at its call site.
-    expect(source).not.toContain('"Add — watched');
-    expect(source).not.toContain(">Add — watched");
+    expect(source).not.toContain(`"I've seen it`);
+    expect(source).not.toContain(">I've seen it");
   });
 });

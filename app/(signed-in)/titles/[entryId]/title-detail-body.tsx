@@ -2,7 +2,8 @@ import { BackBar } from "@/app/(signed-in)/back-bar";
 import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedTitleDetail } from "@/cache/tags";
-import { requireUserId } from "@/lib/session";
+import { requireTimezone, requireUserId } from "@/lib/session";
+import { readerDay } from "@/app/(signed-in)/up-next/upcoming-grouping";
 import { TitleDetailView } from "./title-detail-view";
 
 /**
@@ -37,7 +38,10 @@ export async function TitleDetailBody({
   readonly entryId: string;
 }) {
   const userId = await requireUserId();
-  const detail = await cachedTitleDetail(userId, entryId);
+  const [detail, zone] = await Promise.all([
+    cachedTitleDetail(userId, entryId),
+    requireTimezone(),
+  ]);
 
   return (
     <>
@@ -49,6 +53,7 @@ export async function TitleDetailBody({
           nothing about the streaming itself changed. */}
       <TitleDetailView
         detail={detail}
+        today={readerDay(zone, new Date())}
         synopsis={<SynopsisStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />}
         watchProviders={
           <WatchProvidersStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />

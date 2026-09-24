@@ -201,6 +201,7 @@ describe("the held prop, and only the held prop, gates the hold", () => {
         episodes: [],
         libraryEntryId: "entry-1",
         titleName: "Andor",
+      today: "2026-09-23",
         episodesPending: true,
       }),
     );
@@ -285,6 +286,7 @@ describe("a title whose episodes have not mirrored reads as pending, not as empt
         episodes: [],
         libraryEntryId: "entry-1",
         titleName: "Andor",
+      today: "2026-09-23",
         episodesPending,
       }),
     );

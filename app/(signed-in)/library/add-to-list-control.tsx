@@ -12,12 +12,11 @@ import {
 } from "@/app/(signed-in)/lists/actions";
 import { ListNameForm } from "@/app/(signed-in)/lists/list-name-form";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
+import { DIALOG_FRAME, PRIMARY_BUTTON_COMPACT, SECONDARY_BUTTON } from "@/app/buttons";
 import type { ListSummary } from "@/db/access";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
-import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 
 /**
  * *Add to list*, whole — the trigger and the picker in one component, issue #147.
@@ -139,16 +138,18 @@ export function AddToListControl({
   }
 
   return (
-    <div className={PROGRAMME_NOTE_SECTION}>
-      {/* Issue #195: was dim underlined text ending in a chevron that implied navigation
-          this control never did — it opens a dialog, nothing more. The chevron goes with
-          the underline; `GHOST_RECOVERY` is the register the rest of this batch takes. */}
+    <div>
+      {/* A secondary button: it opens a dialog, nothing more, and it sits beside the
+          title's one main action rather than competing with it. */}
       <button
         type="button"
         onClick={openDialog}
         aria-label={`Add ${titleName} to a list`}
-        className={GHOST_RECOVERY}
+        className={SECONDARY_BUTTON}
       >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
         Add to list
       </button>
 
@@ -158,7 +159,7 @@ export function AddToListControl({
       <dialog
         ref={dialogRef}
         aria-labelledby={`add-to-list-${titleId}-h`}
-        className="w-full max-w-[420px] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+        className={`${DIALOG_FRAME} w-full max-w-[420px]`}
       >
         <h2 id={`add-to-list-${titleId}-h`} className="bill-title text-bill-sm text-text">
           Add &ldquo;{titleName}&rdquo; to a list
@@ -221,7 +222,7 @@ export function AddToListControl({
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
-            className={GHOST_RECOVERY}
+            className={SECONDARY_BUTTON}
           >
             Done
           </button>
@@ -259,7 +260,7 @@ function ListPickerRow({
           onClick={onAdd}
           disabled={pending}
           aria-label={`Add to ${list.name}`}
-          className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-[var(--dur-fast)] hover:bg-text hover:text-ground ${IN_FLIGHT}`}
+          className={PRIMARY_BUTTON_COMPACT}
         >
           Add
         </button>

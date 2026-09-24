@@ -152,6 +152,16 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason: "EPISODE_NUMBER_UP_NEXT — #310's migration",
   },
+  "app/(signed-in)/library/programme-note-episodes.tsx": {
+    meaning: "LIVE_EDGE_OF_THE_RECORD",
+    tokens: 2,
+    reason: "the Next tag on the up-next episode's row — issue #357",
+  },
+  "app/buttons.ts": {
+    meaning: "THE_BUTTON_REGISTER",
+    tokens: 2,
+    reason: "the primary button — issue #357's one solid main action per surface",
+  },
   "errors/recovery-buttons.ts": {
     meaning: "THE_BUTTON_REGISTER",
     tokens: 10,

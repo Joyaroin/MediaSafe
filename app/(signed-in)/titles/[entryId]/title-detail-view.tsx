@@ -45,8 +45,11 @@ export function TitleDetailView({
   synopsis,
   watchProviders,
   cast,
+  today,
 }: {
   detail: TitleDetailRow;
+  /** The reader's calendar day, for what has aired. */
+  today: string;
   /** The synopsis, already streamed on the server — it renders inside the hero's card. */
   synopsis: ReactNode;
   /** The watch providers, streamed separately now that the two no longer sit together. */
@@ -63,6 +66,7 @@ export function TitleDetailView({
       watchProviders={watchProviders}
       cast={cast}
       posterTransitionName={railPosterTransitionName(current.libraryEntryId)}
+      today={today}
       onStateChange={(libraryEntryId, state) =>
         setCurrent((prev) => (prev.libraryEntryId === libraryEntryId ? { ...prev, state } : prev))
       }

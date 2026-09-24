@@ -117,6 +117,9 @@
   --dim: oklch(52.8% 0.010 95);
   --accent: oklch(47.4% 0.166 30);
   --accent-ink: oklch(96.9% 0.012 95);
+  /* The destructive action's colour — issue #357. A red a step cooler than the accent and
+     never a fill at rest, so Remove cannot be mistaken for the primary action. */
+  --danger: oklch(50% 0.19 22);
 
   /* ── `--dim` is the one value whose lightness moves, and it moves on purpose ─────────
      Every other token above is the shipped tone re-expressed; this one is a real repaint,
@@ -228,6 +231,7 @@
   --dark-dim: oklch(76.5% 0.008 95);
   --dark-accent: oklch(75% 0.153 35);
   --dark-accent-ink: oklch(13.9% 0.004 95);
+  --dark-danger: oklch(72% 0.15 22);
   --dark-ink: oklch(96.3% 0.006 95);
 }
 
@@ -258,6 +262,7 @@
     --dim: var(--dark-dim);
     --accent: var(--dark-accent);
     --accent-ink: var(--dark-accent-ink);
+    --danger: var(--dark-danger);
     --ink: var(--dark-ink);
   }
 }
@@ -272,6 +277,7 @@
   --dim: var(--dark-dim);
   --accent: var(--dark-accent);
   --accent-ink: var(--dark-accent-ink);
+  --danger: var(--dark-danger);
   --ink: var(--dark-ink);
 }
 
@@ -334,6 +340,7 @@
   /* The one reserved accent: recording a watch, and nothing else. */
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
 
   /* The prototype loaded Archivo from a CDN. Here it is self-hosted by
      `next/font`, which mints the family name into `--font-archivo`; the

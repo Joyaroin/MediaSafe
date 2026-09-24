@@ -10,7 +10,8 @@ import {
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
 import type { IrreversibleWriteFailure } from "@/errors/irreversible-failure";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { DESTRUCTIVE_BUTTON } from "@/app/buttons";
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
 import { removeTitleAction, type RemoveTitleOutcome } from "./actions";
@@ -153,7 +154,7 @@ export function RemoveTitleForm({
         <button
           type="submit"
           disabled={inFlight}
-          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+          className={DESTRUCTIVE_BUTTON}
         >
           {inFlight ? `Removing ${titleName}` : `Remove ${titleName}`}
         </button>

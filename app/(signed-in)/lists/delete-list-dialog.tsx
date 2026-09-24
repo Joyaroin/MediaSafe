@@ -1,5 +1,6 @@
 "use client";
 
+import { DIALOG_FRAME } from "@/app/buttons";
 import { useRef, useState } from "react";
 
 import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
@@ -86,7 +87,7 @@ export function DeleteListDialog({
       // `dialog-transition` (issue #333, `app/globals.css`): arrives and leaves on a
       // transition rather than a keyframe, because Cancel or Escape can end this dialog
       // before its own entrance has finished.
-      className="dialog-transition border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+      className={DIALOG_FRAME}
     >
       <h2 id={`delete-list-${listId}-h`} className="bill-title text-bill-sm text-text">
         Delete &ldquo;{listName}&rdquo;?

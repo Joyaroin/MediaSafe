@@ -1,5 +1,6 @@
 "use client";
 
+import { DIALOG_FRAME } from "@/app/buttons";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -240,7 +241,7 @@ export function SelectionActionBar() {
       <dialog
         ref={dialogRef}
         aria-labelledby="bulk-add-to-list-h"
-        className="w-full max-w-[420px] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+        className={`${DIALOG_FRAME} w-full max-w-[420px]`}
       >
         <h2 id="bulk-add-to-list-h" className="bill-title text-bill-sm text-text">
           Add {formatTitleCount(view.selected.length)} to a list

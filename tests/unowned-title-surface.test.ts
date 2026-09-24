@@ -228,26 +228,19 @@ describe("the one control the page carries", () => {
     expect(pageSource()?.source).toMatch(/titleName=\{detail\.name\}/);
   });
 
-  it("labels it by kind, and says so to a screen reader too", () => {
+  it("says Add, and names the title to a screen reader", () => {
     const control = routeSources().find(({ file }) =>
       file.endsWith("add-to-library-control.tsx"),
     );
 
     /**
-     * *Add to library* until it named the half of the library the title lands in. The
-     * library has been two modes since `kind-mode.ts` — Shows and Films — and a button that
-     * says *library* names the container while every screen around it names the half.
-     *
-     * Both branches are asserted, not just the one a given render would take: this is a
-     * source read, so a ternary that lost a branch would still contain the other one and
-     * still pass a single `toContain`.
+     * Issue #357: the same one word a search result's add says. The page is about one title
+     * of one kind already, so the button's job is the verb; the accessible name carries the
+     * title for anybody without the page around it.
      */
-    expect(control?.source).toContain("Add to My Shows");
-    expect(control?.source).toContain("Add to My Films");
-
-    // Search's row can afford the one-word *Add* because the row is the context. A page
-    // about one title has no row, so the visible label carries it.
-    expect(control?.source).not.toMatch(/>\s*Add\s*</);
+    expect(control?.source).toMatch(/>\s*Add\s*</);
+    expect(control?.source).toContain("aria-label={`Add ${titleName} to your library`}");
+    expect(control?.source).not.toContain("Add to My Shows");
   });
 });
 

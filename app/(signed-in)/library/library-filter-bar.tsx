@@ -38,7 +38,7 @@ const CHIP_LABELS: Record<LibraryState, string> = {
   caught_up: "Caught up",
   finished: "Finished",
   watchlist: "Watchlist",
-  abandoned: "Abandoned",
+  abandoned: "Dropped",
 };
 
 const CHIPS: { value: Chip; label: string }[] = [

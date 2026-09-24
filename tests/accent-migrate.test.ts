@@ -189,15 +189,20 @@ describe("the dialogs that borrowed the failure frame are re-narrowed", () => {
     expect(dialogTag(path)).not.toMatch(/\bborder-accent\b/);
   });
 
-  it.each(DIALOG_FILES)("%s's dialog still reads as a dialog — bordered, grounded, backdropped", (path) => {
-    const tag = dialogTag(path);
+  it.each(DIALOG_FILES)("%s's dialog wears the one shared dialog frame", (path) => {
+    // Issue #357: the five dialogs disagreed about their own frame. They share one now.
+    expect(dialogTag(path)).toMatch(/DIALOG_FRAME/);
+  });
 
-    // The frame is re-coloured, not undressed: the border survives at its own weight, the
-    // surface and the backdrop are untouched. Only the colour of the border changed.
-    expect(tag).toMatch(/\bborder-2\b/);
-    expect(tag).toMatch(/\bborder-hair\b/);
-    expect(tag).toMatch(/\bbg-ground\b/);
-    expect(tag).toMatch(/backdrop:bg-ground\/80/);
+  it("the shared frame still reads as a dialog — bordered, grounded, backdropped", () => {
+    const frame = source("app/buttons.ts").match(/export const DIALOG_FRAME =\s*"([^"]*)"/)?.[1];
+
+    expect(frame).toBeDefined();
+    expect(frame).toMatch(/\bborder\b/);
+    expect(frame).toMatch(/\bborder-hair\b/);
+    expect(frame).not.toMatch(/\bborder-accent\b/);
+    expect(frame).toMatch(/\bbg-ground\b/);
+    expect(frame).toMatch(/backdrop:bg-ground\/80/);
   });
 
   it("finds the five dialogs it means to check", () => {

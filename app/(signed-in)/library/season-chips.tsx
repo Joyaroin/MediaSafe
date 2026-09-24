@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckmarkIcon } from "./checkmark-icon";
 import { ChipGround, chipClassName } from "./chip";
 import { seasonHeading } from "./season-grouping";
 
@@ -28,11 +29,14 @@ const SEASON_CHIP_ROW =
 
 export function SeasonChips({
   seasons,
+  finished,
   selected,
   onSelect,
   libraryEntryId,
 }: {
   seasons: readonly number[];
+  /** The seasons whose every episode is watched; their chips carry a tick. */
+  finished: ReadonlySet<number>;
   selected: number;
   onSelect: (seasonNo: number) => void;
   /** Namespaces the travelling fill's `layoutId` (`chip.tsx`) to this title, so the
@@ -57,7 +61,15 @@ export function SeasonChips({
           {seasonNo === selected ? (
             <ChipGround layoutId={`season-chip-selected-${libraryEntryId}`} />
           ) : null}
-          <span className="relative z-10">{seasonHeading(seasonNo)}</span>
+          <span className="relative z-10 flex items-center gap-1.5">
+            {seasonHeading(seasonNo)}
+            {finished.has(seasonNo) ? (
+              <>
+                <CheckmarkIcon className="h-3 w-3" />
+                <span className="sr-only">, watched</span>
+              </>
+            ) : null}
+          </span>
         </button>
       ))}
     </div>

@@ -156,3 +156,73 @@ export async function seedWatchlistFilms(
     await pool.end();
   }
 }
+
+/**
+ * A show with one season of `episodes` aired episodes, the first `watched` of them
+ * watched — issue #357's title page needs a season with gaps to mark, where
+ * `seedWatchingShow`'s two episodes are one watched and one not.
+ */
+export async function seedShowWithSeason(
+  userId: string,
+  { episodes, watched }: { readonly episodes: number; readonly watched: readonly number[] },
+): Promise<SeededTitle> {
+  const pool = createPool(requireDatabaseUrl());
+  const db = drizzle(pool, { schema });
+
+  try {
+    const unique = randomUUID();
+    const titleName = `E2E Fixture Season ${unique}`;
+    const posterPath = `/e2e-fixture-${unique}.jpg`;
+    const tmdbId = Math.floor(Math.random() * 200_000_000);
+
+    const [titleRow] = await db
+      .insert(schema.title)
+      .values({
+        kind: "show",
+        tmdbId,
+        name: titleName,
+        releaseYear: 2024,
+        posterPath,
+        inProduction: true,
+      })
+      .returning({ id: schema.title.id });
+
+    const aired = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const episodeRows = await db
+      .insert(schema.episode)
+      .values(
+        Array.from({ length: episodes }, (_, index) => ({
+          titleId: titleRow.id,
+          tmdbEpisodeId: tmdbId * 100 + index + 1,
+          seasonNo: 1,
+          episodeNo: index + 1,
+          name: `Fixture Episode ${index + 1}`,
+          airDate: aired,
+        })),
+      )
+      .returning({ id: schema.episode.id, episodeNo: schema.episode.episodeNo });
+
+    const [entryRow] = await db
+      .insert(schema.libraryEntry)
+      .values({ userId, titleId: titleRow.id })
+      .returning({ id: schema.libraryEntry.id });
+
+    for (const row of episodeRows) {
+      if (!watched.includes(row.episodeNo)) continue;
+      await db.insert(schema.watch).values({
+        userId,
+        libraryEntryId: entryRow.id,
+        titleId: titleRow.id,
+        episodeId: row.id,
+        watchedAt: new Date(),
+        source: "e2e-fixture",
+        sourceKey: randomUUID(),
+      });
+    }
+
+    return { libraryEntryId: entryRow.id, titleName, posterPath };
+  } finally {
+    await pool.end();
+  }
+}

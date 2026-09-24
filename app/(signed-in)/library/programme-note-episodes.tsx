@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
 import { PendingLine } from "@/app/pending-line";
 import type { EpisodeDetail } from "@/db/access";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
@@ -14,18 +15,18 @@ import {
   EPISODE_ROW,
   SEASON_LIST,
 } from "./episode-line";
-import { coveredUpTo, markUpToLabel } from "./mark-up-to";
+import { coveredUpTo, markUpToCount } from "./mark-up-to";
 import { MarkUpToDialog } from "./mark-up-to-dialog";
-import { MarkUpToIcon } from "./mark-up-to-icon";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { HOLDABLE, useHoldGesture } from "./use-hold-to-select";
 import { WatchMenu } from "./watch-menu";
 import { SeasonChips } from "./season-chips";
 import { defaultSeason, episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
 import { useLiveEpisodes } from "./use-live-episodes";
+import { finishedSeasons, seasonMarkTarget } from "./title-page";
 import { useWatchMark } from "./use-watch-mark";
+import { watchMarks } from "./watch-marks";
 import {
-  QUIET_RECORDING_CONTROL,
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
   SETTLED_GLYPH,
@@ -67,11 +68,14 @@ export function ProgrammeNoteEpisodes({
   libraryEntryId,
   titleName,
   episodesPending,
+  today,
 }: {
   kind: TitleKind;
   episodes: readonly EpisodeDetail[];
   libraryEntryId: string;
   titleName: string;
+  /** The reader's calendar day, for what *Mark season watched* can reach. */
+  today: string;
   /**
    * This show's episodes have not mirrored — `TitleDetailRow.episodesPending`, and issue
    * #272. It is the row's answer and never this component's: inferring it from
@@ -125,7 +129,14 @@ export function ProgrammeNoteEpisodes({
     );
   }
 
-  return <SeasonList episodes={episodes} libraryEntryId={libraryEntryId} titleName={titleName} />;
+  return (
+    <SeasonList
+      episodes={episodes}
+      libraryEntryId={libraryEntryId}
+      titleName={titleName}
+      today={today}
+    />
+  );
 }
 
 /**
@@ -188,13 +199,15 @@ function SeasonList({
   episodes,
   libraryEntryId,
   titleName,
+  today,
 }: {
   episodes: readonly EpisodeDetail[];
   libraryEntryId: string;
   titleName: string;
+  today: string;
 }) {
-  /* One menu for the whole season, mounted only while a row has asked for it —
-     `mark-up-to-dialog.tsx`'s rule, restated in `watch-menu.tsx`. */
+  // The watch menu is hoisted here rather than kept per row: at most one is ever open,
+  // and a dialog per row would be a dialog per episode in the DOM.
   const [menuFor, setMenuFor] = useState<EpisodeDetail | null>(null);
 
   const [confirming, setConfirming] = useState<{
@@ -206,27 +219,35 @@ function SeasonList({
 
   const live = useLiveEpisodes(libraryEntryId, episodes);
   const seasons = groupBySeason(live);
-  // `?? seasons[0]` answers a different question from `defaultSeason`'s own fallback
-  // above: `seasons` is never empty here (`ProgrammeNoteEpisodes` guards that), so this
-  // only satisfies `.find`'s `undefined` case in the type system, for the one selection
-  // `groupBySeason` could ever drop — a live update reshaping seasons out from under a
-  // stale `selectedSeason` — which nothing here does today. The shape reads the same as
-  // `defaultSeason`'s "fall back to the first season" because both mean *the beginning of
-  // this same specials-last order*, not because one calls the other.
+
   const [currentSeason, currentEpisodes] =
     seasons.find(([seasonNo]) => seasonNo === selectedSeason) ?? seasons[0];
+
+  const seasonTarget = seasonMarkTarget(live, currentSeason, today);
 
   return (
     <>
       <SeasonChips
         seasons={seasons.map(([seasonNo]) => seasonNo)}
+        finished={finishedSeasons(live)}
         selected={currentSeason}
         onSelect={setSelectedSeason}
         libraryEntryId={libraryEntryId}
       />
 
       <div className={`arrive ${PROGRAMME_NOTE_SECTION}`}>
-        <p className="code-line text-dim">{seasonHeading(currentSeason)}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="code-line text-dim">{seasonHeading(currentSeason)}</p>
+          {seasonTarget === null ? null : (
+            <button
+              type="button"
+              onClick={() => setConfirming(seasonTarget)}
+              className={SECONDARY_BUTTON_COMPACT}
+            >
+              Mark season watched
+            </button>
+          )}
+        </div>
         <ol className={SEASON_LIST}>
           {currentEpisodes.map((one) => (
             <EpisodeLine
@@ -236,7 +257,6 @@ function SeasonList({
               covered={coveredUpTo(live, one)}
               libraryEntryId={libraryEntryId}
               titleName={titleName}
-              onMarkUpTo={setConfirming}
             />
           ))}
         </ol>
@@ -266,121 +286,6 @@ function SeasonList({
   );
 }
 
-/**
- * The trailing slot, at one fixed measure in every state.
- *
- * Issue #88 pinned the row's *height* so a mark could not move a row under a thumb. This
- * is the same rule applied along the other axis, and issue #89 is what makes it
- * necessary: the slot holds several different sets of things — *Up next* beside *Strike
- * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch*; and, since
- * #196, *watched up to here* on either side of that split — and they are not the same
- * width. Left to size themselves, the episode name beside them would jump every time one
- * gave way to another, which is *nothing reflows* broken sideways instead
- * of vertically. (#89 wrote *three* here and enumerated three; the count is deliberately
- * not restated now that the table below is the thing that enumerates them.)
- *
- * So the slot is fixed and its contents are right-aligned inside it, the name takes the
- * rest with `min-w-0`, and the name truncates rather than wrapping. Truncation is the
- * cost, and it is the right one: a name that wraps takes the row's height with it, which
- * is the property #88 measured twice to get.
- *
- * ── `12rem`, and what issue #203 found when it re-measured ──────────────────────────
- *
- * The slot was `10rem` from #89 until #203, on the strength of a measurement that was
- * true when it was taken: the widest state was *Up next* beside *Strike it*, and #89's
- * own addition — *Rewatch* beside *Unwatch* — came in under it, so nothing had to give
- * way and the episode name stayed exactly as wide as it was.
- *
- * **Issue #195 ended that and nothing re-measured.** It took the two watched controls
- * from underlined text to `GHOST_RECOVERY`, whose `px-4 py-2` and border are far wider
- * and taller than the prose they replaced. The result was on `main` for two tickets: a
- * settled watched row at `50.2px` against every other state's `44px`, and `215.9px` of
- * controls in a `160px` slot, spilling leftward over the episode name because they are
- * `justify-end` inside a `shrink-0` box. **The row grew the moment a mark settled** —
- * the rule *re-measure if you touch the row*, and the exact property
- * `episode-line.ts` was measured into existence twice to hold.
- *
- * Re-measured for #203 in a real Chromium tab against the compiled CSS with Archivo
- * loaded (`getBoundingClientRect`), over every state the row has, at a `420px` pane and
- * again at `375px` and `340px` — the contents figures are identical at all three, because
- * the slot is fixed and the name takes the rest:
- *
- * | Trailing slot state | Before (of `160px`) | Row | After (of `192px`) | Row |
- * |---|---|---|---|---|
- * | *Strike it* | `63.7px` | `44px` | `63.7px` | `44px` |
- * | *Up next* · *Strike it* | `118.3px` | `44px` | `114.3px` | `44px` |
- * | *Watched* (mid-sweep) | `49.1px` | `44px` | `49.1px` | `44px` |
- * | up-to · *Strike it* | `101.7px` | `44px` | `97.7px` | `44px` |
- * | *Up next* · up-to · *Strike it* | `156.3px` | `44px` | `148.3px` | `44px` |
- * | *Rewatch* · *Unwatch* | `177.9px` — **over** | `50.2px` | `149.9px` | `44px` |
- * | up-to · *Rewatch* · *Unwatch* | `215.9px` — **over** | `50.2px` | **`183.9px`** | `44px` |
- *
- * Every state is back on `44px`, and the widest lands `8.1px` inside the slot — more
- * headroom than the row already lived with, since #196's widest unwatched state sat
- * `3.7px` inside the old one.
- *
- * ── Three things gave way, and the third is the one that cost something ─────────────
- *
- * 1. **The controls take `GHOST_RECOVERY_COMPACT`** — the same register at
- *    `RECORDING_CONTROL`'s measure, so *Rewatch* and *Unwatch* are the size of the
- *    *Strike it* they replace. That alone fixes the **height** outright, and is the whole
- *    of what #203 called "a more compact ghost variant".
- * 2. **The slot's own gap is `gap-2`, not `gap-3`.** The row's `gap-3` separates its three
- *    major cells — number, name, slot. These are sibling controls inside one of those
- *    cells, and a group should sit tighter than the cells it sits in. It is also `8px`
- *    that does not come out of the name.
- * 3. **The slot is `12rem`.** This is the part that is a decision rather than a
- *    correction, and #203 said so: no padding value fixes the widest state. Its two
- *    labels are `48.7px` and `49.2px` of text and the up-to glyph is a `26px` box —
- *    `123.9px` before a single pixel of border, padding or gap — so `160px` cannot hold
- *    them and be a button. The slot had to widen or a control had to go, and removing one
- *    is #196's and #145's call, not this ticket's.
- *
- * **What that costs is name width, stated plainly**: `152px` → `120px` at a `420px` pane,
- * `107px` → `75px` at `375px`, `71px` → `40px` at `340px`. The name still measures the
- * same in every one of the seven states at a given width — which is the property this
- * whole constant exists for, and the one thing that was never allowed to be traded.
- *
- * ── What issue #217 found when it re-measured ────────────────────────────────────────
- *
- * *Strike it* became a checkmark (`MarkWatchedButton`), which retires the row's widest
- * unwatched states rather than growing them: `RECORDING_HIT_BOX` is a fixed `44px` square
- * with no text to widen, so the bullet above that reads *"Rewatch and Unwatch are the size
- * of the Strike it they replace"* is now a fact about #203's history rather than about a
- * control still in the row — Rewatch and Unwatch did not change, and `GHOST_RECOVERY_COMPACT`
- * still carries its own `px-2.5 py-1` regardless of what the unwatched control now looks
- * like.
- *
- * Re-measured against a real Chromium tab (`getBoundingClientRect`, via a Playwright
- * instance rather than `npm run dev` — this ticket's session had no database or auth
- * available to render the live page, so a standalone document was built from this file's
- * own class strings instead of the compiled stylesheet directly; worth a second pass
- * against the running app). The row-height figures below are that harness's own, exact:
- * nothing in `RECORDING_HIT_BOX`'s box model depends on a typeface. The two combined-width
- * figures that include a text label carry Archivo's own already-measured glyph widths
- * (`tests/episode-row-trailing-slot.test.ts`'s `GLYPH` table) rather than the harness's
- * substitute system font, for the reason that table gives for itself — recomputing text
- * metrics a second, worse way. Over the four states the checkmark changed, at `420px`,
- * `375px` and `340px` panes — every figure identical across all three widths, the same
- * property `TRAILING` has held since #89:
- *
- * | Trailing slot state | Contents, of `192px` | Row |
- * |---|---|---|
- * | checkmark alone | `44px` | `44px` |
- * | *Up next* · checkmark | `94.6px` | `44px` |
- * | up-to · checkmark | `78px` | `44px` |
- * | *Up next* · up-to · checkmark | `128.6px` | `44px` |
- *
- * Every checkmark state lands **under** its old *Strike it* figure (`63.7` / `114.3` /
- * `97.7` / `148.3px`) rather than over it — `RECORDING_HIT_BOX`'s `44px` fixed square is
- * narrower than a text pill wide enough to hold *Strike it*, so this ticket only ever
- * gives the slot more room back, never less. The row height holds at `44px` in all four
- * states, unchanged from #203's own table above — confirmed directly (not just inferred
- * from the class strings) by the `btnTop === liTop` / `btnBottom === liBottom` readings
- * the harness took alongside the width figures: `RECORDING_HIT_BOX`'s margin-corrected
- * `44px` box paints exactly flush with the row's own top and bottom edge, at every one of
- * the three pane widths.
- */
 /**
  * ── The slot is `80px` now, and *Rewatch* and *Unwatch* are gone ─────────────────────
  *
@@ -590,23 +495,20 @@ function EpisodeLine({
   covered,
   libraryEntryId,
   titleName,
-  onMarkUpTo,
   onOpenMenu,
 }: {
   episode: EpisodeDetail;
-  /** What a press of *watched up to here* would record, or `null` where the control must
-   *  not be drawn on this row at all — `mark-up-to.ts` owns that rule (issue #196). */
+  /** Everything unwatched up to and including this episode when there are earlier gaps,
+   *  `null` otherwise — `mark-up-to.ts` owns that rule. Marking this episode then offers
+   *  to mark the earlier ones on its toast. */
   covered: readonly EpisodeDetail[] | null;
   libraryEntryId: string;
   titleName: string;
-  onMarkUpTo: (confirming: {
-    readonly through: EpisodeDetail;
-    readonly covered: readonly EpisodeDetail[];
-  }) => void;
   /** Opens the season's one `WatchMenu` on this episode. */
   onOpenMenu: (episode: EpisodeDetail) => void;
 }) {
   const fullName = episodeFullName(episode);
+  const earlier = covered?.filter((one) => one.id !== episode.id) ?? [];
 
   const { watched, watches, phase, pending, attempt, settle } = useWatchMark({
     initialWatched: episode.watched,
@@ -615,32 +517,27 @@ function EpisodeLine({
     episodeId: episode.id,
     titleName,
     episodeName: fullName,
+    /* Marking an episode with unwatched episodes before it offers to mark those too, on
+       the same toast, rather than a separate mark-up-to control drawn on every row. It is
+       the same write the confirm dialog makes, through the same store. */
+    also:
+      earlier.length === 0
+        ? undefined
+        : () => ({
+            label: `Also mark ${earlier.length.toLocaleString("en-GB")} earlier`,
+            run: () =>
+              void watchMarks.markUpTo(
+                { libraryEntryId, episodeId: episode.id },
+                earlier.map((one) => ({ libraryEntryId, episodeId: one.id })),
+                { title: titleName, episode: `${markUpToCount(earlier)} before ${fullName}` },
+              ),
+          }),
   });
 
   /**
-   * The count the row prints, read from the store rather than off the prop — so a rewatch
-   * recorded from the panel shows `×2` on the press rather than after a refresh, which is
-   * the same optimism the mark itself has always had. `episode.watches` seeds it.
-   */
-  const watchCount = watches;
-
-  /**
-   * **Hold the row — or right-click it — for *Rewatch*, *Undo* and *Unwatch*.**
-   *
-   * Offered only on a watched row, because all three items are about a watch that exists:
-   * an unwatched row's whole vocabulary is the check beside it, and a panel there would
-   * open on three words that could not do anything.
-   *
-   * `useHoldGesture` is the library grid's own press, extracted rather than re-derived
-   * (`use-hold-to-select.ts`) — the same 500ms, the same 10px slop, the same swallowed
-   * click. The swallow matters less than it did now that the row is not a link, and it
-   * still matters: without it the hold's release would land as a click on whatever is
-   * under the finger.
-   *
-   * `onContextMenu` does two jobs. On a phone the hook's own handler suppresses the
-   * text-selection callout the browser would otherwise raise over the row being held. On a
-   * desktop, where there is no hold to make, the same event **is** the gesture — a
-   * right-click opens the panel, which is the only route a mouse has to any of the three.
+   * **Hold the row — or right-click it — for *Rewatch*, *Undo* and *Unwatch*.** Shortcuts
+   * only: the watched mark itself is a button that opens the same menu, so none of the
+   * three depends on a gesture a keyboard or a screen reader cannot make.
    */
   const hold = useHoldGesture(watched ? () => onOpenMenu(episode) : null);
 
@@ -657,23 +554,6 @@ function EpisodeLine({
       data-holding={hold.holding ? "true" : undefined}
       data-landed={hold.landed ? "true" : undefined}
     >
-      {/**
-       * **The row is not a destination any more.** It was a `<Link>` to
-       * `/episodes/{id}` — #254's *press an episode row and get the same page* — and that
-       * page is deleted, so there is nowhere for the press to go: this row is already
-       * rendered on the title's own page, which is the only other thing an episode could
-       * lead to.
-       *
-       * What the row still has is a **hold**, and that is now its whole gesture
-       * vocabulary: press the mark to record, hold the row for the panel. Nothing is lost
-       * to the deletion except a navigation that arrived at a page carrying a synopsis and
-       * a still.
-       *
-       * The cells keep the layout the link gave them — `flex-1` over `min-w-0`, the same
-       * `gap-3` — because that geometry is the row's, not the anchor's. What goes with the
-       * anchor is `-my-2 self-stretch py-2`, which existed only to make a text-height link
-       * fill the row's own 44px.
-       */}
       <span className="flex min-w-0 flex-1 items-center gap-3">
         <span
           className={episode.upNext && !watched ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
@@ -682,17 +562,9 @@ function EpisodeLine({
           E{episode.episodeNo}
         </span>
 
-        {/* The Named Episode Rule: an episode is always its name. `null` is
-            TMDB not having named it yet — not a licence to print the number a second time
-            in its place. */}
+        {/* The Named Episode Rule: an episode is always its name. `null` is TMDB not having
+            named it yet — not a licence to print the number a second time in its place. */}
         <span className={EPISODE_NAME_CELL}>
-          {/* `line-clamp-2`, not `truncate` — a long episode name wraps to a second line
-              and is cut only past that, instead of being cut at the first width it
-              exceeds. `EPISODE_ROW`'s `min-h-11` is a floor and not a fixed height, so a
-              two-line row is legal; what `min-h-11` was measured to protect is that a row
-              does not change height **across its own states**, and the clamp is a property
-              of the name rather than of the mark, so it holds still while a watch is
-              recorded. */}
           <span
             className={`block line-clamp-2 ${
               watched && phase === "settled"
@@ -705,33 +577,15 @@ function EpisodeLine({
             {episode.name === null ? "Not yet named" : episode.name}
           </span>
         </span>
+
+        {episode.upNext && !watched ? (
+          <span className="shrink-0 rounded-[var(--radius-full)] bg-accent/15 px-2 py-0.5 text-meta font-semibold text-accent">
+            Next
+          </span>
+        ) : null}
       </span>
 
       <span className={TRAILING}>
-        {/* Left of whatever the row's own state offers, so the daily gesture keeps the
-            outside edge under the thumb. It sits outside the branch below because it is
-            offered on **both** sides of it: a watched row with a gap behind it is exactly
-            the row this control is for, and it is why `TRAILING` is `80px` rather than
-            the `44px` a mark alone would need. */}
-        {covered === null ? null : (
-          <MarkUpToButton
-            label={markUpToLabel(episode)}
-            onClick={() => onMarkUpTo({ through: episode, covered })}
-            disabled={pending}
-          />
-        )}
-
-        {/* Three states, one `44px` box, no text in any of them.
-
-            The *Up next* label that used to open this slot is gone — `EPISODE_NUMBER_UP_NEXT`
-            says it two cells to the left, in the accent, on the same row, and this was the
-            only thing that ever made the slot hold prose (`TRAILING`).
-
-            **Mid-sweep draws the settled mark rather than the word *Watched*.** The sweep is
-            already washing the row; a `49.1px` text pill that exists for the length of one
-            animation and is then replaced by a `44px` control is a slot that changes width
-            twice per press. It is a `<span>` and not a `<button>` for the same beat: a write
-            is in flight, and `pending` would only have to disable a control drawn for it. */}
         {!watched ? (
           <MarkWatchedButton
             label={`Mark ${fullName} watched`}
@@ -745,49 +599,29 @@ function EpisodeLine({
             </span>
           </span>
         ) : (
-          /**
-           * **A mark, not a button, and beside it the count.**
-           *
-           * The undo glyph that used to sit here is gone: *Undo* is an item in the row's
-           * panel now, with *Rewatch* and *Unwatch*, which is the whole of what a watched
-           * row offers. That removes the last control this slot ever swapped for another
-           * — every watched row is this, whatever happened a second ago.
-           *
-           * `aria-hidden` on the mark, because the name beside it already carries
-           * `WATCHED_NAME` and the count below is real text; a screen reader hearing
-           * "watched, watched, twice" is being told once too often.
-           */
           <>
-            {/**
-             * **×2, and this is the numeral the domain language used to forbid.**
-             *
-             * That sentence — *a rewatch is never a number kept on a title* — is amended
-             * rather than dodged, and the amendment turns on the word **kept**: nothing is
-             * stored. `EpisodeDetail.watches` is counted from the `watch` rows on every
-             * read, out of rows the query was already selecting.
-             *
-             * The test is whether the number is **content**, and its
-             * worked example is Up next's remainder — *am I three from the end of this
-             * show, or thirty*. This is the same shape of question about the other axis:
-             * *have I seen this once, or five times*, on the row that is the only place
-             * that fact exists. What §11 still forbids is a count as **chrome**, and this
-             * adds none: no total on the season head, no tally on the title.
-             *
-             * **`1` is never drawn.** A single watch is what the mark itself says, and a
-             * column of `×1` down a finished season would be the ledger §11 was written
-             * against. The numeral appears at two and counts up from there.
-             */}
-            {watchCount > 1 ? (
+            {/* ×2 and up — nothing is stored; it is counted from the watch rows on every
+                read. A single watch is what the mark itself says, so `×1` is never drawn. */}
+            {watches > 1 ? (
               <span className="code-line text-dim" data-numeric>
-                ×{watchCount}
+                ×{watches}
               </span>
             ) : null}
 
-            <span className={RECORDING_HIT_BOX} aria-hidden="true">
+            {/* A button, so Undo, Unwatch and Rewatch are reachable by keyboard and screen
+                reader — not only by holding or right-clicking the row. */}
+            <button
+              type="button"
+              onClick={() => onOpenMenu(episode)}
+              disabled={pending}
+              aria-label={`${fullName}, watched. Change this watch`}
+              aria-haspopup="dialog"
+              className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
+            >
               <span className={SETTLED_GLYPH}>
                 <CheckmarkIcon className="block h-4 w-4" />
               </span>
-            </span>
+            </button>
           </>
         )}
       </span>
@@ -796,6 +630,7 @@ function EpisodeLine({
     </li>
   );
 }
+
 
 /**
  * `EpisodeLine` and `FilmWatchRow`'s one interactive element, identical either way — the
@@ -844,90 +679,3 @@ export function MarkWatchedButton({
   );
 }
 
-/**
- * *Watched up to here* — issue #196, and the only control in the application whose whole
- * text is its accessible label.
- *
- * ── Why a glyph, and what the row bought with it ─────────────────────────────────────
- *
- * The row is a fixed measure (`TRAILING` above), and its widest *unwatched* state was
- * already *Up next* beside *Strike it*. Re-measured in a real Chromium tab against the
- * compiled CSS (`getBoundingClientRect`, with Archivo loaded), the way `TRAILING` and
- * `episode-line.ts` both record their own numbers — the slot's contents, at a `420px`
- * pane and again at `375px`, both figures identical because the slot is fixed and the
- * name takes the rest:
- *
- * | Trailing slot state | Width, of `192px` | Row height |
- * |---|---|---|
- * | *Strike it* | `63.7px` | `44px` |
- * | *Up next* · *Strike it* | `114.3px` | `44px` |
- * | *Watched* (mid-sweep) | `49.1px` | `44px` |
- * | this · *Strike it* | `97.7px` | `44px` |
- * | ***Up next* · this · *Strike it*** | **`148.3px`** | `44px` |
- * | *Rewatch* · *Unwatch* | `149.9px` | `44px` |
- * | this · *Rewatch* · *Unwatch* | `183.9px` | `44px` |
- *
- * The fifth row is the widest state this control can put a row into on its own: an
- * up-next episode with a gap behind it. Across every state the episode name is **exactly
- * as wide as it was** — `120px` at a `420px` pane, `75px` at `375px` — which is the whole
- * reason this is an icon: *Watched up to here* as words is far past the slot, and the only
- * thing left to pay for them with is the name.
- *
- * ── The last two rows were a live bug when #196 shipped, and #203 closed it ──────────
- *
- * They are measured here because this file is where the row's numbers live, and #196 left
- * them in rather than out so the table could not read as though the row still fitted. It
- * did not. Issue #195 had taken *Rewatch* and *Unwatch* from underlined text to
- * `GHOST_RECOVERY`, whose `px-4 py-2` and border are far wider and taller than the text
- * they replaced, without re-measuring the slot they sit in — *re-measure
- * if you touch the row*. Against the old `160px` slot they came back `177.9px` and
- * `215.9px`, both at `50.2px` tall against every other state's `44px`.
- *
- * Issue #203 re-cut the slot to `192px`, moved that pair onto `GHOST_RECOVERY_COMPACT` and
- * tightened the slot's own gap to `gap-2`; `TRAILING` carries the before-and-after in full.
- * **This control was never the cause and is not the fix** — its own widest state was
- * `3.7px` inside the old slot — but it did add `38px` to the worst of the two, which is
- * why the state is still tabulated here.
- *
- * A stated cost: the control's own box is `26px` square, not the `44px` a thumb wants.
- * That was the register the row already used when this was written — *Strike it*'s box was
- * `26.2px` — so the two sat as a pair. Issue #217 gave the checkmark that replaced *Strike
- * it* a real `44px` hit box, but its **visible** glyph, `RECORDING_GLYPH`, is drawn at this
- * same `26px` measure, so the pair this paragraph describes still holds: what changed is
- * only how much of the checkmark's `44px` is paint versus target, not the size the two
- * glyphs read at. A bigger glyph here would still be a control that shouts over the daily
- * gesture in a slot that has no room for it either.
- *
- * ── Why it is dim and not accent ─────────────────────────────────────────────────────
- *
- * `QUIET_RECORDING_CONTROL` (`watch-mark-motion.tsx`) carries that argument, beside the
- * accent `RECORDING_GLYPH`/`RECORDING_HIT_BOX` it must not compete with — one module
- * owning all three is what stops the pair drifting, and the Buttons register is the rule that
- * says so. It was written inline here until the two-axis review of #196 pointed out that
- * it had become the second unnamed copy of a hairline register the build already had.
- */
-function MarkUpToButton({
-  label,
-  onClick,
-  disabled,
-}: {
-  label: string;
-  onClick: () => void;
-  /** The row's own write being on the wire disables this too — they touch the same
-   *  episode, and `watch-marks.ts` is where that overlap is reasoned about. */
-  disabled: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className={`${QUIET_RECORDING_CONTROL} ${IN_FLIGHT}`}
-    >
-      {/* `block`, so the svg does not sit on a text baseline and add descender space to a
-          row whose height is measured. */}
-      <MarkUpToIcon className="block h-4 w-4" />
-    </button>
-  );
-}

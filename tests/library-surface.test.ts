@@ -360,7 +360,7 @@ describe("the filter chips", () => {
       "Caught up",
       "Finished",
       "Watchlist",
-      "Abandoned",
+      "Dropped",
     ]);
   });
 

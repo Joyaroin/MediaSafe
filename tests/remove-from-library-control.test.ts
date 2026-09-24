@@ -6,7 +6,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RemoveControl } from "@/app/(signed-in)/library/remove-control";
-import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { DESTRUCTIVE_BUTTON_COMPACT, PRIMARY_BUTTON_COMPACT } from "@/app/buttons";
+import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
 
 /**
  * Where *Remove from library* is, and where it is not — issue #142.
@@ -66,7 +67,7 @@ describe("the remove control", () => {
     expect(render()).toContain('aria-label="Remove The Bear from your library"');
   });
 
-  it("takes the accent now, knowingly, and only as GHOST_RECOVERY's outline", () => {
+  it("is the destructive button, never the primary one", () => {
     // Until issue #195 this control never took the reserved accent (`app/globals.css`,
     // issue #134) — the abandon control was named as the thing that must never take it,
     // and this was quieter still. #195 overrode both, in the open (the
@@ -80,7 +81,10 @@ describe("the remove control", () => {
     // either treatment's own definition is what this test tracks.
     const markup = render();
 
-    expect(markup).toContain(GHOST_RECOVERY);
+    // Issue #357: red text and a red hairline, at the foot of the page — never the solid
+    // accent fill a surface's one main action wears.
+    expect(markup).toContain(DESTRUCTIVE_BUTTON_COMPACT);
+    expect(markup).not.toContain(PRIMARY_BUTTON_COMPACT);
     expect(markup).not.toContain(SOLID_RECOVERY);
   });
 });
@@ -107,7 +111,7 @@ describe("giving up and removing, which must not read as the same thing", () => 
        reader opens to do something about it, and the page carrying the control that clears
        it. Read from whichever surface renders it rather than restated here, so that
        rewording the sentence fails this and asks the question. */
-    const tile = sourceAt("app/(signed-in)/library/title-hero.tsx");
+    const tile = sourceAt("app/(signed-in)/library/programme-note-content.tsx");
 
     expect(tile).toContain("Watching it again clears this");
 

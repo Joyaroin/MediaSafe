@@ -44,5 +44,5 @@ export const STATE_LABELS: Record<LibraryState, { label: string; className: stri
   caught_up: { label: "Caught up", className: "text-ink" },
   finished: { label: "Finished", className: "text-dim" },
   watchlist: { label: "Watchlist", className: "text-dim" },
-  abandoned: { label: "Abandoned", className: "text-dim" },
+  abandoned: { label: "Dropped", className: "text-dim" },
 };

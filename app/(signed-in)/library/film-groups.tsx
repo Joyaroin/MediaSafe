@@ -35,7 +35,7 @@ import { LibraryGrid } from "./library-grid";
 const FILM_GROUPS: readonly { state: LibraryState; heading: string }[] = [
   { state: "watchlist", heading: "Watchlist" },
   { state: "finished", heading: "Finished" },
-  { state: "abandoned", heading: "Abandoned" },
+  { state: "abandoned", heading: "Dropped" },
 ];
 
 export function FilmGroups({ entries }: { entries: readonly LibraryEntryRow[] }) {

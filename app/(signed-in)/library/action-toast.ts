@@ -48,6 +48,12 @@ export interface ActionOffer {
    * of the thing, only the one the press just made.
    */
   readonly undo: () => void;
+  /**
+   * A second action beside Undo, when the write that raised the toast suggests one —
+   * issue #357's *Also mark N earlier*, offered after marking an episode that has
+   * unwatched episodes before it. Absent on every other toast.
+   */
+  readonly also?: { readonly label: string; readonly run: () => void };
 }
 
 export interface RaisedAction extends ActionOffer {

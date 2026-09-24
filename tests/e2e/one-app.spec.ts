@@ -4,7 +4,11 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 import { seedFixtureSession } from "./support/fixture-session";
-import { seedWatchingShow, type SeededTitle } from "./support/fixture-library";
+import {
+  seedShowWithSeason,
+  seedWatchingShow,
+  type SeededTitle,
+} from "./support/fixture-library";
 import { toStorageState } from "./support/storage-state";
 
 /**
@@ -22,9 +26,11 @@ const DESKTOP = { width: 1280, height: 900 };
 const DESTINATIONS = ["Up next", "Library", "Search", "You"];
 
 let seeded: SeededTitle;
+let userId: string;
 
 test.beforeAll(async () => {
   const session = await seedFixtureSession();
+  userId = session.userId;
   seeded = await seedWatchingShow(session.userId);
 
   const authDir = path.join(__dirname, ".auth");
@@ -79,4 +85,82 @@ test("clicking a library poster on a desktop opens the title's own page", async 
 
   await page.getByRole("button", { name: new RegExp(seeded.titleName) }).click();
   await expect(page).toHaveURL(new RegExp(`/titles/${seeded.libraryEntryId}$`));
+});
+
+// ── The title page ──────────────────────────────────────────────────────────────────
+
+test("Mark season watched records the season, and its chip takes a tick", async ({ page }) => {
+  const show = await seedShowWithSeason(userId, { episodes: 4, watched: [1] });
+
+  await page.setViewportSize(DESKTOP);
+  await page.goto(`/titles/${show.libraryEntryId}`);
+
+  await page.getByRole("button", { name: "Mark season watched" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Record 3 episodes" }).click();
+
+  await expect(page.getByRole("button", { name: "Season 1, watched" })).toBeVisible();
+
+  // And it is written, not only drawn: a reload reads it back.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Season 1, watched" })).toBeVisible();
+});
+
+test("a watched episode can be un-watched with the keyboard alone", async ({ page }) => {
+  const show = await seedShowWithSeason(userId, { episodes: 2, watched: [1] });
+
+  await page.setViewportSize(DESKTOP);
+  await page.goto(`/titles/${show.libraryEntryId}`);
+
+  const watchedMark = page.getByRole("button", { name: /Episode 1 — Fixture Episode 1, watched/ });
+  await watchedMark.focus();
+  await page.keyboard.press("Enter");
+
+  const menu = page.getByRole("dialog");
+  await menu.getByRole("button", { name: "Unwatch" }).focus();
+  await page.keyboard.press("Enter");
+  await menu.getByRole("button", { name: "Unwatch it" }).focus();
+  await page.keyboard.press("Enter");
+
+  await expect(
+    page.getByRole("button", { name: /Mark Season 1, Episode 1 — Fixture Episode 1 watched/ }),
+  ).toBeVisible();
+});
+
+test("marking an episode with gaps before it offers to mark those too", async ({ page }) => {
+  const show = await seedShowWithSeason(userId, { episodes: 4, watched: [] });
+
+  await page.setViewportSize(DESKTOP);
+  await page.goto(`/titles/${show.libraryEntryId}`);
+
+  await page.getByRole("button", { name: /Mark Season 1, Episode 3 — Fixture Episode 3 watched/ }).click();
+  await page.getByRole("status").getByRole("button", { name: "Also mark 2 earlier" }).click();
+
+  for (const number of [1, 2, 3]) {
+    await expect(
+      page.getByRole("button", { name: new RegExp(`Episode ${number} — Fixture Episode ${number}, watched`) }),
+    ).toBeVisible();
+  }
+  await expect(
+    page.getByRole("button", { name: /Mark Season 1, Episode 4 — Fixture Episode 4 watched/ }),
+  ).toBeVisible();
+});
+
+test("giving up moves a show into Dropped, and resuming takes it back out", async ({ page }) => {
+  const show = await seedShowWithSeason(userId, { episodes: 3, watched: [1] });
+
+  await page.setViewportSize(DESKTOP);
+  await page.goto(`/titles/${show.libraryEntryId}`);
+
+  await page.getByLabel("More actions").click();
+  await page.getByRole("button", { name: "Give up on this show" }).click();
+  await expect(page.getByText("Dropped", { exact: true })).toBeVisible();
+
+  await page.goto("/library");
+  await page.getByRole("button", { name: "Dropped" }).click();
+  await expect(page.getByRole("button", { name: new RegExp(show.titleName) })).toBeVisible();
+
+  await page.goto(`/titles/${show.libraryEntryId}`);
+  await page.getByLabel("More actions").click();
+  await page.getByRole("button", { name: "Resume watching" }).click();
+  await expect(page.getByText("Dropped", { exact: true })).toHaveCount(0);
 });

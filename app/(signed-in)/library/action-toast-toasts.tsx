@@ -48,15 +48,10 @@ export function ActionToasts() {
 
         <p className="mt-3 text-note leading-relaxed text-text">Watched.</p>
 
-        <div className="mt-4">
-          {/* The one control this toast has. It is never *Unwatch* — Undo takes back the
-              newest watch and leaves every earlier one, exactly `watch-menu.tsx`'s own
-              *Undo* does, because this is that same write reached from a second surface. */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => {
-              // Taken down on the press, not left for its own timer: the reader has
-              // already acted, and there is nothing left here to keep offering.
               actionToasts.dismiss(offer.id);
               offer.undo();
             }}
@@ -64,6 +59,19 @@ export function ActionToasts() {
           >
             Undo
           </button>
+
+          {offer.also === undefined ? null : (
+            <button
+              type="button"
+              onClick={() => {
+                actionToasts.dismiss(offer.id);
+                offer.also?.run();
+              }}
+              className={GHOST_RECOVERY}
+            >
+              {offer.also.label}
+            </button>
+          )}
         </div>
       </div>
     </div>
