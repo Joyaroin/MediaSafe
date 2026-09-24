@@ -80,11 +80,6 @@ function spacing(classes: string, prefix: string): number {
   return match === null ? 0 : Number(match[1]) * STEP_PX;
 }
 
-/** A `1px` border on each side, when the class string asks for one. */
-function borderBox(classes: string): number {
-  return / border(?: |$)/.test(` ${classes} `) ? 2 : 0;
-}
-
 /**
  * The pixel value of a negative Tailwind `margin-block` utility — `-my-2` → `-8`. Returns
  * `0` when the class string asks for none. Not folded into `spacing()` above: that helper
@@ -101,29 +96,13 @@ function negativeMarginBlock(classes: string): number {
 const EPISODES_SOURCE = sourceAt("app/(signed-in)/library/programme-note-episodes.tsx");
 const MOTION_SOURCE = sourceAt("app/(signed-in)/library/watch-mark-motion.tsx");
 const ROW_SOURCE = sourceAt("app/(signed-in)/library/episode-line.ts");
-const BUTTONS_SOURCE = sourceAt("errors/recovery-buttons.ts");
 
 const TRAILING = classStringNamed(EPISODES_SOURCE, "TRAILING");
 const EPISODE_ROW = classStringNamed(ROW_SOURCE, "EPISODE_ROW");
-const GHOST_COMPACT = classStringNamed(BUTTONS_SOURCE, "GHOST_RECOVERY_COMPACT");
 const RECORDING_HIT_BOX = classStringNamed(MOTION_SOURCE, "RECORDING_HIT_BOX");
-const QUIET_RECORDING_CONTROL = classStringNamed(MOTION_SOURCE, "QUIET_RECORDING_CONTROL");
 
 /** One thing in the slot: how wide its box is, and how tall. */
 type SlotItem = { readonly width: number; readonly height: number };
-
-/**
- * *Watched up to here*: `QUIET_RECORDING_CONTROL` around a `h-4 w-4` glyph. The icon is
- * `block`, so it adds no descender space to the box — `MarkUpToButton`'s own docblock.
- */
-function markUpTo(): SlotItem {
-  const glyph = 4 * STEP_PX;
-  const pad = spacing(QUIET_RECORDING_CONTROL, "p") * 2;
-  return {
-    width: glyph + pad + borderBox(QUIET_RECORDING_CONTROL),
-    height: glyph + pad + borderBox(QUIET_RECORDING_CONTROL),
-  };
-}
 
 /**
  * The checkmark — `RECORDING_HIT_BOX` around `CheckmarkIcon`, issue #217. A fixed `44px`
@@ -144,7 +123,8 @@ function markBox(): SlotItem {
  *
  * **There are two widths, not seven.** Everything the slot holds is now a box: the mark
  * in `RECORDING_HIT_BOX`'s `44px` square — accent check, settled check, or undo arrow,
- * all three the same box — optionally preceded by *watched up to here* at `26px`. No
+ * all three the same box. *Watched up to here* no longer sits beside it: issue #357 moved
+ * that write to *Mark season watched* and the toast after a mark. No
  * state carries text, which is why the `GLYPH` width table this file used to open with is
  * gone rather than trimmed: nothing left in this slot has a typeface.
  *
@@ -156,9 +136,6 @@ const STATES: readonly { readonly name: string; readonly items: readonly SlotIte
   { name: "checkmark", items: [markBox()] },
   { name: "settled mark", items: [markBox()] },
   { name: "undo", items: [markBox()] },
-  { name: "up-to · checkmark", items: [markUpTo(), markBox()] },
-  { name: "up-to · settled mark", items: [markUpTo(), markBox()] },
-  { name: "up-to · undo", items: [markUpTo(), markBox()] },
 ];
 
 const SLOT_PX = spacing(TRAILING, "w");
@@ -203,23 +180,18 @@ describe("the episode row's trailing slot", () => {
    * untouched since #203, because neither *Watched* mid-sweep nor the settled pair reads
    * anything from `RECORDING_HIT_BOX`.
    */
-  it("holds the two widths the redraw leaves, and no others", () => {
+  it("holds the one width the slot has left, and no other", () => {
     expect(Object.fromEntries(STATES.map((s) => [s.name, round(contentsOf(s.items))]))).toEqual({
       checkmark: 44,
       "settled mark": 44,
       undo: 44,
-      "up-to · checkmark": 78,
-      "up-to · settled mark": 78,
-      "up-to · undo": 78,
     });
   });
 
   it("does not change width when a mark lands, settles, or is taken back", () => {
     // The property the whole file exists for, stated directly rather than left to be
-    // inferred from the table above. A row either offers *watched up to here* or it does
-    // not, and a press does not change which; within either group every state is one
-    // width, so nothing in the slot moves as the reader marks, waits out the sweep, and
-    // takes it back.
+    // inferred from the table above: every state is one width, so nothing in the slot
+    // moves as the reader marks, waits out the sweep, and takes it back.
     const widthOf = (name: string) => {
       const state = STATES.find((s) => s.name === name);
       if (state === undefined) throw new Error(`no state named ${name}`);
@@ -227,9 +199,6 @@ describe("the episode row's trailing slot", () => {
     };
 
     expect(new Set(["checkmark", "settled mark", "undo"].map(widthOf)).size).toBe(1);
-    expect(
-      new Set(["up-to · checkmark", "up-to · settled mark", "up-to · undo"].map(widthOf)).size,
-    ).toBe(1);
   });
 
   it("has no control left in it that carries a word", () => {
@@ -244,32 +213,6 @@ describe("the episode row's trailing slot", () => {
     for (const word of ["Rewatch", "Unwatch", "Up next", "Watched"]) {
       expect(slot).not.toMatch(new RegExp(`>\\s*${word}\\s*<`));
     }
-  });
-
-  it("wears GHOST_RECOVERY's own treatment", () => {
-    const treatment = (classes: string) =>
-      classes
-        .split(" ")
-        .filter((c) => !/^(px|py|p)-/.test(c) && c !== "shrink-0")
-        .sort();
-
-    expect(treatment(GHOST_COMPACT)).toEqual(
-      treatment(classStringNamed(BUTTONS_SOURCE, "GHOST_RECOVERY")),
-    );
-  });
-
-  /**
-   * #203's own measure, pinned now that there is nothing left to derive it from. Until
-   * issue #217 this compared `GHOST_COMPACT`'s padding to `RECORDING_CONTROL`'s, because
-   * #203 had borrowed it character for character. #217 gave the row's own recording
-   * control a `44px` hit box with no `px`/`py` of its own (`RECORDING_HIT_BOX` is sized by
-   * `h-11`/`w-11`, not padding), so that comparison has nothing left to read on the other
-   * side. `GHOST_RECOVERY_COMPACT`'s `px-2.5 py-1` did not change and is not wrong; it is
-   * simply its own constant now rather than a live copy of another one.
-   */
-  it("keeps the px-2.5 py-1 measure #203 gave it", () => {
-    expect(spacing(GHOST_COMPACT, "px")).toBe(10);
-    expect(spacing(GHOST_COMPACT, "py")).toBe(4);
   });
 
   /**
