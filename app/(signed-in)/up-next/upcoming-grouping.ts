@@ -260,6 +260,15 @@ export function awaitedFilms<T extends { readonly releaseDate: string }>(
  * The plural is unconditional past one because the singular day is *Tomorrow* — `In 1 day`
  * is unreachable, which is the only reason this can get away without a plural rule.
  */
+/**
+ * How far away a dated thing is, in the words a coming-up row prints: *Today*,
+ * *Tomorrow*, *In 5 days*. Both arguments are calendar days (`YYYY-MM-DD`), and `today`
+ * is the reader's own (`readerDay`), so two readers either side of midnight read their own.
+ */
+export function daysUntilInWords(day: string, today: string): string {
+  return countdownInWords(calendarDay(day) - calendarDay(today));
+}
+
 function countdownInWords(ahead: number): string {
   if (ahead === 0) return "Today";
   if (ahead === 1) return "Tomorrow";

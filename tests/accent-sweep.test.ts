@@ -269,6 +269,11 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason: "the 'In N days' countdown — the #252 amendment",
   },
+  "app/(signed-in)/up-next/upcoming-row.tsx": {
+    meaning: "LITERAL_EXCEPTION",
+    tokens: 1,
+    reason: "the 'Tomorrow' / 'In N days' on a coming-up episode — the same countdown the films carry",
+  },
 
   // ── Literal exceptions: everything else, one call site apiece ─────────────────────
 

@@ -144,7 +144,6 @@ describe("where the remove control appears", () => {
       "app/(signed-in)/library/library-grid.tsx",
       "app/(signed-in)/library/selectable-entry.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
-      "app/(signed-in)/up-next/up-next-episode-card.tsx",
       "app/(signed-in)/up-next/up-next-film-rail.tsx",
     ];
 

@@ -1,6 +1,5 @@
-import type { AccountFigures, LibraryStateGroupEntry, ListCard } from "@/db/access";
+import type { AccountFigures, LibraryStateGroupEntry } from "@/db/access";
 import { qualification, watchTimeInWords } from "./figures";
-import { YouListsRail } from "./you-lists-rail";
 import { YouTitleRail } from "./you-title-rail";
 
 /**
@@ -83,13 +82,10 @@ function Section({
 
 export function YouSurface({
   figures,
-  lists,
   shows,
   films,
 }: {
   readonly figures: AccountFigures;
-  /** Issue #248's lists rail — up to four covers per card, in list-membership order. */
-  readonly lists: readonly ListCard[];
   /** Issue #248's shows and films rails — shows Watching or Caught up, films Finished,
    *  each most recent dated watch first (`db/access.ts`'s `listYouRails`). */
   readonly shows: readonly LibraryStateGroupEntry[];
@@ -152,7 +148,6 @@ export function YouSurface({
         absence when it has nothing (no heading, no reserved space), so there is no branch
         here beyond simply rendering all three.
       */}
-      <YouListsRail lists={lists} />
       <YouTitleRail label="Shows" kind="show" entries={shows} />
       <YouTitleRail label="Films" kind="film" entries={films} />
     </div>

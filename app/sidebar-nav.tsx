@@ -5,14 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { smooth } from "./motion";
-import {
-  LibraryIcon,
-  ListsIcon,
-  SearchIcon,
-  SettingsIcon,
-  UpNextIcon,
-  YouIcon,
-} from "./nav-icons";
+import { DESTINATIONS } from "./destinations";
+import { DESTINATION_ICONS } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 import { useUpNextRepress } from "./use-up-next-repress";
 
@@ -70,15 +64,12 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * reaching for it since #136 and still finds Lists there. The desktop keeps six
  * destinations, exactly as it did the day before.
  */
-const PRIMARY = [
-  { href: "/up-next", label: "Up next", Icon: UpNextIcon },
-  { href: "/library", label: "Library", Icon: LibraryIcon },
-  { href: "/search", label: "Search", Icon: SearchIcon },
-  { href: "/lists", label: "Lists", Icon: ListsIcon },
-  { href: "/you", label: "You", Icon: YouIcon },
-] as const;
+const PRIMARY = DESTINATIONS.map(({ href, label }) => ({
+  href,
+  label,
+  Icon: DESTINATION_ICONS[href],
+}));
 
-const SETTINGS = { href: "/settings", label: "Settings", Icon: SettingsIcon } as const;
 
 /* Both states keep the transparent `2px` left border. It is pure spacing now — the
    visible marker is `<CurrentMarker />`, one `layoutId` element that Motion slides down
@@ -132,26 +123,6 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {/* The Hairline Rule: a `1px` `hair` rule between the five primary
-          destinations and Settings, the same division the masthead used to draw between
-          its nav cells and its Settings entrance — carried over as a rule rather than as
-          another bordered cell, since the sidebar is a column, not a row. */}
-      <div className="mx-4 border-t border-hair" />
-
-      <nav aria-label="Settings" className="flex flex-col py-2">
-        <Link
-          href={SETTINGS.href}
-          aria-current={isCurrent(SETTINGS.href) ? "page" : undefined}
-          className={isCurrent(SETTINGS.href) ? CURRENT : NOT_CURRENT}
-        >
-          {/* Same `layoutId` as the primary nav's, deliberately: the marker slides
-              across the dividing rule into Settings rather than cutting, because it is
-              one selection moving through one column, not two independent navs. */}
-          {isCurrent(SETTINGS.href) ? <CurrentMarker /> : null}
-          <SETTINGS.Icon className="h-4 w-4 shrink-0" />
-          <span className="code-line">{SETTINGS.label}</span>
-        </Link>
-      </nav>
     </>
   );
 }

@@ -20,7 +20,6 @@ import { useIsSelecting } from "./bulk-selection-context";
 import { LibraryGrid } from "./library-grid";
 import { LibraryHeading } from "./library-heading";
 import { ListsRail } from "./lists-rail";
-import { ProgrammeNoteLayout } from "./programme-note-layout";
 
 /**
  * The populated library's whole shell: the heading bar's chips, filter field and sort
@@ -71,15 +70,11 @@ export function LibrarySurface({
   lists: readonly ListSummary[];
 }) {
   return (
-    <ProgrammeNoteLayout>
-      {/* Above every cell in the grid, and above the action bar it renders itself — issue
-          #197. Inside `ProgrammeNoteLayout` rather than around it, because the bill is the
-          only thing a selection is about; the programme note beside it keeps the click it
-          has always had, and there is no provider over it to take one. */}
+    <main className="flex w-full flex-1 flex-col">
       <BulkSelectionProvider>
         <LibraryColumn entries={entries} sort={sort} lists={lists} />
       </BulkSelectionProvider>
-    </ProgrammeNoteLayout>
+    </main>
   );
 }
 

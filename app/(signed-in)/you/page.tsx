@@ -1,4 +1,4 @@
-import { cachedAccountFigures, cachedYouListCards, cachedYouRails } from "@/cache/tags";
+import { cachedAccountFigures, cachedYouRails } from "@/cache/tags";
 import { requireAvatarUrl, requireDisplayName, requireUserId } from "@/lib/session";
 import { EmptyYou } from "./empty-you";
 import { YouHeading } from "./you-heading";
@@ -81,9 +81,8 @@ export default async function YouPage() {
    * a list, which can hold titles the reader's library never has (*a list
    * holds anything in the catalogue, not only what you own*).
    */
-  const [figures, lists, rails] = await Promise.all([
+  const [figures, rails] = await Promise.all([
     cachedAccountFigures(userId),
-    cachedYouListCards(userId),
     cachedYouRails(userId),
   ]);
 
@@ -96,7 +95,7 @@ export default async function YouPage() {
         {figures.titles === 0 ? (
           <EmptyYou />
         ) : (
-          <YouSurface figures={figures} lists={lists} shows={rails.shows} films={rails.films} />
+          <YouSurface figures={figures} shows={rails.shows} films={rails.films} />
         )}
       </main>
     </NavTransition>

@@ -1,10 +1,9 @@
 import Link from "next/link";
 
-import { airDateInWords } from "@/app/(signed-in)/library/episode-facts";
 import { Poster } from "@/app/poster";
 import type { UpcomingEpisode } from "@/db/access";
 import { episodeCode, remainingInWords } from "./episode-card-line";
-import type { UpcomingTitle } from "./upcoming-grouping";
+import { daysUntilInWords, type UpcomingTitle } from "./upcoming-grouping";
 
 /**
  * One thing you are waiting for.
@@ -44,7 +43,14 @@ import type { UpcomingTitle } from "./upcoming-grouping";
  * show's initials where even that is missing, so the row now has something in every case
  * rather than in almost none.
  */
-export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisode> }) {
+export function UpcomingRow({
+  episode,
+  today,
+}: {
+  episode: UpcomingTitle<UpcomingEpisode>;
+  /** The reader's calendar day, so the row can say how far away the episode is. */
+  today: string;
+}) {
   const code = episodeCode(episode.seasonNo, episode.episodeNo);
 
   return (
@@ -88,7 +94,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
               remaining` — taken rather than reworded, so the two surfaces that count what
               is left of a show count it the same way. */}
           <p className="mt-1 flex items-baseline gap-2 code-line text-dim" data-numeric>
-            <span>{airDateInWords(episode.airDate)}</span>
+            <span className="text-accent">{daysUntilInWords(episode.airDate, today)}</span>
             {episode.more === 0 ? null : <span>{remainingInWords(episode.more)}</span>}
           </p>
         </div>

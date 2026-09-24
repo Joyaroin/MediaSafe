@@ -382,10 +382,7 @@ describe("the watched-up-to-here control", () => {
      * anything easier to hold with one fewer: every surface that shows a title's note draws
      * the shared component rather than growing an episode list of its own.
      */
-    const surfaces = [
-      "app/(signed-in)/library/programme-note.tsx",
-      "app/(signed-in)/titles/[entryId]/title-detail-view.tsx",
-    ];
+    const surfaces = ["app/(signed-in)/titles/[entryId]/title-detail-view.tsx"];
 
     for (const surface of surfaces) {
       const source = readFileSync(join(process.cwd(), surface), "utf8");

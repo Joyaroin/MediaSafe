@@ -146,8 +146,6 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/up-next/upcoming-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/library/lists-rail.tsx", count: 1 }, // a rail card
-  { file: "app/(signed-in)/up-next/up-next-episode-card.tsx", count: 1 }, // a rail card
-  { file: "app/(signed-in)/up-next/up-next-pending-card.tsx", count: 1 }, // a rail card
   { file: "app/(signed-in)/you/you-list-card.tsx", count: 2 }, // a rail card, two states
   { file: "app/(signed-in)/library/programme-note-section.ts", count: 1 }, // a programme-note panel
 ];
@@ -167,6 +165,7 @@ const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number
   { file: "app/(signed-in)/you/you-list-card.tsx", count: 1, reason: "an internal filler cell inside a card the plate line already rings" },
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1, reason: "a stat figure card outside this ticket's named categories" },
   { file: "app/(signed-in)/you/you-hero.tsx", count: 2, reason: "the account avatar well" },
+  { file: "app/(signed-in)/you/you-heading.tsx", count: 1, reason: "the Settings button, a control rather than a container" },
 ];
 
 /** `you-list-card.tsx` carries both a must-carry and an exempt site, so a file's

@@ -141,17 +141,7 @@ describe("Up next — a region boundary, not a whole surface", () => {
     "utf8",
   );
 
-  /**
-   * The whole reason this boundary is a region rather than a whole surface: wrapping the
-   * pending rails in the same `ProgrammeNoteLayout` `page.tsx` uses is what keeps the
-   * pane's column on screen throughout, rendering in its own already-settled `idle` phase,
-   * rather than the pane popping in only once the rails resolve.
-   */
-  it("wraps the pending rails in the same two-pane layout the loaded page uses", () => {
-    expect(source).toContain("ProgrammeNoteLayout");
-  });
-
-  it("paints the Tonight heading and one pending line, not a second boundary", () => {
+  it("paints the Up next heading and one pending line, not a second boundary", () => {
     expect(source).toContain("UpNextHeading");
     expect(source).toContain("PendingLine");
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  daysUntilInWords,
   awaitedFilms,
   groupUpcoming,
   readerDay,
@@ -304,5 +305,21 @@ describe("the films come back in the order they were read", () => {
     // The read's own object, beside the words rather than carrying them.
     expect(waiting[0].film).toBe(nearest);
     expect(waiting[0].film).not.toHaveProperty("countdown");
+  });
+});
+
+describe("how far away an episode is, in words", () => {
+  /**
+   * A coming-up row says how long you have to wait, not which date it is — the question a
+   * reader brings to the list is *how soon*, and a date makes them do the sum.
+   */
+  it("counts the days from the reader's today", () => {
+    expect(daysUntilInWords("2026-09-23", "2026-09-23")).toBe("Today");
+    expect(daysUntilInWords("2026-09-24", "2026-09-23")).toBe("Tomorrow");
+    expect(daysUntilInWords("2026-09-28", "2026-09-23")).toBe("In 5 days");
+  });
+
+  it("counts across a month end", () => {
+    expect(daysUntilInWords("2026-10-02", "2026-09-29")).toBe("In 3 days");
   });
 });

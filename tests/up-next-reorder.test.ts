@@ -45,7 +45,6 @@ function sourceAt(relativePath: string): string {
 const UP_NEXT = "app/(signed-in)/up-next";
 const ROW = `${UP_NEXT}/up-next-episode-row.tsx`;
 const EPISODE_RAIL = `${UP_NEXT}/up-next-episode-rail.tsx`;
-const RAILS_SURFACE = `${UP_NEXT}/up-next-rails-surface.tsx`;
 const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
 const MOTION_PROVIDER = "app/motion-provider.tsx";
 
@@ -118,18 +117,6 @@ describe("the row travels instead of teleporting", () => {
   });
 });
 
-/** No new client boundary on the surfaces that only ever hand the row down as a child —
- *  the reasoning for why this ticket adds none at all. */
-describe("no new client boundary is introduced", () => {
-  it("leaves the desktop rails surface a server component", () => {
-    expect(sourceAt(RAILS_SURFACE)).not.toMatch(/^"use client";/m);
-  });
-
-  it("leaves the films rail a server component", () => {
-    expect(sourceAt(FILM_RAIL)).not.toMatch(/^"use client";/m);
-  });
-});
-
 /** Every `key={...}` attribute in a source string, in order. */
 function listKeys(source: string): string[] {
   return [...source.matchAll(/key=\{([^}]*)\}/g)].map(([, expression]) => expression.trim());
@@ -150,9 +137,8 @@ function auditKeyStability(source: string): { readonly positional: readonly stri
 
 describe("every Up next list render keys on the library entry's identity", () => {
   const surfaces = [
-    ["the phone's next-episodes rail", EPISODE_RAIL],
-    ["the desktop's three rails", RAILS_SURFACE],
-    ["the phone's films rail", FILM_RAIL],
+    ["the continue-watching rail", EPISODE_RAIL],
+    ["the films rail", FILM_RAIL],
   ] as const;
 
   for (const [label, file] of surfaces) {

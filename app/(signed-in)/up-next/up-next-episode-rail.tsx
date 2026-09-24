@@ -49,7 +49,7 @@ export function UpNextEpisodeRail({
   if (pending.length === 0 && showing.length === 0) return null;
 
   return (
-    <UpNextGroup label="Next episodes">
+    <UpNextGroup label="Continue watching">
       {pending.map((entry, index) => (
         <UpNextPendingRow
           key={entry.libraryEntryId}
@@ -61,7 +61,6 @@ export function UpNextEpisodeRail({
         <UpNextEpisodeRow
           key={entry.libraryEntryId}
           entry={entry}
-          press="episode"
           aboveFold={pending.length + index < FIRST_RUN}
         />
       ))}

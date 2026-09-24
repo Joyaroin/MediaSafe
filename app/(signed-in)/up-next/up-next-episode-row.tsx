@@ -5,9 +5,7 @@ import Link from "next/link";
 import { ViewTransition } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
-import { useLibrarySelection } from "@/app/(signed-in)/library/library-selection";
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
-import { DESKTOP_BREAKPOINT } from "@/app/(signed-in)/library/selectable-entry";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
   RECORDING_GLYPH,
@@ -63,32 +61,12 @@ import {
  * count the rule was narrowed for (#250), on the grounds that *am I three from the end or
  * thirty* is the question this row exists to answer.
  *
- * ── The press, and the divergence it preserves ────────────────────────────────────────
- *
- * Divergence 3 — *desktop replaces the pane, phone pushes a route* — is
- * unchanged by this ticket and is the reason this component takes `press` rather than
- * deciding for itself:
- *
- * - **`"select"`** is the desktop rails' behaviour, out of `up-next-tile.tsx`: on `lg` and
- *   up a press swaps the programme note beside the list and never navigates; below it, the
- *   same element is an ordinary link to the title.
- * - **`"episode"`** is the phone card's, out of `up-next-episode-card.tsx`: a press opens
- *   the episode this row is actually naming. #274's rule, quoted there — *three things on
- *   this card have to agree about which episode it is* — is why the href reads the shown
- *   episode rather than the entry's.
- *
- * Neither is new. Both were already shipping; this is the one component that now draws
- * them, instead of two components that each drew one.
  */
-export type RowPress = "select" | "episode";
-
 export function UpNextEpisodeRow({
   entry,
-  press,
   aboveFold = false,
 }: {
   entry: UpNextEntry;
-  press: RowPress;
   aboveFold?: boolean;
 }) {
   if (entry.queue.episodes.length === 0) {
@@ -99,7 +77,6 @@ export function UpNextEpisodeRow({
         episodeName={entry.episodeName}
         picture={cardPicture(entry)}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
-        press={press}
         aboveFold={aboveFold}
         control={null}
         sweep={null}
@@ -107,16 +84,14 @@ export function UpNextEpisodeRow({
     );
   }
 
-  return <MarkableRow entry={entry} press={press} aboveFold={aboveFold} />;
+  return <MarkableRow entry={entry} aboveFold={aboveFold} />;
 }
 
 function MarkableRow({
   entry,
-  press,
   aboveFold,
 }: {
   entry: UpNextEntry;
-  press: RowPress;
   aboveFold: boolean;
 }) {
   const mark = useUpNextMark(entry);
@@ -138,7 +113,6 @@ function MarkableRow({
       episodeName={showing.episodeName}
       picture={mark.picture}
       remainingAfter={countAfterShown(entry.remaining, marked, spent)}
-      press={press}
       aboveFold={aboveFold}
       control={<MarkControl mark={mark} />}
       sweep={
@@ -200,7 +174,6 @@ function RowBody({
   episodeName,
   picture,
   remainingAfter,
-  press,
   aboveFold,
   control,
   sweep,
@@ -210,7 +183,6 @@ function RowBody({
   episodeName: string | null;
   picture: CardPicture;
   remainingAfter: number;
-  press: RowPress;
   aboveFold: boolean;
   control: React.ReactNode;
   sweep: React.ReactNode;
@@ -223,7 +195,7 @@ function RowBody({
        divided by `UpNextGroup`'s hairline rather than drawn as a card, so there is no
        corner for the wash to escape. */
     <m.li layout className={ROW}>
-      <RowLink entry={entry} press={press} label={label}>
+      <RowLink entry={entry} label={label}>
         <RowFrame entry={entry} picture={picture} aboveFold={aboveFold} />
 
         <div className="min-w-0 flex-1">
@@ -273,49 +245,20 @@ function RowBody({
  */
 function RowLink({
   entry,
-  press,
   label,
   children,
 }: {
   entry: UpNextEntry;
-  press: RowPress;
   label: string;
   children: React.ReactNode;
 }) {
-  const { selectedEntryId, select } = useLibrarySelection();
-  const selected = entry.libraryEntryId === selectedEntryId;
-
-  function onSelectClick(event: React.MouseEvent<HTMLAnchorElement>): void {
-    // A ⌘-click, a Ctrl-click, a Shift-click or a middle button is a request about the
-    // link, and it is answered by the link on both sides of the breakpoint.
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
-      return;
-    if (!window.matchMedia(DESKTOP_BREAKPOINT).matches) return;
-    event.preventDefault();
-    select(entry.libraryEntryId, entry.posterPath);
-  }
-
   const shared =
     "pressable group flex min-w-0 flex-1 items-center gap-3.5 text-left";
-
-  if (press === "select") {
-    return (
-      <Link
-        href={`/titles/${entry.libraryEntryId}`}
-        onClick={onSelectClick}
-        aria-current={selected ? "true" : undefined}
-        aria-label={entry.titleName}
-        className={shared}
-      >
-        {children}
-      </Link>
-    );
-  }
 
   return (
     <Link
       href={`/titles/${entry.libraryEntryId}`}
-      // Issue #303: the phone's own press. A plain `Link` needs no `preventDefault` to
+      // Issue #303. A plain `Link` needs no `preventDefault` to
       // carry the poster — this only has to run before the navigation it sits beside, and
       // React runs a click handler before the browser follows the anchor either way.
       onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}
@@ -336,9 +279,6 @@ function RowFrame({
   picture: CardPicture;
   aboveFold: boolean;
 }) {
-  const { selectedEntryId } = useLibrarySelection();
-  const selected = entry.libraryEntryId === selectedEntryId;
-
   /**
    * The title's poster, at its own uncropped `2/3` — never the episode's still, which is
    * retired from this row entirely (#320, and `up-next-mark.ts`'s own docblock on
@@ -369,16 +309,7 @@ function RowFrame({
      this row's name to pair against even once minted. The pending frame carries a poster
      now (`app/poster-handoff-memory.ts`, read by `titles/[entryId]/pending-poster.tsx`),
      so the phone's row has something to share and gets the same wrapper the desktop's
-     always had.
-
-     **`!selected` is still load-bearing, and `up-next-tile.tsx` learned it first.** A view
-     transition name may mark one on-screen element at a time, and the moment the pane
-     beside this list is showing the poster it is holding the same name — so the row has to
-     have let go by then. `selected` only ever answers true for a `press="select"` row: the
-     phone's `press="episode"` rows render under a context no `select()` ever writes to
-     from that surface, so this is the one branch either press was already testing rather
-     than a second condition. */
-  if (selected) return frame;
+     always had. */
   return (
     // `default="poster"` assigns `view-transition-class` to the underlying node — issue
     // #338 — which is what scopes `app/globals.css`'s sampled-spring rule to posters and

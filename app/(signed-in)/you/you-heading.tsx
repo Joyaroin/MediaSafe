@@ -1,3 +1,7 @@
+import Link from "next/link";
+
+import { SettingsIcon } from "@/app/nav-icons";
+
 /**
  * The You destination's own head — issue #247, and the same three-caller shape
  * `lists-heading.tsx` and `library-heading.tsx` have — and the retired Stats page's own
@@ -26,10 +30,19 @@ export const YOU_HEADING_ID = "you-heading";
 
 export function YouHeading() {
   return (
-    <div className="px-[22px] pt-5 lg:px-10">
+    <div className="flex items-center justify-between gap-3 px-[22px] pt-5 lg:px-10">
       <h1 id={YOU_HEADING_ID} className="screen-title text-screen text-ink">
         You
       </h1>
+      {/* Settings lives here now, not in the masthead or the sidebar: the navigation
+          carries only the four destinations, and everything about your account is You. */}
+      <Link
+        href="/settings"
+        className="flex h-11 items-center gap-2 rounded-[var(--radius-full)] bg-raised px-4 text-item font-medium text-text transition-colors duration-[var(--dur-fast)] hover:text-ink"
+      >
+        <SettingsIcon className="h-4 w-4" />
+        Settings
+      </Link>
     </div>
   );
 }

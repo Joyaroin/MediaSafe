@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
-import { LibrarySelectionProvider } from "@/app/(signed-in)/library/library-selection";
 import { ListIconGrid } from "@/app/(signed-in)/lists/[listId]/list-icon-grid";
 import { ListTitleRow } from "@/app/(signed-in)/lists/[listId]/list-title-row";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
@@ -108,11 +107,7 @@ describe("where it sits on the library bill", () => {
 
   const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
     renderToStaticMarkup(
-      createElement(
-        LibrarySelectionProvider,
-        { value: { selectedEntryId: null, selectedPosterPath: null, select: () => {} } },
-        createElement(LibraryEntryCell, { entry: entry(overrides) }),
-      ),
+      createElement(LibraryEntryCell, { entry: entry(overrides) }),
     );
 
   it("draws the bar inside the poster, not under the name", () => {
