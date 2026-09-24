@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import type { ListDetailTitleRow } from "@/db/access";
 import { ListIconGrid } from "./list-icon-grid";
@@ -13,6 +13,7 @@ import {
   type ListViewMode,
 } from "./list-view-mode";
 import { ReorderableTitleList } from "./reorderable-title-list";
+import { useTakeOff } from "./take-off";
 
 /**
  * A list's titles, in whichever view the reader last chose — and the toggle that chooses.
@@ -36,9 +37,11 @@ import { ReorderableTitleList } from "./reorderable-title-list";
  */
 export function ListDetailBody({
   listId,
+  listName,
   titles,
 }: {
   readonly listId: string;
+  readonly listName: string;
   readonly titles: readonly ListDetailTitleRow[];
 }) {
   /* Read out of `localStorage` rather than held in state: the value lives outside React,
@@ -50,6 +53,10 @@ export function ListDetailBody({
     defaultListViewMode,
   );
 
+  // One order for both views, so a title taken off in one is gone from the other.
+  const [order, setOrder] = useState<readonly ListDetailTitleRow[]>(titles);
+  const takeOff = useTakeOff({ listId, listName, order, setOrder });
+
   function choose(mode: ListViewMode): void {
     keepListViewMode(mode);
   }
@@ -60,16 +67,21 @@ export function ListDetailBody({
           name: the bar is chrome that every list route shares, and this control belongs to
           the one thing below it. `px-6` is the rows' own gutter, which is what the bar
           above and the attribution below both use. */}
-      <div className="flex items-center justify-end px-6 pb-3">
+      <div className="flex items-center justify-end px-gutter pb-3">
         <ListViewControl value={view} onChange={choose} />
       </div>
 
       {view === "icons" ? (
-        <ListIconGrid titles={titles} />
+        <ListIconGrid titles={order} onTakeOff={takeOff} />
       ) : (
         /* The reordering surface. `list-icon-grid.tsx` records why the grid is not one
            yet, and that it is this pass's stated limit rather than an oversight. */
-        <ReorderableTitleList listId={listId} initialTitles={titles} />
+        <ReorderableTitleList
+          listId={listId}
+          order={order}
+          setOrder={setOrder}
+          onTakeOff={takeOff}
+        />
       )}
     </>
   );

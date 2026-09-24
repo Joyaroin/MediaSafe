@@ -13,9 +13,22 @@
  * address.
  */
 
+import type { DestinationHref } from "./destinations";
+
 /** A play mark — the same triangle vocabulary as the sort select's caret
  *  (`library-filter-bar.tsx`), the one other polygon in the build. Continuing a title is
  *  what this icon is for. */
+/** The icon each of the four destinations carries, in both navigations. */
+export const DESTINATION_ICONS: Record<
+  DestinationHref,
+  (props: { className?: string }) => React.ReactElement
+> = {
+  "/up-next": UpNextIcon,
+  "/library": LibraryIcon,
+  "/search": SearchIcon,
+  "/you": YouIcon,
+};
+
 export function UpNextIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">

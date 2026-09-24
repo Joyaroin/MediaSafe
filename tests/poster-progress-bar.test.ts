@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
-import { LibrarySelectionProvider } from "@/app/(signed-in)/library/library-selection";
 import { ListIconGrid } from "@/app/(signed-in)/lists/[listId]/list-icon-grid";
 import { ListTitleRow } from "@/app/(signed-in)/lists/[listId]/list-title-row";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
@@ -108,11 +107,7 @@ describe("where it sits on the library bill", () => {
 
   const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
     renderToStaticMarkup(
-      createElement(
-        LibrarySelectionProvider,
-        { value: { selectedEntryId: null, selectedPosterPath: null, select: () => {} } },
-        createElement(LibraryEntryCell, { entry: entry(overrides) }),
-      ),
+      createElement(LibraryEntryCell, { entry: entry(overrides) }),
     );
 
   it("draws the bar inside the poster, not under the name", () => {
@@ -143,7 +138,9 @@ describe("where it sits on a list", () => {
   });
 
   const iconGrid = (overrides: Partial<ListDetailTitleRow> = {}) =>
-    renderToStaticMarkup(createElement(ListIconGrid, { titles: [listTitle(overrides)] }));
+    renderToStaticMarkup(
+      createElement(ListIconGrid, { titles: [listTitle(overrides)], onTakeOff: () => {} }),
+    );
 
   const row = (overrides: Partial<ListDetailTitleRow> = {}) =>
     renderToStaticMarkup(
@@ -180,6 +177,6 @@ describe("where it sits on a list", () => {
   it("leaves the hand-order numeral alone — it is not part of the bar", () => {
     // The numeral is `--ink` on the poster's top corner and answers a different question
     // (`list-icon-grid.tsx`); a bar arriving at the other corner must not disturb it.
-    expect(iconGrid()).toContain("bg-ink");
+    expect(iconGrid()).toContain("bg-text");
   });
 });

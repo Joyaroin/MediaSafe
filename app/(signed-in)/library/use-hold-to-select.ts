@@ -101,7 +101,7 @@ export const HOLDABLE = "select-none [-webkit-touch-callout:none]";
  * clips to a corner at each call site — the bill cell's own `li`, a group tile's poster —
  * is what gives the ring its radius; this never restates one.
  */
-export const SELECTED = "outline-2 -outline-offset-2 outline-ink";
+export const SELECTED = "outline-2 -outline-offset-2 outline-text";
 
 /**
  * `bulk` is read once per call rather than closed over from a stable reference, because

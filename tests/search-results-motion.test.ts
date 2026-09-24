@@ -55,7 +55,7 @@ describe("search results arrive in the same rhythm as the rail beside them", () 
   it("changes no control — the two states still branch on the same phases", () => {
     // The motion is a class on markup already there; the discriminated union that decides
     // what renders is untouched.
-    expect(SEARCH_SURFACE).toContain('phase.kind === "empty" ? <NoResults query={phase.query} /> : null');
-    expect(SEARCH_SURFACE).toContain('phase.kind === "results" ? <Results results={phase.results} /> : null');
+    expect(SEARCH_SURFACE).toContain('<NoResults query={phase.answer.query} />');
+    expect(SEARCH_SURFACE).toContain("<Results results={group.state.results} />");
   });
 });

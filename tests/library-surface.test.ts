@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
 import { LibraryGrid } from "@/app/(signed-in)/library/library-grid";
-import { LibrarySelectionProvider } from "@/app/(signed-in)/library/library-selection";
 import {
   FilterField,
   LibraryChips,
@@ -79,10 +78,7 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
   };
 }
 
-const NO_SELECTION = { selectedEntryId: null, selectedPosterPath: null, select: () => {} };
-
-const withSelection = (children: React.ReactNode) =>
-  createElement(LibrarySelectionProvider, { value: NO_SELECTION }, children);
+const withSelection = (children: React.ReactNode) => children;
 
 const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
   renderToStaticMarkup(
@@ -200,9 +196,11 @@ describe("the library entry cell", () => {
    */
   it("names no state on the card at all — the chips above the grid carry that", () => {
     for (const state of ["watching", "caught_up", "finished", "watchlist", "abandoned"] as const) {
-      const markup = cell({ state, upNext: null });
-      for (const word of ["Watching", "Caught up", "Finished", "Watchlist", "Abandoned"]) {
-        expect(markup).not.toContain(word);
+      // Visible text only: a finished title's check badge names itself to a screen reader
+      // (issue #357), which is the badge's job, not a state word printed on the card.
+      const visible = cell({ state, upNext: null }).replace(/<[^>]+>/g, " ");
+      for (const word of ["Watching", "Caught up", "Finished", "Watchlist", "Abandoned", "Dropped"]) {
+        expect(visible).not.toContain(word);
       }
     }
   });
@@ -276,14 +274,7 @@ describe("the library entry cell", () => {
  * name (not just its presence in source) can be asserted against a render.
  */
 describe("the library entry cell's poster morph source", () => {
-  const withEntrySelected = (entryId: string, children: React.ReactNode) =>
-    createElement(
-      LibrarySelectionProvider,
-      { value: { selectedEntryId: entryId, selectedPosterPath: null, select: () => {} } },
-      children,
-    );
-
-  it("carries the same name family the title's own page and the pane use", () => {
+  it("carries the same name family the title's own page uses", () => {
     const markup = cell();
 
     // `poster-transition-name.ts`'s one function, not a hand-spelled copy of it — a rename
@@ -297,28 +288,6 @@ describe("the library entry cell's poster morph source", () => {
     );
 
     expect(markup).toContain("view-transition-name:rail-poster-e2");
-  });
-
-  /**
-   * **Dropped while the desktop pane already holds it.** A name can mark only one
-   * on-screen element at a time; the moment this entry is the one open in the pane, the
-   * pane is showing its poster under the identical name, and the grid's own copy has to
-   * let go of it — the same rule `up-next-episode-row.tsx`'s `RowFrame` keeps for its row.
-   */
-  it("drops the name once the desktop pane is showing this entry", () => {
-    const markup = renderToStaticMarkup(
-      withEntrySelected("entry-1", createElement(LibraryEntryCell, { entry: entry() })),
-    );
-
-    expect(markup).not.toContain("view-transition-name");
-  });
-
-  it("keeps the name for every entry the pane is not currently showing", () => {
-    const markup = renderToStaticMarkup(
-      withEntrySelected("some-other-entry", createElement(LibraryEntryCell, { entry: entry() })),
-    );
-
-    expect(markup).toContain("view-transition-name:rail-poster-entry-1");
   });
 });
 
@@ -393,7 +362,7 @@ describe("the filter chips", () => {
       "Caught up",
       "Finished",
       "Watchlist",
-      "Abandoned",
+      "Dropped",
     ]);
   });
 
@@ -402,10 +371,9 @@ describe("the filter chips", () => {
     const finishedButton = chipButton(markup, "Finished");
 
     expect(finishedButton).toContain('aria-pressed="true"');
-    // `bg-ink` since the linen redesign, where `--text` became a mid-tone body colour
-    // and full strength moved to `--ink` (`app/globals.css`). The travelling
+    // `bg-text`, the full-strength neutral (`--ink` folded into `--text` in #357). The travelling
     // `layoutId` ground is unchanged in mechanism; it is an `18px`-radius pill now.
-    expect(finishedButton).toContain("bg-ink");
+    expect(finishedButton).toContain("bg-text");
     expect(finishedButton).toContain("text-ground");
     expect(finishedButton).toContain("rounded-[var(--radius-6)]");
   });
@@ -460,9 +428,9 @@ describe("a library cell with no selection provider above it", () => {
   });
 
   it("shows no check badge and no selection ring", () => {
-    // `bg-ink` is the badge's fill and nothing else in a cell uses it — the title is
-    // `text-ink`, which this does not match.
-    expect(plain).not.toContain("bg-ink");
+    // `bg-text` is the badge's fill and nothing else in a cell uses it — the title is
+    // `text-text`, which this does not match.
+    expect(plain).not.toContain("bg-text");
     expect(plain).not.toContain("outline-ink");
   });
 

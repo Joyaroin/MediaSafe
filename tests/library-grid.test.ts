@@ -14,7 +14,6 @@ import type { Transaction } from "@/db/client";
 import { episode, libraryEntry, title, user, watch } from "@/db/schema";
 import type { TitleKind } from "@/tmdb/mirror";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
-import { LibrarySelectionProvider } from "@/app/(signed-in)/library/library-selection";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
@@ -700,15 +699,9 @@ describe("LibraryEntryCell's progress bar", () => {
     };
   }
 
-  const NO_SELECTION = { selectedEntryId: null, selectedPosterPath: null, select: () => {} };
-
   const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
     renderToStaticMarkup(
-      createElement(
-        LibrarySelectionProvider,
-        { value: NO_SELECTION },
-        createElement(LibraryEntryCell, { entry: entry(overrides) }),
-      ),
+      createElement(LibraryEntryCell, { entry: entry(overrides) }),
     );
 
   it("draws a thin bar for a show, filled watched against released", () => {

@@ -136,6 +136,8 @@ export interface BulkSelection {
   isSelected(libraryEntryId: string): boolean;
   /** The hold landed — open the mode with this title selected. Idempotent. */
   hold(title: SelectableTitle): void;
+  /** The *Select* button — open the mode with nothing selected. A no-op while it is open. */
+  begin(): void;
   /** A tap while selecting: in if it is out, out if it is in. A no-op outside the mode. */
   toggle(title: SelectableTitle): void;
   /** *Done*, and everything else that ends the mode without acting. */
@@ -305,6 +307,11 @@ export function createBulkSelection({
     read: () => view,
 
     isSelected: (libraryEntryId) => indexOf(libraryEntryId) !== -1,
+
+    begin() {
+      if (view.selecting) return;
+      apply({ selecting: true });
+    },
 
     hold(title) {
       // Idempotent on purpose: a hold that lands on a cell already selected has nothing to

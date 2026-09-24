@@ -48,6 +48,18 @@ export interface ActionOffer {
    * of the thing, only the one the press just made.
    */
   readonly undo: () => void;
+  /**
+   * A second action beside Undo, when the write that raised the toast suggests one —
+   * issue #357's *Also mark N earlier*, offered after marking an episode that has
+   * unwatched episodes before it. Absent on every other toast.
+   */
+  readonly also?: { readonly label: string; readonly run: () => void };
+  /**
+   * The one sentence the toast says about the write — *Watched.* unless the write that
+   * raised it says otherwise (issue #357's *Taken off a list.*). A plain sentence, never an
+   * exception's text: the error discipline's rule for every user-facing string.
+   */
+  readonly message?: string;
 }
 
 export interface RaisedAction extends ActionOffer {

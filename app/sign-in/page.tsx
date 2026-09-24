@@ -52,14 +52,16 @@ export default async function SignInPage({
   const arrivedFailed = typeof error === "string" && error.length > 0;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-16">
+    // Centred on every screen size (issue #357): it used to be a left-aligned block adrift
+    // in a wide empty page, with the one action on it a small pill.
+    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-gutter py-16 text-center">
       <Wordmark markClassName="h-6 w-6" />
 
-      <h1 className="bill-title mt-8 text-bill-lg text-text">
+      <h1 className="bill-title mt-8 text-bill-lg text-text lg:text-bill-xl">
         A personal tracker for the films and shows you watch
       </h1>
 
-      <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-dim">
+      <p className="mt-5 max-w-[48ch] text-note leading-relaxed text-dim">
         Sign in with Google to reach your library. MediaSafe has no password to remember
         and asks for nothing else — everything it knows about you comes from the account
         you choose.

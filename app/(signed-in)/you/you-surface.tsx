@@ -1,6 +1,5 @@
-import type { AccountFigures, LibraryStateGroupEntry, ListCard } from "@/db/access";
+import type { AccountFigures, LibraryStateGroupEntry } from "@/db/access";
 import { qualification, watchTimeInWords } from "./figures";
-import { YouListsRail } from "./you-lists-rail";
 import { YouTitleRail } from "./you-title-rail";
 
 /**
@@ -55,7 +54,7 @@ function Figure({ label, value }: { readonly label: string; readonly value: stri
   return (
     <div className="rounded-[var(--radius-6)] bg-raised px-4 py-4">
       <dt className="label-line text-dim">{label}</dt>
-      <dd data-numeric className="mt-2 text-bill-md font-medium text-ink">
+      <dd data-numeric className="mt-2 text-bill-md font-medium text-text">
         {value}
       </dd>
     </div>
@@ -74,7 +73,7 @@ function Section({
   readonly children: React.ReactNode;
 }) {
   return (
-    <section className="px-[22px] py-4 lg:px-10">
+    <section className="px-gutter py-4 lg:px-10">
       <h2 className="label-line text-dim">{label}</h2>
       <dl className={`mt-3 grid gap-3 ${columns}`}>{children}</dl>
     </section>
@@ -83,13 +82,10 @@ function Section({
 
 export function YouSurface({
   figures,
-  lists,
   shows,
   films,
 }: {
   readonly figures: AccountFigures;
-  /** Issue #248's lists rail — up to four covers per card, in list-membership order. */
-  readonly lists: readonly ListCard[];
   /** Issue #248's shows and films rails — shows Watching or Caught up, films Finished,
    *  each most recent dated watch first (`db/access.ts`'s `listYouRails`). */
   readonly shows: readonly LibraryStateGroupEntry[];
@@ -141,7 +137,7 @@ export function YouSurface({
         one more is a page that has started drifting back towards the nine it replaced.
       */}
       {qualifies === null ? null : (
-        <p className="px-[22px] pt-1 pb-2 text-item leading-relaxed text-dim lg:px-10">
+        <p className="px-gutter pt-1 pb-2 text-item leading-relaxed text-dim lg:px-10">
           {qualifies}
         </p>
       )}
@@ -152,7 +148,6 @@ export function YouSurface({
         absence when it has nothing (no heading, no reserved space), so there is no branch
         here beyond simply rendering all three.
       */}
-      <YouListsRail lists={lists} />
       <YouTitleRail label="Shows" kind="show" entries={shows} />
       <YouTitleRail label="Films" kind="film" entries={films} />
     </div>

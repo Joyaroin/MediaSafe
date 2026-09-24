@@ -26,10 +26,11 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function BackToListsBar({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="border-b border-hair px-6 py-4">
+    <div className="border-b border-hair px-gutter py-4">
       {/* Issue #195: GHOST_RECOVERY, not the old dim underline — the register the whole
           underline conversion reuses. */}
-      <Link href="/lists" className={GHOST_RECOVERY}>
+      {/* Lists live in Library now (issue #357), so the way back is Library's Lists tab. */}
+      <Link href="/library?view=lists" className={GHOST_RECOVERY}>
         ‹ Lists
       </Link>
 

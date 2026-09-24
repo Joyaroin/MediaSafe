@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { useRef, useState } from "react";
 
+import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { referenceFor } from "@/errors/reference";
 import { QUIET_RECORDING_CONTROL_LABELLED_COMPACT } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
@@ -163,7 +164,7 @@ export function CatalogueResultRow({
         posterPath={result.posterPath}
         name={result.name}
         width={52}
-        className="w-[52px] shrink-0 [--poster-radius:var(--radius-3)]"
+        className="w-[52px] shrink-0 [--poster-radius:var(--radius-1)]"
         aboveFold={aboveFold}
       />
 
@@ -182,7 +183,7 @@ export function CatalogueResultRow({
             The **name** rather than the whole row: the row also carries *Add*, and a link
             wrapping a button is neither a valid nesting nor an honest target — a press
             near the edge would have to guess which of the two was meant. */}
-        <h2 className="text-card font-semibold leading-tight tracking-[-0.012em] text-ink">
+        <h2 className="text-bill-xs font-semibold leading-tight tracking-[-0.012em] text-text">
           <Link
             href={`/catalogue/${result.kind}/${result.tmdbId}`}
             className="transition-opacity duration-[var(--dur-fast)] hover:opacity-80"
@@ -259,11 +260,18 @@ export function CatalogueResultRow({
 
       {inLibrary ? (
         /**
-         * It says so, and there is nothing to press. Not a disabled button: a control the
-         * reader can reach and cannot use is an invitation withdrawn, and this is a
-         * statement of fact about their library.
+         * It says so, and it goes there. Not a disabled Add: a control the reader can reach
+         * and cannot use is an invitation withdrawn. Issue #357 makes the statement a way to
+         * the title's own page — the catalogue address sends a held title on to it.
          */
-        <p className="shrink-0 text-meta text-dim">In your library</p>
+        <Link
+          href={`/catalogue/${result.kind}/${result.tmdbId}`}
+          aria-label={`${result.name} is in your library — open it`}
+          className="flex h-11 shrink-0 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
+        >
+          <CheckmarkIcon className="h-3.5 w-3.5" />
+          In your library
+        </Link>
       ) : (
         /**
          * A vermilion pill — `34px` tall at a `17px` radius, `--accent` filled with an

@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +8,8 @@ import {
   raiseAction,
   type ActionToastState,
 } from "@/app/(signed-in)/library/action-toast";
+import { actionToasts } from "@/app/(signed-in)/library/action-toast-store";
+import { ActionToasts } from "@/app/(signed-in)/library/action-toast-toasts";
 
 /**
  * The action toast's lifecycle rule, driven directly — issue #307's *a pure module holds
@@ -85,5 +89,53 @@ describe("the resting state", () => {
   it("shows nothing", () => {
     const state: ActionToastState = NO_ACTION_TOAST;
     expect(state.offer).toBeNull();
+  });
+});
+
+describe("a second action — issue #357", () => {
+  /**
+   * Marking one episode with unwatched episodes before it offers to mark those too, on the
+   * same toast, instead of a separate *mark up to* control on every row.
+   */
+  it("hands back the second action it was given, unchanged", () => {
+    const run = () => {};
+    const state = raiseAction("a", {
+      title: "Severance",
+      episode: "Season 2, Episode 4",
+      undo: () => {},
+      also: { label: "Also mark 3 earlier", run },
+    });
+
+    expect(state.offer?.also).toEqual({ label: "Also mark 3 earlier", run });
+  });
+
+  it("draws the second action beside Undo, and only when there is one", () => {
+    actionToasts.raise({
+      title: "Severance",
+      undo: () => {},
+      also: { label: "Also mark 3 earlier", run: () => {} },
+    });
+    const withAlso = renderToStaticMarkup(createElement(ActionToasts));
+
+    expect(withAlso).toContain(">Undo<");
+    expect(withAlso).toContain(">Also mark 3 earlier<");
+
+    actionToasts.raise({ title: "Severance", undo: () => {} });
+    const without = renderToStaticMarkup(createElement(ActionToasts));
+
+    expect(without).toContain(">Undo<");
+    expect(without).not.toContain("Also mark");
+  });
+});
+
+describe("what the toast says — issue #357", () => {
+  it("says Watched unless the write says something else", () => {
+    actionToasts.raise({ title: "Severance", undo: () => {} });
+    expect(renderToStaticMarkup(createElement(ActionToasts))).toContain(">Watched.<");
+
+    actionToasts.raise({ title: "Severance", message: "Taken off Comfort shows.", undo: () => {} });
+    const markup = renderToStaticMarkup(createElement(ActionToasts));
+    expect(markup).toContain(">Taken off Comfort shows.<");
+    expect(markup).not.toContain("Watched.");
   });
 });

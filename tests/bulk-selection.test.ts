@@ -102,6 +102,32 @@ function onlyToast(failures: ReturnType<typeof createWriteFailureStore>) {
 }
 
 describe("entering and leaving the mode", () => {
+  /**
+   * Issue #357: a visible *Select* button, so the mode is not only reachable by a half-
+   * second hold nobody is told about. It opens the mode with nothing selected, and taps
+   * then add titles exactly as they do after a hold.
+   */
+  it("opens the mode with nothing selected from the Select button", () => {
+    const { selection } = harness();
+
+    selection.begin();
+
+    expect(selection.read().selecting).toBe(true);
+    expect(names(selection)).toEqual([]);
+
+    selection.toggle(SEVERANCE);
+    expect(names(selection)).toEqual(["Severance"]);
+  });
+
+  it("leaves a selection already open alone when Select is pressed again", () => {
+    const { selection } = harness();
+
+    selection.hold(SEVERANCE);
+    selection.begin();
+
+    expect(names(selection)).toEqual(["Severance"]);
+  });
+
   it("is not selecting until a cell is held", () => {
     const { selection } = harness();
 

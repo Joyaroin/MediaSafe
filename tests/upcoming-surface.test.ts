@@ -127,37 +127,29 @@ describe("no row shows a time of day", () => {
     expect(markup.toLowerCase()).not.toContain("unknown");
   });
 
-  /** What it prints instead: the date, in `episode-facts.ts`'s long register. */
-  it("prints the date", () => {
-    expect(render([episodeOn("2026-08-27")])).toContain("27 August 2026");
+  /** What it prints instead: how far away the episode is, from the reader's today. */
+  it("prints how many days away it is", () => {
+    expect(render([episodeOn("2026-08-27")])).toContain("In 3 days");
+    expect(render([episodeOn("2026-08-25")])).toContain("Tomorrow");
   });
 });
 
-describe("the four headings", () => {
-  it("names Today, Tomorrow, a weekday and Later, in date order", () => {
+describe("one list, in air-date order", () => {
+  /** The day headings are gone: each row says how far away it is, so a heading saying the
+   *  same thing again was noise, and *Later* said nothing at all. */
+  it("orders the rows by air date, each carrying its own distance", () => {
     const markup = render([
       episodeOn(TODAY),
       episodeOn("2026-08-25"),
-      episodeOn("2026-08-27"),
       episodeOn("2026-12-01"),
     ]);
 
-    const at = (label: string) => markup.indexOf(`>${label}<`);
+    const at = (label: string) => markup.indexOf(label);
 
     expect(at("Today")).toBeGreaterThan(-1);
     expect(at("Tomorrow")).toBeGreaterThan(at("Today"));
-    expect(at("Thursday")).toBeGreaterThan(at("Tomorrow"));
-    expect(at("Later")).toBeGreaterThan(at("Thursday"));
-  });
-
-  /** A day with nothing on it has no heading — the rule for a rail, applied to
-   *  a group. Nothing reserves space for a bucket that is empty. */
-  it("draws no heading for a day with nothing on it", () => {
-    const markup = render([episodeOn("2026-12-01")]);
-
-    expect(markup).toContain(">Later<");
-    expect(markup).not.toContain(">Today<");
-    expect(markup).not.toContain(">Tomorrow<");
+    expect(at("In 99 days")).toBeGreaterThan(at("Tomorrow"));
+    expect(markup).not.toContain(">Later<");
   });
 });
 
@@ -603,9 +595,9 @@ describe("the pager", () => {
 describe("the page hands the pager both surfaces and one day", () => {
   const page = sourceAt(PAGE);
 
-  it("draws Up next and Upcoming as the pager's two pages", () => {
-    expect(page).toMatch(/<LandingPager/);
-    expect(page).toMatch(/upNext=\{<UpNextPhoneRails rails=\{rails\} films=\{films\} \/>\}/);
+  it("draws Watching and Coming up as the pager's two pages", () => {
+    expect(page).toMatch(/<LandingPager upNext=\{watching\} upcoming=\{comingUp\} \/>/);
+    expect(page).toMatch(/<UpNextWatching rails=\{rails\} films=\{films\} \/>/);
     expect(page).toMatch(
       /<UpcomingSurface\s+episodes=\{upcoming\}\s+films=\{upcomingFilms\}\s+today=\{today\}\s*\/>/,
     );
@@ -618,22 +610,18 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page).toContain("cachedUpcomingFilms(userId)");
   });
 
-  /** The one clock on this route, read once, against the reader's own zone, and handed to
-   *  both `readerDay` and the heading's band rule (issue #319) — not read a second time
-   *  for either. A second `new Date()` anywhere in this file would be a second answer to
-   *  *what time is it*. */
-  it("reads the reader's instant once, from their own timezone, and hands it to both readers", () => {
+  /** The one clock on this route, read once, against the reader's own zone. A second
+   *  `new Date()` anywhere in this file would be a second answer to *what day is it*. */
+  it("reads the reader's day once, from their own timezone", () => {
     expect(page).toContain("requireTimezone()");
-    expect(page).toContain("const now = new Date();");
-    expect(page).toContain("readerDay(zone, now)");
-    expect(page).toContain("<UpNextHeading zone={zone} at={now} />");
+    expect(page).toContain("readerDay(zone, new Date())");
     expect(page.match(/new Date\(\)/g)).toHaveLength(1);
   });
 
-  /** The pager is the phone's. *Specced, but later* still carries *desktop
-   *  rails other than Up next's three (Upcoming)*, and #245 asked for a phone pager. */
-  it("leaves the desktop's three rails alone", () => {
-    expect(page).toMatch(/className="hidden lg:block"[\s\S]*<UpNextRailsSurface/);
+  /** One structure on every screen size: the desktop stacks the same two halves the
+   *  phone pages between, rather than a desktop-only arrangement of its own. */
+  it("gives the desktop the same two halves, stacked", () => {
+    expect(page).toMatch(/className="hidden [^"]*lg:block"[\s\S]*\{watching\}[\s\S]*\{comingUp\}/);
   });
 
   /**

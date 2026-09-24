@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { cachedLibraryEntries, cachedLists } from "@/cache/tags";
 import { sortFrom } from "@/db/library-sort";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
-import { EmptyLibrary } from "./empty-library";
-import { LibraryHeading } from "./library-heading";
+import { libraryViewFrom } from "./library-view";
 import { LibrarySurface } from "./library-surface";
 import { NavTransition } from "../nav-transition";
 
@@ -92,7 +91,7 @@ export default async function LibraryPage({
 
   // `sortFrom` falls back to the default rather than throwing: a stale or hand-edited
   // `?sort=` is ordinary navigation noise, not corruption in the read below.
-  const { sort: sortParam } = await searchParams;
+  const { sort: sortParam, view: viewParam } = await searchParams;
   const sort = sortFrom(sortParam);
 
   /**
@@ -129,34 +128,24 @@ export default async function LibraryPage({
      * the answer can still be no.
      */
     if (!(await requireImportOfferAnswered())) redirect("/welcome");
-
-    return (
-      <NavTransition>
-        <main className="flex w-full flex-1 flex-col">
-          <LibraryHeading />
-          <EmptyLibrary />
-        </main>
-      </NavTransition>
-    );
   }
 
   /**
-   * Issue #223: the phone's Lists rail, above the grid. A second unguarded read, same
-   * discipline as `entries` above — a failed fetch here throws into this route's own
-   * `error.tsx` rather than rendering a library with no lists reachable from it. Only
-   * reached once the library is known non-empty: the empty branch above has no grid for a
-   * rail to sit "above", and the ticket's own acceptance criteria scope the rail to that
-   * shape.
-   *
-   * Cached since #226, under the `lists` tag rather than this page's own `library` one —
-   * the tag names the fact, not the surface, so the rail here and the Lists destination
-   * are one entry and cannot disagree about which lists exist.
+   * The lists, for the Lists tab — read even for an empty library, because a reader with
+   * no titles can still have lists (a list holds titles, not library entries) and must be
+   * able to make their first one (issue #357). Unguarded: a failed read throws into this
+   * route's own `error.tsx` rather than rendering a Library with no lists in it.
    */
   const lists = await cachedLists(userId);
 
   return (
     <NavTransition>
-      <LibrarySurface entries={entries} sort={sort} lists={lists} />
+      <LibrarySurface
+        entries={entries}
+        sort={sort}
+        lists={lists}
+        initialView={libraryViewFrom(viewParam)}
+      />
     </NavTransition>
   );
 }

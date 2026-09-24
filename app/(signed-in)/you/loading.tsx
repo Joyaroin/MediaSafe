@@ -22,7 +22,7 @@ export default function YouLoading() {
     <main className="flex w-full flex-1 flex-col">
       <YouHeading />
 
-      <div className="px-6 py-5 lg:px-10">
+      <div className="px-gutter py-5 lg:px-10">
         <PendingLine shape="rows" held />
       </div>
     </main>

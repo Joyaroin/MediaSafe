@@ -1,4 +1,3 @@
-import { DEFAULT_KIND_MODE, type KindMode } from "@/app/(signed-in)/library/kind-mode";
 
 /**
  * Where the reader was — the one place in this application that decides what Up next and
@@ -73,20 +72,15 @@ export interface UpNextPlace {
 }
 
 /**
- * Where the reader was on search: what they typed, which kind they were asking about, and
- * what came back.
+ * Where the reader was on search: what they typed, and what came back — both kinds in one
+ * list, which the screen regroups on return.
  *
  * Generic over the result, and it never reads inside one. The results are `MarkedResult`s
  * from a Server Action, and a pure module that imported that type would be reaching across
  * a `"use server"` boundary to describe a list it only ever hands back unopened.
- *
- * `mode` is here with the other two rather than left to reset, because the three are one
- * fact: *Fargo* is a film and a show, and results found under **Films** listed beneath a
- * control saying **Shows** is the pair restored apart. It is not a fourth thing remembered
- * — it is what makes *its results* mean anything.
+
  */
 export interface SearchPlace<Result> {
-  readonly mode: KindMode;
   readonly query: string;
   readonly results: readonly Result[];
 }
@@ -111,15 +105,13 @@ export const NOTHING_REMEMBERED: Remembered<never> = {};
 export const UP_NEXT_START: UpNextPlace = { page: 0, rails: {} };
 
 /**
- * Search, unvisited: nothing typed, nothing found, and the mode the screen already opens
- * in (`DEFAULT_KIND_MODE` — shows first, and `kind-mode.ts` owns why).
+ * Search, unvisited: nothing typed, nothing found.
  *
  * Typed `SearchPlace<never>` so it stands in for any result type without a cast: nothing
  * reads out of the empty list, and a `readonly never[]` is assignable to every other
  * `readonly Result[]`.
  */
 export const SEARCH_START: SearchPlace<never> = {
-  mode: DEFAULT_KIND_MODE,
   query: "",
   results: [],
 };

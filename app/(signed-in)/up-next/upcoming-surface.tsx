@@ -87,7 +87,7 @@ export function UpcomingSurface({
      under a pager, held here now that either section can be the last thing on it. */
   return (
     <div className="pb-2">
-      <UpcomingEpisodes groups={groups} />
+      <UpcomingEpisodes groups={groups} today={today} />
       <UpcomingFilms films={awaited} />
     </div>
   );
@@ -102,44 +102,29 @@ export function UpcomingSurface({
  */
 function UpcomingEpisodes({
   groups,
+  today,
 }: {
   groups: readonly UpcomingGroup<UpcomingTitle<UpcomingEpisode>>[];
+  today: string;
 }) {
   if (groups.length === 0) return null;
 
+  // One list in air-date order, each row saying how far away it is. The day headings this
+  // used to draw (Today, Tomorrow, a weekday, Later) said the same thing a second time and
+  // left *Later* saying nothing at all.
+  const episodes = groups.flatMap((group) => group.episodes);
+
   return (
     <section className="pt-[26px]">
-      {/* The rail heads' register on page one, held here so the two pages read as one
-          screen — `up-next-phone-rail.tsx`'s `RailSection` draws its own head exactly this
-          way, and its docblock carries the accent argument for both.
-
-          A heading and never a count: *no counts on a rail head* is the
-          half of the old *no counts, anywhere* that #250 **kept** rather than narrowed,
-          and this head is squarely inside it. */}
-      <div className="px-[22px] pb-1">
-        <h2 className="label-line text-accent">Upcoming episodes</h2>
+      <div className="px-gutter pb-1">
+        <h2 className="label-line text-dim">Upcoming episodes</h2>
       </div>
 
-      {groups.map((group) => (
-        <div key={group.key} className="px-[22px] pt-4">
-          {/* The day's own heading, in the body register rather than the label one, because
-              it is the thing a reader scans for. `Today` and `Tomorrow` are words and a
-              weekday is a name; none of the four is a date, which is what each row carries
-              for itself. */}
-          <h3 id={`upcoming-${group.key}`} className="text-item font-semibold text-text">
-            {group.label}
-          </h3>
-
-          <ul
-            aria-labelledby={`upcoming-${group.key}`}
-            className="stagger-rise mt-2.5 flex flex-col gap-2"
-          >
-            {group.episodes.map((episode) => (
-              <UpcomingRow key={episode.episodeId} episode={episode} />
-            ))}
-          </ul>
-        </div>
-      ))}
+      <ul className="stagger-rise mt-2.5 flex flex-col gap-2 px-gutter">
+        {episodes.map((episode) => (
+          <UpcomingRow key={episode.episodeId} episode={episode} today={today} />
+        ))}
+      </ul>
     </section>
   );
 }

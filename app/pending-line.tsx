@@ -42,7 +42,7 @@ export type PendingShape = "line" | "rows" | "detail" | "rail" | "form";
  *  reads as the weight of the line it replaces rather than as a rule across the page. */
 const H = {
   row: "h-[10px]", // --text-row 17px, a library cell's title
-  card: "h-[10px]", // --text-card 16px, a search result or list row title
+  card: "h-[10px]", // --text-bill-xs 16px, a search result or list row title
   note: "h-[9px]", // --text-note 0.95rem, running prose
   meta: "h-[8px]", // --text-meta 13px
   label: "h-[7px]", // --text-label 11px

@@ -597,7 +597,7 @@ describe("the stylesheet keeps no motion token nothing consumes", () => {
 });
 
 describe("the press answers the gesture the product is built around", () => {
-  const EPISODE_CARD = "app/(signed-in)/up-next/up-next-episode-card.tsx";
+  const EPISODE_ROW = "app/(signed-in)/up-next/up-next-episode-row.tsx";
   const WATCH_MARK = "app/(signed-in)/library/watch-mark-motion.tsx";
 
   /** The episode row's own 44px hit box, read as its exported class string. */
@@ -609,13 +609,14 @@ describe("the press answers the gesture the product is built around", () => {
     return hitBox![1];
   }
 
-  /** The Up next card's check hit box — a separate string because its width is per-branch. */
+  /** The Up next row's check hit box — built from the recording hit box rather than
+   *  restated, so it is that string plus the in-flight treatment. */
   function checkHitBox(): string {
-    const hitBox = readFileSync(path.join(REPOSITORY_ROOT, EPISODE_CARD), "utf8").match(
-      /const CHECK_HIT_BOX = `([^`]*)`/,
+    const source = readFileSync(path.join(REPOSITORY_ROOT, EPISODE_ROW), "utf8");
+    expect(source, "up-next-episode-row.tsx must build CHECK_HIT_BOX on RECORDING_HIT_BOX").toMatch(
+      /const CHECK_HIT_BOX = `\$\{RECORDING_HIT_BOX\}/,
     );
-    expect(hitBox, "up-next-episode-card.tsx must still declare CHECK_HIT_BOX").not.toBeNull();
-    return hitBox![1];
+    return recordingHitBox();
   }
 
   it("puts the press on the recording control", () => {
@@ -624,7 +625,7 @@ describe("the press answers the gesture the product is built around", () => {
     expect(recordingHitBox().split(/\s+/)).toContain("pressable");
   });
 
-  it("puts it on the up-next card's checkmark too", () => {
+  it("puts it on the up-next row's checkmark too", () => {
     // The same act on the other surface it happens on.
     expect(checkHitBox()).toMatch(/(^|\s)pressable(\s|$)/);
   });
@@ -675,26 +676,24 @@ describe("the press answers the gesture the product is built around", () => {
   });
 
   /**
-   * **The checkmark moves and the card around it does not.** On the Up next card the check
-   * is a *sibling* of the card's own `pressable` link inside a raised `<li>` that wears no
-   * press at all, so `motion-provider.tsx`'s `closest(".pressable")` from the checkmark
-   * finds the checkmark. #279 rejects moving `pressable` onto the raised parent by name
-   * for exactly this: a pressable `<li>` would scale the whole 262px card every time the
-   * 44px check was pressed, and at the loud register it would do it hardest.
+   * **The checkmark moves and the row around it does not.** On the Up next row the check
+   * is a *sibling* of the row's own `pressable` link inside an `<li>` that wears no press
+   * at all, so `motion-provider.tsx`'s `closest(".pressable")` from the checkmark finds
+   * the checkmark rather than scaling the whole row every time the 44px check is pressed.
    */
-  it("moves the checkmark and not the up-next card around it", () => {
-    const source = codeOf(EPISODE_CARD);
+  it("moves the checkmark and not the up-next row around it", () => {
+    const source = codeOf(EPISODE_ROW);
 
-    // The raised card element is not itself pressable.
-    const li = source.match(/<li className={`([^`]*)`}/);
-    expect(li, "the card must still be a raised `<li>`").not.toBeNull();
-    expect(li![1]).toContain("bg-raised");
-    expect(li![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
+    // The row element is not itself pressable.
+    const row = source.match(/const ROW = "([^"]*)"/);
+    expect(row, "the row must still declare its ROW classes").not.toBeNull();
+    expect(row![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
+    expect(source).toContain("<m.li layout className={ROW}>");
 
     // And the control slot is rendered after the pressable link closes, so the check is a
     // sibling of it rather than a descendant.
-    expect(source.indexOf("</Link>")).toBeGreaterThan(-1);
-    expect(source.indexOf("{control}")).toBeGreaterThan(source.indexOf("</Link>"));
+    expect(source.indexOf("</RowLink>")).toBeGreaterThan(-1);
+    expect(source.indexOf("{control}")).toBeGreaterThan(source.indexOf("</RowLink>"));
 
     // The listener takes the nearest pressable ancestor, which is what makes that
     // structural fact the whole of the property.
@@ -720,7 +719,7 @@ describe("the press answers the gesture the product is built around", () => {
 
     // The write is untouched: the card's check still calls the mark, and the episode row's
     // hit box is still class strings a server component renders.
-    expect(codeOf(EPISODE_CARD)).toContain("onClick={mark.mark}");
+    expect(codeOf(EPISODE_ROW)).toContain("onClick={mark.mark}");
     expect(codeOf(WATCH_MARK)).not.toMatch(/^\s*"use client"/m);
   });
 
@@ -912,12 +911,10 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // Surfaces — cards, cells, rows and tiles. They keep the default and say nothing, and a
   // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
   "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
-  "app/(signed-in)/library/lists-rail.tsx": ["surface"],
   /* A custom list's icon view (`list-icon-grid.tsx`). A poster with a name under it is the
      same surface the library grid and the Up next groups draw, at the same register. */
   "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
   "app/(signed-in)/up-next/up-next-film-rail.tsx": ["surface"],
-  "app/(signed-in)/up-next/up-next-pending-card.tsx": ["surface"],
   /* The Up next row, which replaced the rail's tile. **Two surface sites in one file**,
      which is new and is not a second register: an episode row and a pending row are the
      same surface at two states of the same title, and they are two elements because one
@@ -927,13 +924,7 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/up-next-episode-row.tsx": ["surface", "surface"],
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
-  "app/(signed-in)/you/you-list-card.tsx": ["surface"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
-
-  // The rail card is a surface and the checkmark inside it is a control — the two are
-  // siblings, which is why one file holds one of each. The check is the recording one
-  // since #283: it is the same act as the episode row's checkmark on another surface.
-  "app/(signed-in)/up-next/up-next-episode-card.tsx": ["surface", "recording"],
 
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
@@ -1004,7 +995,7 @@ describe("every pressable call site declares a register or is deliberately left 
    * control reaching for the recording register is how *the loudest press marks the act
    * the product is built around* stops being true without any number changing.
    */
-  it("declares the recording register at the two recording hit boxes and nowhere else", () => {
+  it("declares the recording register at the recording hit box and nowhere else", () => {
     const declaring = found
       .filter((site) =>
         site.strings.some((classes) =>
@@ -1014,10 +1005,7 @@ describe("every pressable call site declares a register or is deliberately left 
       .map((site) => site.file)
       .sort();
 
-    expect(declaring).toEqual([
-      "app/(signed-in)/library/watch-mark-motion.tsx",
-      "app/(signed-in)/up-next/up-next-episode-card.tsx",
-    ]);
+    expect(declaring).toEqual(["app/(signed-in)/library/watch-mark-motion.tsx"]);
 
     // And no register above it anywhere — a `[--press-register:3]` would resolve to the
     // recording numbers under the stylesheet's clamp and read as a fourth register that
@@ -1052,8 +1040,8 @@ describe("every pressable call site declares a register or is deliberately left 
 
     expect(client).toEqual([
       "app/(signed-in)/search/catalogue-result.tsx",
-      "app/(signed-in)/up-next/up-next-episode-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
+      "app/(signed-in)/up-next/up-next-film-rail.tsx",
       "app/tab-bar.tsx",
     ]);
   });
@@ -1325,7 +1313,8 @@ describe("the phone tab bar wears the press", () => {
     const source = codeOf(TAB_BAR);
 
     // Four destinations, one `<Link>`, one class string.
-    expect([...source.matchAll(/\{\s*href:\s*"\//g)]).toHaveLength(4);
+    expect([...codeOf("app/destinations.ts").matchAll(/\{\s*href:\s*"\//g)]).toHaveLength(4);
+    expect(source).toMatch(/DESTINATIONS\.map\(/);
     expect(source).toMatch(/TABS\.map\(/);
     expect(source).toMatch(/className=\{`\$\{TAB\}\s/);
 

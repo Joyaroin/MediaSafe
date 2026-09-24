@@ -4,9 +4,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { referenceFor } from "@/errors/reference";
-import { IN_FLIGHT } from "@/errors/recovery-buttons";
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
 import type { TitleKind } from "@/tmdb/mirror";
-import { QUIET_RECORDING_CONTROL_LABELLED } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
   addUnownedTitleToLibraryAction,
   addUnownedTitleWatchedToLibraryAction,
@@ -19,26 +18,10 @@ import {
 import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost-add";
 
 /**
- * *Add to My Shows* / *Add to My Films*, and *Add — watched* beside it — issue #148's
- * control and issue #222's. Everything else title detail can do to a title is a thing you
- * can only do to one you have, so this is still the only door; it is now two presses wide,
- * and both of them lead through it.
- *
- * ── The primary label names the kind, and only the primary label ────────────────────
- *
- * It read *Add to library* for both kinds. The library has been two modes since
- * `kind-mode.ts` — Shows and Films, chosen on the library screen and on search — and a
- * button that says *library* is naming the container while every screen around it names
- * the half you are actually looking at. So the label says which half: `ADD_LABELS` below,
- * the same `film | show` the row itself is keyed on.
- *
- * The sibling keeps *Add — watched* / *Add — watched all* unchanged, and so do both
- * accessible names — those still say *to your library*, which is where the title goes and
- * is a truer sentence read aloud than *to My Shows* would be. The two are deliberately not
- * in step: the visible label answers *where does this land* on a screen that has kind on
- * it everywhere, and the accessible one answers *what does this button do* to somebody who
- * has neither the poster nor the mode control for context. `add-watched.ts` holds that
- * pair.
+ * *Add* and *I've seen it* — the two ways onto a title you do not have yet. *Add* is the
+ * page's main button; *I've seen it* is secondary beside it (`add-watched.ts` holds the
+ * wording). The same one word as a search result's add, rather than *Add to My Shows*: the
+ * kind is on the page already, and the button's job is the verb.
  *
  * **The door is what is shared, and the destination is why.** Both writes end with this
  * account owning the title, so both navigate to the same place, raise the same toast when
@@ -81,19 +64,6 @@ import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost
  * The caller mounts this under a key of the title it is about, for the reason `page.tsx`
  * gives there: neither the ref nor `pending` may survive onto a different title.
  */
-
-/**
- * The primary label, by kind — *My Shows* and *My Films*, `kind-mode.ts`'s own two words
- * with the possessive the library screen's modes leave implicit.
- *
- * A `Record` rather than a ternary at the call site, for `library-state.ts`'s reason: a
- * `TitleKind` that ever grew a third member would be a type error here rather than a
- * button silently labelled with the wrong half of a conditional.
- */
-const ADD_LABELS: Record<TitleKind, string> = {
-  show: "Add to My Shows",
-  film: "Add to My Films",
-};
 
 export function AddToLibraryControl({
   kind,
@@ -178,44 +148,27 @@ export function AddToLibraryControl({
      * wrapping is the intended outcome rather than a squeezed label: this page has no
      * fixed row for the pair to fit into, which is the whole reason the wrap is here.
      */
-    <div className="mt-5 flex flex-wrap items-center gap-3">
+    <>
       <button
         type="button"
         onClick={() => void attempt(false)}
         disabled={pending}
-        /**
-         * The chip treatment `catalogue-result.tsx` already reasons about — **not**
-         * accent. Accent is reserved for recording a watch, and adding a title to a
-         * library is not the daily gesture that reservation exists to protect. The label
-         * is written out in full where search's is one word: search's row is the context
-         * that lets *Add* be understood, and this page has no row.
-         */
-        className={`code-line border border-hair px-4 py-2 text-text transition-colors duration-[var(--dur-fast)] hover:bg-text hover:text-ground ${IN_FLIGHT}`}
+        aria-label={`Add ${titleName} to your library`}
+        className={PRIMARY_BUTTON}
       >
-        {ADD_LABELS[kind]}
+        Add
       </button>
 
-      {/**
-       * The watched add, in the quiet register — `watch-mark-motion.tsx` carries why it
-       * is dim rather than accent, and the argument lands harder on this page than on the
-       * search row: the plain add here is **already** the hairline chip, so the only
-       * thing left to separate the default from the option is the ink. Full-strength
-       * `text` against `dim` is the device for exactly that, and it is
-       * what the sidebar uses to say which destination you are on.
-       *
-       * Two accent controls side by side would say neither is the default; a second
-       * `text` chip would say the same thing the other way.
-       */}
       <button
         type="button"
         onClick={() => void attempt(true)}
         disabled={pending}
         aria-label={addWatchedAccessibleLabel(kind, titleName)}
-        className={`${QUIET_RECORDING_CONTROL_LABELLED} ${IN_FLIGHT}`}
+        className={SECONDARY_BUTTON}
       >
         {addWatchedLabel(kind)}
       </button>
-    </div>
+    </>
   );
 }
 

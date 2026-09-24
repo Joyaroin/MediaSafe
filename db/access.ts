@@ -5211,67 +5211,103 @@ export async function reorderListMembership(
   });
 }
 
-/** How many posters a list card draws before it stops, in membership order. */
-const LIST_CARD_POSTERS = 4;
-
-export interface ListCard extends ListSummary {
-  /**
-   * Up to `LIST_CARD_POSTERS` posters, in list-membership order, filtered to the titles
-   * TMDB has artwork for — issue #248. **Four posters, not four slots**: a member with no
-   * poster is skipped rather than drawn as a gap, so the array is short only when the list
-   * itself does not have four covered titles to offer.
-   *
-   * Empty exactly when the card falls back to the missing-artwork frame — a list with no
-   * titles and a list whose titles all lack artwork are the same case from here, and
-   * `you-list-card.tsx` tests exactly the one thing that unifies them: this array's length.
-   */
-  readonly posterPaths: readonly string[];
+export interface RemoveFromListOutcome {
+  /** `false` when the title was not on this account's list — already taken off, or the
+   *  list is not this account's. Not an error: a retry after a removal that landed is the
+   *  common case, and it must not raise a toast about a write that already happened. */
+  readonly removed: boolean;
 }
 
 /**
- * The You page's lists rail — issue #248, and `listLists`'s own row plus the covers #248
- * reverses SPEC's *list covers: still out* over.
+ * Take one title off one list — issue #357; the list write that did not exist. The title
+ * stays in the catalogue and in the library; only the membership goes, and the titles
+ * after it close the gap so positions stay a run from 1.
  *
- * ── Two statements, not a window function ─────────────────────────────────────────────
- *
- * `listLists` is called for the row every other lists surface already reads — the name and
- * `titleCount`, unchanged. The posters are a second, flat statement: every membership this
- * account owns with a covered title, ordered by list then position, capped to four **in
- * JavaScript** rather than with a `row_number() over (partition by …)` window. A personal
- * library is small enough that the plainer query is the honest trade — `getListDetail` and
- * `getTitleDetail` already prefer several simple statements combined in code over one
- * clever one, for the same reason.
- *
- * ── `ownedBy` on the membership, not the list ─────────────────────────────────────────
- *
- * `list_membership` carries its own `user_id` (`reorderListMembership` reads it the same
- * way), so this scopes there directly rather than joining `list` a second time only to
- * scope through it.
+ * Owner-scoped through `ownedBy`, so a list that is not this account's simply has nothing
+ * to remove. The position shift runs in the same transaction as the delete, and
+ * `list_membership_list_id_position_key` is `DEFERRABLE INITIALLY DEFERRED`, which is what
+ * lets every later row move down one without colliding mid-statement.
  */
-export async function listYouListCards(
+export async function removeTitleFromList(
   userId: UserId,
+  listId: string,
+  titleId: string,
   executor: Executor = getDb(),
-): Promise<readonly ListCard[]> {
-  const lists = await listLists(userId, executor);
-  if (lists.length === 0) return [];
+): Promise<RemoveFromListOutcome> {
+  return executor.transaction(async (tx) => {
+    const [removed] = await tx
+      .delete(listMembership)
+      .where(
+        and(
+          ownedBy(userId, listMembership),
+          eq(listMembership.listId, listId),
+          eq(listMembership.titleId, titleId),
+        ),
+      )
+      .returning({ position: listMembership.position });
 
-  const posterRows = await executor
-    .select({ listId: listMembership.listId, posterPath: title.posterPath })
-    .from(listMembership)
-    .innerJoin(title, eq(title.id, listMembership.titleId))
-    .where(and(ownedBy(userId, listMembership), isNotNull(title.posterPath)))
-    .orderBy(asc(listMembership.listId), asc(listMembership.position));
+    if (!removed) return { removed: false };
 
-  const postersByList = new Map<string, string[]>();
-  for (const row of posterRows) {
-    const posters = postersByList.get(row.listId) ?? [];
-    if (posters.length < LIST_CARD_POSTERS) {
-      posters.push(row.posterPath as string);
-      postersByList.set(row.listId, posters);
-    }
+    await tx
+      .update(listMembership)
+      .set({ position: sql`${listMembership.position} - 1` })
+      .where(
+        and(
+          ownedBy(userId, listMembership),
+          eq(listMembership.listId, listId),
+          gt(listMembership.position, removed.position),
+        ),
+      );
+
+    return { removed: true };
+  });
+}
+
+export type RenameListOutcome =
+  | { readonly ok: true; readonly name: string }
+  | { readonly ok: false; readonly reason: "duplicate" };
+
+/**
+ * Rename one of this account's lists — issue #357. The same rules as `createList`: trimmed,
+ * 1-`LIST_NAME_MAX_LENGTH` characters, and unique per account, where a clash is an answer
+ * (`duplicate`) rather than an error, because it is the reader's to fix.
+ *
+ * The clash is looked for before the write rather than caught from it. A unique violation
+ * aborts the transaction it happens in, and this runs inside callers' transactions too.
+ * A list that is not this account's — or does not exist — throws, as `deleteList` does.
+ */
+export async function renameList(
+  userId: UserId,
+  listId: string,
+  name: string,
+  executor: Executor = getDb(),
+): Promise<RenameListOutcome> {
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || trimmed.length > LIST_NAME_MAX_LENGTH) {
+    throw new Error(
+      `A list name must be 1-${LIST_NAME_MAX_LENGTH} characters; got ${JSON.stringify(name)}.`,
+    );
   }
 
-  return lists.map((list) => ({ ...list, posterPaths: postersByList.get(list.id) ?? [] }));
+  return executor.transaction(async (tx) => {
+    const [clash] = await tx
+      .select({ id: list.id })
+      .from(list)
+      .where(and(ownedBy(userId, list), eq(list.name, trimmed), ne(list.id, listId)));
+    if (clash) return { ok: false, reason: "duplicate" };
+
+    const [row] = await tx
+      .update(list)
+      .set({ name: trimmed })
+      .where(and(ownedBy(userId, list), eq(list.id, listId)))
+      .returning({ name: list.name });
+
+    if (!row) {
+      throw new Error(`List ${listId} was not found in this account's lists.`);
+    }
+
+    return { ok: true, name: row.name };
+  });
 }
 
 /**

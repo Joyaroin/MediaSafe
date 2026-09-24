@@ -40,13 +40,13 @@ export function ListViewControl({
             aria-pressed={selected}
             onClick={() => onChange(mode)}
             className={`relative flex h-8 items-center justify-center rounded-[var(--radius-full)] px-3.5 text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
-              selected ? "text-ground" : "text-dim hover:text-ink"
+              selected ? "text-ground" : "text-dim hover:text-text"
             }`}
           >
             {selected ? (
               <m.span
                 layoutId="list-view-mode"
-                className="absolute inset-0 rounded-[var(--radius-full)] bg-ink"
+                className="absolute inset-0 rounded-[var(--radius-full)] bg-text"
                 transition={snappy}
               />
             ) : null}

@@ -13,7 +13,7 @@ import type { KindMode } from "./kind-mode";
  *
  * | State | Means | Owner |
  * | --- | --- | --- |
- * | The bill is blank | Nothing stored at all | `empty-library.tsx`, from `page.tsx` |
+ * | Your library is empty | Nothing stored at all | `empty-library.tsx`, from `page.tsx` |
  * | **Nothing of this kind** | Titles, but none in this mode | **this file** |
  * | Nothing under that filter | A chip or a search narrowed to nothing | `ZeroMatches` |
  * | A read failed | The database did not answer | `errors/read-failure.tsx` |
@@ -50,23 +50,23 @@ export function NothingOfThisKind({ mode }: { mode: KindMode }) {
     mode === "film"
       ? {
           heading: "No films yet",
-          body: "Your library is full of shows. Search the catalogue and the films you add will land here.",
+          body: "Your library is full of shows. Search for a film and the ones you add will land here.",
         }
       : {
           heading: "No shows yet",
-          body: "Your library is all films so far. Search the catalogue and the shows you add will land here.",
+          body: "Your library is all films so far. Search for a show and the ones you add will land here.",
         };
 
   return (
-    <section className="px-6 py-16 text-center">
-      <h2 className="bill-title text-bill-md text-ink">{copy.heading}</h2>
+    <section className="px-gutter py-16 text-center">
+      <h2 className="bill-title text-bill-md text-text">{copy.heading}</h2>
 
       <p className="mx-auto mt-3 max-w-[60ch] text-item text-dim">{copy.body}</p>
 
       {/* Search rather than import: the reader has a library already, so the thing they
           are missing is one title at a time, not a whole export. */}
-      <Link href="/search" className={`mt-5 inline-block ${GHOST_RECOVERY}`}>
-        Search the catalogue
+      <Link href="/search" className={`mt-5 ${GHOST_RECOVERY}`}>
+        Search films and shows
       </Link>
     </section>
   );

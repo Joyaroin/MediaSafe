@@ -58,7 +58,7 @@ export function BackBar() {
   const { label, destination } = backOrigin(previous);
 
   return (
-    <div className="border-b border-hair px-6 py-4">
+    <div className="border-b border-hair px-gutter py-4">
       {/* Issue #195: GHOST_RECOVERY, the register the whole underline conversion reuses. */}
       <Link
         href={destination}

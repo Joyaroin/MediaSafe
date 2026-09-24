@@ -51,7 +51,6 @@ const WHERE_UP_NEXT_WAS: UpNextPlace = {
 };
 
 const WHERE_SEARCH_WAS: SearchPlace<StandInResult> = {
-  mode: "film",
   query: "fargo",
   results: [FARGO, SEVERANCE],
 };
@@ -107,13 +106,6 @@ describe("what is remembered round-trips", () => {
     const memory = rememberSearch(NOTHING_REMEMBERED, WHERE_SEARCH_WAS);
     expect(searchPlace(memory)).toEqual(WHERE_SEARCH_WAS);
     expect(searchPlace(memory).results).toEqual([FARGO, SEVERANCE]);
-  });
-
-  /** The mode goes with them. Results for *Fargo the film* under a control saying *Shows*
-   *  would be the pair restored apart. */
-  it("hands search back the mode its results were found under", () => {
-    const memory = rememberSearch(NOTHING_REMEMBERED, WHERE_SEARCH_WAS);
-    expect(searchPlace(memory).mode).toBe("film");
   });
 
   it("remembers the last place rather than the first", () => {

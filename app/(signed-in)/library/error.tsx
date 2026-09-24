@@ -42,7 +42,7 @@ export default function LibraryReadFailure({
     <main className="flex w-full flex-1 flex-col">
       <LibraryHeading />
 
-      <div className="px-6">
+      <div className="px-gutter">
         <ReadFailure reference={reference} retry={retry} />
       </div>
     </main>

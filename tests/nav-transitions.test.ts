@@ -212,7 +212,6 @@ describe("the poster morph's spring is scoped to posters, not to every group", (
       "app/(signed-in)/library/title-hero.tsx",
       "app/(signed-in)/library/selectable-entry.tsx",
       "app/(signed-in)/titles/[entryId]/pending-poster.tsx",
-      "app/(signed-in)/library/programme-note.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
     ];
 
@@ -344,7 +343,6 @@ const DETAIL_VIEW = readFileSync(
   "app/(signed-in)/titles/[entryId]/title-detail-view.tsx",
   "utf8",
 );
-const PANE = readFileSync("app/(signed-in)/library/programme-note.tsx", "utf8");
 
 describe("the poster morph, on one transition-name family", () => {
   it("gives the Up next row and the page it opens the same name", () => {
@@ -359,7 +357,6 @@ describe("the poster morph, on one transition-name family", () => {
     for (const [label, source] of [
       ["up-next-episode-row.tsx", ROW],
       ["title-detail-view.tsx", DETAIL_VIEW],
-      ["programme-note.tsx", PANE],
     ] as const) {
       expect(source, `${label} imports the minting function`).toMatch(
         /import \{ railPosterTransitionName \} from "[^"]*poster-transition-name"/,
@@ -372,21 +369,11 @@ describe("the poster morph, on one transition-name family", () => {
     }
   });
 
-  it("drops the row's name once its destination holds it", () => {
-    // A name can only mark one on-screen element at a time, so the moment the desktop pane
-    // is showing that poster the row must already have let go, or the browser sees the
-    // name twice.
-    //
-    // The tile this replaced expressed that as two branches of a ternary — one with the
-    // wrapper, one without — and this asserted their order. The row states the condition
-    // directly instead, which is the same rule with one `<ViewTransition>` and no
-    // duplicated frame beneath it: it returns early, unwrapped, when the entry is the
-    // selected one.
+  it("wraps the row's poster in exactly one view transition", () => {
+    // There is no side pane any more to hold the same name, so the row always names its
+    // poster — one `<ViewTransition>`, no early unwrapped return.
     expect(ROW.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(ROW).toMatch(/if \(selected\) return frame;/);
-    expect(ROW.indexOf("if (selected) return frame;")).toBeLessThan(
-      ROW.indexOf("<ViewTransition"),
-    );
+    expect(ROW).not.toMatch(/return frame;/);
   });
 
   /**
@@ -404,15 +391,6 @@ describe("the poster morph, on one transition-name family", () => {
     expect(ROW).not.toMatch(/press !== "select"/);
     expect(ROW).toContain(
       'onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}',
-    );
-  });
-
-  it("still hands the desktop programme note pane the morph, in both its frames", () => {
-    // `loading` is the first half of the morph (§9's radius 3), not a placeholder that
-    // happens to show a poster; `loaded` is the same name one phase on.
-    expect(PANE).toContain("transitionName={railPosterTransitionName(selectedEntryId)}");
-    expect(PANE).toContain(
-      "posterTransitionName={railPosterTransitionName(phase.detail.libraryEntryId)}",
     );
   });
 

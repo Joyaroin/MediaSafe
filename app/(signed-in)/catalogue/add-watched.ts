@@ -11,17 +11,12 @@ import type { TitleKind } from "@/tmdb/mirror";
  *
  * ── Why a film and a show do not read the same ───────────────────────────────────────
  *
- * *Add — watched* on a film is unambiguous, because a film is one watch. The same three
- * words on a show are not: a reader who has seen the first two seasons could read them as
- * *add this, I am watching it*. So a show says **watched all**, which cannot be read that
- * way, and which is a promise the write keeps exactly — every released episode above
- * season zero, and `db/access.ts`'s `addTitleToLibraryWatched` is where that is defined.
- *
- * The label deliberately does not qualify itself further. *Add — watched all released
- * episodes* is the truth and it is not a label; what the reader needs at the moment of
- * pressing is that this records the whole show, and the one case where *all* and *all
- * released* differ — a show still airing — is a show they are unlikely to be adding as
- * finished in the first place. There is a standing rule against a dense row.
+ * *I've seen it* on a film is unambiguous, because a film is one watch. On a show it could
+ * read as *I've seen some of it*, so a show says **I've seen it all**, which is a promise
+ * the write keeps exactly — every released episode above season zero, and
+ * `db/access.ts`'s `addTitleToLibraryWatched` is where that is defined. Both sit beside a
+ * plain *Add*, so the reader chooses between *add it* and *add it, already watched* in
+ * their own words rather than the app's.
  *
  * ── The accessible name is the whole sentence ────────────────────────────────────────
  *
@@ -34,7 +29,7 @@ import type { TitleKind } from "@/tmdb/mirror";
 
 /** The visible label. */
 export function addWatchedLabel(kind: TitleKind): string {
-  return kind === "film" ? "Add — watched" : "Add — watched all";
+  return kind === "film" ? "I've seen it" : "I've seen it all";
 }
 
 /** What a screen reader is told the control does, naming the title in full. */

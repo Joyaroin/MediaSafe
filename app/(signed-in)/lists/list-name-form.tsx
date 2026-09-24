@@ -150,13 +150,13 @@ export function ListNameForm({
             disabled={inFlight}
             placeholder="Name a new list"
             autoComplete="off"
-            className={`bg-transparent text-tile text-ink placeholder:text-dim focus:outline-none ${inputClassName}`}
+            className={`bg-transparent text-note text-text placeholder:text-dim focus:outline-none ${inputClassName}`}
           />
         </div>
 
         {/* Stays `--accent` and stays under the field — unchanged by the redesign. */}
         {duplicate ? (
-          <p role="alert" className="mt-2 text-item text-accent">
+          <p role="alert" className="mt-2 text-item text-danger">
             You already have a list called &ldquo;{trimmed}&rdquo;.
           </p>
         ) : null}

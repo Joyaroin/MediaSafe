@@ -35,7 +35,7 @@
  */
 export function UpcomingNothing() {
   return (
-    <section className="px-[22px] py-16 text-center">
+    <section className="px-gutter py-16 text-center">
       <h2 className="bill-title text-bill-lg text-text">No release dates yet</h2>
 
       <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">

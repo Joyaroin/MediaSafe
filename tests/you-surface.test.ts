@@ -6,7 +6,7 @@ import { EmptyYou } from "@/app/(signed-in)/you/empty-you";
 import { watchTimeInWords } from "@/app/(signed-in)/you/figures";
 import { YouHero } from "@/app/(signed-in)/you/you-hero";
 import { YouSurface } from "@/app/(signed-in)/you/you-surface";
-import type { AccountFigures, LibraryStateGroupEntry, ListCard } from "@/db/access";
+import type { AccountFigures, LibraryStateGroupEntry } from "@/db/access";
 
 /**
  * You as the reader meets it — issue #247.
@@ -44,9 +44,6 @@ function figures(overrides: Partial<AccountFigures> = {}): AccountFigures {
   };
 }
 
-function listCard(overrides: Partial<ListCard> = {}): ListCard {
-  return { id: "list-1", name: "Comfort shows", titleCount: 3, posterPaths: [], ...overrides };
-}
 
 function titleEntry(overrides: Partial<LibraryStateGroupEntry> = {}): LibraryStateGroupEntry {
   return {
@@ -63,7 +60,6 @@ function titleEntry(overrides: Partial<LibraryStateGroupEntry> = {}): LibrarySta
 const render = (
   figuresIn: AccountFigures,
   rails: {
-    lists?: readonly ListCard[];
     shows?: readonly LibraryStateGroupEntry[];
     films?: readonly LibraryStateGroupEntry[];
   } = {},
@@ -71,7 +67,6 @@ const render = (
   renderToStaticMarkup(
     createElement(YouSurface, {
       figures: figuresIn,
-      lists: rails.lists ?? [],
       shows: rails.shows ?? [],
       films: rails.films ?? [],
     }),
@@ -213,36 +208,11 @@ describe("the hero", () => {
   });
 });
 
+
 describe("the lists, shows and films rails — issue #248", () => {
-  it("renders a list card's name and title count", () => {
-    const markup = render(figures(), {
-      lists: [listCard({ name: "Comfort shows", titleCount: 12 })],
-    });
-
-    expect(markup).toContain("Comfort shows");
-    expect(markup).toContain("12 titles");
-  });
-
-  it("gives a list with no covered posters the missing-artwork frame", () => {
-    const markup = render(figures(), { lists: [listCard({ posterPaths: [] })] });
-
-    expect(markup).toContain("No artwork");
-  });
-
-  it("draws a poster cell for a covered list and no missing-artwork frame", () => {
-    const markup = render(figures(), {
-      lists: [listCard({ posterPaths: ["/one.jpg", "/two.jpg"] })],
-    });
-
-    expect(markup).toContain("/one.jpg");
-    expect(markup).toContain("/two.jpg");
-    expect(markup).not.toContain("No artwork");
-  });
-
-  it("renders no lists rail at all when the account has no lists", () => {
-    const markup = render(figures(), { lists: [] });
-
-    expect(markup).not.toContain(">Lists<");
+  /** Lists live in Library now, so You draws no lists rail of its own. */
+  it("draws no lists rail on You", () => {
+    expect(render(figures())).not.toContain(">Lists<");
   });
 
   it("renders the shows and films rails under their own labels", () => {
@@ -285,11 +255,6 @@ describe("the lists, shows and films rails — issue #248", () => {
     expect(markup).not.toContain("2019 · 45 min");
   });
 
-  it("links a list card to its own list", () => {
-    const markup = render(figures(), { lists: [listCard({ id: "list-42" })] });
-
-    expect(markup).toContain('href="/lists/list-42"');
-  });
 });
 
 describe("the desktop widens rather than centring a phone column", () => {

@@ -214,7 +214,7 @@ test("the poster morph pairs when opening a title from the library grid", async 
   await watchForMorphPair(page, transitionName);
 
   await page.getByRole("button", { name: new RegExp(seeded.titleName) }).click();
-  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 1 })).toBeVisible();
 
   expect(
     await morphPaired(page),
@@ -244,7 +244,7 @@ test("the poster morph pairs when opening a title from an Up next row", async ({
   await watchForMorphPair(page, transitionName);
 
   await page.getByRole("link", { name: new RegExp(seeded.titleName) }).click();
-  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 1 })).toBeVisible();
 
   expect(
     await morphPaired(page),
@@ -280,7 +280,7 @@ test("the poster morph pairs the row's picture and the title's poster at one rat
   expect(rowBox, "the Up next row draws no TMDB image at all").not.toBeNull();
 
   await page.getByRole("link", { name: new RegExp(seeded.titleName) }).click();
-  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 1 })).toBeVisible();
 
   const destinationPicture = page.locator('img[src*="image.tmdb.org"]').first();
   await expect(destinationPicture).toBeVisible();
@@ -323,7 +323,7 @@ test("the poster morph pairs on a second opening, from the router's own cache", 
 
   await page.goto("/library");
   await page.getByRole("button", { name: new RegExp(seeded.titleName) }).click();
-  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 1 })).toBeVisible();
 
   await page.goBack();
   await expect(page.getByRole("button", { name: new RegExp(seeded.titleName) })).toBeVisible();
@@ -331,7 +331,7 @@ test("the poster morph pairs on a second opening, from the router's own cache", 
   // Only now, so the observation is of the second navigation and not the first.
   await watchForMorphPair(page, transitionName);
   await page.getByRole("button", { name: new RegExp(seeded.titleName) }).click();
-  await expect(page.getByRole("heading", { name: seeded.titleName, level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: seeded.titleName, level: 1 })).toBeVisible();
 
   expect(
     await morphPaired(page),

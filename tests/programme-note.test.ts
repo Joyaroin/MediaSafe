@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -63,6 +60,7 @@ const episodes = (list: EpisodeDetail[], kind: "film" | "show" = "show") =>
       episodesPending: false,
       libraryEntryId: "entry-1",
       titleName: "Game of Thrones",
+      today: "2026-09-23",
     }),
   );
 
@@ -214,7 +212,8 @@ describe("the episode list", () => {
      * assertion strictly stronger than it was: there is now nothing at all in the trailing
      * slot for a count to hide among.
      */
-    expect(visible).toEqual(["Season 1", "Season 1", "E1", "Winter Is Coming"]);
+    // The chip's tick carries a screen-reader word — ", watched" — for a finished season.
+    expect(visible).toEqual(["Season 1", ", watched", "Season 1", "E1", "Winter Is Coming"]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {
@@ -264,148 +263,20 @@ describe("the episode list", () => {
  */
 const MARK_THROUGH = "Mark everything up to and including";
 
-describe("the watched-up-to-here control", () => {
-  it("appears on a row with an earlier unwatched episode", () => {
-    const markup = episodes([
-      episode({ id: "e1", episodeNo: 1, name: "Winter Is Coming" }),
-      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
-    ]);
-
-    expect(markup).toContain(
-      "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
-    );
-  });
-
-  it("is absent on a row with nothing unwatched before it", () => {
-    const markup = episodes([
-      episode({ id: "e1", episodeNo: 1, watched: true }),
-      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
-    ]);
-
-    // Issue #194's own words: a show already recorded is not covered in dead controls,
-    // and one press of the checkmark already does the whole of what this would.
-    expect(markup).not.toContain(MARK_THROUGH);
-  });
-
-  it("is absent on the first episode of a show", () => {
-    const markup = episodes([episode({ id: "e1", episodeNo: 1 })]);
-
-    expect(markup).not.toContain(MARK_THROUGH);
-  });
-
-  it("appears on a watched row with a gap behind it", () => {
-    const markup = episodes([
-      episode({ id: "e1", episodeNo: 1, name: "Winter Is Coming" }),
-      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad", watched: true }),
-    ]);
-
-    // Progress is a high-water mark (`db/views.ts`), so a skipped episode sits behind a
-    // watched one — and closing that gap is the second thing this control is for.
-    expect(markup).toContain(
-      "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
-    );
-    // Beside the row's own controls, not instead of them — and *watched up to here* is
-    // the one that stayed inline when unwatch went to the row's menu, because it records
-    // a watch rather than removing one.
-    expect(markup).toContain(
-      "Mark everything up to and including Season 1, Episode 2 — The Kingsroad watched",
-    );
-  });
-
-  it("never appears on a special itself", () => {
-    const markup = episodes([
-      episode({ id: "s1", seasonNo: 0, episodeNo: 1, name: "Making Of" }),
-      episode({ id: "s2", seasonNo: 0, episodeNo: 2, name: "Blooper Reel" }),
-    ]);
-
-    // A watch of a special changes no derived state, so it is not what a press would
-    // write and not a reason to offer one. The companion claim this test used to make in
-    // the same render — that an unwatched special sitting before a real episode does not
-    // arm the control on that later row either — is `mark-up-to.test.ts`'s own "never
-    // counts a special, in the set or in what makes the control appear": issue #224
-    // mounts one season at a time, so a special and a later real-season row are never
-    // both in one render here for this file to check together any more.
-    expect(markup).not.toContain(MARK_THROUGH);
-  });
-
-  it("carries no text of its own, so the episode name keeps the room it had", () => {
-    const markup = episodes([
-      episode({ id: "e1", episodeNo: 1, name: "Winter Is Coming" }),
-      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
-    ]);
-
-    /**
-     * The row's trailing slot is a fixed measure and its contents were already close to
-     * it (`programme-note-episodes.tsx`'s `TRAILING`, which records the browser
-     * measurements). Words on this control would come out of the episode name, which is
-     * the one thing on the row that must not shrink — so what the control renders is
-     * asserted to be a glyph and an attribute, and nothing a reader would see as text.
-     *
-     * Since issue #217 the row's *other* control is icon-only too — `MarkWatchedButton`
-     * no longer renders *Strike it* — so E2's row carries two glyphs and E1's carries one,
-     * and neither adds a word to this list. That is this test's own subject widening by
-     * one control rather than a change to what it asserts: no visible text on the row
-     * comes from anything but the episode's own name.
-     */
-    const visible = markup
-      .replace(/<[^>]+>/g, "\n")
-      .split("\n")
-      .filter((one) => one.length > 0);
-
-    // "Season 1" twice, the same as the sole-season case above — the chip and the heading.
-    expect(visible).toEqual([
-      "Season 1",
-      "Season 1",
-      "E1",
-      "Winter Is Coming",
-      "E2",
-      "The Kingsroad",
-    ]);
-  });
-
-  it("reaches all three surfaces from one placement", () => {
-    /**
-     * The control is on the programme note's content, so the desktop pane, the phone
-     * title sheet and the title-detail route all get it without any of them being wired
-     * up separately — issue #196's *one placement serves three surfaces*.
-     *
-     * Read from source rather than rendered, because two of the three cannot be rendered
-     * in this harness at all: they reach `LiveTitleFacts` → `tmdb/catalogue.ts`, which is
-     * `server-only` and throws on import here (this file's own top docblock). The
-     * property is about which component each surface draws, and the import is where that
-     * is decided — so this fails for exactly the reason it names: one of the three grew
-     * its own episode list.
-     */
-    /**
-     * Two surfaces since #250, which deleted the phone's title sheet along with the five
-     * vertical groups that were its only callers. The property is unchanged and is if
-     * anything easier to hold with one fewer: every surface that shows a title's note draws
-     * the shared component rather than growing an episode list of its own.
-     */
-    const surfaces = [
-      "app/(signed-in)/library/programme-note.tsx",
-      "app/(signed-in)/titles/[entryId]/title-detail-view.tsx",
-    ];
-
-    for (const surface of surfaces) {
-      const source = readFileSync(join(process.cwd(), surface), "utf8");
-      expect(source, `${surface} no longer renders the shared programme note`).toContain(
-        "<ProgrammeNoteContent",
-      );
-    }
-  });
-
-  it("writes no confirmation into the page until a row is pressed", () => {
+describe("marking up to an episode", () => {
+  /**
+   * Issue #357 retired the per-row *watched up to here* icon, which appeared on most rows
+   * of a new show and said nothing about itself. The same write is reached two labelled
+   * ways instead: *Mark season watched*, and the *Also mark N earlier* offer on the toast
+   * after marking one episode (`title-page.ts` and `action-toast.ts` hold both rules).
+   */
+  it("draws no mark-up-to control on any row", () => {
     const markup = episodes([
       episode({ id: "e1", episodeNo: 1 }),
-      episode({ id: "e2", episodeNo: 2 }),
+      episode({ id: "e2", episodeNo: 2, name: "The Kingsroad" }),
     ]);
 
-    // One dialog for the list, mounted only while there is a press to confirm — not one
-    // per row, which on a long-running show would be sixty-two of them in the document
-    // to have at most one open.
-    expect(markup).not.toContain("<dialog");
-    expect(markup).not.toContain("Watched up to here?");
+    expect(markup).not.toContain(MARK_THROUGH);
   });
 });
 

@@ -4,6 +4,12 @@ import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import {
+  PRIMARY_BUTTON,
+  PRIMARY_BUTTON_COMPACT,
+  SECONDARY_BUTTON,
+  SECONDARY_BUTTON_COMPACT,
+} from "@/app/buttons";
 
 import { SortSelect } from "@/app/(signed-in)/library/library-filter-bar";
 import {
@@ -56,80 +62,30 @@ function code(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, (b) => b.replace(/[^\n]/g, " ")).replace(/\/\/.*/g, "");
 }
 
-describe("the button register is ratified — the fourteen controls paint through THE_BUTTON_REGISTER", () => {
+describe("the button register is the primary button's alone — issue #357", () => {
+  const BUTTONS_SOURCE = source("app/buttons.ts");
   const RECOVERY_SOURCE = source("errors/recovery-buttons.ts");
 
-  it("declares the meaning by importing it, rather than reaching for the colour directly", () => {
-    expect(RECOVERY_SOURCE).toMatch(
-      /import\s*\{\s*THE_BUTTON_REGISTER\s*\}\s*from\s*"@\/app\/accent-meaning"/,
+  it("paints the primary button through THE_BUTTON_REGISTER, the one place it reaches for the accent", () => {
+    expect(BUTTONS_SOURCE).toMatch(
+      /import\s*\{\s*THE_BUTTON_REGISTER\s*\}\s*from\s*"\.\/accent-meaning"/,
     );
+    expect(code(BUTTONS_SOURCE).match(/THE_BUTTON_REGISTER\.solid/g) ?? []).toHaveLength(1);
   });
 
-  it("builds the two ink treatments — GHOST_RECOVERY and its compact measure — from THE_BUTTON_REGISTER.ink", () => {
-    // Two occurrences: `GHOST_RECOVERY` and `GHOST_RECOVERY_COMPACT` each reach for it once.
-    const occurrences = code(RECOVERY_SOURCE).match(/THE_BUTTON_REGISTER\.ink/g) ?? [];
-    expect(occurrences.length).toBe(2);
+  it("maps the recovery pair onto the three variants rather than restating a style", () => {
+    // The ghost pair was an accent outline every control wore; it is the neutral
+    // secondary button now, and the solid pair is the primary one.
+    expect(GHOST_RECOVERY).toBe(SECONDARY_BUTTON);
+    expect(GHOST_RECOVERY_COMPACT).toBe(SECONDARY_BUTTON_COMPACT);
+    expect(SOLID_RECOVERY).toBe(PRIMARY_BUTTON);
+    expect(SOLID_RECOVERY_COMPACT).toBe(PRIMARY_BUTTON_COMPACT);
   });
 
-  it("builds the two solid treatments — SOLID_RECOVERY and its compact measure — from THE_BUTTON_REGISTER.solid", () => {
-    const occurrences = code(RECOVERY_SOURCE).match(/THE_BUTTON_REGISTER\.solid/g) ?? [];
-    expect(occurrences.length).toBe(2);
-  });
-
-  // Issue #332 moved the four constants' durations onto the timing ramp — `duration-150`
-  // became `duration-[var(--dur-fast)]` and `duration-200` became `duration-[var(--dur-base)]`
-  // — so what these assert as "identical" is the treatment, not the literal that used to
-  // spell it; the ramp token is the same duration by another, enforceable name.
-
-  it("renders GHOST_RECOVERY identically to the accent outline it always drew", () => {
-    expect(new Set(GHOST_RECOVERY.split(" "))).toEqual(
-      new Set(
-        "code-line rounded-[var(--radius-full)] border border-accent px-4 py-2 text-accent transition-colors duration-[var(--dur-fast)] hover:bg-accent hover:text-accent-ink".split(
-          " ",
-        ),
-      ),
-    );
-  });
-
-  it("renders GHOST_RECOVERY_COMPACT identically to the accent outline it always drew", () => {
-    expect(new Set(GHOST_RECOVERY_COMPACT.split(" "))).toEqual(
-      new Set(
-        "code-line shrink-0 rounded-[var(--radius-full)] border border-accent px-2.5 py-1 text-accent transition-colors duration-[var(--dur-fast)] hover:bg-accent hover:text-accent-ink".split(
-          " ",
-        ),
-      ),
-    );
-  });
-
-  it("renders SOLID_RECOVERY identically to the solid accent it always drew", () => {
-    expect(new Set(SOLID_RECOVERY.split(" "))).toEqual(
-      new Set(
-        "code-line rounded-[var(--radius-full)] bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-90".split(
-          " ",
-        ),
-      ),
-    );
-  });
-
-  it("renders SOLID_RECOVERY_COMPACT identically to the solid accent it always drew", () => {
-    expect(new Set(SOLID_RECOVERY_COMPACT.split(" "))).toEqual(
-      new Set(
-        "code-line shrink-0 rounded-[var(--radius-full)] bg-accent px-2.5 py-1 text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-90".split(
-          " ",
-        ),
-      ),
-    );
-  });
-
-  it("every base ink/solid literal is reached through the meaning, not typed a second way", () => {
-    // The four constants' `hover:` halves are deliberately still literal (the meaning has
-    // no hover-prefixed form to reach for) — that is what this leaves alone. What it holds
-    // is the *base* class each constant paints at rest: outside `THE_BUTTON_REGISTER.ink`
-    // and a `hover:` prefix, a bare `text-accent` would be a fifteenth control quietly
-    // reintroducing the silence #310's docblock names as the whole problem.
-    const stripped = code(RECOVERY_SOURCE);
-    const bareInk = stripped.match(/(?<!hover:)(?<!THE_BUTTON_REGISTER\.)\btext-accent\b(?!-ink)/g) ?? [];
-    expect(bareInk).toEqual([]);
+  it("puts no accent on a secondary button", () => {
+    expect(SECONDARY_BUTTON).not.toMatch(/accent/);
+    expect(SECONDARY_BUTTON_COMPACT).not.toMatch(/accent/);
+    expect(code(RECOVERY_SOURCE)).not.toMatch(/accent/);
   });
 });
 
@@ -189,15 +145,20 @@ describe("the dialogs that borrowed the failure frame are re-narrowed", () => {
     expect(dialogTag(path)).not.toMatch(/\bborder-accent\b/);
   });
 
-  it.each(DIALOG_FILES)("%s's dialog still reads as a dialog — bordered, grounded, backdropped", (path) => {
-    const tag = dialogTag(path);
+  it.each(DIALOG_FILES)("%s's dialog wears the one shared dialog frame", (path) => {
+    // Issue #357: the five dialogs disagreed about their own frame. They share one now.
+    expect(dialogTag(path)).toMatch(/DIALOG_FRAME/);
+  });
 
-    // The frame is re-coloured, not undressed: the border survives at its own weight, the
-    // surface and the backdrop are untouched. Only the colour of the border changed.
-    expect(tag).toMatch(/\bborder-2\b/);
-    expect(tag).toMatch(/\bborder-hair\b/);
-    expect(tag).toMatch(/\bbg-ground\b/);
-    expect(tag).toMatch(/backdrop:bg-ground\/80/);
+  it("the shared frame still reads as a dialog — bordered, grounded, backdropped", () => {
+    const frame = source("app/buttons.ts").match(/export const DIALOG_FRAME =\s*"([^"]*)"/)?.[1];
+
+    expect(frame).toBeDefined();
+    expect(frame).toMatch(/\bborder\b/);
+    expect(frame).toMatch(/\bborder-hair\b/);
+    expect(frame).not.toMatch(/\bborder-accent\b/);
+    expect(frame).toMatch(/\bbg-ground\b/);
+    expect(frame).toMatch(/backdrop:bg-ground\/80/);
   });
 
   it("finds the five dialogs it means to check", () => {

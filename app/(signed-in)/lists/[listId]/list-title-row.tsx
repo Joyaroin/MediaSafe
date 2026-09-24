@@ -67,6 +67,7 @@ export function ListTitleRow({
   style,
   shift = 0,
   aboveFold = false,
+  trailing,
 }: {
   readonly title: ListDetailTitleRow;
   readonly dragHandle: ReactNode;
@@ -82,6 +83,8 @@ export function ListTitleRow({
   /** This row is the list's first — `ReorderableTitleList`'s to say, since a list renders
    *  one row per title (`app/poster.tsx`). */
   readonly aboveFold?: boolean;
+  /** A control after the row's link — list detail's *take it off this list*. */
+  readonly trailing?: ReactNode;
 }) {
   const meta = metaLine(title);
 
@@ -105,13 +108,13 @@ export function ListTitleRow({
       </Poster>
 
       <div className="min-w-0 flex-1">
-        {/* `text-ink`, not `text-text` (#255). `bill-title text-bill-md` is a heading
+        {/* `text-text`, not `text-text` (#255). `bill-title text-bill-md` is a heading
             register, and `search-surface.tsx` and `library-filter-bar.tsx` both ink it.
             This row and the phone title sheet's — the two that drew the register as a
             *title over a meta line* — both carried the body colour instead. Two peers
             disagreeing was an oversight rather than a distinction, so both were inked;
             #250 has since deleted the sheet, leaving this row as the only one of the pair. */}
-        <h2 className="bill-title text-bill-md text-ink">{title.name}</h2>
+        <h2 className="bill-title text-bill-md text-text">{title.name}</h2>
         {meta === null ? null : (
           <p className="code-line mt-1 text-dim" data-numeric>
             {meta}
@@ -144,6 +147,7 @@ export function ListTitleRow({
     >
       {dragHandle}
       {inner}
+      {trailing}
     </m.li>
   );
 }

@@ -1,8 +1,5 @@
-import Link from "next/link";
-
 import { currentDisplayName } from "@/lib/session";
 import { DisplayNameCell } from "./display-name-cell";
-import { SettingsIcon } from "./nav-icons";
 import { Wordmark } from "./press-mark";
 
 /**
@@ -60,12 +57,10 @@ import { Wordmark } from "./press-mark";
  * now publishes to instead. Whether there *is* a name is still decided here, on the
  * server; the cell only answers whether it has since changed.
  *
- * ── The Settings entrance ────────────────────────────────────────────────────────────
+ * ── No Settings entrance ─────────────────────────────────────────────────────────────
  *
- * A `Link`, not a button. #11 rejected an avatar menu and #28 kept it rejected, so this
- * is a destination and not a disclosure. Icon-only: the phone has never had the width to
- * spare for a label beside it, and `aria-label` carries the name for anyone not looking
- * at the icon.
+ * It used to carry an icon-only link to Settings. Settings is reached from You now, so the
+ * masthead names the app and the reader and nothing else.
  */
 export async function Masthead() {
   const displayName = await currentDisplayName();
@@ -75,7 +70,7 @@ export async function Masthead() {
       // Held still while the content slides beneath it during a tab change — the same
       // anchoring `tab-bar.tsx` gets, and `globals.css` has the reason both need it.
       style={{ viewTransitionName: "phone-masthead" }}
-      className="sticky top-0 z-30 flex items-center justify-between gap-3 frosted px-[22px] pt-[18px] pb-1 lg:hidden"
+      className="sticky top-0 z-30 flex items-center justify-between gap-3 frosted px-gutter pt-[18px] pb-1 lg:hidden"
     >
       {/* The mark at 15px, its bar in the accent, and the wordmark as the label register
           in `--dim` — turn 9's own head row. */}
@@ -113,13 +108,6 @@ export async function Masthead() {
             different kind of move; it was wrong that a reader reads the difference.
 
             */}
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          className="-mr-[11px] flex h-11 w-11 items-center justify-center text-dim transition-colors hover:text-ink"
-        >
-          <SettingsIcon className="h-[17px] w-[17px]" />
-        </Link>
       </div>
     </header>
   );

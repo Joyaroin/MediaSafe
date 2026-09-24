@@ -78,7 +78,7 @@ const HUNDREDS_OF_MILLISECONDS = 250;
 // carries this label too, and only its own ancestor tells the two navs apart.
 const libraryLink = (page: Page) =>
   page.locator('aside nav[aria-label="Primary"] a[href="/library"]');
-const emptyLibraryMarker = (page: Page) => page.getByText("The bill is blank");
+const emptyLibraryMarker = (page: Page) => page.getByText("Your library is empty");
 
 test("the navigation's motion begins against the press, not hundreds of milliseconds later", async ({
   page,

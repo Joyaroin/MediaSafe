@@ -26,7 +26,7 @@ export const CHIP_BASE =
 /** The unselected and selected treatments every chip shares. */
 export function chipClassName(selected: boolean): string {
   if (selected) return `${CHIP_BASE} text-ground`;
-  return `${CHIP_BASE} bg-raised text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink`;
+  return `${CHIP_BASE} bg-raised text-dim transition-colors duration-[var(--dur-fast)] hover:text-text`;
 }
 
 /**
@@ -44,7 +44,7 @@ export function ChipGround({ layoutId }: { layoutId: string }) {
   return (
     <m.span
       layoutId={layoutId}
-      className="absolute inset-0 rounded-[var(--radius-6)] bg-ink"
+      className="absolute inset-0 rounded-[var(--radius-6)] bg-text"
       transition={snappy}
     />
   );

@@ -1,8 +1,9 @@
 "use client";
 
+import { DIALOG_FRAME } from "@/app/buttons";
 import { useEffect, useRef, useState } from "react";
 
-import { GHOST_RECOVERY, GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { unwatchCount } from "./unwatch-confirm";
 import { UnwatchIcon } from "./unwatch-icon";
 import { watchMarks } from "./watch-marks";
@@ -149,7 +150,7 @@ export function WatchMenu({
       // `dialog-transition` (issue #333, `app/globals.css`): arrives and leaves on a
       // transition rather than a keyframe, because Cancel or Escape can end this dialog
       // before its own entrance has finished.
-      className="dialog-transition rounded-[var(--radius-6)] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+      className={DIALOG_FRAME}
     >
       {/* Never swapped out by `confirming` — issue #315's acceptance criterion that the
           episode being acted on stays identifiable while the confirmation is shown. */}
@@ -175,7 +176,7 @@ export function WatchMenu({
             <button
               type="button"
               onClick={unwatch}
-              className={`${GHOST_RECOVERY} h-11 min-w-11`}
+              className={GHOST_RECOVERY}
             >
               Unwatch it
             </button>
@@ -187,7 +188,7 @@ export function WatchMenu({
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className={`${GHOST_RECOVERY_COMPACT} h-11 min-w-11`}
+              className={GHOST_RECOVERY}
             >
               Keep it
             </button>
@@ -195,79 +196,68 @@ export function WatchMenu({
         </>
       ) : (
         <>
-          <p className="mt-3 max-w-[46ch] text-note leading-relaxed text-dim">
-            {/* Both consequences stated, because they are genuinely different and the words
-                *rewatch* and *unwatch* do not carry the difference on their own. The second
-                sentence is the one that matters: it is the only place in the product that says
-                unwatch takes every watch, and it is said before the press rather than after
-                it. */}
-            Recording a rewatch keeps the watches you already have and adds one. Undoing takes
-            back the most recent one and leaves the rest. Unwatching removes every watch of it,
-            including any that came in with your library.
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            {/* Issue #314: `h-11 min-w-11` raises all four controls below to the 44px platform
-                minimum in both dimensions — measured at 34.2px tall, 26.2px for Cancel, against
-                it. `GHOST_RECOVERY`/`GHOST_RECOVERY_COMPACT` stay untouched: both are shared by
-                a dozen-plus surfaces with no sizing complaint of their own, and the established
-                way to reach 44px at one call site without moving the rest is composing it there
-                — `list-row.tsx`'s `h-11` and `selection-action-bar.tsx`'s `h-11` on its own
-                compact pair are the prior art. `h-11`/`min-w-11` are `2.75rem`, the same 44px
-                `RECORDING_HIT_BOX`'s `w-11 h-11` already resolves to, and Tailwind's border-box
-                preflight makes `h-11` exact regardless of the padding either treatment carries.
-                `tests/watch-menu-sweep.test.ts` holds all four to it. */}
-            <button type="button" onClick={rewatch} className={`${GHOST_RECOVERY} h-11 min-w-11`}>
-              Rewatch
-            </button>
-
-            {/* **Undo lives here and nowhere else.** It was a glyph in the row's trailing
-                slot, offered only for a mark made on this visit — which meant the row swapped
-                one control for another and back, and meant the store had to know which surface
-                had pressed. Neither is true now: the slot holds the mark in every state, and
-                *Undo* is simply the middle item of the three things a watched row can be
-                asked. It is the same write either way (`db/access.ts`'s `undoWatch` — the
-                newest row, never all of them). */}
-            <button type="button" onClick={undo} className={`${GHOST_RECOVERY} h-11 min-w-11`}>
-              Undo
-            </button>
-
-            {/* The way out, at the compact measure — `delete-list-dialog.tsx`'s own
-                arrangement: the acts at the surface measure, the dismissal quieter beside
-                them. `formMethod="dialog"` closes without a handler, which is what `<dialog>`
-                gives for free and what keeps `onClosed` the single close path. Cancel is the
-                smallest and easiest to overlook of the four (#314), so it takes the same
-                `h-11 min-w-11` floor rather than being left at the compact treatment's own
-                26.2px. */}
-            <form method="dialog" className="contents">
-              <button
-                type="submit"
-                className={`${GHOST_RECOVERY_COMPACT} h-11 min-w-11`}
-              >
-                Cancel
-              </button>
-            </form>
-          </div>
-
-          {/* `Unwatch` on its own, below a rule — issue #315. Distance from `Undo` above
-              (a fresh `mt-4`/`pt-4` gap plus `border-hair`, rather than the same `gap-3`
-              group) and a redundant visual signal beyond wording (`UnwatchIcon`, a shape
-              `Undo` does not carry). Still `GHOST_RECOVERY`, the same register as the row
-              above — a further button tier was already declined, and a
-              redundant *signal* is not one: nothing here paints a colour the other two
-              controls do not already use. */}
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-hair pt-4">
-            <button
-              type="button"
+          {/* Issue #357: one line per action, beside the action, instead of a paragraph above
+              all three that the reader had to map back onto the buttons. The line under
+              *Unwatch* is still said before the press — it is the only place in the product
+              that says unwatch takes every watch. */}
+          <ul className="mt-5 flex flex-col gap-2">
+            <MenuItem onClick={rewatch} label="Rewatch" description="Adds another watch." />
+            <MenuItem
+              onClick={undo}
+              label="Undo"
+              description="Takes back the most recent watch."
+            />
+            <MenuItem
               onClick={() => setConfirming(true)}
-              className={`${GHOST_RECOVERY} h-11 min-w-11 inline-flex items-center gap-1.5`}
-            >
-              <UnwatchIcon className="h-4 w-4" />
-              Unwatch
+              label="Unwatch"
+              description="Removes every watch of it, including any from your import."
+              icon={<UnwatchIcon className="h-4 w-4" />}
+              destructive
+            />
+          </ul>
+
+          <form method="dialog" className="mt-5">
+            <button type="submit" className={GHOST_RECOVERY}>
+              Cancel
             </button>
-          </div>
+          </form>
         </>
       )}
     </dialog>
+  );
+}
+
+/** One action in the menu, with the one line that says what it does. */
+function MenuItem({
+  onClick,
+  label,
+  description,
+  icon,
+  destructive = false,
+}: {
+  readonly onClick: () => void;
+  readonly label: string;
+  readonly description: string;
+  readonly icon?: React.ReactNode;
+  readonly destructive?: boolean;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-1)] px-3 py-2.5 text-left transition-colors duration-[var(--dur-fast)] hover:bg-raised"
+      >
+        <span
+          className={`flex items-center gap-1.5 text-item font-semibold ${
+            destructive ? "text-danger" : "text-text"
+          }`}
+        >
+          {icon}
+          {label}
+        </span>
+        <span className="text-meta text-dim">{description}</span>
+      </button>
+    </li>
   );
 }

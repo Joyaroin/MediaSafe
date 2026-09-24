@@ -27,7 +27,7 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * *Nothing queued for tonight* / *Add a show and its next episode turns up here* /
  * *Search the catalogue* — the prototype's states column,
  * which #245 makes binding. It is deliberately not
- * `empty-library.tsx`'s *The bill is blank* and deliberately not `UpNextEmpty`'s *you're
+ * `empty-library.tsx`'s *Your library is empty* and deliberately not `UpNextEmpty`'s *you're
  * caught up*: these read differently and must not
  * share copy, and there are now three of them.
  *
@@ -42,15 +42,15 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function UpNextNothing() {
   return (
-    <section className="px-[22px] py-16 text-center">
+    <section className="px-gutter py-16 text-center">
       <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
 
       <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
         Add a show and its next episode turns up here.
       </p>
 
-      <Link href="/search" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>
-        Search the catalogue
+      <Link href="/search" className={`mt-5 ${SOLID_RECOVERY}`}>
+        Search films and shows
       </Link>
     </section>
   );

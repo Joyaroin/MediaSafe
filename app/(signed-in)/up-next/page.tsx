@@ -1,4 +1,3 @@
-import { ProgrammeNoteLayout } from "@/app/(signed-in)/library/programme-note-layout";
 import {
   cachedUpcomingEpisodes,
   cachedUpcomingFilms,
@@ -10,8 +9,7 @@ import { LandingPager } from "./landing-pager";
 import { UpcomingSurface } from "./upcoming-surface";
 import { readerDay } from "./upcoming-grouping";
 import { UpNextHeading } from "./up-next-heading";
-import { UpNextPhoneRails } from "./up-next-rails";
-import { UpNextRailsSurface } from "./up-next-rails-surface";
+import { UpNextWatching } from "./up-next-rails";
 import { NavTransition } from "../nav-transition";
 
 /**
@@ -120,62 +118,37 @@ export default async function UpNextPage() {
   ]);
 
   /**
-   * **The one clock this route reads, read once** — issue #251, widened by issue #319 to
-   * hand the same instant to a second reader rather than gaining a second one of its own.
-   *
-   * `upcoming-grouping.ts` and `up-next-heading-band.ts` each take the reader's zone and an
-   * instant as arguments and read no clock themselves, which is what makes *Today means my
-   * today* and *the heading's word means my hour* things a test can state. Somebody has to
-   * look at the actual time for that, and it is here: one instant, one zone, handed down to
-   * both — a second clock read anywhere under `up-next/` would be a second answer to
-   * *what time is it*, the same failure a second answer to *what day is it* would be.
-   *
-   * `requireTimezone()` reads `user.timezone` off the session — the column `lib/timezone.ts`
-   * fills at signup and Settings' control changes, and which is the
-   * read-time lens for every day boundary in the application. It is `NOT NULL`, so there is
-   * no "or else" branch here and there is not meant to be one.
-   *
-   * **Deliberately outside the cache.** `cachedUpcomingEpisodes` returns a window a day
-   * wider than the server's own day, which is the same set of rows for this account at
-   * every hour; *Today* and *Tomorrow*, and now the heading's word, are truths that turn
-   * over at the reader's midnight and the reader's hour — neither of which is a boundary
-   * `serverDay()` or a cached read keys on. So the rows are cached and the instant is not.
+   * **The one clock this route reads, read once.** `upcoming-grouping.ts` takes the
+   * reader's zone and an instant as arguments and reads no clock itself, which is what
+   * makes *Today means my today* something a test can state. Deliberately outside the
+   * cache: the rows are the same set at every hour, but *Tomorrow* turns over at the
+   * reader's midnight.
    */
-  const now = new Date();
-  const today = readerDay(zone, now);
+  const today = readerDay(zone, new Date());
+
+  const watching = <UpNextWatching rails={rails} films={films} />;
+  const comingUp = (
+    <UpcomingSurface episodes={upcoming} films={upcomingFilms} today={today} />
+  );
 
   return (
     <NavTransition>
-      {/* The Library page's own two-pane shell — the rails swap the panel beside them,
-          and nothing on this page ever navigates. */}
-      <ProgrammeNoteLayout>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <UpNextHeading zone={zone} at={now} />
+      <main className="flex w-full flex-1 flex-col">
+        <UpNextHeading />
 
-          {/* The phone's two-page pager: the two rails, and Upcoming beside them. Each
-              page answers its own empty case; a failure in either read throws past both
-              into `error.tsx`.
-
-              **The desktop does not get this.** *Specced, but later* still
-              carries *desktop rails other than Up next's three (Upcoming)*, and #245 asks
-              for a phone pager rather than a second desktop rail — so the gate below is
-              the same `lg:hidden` the phone's rails already sat behind, and the desktop's
-              three rails are untouched. */}
-          <div className="lg:hidden">
-            <LandingPager
-              upNext={<UpNextPhoneRails rails={rails} films={films} />}
-              upcoming={
-                <UpcomingSurface episodes={upcoming} films={upcomingFilms} today={today} />
-              }
-            />
-          </div>
-
-          {/* The desktop's three rails, which answer their own empty case. */}
-          <div className="hidden lg:block">
-            <UpNextRailsSurface rails={rails} />
-          </div>
+        {/* One structure on every screen size: what you are watching, and what is coming
+            up. A phone pages between the two; a desktop stacks them. Each half answers its
+            own empty case, and a failure in any read throws past both into `error.tsx`. */}
+        <div className="lg:hidden">
+          <LandingPager upNext={watching} upcoming={comingUp} />
         </div>
-      </ProgrammeNoteLayout>
+
+        <div className="hidden max-w-4xl lg:block">
+          {watching}
+          <h2 className="px-gutter pt-10 text-bill-sm font-semibold text-text">Coming up</h2>
+          {comingUp}
+        </div>
+      </main>
     </NavTransition>
   );
 }

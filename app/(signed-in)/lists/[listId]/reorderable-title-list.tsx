@@ -68,12 +68,17 @@ import { ListTitleRow } from "./list-title-row";
  */
 export function ReorderableTitleList({
   listId,
-  initialTitles,
+  order,
+  setOrder,
+  onTakeOff,
 }: {
   readonly listId: string;
-  readonly initialTitles: readonly ListDetailTitleRow[];
+  /** The list's rows, held by `list-detail-body.tsx` so both views share one order. */
+  readonly order: readonly ListDetailTitleRow[];
+  readonly setOrder: (next: readonly ListDetailTitleRow[]) => void;
+  /** Take a title off the list — `take-off.ts`. */
+  readonly onTakeOff: (title: ListDetailTitleRow) => void;
 }) {
-  const [order, setOrder] = useState(initialTitles);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -213,7 +218,7 @@ export function ReorderableTitleList({
         {announcement}
       </div>
 
-      <ul className="px-6">
+      <ul className="px-gutter">
         {order.map((title, index) => {
           const shift = shiftFor(index, dragState, hoverIndex);
           const style: CSSProperties | undefined =
@@ -249,6 +254,18 @@ export function ReorderableTitleList({
                   onKeyDown={(event) => onHandleKeyDown(event, index, title.titleId)}
                 >
                   <DragHandleIcon className="h-5 w-5" />
+                </button>
+              }
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => onTakeOff(title)}
+                  aria-label={`Take ${title.name} off this list`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-full)] text-dim transition-colors duration-[var(--dur-fast)] hover:text-danger"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
                 </button>
               }
             />
@@ -301,7 +318,7 @@ function shiftFor(index: number, dragState: DragState | null, hoverIndex: number
   return index >= hoverIndex && index < dragState.startIndex ? dragState.rowHeight : 0;
 }
 
-async function attemptReorder(
+export async function attemptReorder(
   listId: string,
   titleId: string,
   newPosition: number,
@@ -312,3 +329,4 @@ async function attemptReorder(
     return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
   }
 }
+

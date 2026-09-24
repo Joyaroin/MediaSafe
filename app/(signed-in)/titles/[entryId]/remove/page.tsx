@@ -83,7 +83,7 @@ export default async function RemoveTitlePage({
   const footprint = await titleFootprint(userId, entryId);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
+    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
       <RemoveTitleHeading />
 
       <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-text">
@@ -124,10 +124,9 @@ export default async function RemoveTitlePage({
         </h2>
 
         <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
-          Giving up on a title is the other thing, and it is not this one. It keeps every
-          watch and every rating, takes the title out of Up next, and undoes itself the
-          moment you watch the show again. It is on the title&rsquo;s own page, where you
-          pressed Remove.
+          If this is a show, give up on it instead. That keeps every watch, takes it out of Up
+          next, and undoes itself the moment you watch it again. It is in the &hellip; menu on
+          the show&rsquo;s own page.
         </p>
       </section>
 

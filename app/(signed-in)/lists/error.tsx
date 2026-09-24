@@ -23,7 +23,7 @@ export default function ListsReadFailure({
     <main className="flex w-full flex-1 flex-col">
       <ListsHeading />
 
-      <div className="px-6">
+      <div className="px-gutter">
         <ReadFailure reference={reference} retry={retry} />
       </div>
     </main>

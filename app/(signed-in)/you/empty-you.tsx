@@ -31,16 +31,16 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function EmptyYou() {
   return (
-    <section className="px-6 py-16 text-center">
+    <section className="px-gutter py-16 text-center">
       <h2 className="bill-title text-bill-lg text-text">Nothing to show yet</h2>
 
       <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
-        These figures are read out of your watches, and there are no titles in your library
-        to have watched. Bring your library in from an export file, or add a title from the
-        catalogue and mark an episode — everything here follows on its own.
+        Your numbers come from what you watch, and your library is empty so far. Bring your
+        library in from an export file, or add a show and mark an episode — everything here
+        fills in on its own.
       </p>
 
-      <Link href="/import" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>
+      <Link href="/import" className={`mt-5 ${SOLID_RECOVERY}`}>
         Bring your library in
       </Link>
     </section>

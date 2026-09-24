@@ -5,6 +5,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+
 import { SignOutOtherDevicesButton } from "@/app/(signed-in)/settings/sign-out-other-devices-button";
 
 /**
@@ -48,7 +50,9 @@ describe("the sign-out-other-devices control", () => {
     expect([...rendered.matchAll(/<button/g)]).toHaveLength(1);
     // The boolean attribute, not the `disabled:` Tailwind variant inside `class="..."`.
     expect(rendered).not.toMatch(/ disabled=""/);
-    expect(rendered).toContain("border-accent");
+    // Issue #357: a secondary button — neutral, never the accent the one primary action wears.
+    expect(rendered).toContain(GHOST_RECOVERY);
+    expect(rendered).not.toContain("bg-accent");
   });
 });
 

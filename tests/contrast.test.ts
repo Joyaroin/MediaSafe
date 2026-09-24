@@ -183,7 +183,7 @@ function apcaLc(fg: [number, number, number], bg: [number, number, number]): num
 const APCA_CONTENT_TEXT_FLOOR = 60;
 
 /** The three neutral registers actually used to set text — not the accent pair. */
-const TEXT_TOKENS = ["text", "ink", "dim"] as const;
+const TEXT_TOKENS = ["text", "dim"] as const;
 const GROUNDS = ["ground", "raised"] as const;
 
 describe("every text token clears its contrast floor on both grounds", () => {

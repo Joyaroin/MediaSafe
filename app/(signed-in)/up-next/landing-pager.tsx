@@ -60,8 +60,8 @@ import { keepPage, onUpNextRestart, rememberedPage } from "@/app/restoration-mem
 
 /** The two pages, in the order they read. Index is the page number throughout. */
 const PAGES = [
-  { key: "up-next", label: "Up next" },
-  { key: "upcoming", label: "Upcoming" },
+  { key: "up-next", label: "Watching" },
+  { key: "upcoming", label: "Coming up" },
 ] as const;
 
 type PageIndex = 0 | 1;
@@ -470,8 +470,8 @@ function PagerTabs({
        appears to share. */
     <div
       role="tablist"
-      aria-label="Up next and Upcoming"
-      className="relative flex gap-[26px] px-[22px] pt-[18px]"
+      aria-label="Watching and Coming up"
+      className="relative flex gap-[26px] px-gutter pt-[18px]"
       onKeyDown={onKeyDown}
     >
       {PAGES.map((one, index) => (
@@ -517,7 +517,7 @@ function PagerTabs({
           drawn as an element rather than a border for the reason given above. */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[22px] bottom-0 h-px bg-hair"
+        className="pointer-events-none absolute inset-x-gutter bottom-0 h-px bg-hair"
       />
     </div>
   );

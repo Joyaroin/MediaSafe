@@ -19,7 +19,7 @@ export default function ListsLoading() {
     <main className="flex w-full flex-1 flex-col">
       <ListsHeading />
 
-      <div className="px-6 py-5">
+      <div className="px-gutter py-5">
         <PendingLine shape="rows" held />
       </div>
     </main>

@@ -22,7 +22,7 @@ import { SearchHeading } from "./search-heading";
  */
 export default function SearchLoading() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-[22px] pt-5 pb-12 lg:pb-16">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter pt-5 pb-12 lg:pb-16">
       <SearchHeading />
 
       <div className="mt-6">

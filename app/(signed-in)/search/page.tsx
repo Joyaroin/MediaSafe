@@ -72,30 +72,29 @@ export default async function SearchPage() {
    * Built from `KIND_MODES` rather than written out twice, so a mode cannot be added to
    * that list and silently get no rail.
    */
-  const rails = Object.fromEntries(
-    KIND_MODES.map((mode) => [
-      mode.value,
-      <Suspense key={mode.value} fallback={null}>
-        <RecommendationRail userId={userId} mode={mode.value} />
-      </Suspense>,
-    ]),
+  // Both kinds' recommendations, shown together before anything is typed — the search
+  // field covers both kinds now, so the empty screen does too.
+  const rails = (
+    <>
+      {KIND_MODES.map((mode) => (
+        <Suspense key={mode.value} fallback={null}>
+          <RecommendationRail userId={userId} mode={mode.value} />
+        </Suspense>
+      ))}
+    </>
   );
 
   return (
     <NavTransition>
-      {/* `px-[22px]` is turn 9's page gutter, at every width:
+      {/* `px-gutter` is turn 9's page gutter, at every width:
           search is *identical on both devices*, so
           there is no `lg:` gutter to add. The results list inside `SearchSurface` carries
           its own `14px` instead, so that a card's edge sits inside the text gutter rather
           than on it. */}
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-[22px] pt-5 pb-12 lg:pb-16">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter pt-5 pb-12 lg:pb-16">
         <SearchHeading />
 
-        <p className="mt-4 max-w-[62ch] text-item leading-relaxed text-dim">
-          The catalogue of everything there is. Your own library is somewhere else.
-        </p>
-
-        <div className="mt-4 flex-1">
+        <div className="mt-5 flex-1">
           <SearchSurface rails={rails} />
         </div>
 

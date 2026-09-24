@@ -39,7 +39,7 @@ export default async function WelcomePage() {
   if (await requireImportOfferAnswered()) redirect("/library");
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12 lg:py-16">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter py-12 lg:py-16">
       <h1 className="bill-title text-bill-lg text-text">Bring your library in</h1>
 
       <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-dim">

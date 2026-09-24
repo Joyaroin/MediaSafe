@@ -10,8 +10,8 @@
  */
 export function ListsHeading() {
   return (
-    <div className="px-[22px] pt-5">
-      <h1 className="screen-title text-screen text-ink">Lists</h1>
+    <div className="px-gutter pt-5">
+      <h1 className="screen-title text-screen text-text">Lists</h1>
     </div>
   );
 }

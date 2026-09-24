@@ -38,7 +38,7 @@ const CHIP_LABELS: Record<LibraryState, string> = {
   caught_up: "Caught up",
   finished: "Finished",
   watchlist: "Watchlist",
-  abandoned: "Abandoned",
+  abandoned: "Dropped",
 };
 
 const CHIPS: { value: Chip; label: string }[] = [
@@ -61,7 +61,7 @@ const CHIPS: { value: Chip; label: string }[] = [
  * label naming the same state are the same claim twice.
  */
 /* The selected chip's ground is drawn by `<ChipGround />` (`chip.tsx`) rather than by a
-   `bg-ink` class, so every chip here is transparent-grounded and the same size whether it
+   `bg-text` class, so every chip here is transparent-grounded and the same size whether it
    is selected or not. The fill is one element that slides between them. */
 function chipClassName(value: Chip, selected: boolean): string {
   if (value === "watching" && !selected) {
@@ -82,10 +82,10 @@ export function LibraryChips({
   return (
     // Scrolls rather than wraps. Six chips do not fit a 390px screen and turn 9 does not
     // ask them to: the row runs off the edge and is swiped, the same device the Up next
-    // tracks use. `-mx-[22px] px-[22px]` lets it bleed to the viewport edges while the
+    // tracks use. `-mx-gutter px-gutter` lets it bleed to the viewport edges while the
     // first chip still starts on the page gutter.
     <div
-      className="-mx-[22px] mt-4 flex items-center gap-2 overflow-x-auto px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="-mx-gutter flex items-center gap-2 overflow-x-auto px-gutter lg:mx-0 lg:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="group"
       aria-label="Filter by where a title stands"
     >
@@ -140,7 +140,7 @@ export function FilterField({
         placeholder="Filter your library"
         autoComplete="off"
         aria-label="Filter your library"
-        className="w-full min-w-0 bg-transparent text-item text-ink placeholder:text-dim focus:outline-none"
+        className="w-full min-w-0 bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
       />
     </label>
   );
@@ -232,14 +232,14 @@ export function SortSelect({ value }: { value: LibrarySort }) {
  */
 export function ZeroMatches({ onClear }: { onClear: () => void }) {
   return (
-    <section className="px-6 py-16 text-center">
+    <section className="px-gutter py-16 text-center">
       {/* The type step is deliberately untouched. `text-bill-md` is the step this shares
           with the read-failure headline, and sharing it is the point — the two are told
           apart by colour and by the failure's accent rule, never by size
           (`errors/failure-treatment.ts`, and `tests/library-surface.test.ts` asserts it).
           The handoff asks these states to be restyled *to the token set only*, so the
           colour moves to `--ink` and the size stays where the relationship needs it. */}
-      <h2 className="bill-title text-bill-md text-ink">Nothing under that filter</h2>
+      <h2 className="bill-title text-bill-md text-text">Nothing under that filter</h2>
 
       <p className="mx-auto mt-3 max-w-[60ch] text-item text-dim">
         Your library still holds everything it did. Clear the filter to see it again.

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import { LibraryIcon, SearchIcon, UpNextIcon, YouIcon } from "./nav-icons";
+import { DESTINATIONS } from "./destinations";
+import { DESTINATION_ICONS } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
 import { PHONE_BAR, SELECTING_ATTRIBUTE } from "./phone-bar";
 import { useUpNextRepress } from "./use-up-next-repress";
@@ -91,12 +92,11 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * `/lists/[listId]` exist, the rail leads to them, the sidebar links to them, and a deep
  * link into either works. What #227 retired was a tab; what #249 retires is a page.
  */
-const TABS = [
-  { href: "/up-next", label: "Up next", Icon: UpNextIcon },
-  { href: "/search", label: "Search", Icon: SearchIcon },
-  { href: "/library", label: "Library", Icon: LibraryIcon },
-  { href: "/you", label: "You", Icon: YouIcon },
-] as const;
+const TABS = DESTINATIONS.map(({ href, label }) => ({
+  href,
+  label,
+  Icon: DESTINATION_ICONS[href],
+}));
 
 /**
  * The bar used to derive a direction here — forward or back by position in `TABS` — and
@@ -136,7 +136,7 @@ const TABS = [
  * either a hover tint that no longer fades or a compression that no longer eases, which
  * is the press broken outright. This bar is `lg:hidden`, so the tint it drops is a hover
  * fade on a surface that only exists where there is no pointer to hover with; the press
- * it keeps is what a finger gets. `hover:text-ink` still applies, instantly.
+ * it keeps is what a finger gets. `hover:text-text` still applies, instantly.
  */
 const TAB = "pressable [--press-register:1] flex h-11 flex-col items-center justify-center gap-1";
 
@@ -235,7 +235,7 @@ export function TabBar() {
             // gesture. Every other tab's `<Link>` is exactly what it was before this
             // ticket.
             onClick={href === "/up-next" ? onUpNextLinkClick : undefined}
-            className={`${TAB} ${current ? "text-ink" : "text-dim hover:text-ink"}`}
+            className={`${TAB} ${current ? "text-text" : "text-dim hover:text-text"}`}
           >
             <Icon className={TAB_ICON} />
             <span className={TAB_LABEL}>{label}</span>

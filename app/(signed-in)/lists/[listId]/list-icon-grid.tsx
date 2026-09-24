@@ -39,8 +39,11 @@ import type { ListDetailTitleRow } from "@/db/access";
  */
 export function ListIconGrid({
   titles,
+  onTakeOff,
 }: {
   readonly titles: readonly ListDetailTitleRow[];
+  /** Take a title off the list — `take-off.ts`. */
+  readonly onTakeOff: (title: ListDetailTitleRow) => void;
 }) {
   return (
     /* `library-grid.tsx`'s own columns and gutter, not a second grid: a list of titles and
@@ -50,7 +53,12 @@ export function ListIconGrid({
        puts a poster's *edge* on the page's `22px`. */
     <ol className="stagger-rise grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {titles.map((title, index) => (
-        <IconCell key={title.titleId} title={title} aboveFold={index < FIRST_ROW} />
+        <IconCell
+          key={title.titleId}
+          title={title}
+          aboveFold={index < FIRST_ROW}
+          onTakeOff={() => onTakeOff(title)}
+        />
       ))}
     </ol>
   );
@@ -67,12 +75,26 @@ const POSTER_WIDTH = 132;
 function IconCell({
   title,
   aboveFold,
+  onTakeOff,
 }: {
   readonly title: ListDetailTitleRow;
   readonly aboveFold: boolean;
+  readonly onTakeOff: () => void;
 }) {
   return (
-    <li className="min-w-0">
+    <li className="relative min-w-0">
+      {/* A sibling of the link, not inside it, so the press takes the title off rather than
+          opening it. */}
+      <button
+        type="button"
+        onClick={onTakeOff}
+        aria-label={`Take ${title.name} off this list`}
+        className="absolute top-1 right-1 z-10 flex h-9 w-9 items-center justify-center rounded-[var(--radius-full)] bg-ground/80 text-dim transition-colors duration-[var(--dur-fast)] hover:text-danger"
+      >
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
       <Link
         href={
           title.libraryEntryId === null
@@ -105,7 +127,7 @@ function IconCell({
               about where something sits in a list*. `tab-bar.tsx` made the same call for
               the same reason. */}
           <span
-            className="code-line absolute top-1.5 left-1.5 min-w-5 rounded-[var(--radius-full)] bg-ink px-1.5 py-0.5 text-center text-ground"
+            className="code-line absolute top-1.5 left-1.5 min-w-5 rounded-[var(--radius-full)] bg-text px-1.5 py-0.5 text-center text-ground"
             data-numeric
           >
             {title.position}

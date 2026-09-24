@@ -81,8 +81,8 @@ const upcomingMoviesRail = (page: Page) =>
 
 async function goToUpcomingPageAndScroll(page: Page): Promise<void> {
   await page.goto("/up-next");
-  await page.getByRole("tab", { name: "Upcoming" }).click();
-  await expect(page.getByRole("tab", { name: "Upcoming" })).toHaveAttribute(
+  await page.getByRole("tab", { name: "Coming up" }).click();
+  await expect(page.getByRole("tab", { name: "Coming up" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
@@ -134,7 +134,7 @@ test("pressing Up next while already on Up next resets the scroll position, the 
    * that the rails are back at their starts when they next look, and this is them next
    * looking.
    */
-  await page.getByRole("tab", { name: "Upcoming" }).click();
+  await page.getByRole("tab", { name: "Coming up" }).click();
   await expect
     .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
     .toBe(0);
@@ -179,11 +179,11 @@ test("returning from a title still restores the pager's page and the rail's offs
   const leftAt = await upcomingMoviesRail(page).evaluate((el) => el.scrollLeft);
 
   await film.click();
-  await expect(page.getByRole("heading", { name: filmNames[3], level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: filmNames[3], level: 1 })).toBeVisible();
 
   await page.goBack();
 
-  await expect(page.getByRole("tab", { name: "Upcoming" })).toHaveAttribute(
+  await expect(page.getByRole("tab", { name: "Coming up" })).toHaveAttribute(
     "aria-selected",
     "true",
   );

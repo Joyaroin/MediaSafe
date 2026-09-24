@@ -46,7 +46,7 @@ function sourceAt(relativePath: string): string {
   return readFileSync(path.join(REPOSITORY_ROOT, relativePath), "utf8");
 }
 
-const EPISODE_CARD = "app/(signed-in)/up-next/up-next-episode-card.tsx";
+const EPISODE_ROW = "app/(signed-in)/up-next/up-next-episode-row.tsx";
 const GLOBALS = "app/globals.css";
 
 /**
@@ -72,13 +72,13 @@ describe("nothing animates a backdrop filter", () => {
    * opacity animated across the whole viewport; #250 deleted that file along with the five
    * vertical groups that were its only callers.
    *
-   * The episode card is where the rule now bites. `watch-sweep` animates `opacity` and
+   * The episode row is where the rule now bites. `watch-sweep` animates `opacity` and
    * `transform` over the card it marks (`globals.css`), so a frosted card would be a
    * backdrop filter repainted at every step of that animation — the identical cost on a
    * smaller box, and one that repeats per card on a rail.
    */
-  it("keeps the episode card, which the sweep animates over, unfrosted", () => {
-    expect(sourceAt(EPISODE_CARD)).not.toMatch(/backdrop-blur/);
+  it("keeps the episode row, which the sweep animates over, unfrosted", () => {
+    expect(sourceAt(EPISODE_ROW)).not.toMatch(/backdrop-blur/);
   });
 
   /**

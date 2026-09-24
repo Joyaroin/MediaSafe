@@ -17,7 +17,7 @@ import type { LibraryState } from "@/db/access";
  * the record's current position and not a fresh write — the same reasoning that
  * reserves a *different* accent constant, `RECORDS_A_WATCH`, for.
  *
- * *Caught up* moves from `text-text` to `text-ink` in the linen redesign. It is the same
+ * *Caught up* moves from `text-text` to `text-text` in the linen redesign. It is the same
  * decision it always was — *this one is at full strength* — resolved against a palette
  * where `--text` is a mid-tone body colour rather than the near-black it used to be, so
  * full strength is now `--ink`. The label sits on `--raised` inside a card, where `--text`
@@ -41,8 +41,8 @@ import type { LibraryState } from "@/db/access";
  */
 export const STATE_LABELS: Record<LibraryState, { label: string; className: string }> = {
   watching: { label: "Watching", className: LIVE_EDGE_OF_THE_RECORD.ink },
-  caught_up: { label: "Caught up", className: "text-ink" },
+  caught_up: { label: "Caught up", className: "text-text" },
   finished: { label: "Finished", className: "text-dim" },
   watchlist: { label: "Watchlist", className: "text-dim" },
-  abandoned: { label: "Abandoned", className: "text-dim" },
+  abandoned: { label: "Dropped", className: "text-dim" },
 };

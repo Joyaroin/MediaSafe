@@ -107,7 +107,7 @@ export function YouRail<T>({
 
   return (
     <section className="group/rail relative pb-6">
-      <div className="px-[22px] pb-3 lg:px-10">
+      <div className="px-gutter pb-3 lg:px-10">
         <h2 id={railId} className="bill-title text-bill-xs text-text">
           {label}
         </h2>
@@ -117,7 +117,7 @@ export function YouRail<T>({
         ref={trackRef}
         onScroll={measure}
         aria-labelledby={railId}
-        className="stagger-rise flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-[22px] px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] lg:scroll-pl-10 lg:px-10 [&::-webkit-scrollbar]:hidden"
+        className="stagger-rise flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-gutter px-gutter [-ms-overflow-style:none] [scrollbar-width:none] lg:scroll-pl-10 lg:px-10 [&::-webkit-scrollbar]:hidden"
       >
         {entries.map((entry, index) => (
           <li key={keyFor(entry)} className="shrink-0 snap-start">

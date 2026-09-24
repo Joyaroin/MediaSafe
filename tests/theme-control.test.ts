@@ -77,7 +77,7 @@ describe("the three theme states in CSS", () => {
       "--dark-dim",
       "--dark-accent",
       "--dark-accent-ink",
-      "--dark-ink",
+      "--dark-danger",
     ]) {
       // One declaration (`--dark-x: oklch(…);`, since issue #327 — see
       // `tests/palette.test.ts`'s own `declaredOnce` for why), and then the two mappings

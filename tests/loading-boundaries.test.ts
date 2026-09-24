@@ -80,10 +80,12 @@ describe("Settings and delete-account", () => {
 
 describe("An unowned title's detail", () => {
   /** Back-link shape again: the name is exactly what is being waited for. */
-  it("says which list this title was reached from, and prints no name early", () => {
+  it("offers the way back, and prints no name early", () => {
     const pending = markupOf(createElement(UnownedTitleLoading));
 
-    expect(pending).toContain("‹ Lists");
+    // The same back bar the loaded page draws — back to wherever the reader came from
+    // (issue #357), which a cold render with no history names as Up next.
+    expect(pending).toContain("‹ Up next");
     expect(pending).toContain('role="status"');
     expect(pending).not.toContain("<h1");
     // No poster either — unlike the desktop pane's `loading` frame, a cold route render
@@ -107,7 +109,7 @@ describe("Search", () => {
     expect(pending).toContain("Search");
     expect(pending).toContain('role="status"');
     // Never another surface's heading — the failure this boundary exists to rule out.
-    expect(pending).not.toContain("The library");
+    expect(pending).not.toContain(">Library<");
     expect(pending).not.toContain(">You<");
   });
 });
@@ -141,17 +143,7 @@ describe("Up next — a region boundary, not a whole surface", () => {
     "utf8",
   );
 
-  /**
-   * The whole reason this boundary is a region rather than a whole surface: wrapping the
-   * pending rails in the same `ProgrammeNoteLayout` `page.tsx` uses is what keeps the
-   * pane's column on screen throughout, rendering in its own already-settled `idle` phase,
-   * rather than the pane popping in only once the rails resolve.
-   */
-  it("wraps the pending rails in the same two-pane layout the loaded page uses", () => {
-    expect(source).toContain("ProgrammeNoteLayout");
-  });
-
-  it("paints the Tonight heading and one pending line, not a second boundary", () => {
+  it("paints the Up next heading and one pending line, not a second boundary", () => {
     expect(source).toContain("UpNextHeading");
     expect(source).toContain("PendingLine");
   });

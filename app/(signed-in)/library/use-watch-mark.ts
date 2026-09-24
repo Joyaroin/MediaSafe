@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 
+import type { ActionOffer } from "./action-toast";
 import { actionToasts } from "./action-toast-store";
 import {
   watchMarks,
@@ -54,6 +55,7 @@ export function useWatchMark({
   titleName,
   episodeName,
   onRecorded,
+  also,
 }: {
   readonly initialWatched: boolean;
   /** How many watches the server read found. Absent where the surface does not draw a
@@ -69,6 +71,12 @@ export function useWatchMark({
    *  to the third). An episode has no analogous single destination state, so `EpisodeLine`
    *  passes nothing. */
   readonly onRecorded?: () => void;
+  /**
+   * A second action for the toast this mark raises, read at the moment the watch lands —
+   * issue #357's *Also mark N earlier*. `undefined`, or a function answering `undefined`,
+   * raises the toast with Undo alone.
+   */
+  readonly also?: () => ActionOffer["also"];
 }) {
   const subject = useMemo<WatchSubject>(
     () => ({ libraryEntryId, episodeId }),
@@ -134,6 +142,7 @@ export function useWatchMark({
           title: titleName,
           episode: episodeName,
           undo: () => void watchMarks.undo(subject, naming),
+          also: also?.(),
         });
         onRecorded?.();
       }),

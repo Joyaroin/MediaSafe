@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import type { SelectableTitle } from "./bulk-selection";
 import { useBulkSelection, useIsSelected, useIsSelecting } from "./bulk-selection-context";
-import { useLibrarySelection } from "./library-selection";
 import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
 
 /**
@@ -22,15 +21,11 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  * poster, the title and the state line off the client bundle; only the button and its
  * handlers are here.
  *
- * ── Desktop selects; the phone route navigates ────────────────────────────────────────
+ * ── Every screen size opens the title's page ─────────────────────────────────────────
  *
- * The third genuine divergence: on desktop, selecting an
- * entry replaces the programme note's contents and is **never a route change**
- * (the Never-Navigate-Away Rule); on the phone it is a pushed route. Both read
- * the same width the CSS breakpoints already key off — `≥1024px` is the
- * cutoff for "Desktop" — checked at the moment of the click rather than baked into a
- * server-rendered branch, so resizing past the breakpoint mid-session changes which one a
- * click does without a reload.
+ * Desktop used to load the entry into a side pane and never change the route. The pane
+ * is gone: a click pushes `/titles/<id>` on every screen size, so the same element does the
+ * same thing wherever it is.
  *
  * ── The hold — issue #197, and this file's alone again since #250 ───────────────────
  *
@@ -40,13 +35,8 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  *
  * ── The poster morph's source, since issue #303 ──────────────────────────────────────
  *
- * The grid cell carried no transition name before this, so the morph had no starting pair
- * on either entry path — a phone tap navigated with nothing to hand the destination, and a
- * desktop click called `select()` "by id alone", which is the very sentence
- * `library-selection.tsx` used to justify mounting the pane's poster nameless. Both are
- * reversed here in the one place both paths already pass through: `poster` and
- * `posterTransitionName` arrive from `library-entry-cell.tsx`, which stays a server
- * component and gains no new client boundary of its own.
+ * `poster` and `posterTransitionName` arrive from `library-entry-cell.tsx`, which stays a
+ * server component and gains no new client boundary of its own.
  *
  * **A raw `viewTransitionName` style, not React's `<ViewTransition>`.** `masthead.tsx` and
  * `tab-bar.tsx` are this codebase's existing precedent for the plain CSS property, and it
@@ -54,16 +44,11 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  * docblock records that the installed React does not export `ViewTransition` — Next
  * supplies it at build time — so a component that imports it cannot be rendered under this
  * suite. `tests/library-surface.test.ts` renders every one of the 472 cells this wraps, so
- * that property is worth keeping rather than trading for the component form `title-hero.tsx`,
- * `programme-note.tsx` and `up-next-episode-row.tsx` use — the browser's View Transition
+ * that property is worth keeping rather than trading for the component form `title-hero.tsx`
+ * and `up-next-episode-row.tsx` use — the browser's View Transition
  * API pairs on the CSS property alone and does not care which mechanism set it.
  * `titles/[entryId]/pending-poster.tsx` makes the identical trade for the identical
  * reason, one render test further down the same route.
- *
- * **Dropped while the desktop pane already holds the name.** The same rule
- * `up-next-episode-row.tsx`'s `RowFrame` keeps for its own row: a name can mark only one
- * on-screen element at a time, and the moment this entry is the one selected, the pane
- * beside the grid is showing that poster under the identical name.
  */
 /**
  * The cutoff for "Desktop", and the same value every `lg:` Tailwind class
@@ -98,18 +83,12 @@ export function SelectableEntry({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { selectedEntryId, select } = useLibrarySelection();
   const bulk = useBulkSelection();
   // Two booleans rather than the whole snapshot: a cell only ever asks *is the mode open*
   // and *am I in it*, and both are compared by value, so a tap re-renders the cell whose
   // badge changed instead of all 472 of them (`bulk-selection-context.ts`).
   const selecting = useIsSelecting();
   const selected = useIsSelected(title.libraryEntryId);
-  // Whether the desktop pane is already showing this entry's poster under the same name —
-  // the one case the grid's own copy has to let go of it, exactly as `up-next-episode-row.tsx`'s
-  // `RowFrame` does for its row.
-  const openInPane = title.libraryEntryId === selectedEntryId;
-
   const gesture = useHoldToSelect(bulk, title);
 
   function onClick(): void {
@@ -120,12 +99,7 @@ export function SelectableEntry({
       return;
     }
 
-    if (window.matchMedia(DESKTOP_BREAKPOINT).matches) {
-      select(title.libraryEntryId, posterPath);
-      return;
-    }
-    // The one surface in `nav-deeper.ts`'s list that opens a title without a `Link`:
-    // desktop selects and the phone navigates, decided at the moment of the click, so
+    // Every screen size opens the title's own page. There is no side pane to load it into.
     carryPoster(title.libraryEntryId, posterPath);
     router.push(`/titles/${title.libraryEntryId}`);
   }
@@ -137,11 +111,6 @@ export function SelectableEntry({
       {...gesture.handlers}
       data-holding={gesture.holding ? "true" : undefined}
       data-landed={gesture.landed ? "true" : undefined}
-      // Library Tile: *"the current entry carries `aria-current`."* `"true"`
-      // rather than `"page"` — unlike the masthead's nav cells
-      // (`nav-cells.tsx`), a selected tile does not mean the browser is on that page; on
-      // desktop the URL never changes at all.
-      aria-current={openInPane ? "true" : undefined}
       // Only while the mode is open, and `aria-pressed` rather than `aria-selected`: this
       // is a `button`, and `aria-selected` belongs to the roles that own a selection
       // (`option`, `tab`, `row`). Outside the mode the attribute is absent entirely, so a
@@ -151,14 +120,8 @@ export function SelectableEntry({
     >
       <div
         className="relative"
-        // `viewTransitionClass` scopes the morph's spring to posters (#338) — dropped in
-        // the same breath as the name when the pane already holds it, so there is never a
-        // classed element with no name to pair it against.
-        style={
-          openInPane
-            ? undefined
-            : { viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }
-        }
+        // `viewTransitionClass` scopes the morph's spring to posters (#338).
+        style={{ viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }}
       >
         {poster}
       </div>

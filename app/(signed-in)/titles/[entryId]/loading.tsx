@@ -50,7 +50,7 @@ export default function TitleDetailLoading() {
     <main className="flex w-full flex-1 flex-col">
       <BackBar />
 
-      <div className="px-6 py-5">
+      <div className="px-gutter py-5">
         <div className="flex items-start gap-4">
           {/* Unheld, deliberately — the acceptance criterion is that the poster is visible
               while the rest of the surface is still being read, so it does not wait behind

@@ -46,13 +46,13 @@ export function UpNextGroup({
 }) {
   return (
     <section className="pt-[26px] first:pt-0">
-      <div className="flex items-baseline justify-between gap-3 px-[22px] pb-1">
+      <div className="flex items-baseline justify-between gap-3 px-gutter pb-1">
         <div className="flex items-baseline gap-3">
-          <h2 className="label-line text-accent">{label}</h2>
+          <h2 className="label-line text-dim">{label}</h2>
           {rule === undefined ? null : <p className="code-line text-dim">{rule}</p>}
         </div>
         {more === undefined ? null : (
-          <a href={more} className="code-line text-accent">
+          <a href={more} className="code-line text-dim hover:text-text">
             More ›
           </a>
         )}
@@ -62,7 +62,7 @@ export function UpNextGroup({
           already draws (`episode-line.ts`'s `SEASON_LIST`), and a list of rows is the one
           place in this application it survived the linen redesign's move to cards. The
           gutter is the page's own `22px`, which the track used to bleed past. */}
-      <ol className="stagger-rise divide-y divide-hair px-[22px]">{children}</ol>
+      <ol className="stagger-rise divide-y divide-hair px-gutter">{children}</ol>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { DIALOG_FRAME } from "@/app/buttons";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -204,7 +205,7 @@ export function SelectionActionBar() {
         // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
         // treatment and the space the layout reserves* a fact about one string instead
         // of a claim about two. The row inside it is this bar's own.
-        className={`selection-action-bar-transition ${PHONE_BAR} items-center gap-2 px-[22px]`}
+        className={`selection-action-bar-transition ${PHONE_BAR} items-center gap-2 px-gutter`}
       >
         {/* Polite, not assertive: the count changes on every tap and this is the
             reader's own running total, not news about something that went wrong. */}
@@ -240,7 +241,7 @@ export function SelectionActionBar() {
       <dialog
         ref={dialogRef}
         aria-labelledby="bulk-add-to-list-h"
-        className="w-full max-w-[420px] border-2 border-hair bg-ground p-6 text-text backdrop:bg-ground/80"
+        className={`${DIALOG_FRAME} w-full max-w-[420px]`}
       >
         <h2 id="bulk-add-to-list-h" className="bill-title text-bill-sm text-text">
           Add {formatTitleCount(view.selected.length)} to a list
@@ -263,7 +264,7 @@ export function SelectionActionBar() {
           {phase?.kind === "loaded" ? (
             phase.lists.length === 0 ? (
               <p className="text-note leading-relaxed text-dim">
-                You have no lists yet. Make one on the Lists tab, then come back.
+                You have no lists yet. Make one in Library → Lists, then come back.
               </p>
             ) : (
               <ul>

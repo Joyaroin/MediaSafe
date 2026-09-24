@@ -4,23 +4,12 @@ import { UpNextFilmRail } from "./up-next-film-rail";
 import { UpNextNothing } from "./up-next-nothing";
 
 /**
- * The phone's Up next surface — issue #250's two rails, in this order.
+ * The Watching half of Up next, on every screen size.
  *
  * | Rail | What is on it |
  * |---|---|
- * | **Next episodes** | ongoing, then coming back, then old friends — one rail |
+ * | **Continue watching** | ongoing, then coming back, then old friends — one rail |
  * | **Films to watch** | the films standing at Watchlist |
- *
- * This replaces #138's five vertical groups, which are deleted along with
- * their five expanded routes and the title sheet that had no other caller. The two states
- * those groups showed and these rails do not — watchlist shows, and abandoned — stay
- * reachable through the library's status filters, which already carry all five.
- *
- * `up-next-rails-surface.tsx` is this file's desktop opposite number and is **unchanged**:
- * the desktop still draws the three orderings as three rails of posters. #250 is a phone
- * ticket, and a rail of 262px landscape cards read at desktop width is not the same
- * surface — the same argument #138 made in the other direction when it gave the phone a
- * form of its own.
  *
  * ── One empty state here, and it is not the rails' own ──────────────────────────────
  *
@@ -41,12 +30,9 @@ import { UpNextNothing } from "./up-next-nothing";
  *
  * Both branches are reachable only from reads that succeeded. A failure throws past this
  * into the route's `error.tsx`.
- *
- * ── Hidden above `lg` ───────────────────────────────────────────────────────────────
- *
- * `page.tsx` gates this, not this file.
+
  */
-export function UpNextPhoneRails({
+export function UpNextWatching({
   rails,
   films,
 }: {

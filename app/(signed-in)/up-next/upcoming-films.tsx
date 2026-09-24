@@ -16,7 +16,7 @@ import { FIRST_RUN, RailSection } from "./up-next-phone-rail";
  *
  * Page one's two rails already own the head, the gutters, the snap and the overflow, and
  * `up-next-phone-rail.tsx` was extracted precisely so a third rail could not get the
- * `scroll-pl-[22px]` / `px-[22px]` pairing subtly wrong. This is that third rail, on the
+ * `scroll-pl-gutter` / `px-gutter` pairing subtly wrong. This is that third rail, on the
  * next page over. What it keeps of its own is the card: its width, and the spacing of the
  * three lines under the poster. What it does not keep — and the reason the extraction was
  * worth making — is anything the *track* needs, since a second copy of that pairing is a

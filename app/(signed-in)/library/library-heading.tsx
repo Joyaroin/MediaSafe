@@ -36,9 +36,9 @@ export function LibraryHeading({ children }: { children?: React.ReactNode }) {
     // baseline is two different registers fighting for the same line. `gap-y` is not
     // uniform between them (Up next's rail heads have the same shape), so the children space
     // themselves rather than being spaced from here.
-    <div className="flex flex-col px-[22px] pt-5">
-      <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-ink">
-        The library
+    <div className="flex flex-col px-gutter pt-5">
+      <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-text">
+        Library
       </h1>
 
       {children}
