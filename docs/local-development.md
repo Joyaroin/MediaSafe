@@ -251,8 +251,9 @@ Auth does (`tests/e2e/support/fixture-session.ts`).
 **Not part of `npm test`, and not part of the verify gate.** `vitest.config.mts` only
 ever looks at `tests/**/*.test.ts`; every spec here is `*.spec.ts`, a glob that pattern
 never matches, so this suite is invisible to `npm test` and to `foundry.config.json`'s
-verify pass. `.github/workflows/e2e.yml` runs it in its own isolated CI job, with its own
-database and its own per-run secret — never in the job that runs with neither.
+verify pass, and no CI workflow runs it either — it had one, removed because it made every
+pull request wait on a build, a database and a browser. Run it by hand before merging a
+change to navigation or motion.
 
 The first run downloads Chromium: `npx playwright install chromium` if
 `npm run test:e2e` reports it missing.

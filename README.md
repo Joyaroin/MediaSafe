@@ -39,7 +39,7 @@ Read them in this order; where two disagree, the higher one wins.
 | `eslint-rules/` | Local rules. One so far: `no-empty-catch`, which is constraint 2 made mechanical. |
 | `fixtures/` | **The only surviving copy of `tvtracker`'s database**, archived and never loaded. Read [`fixtures/README.md`](fixtures/README.md) before touching it — the `auth` schema was removed and the reasons matter. |
 | `scripts/` | `build.ts` is the deploy build command — the migration is its first half. `provision.sh` is the setup wizard. |
-| `tests/` | Vitest, against a real local Postgres. `tests/e2e/` is the one exception — Playwright, `npm run test:e2e`, its own isolated CI job (`docs/local-development.md`). |
+| `tests/` | Vitest, against a real local Postgres. `tests/e2e/` is the one exception — Playwright, `npm run test:e2e`, run locally only (`docs/local-development.md`). |
 | `vercel.json` | Declares the framework as `nextjs` and the build command. See below — it is load-bearing, not boilerplate. |
 | `.squawk.toml` | squawk, narrowed to the destructive rules. Every exclusion carries its reason. |
 
