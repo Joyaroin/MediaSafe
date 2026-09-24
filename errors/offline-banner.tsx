@@ -5,10 +5,10 @@ import { useSyncExternalStore } from "react";
 import { browserConnectivitySource, createConnectivityStore } from "./connectivity";
 
 /**
- * DESIGN.md, States: *a sticky full-width `accent` banner with `accent-ink` label type at the
+ * States: *a sticky full-width `accent` banner with `accent-ink` label type at the
  * very top of the page.*
  *
- * Blast radius decides placement (SPEC.md §6): a read failure is inline because it affects
+ * Blast radius decides placement: a read failure is inline because it affects
  * one region, a write failure is a toast because it affects one action, and losing the
  * network affects everything — so this sits above everything, on every page, and is the
  * only one of the three that is not attached to something the reader did.
@@ -47,7 +47,7 @@ export function OfflineBanner() {
       data-open={state === "online" ? undefined : "true"}
       className="offline-banner-transition code-line sticky top-0 z-50 w-full bg-accent px-4 py-2 text-center text-accent-ink"
     >
-      {/* One plain sentence, and it is honest about the consequence. SPEC.md §3.1 rules
+      {/* One plain sentence, and it is honest about the consequence. The rules rule
           out an offline queue, a read cache and a service worker, so nothing is being
           held for later and saying "we'll sync when you're back" would be a lie. */}
       You are offline. Nothing will load or save until your connection is back.

@@ -7,7 +7,7 @@ import { seasonHeading } from "./season-grouping";
  * The season selector — issue #224. `chip.tsx`'s register exactly, chosen over a
  * treatment of its own for the reason the spec (issue #215) gives: "a second selector
  * vocabulary on an adjacent surface is what the design system's one-register rule exists
- * to prevent." That is the spec's own reasoning, quoted — `DESIGN.md` documents no rule
+ * to prevent." That is the spec's own reasoning, quoted — no rule is documented
  * under that name (`chip.tsx`'s own docblock says so too, at the point it's first cited).
  *
  * `groupBySeason` already places season 0 after every real season, and `seasons` here is

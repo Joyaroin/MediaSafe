@@ -24,7 +24,7 @@ import {
  * One card on the next-episodes rail — issue #250, and the landing screen's whole reason
  * for existing.
  *
- * `docs/design/prototypes/mediasafe-mobile.html`'s wide landscape card, which is binding
+ * The wide landscape card, which is binding
  * on appearance: a 16:9 still, the series name in the label register, the code line with
  * the remaining count beside it, the episode's own name, and a last row holding the air
  * date, the runtime and the check.
@@ -64,8 +64,8 @@ import {
  * **This is a reversal, and the second one on this line** (issue #291, under spec #287).
  * #250 linked to the episode; #274 retargeted the card at `/titles/{entryId}` on the
  * argument that every card on this tab should lead to the same kind of place; this points
- * it back. Both arguments are real, which is why `DESIGN.md` §7 keeps #274's rather than
- * overwriting it — but the stronger rule is that **a card leads to the thing it names**.
+ * it back. Both arguments are real, which is why #274's is kept rather than
+ * overwritten — but the stronger rule is that **a card leads to the thing it names**.
  * This card names one episode in its code line and offers a control that records that same
  * episode, so a destination that opened the show made the card say one thing, do a second
  * and go to a third.
@@ -74,8 +74,8 @@ import {
  * pending tile all still open `/titles/{entryId}`, because a tile names a title.
  *
  * The check is a sibling of the link rather than a control inside it, so a thumb on the
- * check is never also a navigation — `SPEC.md`'s own rule for the season row's check, held
- * here.
+ * check is never also a navigation — the same rule the season row's check is held to.
+
  */
 export function UpNextEpisodeCard({
   entry,
@@ -259,7 +259,7 @@ export const FRAME = "w-full [--still-radius:var(--radius-none)]";
  * The report: on Android a tap on a card sometimes appears to land on the check rather than
  * opening the card, so a reader records a watch they did not ask for. **It is second-hand
  * and it was never reproduced** — the owner does not have the device — so this ships as a
- * hardening that stands on its own merits and not as a fix, and `DESIGN.md` §7 says so in
+ * hardening that stands on its own merits and not as a fix, and it is recorded in
  * those words. If the misfire survives this, it was not addressed here.
  *
  * What stands on its own merits: the link and the check were two targets **sharing an
@@ -271,7 +271,7 @@ export const FRAME = "w-full [--still-radius:var(--radius-none)]";
  * **`4px`, and it is the card's own bottom padding rather than four new pixels.** The
  * link's text block ended in `pb-1`; that padding is gone and this margin is in its place,
  * so the link's box is `4px` shorter, the gap is `4px` tall, and every pixel of the rendered
- * card is where it was. That is `DESIGN.md` §6's bounding-rect guarantee and #250's *the
+ * card is where it was. That is the bounding-rect guarantee and #250's *the
  * rail never reflows under a thumb*, and it is the reason the gap is exactly this size:
  * the card's height is fixed by its measure, so the only slack available is what the link
  * already spent on padding. Anything wider would have to come out of the `44px` control
@@ -333,12 +333,12 @@ function CardBody({
        track carries the other half (`up-next-episode-rail.tsx`). */
     <li className={`${CARD} relative overflow-hidden rounded-[var(--radius-6)] bg-raised plate-line`}>
       {/* The whole card bar the check. A `Link` rather than a button: this is a
-          destination, and `SPEC.md`'s *a destination is a destination* is why a film card
+          destination, and *a destination is a destination* is why a film card
           navigates too.
 
           **The episode, not the title — issue #291, reversing #274.** #274's argument was
           that every card on this tab should lead to the same kind of place, and it is a
-          real argument; it is kept in `DESIGN.md` §7 rather than deleted. What outranks it
+          real argument; it is kept rather than deleted. What outranks it
           is that a card leads to *the thing it names*. Three things on this card have to
           agree about which episode it is — the code line above, the check below, and this
           href — and under #274 the href was the odd one out, so a press answered with a
@@ -382,7 +382,7 @@ function CardBody({
 
           <p className="mt-[7px] flex items-baseline gap-2">
             <span className="bill-title text-bill-xs text-text">{code}</span>
-            {/* The one count on this surface, and `SPEC.md` §7 was amended for it (#250).
+            {/* The one count on this surface, and the no-counts rule was narrowed for it (#250).
                 `data-numeric` is the build's tabular-figures hook, so a rail of cards does
                 not jitter as the numbers change width. */}
             <span className="code-line text-dim" data-numeric>
@@ -391,7 +391,7 @@ function CardBody({
           </p>
 
           {/* No line at all where TMDB has not named the episode, rather than the number a
-              second time — `CONTEXT.md`'s *an episode is never referred to by number
+              second time — *an episode is never referred to by number
               alone*, and the code line above has already said it once. */}
           {episodeName === null ? null : (
             <p className="mt-1 text-item leading-snug text-text">
@@ -446,7 +446,7 @@ function CardBody({
  * **And it draws no initials.** `Poster`'s missing-artwork fallback sets the title's
  * initials in the well, and that is right for a rail of posters where the poster is doing
  * the identifying. It is wrong here: a card names its series in real text directly beneath
- * this frame, and `DESIGN.md` §8's *the missing-artwork state is the frame, and nothing
+ * this frame, and *the missing-artwork state is the frame, and nothing
  * inside it* is the rule for the still. `kind: "none"` is drawn by `EpisodeStill` with no
  * path, which is that rule unchanged — the space is held and nothing is put in it.
  */
@@ -460,7 +460,7 @@ function CardFrame({
   if (picture.kind === "poster") {
     return (
       <div className={`still ${FRAME}`}>
-        {/* `app/poster.tsx`'s own reasoning, which ADR-0001 fixes: TMDB's CDN, never
+        {/* `app/poster.tsx`'s own reasoning, which the schema fixes: TMDB's CDN, never
             Vercel's metered optimiser. `object-center` states the crop the ticket asks for
             rather than leaving it to the property's default. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -480,7 +480,7 @@ function CardFrame({
   /* `EpisodeStill` is #253's, shared rather than re-cut — one answer to *what does a still
      look like, and what happens when there isn't one*. `null` is the held frame: the ratio
      keeps the card's shape and the `raised` ground fills it, which is #245's user story 48
-     and `DESIGN.md` §8's missing-artwork rule, both unchanged by #269. */
+     and the missing-artwork rule, both unchanged by #269. */
   return (
     <EpisodeStill
       stillPath={picture.kind === "still" ? picture.path : null}
@@ -501,7 +501,7 @@ function CardFrame({
  *
  * `RECORDING_GLYPH` and `GHOST_RECOVERY_COMPACT` are the episode row's own chip and glyph
  * reused rather than re-cut, so a reader meets one appearance for *record this* and one
- * for *take that back* wherever they are (`DESIGN.md` §10).
+ * for *take that back* wherever they are.
  *
  * The `44px` **height** is the whole target's floor and the `group` is load-bearing with
  * it, because `RECORDING_GLYPH` inverts on `group-hover:`.
@@ -524,7 +524,7 @@ function CardFrame({
  * box takes the loudest press in the application: `0.900` in and `1.045` past rest, the
  * same as the episode row's own checkmark (`watch-mark-motion.tsx`'s `RECORDING_HIT_BOX`),
  * because it is the same act on another surface. Recording a watch is what the product is
- * built around, and `DESIGN.md` §3 rations the accent to exactly that act — so the loudest
+ * built around, and the accent is rationed to exactly that act — so the loudest
  * motion and the only sanctioned colour mark one thing between them.
  *
  * Both branches below wear it, because `Undo` is the same act being taken back.

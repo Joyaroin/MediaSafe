@@ -5,9 +5,9 @@
  * `app/poster.tsx`'s sibling, and deliberately built the same way. Read that file first;
  * everything it argues applies unchanged and is not repeated here:
  *
- *  - **A plain `<img>`, never `next/image`.** ADR-0001 stores no image blobs and serves
+ *  - **A plain `<img>`, never `next/image`.** No image blobs are stored, and it serves
  *    borrowed artwork off TMDB's CDN; routing it through Vercel's metered optimiser is
- *    the shape of thing `SPEC.md` §3.8's £5/month ceiling exists to keep out.
+ *    the shape of thing the £5/month ceiling exists to keep out.
  *  - **One CDN size per surface**, picked by `bucketFor` from the width the call site
  *    actually renders, so nothing downloads a frame larger than it draws.
  *  - **`alt=""` and `aria-hidden`**, because the episode is named as real text directly
@@ -75,9 +75,9 @@ export function EpisodeStill({
     <div className={`still ${className}`}>
       {stillPath === null ? null : (
         /**
-         * ADR-0001: borrowed artwork is served from TMDB's CDN and no image blobs are
+         * Borrowed artwork is served from TMDB's CDN and no image blobs are
          * stored, so `next/image` would put Vercel's metered optimiser between the two —
-         * the spend `SPEC.md` §3.8's £5/month ceiling exists to keep out. `app/poster.tsx`
+         * the spend the £5/month ceiling exists to keep out. `app/poster.tsx`
          * makes the same call for the same reason and carries the longer argument.
          */
         // eslint-disable-next-line @next/next/no-img-element -- See the note above.

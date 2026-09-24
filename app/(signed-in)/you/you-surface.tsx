@@ -10,7 +10,7 @@ import { YouTitleRail } from "./you-title-rail";
  *
  * Two of watch time, and four counts. The pairing is the substance rather than the
  * layout: **television and film watch time are reported separately and are never summed**
- * (`CONTEXT.md`, Watch time), and the four counts below them are two of *starting* beside
+ * (Watch time), and the four counts below them are two of *starting* beside
  * two of what starting led to — films watched, shows watched, episodes watched, and shows
  * completed.
  *
@@ -24,7 +24,7 @@ import { YouTitleRail } from "./you-title-rail";
  *
  * ── No accent anywhere ───────────────────────────────────────────────────────────────
  *
- * `DESIGN.md`'s amendment rations the accent to *what is live, and the one primary action
+ * The amendment rations the accent to *what is live, and the one primary action
  * of a screen*. This screen has neither: nothing on it is live and there is nothing to
  * press. A page whose whole content is quantities is the easiest place in the application
  * to spend the accent by accident — one highlighted figure and the reservation is gone —
@@ -34,7 +34,7 @@ import { YouTitleRail } from "./you-title-rail";
  *
  * The cards are `--raised` on `--ground`, which since turn 9 is a step *down* rather than
  * up. That inversion is why they need no border and no elevation to read as cards, and
- * `SPEC.md`'s no-shadow rule is unchanged.
+ * the no-shadow rule is unchanged.
  *
  * ── The desktop widens rather than centres ───────────────────────────────────────────
  *

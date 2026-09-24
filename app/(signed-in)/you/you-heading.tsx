@@ -16,8 +16,8 @@
  * reference did not have to answer: this is a **boundary-shared** head. `error.tsx` is a
  * client component that has no session and cannot render a name, and `loading.tsx` has no
  * read yet — so if the destination's identity lived only in the hero, both of those
- * screens would be a failure or a pending line under nothing at all. `DESIGN.md` §9's
- * radius 1 asks the pending screen to render what the failed one renders, less the
+ * screens would be a failure or a pending line under nothing at all. Radius 1
+ * asks the pending screen to render what the failed one renders, less the
  * failure; this is the piece all three can render.
  */
 

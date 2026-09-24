@@ -11,7 +11,7 @@ import {
 } from "./support/scratch-database";
 
 /**
- * `SPEC.md` §11.5, held open by ADR-0001 and closed here:
+ * An open question, closed here:
  * **does Drizzle's `migrate()` wrap each migration file in a transaction?**
  *
  * It wraps more than that. `PgDialect.migrate()` opens one transaction and runs *every*
@@ -19,7 +19,7 @@ import {
  * files that had already succeeded, and including the `__drizzle_migrations` bookkeeping
  * rows. `db/migrate.ts` therefore opens no transaction of its own.
  *
- * ── Why this test exists, when SPEC.md §6 says four tests earn their keep ──────────
+ * ── Why this test exists, when only four tests earn their keep ────────────────────
  *
  * This is a fifth, and it is added knowingly. The rule's reasoning is that everything
  * else "fails loudly and cheaply to an app used daily by its owner". A Drizzle upgrade

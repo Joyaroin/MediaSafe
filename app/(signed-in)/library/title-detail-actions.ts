@@ -60,10 +60,10 @@ export async function titleDetailAction(
 /**
  * The three live-only sections below are **three actions, not one**, so that a synopsis
  * TMDB answers can render while credits TMDB is failing on the same title cannot, and the
- * reverse — `docs/design/v1-surfaces.md` §7's *fails inline, in its own section* only
+ * reverse — *fails inline, in its own section* only
  * holds if the sections do not share a failure. Every one of the three still requires a
- * session: `title` and `episode` are unowned (ADR-0001), but a Server Action is a POST
- * endpoint anyone can call with any arguments, and `SPEC.md` §3's *no unauthenticated
+ * session: `title` and `episode` are unowned, but a Server Action is a POST
+ * endpoint anyone can call with any arguments, and *no unauthenticated
  * route may ever be added* does not carve out an exception for one that happens to touch
  * no owned row.
  *

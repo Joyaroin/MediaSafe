@@ -271,7 +271,7 @@ describe("markUpToLabel", () => {
       episode({ seasonNo: 2, episodeNo: 4, name: "Woe's Hollow" }),
     );
 
-    // `CONTEXT.md`: an episode is never referred to by number alone, and a control whose
+    // An episode is never referred to by number alone, and a control whose
     // only text is a glyph is the surface that most needs that rule kept.
     expect(label).toContain("Season 2, Episode 4");
     expect(label).toContain("Woe's Hollow");

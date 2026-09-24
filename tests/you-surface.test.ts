@@ -19,7 +19,7 @@ import type { AccountFigures, LibraryStateGroupEntry, ListCard } from "@/db/acce
  * Not that a number appears. The failures worth catching here are the ones that leave the
  * page rendering perfectly while it says something untrue:
  *
- *  - television and film watch time added together, which `CONTEXT.md` forbids and which
+ *  - television and film watch time added together, which is forbidden and which
  *    no typecheck can see;
  *  - a grid of six zeroes standing in for an empty library;
  *  - a partial watch time printed with no sign that it is a floor;
@@ -173,7 +173,7 @@ describe("an account with an empty library", () => {
   });
 
   it("is centred and unruled, where the read failure is neither", () => {
-    // The two states have to be structurally different on the glass — `SPEC.md` §3, and
+    // The two states have to be structurally different on the glass, and
     // `error.tsx`'s own docblock. This is the empty half of that pair.
     expect(empty).toContain("text-center");
     expect(empty).not.toContain("border");

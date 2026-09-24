@@ -323,8 +323,8 @@ describe("a gesture the surface claimed is not also a press on a child", () => {
  *
  * So the two answers live in one module, and the point of the last block in this file is
  * that they **agree**. A pop that survived a claimed drag, or a click swallowed under a
- * flourish that ran anyway, is one gesture meaning two things — the failure `SPEC.md`
- * states for the season row's check, arriving here as motion instead of navigation.
+ * flourish that ran anyway, is one gesture meaning two things — the failure
+ * stated for the season row's check, arriving here as motion instead of navigation.
  *
  * There is no DOM here and there is not meant to be, which is the whole reason the rule is
  * a function rather than three branches inside the delegated listener in

@@ -11,7 +11,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * and the two pages start describing the same title differently.
  *
  * **Never a network.** `library-entry-cell.tsx` already explains the absence: `title`
- * mirrors no network column (ADR-0001), so a line drawing one would be inventing a fact
+ * mirrors no network column, so a line drawing one would be inventing a fact
  * this application does not have.
  *
  * `null` rather than an empty string, so the caller renders no `<p>` at all instead of an

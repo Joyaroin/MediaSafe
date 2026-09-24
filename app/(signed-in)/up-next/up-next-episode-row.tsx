@@ -37,7 +37,7 @@ import {
  * One row of Up next — the card, laid out sideways.
  *
  * `up-next-episode-card.tsx` is where this content was worked out and every rule about it
- * still holds: the code line, the one honest remainder `SPEC.md` §7 was amended for, the
+ * still holds: the code line, the one honest remainder the rule was narrowed for, the
  * held frame for missing artwork, the label that names the episode in full. What changed
  * is the box. A `262px` card stacked four facts and cut the episode name; a full-width row
  * sets them on one line and cuts nothing.
@@ -60,12 +60,12 @@ import {
  * runtime are noise on a surface reached to decide what to watch next, and are gone —
  * `episode-card-line.ts`'s `episodeMetaLine` and its own `airDateInWords` are deleted with
  * them, rather than left with no caller. The remaining count is not reopened: it is the one
- * count `SPEC.md` §7 was amended for (#250), on the grounds that *am I three from the end or
+ * count the rule was narrowed for (#250), on the grounds that *am I three from the end or
  * thirty* is the question this row exists to answer.
  *
  * ── The press, and the divergence it preserves ────────────────────────────────────────
  *
- * `SPEC.md`'s divergence 3 — *desktop replaces the pane, phone pushes a route* — is
+ * Divergence 3 — *desktop replaces the pane, phone pushes a route* — is
  * unchanged by this ticket and is the reason this component takes `press` rather than
  * deciding for itself:
  *
@@ -231,7 +231,7 @@ function RowBody({
 
           <p className="mt-[3px] flex flex-wrap items-baseline gap-x-2">
             <span className="bill-title text-bill-xs text-text">{code}</span>
-            {/* The one count on this surface, and `SPEC.md` §7 was amended for it (#250).
+            {/* The one count on this surface, and the rule was narrowed for it (#250).
                 `data-numeric` is the tabular-figures hook, so a list of rows does not
                 jitter as the numbers change width.
 
@@ -244,7 +244,7 @@ function RowBody({
           </p>
 
           {/* No line at all where TMDB has not named the episode, rather than the number a
-              second time — `CONTEXT.md`'s *an episode is never referred to by number
+              second time — *an episode is never referred to by number
               alone*, and the code line above has already said it once.
 
               `line-clamp-2` rather than the card's unbounded wrap: a row is a fixed-width
@@ -267,7 +267,7 @@ function RowBody({
 
 /**
  * The row's destination, which is `press`'s whole job. The control is deliberately
- * **outside** this element in `RowBody` rather than nested in it — `SPEC.md`'s rule for
+ * **outside** this element in `RowBody` rather than nested in it — the rule for
  * the season row, restated: a control inside a link is a control every press of which is
  * also a navigation, and the daily gesture is the one press that must never become one.
  */
@@ -348,7 +348,7 @@ function RowFrame({
    *
    * `name` is deliberately withheld, unlike this list's other two rows
    * (`up-next-film-rail.tsx`, `upcoming-row.tsx`): this row is the still's own successor,
-   * and the still drew no glyph, wordmark or apology for missing artwork — `DESIGN.md` §8
+   * and the still drew no glyph, wordmark or apology for missing artwork
    * — a rule this ticket carries over rather than trades for `Poster`'s initials. Passing
    * `name` here would be a second, unasked-for visual change riding on the one this ticket
    * makes.
@@ -429,7 +429,7 @@ function MarkControl({ mark }: { mark: UpNextMark }) {
 
 /**
  * The row a title has while its episodes are still arriving — `up-next-pending-card.tsx`'s
- * content at the row's own measure. `DESIGN.md` §9's treatment unaltered: everything above
+ * content at the row's own measure. The pending treatment unaltered: everything above
  * the pending line is a fact the add already wrote and renders at full strength, and one
  * dim line is the only region genuinely still waiting.
  */

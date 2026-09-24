@@ -6,7 +6,7 @@
  *
  * ── A separate rule from `errors/write-failure.ts`'s, on purpose ────────────────────────
  *
- * The write-failure toast never times out — `SPEC.md` §3.3, *a lost write is never
+ * The write-failure toast never times out — *a lost write is never
  * silent* — and that rule is amended, not bent, to make room for this one: a **landed**
  * write is a different event and may expire on its own. Building that as a second mode of
  * the write-failure toast would put a dismiss timer inside the one component whose whole
@@ -40,7 +40,7 @@ export interface ActionOffer {
   /** The title a watch was just recorded against, named in full. */
   readonly title: string;
   /** The episode, named in full — absent for a film, or for a change to the title itself.
-   *  `CONTEXT.md`: an episode is never referred to by number alone. */
+   *  An episode is never referred to by number alone. */
   readonly episode?: string;
   /**
    * Take back the watch this toast is about. Always the newest one — in the glossary's

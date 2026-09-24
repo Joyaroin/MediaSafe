@@ -1,11 +1,11 @@
 /**
  * The read cache's first property, made mechanical: **no cache key without an account.**
  *
- * `cache/tags.ts` holds the reasoning. In one line of it: the reversal of `SPEC.md` §3
+ * `cache/tags.ts` holds the reasoning. In one line of it: the reversal of
  * constraint 1's read-cache clause keeps *two reads of the same fact cannot disagree*
  * only while every key is scoped to the reader it was read for, and a key that is not is
  * one account being served another account's library. There is no row-level security
- * behind it to catch that (`SPEC.md` §6), and a cache entry outlives the request that
+ * behind it to catch that, and a cache entry outlives the request that
  * made it, so it is not even the kind of leak a reader would report as a wrong page — it
  * is the wrong library, served consistently.
  *

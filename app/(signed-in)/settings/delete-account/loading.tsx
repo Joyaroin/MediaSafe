@@ -8,7 +8,7 @@ import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
  * destroy them, and the way to guarantee that is for the pending render to have no form in
  * it at all rather than for a form to be conditionally hidden.
  *
- * `DESIGN.md` §9: what the segment's `error.tsx` renders, less the failure — the heading
+ * What the segment's `error.tsx` renders, less the failure — the heading
  * and the way back, from `delete-account-frame.tsx`'s two pieces, with one dim line in the
  * gutter the failure would have used.
  */

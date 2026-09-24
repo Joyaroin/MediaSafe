@@ -18,8 +18,8 @@ import {
 import { user } from "@/auth-schema";
 
 /**
- * MediaSafe's tables. **Six of them, whole, in one migration** (ADR-0001, SPEC.md §5);
- * `title_reconciliation` at the foot of this file is a seventh, added later by ADR-0001
+ * MediaSafe's tables. **Six of them, whole, in one migration**;
+ * `title_reconciliation` at the foot of this file is a seventh, added later by
  * amendment 6 (issue #116) and carrying its own reasoning for why it is not one of the six.
  *
  * The ADR's `Schema` section is normative — "the source of truth is the Drizzle schema,
@@ -28,14 +28,14 @@ import { user } from "@/auth-schema";
  *
  * `list` and `list_membership` were built in step 2 while lists were still out of scope —
  * an empty table costs nothing and one migration is cheaper than two. That bet paid: #133
- * brought custom lists into scope (`SPEC.md` §9) and the tables were already there, with
+ * brought custom lists into scope and the tables were already there, with
  * zero rows to migrate when membership repointed at `title` (amendment 7, #143).
  *
  * ── The two splits that shape everything below ───────────────────────────────────────
  *
  * **Borrowed is global; owned is not.** `title` and `episode` are one row per TMDB id,
  * shared by every account, with no `user_id` at all — a Title is "a film or a show as it
- * exists in the world" (CONTEXT.md), which is not a per-user fact. So `ON DELETE CASCADE`
+ * exists in the world", which is not a per-user fact. So `ON DELETE CASCADE`
  * to `user.id` applies to the owned four only, and deleting an account never empties the
  * database.
  *
@@ -100,7 +100,7 @@ export const title = pgTable(
       .defaultNow(),
     /**
      * When this title's episodes were last mirrored **whole** — and NULL while they have
-     * not been (ADR-0001 amendment 11, issue #271).
+     * not been.
      *
      * **Pending is a fact the database holds, not one each surface infers.** Adding a show
      * writes this row from the series alone and answers the press; the seasons follow
@@ -179,7 +179,7 @@ export const episode = pgTable(
      * This episode's own image, as a TMDB CDN path — `poster_path`'s shape exactly, and
      * like it no blob is stored and no size is chosen here.
      *
-     * **Amendment 10 moved it across ADR-0001's line.** It was an *additional image* and
+     * **Amendment 10 moved it across the line.** It was an *additional image* and
      * so fetched live; the rail of next episodes renders many at once, which made that
      * one catalogue request per card. It arrives in the season response the mirror
      * already fetches, so it costs nothing to store.
@@ -208,7 +208,7 @@ export const episode = pgTable(
  * `abandoned_at` is the one exception to "no state is ever stored", because abandonment
  * is the one thing watches cannot express. It is set by hand, cleared by the application
  * write path in the same transaction as a watch insert, and set — never cleared, never
- * updated — by import on entry creation only (ADR-0001, amendment 2).
+ * updated — by import on entry creation only.
  */
 export const libraryEntry = pgTable(
   "library_entry",
@@ -302,7 +302,7 @@ export const watch = pgTable(
     index("watch_episode_id_idx").on(t.episodeId),
     // Streak and year in review, both of which ignore undated watches entirely. Neither
     // ships today: #227 built the streak, #249 retired it with `/stats`, and both are back
-    // under SPEC.md §9's *Specced, but later*. The index stays — it is the same cheap bet
+    // under *Specced, but later*. The index stays — it is the same cheap bet
     // build step 1 placed, and dropping it would be a migration spent on the assumption
     // that no dated figure ever returns.
     index("watch_user_id_watched_at_idx")
@@ -332,7 +332,7 @@ export const list = pgTable(
 /**
  * That one **title** belongs to one list, at one position.
  *
- * **Not a library entry** — repointed by ADR-0001 amendment 7 (issue #143). A list may
+ * **Not a library entry** — repointed by amendment 7 (issue #143). A list may
  * hold anything in the catalogue, so membership cannot be gated on owning the title, and
  * a title leaving your library does not edit a grouping you ordered by hand.
  *
@@ -378,15 +378,15 @@ export const listMembership = pgTable(
 /**
  * That one title was repointed at a different TMDB id, because the id it had was gone.
  *
- * **The seventh table, and the only one ADR-0001 did not specify** — added by amendment 6
- * (issue #116). `SPEC.md` §11.3 asked what the nightly refresh does when a title's TMDB id
+ * **The seventh table, and the only one the schema did not specify** — added by amendment 6
+ * (issue #116). An open question asked what the nightly refresh does when a title's TMDB id
  * vanishes; the answer is `tmdb/reconcile.ts`, and *"every reconciliation is recorded"* is
  * the half of that answer a table has to hold. Old id, new id, the external id that
  * evidenced it, and when — enough to see what happened and to reverse it by hand.
  *
  * ── Not an admin surface ─────────────────────────────────────────────────────────────
  *
- * `SPEC.md` §9 forbids one, and this is not it. Nothing reads this table: no screen, no
+ * A badge is forbidden, and this is not one. Nothing reads this table: no screen, no
  * badge, no notice, no query in `db/access.ts` outside the write below. It is a log Adham
  * reads through the database, exactly as *"to see who signed up, Adham queries the
  * database"* already establishes. The *reporting* half lives in Sentry, where the sweep's

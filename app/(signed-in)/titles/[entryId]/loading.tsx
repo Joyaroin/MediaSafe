@@ -10,7 +10,7 @@ import { PendingTitlePoster } from "./pending-poster";
  * A `loading.tsx` wraps its own segment **and every segment below it**. Without this file,
  * `app/(signed-in)/library/loading.tsx` is what a reader tapping a tile would see, and it
  * would paint *The library* over a title's own page — a heading that names the wrong
- * surface, which is the failure mode `DESIGN.md` §9 is built to prevent rather than a
+ * surface, which is the failure mode the rule is built to prevent rather than a
  * cosmetic slip. The boundary belongs to the segment whose content is pending, so the
  * segment gets one.
  *

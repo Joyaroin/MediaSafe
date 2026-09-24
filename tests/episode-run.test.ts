@@ -108,7 +108,7 @@ describe("locateEpisode", () => {
    * `null`, not a throw and not a partial answer — a URL naming an episode of another
    * show, one a sweep repointed, or a film, which has no episodes at all. `page.tsx`
    * turns this into `notFound()`, because a read that succeeded and found nothing is not
-   * a read that failed (`SPEC.md` §3.2).
+   * a read that failed.
    */
   it("answers null for an episode this show does not have", () => {
     expect(locateEpisode(SHOW, "s9e9")).toBeNull();

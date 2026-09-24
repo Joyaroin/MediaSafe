@@ -13,7 +13,7 @@ import { episode, libraryEntry, libraryEntryState, title, user, watch } from "@/
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * `abandonTitle` and `unabandonTitle`, against real Postgres — issue #87, `SPEC.md` §7's
+ * `abandonTitle` and `unabandonTitle`, against real Postgres — issue #87, and
  * "abandoned outranks the state the watches would give, and un-abandon returns to it."
  *
  * Mirrors `tests/watch-idempotency.test.ts`'s harness rather than inventing a second one:
@@ -145,7 +145,7 @@ describe("abandonTitle", () => {
       expect(await watchCountFor(tx, entryId)).toBe(before);
     }));
 
-  it("outranks the state the watches would give, and un-abandon returns to it — SPEC.md §7", () =>
+  it("outranks the state the watches would give, and un-abandon returns to it", () =>
     inTransaction(async (tx) => {
       const userId = await seedUser(tx, "adham");
       const { entryId, titleId, episodeIds } = await seedShow(

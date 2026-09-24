@@ -34,7 +34,7 @@
  * `timeZone: "UTC"` on both, and for the same mechanical reason rather than the same
  * semantic one: `new Date(y, m, d)` reads the *server's* zone, so a date built and
  * formatted anywhere east or west of it comes back a day out. Constructing in UTC and
- * formatting in UTC is what keeps the string equal to the column (ADR-0003's rule that the
+ * formatting in UTC is what keeps the string equal to the column (the rule that the
  * clock is an input, applied to a value that has no clock in it at all).
  *
  * Importing the stats one would have coupled this page to a surface issue #245 removed

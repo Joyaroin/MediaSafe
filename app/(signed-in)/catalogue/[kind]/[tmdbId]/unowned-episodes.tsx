@@ -53,7 +53,7 @@ export function UnownedEpisodes({
     return (
       <div className={PROGRAMME_NOTE_SECTION}>
         <p className="text-item text-dim">
-          {/* Missing and empty stay distinct (`CONTEXT.md`), exactly as they do on the
+          {/* Missing and empty stay distinct, exactly as they do on the
               owned list: this is TMDB not having handed the mirror anything, not a season
               with nothing in it. */}
           No episode data yet.
@@ -78,7 +78,7 @@ export function UnownedEpisodes({
                   E{one.episodeNo}
                 </span>
 
-                {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name.
+                {/* The Named Episode Rule: an episode is always its name.
                     `null` is TMDB not having named it yet — not a licence to print the
                     number a second time in its place. Never dimmed, never struck: the
                     dimmed name means *watched* on the owned list, and there is nobody

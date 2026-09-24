@@ -436,7 +436,7 @@ cat > .env.example <<'EXAMPLE_EOF'
 # Never commit .env.
 
 # Local development runs against Docker Postgres, not Neon. `npm run db:up` brings
-# up both containers; docs/local-development.md explains why there are two.
+# up both containers; `docker-compose.yml` explains why there are two.
 DATABASE_URL=postgres://mediasafe:mediasafe@localhost:5432/mediasafe
 
 # The local WebSocket proxy that fronts Docker Postgres, so the one driver

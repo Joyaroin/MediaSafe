@@ -1,7 +1,7 @@
 /**
  * TMDB's required notice. **An attribution obligation, not decoration**
  * ([#3](https://github.com/Joyaroin/MediaSafe/issues/3)), and
- * `docs/design/v1-surfaces.md` §7 names its two homes: title detail and search — *"where
+ * it has two homes: title detail and search — *"where
  * borrowed data is on screen"*. Search was the first of the two to exist; issue #58 is
  * the second, which is why this moved out of `app/(signed-in)/search/` to sit beside
  * `app/poster.tsx` — the other borrowed-artwork device both surfaces share.
@@ -13,16 +13,15 @@
  * same reason `Poster` takes its measure from the caller rather than fixing one itself.
  *
  * Pinned to the foot of whichever surface it is on, rather than left at the end of the
- * results, as the prototype has it
- * (`docs/design/prototypes/repertory-bill.html:489`): a notice that only appears if you
+ * results, as the prototype had it: a notice that only appears if you
  * scroll far enough is a notice that is absent for anyone whose search matched three
  * things, or whose season has three episodes.
  *
- * `text-fine` is the ramp step `DESIGN.md`'s type table reserves for exactly this — *"one
+ * `text-fine` is the ramp step the type table reserves for exactly this — *"one
  * use: the TMDB attribution line. Legal and attribution copy only."*
  *
- * The two hexes in the mark are TMDB's own brand colours, and `DESIGN.md`'s *raw hex
- * outside the theme* section already accounts for them: *"a third party's colours, which
+ * The two hexes in the mark are TMDB's own brand colours, and the *raw hex
+ * outside the theme* rule already accounts for them: *"a third party's colours, which
  * are not ours to token."*
  */
 export function TmdbAttribution({ className = "" }: { className?: string }) {

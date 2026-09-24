@@ -22,7 +22,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }))
  * what the first render could get wrong. That is the shape every client-control test in
  * this repository uses; `tests/rating-control.test.ts` was the file cited here for it until
  * the control it covered was retired.
- * `SPEC.md` §7's acceptance criteria this covers:
+ * The acceptance criteria this covers:
  *
  *  1. **Capped at 24, refusing rather than truncating** — the native `maxlength`.
  *  2. **The limit is apparent before saving** — the counter renders on load, not only

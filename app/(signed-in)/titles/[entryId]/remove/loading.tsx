@@ -15,7 +15,7 @@ import { BackToLibrary, RemoveTitleHeading } from "./remove-frame";
  *
  * ── The formula ──────────────────────────────────────────────────────────────────────
  *
- * `DESIGN.md` §9, radius 1: what the segment's `error.tsx` renders, less the failure. That
+ * Radius 1: what the segment's `error.tsx` renders, less the failure. That
  * is `remove-frame.tsx`'s two pieces — the heading, which does not name the title and so is
  * a literal that never waits, and the way back — with one dim line in the gutter the failure
  * would have used. `RemoveTitleHeading`'s docblock already explains why it names no title:

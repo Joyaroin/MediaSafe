@@ -53,8 +53,8 @@ export async function Sidebar() {
       <SidebarNav />
 
       {/* Pinned to the foot with `mt-auto`, the rail's own equivalent of the masthead's
-          trailing cell. Inert — a `span`, not a `Link` or a `button`. `DESIGN.md`'s Phone
-          section states the rule this rail is held to as well: *never an avatar, and
+          trailing cell. Inert — a `span`, not a `Link` or a `button`. The Phone
+          register states the rule this rail is held to as well: *never an avatar, and
           never an entrance.* `truncate` is the guard against the acceptance criterion
           that a name at the full 24 characters must not stretch or wrap this rail — the
           rail's own fixed `196px` width already bounds it without a second `max-w-*`.

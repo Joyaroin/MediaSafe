@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 /**
  * The one technical string a reader ever sees, and where it comes from.
  *
- * `SPEC.md` §6: *the user never reads technical text beyond a copyable reference id, which
+ * The rule: *the user never reads technical text beyond a copyable reference id, which
  * **is** the Sentry event id.* Not an id of our own that has to be looked up in a table
  * and correlated with Sentry — the event id itself, so a reference read back over a
  * message is pasted straight into Sentry's search and lands on the error.
@@ -61,7 +61,7 @@ export function referenceFor(
  * event with the same digest is what joins the two — so the id a reader quotes leads to an
  * event that names its server half.
  *
- * Printing the digest *instead* fails `SPEC.md` §6 outright: a digest is a hash of the
+ * Printing the digest *instead* fails that outright: a digest is a hash of the
  * error, identical for every occurrence, so it identifies a kind of failure rather than
  * the reader's. Two people would quote the same string.
  *

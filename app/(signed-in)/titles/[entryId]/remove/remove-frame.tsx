@@ -11,7 +11,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * the day it matters.
  *
  * Neither is a new treatment. The heading is `bill-title` at `text-bill-lg`, the step
- * `DESIGN.md`'s type table gives full-surface headlines. Issue #195 moved the link off the
+ * the type table gives full-surface headlines. Issue #195 moved the link off the
  * quiet underline `errors/reference-line.tsx` set — it is `GHOST_RECOVERY` now, the
  * register the whole underline conversion reuses.
  */

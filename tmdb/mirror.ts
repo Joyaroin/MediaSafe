@@ -5,9 +5,9 @@
  * ── Why this is a function and not four lines inside the add handler ─────────────────
  *
  * `title` and `episode` are **global and unowned** — one row per TMDB id, shared by every
- * account (ADR-0001). So one person adding a show writes rows every other person then
+ * account. So one person adding a show writes rows every other person then
  * reads, and this mapping is shared infrastructure rather than one person's data path.
- * That is the whole argument for the shape: `SPEC.md` §6's "everything else fails loudly
+ * That is the whole argument for the shape: "everything else fails loudly
  * and cheaply to an app used daily by its owner" is the reason almost nothing here is
  * tested, and it does not reach a write that lands in somebody else's library.
  *
@@ -18,7 +18,7 @@
  *
  * ── The line this file may not cross ─────────────────────────────────────────────────
  *
- * ADR-0001's metadata caching policy divides TMDB's fields in two, and **only the
+ * The metadata caching policy divides TMDB's fields in two, and **only the
  * left-hand column exists in this file**:
  *
  * | Mirrored in Postgres | Fetched live, never stored |
@@ -198,8 +198,8 @@ export interface TmdbSeasonPayload {
  * One catalogue result, as the search screen renders it.
  *
  * Deliberately the same four borrowed facts a library tile shows, and no more: this is a
- * list, and a synopsis on a list row is the spreadsheet `SPEC.md` §3.4 forbids as much as
- * it is a field ADR-0001 forbids storing.
+ * list, and a synopsis on a list row is the spreadsheet the rules forbid as much as
+ * it is a field the schema forbids storing.
  */
 export interface CatalogueResult {
   readonly kind: TitleKind;
@@ -212,7 +212,7 @@ export interface CatalogueResult {
    *
    * ── It is not a Rating, and the two must never be confused ──────────────────────────
    *
-   * `CONTEXT.md` defines *Rating* as **one score you give a title**, held on your library
+   * *Rating* is **one score you give a title**, held on your library
    * entry, one per title and never one per watch — and names *score* and *stars* as
    * avoid-words for it. This is a different number belonging to different people, and it
    * is borrowed, so a refresh can replace it like every other borrowed fact.
@@ -224,7 +224,7 @@ export interface CatalogueResult {
    * yours, so the two never sit next to each other to be mistaken for one another.
    *
    * *Audience score* rather than *TMDB score*: the vendor's name appears nowhere in this
-   * application's copy except the attribution component, and ADR-0001's whole posture is
+   * application's copy except the attribution component, and the whole posture here is
    * that the catalogue is replaceable.
    */
   readonly audienceScore: number | null;
@@ -306,7 +306,7 @@ export function catalogueKeyOf(key: CatalogueKey): string {
   return `${key.kind}:${key.tmdbId}`;
 }
 
-/** One `episode` row, in the order ADR-0001's table declares them. */
+/** One `episode` row, in the order the table declares them. */
 export interface EpisodeMirror {
   readonly tmdbEpisodeId: number;
   /** 0 = specials: mirrored and markable, excluded from every derived state. */
@@ -320,7 +320,7 @@ export interface EpisodeMirror {
    * The episode's own image, as a TMDB CDN path (`/wrGWe….jpg`) exactly like
    * `posterPath` — no blob is stored, and no size is baked in here.
    *
-   * **Amendment 10 moved this across ADR-0001's line**, on the ADR's own test: the rail
+   * **Amendment 10 moved this across the line**, on the policy's own test: the rail
    * of next episodes is a list render, and fetching a still per card is one catalogue
    * request per card. It arrives in the season response the mirror already fetches.
    *
@@ -386,7 +386,7 @@ function dateFrom(date: string | null | undefined): string | null {
 
 /**
  * The two columns one TMDB date field becomes: the whole date *(amendment 10)*, and the
- * year ADR-0001 mirrored long before it.
+ * year mirrored long before it.
  *
  * **One function rather than two calls at each mapper.** Two columns derived from one
  * field can disagree, and the amendment says they cannot — so the thing that makes that
@@ -570,7 +570,7 @@ function collectResults(
 function kindOf(mediaType: string | undefined): TitleKind | null {
   if (mediaType === "movie") return "film";
   if (mediaType === "tv") return "show";
-  // `person`, and anything TMDB adds later. CONTEXT.md has a word for the two things
+  // `person`, and anything TMDB adds later. There is a word for the two things
   // MediaSafe keeps and no word for a third.
   return null;
 }
@@ -578,7 +578,7 @@ function kindOf(mediaType: string | undefined): TitleKind | null {
 /**
  * The season numbers to fetch for a show, specials first, in order and without repeats.
  *
- * Season 0 is included: ADR-0001 mirrors specials and lets you mark them, and excludes
+ * Season 0 is included: the mirror takes specials and lets you mark them, and excludes
  * them only from the derived states — which is `db/views.ts`'s job, done in SQL, and not
  * something to pre-empt by declining to store them.
  */
@@ -690,8 +690,8 @@ function episodeMirrors(seasons: readonly TmdbSeasonPayload[]): EpisodeMirror[] 
         tmdbEpisodeId,
         seasonNo: integerFrom(episode.season_number) ?? integerFrom(season.season_number) ?? 0,
         episodeNo: integerFrom(episode.episode_number) ?? 0,
-        // Load-bearing, not decorative: CONTEXT.md forbids referring to an episode by
-        // number alone, which puts the name on ordinary list screens.
+        // Load-bearing, not decorative: referring to an episode by
+        // number alone is forbidden, which puts the name on ordinary list screens.
         name: textFrom(episode.name),
         airDate: dateFrom(episode.air_date),
         runtimeMins: integerFrom(episode.runtime),
@@ -731,7 +731,7 @@ export class TmdbHttpError extends Error {
 
 /**
  * Whether a failed `titleMirror` call means *TMDB does not have this id*, as opposed to
- * *TMDB could not be reached right now*. `SPEC.md` §7 draws exactly that line — *"a title
+ * *TMDB could not be reached right now*. The rule draws exactly that line — *"a title
  * TMDB cannot resolve is skipped"* against *"a chunk fails for any other reason"* — and a
  * `429` or a `500` is the second of those, not the first. Named and tested on its own
  * rather than left as an inline `instanceof` check nobody exercises directly.

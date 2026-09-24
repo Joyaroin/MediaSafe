@@ -10,7 +10,7 @@ import { Wordmark } from "./press-mark";
  *
  * ── What turn 9 took away ─────────────────────────────────────────────────────────────
  *
- * `DESIGN.md`'s Layout section drew this as *a sticky masthead on a `1px` rule … ground
+ * The Layout register drew this as *a sticky masthead on a `1px` rule … ground
  * at 95% opacity with a `2px` backdrop blur*, with its contents in bordered cells divided
  * by `1px` rules. Turn 9 removes **all three** borders — the cell dividers, the bottom
  * hairline, and the bordered cells themselves — and lets 22px gutters and the type carry
@@ -28,7 +28,7 @@ import { Wordmark } from "./press-mark";
  *
  * ── `lg:hidden`, since issue #136 ─────────────────────────────────────────────────────
  *
- * `DESIGN.md`'s Layout section used to call this masthead *present at every width, not
+ * The Layout register used to call this masthead *present at every width, not
  * desktop-only*, carrying nav cells (three by the time issue #146 landed *Lists* on them)
  * and a Settings entrance beside the wordmark on desktop. Issue #136 gave desktop
  * `sidebar.tsx` instead — a rail that absorbs the wordmark, every destination and the
@@ -40,7 +40,7 @@ import { Wordmark } from "./press-mark";
  *
  * ── The display name ─────────────────────────────────────────────────────────────────
  *
- * `DESIGN.md`'s Phone section: *it also carries the display name as an inert `code-line`
+ * The Phone register: *it also carries the display name as an inert `code-line`
  * on both devices — never an avatar, and never an entrance.* Settings' Profile section
  * (issue #123) is the control that sets `user.name`; this is where the phone reads it —
  * `sidebar.tsx` reads it again for the desktop rail's own foot. `truncate` with a capped
@@ -50,7 +50,7 @@ import { Wordmark } from "./press-mark";
  *
  * `currentDisplayName()` returns `null` only when a page under `(signed-in)/` has itself
  * forgotten to call `requireUserId()` — the masthead renders nothing in that case rather
- * than an empty bordered cell, which `SPEC.md` §9 would otherwise call reserved space.
+ * than an empty bordered cell, which would otherwise be reserved space.
  *
  * The name itself goes through `DisplayNameCell` (issue #179) rather than straight into
  * the span. This component sits in `(signed-in)/layout.tsx`, and a layout is kept and
@@ -85,7 +85,7 @@ export async function Masthead() {
 
       <div className="flex items-center gap-1.5 text-dim">
         {displayName === null ? null : (
-          // Inert — a `span`, not a `Link` or a `button`. `DESIGN.md`, Phone: *never an
+          // Inert — a `span`, not a `Link` or a `button`. Phone: *never an
           // entrance*. `truncate` plus the capped width keep a full 24-character name
           // from ever stretching or wrapping this header. Turn 9 sets it at the metadata
           // step in sentence case, not the label register: it is a name, and a name in
@@ -107,7 +107,7 @@ export async function Masthead() {
             them, and #294 gave that its own motion on exactly that argument.
 
             The three vocabularies have since collapsed into one — `globals.css` beside the
-            animation, and `DESIGN.md` §7 records the reversal. Every navigation animates
+            animation, and the reversal is recorded. Every navigation animates
             identically now, so this is an ordinary link and the distinction lives only in
             the history of the file. The argument was not wrong about Settings being a
             different kind of move; it was wrong that a reader reads the difference.

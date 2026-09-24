@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * `app/globals.css` now declares one radius scale — `--radius-none` through `--radius-7`,
  * and `--radius-full` — and every one of those nine raw values is retired in favour of it,
  * one notch rounder than what it replaced. `--poster-radius` and `--still-radius` keep
- * their names, exactly as `DESIGN.md` records, and take their values from the scale rather
+ * their names, exactly as recorded, and take their values from the scale rather
  * than a literal.
  *
  * Two checks, matching `tests/palette.test.ts` and `tests/press-spring.test.ts`'s own

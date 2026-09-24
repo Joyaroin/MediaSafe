@@ -5,8 +5,8 @@ import { integerFrom } from "./mirror";
  * What the nightly refresh does when a title's TMDB id is gone — the decision, and
  * nothing else. Pure, and tested (`tests/tmdb-reconcile.test.ts`).
  *
- * `SPEC.md` §11.3 carried this open from the map: TMDB can delete a title or merge two
- * ids, ADR-0001 made that failure loud rather than silent, and nothing decided what
+ * An open question carried over from the map: TMDB can delete a title or merge two
+ * ids, and that failure was made loud rather than silent, and nothing decided what
  * happens next. Issue #116 is the answer, and this file is the whole of it that can be
  * got wrong quietly.
  *
@@ -27,7 +27,7 @@ import { integerFrom } from "./mirror";
  * ── Evidence or nothing ──────────────────────────────────────────────────────────────
  *
  * **Name-and-year search is rejected outright**, and this file is where that is held.
- * `title` and `episode` are global and unowned (ADR-0001), so a wrong match is not one
+ * `title` and `episode` are global and unowned, so a wrong match is not one
  * person's problem — **one wrong match is everyone's wrong match**, and it looks exactly
  * like a correct one, in every library, forever, with nothing on any screen wrong. The
  * `/find` response arrives here carrying names, years, posters and popularity scores;
@@ -40,7 +40,7 @@ import { integerFrom } from "./mirror";
  * anything. So even a title that reconciles is matched **by TMDB episode id only**: if
  * the surviving entry's episodes do not carry the same ids, that is not a match to make
  * approximately, and `reconcileEpisodes` quarantines rather than guessing. This is
- * ADR-0001's `NO ACTION` foreign key expressed as policy rather than as a database error.
+ * the `NO ACTION` foreign key expressed as policy rather than as a database error.
  *
  * ── Pure, precisely ──────────────────────────────────────────────────────────────────
  *
@@ -210,7 +210,7 @@ export function reconcileByExternalId(
  * name. A survivor whose S1 E1 is a different TMDB episode is a different episode row,
  * and the numbers agreeing is not evidence — it is the coincidence that makes an
  * approximate match look correct. `episode` is keyed by `tmdb_episode_id` for the same
- * reason (ADR-0001), and this is that key applied one level up.
+ * reason, and this is that key applied one level up.
  *
  * The survivor **gaining** episodes is not a mismatch: that is an ordinary refresh, and
  * the whole point of repointing is to receive it. Only losing a watched one is fatal.

@@ -36,8 +36,8 @@ import "./globals.css";
  */
 const THEME_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(t==="light"||t==="dark")document.documentElement.setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},t)}catch(e){}`;
 
-// The one piece of user-facing copy in this change. Taken verbatim from SPEC.md §2
-// rather than paraphrased — CONTEXT.md is binding on every string on screen.
+// The one piece of user-facing copy in this change. Taken verbatim from the spec
+// rather than paraphrased — the domain language is binding on every string on screen.
 export const metadata: Metadata = {
   title: "MediaSafe",
   description: "A personal tracker for the films and shows you watch.",
@@ -59,7 +59,7 @@ export const viewport: Viewport = {
 
 /**
  * Two of the three error surfaces are mounted here, and the third is not, which is the
- * whole of SPEC.md §6's *errors are placed by blast radius*:
+ * whole of *errors are placed by blast radius*:
  *
  * - **Offline** is app-wide, so it is in the layout and above everything else on the page.
  * - **The write-failure toast** is app-wide too — a write can be lost from any surface,
@@ -69,7 +69,7 @@ export const viewport: Viewport = {
  * - **Read failures** are *not* here. They belong to the route that failed, so they live
  *   in `app/error.tsx`, which wraps the page and leaves this layout standing.
  *
- * **The action toast (issue #307) is not one of SPEC.md §6's four failure treatments** —
+ * **The action toast (issue #307) is not one of the four failure treatments** —
  * it reports a watch that landed, not one that was lost — and it is mounted here for the
  * same structural reason the write-failure toast is: `action-toast-store.ts`'s singleton
  * has to outlive whichever row raised it, and this is the one place in the tree above
@@ -100,8 +100,8 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
       </head>
       <body>
-        {/* At the very top of the page, before anything else, because DESIGN.md says the
-            banner is at the very top of the page. When the masthead arrives it goes
+        {/* At the very top of the page, before anything else, because the
+            banner belongs at the very top of the page. When the masthead arrives it goes
             below this, not above it. */}
         <OfflineBanner />
         {/* Wraps `children` and not `<body>`'s whole contents: the offline banner and the

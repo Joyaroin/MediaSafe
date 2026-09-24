@@ -36,7 +36,7 @@ import { UpcomingRow } from "./upcoming-row";
  * (`listUpcomingFilms`) and their own section (`upcoming-films.tsx`), and what lands here
  * is the one thing neither half can decide alone: **whether the page is empty**.
  *
- * Each section is absent on nothing, which is `SPEC.md` §7's *an empty rail is absent* — no
+ * Each section is absent on nothing, which is *an empty rail is absent* — no
  * heading over no rows. But
  * *no release dates yet* is a claim about the whole page, and a reader with three dated
  * episodes and no dated film is not looking at an empty Upcoming. So the sentence is drawn
@@ -113,7 +113,7 @@ function UpcomingEpisodes({
           screen — `up-next-phone-rail.tsx`'s `RailSection` draws its own head exactly this
           way, and its docblock carries the accent argument for both.
 
-          A heading and never a count: `SPEC.md` §7's *no counts on a rail head* is the
+          A heading and never a count: *no counts on a rail head* is the
           half of the old *no counts, anywhere* that #250 **kept** rather than narrowed,
           and this head is squarely inside it. */}
       <div className="px-[22px] pb-1">

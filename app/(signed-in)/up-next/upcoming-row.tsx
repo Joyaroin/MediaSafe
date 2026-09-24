@@ -73,7 +73,7 @@ export function UpcomingRow({ episode }: { episode: UpcomingTitle<UpcomingEpisod
 
           {/* The code and the name on one line. Where TMDB has announced the episode
               without naming it the code stands alone rather than being followed by the
-              number a second time — `CONTEXT.md`'s *an episode is never referred to by
+              number a second time — *an episode is never referred to by
               number alone*, which the code has already satisfied. */}
           <p className="mt-[3px] truncate text-meta text-dim">
             {episode.episodeName === null ? code : `${code} · ${episode.episodeName}`}

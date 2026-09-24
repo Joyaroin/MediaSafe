@@ -17,7 +17,7 @@ import durationOnTheRamp from "@/eslint-rules/duration-on-the-ramp.mjs";
  * must not be a way around it.
  *
  * It is an **ESLint rule and not a test**, for the reason `tests/no-empty-catch.test.ts`
- * gives: `SPEC.md` §6 puts lint in CI and nothing else, so a vitest assertion would never
+ * gives: CI runs lint and nothing else, so a vitest assertion would never
  * see a pull request and `npm run lint` will.
  *
  * ── Why a name check, and not a full class-list parse ──────────────────────────────────

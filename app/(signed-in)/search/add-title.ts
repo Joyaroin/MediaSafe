@@ -65,13 +65,13 @@ export interface AnsweredAdd {
  * task lands. A **film** is stamped on the way in, because a film has nothing to wait for
  * — `mirror.episodes` is empty for a film and always was, and no fetch would ever fill it.
  * The state is a column rather than an inference from "this title has no episode rows",
- * for the reason ADR-0001 amendment 11 gives: that inference makes *still arriving* and
+ * for the reason amendment 11 gives: that inference makes *still arriving* and
  * *genuinely has none* the same state.
  *
  * ── A failed mirror raises nothing ───────────────────────────────────────────────────
  *
  * The library entry landed before the fetch was even attempted, so no write was lost and
- * `SPEC.md` §3.3's toast does not apply — there is nothing for the reader to retry and
+ * the lost-write toast does not apply — there is nothing for the reader to retry and
  * nothing they could do about TMDB. The failure is reported to Sentry exactly as the
  * nightly sweep reports its own, the title stays pending, and the sweep picks up anything
  * unstamped that same night (`titlesDueForRefresh`'s tier 0).

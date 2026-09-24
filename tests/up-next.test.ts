@@ -26,7 +26,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * ── Why this file is where the ordering is checked ───────────────────────────────────
  *
- * `SPEC.md` §7's ordering is the last read rule in the product that nothing checks, and
+ * The ordering is the last read rule in the product that nothing checks, and
  * its failure is silent: a wrong order does not throw, it puts the wrong show at the top
  * of the screen whose whole job is to be trusted at half attention. No surface can catch
  * it — every one of them renders whatever arrives, in the order it arrives — so the
@@ -283,7 +283,7 @@ async function railNames(
 }
 
 /**
- * One reader of `SPEC.md` §7's order — one of #137's three rails — and everything a case
+ * One reader of the order — one of #137's three rails — and everything a case
  * needs in order to be run against it unchanged.
  *
  * **This exists so that §7's ordering is asserted once and checked three times.** The rule
@@ -1013,7 +1013,7 @@ describe("listUpNextRails — a title whose episodes have not mirrored", () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
-      // Watched today: the top of SPEC.md §7's order, and the tile a pending title has to
+      // Watched today: the top of the order, and the tile a pending title has to
       // get in front of. Nothing about the pending title is watched, so the cascade has
       // nothing to rank it by and could not put it here on its own.
       await seedWatching(tx, reader, { name: "Watched last night", watchedAt: daysAgo(0) });
@@ -1092,7 +1092,7 @@ describe("listUpNextRails — a title whose episodes have not mirrored", () => {
 
       // Asserted whole rather than field by field: what a pending tile may draw is exactly
       // this, and a field arriving here that the tile has no rule for is the way a skeleton
-      // gets in (`DESIGN.md` §9).
+      // gets in.
       expect(entry).toEqual({
         libraryEntryId: show.entryId,
         titleId: show.titleId,

@@ -24,7 +24,7 @@ import { isKnownZone, signupTimezoneFrom, TIMEZONE_FALLBACK } from "@/lib/timezo
  *
  * ── Google, and nothing else ─────────────────────────────────────────────────────────
  *
- * SPEC.md §6: **no password, no magic link, no email field anywhere in the system.** That
+ * **No password, no magic link, no email field anywhere in the system.** That
  * is not a default being left alone — `emailAndPassword` is written out below and turned
  * off, so that the day someone reaches for a password the diff says so. #8 chose Google
  * partly *because* it works on a borrowed browser, which is also why account deletion is
@@ -83,7 +83,7 @@ export const authOptions = {
   /**
    * A function rather than an adapter, so nothing opens a connection until Better Auth
    * actually initialises. `getDb()` is the same process-wide pool the rest of the app
-   * uses — one pool, one driver, one data path (SPEC.md §3.1).
+   * uses — one pool, one driver, one data path.
    */
   database: (options: BetterAuthOptions) =>
     drizzleAdapter(getDb(), {
@@ -199,7 +199,7 @@ export const authOptions = {
      * **Off, deliberately.** Better Auth will otherwise cache the session in a signed
      * cookie and answer `getSession` from it without touching the database.
      *
-     * SPEC.md §6 asks for "real server-side revocation", and a cached session is exactly
+     * The spec asks for "real server-side revocation", and a cached session is exactly
      * the thing that is not revoked: deleting the row would leave a cookie that still
      * validates for the length of the cache. One query per request is the price of the
      * sign-out in the acceptance criteria meaning what it says.
@@ -208,7 +208,7 @@ export const authOptions = {
   },
 
   /**
-   * SPEC.md §6: *Rate limiting is Better Auth's default with storage in Postgres.*
+   * *Rate limiting is Better Auth's default with storage in Postgres.*
    *
    * `enabled` is written out because Better Auth's own default is production-only, and a
    * limiter that has never run anywhere but production is a limiter nobody has seen work.

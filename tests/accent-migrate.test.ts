@@ -31,9 +31,9 @@ vi.mock("next/navigation", () => ({
  * `app/accent-meaning.ts`'s own docblock named this file as the ticket that would do it.
  *
  * **Re-narrowed.** The select carets and the accent frames on the dialogs that borrowed the
- * failure treatment (`DESIGN.md` §12: *"the same frame the write-failure toast uses, on two
+ * failure treatment (*"the same frame the write-failure toast uses, on two
  * dialogs that are neither a failure nor irreversible"*) lose the accent. Every dialog built
- * on that exact frame is re-narrowed, not only the two §12 named — `watch-menu.tsx` and
+ * on that exact frame is re-narrowed, not only the two named — `watch-menu.tsx` and
  * `selection-action-bar.tsx`'s bulk picker share the identical class string and the identical
  * mistake.
  *
@@ -164,7 +164,7 @@ describe("the select carets are re-narrowed — they no longer paint the accent"
 describe("the dialogs that borrowed the failure frame are re-narrowed", () => {
   /**
    * Every `<dialog>` built on `border-2 border-accent bg-ground … backdrop:bg-ground/80` —
-   * `DESIGN.md` §12's own words, *"the same frame the write-failure toast uses"*. Found from
+   * in as many words, *"the same frame the write-failure toast uses"*. Found from
    * the tree rather than transcribed from the ticket, which names only two by number; the
    * other three share the identical string and the identical borrowing.
    */

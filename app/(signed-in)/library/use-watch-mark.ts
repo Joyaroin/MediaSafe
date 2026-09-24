@@ -64,7 +64,7 @@ export function useWatchMark({
   readonly titleName: string;
   readonly episodeName?: string;
   /** Called once a mark this surface pressed lands — the film row's only use for this is
-   *  patching `state` to `finished`, which a watch always reaches (`CONTEXT.md`: a film is
+   *  patching `state` to `finished`, which a watch always reaches (a film is
    *  only ever watchlist, finished or abandoned, and this is the only write that takes it
    *  to the third). An episode has no analogous single destination state, so `EpisodeLine`
    *  passes nothing. */

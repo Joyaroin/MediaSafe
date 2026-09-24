@@ -3,7 +3,7 @@
  * rows above, brought down to this line.
  *
  * Rectilinear, filled, `currentColor`, in the same vocabulary as `nav-icons.tsx` and
- * `[listId]/drag-handle-icon.tsx` — `DESIGN.md` §10: *there is no icon set; the handful
+ * `[listId]/drag-handle-icon.tsx` — *there is no icon set; the handful
  * that exist are hand-drawn rectilinear SVGs sharing one vocabulary with the press mark.*
  * The wedge is a polygon rather than a fourth stacked bar because three identical bars
  * read as *a list* and say nothing about direction, and this control's whole meaning is

@@ -4,7 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 import "dotenv/config";
 
 /**
- * The Playwright seam issue #304 adds — `SPEC.md`'s Testing Decisions name it as the one
+ * The Playwright seam issue #304 adds — the one
  * seam that exists for properties only a real browser can show: that a navigation
  * resolving faster than `--dur-pending-hold` paints no pending bars, and that one slower
  * than the hold still does.
@@ -15,8 +15,7 @@ import "dotenv/config";
  * matching `vitest.config.mts`'s own `include: ["tests/**\/*.test.ts"]`. This suite lives
  * under `tests/e2e/` and every spec is `*.spec.ts`, which that glob does not match, so
  * `npm test` never sees it and a browser harness never runs in every builder's parallel
- * verify pass. `npm run test:e2e` is the one command that does, documented in
- * `docs/local-development.md`.
+ * verify pass. `npm run test:e2e` is the one command that does.
  *
  * ── One project, one port ─────────────────────────────────────────────────────────────
  *

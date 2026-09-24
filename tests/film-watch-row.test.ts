@@ -74,7 +74,7 @@ describe("the film's watched mark", () => {
      * The case that outlives the control it was written beside.
      *
      * *Abandoned* is a state nothing can enter any more — the control that set it is
-     * retired — but rows already in it are untouched, and `CONTEXT.md`'s *watching it
+     * retired — but rows already in it are untouched, and *watching it
      * again clears it* is now the **only** way out of it. So this row is that exit, and a
      * film sitting in the state has to be offered the mark exactly as a watchlist film is.
      *

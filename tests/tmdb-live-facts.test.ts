@@ -121,7 +121,7 @@ describe("watchProvidersFrom", () => {
     ]);
   });
 
-  it("never returns a rent or buy listing — CONTEXT.md reserves this for streaming", () => {
+  it("never returns a rent or buy listing — this is reserved for streaming", () => {
     const providers = watchProvidersFrom(movieProviders, "US");
     expect(providers.some((provider) => provider.name === "Apple TV")).toBe(false);
   });

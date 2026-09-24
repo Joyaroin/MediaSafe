@@ -16,12 +16,12 @@ import { UpNextEpisodeRow, UpNextPendingRow } from "./up-next-episode-row";
  * sideways, a list reaches by scrolling down.
  *
  * **The rows carry the episode now, and that is a real change to what this surface says.**
- * The desktop tile was a poster, a name and a year — `SPEC.md` §7's *the desktop rail tile
+ * The desktop tile was a poster, a name and a year — *the desktop rail tile
  * is unchanged and still carries no count* — and this replaces it with the row the phone
  * already drew: the show, the code, the episode name, the remainder and the mark. The two
  * devices were showing different facts about the same list for no reason either of them
  * could state, and the phone's version is the one that answers *what do I put on*.
- * `SPEC.md` is amended in the same commit rather than quietly outvoted.
+ * The rule is amended in the same commit rather than quietly outvoted.
  *
  * A press still swaps the pane rather than navigating (`press="select"`), which is
  * divergence 3 and is not touched by any of this.
@@ -84,8 +84,8 @@ export function UpNextRailsSurface({ rails }: { rails: UpNextRails }) {
  * shows fewer things above the fold than a horizontal track of `132px` posters did, and
  * every one of these is a `104px` still rather than a poster.
  *
- * **An empty group is absent** — no heading, no sentence, no zero, no reserved space
- * (`SPEC.md`). That is why each group is behind its own length check rather than rendering
+ * **An empty group is absent** — no heading, no sentence, no zero, no reserved space.
+ *  That is why each group is behind its own length check rather than rendering
  * a head over nothing.
  */
 const FIRST_RUN = 3;

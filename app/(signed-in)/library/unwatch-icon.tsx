@@ -7,7 +7,7 @@
  * when the reader meant to take back one.
  *
  * Rectilinear, filled, `currentColor`, in the same vocabulary as `checkmark-icon.tsx` and
- * `mark-up-to-icon.tsx` — `DESIGN.md` §10: *there is no icon set; the handful that exist
+ * `mark-up-to-icon.tsx` — *there is no icon set; the handful that exist
  * are hand-drawn rectilinear SVGs sharing one vocabulary with the press mark.* A rotated
  * `rect` is still a straight-edged shape, the same primitive `MarkUpToIcon`'s wedge and
  * `CheckmarkIcon`'s tick are built from, so the X drawn here adds no curve — a magnifier
@@ -16,7 +16,7 @@
  * It is shape, not colour, on purpose. This world has one accent and no second, "warning"
  * colour to reach for (`app/globals.css`'s palette is `ground`/`raised`/`hair`/`text`/
  * `dim`/`ink`/`accent` and nothing else), and `errors/recovery-buttons.ts`'s own docblock
- * records `DESIGN.md` §10's ruling that a further button register — a fourth tier beside
+ * records the ruling that a further button register — a fourth tier beside
  * ghost and solid — was considered and declined. This glyph is not a tier: it rides inside
  * `GHOST_RECOVERY`, unchanged, the same register `Rewatch` and `Undo` already wear.
  *

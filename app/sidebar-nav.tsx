@@ -26,7 +26,7 @@ import { useUpNextRepress } from "./use-up-next-repress";
  *
  * #146 shipped *Lists* onto the masthead's nav cells and the phone tab bar while this
  * sidebar did not exist yet, saying explicitly that whatever #132's eventual sidebar did
- * would inherit the destination rather than re-decide it (`SPEC.md` §9). It is the fourth
+ * would inherit the destination rather than re-decide it. It is the fourth
  * item in `PRIMARY` for that reason — not a fresh design decision made here, but the one
  * #146 already made, carried into the nav that finally exists to carry it.
  *
@@ -34,15 +34,15 @@ import { useUpNextRepress } from "./use-up-next-repress";
  *
  * Every other "current" treatment in the build before this ticket was full inversion —
  * a solid `text`-coloured block with `ground`-coloured type, on the masthead's nav cells,
- * the phone tab bar, the selected filter chip — and `DESIGN.md`'s Navigation section still
+ * the phone tab bar, the selected filter chip — and the Navigation register still
  * says so for the desktop cells this sidebar replaces. This one is neither that nor
  * `accent` (vermilion/amber): full-strength `text` label against `dim` siblings, plus a
  * `2px` left rule in `text` when current, taken directly from
  * `.impeccable/mocks/catalogue-wall.html`'s `.side a.on` rule — *no accent here — accent
  * means live action*. Issue #134 reserved `accent` for recording a watch; a sidebar that
  * borrowed it for "you are here" would spend the one colour in the application on the one
- * thing it was reserved against. `SPEC.md` §10.3 carries this as a recorded divergence
- * from `DESIGN.md` rather than leaving the deviation argued only here.
+ * thing it was reserved against. This is carried as a recorded divergence
+ * rather than a deviation argued only here.
  *
  * ── `isCurrentRoute`, not equality ───────────────────────────────────────────────────
  *
@@ -59,7 +59,7 @@ import { useUpNextRepress } from "./use-up-next-repress";
  *
  * **Issue #227 added it, as Stats.** It was added rather than swapped in — the whole
  * difference between this column and the phone's row. `tab-bar.tsx` had a budget of four
- * and had to retire Lists to make room; a column has no such budget, and `SPEC.md` §6's
+ * and had to retire Lists to make room; a column has no such budget, and
  * constraint 6 licenses *two genuinely different layouts, not one that stretches*, so the
  * desktop kept Lists and Stats both. A sidebar that dropped Lists to mirror the phone
  * would have been copying a constraint it does not have.
@@ -132,7 +132,7 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {/* `DESIGN.md`'s Hairline Rule: a `1px` `hair` rule between the five primary
+      {/* The Hairline Rule: a `1px` `hair` rule between the five primary
           destinations and Settings, the same division the masthead used to draw between
           its nav cells and its Settings entrance — carried over as a rule rather than as
           another bordered cell, since the sidebar is a column, not a row. */}

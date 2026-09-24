@@ -8,7 +8,7 @@ import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  * ── Why these are views and not helpers ──────────────────────────────────────────────
  *
  * `tvtracker` kept `watched_through`, `watched_count` and `watch_status` as columns.
- * ADR-0001 killed all three, and the point of that ruling is not tidiness: a stored copy
+ * All three are gone, and the point of that ruling is not tidiness: a stored copy
  * of derived state is a second answer that can disagree with the watches, and it goes
  * stale silently. There is no column here for one to hide in, and putting the rules in a
  * TypeScript helper would only move the hiding place — two callers, two answers, no diff.
@@ -16,10 +16,10 @@ import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  * So the definition lives in the database, once. Changing a rule later is a migration
  * with a diff on it, which is what makes a change to *what finished means* reviewable.
  *
- * ── The rules are ADR-0001's, verbatim ───────────────────────────────────────────────
+ * ── The rules, verbatim ──────────────────────────────────────────────────────────────
  *
- * Everything below is transcribed from that ADR's *Derivation rules*, not re-derived from
- * CONTEXT.md's glossary. Two rules run through all three views:
+ * Everything below is transcribed from the *Derivation rules*, not re-derived from
+ * the glossary. Two rules run through all three views:
  *
  *  - **A released episode is `season_no > 0 AND air_date IS NOT NULL AND air_date <=
  *    current_date`.** A null air date is not released; a future one is not released.
@@ -28,9 +28,9 @@ import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  *    the exclusion, *finished* would quietly come to mean "has no promotional clips" and
  *    a dozen shows would never reach it.
  *
- * **`current_date` is the server's, and that is an exception to a rule.** SPEC.md §5 says
- * every day and year boundary is computed `AT TIME ZONE` the user's IANA zone, never UTC.
- * ADR-0001 writes the released test as `air_date <= current_date` literally, and it is
+ * **`current_date` is the server's, and that is an exception to a rule.** Every day and
+ * year boundary is computed `AT TIME ZONE` the user's IANA zone, never UTC.
+ * The released test is written as `air_date <= current_date` literally, and it is
  * kept literal here, on the grounds that an air date is a `date` with no time in it —
  * there is no instant to place in a zone, so "released on the 4th" is the whole fact TMDB
  * gives us. The cost, stated rather than hidden: on a UTC server a reader in Auckland
@@ -54,7 +54,7 @@ import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  */
 
 /**
- * The five states, one row per library entry, evaluated in ADR-0001's order — **the first
+ * The five states, one row per library entry, evaluated in the settled order — **the first
  * match wins**, and the order is the rule.
  *
  * | State | Rule |
@@ -90,7 +90,7 @@ import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  *
  *  - **`in_production = NULL` on a show reads as *caught up*, never *finished*.** The
  *    rule is `in_production = false`, and `NULL = false` is NULL, so the finished branch
- *    cannot be reached. CONTEXT.md glosses caught up as "a show that is still in
+ *    cannot be reached. Caught up is glossed as "a show that is still in
  *    production", which a null is not — but the alternative is treating *unknown* as
  *    *ended*, which would call a show finished on missing data. The mirror should never
  *    produce this: `in_production` is null for films, and every show TMDB returns has it.
@@ -109,7 +109,7 @@ import { integer, pgView, smallint, text, uuid } from "drizzle-orm/pg-core";
  * The *finished* and *caught up* branches share a `not exists (… not exists (…))` shape
  * and differ only by the released test. That is deliberate: each `when` is a transcription
  * of one row of the table above, and the value of this view is that it can be read against
- * ADR-0001 side by side. Factoring the common half out would save six lines and cost the
+ * the rules side by side. Factoring the common half out would save six lines and cost the
  * one property the view exists to have.
  */
 /**
@@ -166,7 +166,7 @@ export const libraryEntryState = pgView("library_entry_state", {
 
 /**
  * Remaining: how many of a show's mirrored `season_no > 0` episodes carry no watch.
- * CONTEXT.md's **Remaining** entry is explicit that this is a show concept — "how much of
+ * **Remaining** is explicit that this is a show concept — "how much of
  * a show you have left" — so a film's entry has no row here at all, which is what makes it
  * the *missing* case in `db/access.ts`'s *closest to finishing* sort rather than a zero.
  *
@@ -182,7 +182,7 @@ export const libraryEntryState = pgView("library_entry_state", {
  *
  * ── Zero is a real answer, not an absent row ─────────────────────────────────────────
  *
- * A finished show's entry is still here, at `0` — `SPEC.md` §7 is explicit that "0
+ * A finished show's entry is still here, at `0` — the rule is explicit that "0
  * remaining is not missing". The distinction is what lets the sort push *finished* to the
  * bottom deliberately (`case when remaining = 0`) rather than by the accident of `NULLS
  * LAST` also catching every film.
@@ -227,8 +227,8 @@ export const libraryEntryRemaining = pgView("library_entry_remaining", {
  * **Released is transcribed, not imported**, from `library_entry_state`'s own *caught up*
  * branch a few lines up, on the same grounds that docblock gives for repeating it there
  * rather than factoring it out: `season_no > 0 and air_date is not null and air_date <=
- * current_date` is ADR-0001's rule, and each view that needs it writes it out so it can be
- * read against the ADR directly.
+ * current_date` is the rule, and each view that needs it writes it out so it can be
+ * read directly.
  *
  * A film has no row here at all, same as `library_entry_remaining` and for the same
  * reason — `db/access.ts` reads that absence as *no bar*. A show has a row even when

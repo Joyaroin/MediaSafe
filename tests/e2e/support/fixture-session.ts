@@ -17,7 +17,7 @@ import * as schema from "@/db/schema";
  *
  * ── Why a row rather than a real sign-in ──────────────────────────────────────────────
  *
- * `SPEC.md` §6 names Google as the only sign-in method, and there is no test provider to
+ * Google is the only sign-in method, and there is no test provider to
  * drive instead. So this writes the two rows a successful Google sign-in would have
  * written — `user`, `session` — and signs the cookie the same way `lib/auth.ts`'s Better
  * Auth instance would have: `${token}.${signature}`, HMAC-SHA256 over the raw token with
@@ -114,7 +114,7 @@ function requireBetterAuthSecret(): string {
   if (!secret) {
     throw new Error(
       "BETTER_AUTH_SECRET is not set. The browser suite mints its own session and needs " +
-        "the same secret the running app signs cookies with — see docs/local-development.md.",
+        "the same secret the running app signs cookies with.",
     );
   }
   return secret;

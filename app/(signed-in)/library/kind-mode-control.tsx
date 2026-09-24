@@ -17,7 +17,7 @@ import { KIND_MODES, type KindMode } from "./kind-mode";
  * empty state changes. A control that switches between two screens should not wear the
  * costume of a control that filters one.
  *
- * `DESIGN.md` §0 records that radii here are per-surface measures rather than a ramp, and
+ * Radii here are per-surface measures rather than a ramp, and
  * that each needs a stated reason. The track is `9999px` and the thumb `9999px` inside a
  * `3px` inset — a pill inside a pill, which is what makes the travel legible. The reason
  * is the paragraph above: this had to read as a different *kind* of control than a chip,

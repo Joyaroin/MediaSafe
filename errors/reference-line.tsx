@@ -5,7 +5,7 @@ import { useState } from "react";
 /**
  * The reference id, as it appears on screen.
  *
- * DESIGN.md's States section allows one technical string in the whole application and
+ * The States register allows one technical string in the whole application and
  * this is it, so it is set the way a printed reference number is set: dim, tabular, and
  * away from the sentences. `data-numeric` turns on `tabular-nums` (globals.css), which is
  * what makes a 32-character hex id readable back over a message a digit at a time.

@@ -25,8 +25,8 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * is seeded by the same helper, and it must now be **gone**.
  *
  * The reason is not that the old rule was badly built — it is that it was built on a
- * false premise. All 19,558 of the watches in the real library are imported (`SPEC.md`
- * §7; 19,391 is the *dated* subset that #89 quoted as the total), so a control that
+ * false premise. All 19,558 of the watches in the real library are imported
+ * (19,391 is the *dated* subset that #89 quoted as the total), so a control that
  * refuses them renders on essentially nothing its only reader owns, and *unwatch* meant
  * *unwatch unless I happened to import it*. It now means unwatched.
  *
@@ -42,7 +42,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * two to four. #89 already asked *not another episode of this title* and *not another
  * account's library entry*; #145 adds **not another title of mine**, and **not another
  * account's watch of the very same episode**. That last one is the case worth having:
- * `episode` is global (ADR-0001), so two accounts hold watches against one episode id,
+ * `episode` is global, so two accounts hold watches against one episode id,
  * and a missing owner predicate would delete somebody else's history with nothing on this
  * screen or in the other three tests to notice.
  *
@@ -126,7 +126,7 @@ async function seedShow(
 
 /**
  * A second account's copy of a title somebody else already has. `title` and `episode` are
- * global (ADR-0001), so this is one row and not a second show — which is exactly what
+ * global, so this is one row and not a second show — which is exactly what
  * makes the cross-account assertion below able to fail.
  */
 async function addToLibrary(
@@ -251,7 +251,7 @@ describe("unwatch", () => {
         { seasonNo: 1, episodeNo: 1 },
       ]);
       const episodeId = episodeIds["1-1"];
-      // Two clicks, two keys — a genuine rewatch, which is two rows (ADR-0001).
+      // Two clicks, two keys — a genuine rewatch, which is two rows.
       await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
       await recordWatch(userId, { libraryEntryId: entryId, episodeId, sourceKey: nextKey() }, tx);
       expect(await watchesOnEpisode(tx, userId, episodeId)).toHaveLength(2);
@@ -560,8 +560,8 @@ describe("unwatch", () => {
 
       await unwatch(userId, { libraryEntryId: entryId, episodeId: episodeIds["1-1"] }, tx);
 
-      // Abandonment is the one hand-set state in the model (`CONTEXT.md`), and taking a
-      // watch back is not a statement about it in either direction. ADR-0001 clears it
+      // Abandonment is the one hand-set state in the model, and taking a
+      // watch back is not a statement about it in either direction. It is cleared
       // only in the same transaction as a watch *insert*.
       const [row] = await tx
         .select({ abandonedAt: libraryEntry.abandonedAt })

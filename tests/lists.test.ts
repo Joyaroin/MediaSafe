@@ -350,7 +350,7 @@ describe("adding a title to a list", () => {
  * `tests/bulk-selection.test.ts` proves the browser only ever asks for **one** write.
  * These prove what that one write does when it gets to Postgres — the half that no fake
  * can answer for, because the properties are the primary key, the position uniqueness and
- * the transaction itself (`SPEC.md` §6: a mock of a constraint tests the mock).
+ * the transaction itself — a mock of a constraint tests the mock.
  */
 describe("adding several titles to a list at once", () => {
   it("lands the whole set at sequential positions, in the order it was given", async () => {

@@ -1,5 +1,5 @@
 /**
- * The theme choice — `SPEC.md` §7's *Out of scope entirely* list no longer bans this
+ * The theme choice — the *Out of scope entirely* list no longer bans this
  * control, and that bullet carries the reversal and its reasoning.
  *
  * ── Three states, and why the third one is not "light" ───────────────────────────────

@@ -3,7 +3,7 @@ import { TitleDetailBody } from "./title-detail-body";
 
 /**
  * Title detail, on the phone — a route you push and pop (issue #58, and the third of the
- * three genuine desktop/phone divergences, `docs/design/v1-surfaces.md` §5). The desktop
+ * three genuine desktop/phone divergences). The desktop
  * pane (`programme-note.tsx`) shows the identical content without ever navigating here;
  * this file exists because the phone's whole reason for choosing a route over a pane is
  * that back should do what back does, and only a real route gives it a history entry to
@@ -26,7 +26,7 @@ import { TitleDetailBody } from "./title-detail-body";
  *
  * The **day is in the key**, unlike the lists: an episode's `released` flag is read off
  * `air_date <= current_date`, so the season grid grows at midnight with no write behind it
- * (`cache/tags.ts`'s `serverDay`, and ADR-0003).
+ * (`cache/tags.ts`'s `serverDay`).
  *
  * ── The three live facts stream in behind this render, not after it mounts (issue #218) ──
  *

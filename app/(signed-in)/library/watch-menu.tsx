@@ -17,7 +17,7 @@ import { watchMarks } from "./watch-marks";
  * for either of these a few times a year, and both have consequences a stray tap should
  * not have: *Unwatch* removes **every** watch of the episode (#145's rule — *one press,
  * one meaning*), which on one of the 1,156 episodes carrying imported rewatches
- * (`docs/adr/0001`) is years of record. Between the two-pill row and this, the settled
+ * is years of record. Between the two-pill row and this, the settled
  * mark itself was the unwatch, which was worse than either: a glyph that reads as a
  * *state* deleting history on one tap.
  *
@@ -27,7 +27,7 @@ import { watchMarks } from "./watch-marks";
  * ── Rewatch is back, and it is the same write the check makes ────────────────────────
  *
  * `watchMarks.mark` on an already-watched episode, which mints a fresh key and writes a
- * second `watch` row — a rewatch, in exactly `CONTEXT.md`'s sense. Nothing about the data
+ * second `watch` row — a rewatch, in exactly the domain's sense. Nothing about the data
  * model changed to allow this; the button was deleted and the rows never stopped existing.
  *
  * It is `attempt` rather than a new store call because it *is* the mark: the row's own
@@ -59,7 +59,7 @@ import { watchMarks } from "./watch-marks";
  *   `border-hair` rule, rather than beside `Undo` in the same `gap-3` group — and it
  *   carries `UnwatchIcon` beside its label, a shape `Undo` does not have. Neither is a new
  *   button tier: both controls below stay on `GHOST_RECOVERY`, the register `Rewatch` and
- *   `Undo` already wear, because `DESIGN.md` §10 already declined a further tier and this
+ *   `Undo` already wear, because a further tier was already declined and this
  *   is not the ticket that reopens that.
  * - **A confirmation that replaces this dialog's lower half, not a second dialog over it.**
  *   `confirming` below governs which half renders: the episode's name (this file's own
@@ -253,7 +253,7 @@ export function WatchMenu({
               (a fresh `mt-4`/`pt-4` gap plus `border-hair`, rather than the same `gap-3`
               group) and a redundant visual signal beyond wording (`UnwatchIcon`, a shape
               `Undo` does not carry). Still `GHOST_RECOVERY`, the same register as the row
-              above — `DESIGN.md` §10 already declined a further button tier, and a
+              above — a further button tier was already declined, and a
               redundant *signal* is not one: nothing here paints a colour the other two
               controls do not already use. */}
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-hair pt-4">

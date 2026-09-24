@@ -65,13 +65,13 @@ import type { NativeImportWatch } from "@/import/native-format";
  *
  * ── Why one place ────────────────────────────────────────────────────────────────────
  *
- * There is no row-level security. SPEC.md §6 rules it out for a reason `tvtracker` had
+ * There is no row-level security. It is ruled out for a reason `tvtracker` had
  * to learn twice: Neon's connection owns the tables, so it bypasses policies, and a
  * policy that is bypassed is worse than no policy because it reads like protection.
  *
  * So **one filtered column, in one place, is the entire isolation mechanism.** Every
- * owned table carries `user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE`
- * (ADR-0001), and the only thing standing between one account's library and another's is
+ * owned table carries `user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE`,
+ *  and the only thing standing between one account's library and another's is
  * that the predicate is actually there.
  *
  * ── What that is, exactly, and what it is not ────────────────────────────────────────
@@ -129,7 +129,7 @@ import type { NativeImportWatch } from "@/import/native-format";
  * step, and the two functions at the foot of this file are the first real queries.
  *
  * `title` and `episode` are global and unowned — one row per TMDB id, shared across
- * accounts (ADR-0001). Reads of those take no user id and cannot be scoped, which is why
+ * accounts. Reads of those take no user id and cannot be scoped, which is why
  * `ownedBy` will not typecheck against them. **That does not put them outside this
  * module.** `addTitleToLibrary` writes both, and it is here for the reason the module
  * exists: it is one transaction that writes global rows *and* an owned one, and splitting
@@ -143,7 +143,7 @@ declare const userIdBrand: unique symbol;
  * Better Auth's `user.id` — `text`, not a uuid — and branded, so that it is not
  * interchangeable with the other strings this app is about to be full of.
  *
- * ADR-0001 gives `library_entry`, `watch` and `list` a uuid `id` of their own alongside
+ * The schema gives `library_entry`, `watch` and `list` a uuid `id` of their own alongside
  * `user_id`, and `watch` carries a `source_key`. (`list_membership` never had one — its
  * key is composite, `(list_id, title_id)` since amendment 7 — and this line said it did
  * until #143 went looking.) Read into variables,
@@ -278,20 +278,20 @@ interface MirroredTitle {
  *
  * `addTitleToLibrary` and `applyImportChunk` both put a mirror into these two tables, and
  * they are **the same write** — so it is spelled once here rather than twice with two
- * sets of conflict handling. `title` and `episode` are global and shared by every account
- * (ADR-0001): two upserts against them is how the add path and the import path drift, and
+ * sets of conflict handling. `title` and `episode` are global and shared by every account:
+ *  two upserts against them is how the add path and the import path drift, and
  * only one of the two ever gets fixed.
  *
  * ── The two conflicts, resolved differently on purpose ───────────────────────────────
  *
  *  - **`title`** upserts. Adding is the natural refresh point for a title somebody else
  *    added months ago, and `metadata_refreshed_at` moves with it so the nightly sweep
- *    (ADR-0001) does not immediately do the work again.
+ *    does not immediately do the work again.
  *  - **`episode`** upserts on `tmdb_episode_id`, which is identity; season and episode
  *    numbers are borrowed attributes and are updated, never matched on. If TMDB has
  *    renumbered a season since the last add, the *other* unique — `(title_id, season_no,
  *    episode_no)` — can still reject the batch, and it should: that is a genuine upstream
- *    renumbering, it is `SPEC.md` §11.3's open question arriving early, and ADR-0001's
+ *    renumbering, it is an open question arriving early, and the
  *    standing answer is that it fails loudly rather than quietly repointing history.
  *
  * `DO UPDATE` rather than `DO NOTHING` is also what makes `RETURNING` total here: a
@@ -425,7 +425,7 @@ export interface SweepCandidate {
 }
 
 /**
- * ADR-0001's cap, and issue #115's: at 472 titles the whole library turns over roughly
+ * The schema's cap, and issue #115's: at 472 titles the whole library turns over roughly
  * every three days, comfortably inside TMDB's six-month cache ceiling.
  */
 export const NIGHTLY_SWEEP_CAP = 200;
@@ -451,7 +451,7 @@ function asSweepCandidate(row: {
 }
 
 /**
- * Which titles the nightly sweep refreshes next, in ADR-0001's priority order, capped at
+ * Which titles the nightly sweep refreshes next, in the schema's priority order, capped at
  * `cap` in total.
  *
  * ── Tier 0: a title whose episodes have never arrived (issue #271) ───────────────────
@@ -561,7 +561,7 @@ export async function titlesDueForRefresh(
  * Write one title's refreshed mirror — the nightly sweep's only write, and every write
  * `mirrorTitle` already makes for `addTitleToLibrary` and `applyImportChunk`, reused
  * rather than respelled: refreshing a title on a schedule is not a different write from
- * mirroring it on add, and ADR-0001 mirrors only through the one pure mapping.
+ * mirroring it on add, and the mirror runs only through the one pure mapping.
  *
  * `metadata_refreshed_at` moves to `now()` as part of that upsert (`mirrorTitle`), which
  * is what makes **not calling this** the entire mechanism behind *"a title skipped for
@@ -592,7 +592,7 @@ export async function refreshTitleMirror(
  * ── Somebody's, not this caller's ────────────────────────────────────────────────────
  *
  * There is no user id here and there must not be. `title` and `episode` are global and
- * unowned (ADR-0001), so a repoint happens to **every** account at once: an episode that
+ * unowned, so a repoint happens to **every** account at once: an episode that
  * one stranger has watched is an episode this title may not lose, exactly as if it were
  * the reader's own. Scoping this to one account would make the decision correct for that
  * account and wrong for everybody else — which is the shape of every mistake this path
@@ -686,10 +686,10 @@ export interface RepointParams {
  * ── Not a watch is touched, and that is structural rather than careful ───────────────
  *
  * `watch` is not written here, and neither is `episode.id`. Episodes are upserted on
- * `tmdb_episode_id`, which is identity (ADR-0001) — so an episode the survivor still
+ * `tmdb_episode_id`, which is identity — so an episode the survivor still
  * carries keeps the row id it always had, and every watch pointing at it still points at
  * the episode it always meant. `reconcileEpisodes` is what guarantees the survivor still
- * carries all of them; ADR-0001's `NO ACTION` foreign key is what would refuse the write
+ * carries all of them; the `NO ACTION` foreign key is what would refuse the write
  * if it somehow did not.
  *
  * ── `false`, not a throw, when the survivor is already a row of its own ──────────────
@@ -761,10 +761,10 @@ export interface AddOutcome {
  * ── The sharpest edge in build step 2 ────────────────────────────────────────────────
  *
  * This writes three tables and **two of them are global**. `title` and `episode` are
- * unowned, one row per TMDB id, shared by every account (ADR-0001) — so one person adding
+ * unowned, one row per TMDB id, shared by every account — so one person adding
  * a show creates the rows every other person reads, and re-adding one refreshes what they
  * see. That is the intended design, not an accident of normalisation: a Title is a fact
- * about the world (`CONTEXT.md`), and MediaSafe owns none of it.
+ * about the world, and MediaSafe owns none of it.
  *
  * It is also why the mapping that produces `mirror` is a tested pure function
  * (`tmdb/mirror.ts`) rather than a few lines inline here. This function does no
@@ -822,7 +822,7 @@ export async function addTitleToLibrary(
  *
  * `added` is `addOutcome`'s own field, unchanged in meaning. `recorded` is
  * `MarkWatchedUpToOutcome`'s, and it **stays off the wire** for that one's stated reason
- * — a count on a surface is `DESIGN.md` §11's permanent exclusion, and this press shows
+ * — a count on a surface is a permanent exclusion, and this press shows
  * the reader no episode list to reconcile a number against in the first place.
  *
  * The pair is genuinely two facts and not one. A show already in the library, added again
@@ -861,7 +861,7 @@ export interface AddWatchedOutcome {
  *
  * **`current_date` is read from Postgres, in the same statement that selects the rows.**
  * Not a `Date` built in this process: the views compare against the server's
- * `current_date` (`db/views.ts` records that as a deliberate exception to `SPEC.md` §5's
+ * `current_date` (`db/views.ts` records that as a deliberate exception to the
  * timezone rule), and a write that decided *released* by a different clock than the read
  * that renders it would be a show that reads *watching* the moment after it was recorded
  * as finished.
@@ -881,10 +881,10 @@ export interface AddWatchedOutcome {
  * ── Idempotent twice over, because one guard is not enough ───────────────────────────
  *
  * The same press arriving twice is caught by `UNIQUE (user_id, source, source_key)`, the
- * identity ADR-0001 chose. A *genuinely new* press against a title already recorded is
+ * identity the schema chose. A *genuinely new* press against a title already recorded is
  * caught by the already-watched filter below, which is the same filter `markWatchedUpTo`
  * applies and exists for the same reason: a second `watch` row against an episode is a
- * **rewatch** (`CONTEXT.md`), and one tap on *Add — watched* has no business claiming the
+ * **rewatch**, and one tap on *Add — watched* has no business claiming the
  * reader saw the show twice. Neither guard stands in for the other — the first cannot see
  * a press with a fresh key, and the second cannot see two copies of one press racing.
  *
@@ -898,7 +898,7 @@ export interface AddWatchedOutcome {
  * of *this* title from two surfaces — the search row in one tab, the unowned title page
  * in another, each with its own key — would both read an empty `watch` and both write the
  * whole show. Twelve rows, six of them phantom rewatches, indistinguishable on every
- * screen from history the reader made (ADR-0001 amendment 4).
+ * screen from history the reader made.
  *
  * **They cannot interleave, and the reason is one line above rather than anything here.**
  * `addTitleToLibrary` mirrors on the way in, and `mirrorTitle`'s upsert against `title` is
@@ -925,7 +925,7 @@ export interface AddWatchedOutcome {
  *
  * ── `abandoned_at` is not cleared ────────────────────────────────────────────────────
  *
- * This is backfill, and ADR-0001 amendment 9 is the ruling: *a backfill written by the
+ * This is backfill, and the ruling is: *a backfill written by the
  * reader does not clear `abandoned_at`* — the clear follows a watch of something you are
  * watching now, not a watch you are writing down about the past. `markWatchedUpTo` and
  * `applyImportChunk` both take that side and this write joins them.
@@ -999,7 +999,7 @@ export async function addTitleToLibraryWatched(
           userId,
           libraryEntryId: entry.id,
           titleId: entry.titleId,
-          // A film's watch carries no episode (ADR-0001 §3, where the composite foreign
+          // A film's watch carries no episode (the composite foreign
           // key makes the opposite unsatisfiable).
           episodeId: null,
           watchedAt: sql`now()`,
@@ -1072,7 +1072,7 @@ export async function addTitleToLibraryWatched(
  * module and lets every test of the import run with the network unplugged. Whoever built
  * the chunk (the import screen, or the seed CLI) is where a mirror comes from.
  *
- * `abandoned` is the file's boolean and nothing more; `SPEC.md` §7 is explicit that the
+ * `abandoned` is the file's boolean and nothing more; the rule is explicit that the
  * file never carries a timestamp, because import is what mints it and the
  * `abandoned_at == added_at` identity has to hold in every environment that runs the file.
  */
@@ -1082,7 +1082,7 @@ export interface ImportChunkTitle {
 }
 
 /**
- * One page of an import — `SPEC.md` §7 sizes it at ~25 titles, forced by Vercel Hobby's
+ * One page of an import — sized at ~25 titles, forced by Vercel Hobby's
  * 300-second function duration and 4.5 MB request body.
  *
  * `titles` and `watches` are independent: 21 real titles have no watches at all and
@@ -1097,7 +1097,7 @@ export interface ImportChunk {
 }
 
 /**
- * What one chunk actually wrote — the three counters `SPEC.md` §7's progress line prints,
+ * What one chunk actually wrote — the three counters the progress line prints,
  * and nothing else:
  *
  * ```
@@ -1126,7 +1126,7 @@ export interface ImportChunkOutcome {
  * everything a watch needs in order to be written *and* checked.
  *
  * Collected across the whole chunk and keyed by `tmdb_episode_id`, because that column is
- * globally unique and is identity (ADR-0001): the episode, not the title, is what locates
+ * globally unique and is identity: the episode, not the title, is what locates
  * a watch.
  */
 interface ChunkEpisode {
@@ -1141,13 +1141,13 @@ interface ChunkEpisode {
  *
  * ── Why this is one function and not two ─────────────────────────────────────────────
  *
- * `SPEC.md` §6 seeds preview and local **by running MediaSafe's own import, not a
+ * Preview and local are seeded **by running MediaSafe's own import, not a
  * separate loader**, and the only way to hold that is for one function to be the writer.
  * The import screen (#73) and `npm run db:seed` (#74) are both callers of this; neither
  * writes a row of its own.
  *
  * **It knows nothing about `tvtracker`.** Every fact about the old application lives in
- * the conversion script (`SPEC.md` §7); this inserts what it is given and interprets
+ * the conversion script; this inserts what it is given and interprets
  * nothing. *Paused* became *abandoned* before the file was written, not here.
  *
  * ── The guard that is the reason this ticket exists ──────────────────────────────────
@@ -1161,7 +1161,7 @@ interface ChunkEpisode {
  * Both halves of it matter, and both are quiet failures:
  *
  *  - An import that **cleared** it would undo the judgement every time it added a watch
- *    to an abandoned title — and `CONTEXT.md` makes watching again the thing that clears
+ *    to an abandoned title — and watching again is the thing that clears
  *    *abandoned*, so a naive "watches mean you are watching" write does exactly that.
  *  - An import that **re-set** it would resurrect the abandonment on every title since
  *    un-abandoned, once per re-seed, on 155 titles, with nothing on any screen to say so.
@@ -1178,7 +1178,7 @@ interface ChunkEpisode {
  *
  * ── A watch resolves through its episode, not through its title ──────────────────────
  *
- * `episode.tmdb_episode_id` is globally unique and is identity (ADR-0001), so the episode
+ * `episode.tmdb_episode_id` is globally unique and is identity, so the episode
  * is what locates a watch — including for a title whose episodes another account created
  * years ago, which `mirrorTitle`'s `DO UPDATE … RETURNING` covers. The `tmdb_id` the file
  * puts on a watch is therefore redundant, and it is **checked rather than ignored**: a
@@ -1244,7 +1244,7 @@ export async function applyImportChunk(
                 titleId,
                 /**
                  * `now()`, not a `Date` from this process: it is the transaction's start,
-                 * which is also what `added_at` defaults to, so `SPEC.md` §7's
+                 * which is also what `added_at` defaults to, so the
                  * `abandoned_at == added_at` identity holds exactly rather than nearly.
                  */
                 abandonedAt: abandonedTitleIds.has(titleId) ? sql`now()` : null,
@@ -1354,7 +1354,7 @@ const APP_WATCH_SOURCE = "app";
  * ── The one field with a rule attached ────────────────────────────────────────────────
  *
  * `sourceKey` is minted **in the browser**, once per click, and reused for every retry of
- * that click (ADR-0001, issue #84). A server-minted key is a new key per request, which
+ * that click. A server-minted key is a new key per request, which
  * is the precise shape of the bug `recordWatch` exists to prevent — so this function
  * receives the key rather than inventing one, and there is deliberately no code path
  * inside it that could.
@@ -1381,7 +1381,7 @@ export interface RecordWatchOutcome {
  *
  * ── Why a retry cannot become a rewatch ───────────────────────────────────────────────
  *
- * `UNIQUE (user_id, source, source_key)` (ADR-0001) makes idempotency a property of the
+ * `UNIQUE (user_id, source, source_key)` makes idempotency a property of the
  * statement: the same `sourceKey` twice is one row, `ON CONFLICT DO NOTHING`. A genuine
  * rewatch is a different key, minted by a different click, and is a second row — nothing
  * here tells the two apart by content, because content is not what identifies a watch.
@@ -1392,10 +1392,10 @@ export interface RecordWatchOutcome {
  *
  * ── Resuming, in the same statement as the insert ─────────────────────────────────────
  *
- * `abandoned_at` is cleared in the same transaction as the watch insert — `CONTEXT.md`'s
+ * `abandoned_at` is cleared in the same transaction as the watch insert —
  * *watching it again clears it*, made true by the transaction rather than by a follow-up
  * write somebody could forget. **It runs only when the insert actually wrote a row.** A
- * retry is defined as a no-op (`ADR-0001`'s "same key twice is one row"), and a no-op
+ * retry is defined as a no-op ("same key twice is one row"), and a no-op
  * that still clears a column is not one: picture a title watched, then deliberately
  * abandoned again, with a stale optimistic retry of the *first* click still in flight —
  * without this guard, that retry would silently un-abandon a title the person re-gave-up
@@ -1423,7 +1423,7 @@ export interface RecordWatchOutcome {
  * `params.libraryEntryId` is looked up through `ownedBy(userId, libraryEntry)` before
  * anything is written, and a miss throws — the same treatment `getTitleDetail` gives a
  * tampered or stale id. The composite foreign keys on `watch` would also reject a
- * cross-account or cross-title row (ADR-0001 §3), but that is the backstop for a bug, not
+ * cross-account or cross-title row, but that is the backstop for a bug, not
  * the mechanism this function leans on to say no.
  */
 export async function recordWatch(
@@ -1521,7 +1521,7 @@ export interface UnwatchOutcome {
  * product grew a control that says so. It offers to take back the mark just recorded, and
  * it was calling `unwatch` — so on an episode carrying imported rewatches it took back
  * every earlier watch as well, silently, while claiming to reverse one press. For the
- * 1,156 episodes `docs/adr/0001` amendment 8 counts with two or three rows, *Undo* was the
+ * 1,156 episodes that carry two or three rows, *Undo* was the
  * most destructive control in the application and the only one that looked harmless.
  *
  * This is the exact inverse of `recordWatch`: one press wrote one row, one undo removes
@@ -1544,7 +1544,7 @@ export interface UnwatchOutcome {
  * ── Authorization and isolation are `unwatch`'s, unchanged ───────────────────────────
  *
  * The same entry check, the same `ownedBy` on the delete, the same throw on a miss, for
- * the reasons the docblock below gives at length. `episode` is global (ADR-0001), so owner
+ * the reasons the docblock below gives at length. `episode` is global, so owner
  * plus library entry plus episode is the whole of the isolation here too.
  */
 export async function undoWatch(
@@ -1605,7 +1605,7 @@ export async function undoWatch(
  *
  * ── Every watch of that episode, and nothing else ─────────────────────────────────────
  *
- * A rewatch is a second `watch` row (`CONTEXT.md`, ADR-0001), and this function's job is
+ * A rewatch is a second `watch` row, and this function's job is
  * *put the episode back to unwatched* — so it is **every** row, not the most recent one.
  * One `DELETE` over a predicate, no `SELECT` resolving an id for it to delete by, and no
  * ordering: there is no longer a choice of which watch goes, so there is nothing left for
@@ -1619,14 +1619,14 @@ export async function undoWatch(
  *
  * It was not wrong to be careful; it was wrong about the facts. The rule rested on the
  * library's imported watches having been reconstructed once from an archive with no live
- * source — unrecoverable, and so not this application's to edit. **ADR-0001 amendment 8
- * is where that is taken apart**, with the committed export, the committed seed, import's
- * idempotency and its deterministic keys as the evidence; it is not restated here, because
- * an argument kept in two places is an argument that comes to differ between them.
+ * source — unrecoverable, and so not this application's to edit. **That premise is
+ * false**: the committed export, the committed seed, import's idempotency and its
+ * deterministic keys are between them the evidence that an imported watch is
+ * reconstructible rather than destroyed.
  *
  * `npm run db:seed` therefore restores any imported watch exactly, which makes the *cost*
  * of removing one a command on a laptop rather than a fact destroyed. Against that: the
- * library is **19,558** imported watches (`SPEC.md` §7 — 19,391 is the *dated* subset of
+ * library is **19,558** imported watches (19,391 is the *dated* subset of
  * them, and #89 quoted that figure as the total), so a control that refused them rendered
  * on essentially nothing its only reader owns. The careful rule made the feature
  * invisible and bought a recovery guarantee that `db:seed` already gave.
@@ -1647,7 +1647,7 @@ export async function undoWatch(
  * the same reason.
  *
  * `abandoned_at` is **not** touched in either direction. `recordWatch` clears it because
- * `CONTEXT.md` says watching something again clears it, and ADR-0001 pins that clear to
+ * Watching something again clears it, and that clear is pinned to
  * the same transaction as a watch *insert*. There is no matching rule saying taking a
  * watch back gives up on a title: unwatching is a correction to the record, not a
  * judgement about the show.
@@ -1664,7 +1664,7 @@ export async function undoWatch(
  * same treatment `recordWatch` gives a tampered or stale id. `ownedBy(userId, watch)` is
  * then stated on the delete too rather than trusted to follow from the entry.
  *
- * That predicate mattered before and is load-bearing now: `episode` is global (ADR-0001),
+ * That predicate mattered before and is load-bearing now: `episode` is global,
  * so two accounts can hold a watch of the very same episode id, and `source` was never
  * what kept one person's press off the other's row. Owner, library entry and episode are
  * the whole of the isolation, which is why the tests #145 adds are the two isolation
@@ -1749,7 +1749,7 @@ export interface MarkWatchedUpToParams {
  * It is genuinely not knowable in advance from the browser — the reader's screen may be
  * older than the table — which is the same test `UnwatchOutcome`'s `removed` passes and
  * the reason that one exists. And like `removed`, it **stays off the wire**
- * (`watch-action.ts` returns only `ok`): a count on a surface is `DESIGN.md` §11's
+ * (`watch-action.ts` returns only `ok`): a count on a surface is a
  * permanent exclusion, and the confirmation the reader was already shown is drawn from
  * the episodes in front of them rather than from an answer that arrives after the write.
  */
@@ -1759,7 +1759,7 @@ export interface MarkWatchedUpToOutcome {
 
 /**
  * Record a show up to the episode the reader had reached — issue #196, and the migration
- * case `SPEC.md`'s import does not cover: a reader arriving with no export to bring.
+ * case the import does not cover: a reader arriving with no export to bring.
  *
  * ── What "earlier" means, and where the answer comes from ────────────────────────────
  *
@@ -1782,7 +1782,7 @@ export interface MarkWatchedUpToOutcome {
  *
  * ── Already-recorded episodes are skipped, not re-written ────────────────────────────
  *
- * A second `watch` row against an episode is a **rewatch** (`CONTEXT.md`, ADR-0001), and
+ * A second `watch` row against an episode is a **rewatch**, and
  * a backfill has no business claiming the reader watched something twice. So the covered
  * set is filtered against this entry's existing watches before anything is inserted.
  *
@@ -1801,8 +1801,8 @@ export interface MarkWatchedUpToOutcome {
  *
  * ── `abandoned_at` is not cleared, which is where this parts company with `recordWatch` ─
  *
- * `recordWatch` clears it, because `CONTEXT.md` says watching something again clears it
- * and ADR-0001 pins that clear to a watch insert. This write is the other kind: it is
+ * `recordWatch` clears it, because watching something again clears it
+ * and that clear is pinned to a watch insert. This write is the other kind: it is
  * backfill, and `applyImportChunk` — the only other backfill in the application — does
  * not clear it either, on the stated grounds that a re-run import may add watches to an
  * abandoned title without giving it back.
@@ -1814,9 +1814,9 @@ export interface MarkWatchedUpToOutcome {
  * marked up to its last episode still reads *abandoned* afterwards, because
  * `library_entry_state` tests `abandoned_at` first and outranks every derived answer.
  *
- * **This is a divergence from a written rule and is recorded as one** — ADR-0001
- * amendment 9, added because the two-axis review of #196 was right that a docblock is not
- * where a departure from `CONTEXT.md` gets to live. That amendment is the argument; this
+ * **This is a divergence from a written rule and is recorded as one** — set
+ * down because the two-axis review of #196 was right that a docblock is not
+ * where a departure from the domain language gets to live. That record is the argument; this
  * paragraph is the pointer to it.
  *
  * ── Two reads and one insert, in one transaction ─────────────────────────────────────
@@ -1839,7 +1839,7 @@ export interface MarkWatchedUpToOutcome {
  * treatment `recordWatch` and `getTitleDetail` give a tampered or stale id. The episode
  * is then resolved **through the entry's own title** rather than by its id alone, so an
  * episode of some other show cannot be used to reach across into this entry: `episode` is
- * global (ADR-0001), and an id from anywhere in the catalogue is a value anyone can send.
+ * global, and an id from anywhere in the catalogue is a value anyone can send.
  */
 export async function markWatchedUpTo(
   userId: UserId,
@@ -1926,14 +1926,14 @@ export async function markWatchedUpTo(
 
 /**
  * Give up on a title — issue #87, and the only hand-set state in the model
- * (`CONTEXT.md`, *Abandoned*).
+ * (*Abandoned*).
  *
  * ── Why this needs no state to hand back ──────────────────────────────────────────────
  *
  * `db/views.ts`'s `library_entry_state` tests `abandoned_at is not null` **first**, ahead
  * of every derived rule — so setting it is the whole write. There is nothing to compute:
  * the entry reads *abandoned* on the very next read regardless of what its watches say,
- * which is the property `SPEC.md` §7 calls "abandoned outranks the state the watches
+ * which is the property called "abandoned outranks the state the watches
  * would give."
  *
  * ── Neither this nor `unabandonTitle` below touches `watch` ─────────────────────────
@@ -2077,7 +2077,7 @@ export async function abandonTitles(
 }
 
 /**
- * Take an abandonment back directly — the other of the two paths `CONTEXT.md`'s
+ * Take an abandonment back directly — the other of the two paths
  * *Abandoned* names out of, and the one that does not require recording a watch that did
  * not happen. The other path is the watch write itself: `recordWatch` already clears
  * `abandoned_at` in the same transaction as an insert, for *watching it again clears it*.
@@ -2128,12 +2128,12 @@ export async function unabandonTitle(
 }
 
 /**
- * Your rating of one title — issue #113, and the last column in ADR-0001's model that had
+ * Your rating of one title — issue #113, and the last column in the model that had
  * no writer at all.
  *
  * ── One rating per title, and no history of it ────────────────────────────────────────
  *
- * An `UPDATE` of one column, never an insert, which is the whole of `SPEC.md` §7's *held
+ * An `UPDATE` of one column, never an insert, which is the whole of *held
  * on the library entry, overwritten on change, one per title and never one per watch*:
  * choosing a second value leaves no trace of the first, and a rewatch writes a `watch`
  * row this column knows nothing about. There is deliberately no rating on `watch` for
@@ -2210,7 +2210,7 @@ export async function rateTitle(
  *
  * ── A count that cannot be read is not a zero ────────────────────────────────────────
  *
- * There is no `try` here and there must never be one (`AGENTS.md`, `SPEC.md` §3.2). On
+ * There is no `try` here and there must never be one (`AGENTS.md`). On
  * this surface it is the difference between *this title has nothing behind it* and
  * *MediaSafe could not tell you what you are about to destroy*, and the confirmation page's
  * own boundary is what turns the throw into a read failure with no remove button under it.
@@ -2271,8 +2271,7 @@ export async function titleFootprint(
  * ── One statement, and the cascade is the schema's ───────────────────────────────────
  *
  * `deleteAccount` below is the precedent and the argument is identical: `watch`'s
- * composite foreign key to `library_entry` is `ON DELETE CASCADE` (`db/tables.ts`,
- * ADR-0001), so deleting the entry takes that title's watches with it, atomically, and the
+ * composite foreign key to `library_entry` is `ON DELETE CASCADE` (`db/tables.ts`), so deleting the entry takes that title's watches with it, atomically, and the
  * ordering and the completeness are Postgres's rather than a hand-written sequence's. A
  * list of deletes in application code is a list an eighth owned table gets left off.
  *
@@ -2285,7 +2284,7 @@ export async function titleFootprint(
  * `title` and `episode`, exactly as they survive account deletion: they are global and
  * unowned, one row per TMDB id shared by every account, and `library_entry.title_id`
  * references `title` with **no** cascade, so this statement cannot reach them. A Title is a
- * fact about the world (`CONTEXT.md`) and removing it from your library is not a statement
+ * fact about the world and removing it from your library is not a statement
  * about it. It is also what makes the title addable again afterwards — the add finds the
  * mirrored rows rather than re-fetching them, and mints a fresh entry with no watches
  * behind it, which is a watchlist title.
@@ -2402,7 +2401,7 @@ export interface AccountFootprint {
  *
  * ── A count that cannot be read is not a zero ────────────────────────────────────────
  *
- * There is no `try` here and there must never be one. `SPEC.md` §3.2 is the rule
+ * There is no `try` here and there must never be one. That is the rule
  * everywhere; on this page it is the difference between *you have nothing to lose* and
  * *MediaSafe could not tell you what you are about to lose*. A failure throws, the page's
  * boundary catches it, and the reader is shown a read failure with no confirmation field
@@ -2446,7 +2445,7 @@ export async function accountFootprint(
  *
  * `library_entry`, `list`, `list_membership`, `session` and `account` all carry
  * `REFERENCES "user"(id) ON DELETE CASCADE`, and `watch` cascades transitively through
- * its composite key to `library_entry` (ADR-0001, `db/tables.ts`). `list_membership`
+ * its composite key to `library_entry` (`db/tables.ts`). `list_membership`
  * gained its direct key with amendment 7, when it stopped reaching `user` through
  * `library_entry`; it also still cascades through `list`, and either route alone would
  * take it. So the deletion is one `DELETE`, and the ordering, the atomicity and
@@ -2463,7 +2462,7 @@ export async function accountFootprint(
  * `title` and `episode`. They are global and unowned — one row per TMDB id, shared across
  * every account — and `library_entry.title_id` references `title` with **no** cascade, so
  * this statement cannot reach them. A title nobody has in a library any more is left
- * behind as an orphan, and that is v1's answer: `SPEC.md` §11.3 lists reaping them as
+ * behind as an orphan, and that is v1's answer: reaping them is left
  * open. The alternative, a cascade that emptied the catalogue when its last reader left,
  * would silently empty every other account's library too.
  *
@@ -2548,7 +2547,7 @@ export const LIBRARY_STATES = [
   "abandoned",
 ] as const;
 
-/** Where one title stands. Derived in `db/views.ts`, never stored (ADR-0001). */
+/** Where one title stands. Derived in `db/views.ts`, never stored. */
 export type LibraryState = (typeof LIBRARY_STATES)[number];
 
 /**
@@ -2561,8 +2560,8 @@ export type LibraryState = (typeof LIBRARY_STATES)[number];
  * would make *nothing to watch* and *the next episode has no name yet* the same line on
  * the cell, and they are not the same fact.
  *
- * There is no season or episode number here on purpose. `docs/design/v1-surfaces.md` §4
- * makes *episodes are named, never numbered alone* a hard rule with no degrading surface,
+ * There is no season or episode number here on purpose. *Episodes are named, never
+ * numbered alone* is a hard rule with no degrading surface,
  * so a surface that had the numbers to hand would be one keystroke from breaking it.
  */
 export interface UpNext {
@@ -2590,14 +2589,14 @@ export interface UpNext {
  *
  * A new account has watched nothing, and there is genuinely no title for the rail to be
  * about. That is not a failed read and it is not an empty rail — the caller renders no
- * rail at all. `SPEC.md` §3's separation is why this returns `null` rather than an empty
+ * rail at all. Keeping the two apart is why this returns `null` rather than an empty
  * array that a caller could mistake for *TMDB recommended nothing*, which is a different
  * state with a different cause.
  *
  * ── The ordering is deliberately not `watched_at` alone ─────────────────────────────
  *
  * `watch.watchedAt` is nullable — an imported watch may carry no timestamp at all
- * (`CONTEXT.md`'s undated watch). `NULLS LAST` keeps a dated watch ahead of an undated
+ * (an undated watch). `NULLS LAST` keeps a dated watch ahead of an undated
  * one, and `created_at` breaks the tie underneath, so an account whose every watch arrived
  * undated from an import still gets a stable, sensible seed rather than an arbitrary row.
  */
@@ -2676,19 +2675,19 @@ export interface LibraryReleaseProgress {
  *
  * ── Title A–Z's tiebreak is everyone else's rule too ─────────────────────────────────
  *
- * `SPEC.md` §7: *"missing last, and every sort breaks ties by Title A–Z."* 457 titles
+ * The rule: *"missing last, and every sort breaks ties by Title A–Z."* 457 titles
  * share one `added_at` after import, so without it *recently added* would reshuffle
  * between two loads of the same rows for the same reason the grid's own default order
  * would. `lower()` rather than the database's collation, matching the existing default.
  *
  * `libraryEntry.id` is one further stabiliser underneath that — two entries can still
  * share a title's exact name, and the query needs a total order, not just the one
- * `SPEC.md` names, to promise the same two loads never swap them either.
+ * the rule names, to promise the same two loads never swap them either.
  *
  * ── Why *closest to finishing* is two `ORDER BY` terms, not one ─────────────────────
  *
  * `library_entry_remaining` has no row for a film, so `remaining` arrives `NULL` through
- * the `left` join below — the *missing* case `SPEC.md` §7 asks to sort last. A finished
+ * the `left` join below — the *missing* case that is asked to sort last. A finished
  * show is a real `0`, not missing, and it is asked to sort last too, which plain
  * ascending order gets backwards: `0` is the smallest value a naive sort sees, so it would
  * open the order with everything already finished. The leading `case` sorts the "at the
@@ -2722,11 +2721,11 @@ function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
 
 /**
  * Every library entry in one account, with where it stands and what is next in it, in one
- * of the four orders `SPEC.md` §7 settles.
+ * of the four settled orders.
  *
  * ── One query, 472 rows, no N+1 ──────────────────────────────────────────────────────
  *
- * `docs/design/v1-surfaces.md` §7 sizes this at 472 titles, which is what makes the shape
+ * This is sized at 472 titles, which is what makes the shape
  * of the read matter more than its cleverness: the state, the up-next episode, the
  * remaining count and now the release-progress counts behind issue #324's bar are joined
  * here rather than asked per cell, because 472 cells each asking several questions is the
@@ -2857,8 +2856,8 @@ function stateFrom(value: string): LibraryState {
  *
  * `UpNext` above deliberately carries no numbers, because the library cell has no place
  * to print them and a surface holding them would be one keystroke from breaking *episodes
- * are named, never numbered alone*. This is the opposite case: `DESIGN.md` sets the
- * number **beside** the name as a dim code line — "S3 E4" over "Sweet Vitriol" — on the
+ * are named, never numbered alone*. This is the opposite case: the
+ * number sits **beside** the name as a dim code line — "S3 E4" over "Sweet Vitriol" — on the
  * desktop row this entry once fed too, so withholding them here would force a surface to
  * fetch them somewhere else.
  *
@@ -2871,14 +2870,14 @@ function stateFrom(value: string): LibraryState {
  *
  * It used to say *there is no remainder here, and no count of anything* — the remainder
  * was a sort key and nothing else. The phone's next-episodes card prints it, so the read
- * carries it, and `SPEC.md` §7 is amended in the same change rather than this quietly
+ * carries it, and the rule was amended in the same change rather than this quietly
  * disagreeing with it. The rule that narrowed to survive is *a count may not appear as
  * chrome on a surface the reader came to do something else on*; a number saying whether
  * you are three from the end or thirty is the content of the card it sits on, which is
  * what the wireframe's "▓▓▓░ 12" meter never was.
  *
  * **It is `library_entry_remaining`'s number, unmodified.** Episodes of the show with no
- * watch — unreleased ones included, which is `db/views.ts`'s definition and `CONTEXT.md`'s
+ * watch — unreleased ones included, which is `db/views.ts`'s definition
  * — and so it counts the episode this entry is offering. The card subtracts that one
  * itself (`episode-card-line.ts`), because *what is left after this* is a rendering
  * question and *how much of this show is unwatched* is the domain's.
@@ -2954,7 +2953,7 @@ export interface UpNextEntry {
  * different card**, and a separate shape is what says so to the type checker.
  *
  * The five fields here are exactly the five a pending tile draws — the poster, the name,
- * the year, and the two ids the surface needs to key and open it. That is `DESIGN.md` §9's
+ * the year, and the two ids the surface needs to key and open it. That is
  * *render what you already know* held at the read: what the tile knows is what the add
  * wrote from the series, and the episode line is the one region genuinely still waiting.
  *
@@ -3006,7 +3005,7 @@ export function isEpisodeEntry(entry: UpNextRailEntry): entry is UpNextEntry {
 }
 
 /**
- * The five terms of `SPEC.md` §7's Up next order, built once and handed to both the
+ * The five terms of the Up next order, built once and handed to both the
  * `ORDER BY` and the cursor's `WHERE`, so there is one definition of the order and not a
  * copy of it in each place that has to agree with it.
  *
@@ -3046,9 +3045,9 @@ export function isEpisodeEntry(entry: UpNextRailEntry): entry is UpNextEntry {
  * ascending `remaining`, and the two are not one expression written twice — they are one
  * rule applied to two sets.
  *
- * ── The last two terms are not in `SPEC.md`, and are not optional ───────────────────
+ * ── The last two terms are not in the rule, and are not optional ────────────────────
  *
- * `lower(name)` and the entry id are the total order underneath the rule. §7's own
+ * `lower(name)` and the entry id are the total order underneath the rule. The rule's own
  * *"every sort breaks ties by Title A–Z"* covers the first; the second is what makes
  * *two identical loads give an identical order* true of two entries that share a name.
  */
@@ -3099,7 +3098,7 @@ function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
  *
  * `library_entry_up_next` has known *which episode* since build step 2. Which titles, in
  * what order, has never existed anywhere but here: `upNextOrder` above is the only place
- * `SPEC.md` §7's rule is written down, and every surface reads it through this builder.
+ * The rule is written down here, and every surface reads it through this builder.
  *
  * The inner join on `library_entry_up_next` is a membership rule in its own right, and it
  * is the one nothing states: a title with no episode after your progress has no row there,
@@ -3111,7 +3110,7 @@ function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
  *
  * ── The title's most recent watch, joined rather than correlated ─────────────────────
  *
- * A rewatch is a second `watch` row (`CONTEXT.md`), so joining `watch` in directly would
+ * A rewatch is a second `watch` row, so joining `watch` in directly would
  * multiply an entry by its watches. `last_watch` groups them first. It is scoped by
  * `ownedBy` too — the join is on the entry, so it could not read across accounts either
  * way, but an unscoped read of an owned table is the one habit this module exists to not
@@ -3180,7 +3179,7 @@ const WATCHING: SQL = eq(libraryEntryState.state, "watching" satisfies LibrarySt
  *
  * The one rail that is not a slice of the deck. *Caught up* is `library_entry_state`'s
  * "every released episode has a watch, and the show has not ended" — nothing to watch now,
- * something to watch later (`CONTEXT.md`) — and this is the *later* made concrete:
+ * something to watch later — and this is the *later* made concrete:
  * `library_entry_up_next`'s episode, dated, and dated after today.
  *
  * **A null air date is not a future one.** `air_date > current_date` is null against a null
@@ -3367,7 +3366,7 @@ export const ONGOING_RAIL_SIZE = 12;
  * | **OLD FRIENDS** | *watching*, everything not in ONGOING |
  *
  * **No column is added and no view is added.** Nothing here is stored, nothing is
- * refreshed and nothing can go stale, for ADR-0001's reason: a stored copy of derived
+ * refreshed and nothing can go stale, for the schema's reason: a stored copy of derived
  * state is a second answer that can disagree with the watches. A rail is a `slice` and a
  * `WHERE`, and both are computed the moment the page is read.
  *
@@ -3647,9 +3646,9 @@ export interface UpNextRails {
  * every column on every other row nullable in order to carry one that has none of them —
  * the shared read's whole select list weakened for a set it does not describe.
  *
- * ── The order, and why it is not `SPEC.md` §7's ──────────────────────────────────────
+ * ── The order, and why it is not the Up next order ───────────────────────────────
  *
- * §7's cascade ranks by *your most recent watch*, falling back to *the next episode's air
+ * That cascade ranks by *your most recent watch*, falling back to *the next episode's air
  * date*. A pending title has neither, so every one of them lands in the cascade's rank 2 —
  * the group with no date at all — and the rule would separate them by name. That is the
  * wrong answer for the case: the reader just added one of these, and the one they added is
@@ -3815,7 +3814,7 @@ const NOTHING_RELEASED: UpNextQueue = Object.freeze({
  *
  * `library_entry_remaining` is not joined either, and for the same kind of reason: that
  * view is `where t.kind = 'show'`, so it has no row for any film. **A film carries no
- * remainder**, which is `CONTEXT.md`'s *Remaining is a show concept* holding here rather
+ * remainder**, which is *Remaining is a show concept* holding here rather
  * than being restated — and it is why a film card prints a year and a runtime where an
  * episode card prints a count.
  *
@@ -3921,7 +3920,7 @@ export interface UpcomingEpisode {
   readonly seasonNo: number;
   readonly episodeNo: number;
   /** `null` where TMDB has announced the episode without naming it. Never falls back to
-   *  a bare number — `CONTEXT.md`: *an episode is never referred to by number alone*. */
+   *  a bare number — *an episode is never referred to by number alone*. */
   readonly episodeName: string | null;
   /**
    * The **show's** poster, and the reason this row carries one at all.
@@ -3953,8 +3952,8 @@ export interface UpcomingEpisode {
  * ── The membership is two predicates and neither is a slice ──────────────────────────
  *
  * **Watching or caught up**, from `library_entry_state`. This is deliberately narrower
- * than `CONTEXT.md`'s Upcoming entry was — *the next air dates for shows in your library
- * you have not abandoned* — and the glossary is amended in the same change rather than
+ * than Upcoming once was — *the next air dates for shows in your library
+ * you have not abandoned* — and the definition is narrowed in the same change rather than
  * left describing something else. What drops out is watchlist and finished: a show you
  * have not started is not something you are waiting for the next episode of, and a show
  * you have finished has no next episode by definition unless it comes back, at which point
@@ -4023,7 +4022,7 @@ export async function listUpcomingEpisodes(
       stillPath: episode.stillPath,
       // `date` comes back as the `YYYY-MM-DD` text Postgres wrote, and is left as text:
       // nothing does arithmetic on an air date, and a `Date` here would silently acquire
-      // a timezone the column does not have (ADR-0003).
+      // a timezone the column does not have.
       airDate: sql<string>`${episode.airDate}`.as("air_date"),
     })
     .from(libraryEntry)
@@ -4151,7 +4150,7 @@ export async function listUpcomingFilms(
       posterPath: title.posterPath,
       // Left as the `YYYY-MM-DD` text Postgres wrote, never a `Date`: a release date is a
       // `date` column with no instant in it, and a `Date` here would silently acquire a
-      // timezone the column does not have (ADR-0003). `listUpcomingEpisodes` casts its
+      // timezone the column does not have. `listUpcomingEpisodes` casts its
       // `air_date` the same way over the same laundered null.
       releaseDate: sql<string>`${title.releaseDate}`.as("release_date"),
     })
@@ -4194,14 +4193,14 @@ export interface EpisodeDetail {
    * The season list simply does not read them. That costs three columns on a query that
    * already selects four from the same table and returns the same rows.
    *
-   * `stillPath` is TMDB's `still_path` — a CDN path and never a URL, because ADR-0001
+   * `stillPath` is TMDB's `still_path` — a CDN path and never a URL, because the schema
    * stores no image blobs and `episode-still.tsx` is what turns one into a URL. `null`
    * is TMDB having no frame for this episode: not an error, and not a missing read.
    *
    * `airDate` is the ISO `YYYY-MM-DD` string Postgres hands back for a `date` column,
    * left as text rather than parsed. `db/views.ts` compares this column to
    * `current_date` in SQL, nothing in the application does arithmetic on it, and a
-   * `Date` here would silently acquire a timezone the column does not have (ADR-0003).
+   * `Date` here would silently acquire a timezone the column does not have.
    * `null` where TMDB has not dated it, which is not the same as *not out yet* — and
    * `episode-facts.ts` refuses to say either in the other's words.
    *
@@ -4227,11 +4226,11 @@ export interface EpisodeDetail {
    * `watches > 0` and the two are read off one number at one site rather than kept in
    * step.
    *
-   * It exists because the season row prints it. `CONTEXT.md` used to say a rewatch is
+   * It exists because the season row prints it. The domain language used to say a rewatch is
    * *never a number kept on a title*, and that sentence is amended rather than dodged:
    * the number is not kept on anything, it is counted from the `watch` rows on every
    * read — and *how many times have I seen this* is content on the row that answers it,
-   * which is `DESIGN.md` §11's own test for when a numeral is allowed.
+   * which is the test for when a numeral is allowed.
    *
    * `1` is never drawn. A single watch is what the mark itself says.
    */
@@ -4258,7 +4257,7 @@ export interface TitleDetailRow {
   /**
    * Your rating, `null` until you have given one — issue #113. It is on this row and on
    * no other read in this file, which is most of what makes *nothing reads a rating in
-   * v1* (`SPEC.md` §7) structural rather than remembered: `LibraryEntryRow` does not
+   * v1* structural rather than remembered: `LibraryEntryRow` does not
    * carry it, so the tile could not display one even by accident, and neither the chips
    * nor the sort can work on a column their query never selects.
    */
@@ -4289,7 +4288,7 @@ export interface TitleDetailRow {
  *
  * ── Scoped by entry, not by title ─────────────────────────────────────────────────────
  *
- * `title` and `episode` are global (ADR-0001), but what this reads is *your* copy of one:
+ * `title` and `episode` are global, but what this reads is *your* copy of one:
  * `ownedBy(userId, libraryEntry)` combined with the entry id is what makes a tampered or
  * stale id from another account's library answer nothing rather than someone else's row.
  * A missing row and a row that belongs to somebody else are the same case here and are
@@ -4298,7 +4297,7 @@ export interface TitleDetailRow {
  *
  * ── Watched, by a second query, not by a join ─────────────────────────────────────────
  *
- * A rewatch (`CONTEXT.md`) is a second `watch` row against the same episode, so a plain
+ * A rewatch is a second `watch` row against the same episode, so a plain
  * `leftJoin` on `watch` would multiply that episode into two rows the moment it had been
  * watched twice. A `Set` of this entry's watched episode ids, built from its own query,
  * dedupes a rewatch for free and needs no correlated subquery — which matters here for a
@@ -4468,8 +4467,8 @@ export interface UnownedEpisodeDetail {
 /**
  * Title detail's borrowed half, and only that — issue #148.
  *
- * Every field here is a fact about the world (`CONTEXT.md`): it lives on `title` or
- * `episode`, which are global and unowned (ADR-0001), so the same answer is true for
+ * Every field here is a fact about the world: it lives on `title` or
+ * `episode`, which are global and unowned, so the same answer is true for
  * every reader. `TitleDetailRow`'s other five fields — `libraryEntryId`, `state`,
  * `rating`, and an episode's `watched` and `upNext` — are all *somebody's*, and this
  * shape has no somebody to attribute them to.
@@ -4567,7 +4566,7 @@ export async function getUnownedTitleDetail(
  * **The distinction is the point, and it is why that caller does not simply catch.** A
  * `try`/`catch` around the throwing version cannot tell *this row does not exist* from
  * *the database did not answer*, so a Postgres outage would fall through to the catalogue,
- * render the title from TMDB, and look completely fine — which is `SPEC.md` §3's failure
+ * render the title from TMDB, and look completely fine — which is the same failure
  * wearing a different hat. Here a missing row returns `null` and a failed read still
  * throws, so the two stay apart at the only place that can tell them apart.
  */
@@ -4610,7 +4609,7 @@ export async function findUnownedTitleDetail(
  *
  * ── Null here is a state, not a failure ───────────────────────────────────────────────
  *
- * `SPEC.md` §3.2's distinction: a query that succeeded and found nothing means *you have
+ * The distinction again: a query that succeeded and found nothing means *you have
  * not added this title*, which is the entire premise of the page this feeds. A failure
  * still throws, from the driver, with no `catch` in the way.
  *
@@ -4659,7 +4658,7 @@ export async function libraryEntryIdForTitle(
  *
  * ── The check is `ownedBy`, and it is the only thing standing here ───────────────────
  *
- * `episode` and `title` are global (ADR-0001), so an episode id names a row every account
+ * `episode` and `title` are global, so an episode id names a row every account
  * can see. What makes the answer *this* reader's is `ownedBy(userId, libraryEntry)`
  * combined with the join — exactly `libraryEntryIdForTitle` above, one table further
  * along. Without it this would answer whichever account happened to have added the show,
@@ -4668,7 +4667,7 @@ export async function libraryEntryIdForTitle(
  *
  * ── `null` is a state, not a failure ─────────────────────────────────────────────────
  *
- * `SPEC.md` §3.2 again. An episode of a title the reader has not added, and an episode id
+ * The same distinction again. An episode of a title the reader has not added, and an episode id
  * that names nothing at all, are both *a read that succeeded and found nothing* — and the
  * route above turns them into `notFound()`, which is what an address with no episode
  * beneath it is. A database that is down still throws, with no `catch` in the way.
@@ -5024,7 +5023,7 @@ export interface ListDetailTitleRow {
    *
    * `null` covers one case more than `LibraryEntryRow.progress` does. There it is a film,
    * and here it is a film **or** a title this account does not own — a list holds anything
-   * in the catalogue (ADR-0001 amendment 7), and a title with no `libraryEntryId` has no
+   * in the catalogue, and a title with no `libraryEntryId` has no
    * watches to be a fraction of. Both are the same absence to a caller: no bar.
    *
    * As on the library, a show with nothing released is *not* this absence — it arrives as
@@ -5048,12 +5047,12 @@ export interface ListDetailRow {
  *
  * `ownedBy(userId, list)` combined with the list id: a missing row and a row belonging to
  * somebody else are the same case, and both throw. There is nothing for this surface to
- * degrade to — `SPEC.md`'s *one account cannot read another account's list* is a
+ * degrade to — *one account cannot read another account's list* is a
  * boundary, not a state this function ever returns.
  *
  * ── `title`, left-joined against this account's own library entry ────────────────────
  *
- * A list holds a title, not a library entry (ADR-0001 amendment 7), so the read starts
+ * A list holds a title, not a library entry, so the read starts
  * from `list_membership` and joins `title` for the borrowed facts a row shows. The `left
  * join` against `library_entry` is scoped by `userId` *and* `title.id` together — the
  * same pairing `library_entry_user_id_title_id_key` makes unique — so it can answer at
@@ -5139,8 +5138,8 @@ export async function getListDetail(
  * ── Shift the range between, not the whole list ────────────────────────────────────────
  *
  * A drag can move a row past any number of others, not only its neighbour, so this is not
- * literally always *two rows swap* — but it is the same mechanism ADR-0001 built the
- * deferred constraint for: every row strictly between the old and new position shifts by
+ * literally always *two rows swap* — but it is the same mechanism the
+ * deferred constraint was built for: every row strictly between the old and new position shifts by
  * one to close the gap, and the moved row lands on `newPosition` last. Positions stay
  * `1..count`, contiguous, exactly the invariant `addTitleToList`'s `coalesce(max(...), 0)
  * + 1` already depends on for the next append.
@@ -5283,7 +5282,7 @@ export async function listYouListCards(
  * ── Why the two rails read different states ───────────────────────────────────────────
  *
  * #248 as filed asked for one rule, *watching or caught up*, applied to both kinds — but
- * `CONTEXT.md`'s own glossary is explicit that **a film is only ever on your watchlist,
+ * The domain language is explicit that **a film is only ever on your watchlist,
  * finished, or abandoned**, and `library_entry_state`'s view agrees: `t.kind = 'film'`
  * resolves straight to `'finished'` the moment it has any watch at all, before *watching*
  * or *caught up* are even considered. A films rail filtered on those two states is not a
@@ -5304,7 +5303,7 @@ export async function listYouListCards(
  * ── The order is `upNextRead`'s `last_watch`, without the up-next fallback ────────────
  *
  * `lastWatch` is the same grouped, `ownedBy`-scoped subquery `upNextRead` builds — a
- * rewatch is a second `watch` row (`CONTEXT.md`), so it has to be grouped before it can be
+ * rewatch is a second `watch` row, so it has to be grouped before it can be
  * joined without multiplying an entry. What is dropped is `upNextOrder`'s fallback to an
  * unaired episode's air date: that exists so an unwatched title still has *some* position in
  * Up next's queue, and every entry here has already watched something (a show *watching* or
@@ -5312,8 +5311,8 @@ export async function listYouListCards(
  *
  * **`desc nulls last`, spelled out.** Postgres defaults a `desc` order to nulls *first*,
  * which would put every entry with only undated watches at the head of its rail — backwards
- * from *most recent dated watch first*. The undated case is real (`CONTEXT.md`'s glossary:
- * a watch with no date still counts), so it is not filtered out, only ordered after
+ * from *most recent dated watch first*. The undated case is real (a watch with no date
+ * still counts), so it is not filtered out, only ordered after
  * whatever a dated watch can say, tie-broken Title A–Z then entry id like every other
  * state-group read in this file.
  */
@@ -5395,8 +5394,8 @@ export async function listYouRails(
  * `watchTotals` — and the shape they return between them. The six that went with the page
  * (the streak, recently finished, monthly activity, the decade distribution and the five
  * state counts) took their statements, their result types and their sizing constants with
- * them rather than being left here for a caller that no longer exists; `SPEC.md` §9 has
- * them back under *Specced, but later*.
+ * them rather than being left here for a caller that no longer exists; they are
+ * back under *Specced, but later*.
  *
  * ── Computed in SQL, beside the derived views ────────────────────────────────────────
  *
@@ -5476,7 +5475,7 @@ async function libraryTotals(userId: UserId, executor: Executor) {
        * It is a `filter` on this statement rather than a count grouped by state, because
        * a grouped count cannot tell a finished film from a finished show, and the figure
        * You reports is per kind. The state itself is still read off `library_entry_state`
-       * rather than restated — *finished* is ADR-0001's rule and `db/views.ts` is its one
+       * rather than restated — *finished* is a schema rule and `db/views.ts` is its one
        * home, so this asks the view the question instead of re-deriving `in_production`
        * and *every season-one-and-above episode watched* in a second place.
        */
@@ -5587,7 +5586,7 @@ export interface AccountFigures {
   readonly showsCompleted: number;
   /** Watches carrying an episode — rewatches and specials included. */
   readonly episodesWatched: number;
-  /** Split, never summed. `CONTEXT.md`'s glossary reports film and television separately
+  /** Split, never summed. Film and television are reported separately
    *  and the page prints them that way. */
   readonly watchTime: WatchTime;
   /** Watches with no date. You's qualification line names this, **without** claiming the

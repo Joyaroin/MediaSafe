@@ -38,17 +38,17 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  *
  * ── Solid `accent` here is a stated extension, not a quotation ───────────────────────
  *
- * `DESIGN.md`'s Buttons section scopes solid `accent` on `accent-ink` to two things: the phone's
+ * The Buttons register scopes solid `accent` on `accent-ink` to two things: the phone's
  * recording control, and *the one primary recovery action*. This is neither, so using
  * `SOLID_RECOVERY` here widens the list and that is said out loud rather than left to be
  * discovered — the same courtesy `recovery-buttons.ts` extends for the disabled variant.
  *
- * The argument for widening it: `DESIGN.md`'s Motion section calls marking a watch *the one
+ * The argument for widening it: the Motion register calls marking a watch *the one
  * authored moment of the whole product*, and gives it this exact ground. Deleting an account
  * is the other irreversible authored moment, and it is the only one that cannot be undone.
  * A quieter treatment would make the most consequential control in the application read as
  * less live than a rewatch. The button is also dead until the word is typed, so the full
- * accent arriving *is* a live state — which is the job `DESIGN.md` gives it.
+ * accent arriving *is* a live state — which is the job it is given.
  */
 /**
  * The distinction moved to `errors/irreversible-failure.ts` when issue #142's remove became
@@ -169,7 +169,7 @@ export function DeleteAccountForm() {
         autoCorrect="off"
         autoCapitalize="none"
         spellCheck={false}
-        // `DESIGN.md`, Inputs: a `1px` `hair` border on a transparent ground at
+        // Inputs: a `1px` `hair` border on a transparent ground at
         // `text-item`, the border moving to `text` at `2px` on focus — issue #134 moves
         // focus off the accent onto brightness and border weight — with the input's own
         // outline suppressed in favour of it.

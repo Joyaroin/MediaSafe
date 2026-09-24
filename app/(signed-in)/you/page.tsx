@@ -78,7 +78,7 @@ export default async function YouPage() {
    *
    * The lists rail and the shows/films rails are read whether or not the library is
    * empty — `figures.titles === 0` decides the six-figure branch below and nothing about
-   * a list, which can hold titles the reader's library never has (`SPEC.md` §9: *a list
+   * a list, which can hold titles the reader's library never has (*a list
    * holds anything in the catalogue, not only what you own*).
    */
   const [figures, lists, rails] = await Promise.all([

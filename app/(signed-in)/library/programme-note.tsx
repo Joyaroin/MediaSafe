@@ -13,7 +13,7 @@ import { ProgrammeNoteContent } from "./programme-note-content";
 import { titleDetailAction } from "./title-detail-actions";
 
 /**
- * The programme note — the fixed panel `DESIGN.md` puts on the right of the desktop bill,
+ * The programme note — the fixed panel on the right of the desktop bill,
  * sticky to the top of the viewport, with its own internal scroll. Issue #58, and the
  * reason the two-pane layout was chosen at all: comparing candidates costs no navigation,
  * because this never routes anywhere. Selecting a tile (`library-entry-cell.tsx`) only
@@ -173,7 +173,7 @@ export function ProgrammeNotePane() {
         </div>
 
         {/* Pinned to the foot, outside the scroll, and shown only while borrowed data
-            genuinely is: `docs/design/v1-surfaces.md` §7's obligation is that the notice
+            genuinely is: the obligation is that the notice
             is on screen *whenever borrowed data is* — not always, which would put it in
             front of an empty pane nobody has selected anything into yet. */}
         {phase.kind === "loaded" ? (
@@ -231,7 +231,7 @@ function Loading({
       </ViewTransition>
 
       {/* `status`, not `alert`: metadata and episodes arriving is a normal moment of this
-          page (`docs/design/v1-surfaces.md` §6), not an event worth interrupting anyone
+          page, not an event worth interrupting anyone
           for. */}
       <p role="status" className="code-line mt-5 text-dim">
         Reading

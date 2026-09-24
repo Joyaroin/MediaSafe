@@ -16,9 +16,9 @@ import type { ListDetailTitleRow } from "@/db/access";
  *
  * ── The numeral, and why it is not the count rule's problem ────────────────────────────
  *
- * `SPEC.md` §9: *no count may appear as chrome on a surface the reader came to do
+ * The rule: *no count may appear as chrome on a surface the reader came to do
  * something else on* — no size on a head, no badge, no *showing 10 of 62*. The numeral on
- * each poster is not that. It is the **hand order**, which `SPEC.md` names as the defining
+ * each poster is not that. It is the **hand order**, the defining
  * property of a list (*ordered by hand*), and the row view has always printed it in its
  * own leading cell. A number is allowed where the number is part of the content, and
  * *which one did I put third* is content here in exactly the way *am I three from the end

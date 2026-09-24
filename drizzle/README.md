@@ -17,8 +17,8 @@ One history, from one tool, in one order:
 | `0005_title-reconciliation.sql` | `title_reconciliation`, the record of a repointed title (#116) |
 | `0006_list-membership-title.sql` | `list_membership` repoints from `library_entry` to `title` (#143) |
 | `0007_list-membership-drop-library-entry-id.sql` | Drops `list_membership.library_entry_id`, expand-contract's leftover from 0006 (#150) |
-| `0008_title-release-date-and-episode-still.sql` | `title.release_date` and `episode.still_path` — ADR-0001 amendment 10 (#246) |
-| `0009_title-episodes-mirrored-at.sql` | `title.episodes_mirrored_at` — pending is a fact the database holds, ADR-0001 amendment 11 (#271) |
+| `0008_title-release-date-and-episode-still.sql` | `title.release_date` and `episode.still_path` — amendment 10 (#246) |
+| `0009_title-episodes-mirrored-at.sql` | `title.episodes_mirrored_at` — pending is a fact the database holds, amendment 11 (#271) |
 | `0010_library-entry-release-progress-view.sql` | `library_entry_release_progress`, the fifth view — watched-against-released counts for the library card's bar (#324) |
 
 **Name the file after what it brings.** drizzle-kit generates a random tag —
@@ -74,7 +74,7 @@ rather than trusted to memory.
 
 Two things bind everything that lands here:
 
-- **Expand-contract, forward-only** (`SPEC.md` §3, constraint 7). A column is never
+- **Expand-contract, forward-only** (constraint 7). A column is never
   dropped in the change that stops using it. `squawk` is narrowed to destructive rules
   and fails on a dropped column or table, which is what makes that mechanical rather
   than remembered. Neon Free keeps six hours of history and a restore overwrites the

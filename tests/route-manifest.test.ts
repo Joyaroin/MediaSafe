@@ -17,7 +17,7 @@ import {
 } from "./support/route-manifest";
 
 /**
- * **Test 2 of the four in `SPEC.md` §6**, and the machine behind constraint 5: *no
+ * **Test 2 of the four**, and the machine behind constraint 5: *no
  * unauthenticated route may ever be added*.
  *
  * It compares two files `next build` wrote — the route manifest and the compiled proxy
@@ -25,7 +25,7 @@ import {
  * browser and no database, because the property is about which routes exist and which
  * ones the gate runs on, and both of those are known before anything starts.
  *
- * `SPEC.md` §10.4 records that the original reason for the rule is gone: previews no
+ * The original reason for the rule is gone: previews no
  * longer carry a copy of the real library. The rule stayed. This file is what will be
  * enforcing it in six months, when the reason is the only thing anybody remembers.
  *
@@ -258,7 +258,7 @@ describe("the check fails when the gate is widened", () => {
  * A `loading.tsx` wraps its segment *and every segment below it*, so
  * `/titles/[entryId]/remove` would count as covered by the title's boundary if this asked
  * about effective coverage. It asks about the segment's own file instead, for the reason
- * `DESIGN.md` §9 gives when it refuses to wrap the Up next rails: **one surface, one
+ * the pending rules give when they refuse to wrap the Up next rails: **one surface, one
  * pending decision, and it is the route's.** An inherited boundary is another surface's
  * decision applied to this one, and it shows on the glass — a title's own pending render
  * standing in for the confirmation that is about to quote its counts. Counting it as
@@ -267,7 +267,7 @@ describe("the check fails when the gate is widened", () => {
 
 /**
  * **Routes that await nothing the reader can see.** No boundary, and the absence is a
- * decision rather than an oversight — `DESIGN.md` §9 names the shapes and the test:
+ * decision rather than an oversight — the shapes and the test are named:
  * **the session read is not content.** Every one of these awaits `requireUserId()`, so
  * *does it await something* exempts nothing and is the wrong question; what matters is
  * whether anything **on the glass** is still unresolved.
@@ -404,8 +404,8 @@ describe("every dynamic surface has a loading boundary", () => {
    * still the segment most exposed to the inheritance problem this audit is about: it has
    * a `loading.tsx` of its own because without one a reader tapping an episode would be
    * shown an ancestor's pending render — the *title's* surface standing in for an
-   * episode's while it lived under `[entryId]`, and now the group's. `DESIGN.md` §9 treats
-   * that as a heading naming the wrong screen rather than a cosmetic slip, and *own
+   * episode's while it lived under `[entryId]`, and now the group's. That is
+   * a heading naming the wrong screen rather than a cosmetic slip, and *own
    * segment, never inherited* is the clause of this audit that catches it.
    *
    * Asserted positively because the audits above are all `toEqual([])`, and an empty list
@@ -514,7 +514,7 @@ describe("every dynamic surface has a loading boundary", () => {
    * under are the same place*, which is a property of the two paths' shapes and is
    * therefore checkable here rather than anywhere else.
    *
-   * **The matcher is asserted against both, by name.** `SPEC.md` constraint 5 is
+   * **The matcher is asserted against both, by name.** Constraint 5 is
    * machine-checked, and reorganising the address space is exactly the change that could
    * breach it silently — a new prefix that happens to fall under a catch-all today is not
    * the same claim as a new prefix the compiled matcher was seen to run on.
@@ -616,8 +616,8 @@ describe("every dynamic surface has a loading boundary", () => {
 
   /**
    * The build still has dynamic pages in it, which is the premise the whole audit rests on.
-   * Asserted as a floor rather than a count: `DESIGN.md` §9 refuses to write a route count
-   * down for the reason §12 gives — *a number duplicated into a file with no reason to know
+   * Asserted as a floor rather than a count: a route count is deliberately not written
+   * down — *a number duplicated into a file with no reason to know
    * it is wrong by default* — and a test that has to be edited every time a route is added
    * is that defect with a different filename.
    */

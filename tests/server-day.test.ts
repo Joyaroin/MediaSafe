@@ -10,8 +10,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * Issue #226 puts the day in the cache key of every read that consults `current_date` —
  * the library grid, the three up-next reads and title detail — because the clock moves
- * those answers with no write to hang a bust on (`serverDay`'s own docblock argues it, and
- * `docs/adr/0003-the-clock-is-an-input-not-a-window.md` records the decision).
+ * those answers with no write to hang a bust on (`serverDay`'s own docblock argues it).
  *
  * That only works if the day in the key is **the same day the query used**. If Node and
  * Postgres disagree about which date it is, the key turns over at a boundary the answer
@@ -20,7 +19,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * for a fresh read in the hours that do not.
  *
  * `serverDay` reads UTC on the grounds that `db/views.ts` reads the server's own
- * `current_date` — a deliberate exception to `SPEC.md` §5, argued there. **That is a claim
+ * `current_date` — a deliberate exception to the timezone rule, argued there. **That is a claim
  * about how the database is configured**, not about this function, and a claim about
  * configuration is exactly the kind that goes quietly false: someone sets `TimeZone` on the
  * Neon project, or the container's image changes its default, and nothing anywhere fails.

@@ -3,7 +3,7 @@
  *
  * ── Why a parser rather than a database ───────────────────────────────────────────────
  *
- * `SPEC.md` §6 defines test 1 as *"the import mapping — a pure function in `scripts/`,
+ * Test 1 of the four is *"the import mapping — a pure function in `scripts/`,
  * tested against the committed export"*. Loading 19k rows into Postgres to read them back
  * would make the mapping's test need a database, a migration and a fixture load; the dump
  * is already a text file, and turning text into rows is pure. So the parse lives here,
@@ -118,8 +118,8 @@ function readLiteral(text: string, open: number, end: number): string {
  * The header `pg_dump` writes above every table it exported, empty ones included.
  *
  * This is what makes *"the table was empty"* distinguishable from *"the table was not
- * found"*, and the two must never collapse into each other — `SPEC.md` §3 and `AGENTS.md`
- * make that the rule the whole codebase is built on, and here the stakes are that a
+ * found"*, and the two must never collapse into each other — `AGENTS.md`
+ * makes that the rule the whole codebase is built on, and here the stakes are that a
  * failure to find `shows` would otherwise convert to a valid, empty seed.
  */
 function dataHeader(table: string): string {
@@ -356,7 +356,7 @@ const EPISODE_KEY = /^s(\d+)e(\d+)$/;
  * Two formats because there are two eras. TV Time's export wrote the first, space-separated
  * and with no zone; `tvtracker`'s own watch events wrote the second. The zoneless form is
  * read as UTC, which is the only reading available and is stated rather than hidden — every
- * other timestamp in this dump is `+00`, and `SPEC.md` §5 makes the day boundary a
+ * other timestamp in this dump is `+00`, and the day boundary is a
  * read-time lens over a UTC instant rather than a stamp, so a fixed offset here would be
  * the wrong kind of correction anyway.
  */
@@ -386,7 +386,7 @@ function isoFrom(value: string): string | undefined {
  * of 18,443 episodes, so the two records corroborate each other and the dates are taken as
  * the authority.
  *
- * `SPEC.md` §7 and #16 §4 both say the library holds 18 genuine timestamps and no rewatch
+ * The spec and #16 §4 both said the library holds 18 genuine timestamps and no rewatch
  * data at all. Both conclusions were reached from the v3 tables without opening this blob,
  * and both are wrong. Reading it is what makes the seed the library rather than a sketch
  * of it.

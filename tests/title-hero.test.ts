@@ -80,14 +80,14 @@ describe("the hero", () => {
   /**
    * A film has two positions and the word already says which. A show with no mirrored
    * episodes is TMDB not having them yet, and a bar at zero would report that as *nothing
-   * watched* — failure wearing emptiness' clothes, which `SPEC.md` §3 exists to stop.
+   * watched* — failure wearing emptiness' clothes, which the rules exist to stop.
    */
   it("draws the bar only for a show that has episodes", () => {
     expect(HERO).toMatch(/detail\.kind === "show" && detail\.episodes\.length > 0/);
   });
 
   /**
-   * `DESIGN.md` §0 allows one accent per screen. `STATE_LABELS` draws *Watching* in the
+   * One accent is allowed per screen. `STATE_LABELS` draws *Watching* in the
    * accent, so an accented bar and an accented state word would be two inside one block.
    * The bar keeps it; the eyebrow is `--dim`.
    */
@@ -149,7 +149,7 @@ describe("the hero poster's measure", () => {
 describe("the states, and what the hero may do with them", () => {
   /**
    * The most important property on this screen, and it has survived the hero being rebuilt
-   * three times. `CONTEXT.md`: four of the five states are derived from your watches, and
+   * three times. Four of the five states are derived from your watches, and
    * only *abandoned* was ever set by hand.
    *
    * **Nothing sets it by hand any more.** `AbandonControl` is retired — no control here, no

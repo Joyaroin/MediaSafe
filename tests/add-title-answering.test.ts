@@ -25,8 +25,8 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * action to give to `after()`. It takes the mirror fetcher as an argument in exactly the
  * shape `runNightlySweep` takes one, and for the identical reason — nothing here imports
  * `@/tmdb/catalogue`, which is `import "server-only"` and a hard throw under plain Node
- * module resolution, so a stub stands in for it and nothing touches the network
- * (`SPEC.md` §6). This file is `tests/nightly-sweep.test.ts`'s shape for that reason.
+ * module resolution, so a stub stands in for it and nothing touches the network.
+ *  This file is `tests/nightly-sweep.test.ts`'s shape for that reason.
  *
  * The four properties are the ticket's: the entry is written and returned **before** the
  * mirror runs; `episodes_mirrored_at` is stamped only when the mirror completes; a mirror

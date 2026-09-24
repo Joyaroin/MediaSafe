@@ -13,7 +13,7 @@ import * as Sentry from "@sentry/nextjs";
  * the value is public by construction. A Sentry DSN is designed to be — it grants
  * event submission and nothing else.
  *
- * No session replay and no tracing. `SPEC.md` §6 asks for errors; replay would record one
+ * No session replay and no tracing. Sentry is here for errors; replay would record one
  * person's private library, in a product whose whole premise is that nobody else sees it.
  */
 Sentry.init({

@@ -21,14 +21,13 @@
  * ── What is here and what is not ─────────────────────────────────────────────────────
  *
  * Five tables, all Better Auth's: `user`, `session`, `account` and `verification` carry
- * identity, and `rate_limit` is the limiter's storage (SPEC.md §6 — in Postgres, not in
+ * identity, and `rate_limit` is the limiter's storage (in Postgres, not in
  * the memory of one serverless instance).
  *
  * MediaSafe's own six — `title`, `episode`, `library_entry`, `watch`, `list`,
- * `list_membership` — are build step 2, whole, in one migration, per SPEC.md §5 and
- * ADR-0001. They are declared by hand, in `db/tables.ts`; only Better Auth's tables come
+ * `list_membership` — are build step 2, whole, in one migration. They are declared by hand, in `db/tables.ts`; only Better Auth's tables come
  * through the generator. `title_reconciliation` joins them there as a seventh at build
- * step 6 (ADR-0001 amendment 6, issue #116) — the record of a title repointed at a
+ * step 6 — the record of a title repointed at a
  * different TMDB id, which is neither borrowed nor owned by an account.
  *
  * Alongside them, in `db/views.ts`, are the three derived-state views —
@@ -50,7 +49,7 @@
  *    Nothing writes it: `emailAndPassword` is off in `lib/auth.ts`, so no code path in
  *    this application can put a value there.
  *
- * `CONTEXT.md` is binding on every table and column name that appears here. Better Auth's
+ * The domain language is binding on every table and column name that appears here. Better Auth's
  * five are its vocabulary rather than ours, and they do not collide with it.
  */
 

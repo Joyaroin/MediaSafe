@@ -15,9 +15,9 @@ import { MIGRATIONS_SCHEMA, MIGRATIONS_TABLE } from "./migrations-table";
  * because the migrator needs an interactive transaction and Neon's HTTP interface has
  * none. Run this as the first half of the build command, so a migration that fails
  * fails the build, no deployment is created, and old code keeps serving an unchanged
- * schema (SPEC.md §6).
+ * schema.
  *
- * ── SPEC.md §11.5, answered ──────────────────────────────────────────────────────
+ * ── An open question, answered ───────────────────────────────────────────────────
  *
  * *Does Drizzle's `migrate()` wrap each migration file in a transaction?*
  *

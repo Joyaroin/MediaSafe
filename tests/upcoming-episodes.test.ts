@@ -61,7 +61,7 @@ interface Seeded {
 /**
  * One show, its episodes, and a watch on each episode marked `watched` — which is all
  * `library_entry_state` needs to derive where the title stands. The state is never
- * inserted, because it is a view and there is nothing to insert (ADR-0001).
+ * inserted, because it is a view and there is nothing to insert.
  */
 async function seedShow(
   tx: Transaction,

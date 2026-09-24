@@ -71,7 +71,7 @@ export function plural(count: number, noun: string, many = `${noun}s`): string {
  * parts drops hours rather than years.
  *
  * **The remainder is truncated, never rounded up.** A total assembled from borrowed
- * runtimes is already a floor (`CONTEXT.md`, Watch time), and rounding *23 hours* to *1
+ * runtimes is already a floor (Watch time), and rounding *23 hours* to *1
  * day* would put the page above the data in the one direction it cannot afford.
  *
  * Below an hour the figure is minutes, so a reader who has marked one episode sees it
@@ -133,7 +133,7 @@ export function initialsFrom(name: string): string {
  *
  * ── Two incompletenesses, and only one of them subtracts ─────────────────────────────
  *
- * **A watch with no runtime is missing from the two watch times.** `CONTEXT.md`'s glossary
+ * **A watch with no runtime is missing from the two watch times.** The glossary
  * entry says so in as many words — watch time *is assembled from borrowed runtimes … so it
  * is a floor rather than a total, and the count of watches carrying no runtime is part of
  * the figure rather than a footnote to it*. This line is that clause, on the glass.

@@ -5,7 +5,7 @@ import { WelcomeSurface } from "./welcome-surface";
 
 /**
  * **Bring your library in** — the first real screen after first sign-in, and not the
- * empty library (`SPEC.md` §7, `docs/design/v1-surfaces.md` §4 screen 2, issue #75).
+ * empty library (screen 2, issue #75).
  *
  * Import is the default path and the empty library is the exception, so a first sign-in
  * lands here rather than on a library with nothing in it. It offers exactly two answers —
@@ -16,7 +16,7 @@ import { WelcomeSurface } from "./welcome-surface";
  *
  * The same "identical on both, low-frequency, no evidence the intent differs" argument
  * `app/(signed-in)/import/page.tsx` and `app/(signed-in)/settings/page.tsx` already make
- * for themselves — `SPEC.md` §7's four genuine divergences do not include this screen.
+ * for themselves — the four genuine divergences do not include this screen.
  */
 
 /**

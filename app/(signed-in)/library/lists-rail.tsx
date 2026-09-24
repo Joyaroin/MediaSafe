@@ -43,7 +43,7 @@ const CARD = "w-36 shrink-0 snap-start";
  * boolean rather than a second fact.
  *
  * **An empty rail is absent** — no heading, no sentence, no zero, no reserved space, the
- * same rule every other rail in this app is held to (`DESIGN.md` §7, §11).
+ * same rule every other rail in this app is held to.
  */
 export function ListsRail({ lists }: { readonly lists: readonly ListSummary[] }) {
   if (lists.length === 0) return null;

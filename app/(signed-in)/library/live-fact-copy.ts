@@ -14,7 +14,7 @@
  *
  * This file has no imports at all, so it is reachable from a test, and
  * `tests/episode-synopsis-states.test.ts` holds the two apart. That is the whole reason it
- * exists — not tidiness. `DESIGN.md` §10's rule for treatments (*where a treatment must
+ * exists — not tidiness. The rule for treatments (*where a treatment must
  * not drift, it is a named class string in the module that owns it*) applied to copy that
  * must not converge.
  *
@@ -38,7 +38,7 @@
  * What a section says when the read failed — `LiveFactSection`'s inline treatment, the
  * *one region failed to load* row of `AGENTS.md`'s blast-radius table at section scope.
  *
- * A plain sentence, per `SPEC.md` §6: no status, no exception message, no error code. The
+ * A plain sentence: no status, no exception message, no error code. The
  * one technical string on the surface is the reference id, and it is drawn beside this by
  * `ReferenceLine` rather than interpolated into it — which is also why this can be a
  * constant at all.

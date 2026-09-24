@@ -7,7 +7,7 @@
  * `app/(signed-in)/library/watch-marks.ts` draw, for the same reason: `displayName` at the
  * bottom of this file is one module-level object, and module state on the server is shared
  * by every request and so by every account. One reader's name rendered into another
- * reader's masthead is not a mistake this product can survive (`CONTEXT.md`), and
+ * reader's masthead is not a mistake this product can survive, and
  * `"use client"` turns it into a build-time client-reference error rather than a silent
  * leak. `getServerSnapshot()` returning `null` is the second half of that guard.
  *

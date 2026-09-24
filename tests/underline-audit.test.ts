@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
  * link's clothes — six of them already `<button>` elements, eight of them navigation — and
  * the complaint was visual, not semantic: nothing on screen read as pressable. Every one of
  * them now carries `GHOST_RECOVERY` instead, the same accent-ghost register `New list` and
- * `Import a library ›` already used, reused here knowingly ahead of the ticket `DESIGN.md`
- * §12 owes to settle what the accent means (`DESIGN.md`, this section, records that too).
+ * `Import a library ›` already used, reused here knowingly ahead of the ticket
+ * owed to settle what the accent means.
  *
  * Two audits, matching the parent ticket's (#194) Testing Decisions section directly:
  *
@@ -123,7 +123,7 @@ describe("no underlined text affordance survives under app/", () => {
   });
 
   it("is looking at a tree that has files in it", () => {
-    // A floor, not a count — `DESIGN.md` §12 gives the reason a route or file count is
+    // A floor, not a count — there is a standing reason a route or file count is
     // never written down: a number duplicated into a file with no reason to know it is
     // wrong by default. This only proves the walk did not silently return nothing.
     expect(collectAppSourceFiles().length).toBeGreaterThan(50);

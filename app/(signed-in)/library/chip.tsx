@@ -11,7 +11,7 @@ import { snappy } from "@/app/motion";
  * filter bar already uses, travelling selected fill and all*, in as many words: "a second
  * selector vocabulary on an adjacent surface is what the design system's one-register
  * rule exists to prevent." That sentence is the spec's own reasoning for the requirement,
- * not a rule `DESIGN.md` documents under that name — nothing in `DESIGN.md` is cited here.
+ * not a rule documented under that name.
  *
  * What moved here is the shape every chip shares: a `32px` pill at a `16px` radius,
  * unselected as a filled `bg-raised` well with dim text hovering to full strength,

@@ -18,8 +18,8 @@ import { ReadFailure } from "@/errors/read-failure";
  * **Pending is a third state, and the whole risk is that it stops being one.**
  *
  * `AGENTS.md` opens on the pair `tvtracker` collapsed — a failed read that rendered as an
- * empty library, for the life of that app. `DESIGN.md` §9 adds the third and separates all
- * three by placement *and* weight. Every separation it names is structural, which is
+ * empty library, for the life of that app. The pending rules add the third and separate all
+ * three by placement *and* weight. Every separation named is structural, which is
  * exactly the kind a later edit can erase without breaking anything: centre the dim line
  * and it reads as the empty library, give it a rule and it reads as the failure, and the
  * suite stays green through both.
@@ -30,7 +30,7 @@ import { ReadFailure } from "@/errors/read-failure";
 
 const markupOf = (element: React.ReactElement) => renderToStaticMarkup(element);
 
-describe("the pending line is the treatment DESIGN.md §9 settled", () => {
+describe("the pending line is the settled treatment", () => {
   const pending = markupOf(createElement(PendingLine));
 
   /**
@@ -154,9 +154,8 @@ describe("the pending line is the treatment DESIGN.md §9 settled", () => {
 /**
  * ── Held, before it ever paints — issue #301 ────────────────────────────────────────
  *
- * `DESIGN.md` §9 radius 1 only: a whole route's own pending state waits behind
- * `--dur-pending-hold` (`tests/palette.test.ts` owns the token itself and the sweep over
- * which callers carry it). What belongs here is `PendingLine`'s own half of the
+ * Radius 1 only: a whole route's own pending state waits behind
+ * `--dur-pending-hold`. What belongs here is `PendingLine`'s own half of the
  * contract — the prop that turns the class on, and nothing else about the render.
  */
 describe("the held prop, and only the held prop, gates the hold", () => {
@@ -191,8 +190,8 @@ describe("the held prop, and only the held prop, gates the hold", () => {
   });
 
   /**
-   * The episode region is §9 radius 2 — beside content (`programme-note-episodes.tsx`)
-   * that has already rendered — and must keep painting immediately. `DESIGN.md` §9 is
+   * The episode region is radius 2 — beside content (`programme-note-episodes.tsx`)
+   * that has already rendered — and must keep painting immediately. The rule is
    * explicit that a delayed region there is a blank gap, not a read in progress.
    */
   it("does not hold the episode region, which is beside content that already rendered", () => {
@@ -377,7 +376,7 @@ describe("the routes below a title say which page is reading", () => {
  * **A reader is never trapped on a slow surface**, and this is where that stops being a
  * hope and becomes a property of where a file sits.
  *
- * `DESIGN.md` §9: *the boundary belongs to the page's own segment, never to the shell.*
+ * *The boundary belongs to the page's own segment, never to the shell.*
  * `(signed-in)/layout.tsx` holds the masthead, the sidebar and the tab bar, so a
  * `loading.tsx` at that level — or at `app/` — would take the navigation down with the
  * surface for the whole read, and a reader who cannot leave a slow screen is worse off than

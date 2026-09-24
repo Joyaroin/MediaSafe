@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
  * `160px` slot, `215.9px` once #196's *watched up to here* was on the row too, and
  * `50.2px` tall against every other state's `44px` — so a settled watched row grew the
  * moment a mark landed and took every row under it with it, and the overflow spilled
- * leftward over the episode name. That is the property `DESIGN.md` §6 exists to hold and
+ * leftward over the episode name. That is the property the rule exists to hold and
  * `episode-line.ts` records being measured into existence twice.
  *
  * ── Why this is arithmetic over the class strings and not a rendered row ─────────────

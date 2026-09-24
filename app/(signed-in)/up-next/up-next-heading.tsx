@@ -1,7 +1,7 @@
 import { upNextHeadingWord } from "./up-next-heading-band";
 
 /**
- * The landing heading — `DESIGN.md`: *TONIGHT is the first screen under [the masthead]*.
+ * The landing heading — *TONIGHT is the first screen under [the masthead]*.
  * Shared by all three states (populated, empty, failed) the way `library-heading.tsx` is
  * shared by the library's three, so a failed read still reads as *Up next, which did not
  * load* rather than a bare error on a blank page.
@@ -25,7 +25,7 @@ import { upNextHeadingWord } from "./up-next-heading-band";
  *
  * ── The hairline under it is gone (linen redesign, turn 9) ───────────────────────────
  *
- * `DESIGN.md`'s Depth section named this exact division — *the boundary between TONIGHT
+ * The Depth register named this exact division — *the boundary between TONIGHT
  * and the bill* — as one of the three places the old world's bold rule marked structural
  * division. #134 flattened the two hairline strengths into one and the border stayed;
  * turn 9 removes it outright. A 34px title with 26px of air under the first group label

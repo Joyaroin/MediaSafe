@@ -24,10 +24,10 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  *
  * ── Desktop selects; the phone route navigates ────────────────────────────────────────
  *
- * `docs/design/v1-surfaces.md` §5's third genuine divergence: on desktop, selecting an
+ * The third genuine divergence: on desktop, selecting an
  * entry replaces the programme note's contents and is **never a route change**
- * (`DESIGN.md`'s Never-Navigate-Away Rule); on the phone it is a pushed route. Both read
- * the same width the CSS breakpoints already key off — `≥1024px` is `DESIGN.md`'s own
+ * (the Never-Navigate-Away Rule); on the phone it is a pushed route. Both read
+ * the same width the CSS breakpoints already key off — `≥1024px` is the
  * cutoff for "Desktop" — checked at the moment of the click rather than baked into a
  * server-rendered branch, so resizing past the breakpoint mid-session changes which one a
  * click does without a reload.
@@ -66,7 +66,7 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  * beside the grid is showing that poster under the identical name.
  */
 /**
- * `DESIGN.md`'s own cutoff for "Desktop", and the same value every `lg:` Tailwind class
+ * The cutoff for "Desktop", and the same value every `lg:` Tailwind class
  * in this codebase compiles to. Named rather than inlined so there is exactly one place
  * to change if that value ever moves — the CSS classes would still need updating
  * separately, but at least this JS copy would no longer be a second, silent one.
@@ -137,7 +137,7 @@ export function SelectableEntry({
       {...gesture.handlers}
       data-holding={gesture.holding ? "true" : undefined}
       data-landed={gesture.landed ? "true" : undefined}
-      // `DESIGN.md`, Library Tile: *"the current entry carries `aria-current`."* `"true"`
+      // Library Tile: *"the current entry carries `aria-current`."* `"true"`
       // rather than `"page"` — unlike the masthead's nav cells
       // (`nav-cells.tsx`), a selected tile does not mean the browser is on that page; on
       // desktop the URL never changes at all.

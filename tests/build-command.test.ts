@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { runBuild, type BuildSteps } from "@/scripts/build";
 
 /**
- * `SPEC.md` §6 and issue #39: **the migration is the first half of the build command**,
+ * Issue #39: **the migration is the first half of the build command**,
  * so a failed migration fails the build, no deployment is created, and old code keeps
  * serving an unchanged schema. And **migrations deliberately do not run on preview**,
  * where the database is one shared schema-only Neon branch that no PR may move.
@@ -98,7 +98,7 @@ describe("the build command", () => {
   it("refuses to build on Vercel for an environment it does not know", async () => {
     const { ran, steps } = recorder();
 
-    // There is no staging (`SPEC.md` §6: two long-lived environments). A third name
+    // There is no staging — two long-lived environments. A third name
     // appearing here means the deployment model changed, and this file is the place
     // that has to be told, rather than the place that guesses.
     await expect(

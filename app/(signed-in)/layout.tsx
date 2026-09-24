@@ -7,7 +7,7 @@ import { TabBar } from "../tab-bar";
  * The signed-in shell: the phone masthead, the desktop sidebar, the tab bar, and the
  * container everything else sits in.
  *
- * `DESIGN.md`, Layout: *one centred column capped at `1800px`, running full-height as a
+ * Layout: *one centred column capped at `1800px`, running full-height as a
  * flex column* — the same wrapper the prototype opens with. Issue #136 turned that one
  * column into two shapes: a flex column on phone (masthead, then the page, then the tab
  * bar clearance), and `lg:flex-row` on desktop (the sidebar as a fixed-width column on

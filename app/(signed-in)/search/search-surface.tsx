@@ -15,7 +15,7 @@ import { searchCatalogueAction, type MarkedResult, type SearchOutcome } from "./
 /**
  * The search screen's whole state machine, and the reason it is one.
  *
- * `docs/design/v1-surfaces.md` §6 gives this screen four states and then says the thing
+ * This screen has four states, and the one that shapes this file says the thing
  * that shapes this file: **no results** is *"distinct from 'you have not typed yet', which
  * is a different state of the same screen"*, and a failure is *"inline, and it must not
  * look like 'no results'"*. Two pairs, neither of which may ever be confusable:
@@ -30,7 +30,7 @@ import { searchCatalogueAction, type MarkedResult, type SearchOutcome } from "./
  *
  * `empty` and `failed` are not merely different words: they are opposite in alignment,
  * opposite in heading colour, and only one of them has a border and an id. That is
- * `DESIGN.md`'s States section, and `errors/read-failure.tsx` holds the second one —
+ * the States register, and `errors/read-failure.tsx` holds the second one —
  * *"do not centre it, do not soften the border, and do not reuse the empty state's heading
  * colour here"*. This screen renders that component rather than re-drawing it.
  *
@@ -44,7 +44,7 @@ import { searchCatalogueAction, type MarkedResult, type SearchOutcome } from "./
  * keystroke that fights the browser's own restore. And the four states above are states of
  * *this screen's request*, not of a location: `searching` has no URL, and `failed` would
  * be a URL that renders a failure if you came back to it. Sort state on the library **is**
- * in the URL (`SPEC.md` §7) because it is a view of your own rows that is worth linking to;
+ * in the URL because it is a view of your own rows that is worth linking to;
  * a half-typed catalogue query is not.
  *
  * **That client state is now remembered for the session** —
@@ -114,7 +114,7 @@ export function SearchSurface({
    * the second one is not a second cost on any visit after the first.
    *
    * Optional, and each may be `null`: an account with no watches of a kind has no seed,
-   * and the rail is then absent rather than empty (`SPEC.md` §3).
+   * and the rail is then absent rather than empty.
    */
   rails?: Partial<Record<KindMode, React.ReactNode>>;
 }) {
@@ -307,7 +307,7 @@ async function search(kind: KindMode, query: string): Promise<SearchOutcome> {
 }
 
 /**
- * `DESIGN.md`, Inputs: *a `1px` `hair` bordered row with a bar icon, transparent
+ * Inputs: *a `1px` `hair` bordered row with a bar icon, transparent
  * ground, bone text at `text-item`, dim bone placeholder. Focus moves the border to
  * `text` at `2px` via `focus-within`* — issue #134 moves focus off the accent onto
  * brightness and border weight — *the input's own outline is suppressed in favour of the
@@ -325,8 +325,8 @@ async function search(kind: KindMode, query: string): Promise<SearchOutcome> {
  *
  * The same treatment as the library's filter field, and **not the same copy** — this one
  * says *search* and searches the catalogue, that one says *filter* and narrows your own
- * library. `CONTEXT.md` gives each word one meaning and `SPEC.md` §4 lists confusing them
- * as one of the three things most often built wrong.
+ * library. Each word has one meaning, and confusing them is
+ * one of the three things most often built wrong.
  */
 function SearchField({
   mode,
@@ -340,7 +340,7 @@ function SearchField({
   /**
    * The field says which kind it is searching, because the control above it has already
    * made that a question the reader can get wrong. Written out rather than interpolated
-   * from the mode's label: `CONTEXT.md` binds the words on screen, and a sentence built at
+   * from the mode's label: the words on screen are binding, and a sentence built at
    * runtime is a sentence nobody reviewed.
    */
   const label = mode === "film" ? "Search for a film" : "Search for a show";
@@ -358,7 +358,7 @@ function SearchField({
         /**
          * `text`, not `search`, and the prototype's filter field is `text` for the same
          * reason: WebKit draws its own clear button inside a `type="search"` field, and a
-         * rounded grey ✕ that nothing in `DESIGN.md` describes is a control this world
+         * rounded grey ✕ that nothing in this design describes is a control this world
          * does not have. The field is already one keystroke from empty.
          */
         type="text"
@@ -411,7 +411,7 @@ function InFlight() {
 /**
  * The catalogue answered, and has nothing.
  *
- * `DESIGN.md`, States, *zero matches*: centred, heading at `text-bill-md`, body at
+ * States, *zero matches*: centred, heading at `text-bill-md`, body at
  * `text-note` capped at `60ch`. The heading is **`text`**, not `accent` — vermilion on
  * this screen would make a successful search look like a failed one, which is the exact
  * confusion this state exists on the other side of.

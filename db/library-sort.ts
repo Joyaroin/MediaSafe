@@ -9,7 +9,7 @@
  */
 
 /**
- * The four fixed orders `SPEC.md` §7 settles (#22), in the order the sort select lists
+ * The four fixed orders (#22), in the order the sort select lists
  * them — **Title A–Z is the default and carries no query-string value of its own**, so a
  * reader who never touches the control keeps a clean `/library`.
  *

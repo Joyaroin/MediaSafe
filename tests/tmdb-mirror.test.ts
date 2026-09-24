@@ -20,9 +20,9 @@ import {
  *
  * ── Why this one is tested when almost nothing else is ───────────────────────────────
  *
- * `SPEC.md` §6 names four tests that earn their keep and says everything else "fails
+ * Four tests earn their keep and everything else "fails
  * loudly and cheaply to an app used daily by its owner". That argument does not reach
- * this function, and the reason is ADR-0001's second split: **`title` and `episode` are
+ * this function, and the reason is the second split: **`title` and `episode` are
  * global and unowned.** One account adding a show writes rows every other account then
  * reads. The mapping is not one person's data path — it is shared infrastructure — so
  * "its owner will notice" is not the safety net it is everywhere else in this codebase.
@@ -45,7 +45,7 @@ import {
  * `tests/fixtures/tmdb/README.md` says where they came from and what was and was not
  * trimmed. The one property to preserve when replacing them with live captures: the
  * results and episodes kept must keep **every** field TMDB sent, including the ones
- * ADR-0001 says are fetched live and never stored. `writesOnlyMirroredFields` below reads
+ * fetched live and never stored. `writesOnlyMirroredFields` below reads
  * the output looking for them, and it can only pass meaningfully if they were in the
  * input.
  */
@@ -65,7 +65,7 @@ const seasonPayloads = [
 ];
 
 /**
- * The field names ADR-0001's caching policy puts on the **live** side of the line, plus
+ * The field names the caching policy puts on the **live** side of the line, plus
  * the ones TMDB sends that nothing in MediaSafe has a column for.
  *
  * Asserted against the mapping's *output*, recursively, rather than against a list of
@@ -102,7 +102,7 @@ const NEVER_STORED = [
   /**
    * `append_to_response=external_ids` brings eight more ids along with the one that is
    * mirrored. None of them is a catalogue a title could be looked up in, so none of them
-   * is on the left-hand side of ADR-0001's line — and the object itself is not stored
+   * is on the left-hand side of the line — and the object itself is not stored
    * either, only the one string derived from it.
    */
   "external_ids",
@@ -207,8 +207,8 @@ describe("catalogueResults", () => {
 
   it("returns nothing for a response that matched nothing", () => {
     // Zero results is a successful search that found nothing, and it is reachable only
-    // this way: `catalogueResults` has no failure path that produces an empty array
-    // (SPEC.md §3.2). The search screen's four states rest on that.
+    // this way: `catalogueResults` has no failure path that produces an empty array.
+    //  The search screen's four states rest on that.
     expect(catalogueResults({ page: 1, results: [], total_results: 0 })).toEqual([]);
   });
 });
@@ -216,7 +216,7 @@ describe("catalogueResults", () => {
 describe("filmMirror", () => {
   const film = filmMirror(moviePayload);
 
-  it("mirrors exactly the fields ADR-0001 lists, and no others", () => {
+  it("mirrors exactly the fields the policy lists, and no others", () => {
     expect(film).toEqual({
       kind: "film",
       tmdbId: 11,
@@ -284,7 +284,7 @@ describe("filmMirror", () => {
 
 describe("seasonNumbers", () => {
   it("lists the seasons to fetch, specials included, in order", () => {
-    // Season 0 is mirrored and markable (ADR-0001); it is only excluded from the derived
+    // Season 0 is mirrored and markable; it is only excluded from the derived
     // states, which is `db/views.ts`'s job and not this one's.
     expect(seasonNumbers(showPayload)).toEqual([0, 1, 2]);
   });
@@ -315,7 +315,7 @@ describe("showMirror", () => {
   });
 
   it("brings every season's episodes into the mirror, names included", () => {
-    // The acceptance criterion, and CONTEXT.md's rule behind it: an episode is never
+    // The acceptance criterion, and the rule behind it: an episode is never
     // referred to by number alone, which makes the name load-bearing on ordinary list
     // screens rather than a detail-page nicety.
     expect(show.episodes).toHaveLength(7);
@@ -422,7 +422,7 @@ describe("showMirror", () => {
   });
 
   it("mirrors a show TMDB has no episode data for, with no episodes", () => {
-    // A real state, and `docs/design/v1-surfaces.md` §6 names it on title detail. It is
+    // A real state, named on title detail. It is
     // an empty list, not a failure, and it must not become one here.
     const bare = showMirror({ id: 1399, name: "Game of Thrones" }, []);
     expect(bare.episodes).toEqual([]);

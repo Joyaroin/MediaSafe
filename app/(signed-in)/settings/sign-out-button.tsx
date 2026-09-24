@@ -40,7 +40,7 @@ import { authClient } from "@/lib/auth-client";
  *
  * It does not navigate, and it says so. The blast radius is one region — the reader is
  * still on a working page, still signed in, and one thing they asked for did not happen —
- * so `SPEC.md` §6 places it inline, replacing that region. It is the established
+ * so it is placed inline, replacing that region. It is the established
  * treatment rather than a new one: `2px` `accent` top rule, heading in `accent`, a plain
  * sentence, and the same button as the recovery action.
  *
@@ -67,7 +67,7 @@ export function SignOutButton() {
       /**
        * Reported, and the id shown. This is the one failure on a signed-in surface that
        * leaves a live session behind, so it is the one worth being able to look up — and
-       * `SPEC.md` §6 allows the reader exactly one technical string for exactly this.
+       * the reader is allowed exactly one technical string for exactly this.
        */
       setReference(
         referenceFor(new Error("Sign-out did not reach the server.")),

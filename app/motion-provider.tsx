@@ -124,7 +124,7 @@ function claimOver(pressed: Element, target: EventTarget | null): boolean | null
  *
  * Twenty-five call sites wear `pressable` and every one of them is a server component. A
  * handler per call site would put a client boundary on every tile, cell and row in the
- * product to set one attribute, which is the exact cost `DESIGN.md` gives as the reason
+ * product to set one attribute, which is the exact cost given as the reason
  * the press is CSS in the first place. So the marking is delegated: one listener at the
  * document, `closest(".pressable")` from whatever the finger was over, and the call sites
  * stay markup.

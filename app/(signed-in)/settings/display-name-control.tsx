@@ -10,7 +10,7 @@ import { authClient } from "@/lib/auth-client";
 
 /**
  * The display name — the whole of Settings' Profile section for now, issue #123.
- * `SPEC.md` §7: *editable, capped at ~24 characters, defaulted from Google.* The
+ * Specified as *editable, capped at ~24 characters, defaulted from Google.* The
  * timezone control named in the same table row is a separate ticket (#123 blocks it) and
  * does not belong here.
  *

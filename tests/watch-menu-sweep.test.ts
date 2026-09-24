@@ -173,7 +173,7 @@ describe("the watch menu's controls reach the platform minimum", () => {
  * Issue #315's acceptance criteria: the confirmation's own controls reach the same 44px
  * floor as the four above, and are on the same two registers — a confirmation is not the
  * ticket that invents a fifth treatment any more than moving `Unwatch` invents a fourth
- * button tier (`DESIGN.md` §10 already declined one).
+ * button tier (one was already declined).
  */
 describe("the confirmation's own controls reach the platform minimum", () => {
   it("finds both confirmation controls", () => {

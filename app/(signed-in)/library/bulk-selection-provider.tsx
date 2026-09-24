@@ -34,8 +34,8 @@ import { DESKTOP_BREAKPOINT } from "./selectable-entry";
  * `up-next/page.tsx` is the shape the ticket is describing — the phone's groups and the
  * desktop's rails are two separate subtrees, one behind `lg:hidden` and one behind
  * `hidden lg:block`, so the sheet's provider is mounted inside the phone's and the
- * desktop's tiles simply never meet it. The Library has no such pair. `SPEC.md` §7 fixes
- * it at one grid — *"the library tile and grid. Same component, same information. Column
+ * desktop's tiles simply never meet it. The Library has no such pair. It is fixed
+ * at one grid — *"the library tile and grid. Same component, same information. Column
  * count differs; nothing else does"* — and `library-grid.tsx` renders that one grid at
  * every width. There is nowhere to mount a provider that a desktop cell does not sit under,
  * short of rendering all 472 cells twice.

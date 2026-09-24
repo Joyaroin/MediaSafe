@@ -25,7 +25,7 @@
  * zone, and the weekday it prints is read off the date in UTC for that reason.
  *
  * The **reader's today** is the opposite: an instant, made into a day by a zone, which is
- * `SPEC.md` §5's *the zone is a read-time lens*. It arrives here as a string of the same
+ * *the zone is a read-time lens*. It arrives here as a string of the same
  * shape, and comparing the two is then plain arithmetic over calendar days.
  *
  * ── The films below the episodes are counted here too (#252) ─────────────────────────
@@ -42,7 +42,7 @@
 /** The bucket an upcoming row falls into, with the rows in the order they arrived. */
 export interface UpcomingGroup<T> {
   /**
-   * What the heading reads. A **name** and never a count — `SPEC.md` §7's *no counts on a
+   * What the heading reads. A **name** and never a count — *no counts on a
    * rail head*, which #250 narrowed *from* the wider *no counts, anywhere* and which still
    * stands over every head in the build. *Today* does not say how many.
    */
@@ -142,7 +142,7 @@ export function readerDay(zone: string, at: Date): string {
  *
  * ── An empty group is never emitted ──────────────────────────────────────────────────
  *
- * A day with nothing on it has no heading, which is `SPEC.md` §7's rule for a rail applied
+ * A day with nothing on it has no heading, which is the rule for a rail applied
  * to a group, and it is why the buckets are discovered from the rows rather than laid out
  * in advance. A page with no rows at all returns no groups, and the surface answers that
  * with the handoff's sentence rather than four empty headings.
@@ -305,7 +305,7 @@ export type UpcomingTitle<T> = T & {
    * is the only thing dated.
    *
    * A count and not a list: the row says *what is coming and roughly how much*, and a
-   * reader who wants the rest opens the show. `SPEC.md` §7's *no counts on a rail head* is
+   * reader who wants the rest opens the show. *No counts on a rail head* is
    * about headings, and is untouched by a count inside a row.
    */
   readonly more: number;

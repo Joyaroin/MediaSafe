@@ -18,7 +18,7 @@ import type { CatalogueResult, TitleKind } from "@/tmdb/mirror";
  *
  * `app/(signed-in)/library/live-facts.ts` had this problem first and solved it with the
  * shape reused here: the failure is **represented** rather than raised, carried to the
- * caller as data, and rendered where the region was. That is not the thing `SPEC.md` §3
+ * caller as data, and rendered where the region was. That is not the thing the rule
  * forbids. The rule is against manufacturing a *successful-looking empty result* out of a
  * failure — `catch { return [] }` — and this catch does the opposite, producing a value
  * that cannot be mistaken for success by anything that reads it, because `ok: false` has
@@ -29,7 +29,7 @@ import type { CatalogueResult, TitleKind } from "@/tmdb/mirror";
  * `rail: null` means there is no seed — you have watched nothing of this kind, so there is
  * no title for the rail to be *because* of. An empty `results` means TMDB answered and had
  * nothing to suggest. Neither is a failure and neither gets a heading over an empty track,
- * per `SPEC.md` §9. They stay distinguishable in the type even though they render alike,
+ * by the same rule. They stay distinguishable in the type even though they render alike,
  * because the day one of them wants different copy, the caller can already tell them
  * apart.
  */

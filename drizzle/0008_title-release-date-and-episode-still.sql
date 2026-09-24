@@ -1,4 +1,4 @@
--- ADR-0001, amendment 10 (#246): two facts the catalogue already sends and the mirror
+-- Amendment 10 (#246): two facts the catalogue already sends and the mirror
 -- discarded — an episode's still, and a title's release date.
 --
 -- Both were on the *fetched live, never stored* side of the ADR's dividing line, and both
@@ -13,6 +13,6 @@
 -- backfill would be a second writer of global rows.
 --
 -- Nothing reads either column yet, so this adds a column ahead of its reader deliberately
--- (SPEC.md §3, constraint 7 — expand first, in its own change).
+-- (constraint 7 — expand first, in its own change).
 ALTER TABLE "episode" ADD COLUMN "still_path" text;--> statement-breakpoint
 ALTER TABLE "title" ADD COLUMN "release_date" date;

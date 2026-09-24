@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
  * column, or block text" — because WCAG 2 has nothing useful to say near black: it
  * passes the *shipped* dark `--dim` (5.87:1) while that value sits at Lc −40, under
  * even the Lc 45 headline floor. That gap is exactly how the dark regression hid, per
- * the parent spec and `docs/design/visual-refinement-research.md` §2.3.
+ * the parent spec's own research note.
  *
  * No DOM, no browser, no snapshot — a contrast figure is a pure function of two colour
  * values, and this file reads the stylesheet as text the same way `palette.test.ts`
@@ -130,7 +130,7 @@ function wcagContrast(fg: [number, number, number], bg: [number, number, number]
  * APCA (`apca-w3` 0.1.9) contrast, `Lc`. Constants and structure transcribed from the
  * reference implementation the research note cites
  * (https://raw.githubusercontent.com/Myndex/apca-w3/master/src/apca-w3.js), verified
- * against `docs/design/visual-refinement-research.md` §2.3's own worked figures — e.g.
+ * against the research note's own worked figures — e.g.
  * light `--dim` on `--raised`/`--ground` computes to Lc 66/71 here as it does there, and
  * dark `--dim` on `--ground`/`--raised` computes to Lc −61/−60.
  *

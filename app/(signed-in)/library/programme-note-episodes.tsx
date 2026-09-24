@@ -35,9 +35,9 @@ import {
 
 /**
  * The season/episode list — the row that carries the product's most important rule
- * (`DESIGN.md`, Episode Line). Shared verbatim by the desktop pane and the phone route,
+ * (the Episode Line). Shared verbatim by the desktop pane and the phone route,
  * because #58's episode list is one design at two densities, not one of the three genuine
- * divergences (`docs/design/v1-surfaces.md` §5).
+ * divergences.
  *
  * The whole file is a client boundary now — issue #88 puts the recording control here,
  * and `ProgrammeNoteContent`, its own server-component caller, stays exactly that: the
@@ -89,9 +89,9 @@ export function ProgrammeNoteEpisodes({
    * separate. The order matters in one direction only: a pending title has no episode rows
    * yet, so the empty branch below would catch it first and say the wrong thing.
    *
-   * `DESIGN.md` §9, radius 2 — *one region is pending, beside rendered content*. Everything
+   * Radius 2 — *one region is pending, beside rendered content*. Everything
    * else on this page is at full strength the whole time; this is the one region genuinely
-   * unresolved and it says so in the one dim line §9 settles. **No skeleton and no
+   * unresolved and it says so in the one dim line the rule settles. **No skeleton and no
    * shimmer**, and the region reserves no height for what it does not yet know the size
    * of — §9 argues both at length, and a season list is the exact shape a skeleton would
    * be reached for.
@@ -113,7 +113,7 @@ export function ProgrammeNoteEpisodes({
       <div className={`arrive ${PROGRAMME_NOTE_SECTION}`}>
         <p className="text-item text-dim">
           {/*
-            Missing and empty stay distinct here as everywhere (`CONTEXT.md`): this is not
+            Missing and empty stay distinct here as everywhere: this is not
             "a season with nothing in it", which would be a `library_entry` bug — and since
             #272 it is not *the mirror has not arrived* either, which `episodesPending`
             answers above. What is left is the honest remainder: TMDB lists no episodes for
@@ -275,7 +275,7 @@ function SeasonList({
  * it*; *Watched* alone while the strike plays; *Rewatch* beside *Unwatch*; and, since
  * #196, *watched up to here* on either side of that split — and they are not the same
  * width. Left to size themselves, the episode name beside them would jump every time one
- * gave way to another, which is `DESIGN.md`'s *nothing reflows* broken sideways instead
+ * gave way to another, which is *nothing reflows* broken sideways instead
  * of vertically. (#89 wrote *three* here and enumerated three; the count is deliberately
  * not restated now that the table below is the thing that enumerates them.)
  *
@@ -297,7 +297,7 @@ function SeasonList({
  * settled watched row at `50.2px` against every other state's `44px`, and `215.9px` of
  * controls in a `160px` slot, spilling leftward over the episode name because they are
  * `justify-end` inside a `shrink-0` box. **The row grew the moment a mark settled** —
- * `DESIGN.md` §6's *re-measure if you touch the row*, and the exact property
+ * the rule *re-measure if you touch the row*, and the exact property
  * `episode-line.ts` was measured into existence twice to hold.
  *
  * Re-measured for #203 in a real Chromium tab against the compiled CSS with Archivo
@@ -427,7 +427,7 @@ function SeasonList({
 const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
 
 /**
- * `DESIGN.md`, Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
+ * The Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
  * **name** at `text-item` as the actual content; a trailing state code line. The up-next
  * episode inverts its number into a solid accent chip and carries an accent *Up next*
  * label; a watched episode's name is dimmed, and nothing else marks it — issue #139
@@ -525,7 +525,7 @@ const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
  *
  * Issue #89. A watched episode offers *Rewatch* and *Unwatch*, and **neither is the control
  * that struck it** — the recording control is gone the moment the row is watched, so the
- * daily gesture cannot be repeated into a rewatch. `ADR-0001`'s per-click key
+ * daily gesture cannot be repeated into a rewatch. The per-click key
  * protects one click across its retries and can do nothing about two clicks, and a
  * phantom rewatch is invisible by inspection next to the 1,156 real ones already in the
  * database.
@@ -534,9 +534,8 @@ const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
  * the bordered ghost button, and both of these were underlined text with no border and no
  * fill, a control that must not compete with the daily gesture. Issue #195 removed that
  * distinction: every one of the fourteen underlined controls in the app, this pair
- * included, now takes `GHOST_RECOVERY` — the same bordered outline `DESIGN.md` §10's
- * Buttons subsection specifies, spent knowingly rather than by accident (§10 and §12 both
- * record it). What still separates the two is only the words. *Rewatch* stays **accent**
+ * included, now takes `GHOST_RECOVERY` — the same bordered outline the
+ * Buttons register specifies, spent knowingly rather than by accident. What still separates the two is only the words. *Rewatch* stays **accent**
  * for the reason it always did — it records a watch, and the accent is what recording a
  * watch looks like — and it needed no override to keep it, since it already painted accent
  * before this ticket touched it. *Unwatch* is the one that changed: it used to be dim and
@@ -563,7 +562,7 @@ const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
  *
  * *Unwatch* takes the trailing state line's place rather than sitting beside it, so a
  * settled watched row reads *Rewatch · Unwatch*. The dimmed name is what says *watched*
- * now (`DESIGN.md`, Episode Line, as issue #139 redraws it); the code line beside it gives
+ * now (the Episode Line, as issue #139 redraws it); the code line beside it gives
  * way to the control that acts on it, the way the abandon control's own reassurance gives
  * way when it stops being the true statement. The *Watched* code line survives in one
  * place only — the length of the sweep, before either control arrives.
@@ -572,8 +571,8 @@ const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
  *
  * It used to be conditional. `episode.unwatchable` said *this account has a watch of this
  * episode that the application recorded*, and an episode whose only watch was imported
- * read as watched and offered no unwatch at all. The library is 19,558 imported watches
- * (`SPEC.md` §7), so that control did not render on essentially anything its only reader
+ * read as watched and offered no unwatch at all. The library is 19,558 imported watches,
+ *  so that control did not render on essentially anything its only reader
  * owns: the feature existed and was structurally invisible to him.
  *
  * `db/access.ts`'s `unwatch` now removes every watch of an episode whatever recorded it,
@@ -583,7 +582,7 @@ const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
  * dimmed name beside it.
  *
  * Nothing here counts anything. `watched` and `phase` are the whole state, and there is no
- * number of watches on this row to display — `CONTEXT.md`: a rewatch is *never a number
+ * number of watches on this row to display — a rewatch is *never a number
  * kept on a title*.
  */
 function EpisodeLine({
@@ -683,7 +682,7 @@ function EpisodeLine({
           E{episode.episodeNo}
         </span>
 
-        {/* The Named Episode Rule (`DESIGN.md`): an episode is always its name. `null` is
+        {/* The Named Episode Rule: an episode is always its name. `null` is
             TMDB not having named it yet — not a licence to print the number a second time
             in its place. */}
         <span className={EPISODE_NAME_CELL}>
@@ -760,14 +759,14 @@ function EpisodeLine({
            */
           <>
             {/**
-             * **×2, and this is the numeral `CONTEXT.md` used to forbid.**
+             * **×2, and this is the numeral the domain language used to forbid.**
              *
              * That sentence — *a rewatch is never a number kept on a title* — is amended
              * rather than dodged, and the amendment turns on the word **kept**: nothing is
              * stored. `EpisodeDetail.watches` is counted from the `watch` rows on every
              * read, out of rows the query was already selecting.
              *
-             * `DESIGN.md` §11's own test is whether the number is **content**, and its
+             * The test is whether the number is **content**, and its
              * worked example is Up next's remainder — *am I three from the end of this
              * show, or thirty*. This is the same shape of question about the other axis:
              * *have I seen this once, or five times*, on the row that is the only place
@@ -800,7 +799,7 @@ function EpisodeLine({
 
 /**
  * `EpisodeLine` and `FilmWatchRow`'s one interactive element, identical either way — the
- * same border/press treatment `DESIGN.md`'s Material Event Rule reserves for a recording
+ * same border/press treatment the Material Event Rule reserves for a recording
  * control: it never turns blue, slides, or removes the row.
  *
  * A checkmark since issue #217, not the word *Strike it* — "a reader looking at an episode
@@ -815,7 +814,7 @@ function EpisodeLine({
  * Exported since issue #228, for `up-next-row.tsx`'s dedicated row — and since the film
  * row moved out of this file, for `film-watch-row.tsx` too. Three callers, one of them in
  * this module and two outside it, and still one control rather than three that resemble
- * each other (`DESIGN.md` §7 names the show page as exactly this reuse).
+ * each other — the show page is exactly this reuse.
  */
 export function MarkWatchedButton({
   label,
@@ -880,7 +879,7 @@ export function MarkWatchedButton({
  * them in rather than out so the table could not read as though the row still fitted. It
  * did not. Issue #195 had taken *Rewatch* and *Unwatch* from underlined text to
  * `GHOST_RECOVERY`, whose `px-4 py-2` and border are far wider and taller than the text
- * they replaced, without re-measuring the slot they sit in — `DESIGN.md` §6's *re-measure
+ * they replaced, without re-measuring the slot they sit in — *re-measure
  * if you touch the row*. Against the old `160px` slot they came back `177.9px` and
  * `215.9px`, both at `50.2px` tall against every other state's `44px`.
  *
@@ -903,7 +902,7 @@ export function MarkWatchedButton({
  *
  * `QUIET_RECORDING_CONTROL` (`watch-mark-motion.tsx`) carries that argument, beside the
  * accent `RECORDING_GLYPH`/`RECORDING_HIT_BOX` it must not compete with — one module
- * owning all three is what stops the pair drifting, and `DESIGN.md` §10 is the rule that
+ * owning all three is what stops the pair drifting, and the Buttons register is the rule that
  * says so. It was written inline here until the two-axis review of #196 pointed out that
  * it had become the second unnamed copy of a hairline register the build already had.
  */

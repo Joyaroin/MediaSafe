@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import cacheKeyCarriesAccount from "@/eslint-rules/cache-key-carries-account.mjs";
 
 /**
- * `SPEC.md` §3.1 as amended by issue #219, machine-checked rather than remembered:
+ * The read-cache clause as amended by issue #219, machine-checked rather than remembered:
  * **no cache key without an account.**
  *
  * The argument is `tests/no-empty-catch.test.ts`'s, one constraint over. A cache is only
@@ -15,7 +15,7 @@ import cacheKeyCarriesAccount from "@/eslint-rules/cache-key-carries-account.mjs
  * reader's library, consistently, until something busts it.
  *
  * It is an **ESLint rule and not a test** for the reason the empty-catch rule gives:
- * `SPEC.md` §6 puts typecheck, lint and build in CI and nothing else, so a vitest
+ * CI runs typecheck, lint and build and nothing else, so a vitest
  * assertion would never see a pull request and `npm run lint` will.
  *
  * What this file tests is the rule itself — that it fires on the shapes it must, holds

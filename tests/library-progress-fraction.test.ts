@@ -4,7 +4,7 @@ import { libraryProgressFraction } from "@/app/(signed-in)/library/library-progr
 
 /**
  * Issue #324: the library card bar's fraction, in isolation from the query and the
- * render — the pure rule `SPEC.md`'s Testing Decisions ask for.
+ * render — the pure rule asked for.
  */
 describe("libraryProgressFraction", () => {
   it("is null when nothing has released, regardless of watched", () => {

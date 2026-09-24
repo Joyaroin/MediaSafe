@@ -21,7 +21,7 @@ import {
 /**
  * One catalogue result, and the two actions on it.
  *
- * `docs/design/v1-surfaces.md` §4: *adding is one action from a result, and a result
+ * The rule: *adding is one action from a result, and a result
  * already in your library says so rather than offering to add it twice.* There is no
  * intermediate form, no confirmation and no options — everything the mirror needs is
  * fetched by the action, not asked of the reader.
@@ -47,11 +47,11 @@ import {
  * ── The optimistic write, and the toast it raises ────────────────────────────────────
  *
  * This is **the first caller of the write-failure toast**, and it arrives two build steps
- * before the one the toast was built for. `SPEC.md` §11's build order puts the first write
+ * before the one the toast was built for. The build order puts the first write
  * at step 4 — the optimistic watch mark — and that was true when the toast was written and
  * is not now: adding a title is a write, it is optimistic, and it can be lost.
  *
- * `SPEC.md` §3.3 is the property: **a lost write is never silent.** Not *always lands*.
+ * The property: **a lost write is never silent.** Not *always lands*.
  * So:
  *
  *  - the row says *In your library* the moment you press, before the server has answered;
@@ -81,7 +81,7 @@ export function CatalogueResultRow({
 }) {
   /**
    * Optimistic. Seeded from the server's answer, set true on press, and set back on
-   * failure — the rollback half of `SPEC.md` §3.3.
+   * failure — the rollback half of that property.
    */
   const [inLibrary, setInLibrary] = useState(result.inLibrary);
   const raised = useRef<StandingAdd | null>(null);
@@ -192,7 +192,7 @@ export function CatalogueResultRow({
         </h2>
         <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
           {/* The year and the kind, and nothing else. A synopsis here would be both the
-              dense row `SPEC.md` §3.4 forbids and a field ADR-0001 forbids storing. */}
+              dense row the rules forbid and a field the schema forbids storing. */}
           {result.releaseYear === null ? "Year unknown" : result.releaseYear}
           {" · "}
           {result.kind === "film" ? "Film" : "Show"}

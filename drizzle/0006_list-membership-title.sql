@@ -2,7 +2,7 @@
 -- different order and with one suppression added; both are noted where they happen and
 -- neither changes what the migration does.
 --
--- ADR-0001 amendment 7 (issue #143): membership points at `title`, not at
+-- Amendment 7 (issue #143): membership points at `title`, not at
 -- `library_entry`. A list may hold anything in the catalogue, so it cannot be gated on
 -- owning the title; ownership moves to the list, which is owned. The table has **zero
 -- rows**, so there is nothing to backfill and nothing to reconcile.
@@ -18,7 +18,7 @@ ALTER TABLE "list_membership" DROP CONSTRAINT "list_membership_list_id_library_e
 -- line below rather than in `.squawk.toml` — the rule stays on for every other migration.
 -- It protects code already serving traffic that trusts a column to be present; nothing
 -- reads `list_membership.library_entry_id`, because nothing has ever written a row to
--- this table. Nullable is what expand-contract *requires*: `SPEC.md` §3.7 is forward-only
+-- this table. Nullable is what expand-contract *requires*: it is forward-only
 -- and a column is not dropped in the change that stops using it, so the column stays,
 -- unwritten, until issue #150 drops it.
 --

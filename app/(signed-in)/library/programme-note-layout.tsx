@@ -7,7 +7,7 @@ import { ProgrammeNotePane } from "./programme-note";
 
 /**
  * **A surface on the left, the programme note on the right, and which entry is open between
- * them** — `DESIGN.md`'s Never-Navigate-Away Rule as one component, so the two surfaces that
+ * them** — the Never-Navigate-Away Rule as one component, so the two surfaces that
  * follow it cannot follow it differently.
  *
  * Extracted in #137, which is the ticket that made it two. The library bill has had this

@@ -10,7 +10,7 @@ import { unauthorized } from "./authorize";
 import { runNightlySweep } from "./run-sweep";
 
 /**
- * The nightly metadata sweep (ADR-0001, issue #115) — the first thing in this application
+ * The nightly metadata sweep — the first thing in this application
  * that runs with nobody watching. Refreshes up to 200 titles a night, in-production shows
  * whose next air date has passed first, then whatever has gone longest unrefreshed, and
  * writes #114's external id as it goes. `run-sweep.ts` carries the run itself; this file
@@ -33,7 +33,7 @@ import { runNightlySweep } from "./run-sweep";
  *
  * ── No user id, no session, and that is coherent rather than an oversight ─────────────
  *
- * `title` and `episode` are global and unowned (ADR-0001) — the mirror is refreshed for
+ * `title` and `episode` are global and unowned — the mirror is refreshed for
  * everybody at once, so a sweep acting for nobody in particular is the correct shape, not
  * a corner this route cuts. It takes no user id and never calls `lib/session.ts`.
  *
@@ -118,9 +118,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   ]);
 
   /**
-   * A body, not a page: nothing renders this, and `SPEC.md` §6 is explicit that no
-   * surface anywhere shows a refresh status. It exists only for the Vercel cron log —
-   * `docs/deployment.md`'s equivalent of the press-check line other routes print.
+   * A body, not a page: nothing renders this, and no
+   * surface anywhere shows a refresh status. It exists only for the Vercel cron log.
    */
   return NextResponse.json({
     candidates: outcome.candidates,

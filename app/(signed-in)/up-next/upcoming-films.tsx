@@ -8,7 +8,7 @@ import { FIRST_RUN, RailSection } from "./up-next-phone-rail";
 /**
  * Upcoming's second half — **the films you are waiting for** (issue #252).
  *
- * `docs/design/prototypes/mediasafe-mobile.html`'s *Upcoming movies*: a horizontal rail of
+ * *Upcoming movies*: a horizontal rail of
  * poster cards under the episodes, each with the day it comes out and, in the accent, how
  * long that is — *In 12 days*.
  *
@@ -29,7 +29,7 @@ import { FIRST_RUN, RailSection } from "./up-next-phone-rail";
  *
  * ── An empty section is absent, and the sentence is the page's ──────────────────────
  *
- * `null` on nothing, which is `SPEC.md` §7's rule and the same answer the two rails on
+ * `null` on nothing, which is the rule and the same answer the two rails on
  * page one give. What it is deliberately **not** is a sentence: *no release dates yet* is
  * the whole page's state and belongs to the page, because a reader with three dated
  * episodes and no dated film is not looking at an empty Upcoming.
@@ -81,7 +81,7 @@ export function UpcomingFilms({ films }: { films: readonly AwaitedFilm<UpcomingF
  *
  * The prototype's film cards carry no open handler where its episode rows carry one, so
  * this is the one place the card does something the handoff does not draw. It navigates
- * anyway, for `SPEC.md`'s *a destination is a destination*: `up-next-film-rail.tsx`'s card
+ * anyway, for *a destination is a destination*: `up-next-film-rail.tsx`'s card
  * is the same poster of the same film on the page next door and it is a link, and a poster
  * that is tappable on one page and inert on the next teaches a reader nothing except not
  * to try. The destination is the same one — the film's own page under its library entry.
@@ -136,9 +136,9 @@ function FilmCard({
           {releaseDateInWords(film.releaseDate)}
         </p>
 
-        {/* The accent, which `DESIGN.md` §3 forbids by default and **amends for exactly
-            this shape** — the amendment is written there, in the same change as this line,
-            rather than argued here where the next reader of §3 would never find it. Its
+        {/* The accent, which is forbidden by default and **narrowed for exactly
+            this shape** — the narrowing was recorded in the same change as this line,
+            rather than argued only here. Its
             three conditions are what this card is: no state label on it, the date itself
             left `dim` above, and a quantity that moves on its own every midnight. */}
         <p className="code-line mt-[6px] text-accent" data-numeric>

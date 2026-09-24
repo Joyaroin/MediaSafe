@@ -7,7 +7,7 @@
  * module-level object, and module state on the server is shared by every request and so by
  * every account — a title raised into it from a Server Action would be a title from one
  * person's library appearing in another person's toast, in a product whose premise is that
- * every account's library is completely isolated (`CONTEXT.md`). `"use client"` turns that
+ * every account's library is completely isolated. `"use client"` turns that
  * mistake into a build-time client-reference error instead of a silent leak. Raise
  * failures from the browser, where the write was attempted.
  *
@@ -18,7 +18,7 @@
  * ahead of either of them was still the point — the caller reached for a mechanism instead
  * of designing one while also getting rollback right.
  *
- * SPEC.md §3.3: *a lost write is never silent.* The property bought is **never silent**,
+ * The rule: *a lost write is never silent.* The property bought is **never silent**,
  * not *always lands* — so a raised failure leaves the screen in exactly two ways, both of
  * them somebody's decision:
  *
@@ -36,14 +36,14 @@
  * There is no field here for a message, a code, or anything else lifted off an exception,
  * and that is structural rather than an omission: the toast composes its own sentences
  * from these facts, so there is no route by which `error.message` reaches the screen.
- * DESIGN.md's States section allows exactly one technical string anywhere in the app —
+ * The States register allows exactly one technical string anywhere in the app —
  * the reference id — and this shape is what holds that line.
  */
 export interface LostWrite {
   /** The affected title, named in full. Never an id, never truncated. */
   readonly title: string;
   /**
-   * The affected episode, named in full — CONTEXT.md: *an episode is never referred to by
+   * The affected episode, named in full — *an episode is never referred to by
    * number alone*. Absent for a film, or for a change to the title itself.
    */
   readonly episode?: string;
@@ -77,7 +77,7 @@ export interface WriteFailureHandle {
    * to keep AGENTS.md's **one toast per lost write, not one per attempt**. That guard has
    * one blind spot, and it is the reader: `dismiss()` takes the toast off screen without
    * telling the handle, so a ref still holding a dismissed handle suppresses the *next*
-   * lost write entirely — which is `SPEC.md` §3.3's *a lost write is never silent*, broken
+   * lost write entirely — which is *a lost write is never silent*, broken
    * silently, by the reader's own tidying up.
    *
    * A caller asks before suppressing. `resolve()` cannot answer this on its own: resolving

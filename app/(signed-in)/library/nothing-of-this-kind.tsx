@@ -8,7 +8,7 @@ import type { KindMode } from "./kind-mode";
  *
  * ── The fourth state, and why it had to be its own ──────────────────────────────────
  *
- * This screen now has four ways of having nothing to show, and `SPEC.md` §3's whole
+ * This screen now has four ways of having nothing to show, and the whole
  * discipline is that they stay structurally apart:
  *
  * | State | Means | Owner |
@@ -32,8 +32,8 @@ import type { KindMode } from "./kind-mode";
  * some of it. The one primary action on this screen belongs to a genuinely blank library.
  *
  * It is deliberately **not** the same as `ZeroMatches` in colour or border — it shares
- * that state's heading step, exactly as the read failure does, and `DESIGN.md`'s States
- * section is explicit that the failure is told apart by colour and border rather than by
+ * that state's heading step, exactly as the read failure does, and the States
+ * register is explicit that the failure is told apart by colour and border rather than by
  * size. Nothing here takes the accent or the `2px` rule; those are the failure's alone.
  */
 export function NothingOfThisKind({ mode }: { mode: KindMode }) {
@@ -43,7 +43,7 @@ export function NothingOfThisKind({ mode }: { mode: KindMode }) {
    * A template would have produced *"No films yet"* and *"No shows yet"* from one string
    * and looked tidier. It would also have made the second sentence impossible to write
    * honestly: a film and a show are not added the same way and are not missing for the
-   * same reason, and the copy below says so. `CONTEXT.md` binds these words; a string
+   * same reason, and the copy below says so. The domain language binds these words; a string
    * built at runtime is a word nobody reviewed.
    */
   const copy =

@@ -11,7 +11,7 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * Every figure on this page is genuinely `0` for an account with nothing in it, so
  * printing them would not be *false*. It would be worse than false: a page that looks like
  * it is reporting, framed so the reader has to read six zeroes to work out there is
- * nothing to report. `DESIGN.md`'s States section draws the empty treatment as a sentence
+ * nothing to report. The States register draws the empty treatment as a sentence
  * for exactly this reason.
  *
  * ── Reachable only one way ───────────────────────────────────────────────────────────

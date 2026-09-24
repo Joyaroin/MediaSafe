@@ -35,7 +35,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * That matters because **a wrong derivation rule does not fail loudly.** A show that
  * never becomes *caught up* simply never appears on the surface that lists caught-up
  * shows, and the only person who could notice is the one assuming the app is right. Every
- * assertion below walks one rule from ADR-0001's *Derivation rules* — the states in their
+ * assertion below walks one of the *Derivation rules* — the states in their
  * order, the released-episode test, the specials exclusion, the high-water mark — against
  * real Postgres rather than a re-derivation of them in TypeScript.
  *
@@ -280,7 +280,7 @@ async function upNextOf(tx: Transaction, entryId: string) {
 
 describe("the migration", () => {
   /**
-   * SPEC.md §5 asks for the schema **whole, in one migration**, `list` and
+   * The schema is created **whole, in one migration**, `list` and
    * `list_membership` included even though lists are not in v1. Asserted against the
    * committed SQL rather than against the database, because "the tables exist" is true of
    * six migrations as well as of one.
@@ -404,11 +404,11 @@ describe("the migration", () => {
   });
 
   /**
-   * ADR-0001's *Indexes* section, all five. Asserted because an index is the one thing in
+   * The five indexes, all of them. Asserted because an index is the one thing in
    * that section that changes nothing observable when it goes missing — the queries still
    * return the right rows, slower, and nothing fails until the library is large.
    */
-  it("creates ADR-0001's five indexes, the partial one included", async () => {
+  it("creates the five indexes, the partial one included", async () => {
     await inTransaction(async (tx) => {
       const indexes = await tx.execute<{ indexname: string; indexdef: string }>(sql`
         select indexname, indexdef
@@ -453,7 +453,7 @@ describe("the migration", () => {
       `);
 
       // `v` is a view. A table would be `r` and a materialised view `m` — and a
-      // materialised view is the stored copy of derived state ADR-0001 rejected.
+      // materialised view is the stored copy of derived state that was rejected.
       expect(views.rows).toEqual([
         { relname: "library_entry_progress", relkind: "v" },
         { relname: "library_entry_state", relkind: "v" },
@@ -817,7 +817,7 @@ describe("the five states", () => {
    * not told us about cannot reach *finished*, however completely it has been watched.
    *
    * Pinned rather than left to be discovered, because it is the one place the derivation
-   * and CONTEXT.md read differently: the glossary calls caught up "a show that is still
+   * and the glossary read differently: the glossary calls caught up "a show that is still
    * in production", which an unknown is not. Treating unknown as *ended* would be worse —
    * it would call a show finished on missing data — and the mirror should never produce
    * this: `in_production` is null for films, and every show TMDB returns carries it.
@@ -1243,7 +1243,7 @@ describe("lists", () => {
 /**
  * The constraint this migration creates, not the write path that will lean on it.
  *
- * SPEC.md §6's test 3 — that a retried click is a no-op and a genuine rewatch is a second
+ * Test 3 of the four — that a retried click is a no-op and a genuine rewatch is a second
  * row — belongs to build step 4, where there is a write to retry. What is checkable now
  * is the thing step 4 will stand on: that the database, not the application, is what
  * makes two facts with one origin impossible.

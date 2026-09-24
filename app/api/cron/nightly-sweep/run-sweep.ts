@@ -15,7 +15,7 @@ import { reconcileVanishedTitle, type FindByExternalId } from "./reconcile-title
 /**
  * The nightly sweep itself (issue #115) — everything but the HTTP wrapper and the real
  * TMDB call, both of which `route.ts` supplies. Split out so this can be tested against
- * real Postgres, without a network, exactly as `SPEC.md` §6 asks: this file never imports
+ * real Postgres, without a network, exactly as asked: this file never imports
  * `@/tmdb/catalogue`, which is `import "server-only"` — a no-op inside Next's build but a
  * hard throw under plain Node module resolution, so a test that imported it could never
  * run under Vitest (`tmdb/mirror.ts` draws the identical line for `TmdbHttpError`, for the
@@ -60,8 +60,7 @@ export interface SweepRepoint {
 }
 
 /**
- * What one run did — the whole of what Sentry, and nothing else, ever hears (`SPEC.md`
- * §6: no badge, no "last refreshed" line, nothing in Settings).
+ * What one run did — the whole of what Sentry, and nothing else, ever hears (no badge, no "last refreshed" line, nothing in Settings).
  */
 export interface NightlySweepOutcome {
   readonly candidates: number;
@@ -194,7 +193,7 @@ export async function runNightlySweep(
 }
 
 /**
- * The one place a broken refresh is found (`SPEC.md` §6, issue #115): one event per
+ * The one place a broken refresh is found: one event per
  * skipped title, tagged with enough to find it without reading a stack trace first, and a
  * summary so a quiet night — nothing due, nothing failed — is still a message rather than
  * silence. `Sentry.getClient()?.getDsn()` is not checked here the way `errors/reference.ts`

@@ -323,7 +323,7 @@ function readManifest<T>(repositoryRoot: string, relativePath: string): T {
     /**
      * Reported and rethrown, never softened into a default. A missing manifest means
      * there is no build to check, and a check that quietly passes when it read nothing is
-     * worse than no check — it is the shape of `SPEC.md` §3.2 one directory over.
+     * worse than no check — it is the shape of the empty-versus-failed rule one directory over.
      */
     throw new Error(
       `Cannot read ${relativePath} from ${BUILD_DIRECTORY}. This check compares the ` +

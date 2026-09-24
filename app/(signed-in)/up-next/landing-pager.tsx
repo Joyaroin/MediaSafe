@@ -18,7 +18,7 @@ import { keepPage, onUpNextRestart, rememberedPage } from "@/app/restoration-mem
 /**
  * The landing screen's two-page pager — *Up next* and *Upcoming*, issue #251.
  *
- * `docs/design/prototypes/mediasafe-mobile-handoff.md`, screen 1, is binding on the
+ * Screen 1 of the brief is binding on the
  * appearance: *`Up next` / `Upcoming` in the label register, with a 2px accent [rule] that
  * slides between them over a `--hair` baseline. Both a tap and a horizontal drag change
  * page; the drag threshold is 40px. Keyboard alternative: the two labels are real tab
@@ -325,7 +325,7 @@ export function LandingPager({
    * claim rather than to a *did it move* flag, so an ordinary tap — which never latches a
    * claim either way — is untouched, and so is a gesture the pager watched and **refused**,
    * whose click belongs to whatever the pointer was actually over. This is the same *the
-   * check is its own target* instinct `SPEC.md` states for the season row, one level up: a
+   * check is its own target* instinct stated for the season row, one level up: a
    * gesture must never be two things at once.
    *
    * The claim is read and cleared in one go, so at most one click is ever swallowed per
@@ -492,7 +492,7 @@ function PagerTabs({
           {index === page ? (
             /* The handoff's 2px accent rule.
 
-               **`DESIGN.md` §3 forbade this and was amended for it, by this ticket.**
+               **The accent rule forbade this and was narrowed for it, by this ticket.**
                *What the accent does not mean* rules out *navigation state, or the current
                page*, and a rule under a selected label is close enough to both to need
                settling rather than assuming. #245's stated default is that an older

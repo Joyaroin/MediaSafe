@@ -11,10 +11,9 @@
  * second page: **nothing you are watching has a future date announced**, which a reader can
  * be in while both rails on page one are full.
  *
- * `docs/design/v1-surfaces.md` §6 says these read differently and must not share copy, and
+ * These read differently and must not share copy, and
  * the copy below is the prototype's states column verbatim — *No release dates yet* /
- * *Nothing you keep has a date announced*
- * (`docs/design/prototypes/mediasafe-mobile.html`), which #245 makes binding.
+ * *Nothing you keep has a date announced*, which #245 makes binding.
  *
  * ── Reachable only from a read that succeeded ───────────────────────────────────────
  *

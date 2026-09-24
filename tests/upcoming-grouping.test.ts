@@ -127,7 +127,7 @@ describe("the four buckets", () => {
   });
 
   /** Discovered from the rows, never laid out in advance — a day with nothing on it has
-   *  no heading, which is `SPEC.md` §8's rule for a rail applied to a group. */
+   *  no heading, which is the rule for a rail applied to a group. */
   it("emits no group for a day with nothing on it", () => {
     expect(groupUpcoming([on("2026-12-01")], today).map((group) => group.label)).toEqual([
       "Later",

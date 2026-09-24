@@ -2,7 +2,7 @@
  * The bill's head — one heading on one hairline, and (now that #57 has arrived) the filter
  * chips, the filter-by-typing field and the sort select alongside it.
  *
- * `DESIGN.md` and the reference build draw all four in one `flex flex-wrap` row so that on
+ * The reference build draws all four in one `flex flex-wrap` row so that on
  * a narrow phone the controls wrap under the heading rather than opening a second bordered
  * bar underneath it. `children` is that row's remainder: empty when there is nothing to
  * filter, `LibraryBar`'s chips/field/select when there is.
@@ -20,9 +20,9 @@
  * It is shared by three callers — the populated screen, the genuinely empty one, and the
  * failure boundary — so that a failed read is visibly *the library, which did not load*
  * rather than a bare error on a blank page, and so the three cannot drift apart. Only the
- * populated caller passes `children`: `SPEC.md` §9 forbids reserving space for controls
- * that have nothing to act on, which is exactly what the genuinely empty library and a
- * failed read both are.
+ * populated caller passes `children`: reserving space for controls
+ * that have nothing to act on is forbidden, which is exactly what the genuinely empty library
+ * and a failed read both are.
  */
 
 /** The heading's id, so the grid can point `aria-labelledby` at it. */

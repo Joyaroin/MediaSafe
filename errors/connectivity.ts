@@ -3,14 +3,14 @@
  * `useSyncExternalStore` wants.
  *
  * The store deliberately **remembers nothing**. `get()` reads the source every time it is
- * called, and the events only say "read again". That is the whole of DESIGN.md's
+ * called, and the events only say "read again". That is the whole of the
  * requirement that the banner clears itself when connectivity returns: there is no
  * `isOffline` flag to leave set, no dismissal to honour, and no path by which a restored
  * connection leaves a banner on screen. A store that cached the last event it saw would
  * have all three.
  *
- * This is not an offline mode. SPEC.md §3.1 forbids a read cache, a local store, a
- * service worker and an offline queue; the banner says the network is gone and nothing
+ * This is not an offline mode. A read cache, a local store, a
+ * service worker and an offline queue are all forbidden; the banner says the network is gone and nothing
  * else. Nothing here queues a write or serves a stale read.
  */
 

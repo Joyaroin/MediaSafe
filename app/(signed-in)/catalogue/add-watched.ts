@@ -21,7 +21,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * episodes* is the truth and it is not a label; what the reader needs at the moment of
  * pressing is that this records the whole show, and the one case where *all* and *all
  * released* differ — a show still airing — is a show they are unlikely to be adding as
- * finished in the first place. `SPEC.md` §3.4 is the standing rule against a dense row.
+ * finished in the first place. There is a standing rule against a dense row.
  *
  * ── The accessible name is the whole sentence ────────────────────────────────────────
  *

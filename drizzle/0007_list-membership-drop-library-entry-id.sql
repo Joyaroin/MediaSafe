@@ -1,5 +1,5 @@
--- Issue #150, the contract half of ADR-0001 amendment 7 (#143): membership has pointed at
--- `title`, not `library_entry`, since 0006. `SPEC.md` §3.7 is forward-only, so that
+-- Issue #150, the contract half of amendment 7 (#143): membership has pointed at
+-- `title`, not `library_entry`, since 0006. Migrations are forward-only, so that
 -- migration left `library_entry_id` behind — nullable, unread — instead of dropping it in
 -- the same change. Nothing has ever written a row to it, and nothing in the codebase reads
 -- it; this drops it. It carried no foreign key or index of its own to drop with it — 0006

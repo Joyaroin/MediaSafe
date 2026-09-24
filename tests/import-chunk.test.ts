@@ -21,7 +21,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * ── Why this file carries the most assertions in step 3 ──────────────────────────────
  *
  * Everything else in import fails loudly and immediately to the one person using it.
- * This does not. `SPEC.md` §7: *"`abandoned_at` is cleared only by the application write
+ * This does not. The rule: *"`abandoned_at` is cleared only by the application write
  * path … import never clears it, and sets it only when it creates the library entry,
  * never on update."* Get that wrong and every re-seed of preview quietly resurrects the
  * abandonment on 155 titles that have since been un-abandoned, and nothing on any screen
@@ -90,7 +90,7 @@ function chunkOf(
   return { source: "tvtracker", titles, watches };
 }
 
-/** Every episode of a mirror, watched, keyed the way `SPEC.md` §7 keys them. */
+/** Every episode of a mirror, watched, keyed the way import keys them. */
 function watchesOf(mirror: TitleMirror, watchedAt: string | null = null) {
   return mirror.episodes.map((one) => ({
     tmdbId: mirror.tmdbId,
@@ -130,7 +130,7 @@ describe("applyImportChunk", () => {
         tx,
       );
 
-      // The three counters `SPEC.md` §7's progress line prints...
+      // The three counters the progress line prints...
       expect(outcome).toMatchObject({
         titlesAdded: 2,
         watchesAdded: 2,
@@ -192,7 +192,7 @@ describe("applyImportChunk", () => {
       const [entry] = await entriesFor(tx, userId);
       expect(entry.abandonedAt).not.toBeNull();
       /**
-       * `SPEC.md` §7: *"import mints the stamp and the `abandoned_at == added_at`
+       * The rule: *"import mints the stamp and the `abandoned_at == added_at`
        * identity holds in every environment that runs the file."* It holds because both
        * are `now()`, which is the transaction's start, not two wall-clock readings.
        */
@@ -369,7 +369,7 @@ describe("applyImportChunk", () => {
         [1, 2],
       ]);
 
-      // The global rows exist before this import ever runs (ADR-0001).
+      // The global rows exist before this import ever runs.
       await addTitleToLibrary(other, mirror, tx);
       const [titleRow] = await tx
         .select()

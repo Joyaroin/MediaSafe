@@ -36,7 +36,7 @@ import { WATCH_PROVIDER_REGION } from "./region";
  * The calls to TMDB. **Deliberately untested**, and this paragraph is the decision rather
  * than the confession.
  *
- * `SPEC.md` §6 names four tests that earn their keep and says everything else "fails
+ * Four tests earn their keep and everything else "fails
  * loudly and cheaply to an app used daily by its owner". `tmdb/mirror.ts` argues its way
  * out of that — it writes global rows every account reads, so it is tested. This file does
  * not, and the argument is not "it is hard". It is that everything here is a URL, a
@@ -52,8 +52,8 @@ import { WATCH_PROVIDER_REGION } from "./region";
  *
  * ── `no-store` on every request, still, and now for a sharper reason ────────────────
  *
- * Every request below is `cache: "no-store"`, as it was when `SPEC.md` §3.1 forbade a read
- * cache outright. Issue #219 reversed that clause and #225 put three of the calls in this
+ * Every request below is `cache: "no-store"`, as it was when a read
+ * cache was forbidden outright. Issue #219 reversed that clause and #225 put three of the calls in this
  * file behind an entry — so the line has moved rather than gone, and it is worth saying
  * exactly where it now is: **this file does not cache; `cache/` does.**
  *
@@ -77,12 +77,12 @@ import { WATCH_PROVIDER_REGION } from "./region";
  *
  * ── The read path never calls this ───────────────────────────────────────────────────
  *
- * ADR-0001: *the read path never calls TMDB for a mirrored field.* Nothing that renders a
+ * The rule: *the read path never calls TMDB for a mirrored field.* Nothing that renders a
  * library, a state, progress or up next may import this module. Three things legitimately
  * do: the search screen, which is by definition asking the catalogue about titles you do
  * not have; the add that follows it; and, since #225, `cache/borrowed-facts.ts`, which
  * wraps the three live-only calls at the foot of this file and no other. None of the three
- * is a mirrored field — that is the whole distinction ADR-0001 draws, and
+ * is a mirrored field — that is the whole distinction, and
  * `tmdb/live-facts.ts` owns the side of it these calls are on.
  */
 
@@ -125,7 +125,7 @@ const REQUEST_TIMEOUT_MS = 8_000;
 /**
  * How many season requests are in flight at once for one show.
  *
- * TMDB permits roughly 40 requests a second and publishes no quota (`SPEC.md` §6), and a
+ * TMDB permits roughly 40 requests a second and publishes no quota, and a
  * long-running show is the only place this application ever issues more than a handful of
  * requests at once — *Doctor Who* is forty seasons. Six is well inside the limit and keeps
  * a forty-season add from arriving as one spike that TMDB answers with 429s.
@@ -151,7 +151,7 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 
   if (!response.ok) {
     /**
-     * Thrown, never softened into an empty result — that is `SPEC.md` §3.2 and it is the
+     * Thrown, never softened into an empty result — that is the standing rule and it is the
      * whole reason the search screen can tell *the catalogue has nothing for this* from
      * *MediaSafe could not reach the catalogue*.
      *
@@ -170,7 +170,7 @@ async function get<T>(path: string, params?: Record<string, string>): Promise<T>
 /**
  * The catalogue, searched by name. Films and shows, in TMDB's relevance order.
  *
- * *Search*, not *filter* — CONTEXT.md reserves the first word for the catalogue and the
+ * *Search*, not *filter* — the first word is reserved for the catalogue and the
  * second for your own library, and the two are not interchangeable in a function name any
  * more than they are in a label.
  */
@@ -191,7 +191,7 @@ export async function searchCatalogue(query: string): Promise<CatalogueResult[]>
  * ── Why this exists beside `titleMirror` ────────────────────────────────────────────
  *
  * `titleMirror` is the **add** path: it fetches a show's every season so the episode names
- * ADR-0001 stores are there to store, at a cost of one request per season. That is the
+ * the schema stores are there to store, at a cost of one request per season. That is the
  * right price for taking a title into your library and the wrong one for glancing at it,
  * which is what catalogue detail now is — a card in a recommendation rail is pressed to
  * find out what something *is*, most often to then not add it.
@@ -303,7 +303,7 @@ export async function recommendationsFor(
  * Everything one add writes: the `title` row, and for a show every `episode` row under it.
  *
  * A show costs one request for the series and one per season. That is the price of episode
- * **names**, which ADR-0001 mirrors and CONTEXT.md makes load-bearing — TMDB's series
+ * **names**, which the mirror stores and the domain language makes load-bearing — TMDB's series
  * endpoint lists seasons but not the episodes inside them.
  */
 export async function titleMirror(
@@ -341,7 +341,7 @@ export async function titleMirror(
  *
  * `episodes` comes back empty for a show, and the caller must not read that as *this show
  * has no episodes*: `db/access.ts` writes the row as pending, which is the distinction
- * ADR-0001 amendment 11 exists to keep.
+ * amendment 11 exists to keep.
  */
 export async function titleRowMirror(
   kind: TitleKind,
@@ -408,10 +408,10 @@ function titlePath(kind: TitleKind, tmdbId: number): string {
 
 /**
  * The three live-only calls title detail makes — `tmdb/live-facts.ts`'s half of
- * ADR-0001's metadata caching policy, fetched fresh on every visit and never mirrored.
+ * the metadata caching policy, fetched fresh on every visit and never mirrored.
  *
  * Three separate requests, deliberately, rather than one call with TMDB's
- * `append_to_response`: `docs/design/v1-surfaces.md` says a live-only field fails inline
+ * `append_to_response`: a live-only field fails inline
  * **within its own section**, and that is only genuinely true if a synopsis TMDB answered
  * can render while the credits request TMDB is 500ing on the same title cannot — which a
  * combined call could not do, because one response either has everything or is one
@@ -432,8 +432,8 @@ export async function titleSynopsis(
  *
  * ── Why this is a live read and not a fifth mirrored column ─────────────────────────
  *
- * ADR-0001 puts synopsis and overview on the borrowed side and issue #245 says in as many
- * words that nothing in that batch moves them. The test the ADR applies is *what a
+ * Synopsis and overview are on the borrowed side and issue #245 says in as many
+ * words that nothing in that batch moves them. The test applied is *what a
  * 472-row library render needs* — issue #246 moved stills and release dates across
  * because a rail of cards would otherwise cost one catalogue call each. An episode's
  * synopsis fails that test in the other direction: it is read on a surface a reader

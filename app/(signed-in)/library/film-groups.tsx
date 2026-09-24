@@ -6,7 +6,7 @@ import { LibraryGrid } from "./library-grid";
  *
  * ── Why this screen has a different shape from the Shows screen ─────────────────────
  *
- * Because a film can only stand in three places. `CONTEXT.md`: *"A film is only ever on
+ * Because a film can only stand in three places: *"A film is only ever on
  * your watchlist, finished, or abandoned."* Two of the six chips — Watching and Caught up
  * — describe being part-way through a run of episodes, and there is no such state for a
  * film. Leaving them in Films mode would put two controls on screen that can never match a
@@ -20,7 +20,7 @@ import { LibraryGrid } from "./library-grid";
  *
  * ── The order, and the words ────────────────────────────────────────────────────────
  *
- * `CONTEXT.md`'s own three words in `CONTEXT.md`'s own order — **Watchlist, Finished,
+ * The domain's own three words in its own order — **Watchlist, Finished,
  * Abandoned** — and identical to what the chips say in Shows mode, so one state never has
  * two names depending on which mode you are in. Not *Plan to Watch*, *Completed* or
  * *Watched*: the first two are named avoid-words, and the third cannot tell these groups
@@ -31,7 +31,7 @@ import { LibraryGrid } from "./library-grid";
  * your own library missing from it.
  */
 
-/** The three states a film can be in, in `CONTEXT.md`'s order. */
+/** The three states a film can be in, in the domain's order. */
 const FILM_GROUPS: readonly { state: LibraryState; heading: string }[] = [
   { state: "watchlist", heading: "Watchlist" },
   { state: "finished", heading: "Finished" },
@@ -47,7 +47,7 @@ export function FilmGroups({ entries }: { entries: readonly LibraryEntryRow[] })
         /**
          * **An empty group is not drawn at all**, rather than drawn empty.
          *
-         * `SPEC.md` §9 forbids reserving space for controls that have nothing to act on,
+         * Reserving space for controls that have nothing to act on is forbidden,
          * and three headings over nothing is that. It also matters while filtering: typing
          * a film's name should narrow the screen to the group it is in, not leave two
          * headings standing over the gaps where the others were.
@@ -62,7 +62,7 @@ export function FilmGroups({ entries }: { entries: readonly LibraryEntryRow[] })
 
         return (
           <section key={state} className="mt-6 first:mt-2">
-            {/* The uppercase 11px label register `DESIGN.md` §0 declares as `label-line`,
+            {/* The uppercase 11px label register declared as `label-line`,
                 not a bill-title step: these name a region of one screen, and a heading
                 that competes with the 34px screen title would read as four screens. */}
             <h2 id={headingId} className="label-line px-[22px] text-dim">

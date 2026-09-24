@@ -10,7 +10,7 @@ import { readDeviceTimezone } from "@/lib/timezone";
 
 /**
  * The timezone control — Settings' Profile section, beneath the display name, issue
- * #126. `SPEC.md` §7: *the current zone as text plus one **Use this device's timezone**
+ * #126. Specified as *the current zone as text plus one **Use this device's timezone**
  * button. The ~418-entry IANA list appears only as a fallback.*
  *
  * ── Why there is no free-form input ───────────────────────────────────────────────────
@@ -25,14 +25,14 @@ import { readDeviceTimezone } from "@/lib/timezone";
  *
  * `readDeviceTimezone()` is called from inside the button's `onClick` and nowhere else
  * in this file — never at render, never in an effect. A zone read at render time is a
- * zone read whether or not the reader asked, which is exactly *SPEC.md §7: the timezone
+ * zone read whether or not the reader asked, which is exactly *the timezone
  * never re-detects silently. It moves only when you move it* — and it is why this
  * component takes `timezone` as a prop instead of calling `readDeviceTimezone()` for its
  * own initial state.
  *
  * ── The full list is a fallback, not a second primary control ────────────────────────
  *
- * `Intl.supportedValuesOf("timeZone")` — the ~418 canonical names `SPEC.md` §7 counts —
+ * `Intl.supportedValuesOf("timeZone")` — the ~418 canonical names —
  * is not read until `showList` is true, and `showList` starts `false` and only ever
  * flips from a click. Computing it unconditionally at render would also risk a hydration
  * mismatch: nothing guarantees the ICU data backing this call is identical between the
@@ -63,7 +63,7 @@ import { readDeviceTimezone } from "@/lib/timezone";
  * It reaches no other read either, which was checked rather than assumed: `user.timezone`
  * appears in `lib/` and in the generated `auth-schema.ts`, and nowhere in `db/`. The
  * derived-state views deliberately do **not** join it — `db/views.ts` says so at length,
- * keeping ADR-0001's `air_date <= current_date` on the server's own date and naming the
+ * keeping `air_date <= current_date` on the server's own date and naming the
  * cost — so changing a zone today changes what this one control displays and nothing
  * else. Should that view ever grow the join it describes, the surfaces reading it are
  * other routes, every one of them `force-dynamic`, and Next.js has not reused a dynamic
@@ -186,7 +186,7 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
                 </option>
               ))}
             </select>
-            {/* Issue #311 re-narrows this caret off the accent — `DESIGN.md` §12 named it
+            {/* Issue #311 re-narrows this caret off the accent — it was named
                 beside `library-filter-bar.tsx`'s sort caret as painting a selection, which
                 is not one of the three sanctioned meanings. `text-dim` is the same neutral
                 ink that caret takes; the triangle's shape is what marks it as a control. */}

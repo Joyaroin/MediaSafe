@@ -35,14 +35,12 @@ import type { TitleKind } from "@/tmdb/mirror";
  *
  * ── What this module reverses ────────────────────────────────────────────────────────
  *
- * `SPEC.md` §3 constraint 1 said *no read cache*, in a list of six things `tvtracker`'s
+ * Constraint 1 said *no read cache*, in a list of six things `tvtracker`'s
  * dual data path had taught. Issue #219 took that clause back and left the other five
  * standing — there is still no guest mode, no second repository implementation, no local
- * store, no service worker and no offline queue — and
- * `docs/adr/0002-the-read-cache-and-its-tags.md` is where the reversal is argued.
- * `docs/adr/0003-the-clock-is-an-input-not-a-window.md` is the second half of it, added by
+ * store, no service worker and no offline queue. The second half of the reversal came with
  * #226: the derived views read `current_date`, so the day is in the key of every read that
- * consults one. Read both before adding a cached read; this file is the mechanism, not the
+ * consults one. Read both halves before adding a cached read; this file is the mechanism, not the
  * reasoning.
  *
  * ── The property, and the two things it now rests on ─────────────────────────────────
@@ -89,7 +87,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * `episode` metadata. They change on TMDB's schedule and nothing MediaSafe does observes
  * it, so a tag alone would never fire and they carry **a window as well** — issue #225,
  * and `borrowed-facts.ts` beside this file, whose top block says why it is a second file
- * rather than a second section. `SPEC.md` §3.1's amendment sets out the two lifetimes.
+ * rather than a second section. The amendment sets out the two lifetimes.
  */
 
 /**
@@ -126,7 +124,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * metadata — are **not** here. Issue #225 built them, in `borrowed-facts.ts` beside this
  * file: they change on TMDB's schedule rather than on a write, and they are the one
  * category that carries a window as well as a tag. **Nothing in this file has a window**,
- * and `docs/adr/0003-the-clock-is-an-input-not-a-window.md` is why the day in some of the
+ * and *the clock is an input, not a window* is why the day in some of the
  * keys below is not one.
  */
 export type CachedRead = "library" | "up-next" | "lists" | "title-detail" | "you";
@@ -160,12 +158,12 @@ function tagFor(read: CachedRead, userId: UserId): string {
  * A tag cannot fire for that: there is no write to hang the bust on. Before this, the
  * consequence was bounded only by how often the reader wrote something — an account that
  * marked nothing for a week would be served last week's Up next for a week, and there is
- * no expiry behind the entry to heal it. That is the failure `SPEC.md` §3 constraint 1
+ * no expiry behind the entry to heal it. That is the failure constraint 1
  * was written about, arriving by a door the tag vocabulary had left open.
  *
  * ── This is not a revalidation window, and the difference is the whole argument ───────
  *
- * ADR-0002 rejected time-based revalidation because *a window is a period during which
+ * Time-based revalidation was rejected because *a window is a period during which
  * the answer is permitted to disagree with the database*. A day in the key is the
  * opposite of that. `current_date` is an **input to the query**, and this puts that input
  * in the query's key — so the entry is exactly right at every instant it is served, and
@@ -174,7 +172,7 @@ function tagFor(read: CachedRead, userId: UserId): string {
  *
  * ── UTC, because `current_date` is the server's ─────────────────────────────────────
  *
- * `SPEC.md` §5 computes every day boundary `AT TIME ZONE` the reader's own zone, and
+ * Every day boundary is computed `AT TIME ZONE` the reader's own zone, and
  * `db/views.ts` records the released test as a deliberate exception to it: an air date is
  * a `date` with no instant in it, so the views read the server's `current_date` literally.
  * This key part must be the same day those queries used or it would be keying on a
@@ -290,7 +288,7 @@ export const CACHED_READS = {
    *
    * That analysis is exactly why the field is `true` rather than `false`. It rests on the
    * internal structure of a view in another file, so it is the kind of thing that is
-   * right today and quietly wrong after the next amendment to ADR-0001. This field's own
+   * right today and quietly wrong after the next amendment to the schema. This field's own
    * docblock prices both mistakes: wrong in this direction costs one read a day, wrong in
    * the other is a surface frozen at the day it was last written to.
    */
@@ -419,14 +417,14 @@ export const UNCACHED_READS = {
  * `unstable_cache` writes a cache entry from a resolved value only: a rejection
  * propagates out of it untouched and nothing is stored. So a failed read still throws
  * into `app/error.tsx`, an empty library is still reachable only by a query that
- * succeeded and found nothing, and `SPEC.md` §3.2 holds through the cache exactly as it
+ * succeeded and found nothing, and the rule holds through the cache exactly as it
  * held without one. A cache that stored `[]` for a database that was down would be
  * `tvtracker`'s bug with a longer memory.
  *
  * ── No `revalidate`, on any of them ──────────────────────────────────────────────────
  *
- * An entry lives until a tag busts it. Time-based revalidation is the alternative
- * ADR-0002 rejects, and it is rejected on the property rather than on cost: a window in
+ * An entry lives until a tag busts it. Time-based revalidation is the rejected
+ * alternative, and it is rejected on the property rather than on cost: a window in
  * which a surface is allowed to disagree with the database is exactly what the original
  * constraint existed to forbid, and a shorter window is a smaller lie rather than a
  * different kind of one. The day in some of these keys is **not** that — `serverDay`
@@ -619,7 +617,7 @@ export function cachedListDetail(
  * still the query's**: `getTitleDetail` scopes by `ownedBy(userId, libraryEntry)` and the
  * entry id together, so another account's entry id throws rather than answering, and the
  * key being this account's does not make the row this account's — `ownedBy` does, and it
- * always did (ADR-0002, *isolation still rests on `ownedBy`*).
+ * always did — *isolation still rests on `ownedBy`*.
  */
 export function cachedTitleDetail(
   userId: UserId,
@@ -809,7 +807,7 @@ export function cachedYouRails(userId: UserId): Promise<YouRails> {
  * `title` row — `name`, `release_year`, `poster_path`, the three columns the library grid
  * prints beyond state — and the global `episode` rows that `library_entry_state` and
  * `library_entry_up_next` are derived from. `title` and `episode` are unowned, one row per
- * TMDB id, shared by every account (ADR-0001), so **one account adding a show changes what
+ * TMDB id, shared by every account, so **one account adding a show changes what
  * every other account holding it sees.** `addTitleToLibrary`'s own docblock has said so
  * since build step 2: *one person adding a show creates the rows every other person reads,
  * and re-adding one refreshes what they see.*

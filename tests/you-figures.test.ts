@@ -32,7 +32,7 @@ import {
  *    skip the line on the day it means something;
  *  - the undated watches described as *not counted here*, which was true on the retired
  *    Stats page and is false on You — every figure on this page counts them
- *    (`CONTEXT.md`, Watch time: *a watch with no date still counts*).
+ *    (Watch time: *a watch with no date still counts*).
  */
 
 describe("the plural `s`, and the noun English does not pluralise regularly", () => {

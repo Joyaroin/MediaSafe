@@ -24,7 +24,7 @@ import {
  * the same reason: `watchMarks` at the bottom of this file is one module-level object,
  * and module state on the server is shared by every request and so by every account. One
  * person's outstanding write becoming another person's struck row is not a mistake this
- * product can survive (`CONTEXT.md`), and `"use client"` turns it into a build-time
+ * product can survive, and `"use client"` turns it into a build-time
  * client-reference error rather than a silent leak.
  *
  * ── Why the state left the row — issue #103 ──────────────────────────────────────────
@@ -37,7 +37,7 @@ import {
  * optimistic states, two idempotency keys, and two keys against one episode are two rows.
  *
  * A phantom rewatch does not look like a bug on any screen. 1,156 genuine rewatches are
- * already in the library (`docs/adr/0001-watch-identity-and-derived-state.md`, amendment
+ * already in the library (amendment
  * 4), so an extra row looks exactly like something the reader did.
  *
  * So the unit of state is **the episode**, not the surface showing it:
@@ -268,7 +268,7 @@ interface Mark {
    * watched, which is what the reader was trying to say. A **rewatch that lands after a
    * lost unwatch settles nothing**: the unwatch is still lost, and there is now one more
    * watch than the reader asked for. Resolving there would take the only notice of it off
-   * the screen, which is `SPEC.md` §3.3 broken by a write that succeeded.
+   * the screen, which is *never silent* broken by a write that succeeded.
    */
   raised: { kind: "watch" | "unwatch"; handle: WriteFailureHandle } | null;
   /**
@@ -639,7 +639,7 @@ export function createWatchMarks({
     // (`programme-note-episodes.tsx`), which makes this a caller bug rather than a lost
     // write — but a throw raised *after* the optimistic marks were applied would leave a
     // dozen rows struck with nothing behind them, no rollback and no toast, which is
-    // `SPEC.md` §3.3's *a lost write is never silent* broken by the one path that is
+    // *a lost write is never silent* broken by the one path that is
     // supposed to be impossible. Refusing first costs nothing and cannot lie.
     const upToEpisodeId = through.episodeId;
     if (upToEpisodeId === null) {

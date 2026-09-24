@@ -53,7 +53,7 @@ export function RailSection({
   children,
 }: {
   /** Two words or three, needing no explanation and **carrying no count** — the half of
-   *  `SPEC.md` §7's *no counts, anywhere* that #250 keeps rather than narrows. */
+   *  *no counts, anywhere* that #250 keeps rather than narrows. */
   label: string;
   children: React.ReactNode;
 }) {
@@ -66,7 +66,7 @@ export function RailSection({
           through this screen* and what `GroupSection` printed before it. Two instances of
           one role on this surface rather than five, now that there are two rails.
 
-          `DESIGN.md` §3 reserves the accent for **recording a watch**, and this surface
+          The accent is reserved for **recording a watch**, and this surface
           carries that meaning too — the check on every episode card. The two stay legible
           apart because they sit in different places: a heading above a track, a control in
           a card's last row. What would violate the rule is a third — an accent badge, tile

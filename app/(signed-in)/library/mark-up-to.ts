@@ -9,13 +9,13 @@ import { episodeFullName } from "./season-grouping";
  * ── *Up to*, never *through* ─────────────────────────────────────────────────────────
  *
  * Every identifier in this feature says **up to**: `markWatchedUpTo`, `upToEpisodeId`,
- * `coveredUpTo`, these file names. That is not a stylistic preference — `SPEC.md` §4 makes
- * `CONTEXT.md` *binding on identifiers*, and `CONTEXT.md`'s **Progress** entry lists
- * `watched through` on its `_Avoid_` line.
+ * `coveredUpTo`, these file names. That is not a stylistic preference — the
+ * domain language is *binding on identifiers*, and its **Progress** entry lists
+ * `watched through` on the `_Avoid_` line.
  *
  * The first draft of this feature spelled it `markWatchedThrough` / `throughEpisodeId`
  * throughout, and the two-axis review of #196 caught it. The rule is well aimed here
- * rather than pedantic: `tvtracker` kept an actual `watched_through` column, ADR-0001
+ * rather than pedantic: `tvtracker` kept an actual `watched_through` column, the schema
  * killed it, and a function named for it invites exactly the reading that this write sets
  * a stored position — which is the one thing it does not do. It writes `watch` rows and
  * nothing else; where a title stands is derived, on the next read, by `db/views.ts`.
@@ -140,7 +140,7 @@ function atOrBefore(one: EpisodeDetail, through: EpisodeDetail): boolean {
  * name already truncates, and a written label would take characters off the name to pay
  * for itself (`programme-note-episodes.tsx`'s `TRAILING`). So this label is the whole of
  * what the control says, which is why it names the episode **in full** rather than by
- * number: `CONTEXT.md`'s rule that an episode is never referred to by number alone bites
+ * number: the rule that an episode is never referred to by number alone bites
  * hardest exactly where the number is all a sighted reader can see.
  */
 export function markUpToLabel(through: EpisodeDetail): string {
@@ -152,7 +152,7 @@ export function markUpToLabel(through: EpisodeDetail): string {
  *
  * A number, because the number is the point — this is removal's footprint instinct
  * pointing the other way (issue #196), and the size of the write is what makes a mistaken
- * tap catchable while it can still be stopped. `DESIGN.md` §11's *no counts* rules out a
+ * tap catchable while it can still be stopped. *No counts* rules out a
  * numeral standing in for a size on a rail head or a tile; it has never covered the
  * confirmations, where `titles/[entryId]/remove/page.tsx` counts the watches a removal
  * destroys and `lists/delete-list-dialog.tsx` counts the titles a list holds.

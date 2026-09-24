@@ -152,7 +152,7 @@ export function AddToListControl({
         Add to list
       </button>
 
-      {/* Issue #311 re-narrows the frame: `DESIGN.md` §12 named this as one of the two
+      {/* Issue #311 re-narrows the frame: this was named one of the two
           dialogs borrowing the write-failure toast's `border-2 border-accent` for a
           routine, reversible action. `border-hair` keeps the same weight and surface. */}
       <dialog

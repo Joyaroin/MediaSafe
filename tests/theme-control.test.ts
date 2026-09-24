@@ -13,7 +13,7 @@ import {
 } from "@/lib/theme";
 
 /**
- * The theme control — `SPEC.md` §7's picker ban, reversed.
+ * The theme control — the picker ban, reversed.
  *
  * What is asserted here is the handful of things whose failure would be **silent**. The
  * control working at all is obvious the moment anyone opens Settings; these are not.

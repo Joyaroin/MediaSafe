@@ -35,7 +35,7 @@ import {
  *     row says *In your library*.
  *
  * The title is there and the watches are not, and every surface says the write landed.
- * That is `SPEC.md` §3.3 — *a lost write is never silent* — broken in the one way that
+ * That is *a lost write is never silent* — broken in the one way that
  * leaves no evidence: not a missing toast, but a **resolved** one.
  *
  * ── The rule, and why it is supersession rather than a second toast ──────────────────

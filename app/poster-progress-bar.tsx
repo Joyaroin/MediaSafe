@@ -19,7 +19,7 @@ import { libraryProgressFraction } from "@/app/(signed-in)/library/library-progr
  *
  * ── The accent on artwork, which §6 refuses for the press sweep ──────────────────────
  *
- * `DESIGN.md` §6 rules the press sweep off a poster in as many words: *across a poster it
+ * The press sweep is ruled off a poster in as many words: *across a poster it
  * would be the accent painting artwork*. This is the accent on artwork, so the difference
  * has to be said rather than assumed. The sweep is a **wash over the whole tile** for
  * 380ms — at that size and that speed it is the artwork that changes colour. This is a

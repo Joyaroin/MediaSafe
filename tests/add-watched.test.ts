@@ -13,7 +13,7 @@ import {
  *
  * `tests/add-to-library-watched.test.ts` holds what the write does. This file holds the
  * two things about the glass that would fail **silently** rather than on sight, which is
- * the line `SPEC.md` §6 draws around what earns a test:
+ * the line drawn around what earns a test:
  *
  *  1. **A show does not read as a film.** *Add — watched* on a show is ambiguous in
  *     exactly the direction that costs something — it can be read as *I am watching this*

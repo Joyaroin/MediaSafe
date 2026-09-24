@@ -64,7 +64,7 @@ import { raiseLostAdd, type StandingAdd } from "@/app/(signed-in)/catalogue/lost
  *
  * There is nothing to show optimistically: the destination does not exist until the write
  * lands, since the entry id *is* the write's result. So the control marks itself busy and
- * navigates once the server answers. `SPEC.md` §3.3 is about a **lost** write never being
+ * navigates once the server answers. The rule is about a **lost** write never being
  * silent, and that half is unchanged — a failure puts the control back and raises the
  * persistent toast naming the title, with the reference id from the action.
  *
@@ -200,7 +200,7 @@ export function AddToLibraryControl({
        * is dim rather than accent, and the argument lands harder on this page than on the
        * search row: the plain add here is **already** the hairline chip, so the only
        * thing left to separate the default from the option is the ink. Full-strength
-       * `text` against `dim` is `DESIGN.md` §3's own device for exactly that, and it is
+       * `text` against `dim` is the device for exactly that, and it is
        * what the sidebar uses to say which destination you are on.
        *
        * Two accent controls side by side would say neither is the default; a second

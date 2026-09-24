@@ -5,7 +5,7 @@ import ws from "ws";
  * The one driver, wired once.
  *
  * `drizzle-orm/neon-serverless` over a WebSocket `Pool`, for the app and for the
- * migration runner alike (SPEC.md §6). Not Neon's HTTP interface: it has no
+ * migration runner alike. Not Neon's HTTP interface: it has no
  * interactive transactions, and two things here need one — the watch write at build
  * step 4, and halt-on-partial-failure in the migration runner now. One driver because
  * constraint 1 is one data path, and a second local-only driver is how that starts.
@@ -56,7 +56,7 @@ export function requireDatabaseUrl(): string {
     // Loud, and early. The alternative is a connection failure several frames later
     // wearing a stranger message.
     throw new Error(
-      "DATABASE_URL is not set. Run scripts/provision.sh, or see docs/local-development.md.",
+      "DATABASE_URL is not set. Run scripts/provision.sh.",
     );
   }
   return databaseUrl;

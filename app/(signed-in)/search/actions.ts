@@ -27,7 +27,7 @@ import { addTitleAnswering } from "./add-title";
  *
  * ── Why these return an outcome instead of throwing ──────────────────────────────────
  *
- * `SPEC.md` §3.2 is *empty and failed are structurally separate*, and `AGENTS.md` spells
+ * The rule is *empty and failed are structurally separate*, and `AGENTS.md` spells
  * the forbidden shape out: no `catch` returns `[]`. Both are obeyed here, and the second
  * one's own lint message names this escape hatch — *"rethrow, or return a value that says
  * the read failed."* That is what `{ ok: false }` is. Nothing below manufactures an empty
@@ -36,7 +36,7 @@ import { addTitleAnswering } from "./add-title";
  *
  * Throwing was the alternative and it is worse **here specifically**, for a reason that
  * does not generalise: a failure on this screen must be inline within the results region
- * — one region failed to load, which is `SPEC.md` §6's first blast radius — and it must
+ * — one region failed to load, which is the first blast radius — and it must
  * carry a reference id. React strips a thrown Server Action error before it crosses to
  * the browser: the client would get a generic message and a `digest`, and `referenceFor`
  * on the client would report an error that has already lost everything worth reporting.
@@ -75,7 +75,7 @@ export type AddOutcome =
 /**
  * Search the catalogue by name, and mark the results this account already holds.
  *
- * *Search*, not *filter*: CONTEXT.md reserves the first for the catalogue and the second
+ * *Search*, not *filter*: the first is reserved for the catalogue and the second
  * for your own library, and this one has never seen your library except to answer *do you
  * have this*.
  */
@@ -127,7 +127,7 @@ export async function searchCatalogueAction(
  * ── The press is answered before the seasons arrive (issue #271) ─────────────────────
  *
  * Adding a show used to fetch the series **and every season of it** before returning:
- * ADR-0001 mirrors episode *names* and CONTEXT.md makes them load-bearing, so that work
+ * the mirror stores episode *names* and the domain language makes them load-bearing, so that work
  * has to happen — but it does not have to happen in front of the reader. `titleRowMirror`
  * is the series alone, one request; `addTitleAnswering` writes the `title` row and the
  * library entry from it and hands back the season-and-episode mirror unrun; `after` runs
@@ -199,7 +199,7 @@ export async function addToLibraryAction(
    * **And everybody else's, which is the half that is easy to miss.** This add did not
    * only write this account's `library_entry`: it upserted the *global* `title` row and
    * its episodes through `mirrorTitle`, refreshing `name`, `release_year` and
-   * `poster_path` for every account that already holds this title (ADR-0001 — `title` and
+   * `poster_path` for every account that already holds this title (`title` and
    * `episode` are unowned and shared, and `addTitleToLibrary`'s own docblock has always
    * said what that costs). Their cached libraries would otherwise go on printing the old
    * mirror with nothing left to bust them, because there is no expiry behind it.

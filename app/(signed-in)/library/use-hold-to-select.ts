@@ -95,7 +95,7 @@ export const HOLDABLE = "select-none [-webkit-touch-callout:none]";
  * prevent.
  *
  * `outline`, not a border and not a shadow: a `2px` border occupies layout and would move a
- * selected cell's contents against its neighbours'; `DESIGN.md`'s *no drop shadows at all*
+ * selected cell's contents against its neighbours'; *no drop shadows at all*
  * rules out the usual answer to that. `outline` costs no layout and is not a shadow, so
  * both hold. The negative offset draws it inside the border box, so whichever box actually
  * clips to a corner at each call site — the bill cell's own `li`, a group tile's poster —

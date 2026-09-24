@@ -1,4 +1,4 @@
--- ADR-0001, amendment 11 (#271): pending is a fact this table holds.
+-- Amendment 11 (#271): pending is a fact this table holds.
 --
 -- NULL means the title's episodes have not been mirrored. It is stamped when the
 -- season-and-episode mirror completes behind the add's response, and at add time for a

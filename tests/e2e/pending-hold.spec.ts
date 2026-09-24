@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Issue #304 — the first of the three browser-only properties `SPEC.md`'s Testing
- * Decisions name, and the only one this ticket builds: that a navigation resolving
+ * Issue #304 — the first of the three browser-only properties named, and the only one this ticket builds: that a navigation resolving
  * faster than `--dur-pending-hold` paints no pending bars, and that the delay is not
  * proven by simply deleting the pending stage — a navigation slower than the hold still
  * has to show it.
@@ -21,7 +20,7 @@ import { expect, test, type Page } from "@playwright/test";
  *
  * ── Why Up next → Library, and why it is real navigation rather than a mock ───────────
  *
- * Both are radius-1 `loading.tsx` boundaries (`DESIGN.md` §9) reachable from the sidebar
+ * Both are radius-1 `loading.tsx` boundaries reachable from the sidebar
  * without a click through any intermediate screen. The fixture account carries no library
  * entries, so `/library` resolves to `EmptyLibrary` ("The bill is blank") once the read
  * completes — a marker that only ever paints once the navigation is genuinely finished,

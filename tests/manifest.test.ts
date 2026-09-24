@@ -8,7 +8,7 @@ import { DARK_THEME_COLOR, LIGHT_THEME_COLOR, THEME_COLOR_SCHEME } from "@/app/t
 /**
  * Issue #308 — the phone scene launches without browser chrome.
  *
- * Not named in `SPEC.md` #300's "Modules under test" list, which enumerates the other six
+ * Not named in #300's "Modules under test" list, which enumerates the other six
  * changes in that spec. `manifest.ts` and `theme-color.ts` are still exactly the shape
  * that list already establishes elsewhere — a plain function/plain values over no DOM and
  * no clock — so they are tested the same way as `gesture-rules` and `restoration`: direct

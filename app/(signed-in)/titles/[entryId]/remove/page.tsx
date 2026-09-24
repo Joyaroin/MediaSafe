@@ -25,7 +25,7 @@ import { RemoveTitleForm } from "./remove-title-form";
  * Counted from the database when the confirmation is offered, for this title, in one
  * statement (`titleFootprint`). Not *your history*, not *everything about this show*: 118
  * watches is a different decision from none, and only the reader can tell which one they
- * are making. `SPEC.md`'s caveat is why this is not a nicety — watches this application
+ * are making. The caveat is why this is not a nicety — watches this application
  * recorded are restorable by nothing at all, so these figures are the only protection
  * there is.
  *
@@ -52,8 +52,8 @@ import { RemoveTitleForm } from "./remove-title-form";
  *
  * The failure this ticket exists to prevent is somebody destroying years of watches meaning
  * to tidy up, so the page says plainly what the other control does and where it is. It is
- * prose and a link back, **not a second abandon control**: `DESIGN.md` puts that control in
- * exactly two places, and a third would be the drift it names.
+ * prose and a link back, **not a second abandon control**: that control lives in
+ * exactly two places, and a third would be the drift the rule names.
  *
  * ── Visiting does nothing. Leaving does nothing ──────────────────────────────────────
  *

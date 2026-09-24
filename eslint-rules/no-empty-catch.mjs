@@ -1,5 +1,5 @@
 /**
- * SPEC.md §3.2, made mechanical: **no `catch` returns `[]`.**
+ * Constraint 2, made mechanical: **no `catch` returns `[]`.**
  *
  * Empty and failed are structurally separate. A read that fails throws, and reaches the
  * boundary in `app/error.tsx`; an empty state is reachable only by a query that succeeded
@@ -34,7 +34,7 @@ const noEmptyCatch = {
     schema: [],
     messages: {
       emptyResultFromFailure:
-        "No `catch` returns `[]` (SPEC.md §3.2). A failed read must throw so the error boundary catches it — an empty array here makes failure indistinguishable from an empty library. Rethrow, or return a value that says the read failed.",
+        "No `catch` returns `[]`. A failed read must throw so the error boundary catches it — an empty array here makes failure indistinguishable from an empty library. Rethrow, or return a value that says the read failed.",
     },
   },
 

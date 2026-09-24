@@ -18,11 +18,11 @@ import {
  * ── Why this one is tested, when almost nothing else is ──────────────────────────────
  *
  * The same argument `tests/tmdb-mirror.test.ts` makes, one degree sharper. `title` and
- * `episode` are global and unowned (ADR-0001), so a wrong answer here is not one person's
+ * `episode` are global and unowned, so a wrong answer here is not one person's
  * problem — **one wrong match is everyone's wrong match**, and it looks exactly like a
  * correct one. It is also reached only at night, by a cron nobody is watching, on a title
  * that already vanished upstream: there is no screen it renders on and no reader it
- * surprises. `SPEC.md` §6's "fails loudly and cheaply to an app used daily by its owner"
+ * surprises. "Fails loudly and cheaply to an app used daily by its owner"
  * is not available as a safety net for any part of this.
  *
  * So the decision is a pure function with the network and the database on the other side

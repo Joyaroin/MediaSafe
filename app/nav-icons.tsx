@@ -72,8 +72,8 @@ export function ListsIcon({ className }: { className?: string }) {
  * It replaces `StatsIcon`, the three rising columns #227 drew, at both call sites at once:
  * `/stats` is gone, and the phone's fourth tab and the sidebar's fifth primary row both
  * lead to You now. The bars went with the page rather than being kept for a destination
- * that no longer reports anything — an icon with no route behind it is the placeholder
- * `SPEC.md` §9 forbids, one glyph smaller.
+ * that no longer reports anything — an icon with no route behind it is a forbidden
+ * placeholder, one glyph smaller.
  *
  * **A square head, not a round one**, which is the whole design problem here. Every avatar
  * mark in the world is a circle over an arc, and a circle would be the second curve in an

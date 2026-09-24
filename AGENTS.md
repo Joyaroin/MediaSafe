@@ -10,8 +10,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # The error discipline
 
-`SPEC.md` §3 holds eight constraints. Two of them bite on every read and every write you
-will ever add to this codebase, so they are here rather than only there.
+Eight constraints govern this codebase. Two of them bite on every read and every write you
+will ever add, so they are set out here.
 
 ## No `catch` returns `[]`
 
@@ -46,8 +46,8 @@ manufacturing a successful-looking empty result out of a failure.
 
 ## Errors are placed by blast radius
 
-Four treatments, four placements, and they are not interchangeable (`DESIGN.md`, States, and
-`SPEC.md` §6 — *read inline, write toast, auth full-page*). The mechanisms exist already — build
+Four treatments, four placements, and they are not interchangeable —
+*read inline, write toast, auth full-page*. The mechanisms exist already — build
 the caller, not a fifth surface.
 
 | Blast radius | Treatment | Where it lives |
@@ -57,7 +57,7 @@ the caller, not a fifth surface.
 | A sign-in did not happen | Full-page, on the sign-in surface | `errors/sign-in-failure.tsx` |
 | The whole app is unreachable | A sticky banner at the top of the page | `errors/offline-banner.tsx` |
 
-The auth row was the one `SPEC.md` §6 named and nothing implemented until issue #42, and it is
+The auth row was the one named and never implemented until issue #42, and it is
 full-page for a specific reason: a signed-out reader has one control and no other surface to be
 told anything on, so a failure that is not full-page is a failure that is nowhere. `tvtracker`
 rendered no auth error at all.

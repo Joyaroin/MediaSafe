@@ -26,7 +26,7 @@ import { ReorderableTitleList } from "./reorderable-title-list";
  *
  * That is the trade, taken deliberately, and the alternative was worse in both directions:
  * rendering nothing until the effect runs makes **every** reader wait for a blank list to
- * avoid one frame for some of them, and it is exactly `DESIGN.md` §9's *pending* treatment
+ * avoid one frame for some of them, and it is exactly the *pending* treatment
  * spent on something that is not pending — the titles are already here, on the server, in
  * the props. Nothing about the content is uncertain; only the arrangement is.
  *

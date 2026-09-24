@@ -74,7 +74,7 @@ export interface DragRules {
 
 /**
  * The handoff's own number: *both a tap and a horizontal drag change page; the drag
- * threshold is 40px* (`docs/design/prototypes/mediasafe-mobile-handoff.md`, screen 1).
+ * threshold is 40px* (screen 1 of the brief).
  *
  * Exported rather than inlined at the binding because the suite asserts the boundary at
  * exactly this value, and a threshold typed at a call site is the same class of mistake
@@ -203,7 +203,7 @@ export function releaseDrag(drag: Drag, rules: DragRules, claimed: boolean): Dra
  * These rules stand on their own merits, which is the whole basis on which they ship: a
  * second finger must not move the origin the first one is being measured from, and a
  * gesture a surface has claimed must not also arrive at a child as a press. If the misfire
- * survives them, it was not addressed here, and `DESIGN.md` §7 says so in the same words.
+ * survives them, it was not addressed here, and that is recorded in the same words.
  */
 
 /** The one thing about a gesture that decides whose events it is. A binding holds much
@@ -240,7 +240,7 @@ export function ownsPointer<G extends GesturePointer>(
  * A pointer that went down on a link, travelled and was released generates a click like any
  * other press. If the surface has already acted on that travel — paged, or sprung back —
  * then delivering the click as well makes one gesture mean two things, which is the failure
- * `SPEC.md` states for the season row's check one level down: *a gesture must never be two
+ * stated for the season row's check one level down: *a gesture must never be two
  * things at once.*
  *
  * The argument is the binding's **latched** claim, in the three states it really has:

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TmdbHttpError, isUnresolvedTitle } from "@/tmdb/mirror";
 
 /**
- * `isUnresolvedTitle` (issue #73) — the one branch `SPEC.md` §7's two failure modes turn
+ * `isUnresolvedTitle` (issue #73) — the one branch the two failure modes turn
  * on: a title TMDB cannot resolve is skipped, but a chunk failing for any other reason
  * halts. Collapsing the two — treating a rate limit or an outage as one more dead id —
  * was the bug this test guards against.

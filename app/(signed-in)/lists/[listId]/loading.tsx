@@ -4,7 +4,7 @@ import { BackToListsBar } from "../back-to-lists-bar";
 /**
  * One list, still reading — a route whose heading is itself the answer.
  *
- * `DESIGN.md` §9: *`loading.tsx` renders what the segment's `error.tsx` already renders,
+ * The rule: *`loading.tsx` renders what the segment's `error.tsx` already renders,
  * less the failure.* `error.tsx` renders the back bar and no `<h1>` at all, because
  * `{detail.name}` is exactly the thing being waited for — the identical shape
  * `titles/[entryId]/loading.tsx` follows for the same reason.

@@ -13,12 +13,12 @@ import { TimezoneControl } from "./timezone-control";
 /**
  * Settings, with **all three sections now real**.
  *
- * `SPEC.md` §7 gives Settings three sections — Profile, Data and Account (#28). Profile
+ * Settings has three sections — Profile, Data and Account (#28). Profile
  * carries the display name (issue #123) and, now, the timezone control (issue #126) that
  * same table row named from the start. Data ships with *Import a library ›* (issue #75),
  * and Account ships with sign-out, sign-out other devices (issue #124) and the way out
  * altogether (issue #125). None of the three is a stub: each is complete as far as its own
- * build step goes — and with #125 the whole of `SPEC.md` §7's table is on the page.
+ * build step goes — and with #125 the whole of that table is on the page.
  *
  * ── Why sign-out lives here rather than in the masthead ──────────────────────────────
  *
@@ -29,7 +29,7 @@ import { TimezoneControl } from "./timezone-control";
  *
  * ── Data links to `/import` unconditionally ───────────────────────────────────────────
  *
- * *The permanent door once first run is past* (`SPEC.md` §7) — but this link does not
+ * *The permanent door once first run is past* — but this link does not
  * check whether first run is past, and should not: `/import` is reachable directly by URL
  * regardless (`app/(signed-in)/import/page.tsx`), so hiding the link behind the offer
  * being answered would only make the door harder to find for exactly nobody's benefit. The
@@ -37,7 +37,7 @@ import { TimezoneControl } from "./timezone-control";
  *
  * ── Account gained its door out, and it is a link ────────────────────────────────────
  *
- * *Delete account* (issue #125) is here as one link, because `SPEC.md` §7 puts it on **its
+ * *Delete account* (issue #125) is here as one link, because it belongs on **its
  * own page, not a dialog** — a dialog is dismissed, a page is left. What Settings owes it
  * is a way to be found, which is a sentence and a link; everything that makes the decision
  * a real one — the three counts, the word to type, the sentence about Google — is on the
@@ -47,8 +47,8 @@ import { TimezoneControl } from "./timezone-control";
  *
  * Every earlier version of this docblock carried one, and issue #125 is what empties it:
  * *Delete account* was the remaining third of the Account section and the last thing
- * `SPEC.md` §8's build step 7 names. Nothing here is a heading with nothing under it,
- * which `SPEC.md` §9 forbids — not because the rule was obeyed carefully, but because
+ * build step 7 names. Nothing here is a heading with nothing under it,
+ * which is forbidden — not because the rule was obeyed carefully, but because
  * there is nothing left to reserve space for.
  */
 
@@ -109,8 +109,8 @@ export default async function SettingsPage() {
 
           <TimezoneControl timezone={timezone} />
 
-          {/* Appearance sits in Profile rather than in a fourth section, because `SPEC.md`
-              §7's table gives Settings three and adding one would be a second spec change
+          {/* Appearance sits in Profile rather than in a fourth section, because the
+              table gives Settings three and adding one would be a second spec change
               on top of the picker itself. It is the least bad home rather than an obvious
               one: unlike the display name and unlike the timezone, this is a **device**
               preference and never touches `user` (`lib/theme.ts`). The timezone is the
@@ -161,15 +161,15 @@ export default async function SettingsPage() {
           </div>
 
           {/*
-            The door out (issue #125). A link and not a control: `SPEC.md` §7 puts account
-            deletion on **its own page, not a dialog**, so the thing that belongs in this
+            The door out (issue #125). A link and not a control: account
+            deletion belongs on **its own page, not a dialog**, so the thing that belongs in this
             section is the way to that page and nothing else. Nothing is destroyed by
             following it — the page states what would be, in real numbers, and refuses to do
             anything until the reader types the word.
 
             Set apart from the two sign-outs above by its own rule rather than by colour.
             Vermilion here would be the section shouting before the reader has asked it
-            anything, and `DESIGN.md` keeps `accent` for a live state or a recorded mark; the
+            anything, and `accent` is kept for a live state or a recorded mark; the
             page it leads to is where that accent belongs.
           */}
           <div className="mt-8 border-t border-hair pt-6">

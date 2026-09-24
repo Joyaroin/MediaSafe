@@ -9,9 +9,9 @@ import { readRecommendations, type Recommendations } from "./recommendations";
 /**
  * *Because you watched* — the rail over the search field.
  *
- * ── What it is, and what `docs/design/v1-surfaces.md` said about it ─────────────────
+ * ── What it is, and what was said about it ──────────────────────────────────────────
  *
- * §6 of that file lists recommendations among the things deferred past v1, alongside watch
+ * Recommendations were listed among the things deferred past v1, alongside watch
  * providers, stats and year in review. Two of those four have since been built. This is
  * the third, and the deferral is being reversed rather than worked around: the search
  * screen's resting state was one dim line under a field, and a screen you arrive at with
@@ -22,7 +22,7 @@ import { readRecommendations, type Recommendations } from "./recommendations";
  * `recommendations.ts` owns the read and the distinction; this file only renders it.
  *
  *  - **No seed.** You have watched nothing of this kind. No heading, no empty track, no
- *    *watch something and this fills up*: `SPEC.md` §9 forbids reserving space for
+ *    *watch something and this fills up*: reserving space is forbidden for
  *    something with nothing to act on, and a rail whose subject does not exist is that.
  *  - **Nothing recommended.** The read succeeded and came back empty. Also nothing, for
  *    the same reason — a heading over an empty track says less than no heading.
@@ -61,7 +61,7 @@ function Rail({ rail }: { rail: Recommendations }) {
   return (
     <section className="pt-8">
       {/* The rail head keeps the page gutter while the track below bleeds to the edges —
-          `DESIGN.md` §7's pairing, at the same `22px` the four phone tabs use.
+          the settled pairing, at the same `22px` the four phone tabs use.
 
           The seed's name sits at the end of the row rather than inside the heading.
           *Because you watched Breaking Bad* as one string wraps to two lines on a narrow

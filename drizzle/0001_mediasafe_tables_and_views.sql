@@ -39,7 +39,7 @@ CREATE TABLE "list" (
 -- output before it was committed. Drizzle's `unique()` builder has no way to express
 -- deferrability, so there is nothing to fix in `db/tables.ts` — this is the place.
 --
--- ADR-0001 requires it because `position` is a ranking, and reordering a list means
+-- The schema requires it because `position` is a ranking, and reordering a list means
 -- rewriting several rows in one transaction. A non-deferred unique constraint rejects
 -- the first row that momentarily collides with a position another row has not vacated
 -- yet, which would make any reorder but a swap-at-the-end impossible.

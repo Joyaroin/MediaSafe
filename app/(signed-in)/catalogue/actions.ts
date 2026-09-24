@@ -119,8 +119,8 @@ export async function addUnownedTitleToLibraryAction(
   /**
    * And every other account holding this title, for `search/actions.ts`'s reason and by
    * the same mechanism: the add upserted the **global** `title` row and its episodes
-   * through `mirrorTitle`, so it refreshed what everybody else's library grid prints
-   * (ADR-0001). `cache/tags.ts`'s `MIRRORS_SHARED_TITLE_ROWS` is the list of writes that
+   * through `mirrorTitle`, so it refreshed what everybody else's library grid prints.
+   *  `cache/tags.ts`'s `MIRRORS_SHARED_TITLE_ROWS` is the list of writes that
    * owe this call, and the test holds that list against the code rather than against
    * anybody's memory.
    */

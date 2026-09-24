@@ -9,11 +9,11 @@ import { createWriteFailureStore } from "@/errors/write-failure";
  *
  * ── Why this rule earns a test where a single control's guard did not ────────────────
  *
- * `SPEC.md` §6 draws the line at what fails **silently**, and this is the sharpest kind:
+ * The line is drawn at what fails **silently**, and this is the sharpest kind:
  * the failure it exists to stop is not a missing toast but a **resolved** one. A lost
  * *Add — watched* answered by a standing plain-add toast leaves the reader pressing *Try
  * again*, watching the title arrive, and never learning that the watches did not. Every
- * surface then agrees the write landed — which is `SPEC.md` §3.3, *a lost write is never
+ * surface then agrees the write landed — which is *a lost write is never
  * silent*, broken in the one way that leaves nothing behind to notice.
  *
  * The store is the **real** one (`createWriteFailureStore`), not a fake. `standing()` and

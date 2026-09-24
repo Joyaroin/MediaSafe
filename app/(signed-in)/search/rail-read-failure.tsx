@@ -14,7 +14,7 @@ import { ReadFailure } from "@/errors/read-failure";
  * A failure surface with no way out is a worse thing than an extra file.
  *
  * Loosening `ReadFailure` to make `retry` optional was the other option and was rejected.
- * It is the one surface `SPEC.md` §6 and `DESIGN.md`'s States section pin down hardest,
+ * It is the one surface the States register pins down hardest,
  * shared by every failing region in the application, and making its recovery control
  * optional would let the *next* caller drop it by omission rather than by decision.
  *

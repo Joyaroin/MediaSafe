@@ -269,7 +269,7 @@ export function readUpNextMark(
  * the poster morph's own repair: opening a title from that row pairs this picture against
  * the title's own poster, and a still paired against a poster is two different pictures at
  * two different shapes travelling as though they were one thing. So the two are one change
- * (`DESIGN.md` §8, amended in the same pull request), not a box fixed here and a source
+ * (amended in the same pull request), not a box fixed here and a source
  * fixed separately.
  *
  * The mirrored `still_path` (#246) is untouched in the data and still drawn by the episode
@@ -281,7 +281,7 @@ export function readUpNextMark(
  * ── What is left: the poster, or nothing ─────────────────────────────────────────────
  *
  * `none` is not a fallback but the absence of one: the frame keeps its space and nothing
- * goes in it, which is `DESIGN.md` §8's rule for missing artwork, unchanged by this ticket.
+ * goes in it, which is the rule for missing artwork, unchanged by this ticket.
  */
 export type CardPicture =
   | { readonly kind: "still"; readonly path: string }
@@ -317,7 +317,7 @@ export function cardPicture(entry: Pick<UpNextEntry, "posterPath">): CardPicture
  * `up-next-episode-rail.tsx` asks it of every entry so that a rail whose last card has
  * been marked away takes its heading with it, and `up-next-episode-card.tsx` asks it of
  * itself so that the card stops rendering. Two callers, one rule: a rail that disagreed
- * with its own cards would leave a heading over an empty track, which `DESIGN.md`'s *an
+ * with its own cards would leave a heading over an empty track, which *an
  * empty rail is absent* forbids as surely as a count would.
  *
  * ── The arrived-empty branch, and why it is not `finished` (#250) ────────────────────
@@ -367,7 +367,7 @@ export function undoFromCard(
 ): Promise<void> {
   /* `undo`, not `unwatch`. This offers to take back the mark the reader just pressed, and
      `unwatch` removes **every** watch of the episode — so on one of the 1,156 episodes
-     carrying imported rewatches (`docs/adr/0001`) this was quietly deleting years of
+     carrying imported rewatches this was quietly deleting years of
      history while claiming to reverse one press. `db/access.ts`'s `undoWatch` is the
      inverse of the mark, and nothing else. */
   return marks.undo(

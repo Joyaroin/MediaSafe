@@ -6,7 +6,7 @@ import {
 import { ReferenceLine } from "./reference-line";
 
 /**
- * The third placement. `SPEC.md` §6: *errors are placed by blast radius: read inline,
+ * The third placement: *errors are placed by blast radius: read inline,
  * write toast, **auth full-page**.*
  *
  * This is that third one, and it is the one surface `AGENTS.md`'s table does not list —
@@ -16,7 +16,7 @@ import { ReferenceLine } from "./reference-line";
  *
  * ── Why full-page, and why this specific regression ──────────────────────────────────
  *
- * `docs/design/v1-surfaces.md` §Screen notes is unusually literal about it: *it must have
+ * The screen notes are unusually literal about it: *it must have
  * a designated place to render a failure, full-page — `tvtracker`'s auth form rendered no
  * error at all (`apps/web/src/components/auth/auth-form.tsx:10-16`), so a failed sign-in
  * on a phone produced a flickering button and nothing else.* A signed-out reader has one
@@ -34,7 +34,7 @@ import { ReferenceLine } from "./reference-line";
  * write-failure toast is built to. Better Auth hands its OAuth failures back as a code in
  * the query string (`?error=access_denied`) and sometimes an `error_description` written
  * by Google. **Neither is rendered.** They are machine-readable strings about a protocol,
- * and `SPEC.md` §6 allows the reader exactly one technical string: the reference id, when
+ * and the reader is allowed exactly one technical string: the reference id, when
  * there is a real one.
  */
 export function SignInFailure({

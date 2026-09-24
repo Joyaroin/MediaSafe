@@ -28,7 +28,7 @@ import { CHIP_BASE, ChipGround, chipClassName as sharedChipClassName } from "./c
 export type Chip = "all" | LibraryState;
 
 /**
- * `SPEC.md` §7's words for each state, in the glossary's own order. A `Record` rather
+ * The words for each state, in the glossary's own order. A `Record` rather
  * than a parallel array: `db/access.ts`'s `LIBRARY_STATES` never grows a sixth entry by
  * design, but if it ever did, a missing key here is a type error at that line rather than
  * a chip silently rendering `undefined`.
@@ -47,7 +47,7 @@ const CHIPS: { value: Chip; label: string }[] = [
 ];
 
 /**
- * `DESIGN.md`, Chips: *selected inverts to a `text`-coloured ground with `ground`-coloured
+ * Chips: *selected inverts to a `text`-coloured ground with `ground`-coloured
  * text. Unselected is `ground` with dim `text` text, hovering to `raised` with full-strength
  * text. The Watching chip is the one exception: its text is accent-coloured even when
  * unselected, because the accent always means live.* The shape every chip shares —
@@ -106,10 +106,9 @@ export function LibraryChips({
 }
 
 /**
- * `DESIGN.md`, Inputs: *a `1px` `hair` bordered row with a bar icon, `13rem` wide,
+ * Inputs: *a `1px` `hair` bordered row with a bar icon, `13rem` wide,
  * transparent ground, bone text at `text-item`, dim bone placeholder reading "Filter your
- * library".* The same treatment as the search screen's field, and — per `CONTEXT.md` and
- * `SPEC.md` §4 — never its copy: this one narrows the library you already have, and the
+ * library".* The same treatment as the search screen's field, and never its copy: this one narrows the library you already have, and the
  * word for that is *filter*, never *search*.
  */
 export function FilterField({
@@ -148,11 +147,11 @@ export function FilterField({
 }
 
 /**
- * `DESIGN.md`, Inputs: *the same bordered treatment at `text-item`, with the native arrow
+ * Inputs: *the same bordered treatment at `text-item`, with the native arrow
  * removed and replaced by a solid vermilion triangle — the one place vermilion marks an
  * affordance rather than a state.*
  *
- * **Reversed by issue #311.** `DESIGN.md` §12 named this caret, and `timezone-control.tsx`'s,
+ * **Reversed by issue #311.** This caret, and `timezone-control.tsx`'s, were named
  * as painting a *selection* — a fourth, unstated reason to reach for the accent, never one
  * of the three `app/accent-meaning.ts` settles. The triangle survives; it takes `text-dim`
  * now, the same ink `SortSelect`'s own value text already carries, so the caret still reads
@@ -160,7 +159,7 @@ export function FilterField({
  *
  * ── Why a selection here is a navigation and not a `setState` ────────────────────────
  *
- * `SPEC.md` §7 puts sort state in the URL, so choosing an order calls `router.push` rather
+ * Sort state lives in the URL, so choosing an order calls `router.push` rather
  * than updating local state. That re-renders `page.tsx`, which reads the library again at
  * the new `ORDER BY` and hands correctly-ordered `entries` back down — the chip and the
  * filter text are untouched, because they live in `LibrarySurface`, one level below the
@@ -206,7 +205,7 @@ export function SortSelect({ value }: { value: LibrarySort }) {
         ))}
       </select>
       {/* The solid triangle survives the redesign — turn 9 keeps it — but not in the
-          accent any more. Issue #311 re-narrows it: `DESIGN.md` §12 named this caret as
+          accent any more. Issue #311 re-narrows it: this caret was named as
           one of two places the accent marked a selection rather than one of the three
           sanctioned meanings, so it takes the same dim ink `SortSelect`'s own value
           text does, and still reads unambiguously as a control by its shape alone. */}
@@ -225,7 +224,7 @@ export function SortSelect({ value }: { value: LibrarySort }) {
  * A filter that matched nothing — distinct from the genuinely empty library `page.tsx`
  * still owns, and from a read failure, which is `errors/read-failure.tsx` and never this.
  *
- * `DESIGN.md`, States: *centred, heading at `text-bill-md`, body at `text-note` capped at
+ * States: *centred, heading at `text-bill-md`, body at `text-note` capped at
  * `60ch`, ghost "Clear the filter" button. Reassures that the library is intact.* Same
  * shape as the empty library, one size down and one button treatment down — `GHOST_RECOVERY`
  * rather than `SOLID_RECOVERY`, because this is a step back, not the one primary action a

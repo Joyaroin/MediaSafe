@@ -119,7 +119,7 @@ describe("the row travels instead of teleporting", () => {
 });
 
 /** No new client boundary on the surfaces that only ever hand the row down as a child —
- *  `SPEC.md`'s reasoning for why this ticket adds none at all. */
+ *  the reasoning for why this ticket adds none at all. */
 describe("no new client boundary is introduced", () => {
   it("leaves the desktop rails surface a server component", () => {
     expect(sourceAt(RAILS_SURFACE)).not.toMatch(/^"use client";/m);

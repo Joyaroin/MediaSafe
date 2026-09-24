@@ -19,7 +19,7 @@ import { redirect } from "next/navigation";
  *
  * ── One destination, since issue #136 ────────────────────────────────────────────────
  *
- * `SPEC.md` §7 used to split this on viewport — desktop to the Library, phone to Up
+ * This used to split on viewport — desktop to the Library, phone to Up
  * next — because Up next was not a desktop destination yet. It is now (`sidebar.tsx`),
  * and the spec's own user story asks for what a reader is part-way through to be the
  * first thing they see, on either device. This used to be a client component for exactly

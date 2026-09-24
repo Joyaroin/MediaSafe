@@ -4,17 +4,17 @@ import { describe, expect, it } from "vitest";
 import noEmptyCatch from "@/eslint-rules/no-empty-catch.mjs";
 
 /**
- * SPEC.md §3.2, machine-checked rather than remembered:
+ * Constraint 2, machine-checked rather than remembered:
  * **no `catch` returns `[]`.**
  *
- * This is the same argument SPEC.md §6 makes for the route-manifest check. A constraint
+ * This is the same argument made for the route-manifest check. A constraint
  * that everyone agrees with and nobody can see being broken is not a constraint, it is a
  * hope — and this particular one is broken by writing the most natural line of error
  * handling in JavaScript. `tvtracker` broke it, and a failed read became indistinguishable
  * from an empty library for as long as that app existed.
  *
- * It is an **ESLint rule and not a test** because of where each one runs. SPEC.md §6 puts
- * typecheck, lint and build in CI and nothing else; a vitest assertion would never run on
+ * It is an **ESLint rule and not a test** because of where each one runs. CI runs
+ * typecheck, lint and build and nothing else; a vitest assertion would never run on
  * a pull request. `npm run lint` does.
  *
  * What this file tests is the rule itself — that it fires on the shapes it must, holds

@@ -51,7 +51,7 @@ async function seedUser(tx: Transaction, name: string): Promise<UserId> {
 /**
  * One title and one library entry, with a watch on it only when asked for — which is all
  * `library_entry_state` needs to put a film at *watchlist* or at *finished*. The state is
- * never inserted, because it is a view and there is nothing to insert (ADR-0001).
+ * never inserted, because it is a view and there is nothing to insert.
  */
 async function seedTitle(
   tx: Transaction,

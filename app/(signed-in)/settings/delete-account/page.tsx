@@ -5,11 +5,11 @@ import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
 import { DeleteAccountForm } from "./delete-account-form";
 
 /**
- * The door out — `SPEC.md` §7, build step 7, issue #125.
+ * The door out — build step 7, issue #125.
  *
  * ── Its own route, and that is the design ────────────────────────────────────────────
  *
- * `SPEC.md` §7 says *its own page, not a dialog*, and the difference is what a reader does
+ * It is *its own page, not a dialog*, and the difference is what a reader does
  * to escape one: **a dialog is dismissed; a page is left.** A dialog also has nowhere to
  * put the three numbers below without becoming a page with a shadow behind it.
  *

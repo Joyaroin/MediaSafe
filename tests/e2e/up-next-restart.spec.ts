@@ -17,7 +17,7 @@ import { toStorageState } from "./support/storage-state";
  * - **Arriving back from a title** — the case issue #276's restoration was built for —
  *   still restores the pager's page and the rail's offset exactly as it does today.
  *
- * `SPEC.md`'s Testing Decisions name both halves explicitly and ask for one spec that
+ * Both halves are named explicitly, and one spec is asked for that
  * asserts them together, so a regression that fixed one by breaking the other could not
  * pass by accident.
  *

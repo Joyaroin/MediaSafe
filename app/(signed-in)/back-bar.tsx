@@ -45,7 +45,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  *
  * ── It is the whole heading of the pending and failed renders ────────────────────────
  *
- * `DESIGN.md` §9 on a route whose `<h1>` is itself the answer: the heading is **whatever
+ * The pending rule on a route whose `<h1>` is itself the answer: the heading is **whatever
  * the segment's `error.tsx` renders above the failure**, which on both of these routes is
  * this bar and no `<h1>` at all. The name is read from the database, so a name that has
  * not arrived cannot be printed and a name that failed to load must not be. A route that

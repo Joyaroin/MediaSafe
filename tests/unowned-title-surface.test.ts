@@ -13,7 +13,7 @@ import type { UnownedEpisodeDetail } from "@/db/access";
  *
  * `tests/unowned-title-detail.test.ts` holds what the read answers. This file holds the
  * two things about the glass that would fail **silently** rather than on sight, which is
- * the line `SPEC.md` §6 draws around what earns a test:
+ * the line drawn around what earns a test:
  *
  *  1. **The episode list carries no progress and no control.** It is the one component on
  *     this page that renders per-episode rows, and it is therefore the one that would

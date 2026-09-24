@@ -29,7 +29,7 @@ import {
 
 /**
  * The three live-only sections of title detail — synopsis, watch providers, cast and
- * crew. `docs/design/v1-surfaces.md` §7: *"one failed fetch must never take the screen,
+ * crew. *"One failed fetch must never take the screen,
  * and the mirrored half of the page works even when TMDB is down."* The mirrored half is
  * `ProgrammeNoteContent`, already on screen by the time either variant below renders;
  * their job is narrower — three independent outcomes, three independent failures, none of
@@ -55,7 +55,7 @@ import {
  *   Either way each read gets its own `<Suspense>`, so the page
  *   shell (poster, title, episodes) ships the instant the mirrored read is done, and each
  *   live section streams in independently as its own TMDB call resolves — the property
- *   `DESIGN.md`'s own Suspense section reserves for exactly this shape: *"the mechanism
+ *   the Suspense register reserves for exactly this shape: *"the mechanism
  *   to reach for if a future surface grows a region with its own async boundary."*
  *
  * - `LiveTitleFactsClientFetch` below — used by the desktop pane, which does not navigate
@@ -271,7 +271,7 @@ export function EpisodeSynopsisFactSection({
       render={(overview) =>
         overview === null ? (
           // Plainly worded and plainly attributed: it is TMDB that has not written one,
-          // not MediaSafe that has lost it. `SPEC.md` §6's rule that every user-facing
+          // not MediaSafe that has lost it. Every user-facing
           // string is a plain sentence, on a state that is not an error at all.
           <p className={SYNOPSIS_PROSE}>
             {EPISODE_SYNOPSIS_ABSENT}
@@ -295,7 +295,7 @@ export function WatchProvidersFactSection({
 }) {
   return (
     <LiveFactSection
-      // `CONTEXT.md`'s glossary is "Watch provider", and lists "where to watch" itself in
+      // The glossary term is "Watch provider", and lists "where to watch" itself in
       // that entry's own `_Avoid_` line — this is the term, not a paraphrase of it.
       heading="Watch providers"
       // The region the list is actually for. Without it a Canadian set of services is
@@ -342,7 +342,7 @@ export function LiveFactPlaceholder({
   heading: string;
   nested?: boolean;
 }) {
-  // Quiet, per `docs/design/v1-surfaces.md` §6's "loading" row for this screen: metadata
+  // Quiet, per this screen's "loading" row: metadata
   // and episodes arriving is a normal moment of this page, not an event.
   return (
     <div className={nested ? NESTED_SECTION : SECTION_CARD}>
@@ -563,7 +563,7 @@ function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) 
           >
             {provider.logoPath === null ? null : (
               /* eslint-disable-next-line @next/next/no-img-element -- the artwork is
-                 served from TMDB's CDN by ADR-0001, exactly as `app/poster.tsx` argues;
+                 served from TMDB's CDN, exactly as `app/poster.tsx` argues;
                  `next/image` would route it through Vercel's metered optimiser. */
               <img
                 src={`https://image.tmdb.org/t/p/w92${provider.logoPath}`}

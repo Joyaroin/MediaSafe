@@ -4,7 +4,7 @@ import { YouHeading } from "./you-heading";
 /**
  * You, which is still reading.
  *
- * `DESIGN.md` §9, radius 1: `loading.tsx` renders what the segment's `error.tsx` already
+ * Radius 1: `loading.tsx` renders what the segment's `error.tsx` already
  * renders, less the failure — the same `<main>`, the same `YouHeading`, and one dim line
  * where `ReadFailure` would be. `lists/loading.tsx` is the same shape.
  *

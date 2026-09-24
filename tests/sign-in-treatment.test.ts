@@ -10,7 +10,7 @@ import { StandaloneSignInInstruction } from "@/errors/standalone-sign-in-instruc
  * instruction, not the button.
  *
  * `signInTreatment` is a plain function over plain values with no DOM and no clock —
- * the shape `SPEC.md` #300's Testing Decisions names, alongside `gesture-rules` and
+ * the shape #300's Testing Decisions names, alongside `gesture-rules` and
  * `restoration`. `StandaloneSignInInstruction` has no state and no hook of its own, so
  * it renders the same way `tests/loading-boundaries.test.ts` renders its pending
  * boundaries: `renderToStaticMarkup`, asserted on the markup rather than on a class name

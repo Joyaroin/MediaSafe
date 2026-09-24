@@ -329,7 +329,7 @@ describe("markWatchedUpTo", () => {
 
       // Two written, not three: `1-2` already had a watch, and a second row against it
       // would be a rewatch the reader never asked for — invisible on every screen next to
-      // the genuine ones (`docs/adr/0001-watch-identity-and-derived-state.md`).
+      // the genuine ones.
       expect(outcome.recorded).toBe(2);
       expect(await watchedEpisodes(tx, userId, entryId)).toEqual(["1-1", "1-2", "1-3"]);
     }));

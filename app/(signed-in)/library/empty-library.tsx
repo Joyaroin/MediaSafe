@@ -10,7 +10,7 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *
  * This renders when the query **succeeded and found no rows**. There is no other path to
  * it: `listLibraryEntries` has no `catch`, so a database that cannot be reached throws
- * past this component into `error.tsx` (`SPEC.md` §3.2, `AGENTS.md`). `tvtracker` caught
+ * past this component into `error.tsx` (`AGENTS.md`). `tvtracker` caught
  * the failure and returned `[]`, and for the whole life of that app a database that was
  * down rendered as a library with nothing in it.
  *
@@ -21,7 +21,7 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *
  * ── Everything about it is the opposite of the failure ───────────────────────────────
  *
- * `DESIGN.md`, States, makes the distinction structural rather than a matter of wording:
+ * The States register makes the distinction structural rather than a matter of wording:
  * this one is **centred**, headed at **`text-bill-lg`** in **`text`**, with **no border
  * at all**. The read failure is left-aligned, headed at `text-bill-md` in `accent`, under
  * a `2px` `accent` rule, and carries a reference id. Alignment, type step, colour, border
@@ -30,19 +30,19 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *
  * ── The button points at the door that exists ────────────────────────────────────────
  *
- * `DESIGN.md` draws this state's primary action as *Bring your library in*, and now it
+ * This state's primary action is *Bring your library in*, and now it
  * can: import shipped in issue #73 and the first-run offer that can be declined into this
  * exact state shipped in #75. The only way to reach this component *at all* is through
  * that decline — `/welcome` is what a first sign-in lands on instead, so a library with
- * nothing in it is a library whose reader chose this. `SPEC.md` §8 step 3 asks for
+ * nothing in it is a library whose reader chose this. Build step 3 asks for
  * exactly this: *a route back that is not a dead end.*
  *
  * `/import`, not `/welcome` — the offer has already been answered by the time this
  * renders, so `/welcome` would immediately redirect past it (`lib/session.ts`), and
- * `/import` is the same permanent door `SPEC.md` §7's Settings section describes.
+ * `/import` is the same permanent door the Settings section describes.
  *
- * *Search*, not *Find* and not *Filter*: `CONTEXT.md` gives that word to the catalogue and
- * gives *filter* to your own library. Search stays reachable from the masthead nav even
+ * *Search*, not *Find* and not *Filter*: that word belongs to the catalogue and
+ * *filter* to your own library. Search stays reachable from the masthead nav even
  * though the button no longer names it — nothing here removes a way in, only changes
  * which one is the primary action.
  */

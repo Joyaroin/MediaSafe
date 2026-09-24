@@ -9,11 +9,11 @@ import { ProgrammeNoteEpisodes } from "@/app/(signed-in)/library/programme-note-
 import type { EpisodeDetail } from "@/db/access";
 
 /**
- * The season/episode list (issue #58) — the row `DESIGN.md` calls out as carrying the
+ * The season/episode list (issue #58) — the row that carries the
  * product's most important rule. What this checks is everything a render could get wrong
  * **silently**, the same standard `tests/library-surface.test.ts` holds the grid to:
  *
- *  1. **An episode is never a bare number.** `docs/design/v1-surfaces.md` §4's hard rule,
+ *  1. **An episode is never a bare number.** A hard rule,
  *     with no degrading surface — this is the surface it would degrade on if it ever did.
  *  2. **Missing and empty stay distinct.** A show with nothing mirrored says so; it does
  *     not render an empty season.
@@ -77,7 +77,7 @@ describe("the episode list", () => {
   it("dims a watched episode's name, and lets the dimming be what says so", () => {
     const markup = episodes([episode({ watched: true })]);
 
-    // The dimmed name is the statement (`DESIGN.md`, Episode Line, as issue #139 redraws
+    // The dimmed name is the statement (the Episode Line, as issue #139 redraws
     // it) — the strike-through this used to draw is retired with the world it came from.
     // A *Watched* code line stood in the trailing slot wherever there was no unwatch to
     // offer, which #145 makes unreachable; the control test below owns the other half, so
@@ -144,7 +144,7 @@ describe("the episode list", () => {
      * all* — is still held by the second expectation; what is gone is the control that
      * offered a deliberate second watch beside it.
      *
-     * The concept is untouched where it actually lives. `docs/adr/0001` records 1,156
+     * The concept is untouched where it actually lives. There are 1,156
      * genuine rewatches already in the imported library, so the `watch` table, its
      * `UNIQUE (user_id, source, source_key)` identity rule and the dedupe in `db/access.ts`
      * all stay exactly as they were — `watch-mark-motion.tsx`'s `SETTLED_GLYPH` holds that
@@ -163,8 +163,8 @@ describe("the episode list", () => {
      * **absent**, because an episode whose only watch was imported offered none. There is
      * no such input any more: `EpisodeDetail` carries nothing derived from a watch's
      * source, so there is no watched row this component can be handed that would render
-     * without an unwatch. All 19,558 of the library's watches are imported
-     * (`SPEC.md` §7), and a control that skipped them rendered on essentially nothing its
+     * without an unwatch. All 19,558 of the library's watches are imported,
+     *  and a control that skipped them rendered on essentially nothing its
      * only reader owns.
      */
     /**
@@ -195,7 +195,7 @@ describe("the episode list", () => {
     const markup = episodes([episode({ watched: true })]);
 
     /**
-     * `CONTEXT.md`, *Rewatch*: a rewatch is *never a number kept on a title*. A weaker
+     * *Rewatch*: a rewatch is *never a number kept on a title*. A weaker
      * assertion — no `×2`, no "watched twice" — only rules out the spellings somebody
      * thought of, so this pins the row's visible words exactly instead. A count added
      * anywhere on it fails this whether or not it looks like one.
@@ -414,7 +414,7 @@ describe("the watched-up-to-here control", () => {
  * in specials-last order, the default selection lands on the season holding *up next* (or
  * falls back to the first season), the pressed chip's own state, and that only the
  * selected season's rows are in the document at all. Choosing a *different* chip is not
- * testable here — this file's own top docblock and `SPEC.md`'s Testing Decisions: there
+ * testable here — this file's own top docblock says why: there
  * is no DOM environment in this suite and no click to simulate one with.
  */
 describe("the season selector", () => {

@@ -18,7 +18,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * `tests/tmdb-mirror.test.ts` pins what TMDB's responses become. This file pins what
  * happens when those rows meet the schema, and it exists for the same reason that one
- * does: **`title` and `episode` are global and unowned** (ADR-0001), so one account
+ * does: **`title` and `episode` are global and unowned**, so one account
  * adding a show writes rows every other account reads. The assertions below are the ones
  * whose failure would be invisible from inside one library — a second account's add
  * duplicating a title, or an add that half-lands.
@@ -126,7 +126,7 @@ describe("addTitleToLibrary", () => {
         .select()
         .from(episode)
         .where(eq(episode.titleId, row.id));
-      // Episode names, mirrored — CONTEXT.md forbids referring to one by number alone,
+      // Episode names, mirrored — referring to one by number alone is forbidden,
       // which is what makes this column load-bearing rather than a detail-page nicety.
       expect(episodes.map((one) => one.name).sort()).toEqual([
         "The Kingsroad",
@@ -192,7 +192,7 @@ describe("addTitleToLibrary", () => {
        */
       expect(second.titleId).toBe(first.titleId);
 
-      // One row per TMDB id, whoever added it. This is the design (ADR-0001), and it is
+      // One row per TMDB id, whoever added it. This is the design, and it is
       // why the mapping that produces these rows is tested infrastructure.
       const rows = await tx
         .select()

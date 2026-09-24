@@ -201,8 +201,8 @@ test.beforeEach(async ({ page }) => {
    * a route, and `app/(signed-in)/up-next/page.tsx` gates its phone rail behind `lg:hidden`
    * the same way — below `1024px` both paths actually navigate to `/titles/{id}`, which is
    * the one case the morph exists for. `500×721` is not an arbitrary phone size: it is the
-   * exact viewport `SPEC.md`'s Further Notes records the problem statement's own
-   * measurements against.
+   * exact viewport the problem statement's own
+   * measurements were taken against.
    */
   await page.setViewportSize({ width: 500, height: 721 });
 });

@@ -7,7 +7,7 @@ import { SYNOPSIS_PROSE } from "@/app/(signed-in)/library/programme-note-section
 
 /**
  * Issue #331 — balanced wrapping on screen and bill titles, pretty wrapping on the
- * synopsis only (`SPEC.md`'s spec-326 Polish section).
+ * synopsis only (the spec-326 Polish section).
  *
  * `text-wrap: balance` and `text-wrap: pretty` are CSS, so the same idiom
  * `tests/corners.test.ts` and `tests/press-spring.test.ts` use applies: read the

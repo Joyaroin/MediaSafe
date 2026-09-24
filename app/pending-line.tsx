@@ -1,9 +1,9 @@
 /**
  * What a surface draws while it is reading.
  *
- * ── This reverses `DESIGN.md` §9's *there is no skeleton*, and answers its four reasons ──
+ * ── This reverses *there is no skeleton*, and answers its four reasons ────────────────
  *
- * That section gave four independent reasons and was right about all four. What changed is
+ * That rule gave four independent reasons and was right about all four. What changed is
  * the requirement: one dim line reading *Reading* is what eleven route boundaries drew, and
  * it is too little to look like anything. So this draws placeholder lines — built to
  * survive each of the four rather than to ignore them.

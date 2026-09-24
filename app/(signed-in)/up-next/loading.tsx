@@ -22,7 +22,7 @@ import { UpNextHeading } from "./up-next-heading";
  * `useLibrarySelection()`, which this fresh `LibrarySelectionProvider` instance seeds to
  * `null` — its already-built `idle` phase (`programme-note.tsx`) renders *Select an entry
  * from the bill to read it here* at full strength, unprompted by anything this file does.
- * That is radius 2 exactly as `DESIGN.md` §9 states it: the region beside the pending one
+ * That is radius 2 exactly as stated: the region beside the pending one
  * renders in its own settled form, and nothing here reserves space for it or waits on it.
  *
  * ── Why the rails still get the whole-surface treatment ───────────────────────────────

@@ -1,11 +1,11 @@
 /**
  * The mark and the name together, at the one size the type ramp gives the wordmark
- * (`text-bill-xs` — `DESIGN.md`'s type table: *the wordmark, the four compact phone deck
+ * (`text-bill-xs` — the type table: *the wordmark, the four compact phone deck
  * titles, and the phone hero's episode name*).
  *
  * Two surfaces carry it, and only one of them has a masthead: the signed-in shell, and the
  * sign-in route, which has none because the masthead's only control is a Settings entrance
- * leading somewhere a signed-out reader cannot go (`SPEC.md` §9 — reserve no space, no
+ * leading somewhere a signed-out reader cannot go (reserve no space, no
  * placeholder destinations). Written once so those two cannot drift into two wordmarks.
  *
  * The mark's size is the caller's, because the masthead sets it smaller than the sign-in
@@ -33,7 +33,7 @@ export function Wordmark({
 }
 
 /**
- * The press mark: a hairline square with a struck accent bar, from `DESIGN.md`.
+ * The press mark: a hairline square with a struck accent bar.
  *
  * The same drawing as `app/icon.svg`, and deliberately a second copy of it rather than a
  * shared source. The favicon is a standalone document a browser fetches on its own, with

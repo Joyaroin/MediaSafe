@@ -11,7 +11,7 @@ import type { TmdbFindPayload } from "@/tmdb/reconcile";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * Reconciling a title whose TMDB id is gone (issue #116, `SPEC.md` §11.3), against real
+ * Reconciling a title whose TMDB id is gone (issue #116), against real
  * Postgres.
  *
  * ── What this file is, and is not ────────────────────────────────────────────────────

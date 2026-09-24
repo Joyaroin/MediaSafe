@@ -1,7 +1,7 @@
 import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
 
 /**
- * `DESIGN.md`'s Episode Line, as the four class strings that draw it — written once for
+ * The Episode Line, as the four class strings that draw it — written once for
  * the reason `programme-note-section.ts` and `errors/recovery-buttons.ts` give for their
  * own: a treatment copied is a treatment that becomes two treatments the first time one
  * of them is adjusted.
@@ -34,7 +34,7 @@ import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
  * `min-h-11`'s `44px`.
  *
  * **That is the row shrinking under the thumb as the mark lands** — the exact thing
- * `min-h-11` was measured into existence to prevent. `DESIGN.md` §6 says *re-measure if
+ * `min-h-11` was measured into existence to prevent. The rule is *re-measure if
  * you touch the row*, and this is what the re-measure found.
  *
  * Taking `2px` off each side is the fix that costs nothing visible: `min-h-11` still
@@ -69,7 +69,7 @@ export const EPISODE_NUMBER = "code-line w-9 shrink-0 text-dim";
  * against the first, and it would drift silently the day one of them changed.
  *
  * Issue #310: the accent here claims `LIVE_EDGE_OF_THE_RECORD` (`app/accent-meaning.ts`) —
- * `DESIGN.md` §12's own words for it are *the strongest case for a second meaning: up next
+ * the settled words for it are *the strongest case for a second meaning: up next
  * is the live edge of the record, and this is the one place it is marked*.
  */
 export const EPISODE_NUMBER_UP_NEXT = `code-line w-9 shrink-0 ${LIVE_EDGE_OF_THE_RECORD.solid} px-1 py-0.5 text-center`;

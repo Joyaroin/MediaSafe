@@ -42,7 +42,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * ── The counts are load-bearing, not decorative ──────────────────────────────────────
  *
  * The confirmation page states this title's watches and its rating in real numbers, and
- * `SPEC.md`'s honest caveat is that watches this application recorded are restorable by
+ * the honest caveat is that watches this application recorded are restorable by
  * nothing. So the numbers are the only protection there is, and *the counts shown match
  * exactly what is deleted* is asserted here rather than trusted — the same assertion
  * `tests/delete-account.test.ts` makes about its three, and for the same reason: a number
@@ -278,7 +278,7 @@ describe("removing the title", () => {
 
   /**
    * The assertion nothing on any screen would make for you. `title` and `episode` are
-   * global and unowned (ADR-0001) — a cascade that reached them would empty every other
+   * global and unowned — a cascade that reached them would empty every other
    * account's library, silently, the first time somebody tidied up their own.
    */
   it("leaves the global title and episode rows standing", async () => {

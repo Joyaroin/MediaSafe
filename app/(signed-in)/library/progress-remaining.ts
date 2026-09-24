@@ -3,13 +3,13 @@ import { plural } from "@/app/(signed-in)/you/figures";
 import { episodeFullName } from "./season-grouping";
 
 /**
- * Progress and remaining — `CONTEXT.md`'s two derived facts about how far into a show a
+ * Progress and remaining — the two derived facts about how far into a show a
  * reader has got, read from the same `episodes` `getTitleDetail` already hands the page
  * rather than a second query against `library_entry_progress` / `library_entry_remaining`
  * (`db/views.ts`). Both functions below match those views' own rules exactly, so a number
  * shown here is never a second definition of one already evaluated server-side.
  *
- * **They are never interchangeable** (`CONTEXT.md`, and issue #228's own acceptance
+ * **They are never interchangeable** (issue #228's own acceptance
  * criterion): progress is a position — the furthest episode with a watch — and remaining is
  * a count of the episodes that have none. `progressLine` never returns a number and
  * `remainingLine` never returns an episode.
@@ -64,8 +64,8 @@ export function remainingLine(episodes: readonly EpisodeDetail[]): string {
  *
  * ── The denominator is the same one `remainingCount` uses ───────────────────────────
  *
- * Specials are excluded (`seasonNo > 0`), exactly as they are above and for the reason
- * ADR-0001 gives: they are mirrored and markable, and they are not part of *caught up* or
+ * Specials are excluded (`seasonNo > 0`), exactly as they are above and for the settled
+ * reason: they are mirrored and markable, and they are not part of *caught up* or
  * *finished*. A bar that counted them would sit short of full on a show you have finished,
  * which is the one thing a progress bar must never do.
  *

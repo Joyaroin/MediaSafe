@@ -3,7 +3,7 @@
  * asks for (issue #312 is the contract half: the sweep that fails an accent use claiming
  * none of these three).
  *
- * `DESIGN.md` §12 found seven surfaces painting `--accent` for a reason `app/globals.css`'s
+ * Seven surfaces were found painting `--accent` for a reason `app/globals.css`'s
  * own rule never named, and traced them to three coherent answers rather than one: the
  * accent has never meant only *recording a watch* — it has also meant *this is where the
  * record currently stands* and *this control lives in the register #195 moved fourteen of
@@ -11,7 +11,7 @@
  * that reaches for `text-accent` or `bg-accent` directly is not wrong about the colour; it
  * is silent about which of the three reasons it is allowed to.** That silence is what let a
  * select caret and two dialog frames spend the same token on a fourth, unstated reason
- * (`DESIGN.md` §12's *selection* and *chrome* cases) — a mistake a call site that names its
+ * (the *selection* and *chrome* cases) — a mistake a call site that names its
  * meaning cannot make quietly, because there would be a fourth export to add.
  *
  * **One token, three reasons — never three colours.** `ink` and `solid` below are declared
@@ -33,8 +33,8 @@
  *
  * Only `LIVE_EDGE_OF_THE_RECORD` gets call sites in this ticket — `library-state.ts`'s
  * `STATE_LABELS.watching`, `library-filter-bar.tsx`'s unselected Watching chip, and
- * `episode-line.ts`'s `EPISODE_NUMBER_UP_NEXT` — because those three are what `DESIGN.md`
- * §12 already named as *the strongest case for a second meaning* and the acceptance
+ * `episode-line.ts`'s `EPISODE_NUMBER_UP_NEXT` — because those three are what was
+ * already named *the strongest case for a second meaning* and the acceptance
  * criteria name by surface. `RECORDS_A_WATCH` and `THE_BUTTON_REGISTER` are declared and
  * tested here so a fourth meaning cannot be added without this file changing, but their own
  * call sites — `watch-mark-motion.tsx`'s recording controls, `errors/recovery-buttons.ts`'s
@@ -74,7 +74,7 @@ function meaning(claims: string): AccentMeaning {
 }
 
 /**
- * `SPEC.md` §3's original rationing, unchanged by #300: the accent means a watch was
+ * The original rationing, unchanged by #300: the accent means a watch was
  * recorded. `watch-mark-motion.tsx`'s `RECORDING_GLYPH`/`RECORDING_HIT_BOX` are this
  * meaning's `ink`/`solid` today, and `programme-note-episodes.tsx`'s *Rewatch* control is
  * its `ink` again, by way of `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`. This is the
@@ -87,7 +87,7 @@ export const RECORDS_A_WATCH: AccentMeaning = meaning(
 
 /**
  * The second meaning #300 settles: not an action just taken, but where the record
- * currently stands. `DESIGN.md` §12 named this as *the strongest case for a second
+ * currently stands. This was named *the strongest case for a second
  * meaning* — *up next is the live edge of the record, and this is the one place it is
  * marked* — and traced it to three surfaces already painting it before anything declared
  * it: the **Watching** state label (`library-state.ts`), the **Watching** filter chip even
@@ -101,7 +101,7 @@ export const LIVE_EDGE_OF_THE_RECORD: AccentMeaning = meaning(
 
 /**
  * The third meaning: issue #195 moved fourteen controls onto the accent as their shared
- * register (`DESIGN.md` §10's Buttons subsection), overriding two files' own prior *never
+ * register (the Buttons subsection), overriding two files' own prior *never
  * accent* reasoning in the open. `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/
  * `SOLID_RECOVERY` and their compact variants are this meaning's `ink`/`solid` today.
  * Migrated onto this constant by issue #311, rendering exactly as before — the fourteen

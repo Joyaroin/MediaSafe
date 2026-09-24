@@ -9,7 +9,7 @@ import {
 /**
  * The zone a new account starts life with.
  *
- * This is worth a test where most of build step 1 is not, and the reason is ADR-0001's:
+ * This is worth a test where most of build step 1 is not, and the reason is the schema's:
  * **the zone is a read-time lens, not a write-time stamp.** The streak and year-in-review
  * queries join `user.timezone` against every past watch, so a wrong zone does not
  * mislabel one row — it re-buckets the whole history, silently, for as long as it stands.

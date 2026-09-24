@@ -89,7 +89,7 @@ describe("Better Auth's tables, after the one migration runner has run", () => {
     it("defaults to a zone rather than to nothing", async () => {
       await inTransaction(async (tx) => {
         // Inserted without a zone on purpose: this is the account created by any path
-        // that forgets the hook, and ADR-0001's read-time lens means it must still land
+        // that forgets the hook, and the read-time lens means it must still land
         // on something every later `AT TIME ZONE` can use.
         await tx.execute(
           sql`insert into "user" (id, name, email, email_verified, updated_at)
@@ -135,7 +135,7 @@ describe("Better Auth's tables, after the one migration runner has run", () => {
         const sessions = await tx.execute<{ count: string }>(
           sql`select count(*)::text as count from "session" where user_id = 'cascade-1'`,
         );
-        // ADR-0001 gives every owned table `ON DELETE CASCADE` back to `user`. Step 7's
+        // Every owned table has `ON DELETE CASCADE` back to `user`. Step 7's
         // delete-account page is a `delete from "user"` and nothing else, and this is
         // why that is enough.
         expect(sessions.rows[0].count).toBe("0");

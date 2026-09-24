@@ -15,7 +15,7 @@ import { readNativeImportFile, type NativeImportFile } from "@/import/native-for
 import { applyImportChunkAction, type SkippedTitle } from "./actions";
 
 /**
- * The import screen's whole state machine (`SPEC.md` §7, issue #73).
+ * The import screen's whole state machine.
  *
  * ── Why the file lives in a ref, not the phase ────────────────────────────────────────
  *
@@ -81,8 +81,8 @@ export function ImportSurface() {
     try {
       file = readNativeImportFile(text);
     } catch (error) {
-      // The reader's own refusal, already a plain sentence (SPEC.md §7,
-      // import/native-format.ts) — a failure, never an empty library.
+      // The reader's own refusal, already a plain sentence
+      // (import/native-format.ts) — a failure, never an empty library.
       setPhase({
         kind: "invalid",
         message: error instanceof Error ? error.message : "This file is not one MediaSafe can read.",
@@ -148,7 +148,7 @@ export function ImportSurface() {
 }
 
 /**
- * `DESIGN.md`'s Buttons section names one solid, primary action per surface — here it is
+ * The Buttons register names one solid, primary action per surface — here it is
  * the only control this screen has before a run starts. The native input is visually
  * hidden and the label carries the treatment, which is what makes it stylable at all: a
  * file input cannot be restyled directly in any browser.
@@ -200,7 +200,7 @@ function InvalidFile({
   );
 }
 
-/** The three counters, exactly as `SPEC.md` §7 writes them: `318 of 462 titles · 11,204 watches · 155 marked abandoned`. */
+/** The three counters, exactly as specified: `318 of 462 titles · 11,204 watches · 155 marked abandoned`. */
 function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
   return (
     <p role="status" className="code-line text-text" data-numeric>
@@ -231,7 +231,7 @@ function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Pro
 }
 
 /**
- * The *halt* failure mode (`SPEC.md` §7), rendered with `errors/failure-treatment.ts`'s
+ * The *halt* failure mode, rendered with `errors/failure-treatment.ts`'s
  * inline block — the same one `ReadFailure` uses — rather than the write-failure toast.
  *
  * That is a deliberate departure from `AGENTS.md`'s blast-radius table, which files "one
@@ -316,7 +316,7 @@ function Done({
 
 /**
  * Skipped titles, gathered in one place at the end — never as a list that scrolls past
- * mid-run (`SPEC.md` §7's acceptance criteria for #73). Named by the file's own identity:
+ * mid-run (the acceptance criteria for #73). Named by the file's own identity:
  * a title TMDB never answered has no borrowed name to print, so this is `kind` and the
  * `tmdb_id` the file carries, not a technical string in the sense the reference id is.
  */

@@ -4,12 +4,11 @@ import type { NextRequest } from "next/server";
 import { carriesSessionCookie } from "@/lib/session-cookie";
 
 /**
- * Constraint 5, in one file: **no unauthenticated route may ever be added** (`SPEC.md`
- * §3). Every route in this application is behind a session except two, and the two are
+ * Constraint 5, in one file: **no unauthenticated route may ever be added**. Every route in this application is behind a session except two, and the two are
  * written out below rather than implied.
  *
- * `PRODUCT.md` justified this rule with previews carrying a copy of the real library.
- * `SPEC.md` §10.4 records that the justification is gone — #18 made the preview branch
+ * The rule was once justified by previews carrying a copy of the real library.
+ * That justification is gone — #18 made the preview branch
  * schema-only, holding zero production rows — and that **the rule did not go with it**.
  * It binds every remaining step of the build order, and it is the reason
  * `tests/route-manifest.test.ts` exists.
@@ -18,15 +17,15 @@ import { carriesSessionCookie } from "@/lib/session-cookie";
  *
  * Next 16 renamed the file convention and the exported function; `middleware.ts` is
  * deprecated (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`).
- * Everything else about it is unchanged, which is why `SPEC.md` §6, issue #43 and
- * `eslint.config.mjs` all still say *middleware matcher* — the name in the spec and the
- * name on disk are one Next.js release apart, and the spec is not being rewritten for it.
+ * Everything else about it is unchanged, which is why issue #43 and
+ * `eslint.config.mjs` both still say *middleware matcher* — the name in the ticket and the
+ * name on disk are one Next.js release apart.
  *
  * ── A third exemption, issue #115 ────────────────────────────────────────────────────
  *
  * `api/cron/nightly-sweep$` is the nightly metadata sweep's cron route. Vercel's cron
  * sends no session cookie, so behind this matcher unexempted it would be redirected to
- * sign-in and the refresh would silently never run — the exact failure ADR-0001's sweep
+ * sign-in and the refresh would silently never run — the exact failure the sweep
  * exists to prevent. **It is un-sessioned, not unauthenticated**: the route checks a
  * bearer `CRON_SECRET` itself and rejects anything without it
  * (`app/api/cron/nightly-sweep/route.ts`). This comment says so precisely because the
@@ -101,7 +100,7 @@ export function proxy(request: NextRequest): NextResponse {
  * on the sign-in page. A known cost, taken deliberately: the alternative is a fourth
  * exemption in the ticket that exists to make a fourth exemption hard, and a missing
  * favicon is a smaller price than the rule being negotiable on the day it is written. If
- * that trade is wrong, it is a product decision, and the place to make it is `SPEC.md`.
+ * that trade is wrong, it is a product decision, and it is not this file's to make.
  */
 export const config = {
   matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$).*)"],

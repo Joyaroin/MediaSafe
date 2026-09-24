@@ -20,7 +20,7 @@ import {
 /**
  * `npm run db:seed` — the other driver of import (issue #74).
  *
- * `SPEC.md` §6 seeds preview and local **by running MediaSafe's own import**, so this
+ * Preview and local are seeded **by running MediaSafe's own import**, so this
  * calls `applyImportChunk` — the same writer the browser drives (issue #72) — rather
  * than opening a second connection of its own. There is no `psql` restore and no
  * direct-insert script; if this stopped calling that function, it would be the second
@@ -61,7 +61,7 @@ function bearerToken(): string {
     throw new Error(
       "TMDB_READ_ACCESS_TOKEN is not set. The import file carries no metadata by " +
         "design (import/native-format.ts) — db:seed needs TMDB's API Read Access " +
-        "Token to fetch it. See docs/local-development.md.",
+        "Token to fetch it.",
     );
   }
   return token;
@@ -184,7 +184,7 @@ export async function runSeed(args: SeedArgs): Promise<void> {
   const chunk = await buildChunk(file);
   const outcome = await applyImportChunk(userId, chunk);
 
-  // The same three figures the import screen's progress line shows (`SPEC.md` §7).
+  // The same three figures the import screen's progress line shows.
   console.log(
     `[db:seed] ${outcome.titlesAdded} of ${chunk.titles.length} titles · ` +
       `${outcome.watchesAdded} watches · ${outcome.arrivedAbandoned} marked abandoned`,

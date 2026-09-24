@@ -172,7 +172,7 @@ export async function UnownedTitleBody({
  * `mediasafe/no-empty-catch` said so before a reviewer had to: a catch around that read
  * cannot tell *this title is not mirrored* from *Postgres did not answer*, so a database
  * outage would fall through to TMDB, render the title perfectly, and look completely fine.
- * That is exactly the failure `SPEC.md` §3 exists to prevent, wearing a different hat —
+ * That is exactly the failure the rules exist to prevent, wearing a different hat —
  * `tvtracker`'s version of it made an unreachable database look like an empty library.
  *
  * So the distinction is made where it can actually be made: `findUnownedTitleDetail`

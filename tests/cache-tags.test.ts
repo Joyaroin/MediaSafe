@@ -579,7 +579,7 @@ describe("every write busts its tags", () => {
    *
    * This assertion used to say the very next read was fresh. It passed because the double
    * treated `revalidateTag(tag, "max")` as an outright delete; the real call marks the
-   * entry stale and serves it once while refreshing behind it (ADR-0002, and
+   * entry stale and serves it once while refreshing behind it (and
    * `invalidateForOtherAccounts`' own docblock, which calls stale-while-revalidate "the
    * honest treatment" for an account that is not reading its own write). #225 corrected
    * the double, and this is what the corrected one shows.
@@ -720,7 +720,7 @@ describe("the surfaces reading one fact agree after a write", () => {
   /**
    * One write, four surfaces. The library grid, the rails, the title detail and the
    * phone's films rail all read the same entry row, so a mark that left any one of them
-   * holding the old answer is the disagreement `SPEC.md` §3 constraint 1 existed to
+   * holding the old answer is the disagreement constraint 1 existed to
    * forbid — restated for the cache that replaced it.
    */
   it("leaves the grid, the rails, the films and the title detail all agreeing", async () => {
@@ -821,7 +821,7 @@ describe("the surfaces reading one fact agree after a write", () => {
 });
 
 /**
- * `SPEC.md` §3.2 through the cache. The whole reversal rests on a cache entry never being
+ * The no-empty-catch rule through the cache. The whole reversal rests on a cache entry never being
  * made out of a failure, and until now that was asserted in four docblocks and checked
  * nowhere.
  *
@@ -879,8 +879,8 @@ describe("a failed read is not an empty library", () => {
  * exactly the reads that consult `current_date`, and these are the assertions that hold it
  * there.
  *
- * **This is not a revalidation window**, and the distinction is the one ADR-0002 rejected
- * time-based revalidation on: a window is a period in which the answer is permitted to
+ * **This is not a revalidation window**, and the distinction is the one that
+ * time-based revalidation was rejected on: a window is a period in which the answer is permitted to
  * disagree with the database. A day in the key is the opposite — it is an input to the
  * query appearing in the key of the query, so the entry is exactly right at every instant
  * it is served, and a different day is a different question rather than a stale answer.
@@ -1493,7 +1493,7 @@ describe("the reads that are cached, and the one that must never be", () => {
       // The mirror, read twice: throwing for a list row, where a missing row is a broken
       // invariant, and nullable for catalogue detail, where a title nobody has ever added
       // is the ordinary case. Same fact, same tag, two contracts — and the pair is what
-      // lets that caller keep `SPEC.md` §3 without a `catch` that cannot tell a missing
+      // lets that caller keep the rule without a `catch` that cannot tell a missing
       // row from a database that did not answer.
       "findUnownedTitleDetail",
       "recommendationsFor",

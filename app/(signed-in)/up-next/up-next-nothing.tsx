@@ -8,8 +8,8 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *
  * ── Why this is not `UpNextEmpty`, which is three feet away ─────────────────────────
  *
- * They answer different questions and #245 settled that both are true at once. `SPEC.md`
- * says an empty rail is simply *absent*; the handoff draws a named empty state for the
+ * They answer different questions and #245 settled that both are true at once. An
+ * empty rail is simply *absent*; the brief draws a named empty state for the
  * landing screen, with copy. Both were built: **an individual empty rail is absent**
  * (`up-next-episode-rail.tsx`, `up-next-film-rail.tsx` each render `null`), and **a screen
  * with nothing on it at all gets a sentence**.
@@ -25,10 +25,10 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * ── The copy is the prototype's, verbatim ───────────────────────────────────────────
  *
  * *Nothing queued for tonight* / *Add a show and its next episode turns up here* /
- * *Search the catalogue* — `docs/design/prototypes/mediasafe-mobile.html`'s states column,
- * which the handoff draws and #245 makes binding. It is deliberately not
+ * *Search the catalogue* — the prototype's states column,
+ * which #245 makes binding. It is deliberately not
  * `empty-library.tsx`'s *The bill is blank* and deliberately not `UpNextEmpty`'s *you're
- * caught up*: `docs/design/v1-surfaces.md` §6 says these read differently and must not
+ * caught up*: these read differently and must not
  * share copy, and there are now three of them.
  *
  * Reachable **only from reads that succeeded**. A failure throws past this into the

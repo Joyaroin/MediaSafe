@@ -20,7 +20,7 @@ import { initialsFrom } from "./figures";
  *
  * `app/poster.tsx` carries the argument in full and it applies unchanged here: the picture
  * is served from the identity provider's own CDN, and `next/image` would put Vercel's
- * metered optimiser between the two against `SPEC.md` §3.8's ceiling. One avatar is a
+ * metered optimiser between the two against the spend ceiling. One avatar is a
  * smaller bill than 462 posters, and it is the same bill for the same reason.
  */
 export function YouHero({

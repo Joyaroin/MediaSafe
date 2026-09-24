@@ -1,7 +1,7 @@
 import { THE_BUTTON_REGISTER } from "@/app/accent-meaning";
 
 /**
- * DESIGN.md, Buttons: *Recovery buttons (`Try again`, `Clear the filter`): the same ghost
+ * Buttons: *Recovery buttons (`Try again`, `Clear the filter`): the same ghost
  * treatment at `0.5rem 1rem`. The one primary recovery action (`Bring your library in`,
  * `Try again` in the toast) is solid `accent` with `accent-ink` text.*
  *
@@ -17,11 +17,11 @@ import { THE_BUTTON_REGISTER } from "@/app/accent-meaning";
  * smallest thing that stops the drift without deciding either of those questions.
  *
  * The count used to be quoted here — *"twenty-one `@theme` declarations and three
- * `@utility` rules"* — and was wrong twice over: `DESIGN.md` §11 caught it reading 21/3
+ * `@utility` rules"* — and was wrong twice over: the type audit caught it reading 21/3
  * against an actual 20/4, and the motion work then moved it again to 25/6. A number
  * duplicated into a file that has no reason to know it is a number that is wrong by
- * default; `DESIGN.md` §9 and the stylesheet's own heading are the two places that state
- * it, and they are enough.
+ * default; the stylesheet's own heading is the one place that states
+ * it, and that is enough.
  *
  * When the library surfaces arrive and *Clear the filter* and *Bring your library in* need
  * these too, they move somewhere less specific than `errors/`. They are not errors-only;
@@ -31,8 +31,8 @@ import { THE_BUTTON_REGISTER } from "@/app/accent-meaning";
  *
  * All four of these carried no radius at all until this batch, which made them the last
  * square things in an application whose cards, fields and chips the linen redesign had
- * already rounded to `9–22px`. `DESIGN.md`'s own divergence table had been recording that
- * gap rather than closing it: §4 *Corners* still read *this world is square … there is no
+ * already rounded to `9–22px`. The divergence table had been recording that
+ * gap rather than closing it: *Corners* still read *this world is square … there is no
  * radius scale, and the list is closed* while `library-grid.tsx` drew `18px` cells and
  * `up-next-episode-card.tsx` drew a `rounded-2xl` card with a `0px` button inside it.
  *
@@ -49,7 +49,7 @@ import { THE_BUTTON_REGISTER } from "@/app/accent-meaning";
  * cheaper-looking option would have meant re-cutting **Add** and **New list** down to it
  * as well. Two shapes, and the application already had both.
  *
- * **It is set here and not at the fourteen call sites**, which is `DESIGN.md` §10's rule
+ * **It is set here and not at the fourteen call sites**, which is the standing rule
  * and this module's whole reason for existing: a radius typed fourteen times is fourteen
  * radii the first time one of them is adjusted.
  *
@@ -79,7 +79,7 @@ export const GHOST_RECOVERY =
  *
  * **This is the same treatment, not a second one.** Identical border, identical accent,
  * identical hover inversion; `px-2.5 py-1` where the surface-level one takes `px-4 py-2`.
- * `DESIGN.md` §10 records that issue #195 *considered and declined* a third, neutral tier,
+ * Issue #195 *considered and declined* a third, neutral tier,
  * and that ruling stands — what changes here is a measure, not a register, and the measure
  * was not invented either: it was the episode row's own recording control's, character for
  * character, back when that control was a `code-line` text pill
@@ -93,7 +93,7 @@ export const GHOST_RECOVERY =
  * #195 moved the episode row's two watched controls onto `GHOST_RECOVERY` without
  * re-measuring the fixed slot they sit in, and `px-4 py-2` does not fit it: the settled
  * watched row went to `50.2px` against every other state's `44px`, so a row grew the
- * moment a mark settled and took every row under it with it — `DESIGN.md` §6's
+ * moment a mark settled and took every row under it with it —
  * *re-measure if you touch the row*, and the exact property `episode-line.ts` records
  * being measured into existence twice. `programme-note-episodes.tsx`'s `TRAILING` carries
  * the full before/after table.
@@ -117,7 +117,7 @@ export const GHOST_RECOVERY_COMPACT =
 
 /**
  * The one primary recovery action on a surface. Pressed state is `brightness(0.9)` over
- * `--dur-base`, per DESIGN.md's recording control.
+ * `--dur-base`, matching the recording control.
  */
 export const SOLID_RECOVERY =
   `code-line rounded-[var(--radius-full)] px-4 py-2 ${THE_BUTTON_REGISTER.solid} transition-[filter] duration-[var(--dur-base)] hover:brightness-90`;
@@ -163,7 +163,7 @@ export const SOLID_RECOVERY_COMPACT =
 /**
  * How a disabled control is dimmed — **the dim alone, and one string for all of them.**
  *
- * `DESIGN.md`'s Buttons section names no disabled variant, so this is an extension of the
+ * The Buttons register names no disabled variant, so this is an extension of the
  * system rather than a quotation from it — which is exactly why it is one string in one
  * place rather than a decision taken twice. It was taken twice before this existed:
  * sign-in dimmed with `brightness-75` and sign-out with `opacity-60`, which is off-system

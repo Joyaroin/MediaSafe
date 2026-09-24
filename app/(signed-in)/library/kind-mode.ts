@@ -14,7 +14,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  *
  * ── This is a genuine departure, and it is written down rather than smuggled in ──────
  *
- * `CONTEXT.md` organises a library by *where a title stands* — watchlist, watching, caught
+ * A library is organised by *where a title stands* — watchlist, watching, caught
  * up, finished, abandoned — and [#252](https://github.com/Joyaroin/MediaSafe/issues/252)
  * went the other way from this on purpose, widening Up next to *admit* films on the
  * grounds that what you are waiting for is what you keep up with. Making kind a mode here
@@ -27,7 +27,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  *
  * ── Why the state is local, unlike sort ─────────────────────────────────────────────
  *
- * `SPEC.md` §7 puts sort in the URL because sort changes the `ORDER BY` — it is a
+ * Sort lives in the URL because sort changes the `ORDER BY` — it is a
  * different read, and a view of your own rows worth linking to. The mode changes no read
  * at all: `listLibraryEntries` returns every entry of both kinds and this filters what is
  * already in hand, exactly as the state chips and the filter field already do from
@@ -36,7 +36,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  *
  * ── Films and Shows, not Movies and TV Shows ────────────────────────────────────────
  *
- * `CONTEXT.md` names *movie* an avoid-word for exactly this reason — the glossary binds
+ * *Movie* is an avoid-word for exactly this reason — the glossary binds
  * the words on screen, and `title.kind` is `'film' | 'show'` in the database underneath.
  * The reference this screen was drawn from says *Movies*; it does not get to rename the
  * domain.

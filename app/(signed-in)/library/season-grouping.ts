@@ -72,7 +72,7 @@ export function seasonHeading(seasonNo: number): string {
 }
 
 /**
- * An episode named the way it is spoken — `CONTEXT.md`: an episode is never referred to
+ * An episode named the way it is spoken — an episode is never referred to
  * by number alone. The season word comes from `seasonHeading` above, the same function
  * that writes the heading the episode is grouped under, so `Specials` is `Specials` in
  * both places. `null` is TMDB not having named it yet, and is not a licence to print the

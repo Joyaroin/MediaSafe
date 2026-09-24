@@ -1,7 +1,7 @@
 /**
  * The failure treatment, written once.
  *
- * `DESIGN.md`, States, gives a failure that replaces a region — or a page — a fixed shape:
+ * The States register gives a failure that replaces a region — or a page — a fixed shape:
  * a `2px` `accent` top rule, the heading at `text-bill-md` in `accent`, and the prose at
  * `text-note` capped at `62ch`. Three surfaces now render it: the read-failure boundary,
  * the sign-in failure, and the sign-out failure in Settings.
@@ -21,7 +21,7 @@
  *
  * The **write-failure toast is not one of these** and must not be made one. It is a
  * different treatment at a different heading step on a solid ground inside a border, and
- * `DESIGN.md` separates the two on purpose: one says a region did not load, the other says
+ * the two are separated on purpose: one says a region did not load, the other says
  * something you did was lost.
  */
 
@@ -33,14 +33,14 @@
 export const FAILURE_SECTION = "border-t-2 border-accent py-6";
 
 /**
- * The headline. `text-bill-md` is the step `DESIGN.md`'s type table names for "the
+ * The headline. `text-bill-md` is the step the type table names for "the
  * zero-match and read-failure headlines", and `accent` is the one place vermilion appears
  * without a watch having been recorded.
  */
 export const FAILURE_HEADING = "bill-title text-bill-md text-accent";
 
 /**
- * The sentences. `62ch` is the measure `DESIGN.md`'s type table gives read-failure prose.
+ * The sentences. `62ch` is the measure the type table gives read-failure prose.
  * `text-text` rather than `text-dim`: the sentence explaining what went wrong is
  * the thing the reader is here to read, so it is not the quietest text on screen.
  */

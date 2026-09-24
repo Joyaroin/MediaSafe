@@ -7,7 +7,7 @@ import { libraryEntry, title, user, watch } from "@/db/schema";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * `rateTitle`, against real Postgres — issue #113, and `SPEC.md` §7's *a whole number
+ * `rateTitle`, against real Postgres — issue #113, and *a whole number
  * 1–10, held on the library entry, overwritten on change, one per title and never one per
  * watch*.
  *
@@ -146,7 +146,7 @@ describe("rateTitle", () => {
       const { entryId, titleId } = await seedFilm(tx, userId);
       await rateTitle(userId, entryId, 6, tx);
 
-      // A film's watch carries no episode; two of them is the rewatch (`CONTEXT.md`).
+      // A film's watch carries no episode; two of them is the rewatch.
       for (const key of ["first", "second"]) {
         await tx.insert(watch).values({
           userId,

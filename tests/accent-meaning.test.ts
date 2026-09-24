@@ -19,7 +19,7 @@ import { STATE_LABELS } from "@/app/(signed-in)/library/library-state";
  * Issue #310 — the accent's three meanings, named as constants, and the live-edge one
  * wired to the three surfaces that were already painting it before anything said so.
  *
- * `DESIGN.md` §12's own worked examples (`rating-control.tsx`, `up-next-tile.tsx`) are
+ * The older worked examples (`rating-control.tsx`, `up-next-tile.tsx`) are
  * stale — neither file exists in this tree — so this suite is written against the current
  * call sites, read directly out of `library-state.ts`, `library-filter-bar.tsx` and
  * `episode-line.ts`, rather than transcribed from the issue.

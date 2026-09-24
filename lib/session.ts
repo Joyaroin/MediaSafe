@@ -121,7 +121,7 @@ export async function requireImportOfferAnswered(): Promise<boolean> {
 }
 
 /**
- * The display name for Settings' Profile section — `SPEC.md` §7, issue #123. Reads
+ * The display name for Settings' Profile section — issue #123. Reads
  * `session.user.name` straight off the session Better Auth already resolved, the same
  * shape `requireImportOfferAnswered` takes for `importOfferAnsweredAt` above.
  *
@@ -163,7 +163,7 @@ export async function requireAvatarUrl(): Promise<string | null> {
 }
 
 /**
- * The current zone for Settings' Profile section — `SPEC.md` §7, issue #126. Same shape
+ * The current zone for Settings' Profile section — issue #126. Same shape
  * as `requireDisplayName` above: reads `session.user.timezone` straight off the session
  * Better Auth already resolved, rather than a second query through `db/access.ts`.
  */

@@ -218,7 +218,7 @@ describe("listYouRails", () => {
       await recordWatch(tx, reader, show, showEntry, { episodeId: show.episodeIds[0] });
 
       // A film has no episode-watch progress to be "watching" against; any watch at all
-      // resolves it straight to *finished* (`db/views.ts`, `CONTEXT.md`: "a film is only
+      // resolves it straight to *finished* (`db/views.ts`: "a film is only
       // ever on your watchlist, finished, or abandoned"). The films rail reads *finished*
       // for exactly that reason — it is the one state a watched film can occupy.
       const film = await seedTitle(tx, { kind: "film", name: "A Film" });

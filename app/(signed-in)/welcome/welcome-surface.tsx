@@ -13,12 +13,12 @@ import { ReferenceLine } from "@/errors/reference-line";
 import { answerImportOfferAction } from "./actions";
 
 /**
- * The two answers to the first-run offer, and the one write behind both of them
- * (`SPEC.md` §7, issue #75).
+ * The two answers to the first-run offer, and the one write behind both of them.
+ * 
  *
- * `DESIGN.md`, Buttons: *the one primary recovery action (`Bring your library in`) is
+ * Buttons: *the one primary recovery action (`Bring your library in`) is
  * solid `accent` with `accent-ink` text* — named there before this screen existed to hold it, and
- * the decline sits beside it at the ghost treatment the same section gives every lesser
+ * the decline sits beside it at the ghost treatment the same register gives every lesser
  * action.
  *
  * ── Why this is a client component and not two forms ─────────────────────────────────

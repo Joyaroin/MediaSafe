@@ -94,7 +94,7 @@ export function MarkUpToDialog({
 
   return (
     // Issue #311 re-narrows the frame: this dialog shared `border-2 border-accent`, the
-    // write-failure toast's own frame, with the two `DESIGN.md` §12 named — a routine,
+    // write-failure toast's own frame, with the two others named — a routine,
     // reversible confirmation is not a failure. `border-hair` keeps the same weight.
     <dialog
       ref={ref}
@@ -111,7 +111,7 @@ export function MarkUpToDialog({
 
       <p className="mt-3 max-w-[46ch] text-note leading-relaxed text-dim">
         {/* The count first, because the count is the thing being agreed to — and the
-            episode named in full after it, because `CONTEXT.md` says an episode is never
+            episode named in full after it, because an episode is never
             referred to by number alone and this sentence is where the reader checks that
             the row they pressed is the row they meant. */}
         This records {count} — everything up to and including {fullName}. Specials are

@@ -32,7 +32,7 @@ export const WATCHED_NAME = "text-dim";
  * episode by hand. The concept survives untouched everywhere it actually lives: the
  * `watch` table, its `UNIQUE (user_id, source, source_key)` identity rule, and the
  * rewatch dedupe in `db/access.ts`'s read paths are all exactly as they were, because
- * `docs/adr/0001` records that the imported library **already holds 1,156 genuine
+ * the imported library **already holds 1,156 genuine
  * rewatches** (1,129 at occurrence `:2`, 27 at `:3`). Deleting the concept would have
  * taken that history with it. Deleting the button takes nothing.
  *
@@ -84,7 +84,7 @@ export const SETTLED_GLYPH =
  * number for *every tap target ≥44px*. `-my-2` is what keeps the row from growing to fit
  * it: `EPISODE_ROW`'s own `py-2` is `8px` a side, and a negative margin of the same size
  * pulls the button's margin box back to `44 − 16 = 28px` — the row's own budget, the exact
- * ceiling `min-h-11` was measured to hold (`episode-line.ts`, `DESIGN.md` §6) and the one
+ * ceiling `min-h-11` was measured to hold (`episode-line.ts`) and the one
  * `RECORDING_CONTROL`'s old `26.2px` text pill sat comfortably under. The button's border
  * box still paints the full `44px`; the margin only stops that box from pushing the row
  * taller, the same trick `masthead.tsx`'s Settings link plays sideways instead of down.
@@ -112,8 +112,8 @@ export const SETTLED_GLYPH =
  * and reached from nowhere else but here and the Up next card's own check.
  *
  * **Why this control and not the others.** Recording a watch is the act the product is
- * built around and the most repeated gesture in it, and `DESIGN.md` §3 already rations the
- * accent to exactly that act — this is the one place in the application allowed to be
+ * built around and the most repeated gesture in it, and the
+ * accent is already rationed to exactly that act — this is the one place in the application allowed to be
  * vermilion, and it is now the one place allowed to move this far. The motion and the
  * colour come to say the same thing rather than two different things.
  *
@@ -146,7 +146,7 @@ export const RECORDING_HIT_BOX =
  * under a pointer is fine precisely because none of those fourteen controls claim to have
  * *written* anything by filling; this one does. An unwatched row's checkmark going
  * `bg-accent`/`text-accent-ink` on a hover — no press, no write, sometimes no pointer device
- * at all — painted the one colour `DESIGN.md` §3 reserves for *this was written* on a press
+ * at all — painted the one colour reserved for *this was written* on a press
  * that had not happened, the exact reasoning `RECORDING_HIT_BOX`'s own docblock already
  * gives for why a *press* may not tint: *"a control that took the accent while being pressed
  * would be claiming to have written something it has not."* Hover is a weaker gesture than a
@@ -192,7 +192,7 @@ export const RECORDING_GLYPH =
  *
  * ── It is named here because §10 says so, and because it is already the second copy ──
  *
- * `DESIGN.md` §10: *where a treatment must not drift, it is a named class string in the
+ * The rule: *where a treatment must not drift, it is a named class string in the
  * module that owns it.* This one was written inline at its call site in #196 and the
  * two-axis review caught it — which matters more than it would have, because a hairline
  * neutral variant **already existed** inline in `add-to-list-control.tsx`. Two unnamed
@@ -202,7 +202,7 @@ export const RECORDING_GLYPH =
  * The two are not merged here, and that is a scope statement rather than a judgement:
  * `add-to-list-control.tsx`'s is `code-line px-4 py-2 text-text` on a full-size control
  * and this is an icon at `p-1`, so unifying them is a decision about what a neutral tier
- * *is* — a question `DESIGN.md` §10 explicitly records as considered and declined during
+ * *is* — a question explicitly recorded as considered and declined during
  * #195. Naming this one is what stops a third copy; settling the register is #194's.
  */
 export const QUIET_RECORDING_CONTROL =
@@ -218,7 +218,7 @@ export const QUIET_RECORDING_CONTROL =
  * control laying out in ordinary flow on a surface takes throughout this build.
  * `errors/recovery-buttons.ts`'s `GHOST_RECOVERY_COMPACT` is the precedent for having two
  * of them at all, and it states the rule both follow: a second **size** of one register is
- * not the third **tier** `DESIGN.md` §10 records as considered and declined. The question
+ * not the third **tier** recorded as considered and declined. The question
  * of what a neutral tier *is* stays #194's, exactly as the docblock above leaves it.
  *
  * ── Why the watched add wears the quiet register and not the accent ──────────────────
@@ -231,7 +231,7 @@ export const QUIET_RECORDING_CONTROL =
  * *pressable* without saying *press me*, and it takes the accent on hover because by then
  * the reader has asked what it is and the honest answer is that it records watches.
  *
- * That is also what keeps `DESIGN.md` §3's *at most one solid-accent action per surface*
+ * That is also what keeps *at most one solid-accent action per surface*
  * true on the search screen, where the plain add is already that one.
  *
  * ── No `shrink-0`, and that is the instruction being followed rather than an omission ─
@@ -270,7 +270,7 @@ export const QUIET_RECORDING_CONTROL_LABELLED =
  * ── Why the search row cannot take the surface measure ───────────────────────────────
  *
  * Measured in a real Chromium tab against the compiled CSS with Archivo loaded, which is
- * how every measurement in this codebase was taken (`DESIGN.md` §6). The row is a `52px`
+ * how every measurement in this codebase was taken. The row is a `52px`
  * poster at the `poster` utility's `2/3`, so `78px` of picture plus `py-3` — `102px`, and
  * the poster is what sets it. The name, the meta line and this control come to `75.1px`
  * at `px-2.5 py-1`, which fits inside the poster with `2.9px` to spare; at `px-4 py-2` the

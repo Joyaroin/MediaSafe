@@ -39,7 +39,7 @@ const TRAILING = "flex w-11 shrink-0 items-center justify-end";
  * `SeasonList` (`programme-note-episodes.tsx`) already defaults to the season holding this
  * same episode, but only until a reader browses another one; nothing there stays reachable
  * once they have. This row sits above the season chips instead, so the one action reached
- * for most often on this page — DESIGN.md §7's argument for the Ongoing tile, restated here
+ * for most often on this page — the argument for the Ongoing tile, restated here
  * for its sibling surface — never depends on which season the list below happens to show.
  *
  * ── The same control, the same store ─────────────────────────────────────────────────

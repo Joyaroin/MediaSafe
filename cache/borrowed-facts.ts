@@ -23,8 +23,7 @@ import type { CatalogueKey, CatalogueResult, TitleKind } from "@/tmdb/mirror";
  * `tags.ts` next door owns **owned** facts, the writes that bust them, and the account-
  * scoped tag vocabulary. This file owns the four that belong to a *title* rather than to
  * an account, and everything about them that is different. Read `tags.ts`'s top docblock
- * first; it draws the line these two files sit on either side of, and
- * `docs/adr/0002-the-read-cache-and-its-tags.md` argues it.
+ * first; it draws the line these two files sit on either side of.
  *
  * ── Why this is a second file and not a second section ───────────────────────────────
  *
@@ -51,7 +50,7 @@ import type { CatalogueKey, CatalogueResult, TitleKind } from "@/tmdb/mirror";
  * The four things a title page shows that MediaSafe does not know: TMDB does.
  *
  * Three of them are never stored at all — `tmdb/live-facts.ts` owns the right-hand column
- * of ADR-0001's metadata caching policy, and a synopsis, a cast list and a watch-provider
+ * of the metadata caching policy, and a synopsis, a cast list and a watch-provider
  * row have always been fetched fresh on every render. The fourth is stored, in `title` and
  * `episode`, and is still borrowed for the purpose that matters here: the rows say what
  * TMDB last said, and MediaSafe rewrites them on TMDB's schedule rather than on a reader's.
@@ -133,7 +132,7 @@ const EXPIRE_NOW = { expire: 0 } as const;
 
 /**
  * How long a borrowed fact may sit in the cache with nothing busting it — the *window*
- * `SPEC.md` §3.1's amendment gives borrowed facts and withholds from owned ones.
+ * the amendment gives borrowed facts and withholds from owned ones.
  *
  * ── Why a window at all, when owned facts get none ───────────────────────────────────
  *
@@ -293,7 +292,7 @@ export function cachedEpisodeSynopsis(
  * detail's read, and tagged and windowed exactly like its throwing twin below.
  *
  * Two cached reads of what looks like one fact, and the difference is the whole reason
- * the caller can keep `SPEC.md` §3: *not mirrored* comes back as a value and *the database
+ * the caller can keep the rule: *not mirrored* comes back as a value and *the database
  * did not answer* still throws. `db/access.ts`'s `findUnownedTitleDetail` has the argument.
  */
 export function cachedFindUnownedTitleDetail(
@@ -357,7 +356,7 @@ export function cachedTitleWatchProviders(
  * ── Borrowed, even though it is a Postgres read ──────────────────────────────────────
  *
  * `getUnownedTitleDetail` takes no user id and could not take one: `title` and `episode`
- * are global and unowned (ADR-0001), and the read's own docblock says at length that
+ * are global and unowned, and the read's own docblock says at length that
  * having no owned table in it is what makes it safe. Every field in it is a fact about the
  * world that MediaSafe copied from TMDB, so it belongs on this side of the file rather
  * than beside the library: what changes it is a mirror refresh, not a write of the

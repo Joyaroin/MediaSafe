@@ -13,7 +13,7 @@ import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
  *
  * `tests/remove-from-library.test.ts` holds what the write does to the database. This file
  * holds the three things about the surface that would fail **silently** rather than on
- * sight, which is the line `SPEC.md` §6 draws around what earns a test:
+ * sight, which is the line drawn around what earns a test:
  *
  *  1. **It is on title detail and nowhere else.** A tile, a rail, a grid cell or a swipe
  *     gaining this control is the ticket's own named failure — an irreversible action under
@@ -69,8 +69,8 @@ describe("the remove control", () => {
   it("takes the accent now, knowingly, and only as GHOST_RECOVERY's outline", () => {
     // Until issue #195 this control never took the reserved accent (`app/globals.css`,
     // issue #134) — the abandon control was named as the thing that must never take it,
-    // and this was quieter still. #195 overrode both, in the open (`DESIGN.md` §10's
-    // Buttons subsection and §12 record it), because a control nobody can tell apart from
+    // and this was quieter still. #195 overrode both, in the open (the
+    // Buttons register records it), because a control nobody can tell apart from
     // prose is a control nobody presses.
     //
     // What still must not happen is the *solid* fill `SOLID_RECOVERY` reserves for a
@@ -114,7 +114,7 @@ describe("giving up and removing, which must not read as the same thing", () => 
     // The remove block's counterweight, in the same voice and to the opposite effect.
     expect(markup).toContain("Nothing brings them back");
     expect(markup).not.toContain("Watching it again clears");
-    // No in-app recovery is implied anywhere in it — `SPEC.md`'s caveat is that watches
+    // No in-app recovery is implied anywhere in it — the caveat is that watches
     // this application recorded are restorable by no means at all.
     expect(markup).not.toMatch(/undo|restore|recover|trash|grace period/i);
   });

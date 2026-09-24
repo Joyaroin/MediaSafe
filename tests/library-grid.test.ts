@@ -41,7 +41,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  * **Isolation**, because a missing `user_id` predicate returns *more* rows rather than an
  * error, and a library that quietly contains somebody else's shows looks exactly like a
  * library. And **the empty answer**, because `[]` here has to mean the query succeeded
- * and found nothing (`SPEC.md` §3.2). A failure arrives as a throw, which is why there is
+ * and found nothing. A failure arrives as a throw, which is why there is
  * no `try` anywhere in the function and no assertion here that a failure returns a list.
  */
 
@@ -502,7 +502,7 @@ describe("listLibraryEntries", () => {
 });
 
 /**
- * The other three of the four orders `SPEC.md` §7 settles (#22, #57). Title A-Z's own
+ * The other three of the four settled orders (#22, #57). Title A-Z's own
  * ordering and its tie already live above, because it is the query's default and was
  * `listLibraryEntries`'s whole `ORDER BY` before this ticket.
  *
@@ -641,7 +641,7 @@ describe("listLibraryEntries sort orders", () => {
       const reader = await seedUser(tx, "reader");
 
       // Every *released* episode watched, one more not yet aired — caught up, and per
-      // ADR-0001 (amendment 3) still one remaining episode, because closest-to-finishing
+      // amendment 3 still one remaining episode, because closest-to-finishing
       // asks how much of the whole series is left, not how much of it airs today.
       const caughtUp = await seedShow(tx, reader, {
         name: "Caught Up",

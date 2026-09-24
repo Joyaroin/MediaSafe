@@ -42,15 +42,15 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  *  3. **The column ladder.** One number in one class string, and nothing else in the suite
  *     touches a breakpoint.
  *  4. **An unnamed next episode never degrades to a number.** The rule
- *     `docs/design/v1-surfaces.md` §4 calls hard *with no degrading surface*.
+ *     is hard, *with no degrading surface*.
  *
  * ── Why this asserts on class names, which is usually a bad idea ─────────────────────
  *
- * Because in this design system the class *is* the distinction. `DESIGN.md`'s States
- * section separates empty from failed by alignment, heading step, colour and border, and
+ * Because in this design system the class *is* the distinction. The States
+ * register separates empty from failed by alignment, heading step, colour and border, and
  * every one of those is a utility class — there is no other artefact to assert against
  * short of rendering to a browser and comparing pixels. The assertions are written against
- * what `DESIGN.md` names (`text-accent`, `border-accent`, `text-center`, `opacity-55`) and
+ * the named utilities (`text-accent`, `border-accent`, `text-center`, `opacity-55`) and
  * not against whole class strings, so restyling that keeps the treatment keeps these
  * passing.
  *
@@ -99,7 +99,7 @@ describe("the empty library, zero matches, and a failed read", () => {
   /**
    * Three states `page.tsx` and `LibrarySurface` between them keep structurally apart:
    * genuinely nothing stored, a filter that matched nothing in a library that is intact,
-   * and a read that failed outright. `DESIGN.md`'s States section gives each one a fixed
+   * and a read that failed outright. The States register gives each one a fixed
    * shape rather than a form of words, which is what makes this worth asserting on class
    * names — see the file-level comment above.
    */
@@ -113,14 +113,14 @@ describe("the empty library, zero matches, and a failed read", () => {
   it("share one heading colour between them, and the failure alone takes the other", () => {
     expect(failed).toContain("text-accent");
     // Vermilion is the failure's, and appears on no heading of the other two. The empty
-    // state's *button* is solid `accent` by DESIGN.md's own primary-recovery treatment,
+    // state's *button* is solid `accent` by the primary-recovery treatment,
     // so this is a check on the heading text, not a blanket absence of the colour.
     expect(empty).not.toContain("text-bill-lg text-accent");
     expect(zero).not.toContain("text-bill-md text-accent");
   });
 
   it("puts the empty library one heading step above zero matches and the failure", () => {
-    // `errors/failure-treatment.ts`: "text-bill-md is the step DESIGN.md's type table
+    // `errors/failure-treatment.ts`: "text-bill-md is the step the type table
     // names for the zero-match and read-failure headlines" — the same step, so the
     // failure is told apart from zero matches by colour and border, not by size.
     expect(empty).toContain("text-bill-lg");
@@ -146,7 +146,7 @@ describe("the empty library, zero matches, and a failed read", () => {
   });
 
   it("gives the empty library the one primary action, and zero matches a lesser one", () => {
-    // `DESIGN.md`, Buttons: the primary recovery action is solid `accent` with
+    // Buttons: the primary recovery action is solid `accent` with
     // `accent-ink` text; every other recovery action, including "Clear the filter", is the ghost
     // treatment — a border rather than a fill. `errors/recovery-buttons.ts` names both
     // class strings once, so the test is against those rather than a guess at a substring
@@ -193,7 +193,7 @@ describe("the library entry cell", () => {
   /**
    * The reverse of what this asserted before the state word left the card, and
    * deliberately so. `STATE_LABELS` is still the one table naming the five states in
-   * `CONTEXT.md`'s words — `title-hero.tsx` prints it on the title's own page — but the
+   * the domain's own words — `title-hero.tsx` prints it on the title's own page — but the
    * bill does not repeat it 472 times. The library is the surface organised *by* state,
    * and the filter chips above the grid are where the reader reads it; a word under every
    * card was the same fact restated once per cell.
@@ -241,7 +241,7 @@ describe("the library entry cell", () => {
   });
 
   it("never numbers an episode anywhere, which is the rule that outlived the line", () => {
-    // `CONTEXT.md`: an episode is never referred to by number alone. The next-episode line
+    // An episode is never referred to by number alone. The next-episode line
     // was where that could go wrong on this surface and it is gone, so this now holds the
     // weaker-but-still-real claim that nothing reintroduced a code.
     expect(cell({ upNext: { episodeName: null } })).not.toMatch(/S\d+\s*E\d+/);
@@ -259,7 +259,7 @@ describe("the library entry cell", () => {
      * poster's own edge, exactly as on the lists icon grid, and a `--raised` panel behind
      * a full-bleed poster would be a ground nobody can see.
      *
-     * `DESIGN.md`'s *no shadow, no lift* survives all of it and is the half that has never
+     * *No shadow, no lift* survives all of it and is the half that has never
      * moved — the tone step is the only lift this application has.
      */
     expect(one).not.toContain("rounded-[18px]");
@@ -381,7 +381,7 @@ describe("the filter chips", () => {
       .map((match) => match[0])
       .find((button) => button.includes(`>${label}<`));
 
-  it("renders exactly six, in CONTEXT.md's words and SPEC.md §7's order", () => {
+  it("renders exactly six, in the domain's words and the settled order", () => {
     const markup = chips();
     const labels = [...markup.matchAll(/<span class="relative z-10">([^<]+)<\/span>/g)].map(
       (match) => match[1],
@@ -427,7 +427,7 @@ describe("the filter field", () => {
     createElement(FilterField, { value: "", onChange: () => {} }),
   );
 
-  it("says filter, and never search — CONTEXT.md gives the two words to different screens", () => {
+  it("says filter, and never search — the two words belong to different screens", () => {
     expect(field).toContain("Filter your library");
     expect(field.toLowerCase()).not.toContain("search");
   });

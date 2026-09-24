@@ -18,7 +18,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * is reaching into the surface it belongs to and not into an unrelated sibling segment.
  *
  * `children` is `lists/[listId]`'s own `<h1>{detail.name}</h1>` — `LibraryHeading`'s own
- * shape, for the same reason: `DESIGN.md` §9 spells out what *the page's own heading
+ * shape, for the same reason: the rule spells out what *the page's own heading
  * component* means for a route whose `<h1>` is itself the answer — whatever the segment's
  * `error.tsx` renders above the failure, which here is this bar with nothing passed to it.
  * `catalogue/[kind]/[tmdbId]` never passes children at all: its own `<h1>` sits below the

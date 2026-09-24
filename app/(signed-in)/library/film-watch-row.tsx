@@ -33,17 +33,17 @@ import {
  * #139), the same `use-watch-mark.ts` hook driving `recordWatch` with a null `episodeId`
  * (`RecordWatchParams` was built to take one — issue #85), and the same
  * `MarkWatchedButton` the episode row and `up-next-row.tsx` draw. No `E1` chip and no
- * *Up next* label: neither concept exists for a film, and `DESIGN.md`'s Material Event
+ * *Up next* label: neither concept exists for a film, and the Material Event
  * Rule is about the mark, not about carrying every piece of an episode row a film has no
  * source for.
  *
  * ── `state === "finished"` is *already watched*, and still is ────────────────────────
  *
- * A film is only ever *watchlist*, *finished* or *abandoned* (`CONTEXT.md`), and a watch
+ * A film is only ever *watchlist*, *finished* or *abandoned*, and a watch
  * is the only write that reaches the second of those — so `state === "finished"` is
  * exactly "already watched" on mount, and a successful mark always lands on `finished` on
  * every path that can follow it. That includes a film abandoned before the control was
- * retired: `recordWatch` clears `abandoned_at` in the same transaction, `CONTEXT.md`'s
+ * retired: `recordWatch` clears `abandoned_at` in the same transaction —
  * *"watching it again clears it"*, which is now the only way out of that state and the
  * reason the state itself is still real. So `onRecorded` patches `state` to the literal
  * `"finished"` rather than re-reading the view — there is one state a film's watch can

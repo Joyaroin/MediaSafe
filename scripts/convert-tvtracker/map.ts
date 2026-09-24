@@ -1,7 +1,7 @@
 import { parseNativeImportFile, type NativeImportFile } from "@/import/native-format";
 
 /**
- * `tvtracker`'s export → MediaSafe's native import file. Pure (issue #71, `SPEC.md` §7).
+ * `tvtracker`'s export → MediaSafe's native import file. Pure (issue #71).
  *
  * ── The whole point of this file ──────────────────────────────────────────────────────
  *
@@ -22,7 +22,7 @@ import { parseNativeImportFile, type NativeImportFile } from "@/import/native-fo
  *
  * ── Pure, and what that buys ──────────────────────────────────────────────────────────
  *
- * No filesystem, no network, no TMDB, no clock, no randomness. `SPEC.md` §6's test 1 —
+ * No filesystem, no network, no TMDB, no clock, no randomness. Test 1 of the four —
  * *"the import mapping, a pure function in `scripts/`, tested against the committed
  * export"* — is only possible because of that, and `tests/tvtracker-conversion.test.ts`
  * spends it: it runs this over the real archive and counts what comes out.
@@ -243,7 +243,7 @@ function isoInstant(dumped: string): string {
  * The episode a title's `last_watched_at` belongs to: the furthest one watched.
  *
  * Specials lose to any regular season. Season 0 sorts first numerically but is not
- * *further along* a show than season 6, and `SPEC.md` §5 keeps specials out of every
+ * *further along* a show than season 6, and specials are kept out of every
  * derived state for the same reason.
  */
 function furthestWatched(watched: readonly IndexedEpisode[]): IndexedEpisode | undefined {
@@ -338,7 +338,7 @@ function expandWholeShow(
    *
    * It is also the right reading of the fact. A watermark that says *watched right through*
    * is a claim about the programme, not about 163 behind-the-scenes featurettes, and
-   * `SPEC.md` §5 keeps specials out of every derived state for the same reason. A special
+   * specials are kept out of every derived state for the same reason. A special
    * that really was watched has an override row of its own, and 28 of them do.
    */
   const episodes = allEpisodes.filter((episode) => episode.season >= 1);
@@ -368,7 +368,7 @@ function expandWholeShow(
 /**
  * `abandoned` on a title: `tvtracker`'s hand-set judgement, carried and not invented.
  *
- * `Paused` is `abandoned` spelled `tvtracker`'s way — `CONTEXT.md`'s *Avoid* line for
+ * `Paused` is `abandoned` spelled `tvtracker`'s way — the *Avoid* line for
  * **Abandoned** lists *paused* first — and #25 extended it to `Completed` shows that are
  * not actually finished, which is the same judgement written in the other of the two boxes
  * `tvtracker` offered. Both are *"I have stopped watching this"*.
@@ -378,7 +378,7 @@ function expandWholeShow(
  * something you never started, and 2 `Paused` titles in the export have zero watches.
  *
  * On the day-one export this is 65 `Paused` + 90 short `Completed` = **155**, and the rest
- * of `SPEC.md` §7's arrival split falls out of the same numbers: 62 watching, 22 watchlist,
+ * of the arrival split falls out of the same numbers: 62 watching, 22 watchlist,
  * 223 finished-or-caught-up.
  */
 function isAbandoned(show: TvtrackerShowRow, watchCount: number): boolean {

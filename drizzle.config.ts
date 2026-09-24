@@ -9,7 +9,7 @@ import { MIGRATIONS_SCHEMA, MIGRATIONS_TABLE } from "./db/migrations-table";
  * snapshots in `drizzle/meta/` and writes plain `.sql` into `drizzle/`.
  *
  * Plain SQL, committed and hand-editable, is not a preference — `squawk` lints SQL
- * *text* (SPEC.md §6, test 4), so a TypeScript migration would be unlintable and
+ * *text*, so a TypeScript migration would be unlintable and
  * expand-contract would stop being mechanically checkable. Generated files are meant to
  * be read and edited before they are committed; drizzle-kit records their hash at run
  * time, not at generate time, so an edit is honoured rather than detected.

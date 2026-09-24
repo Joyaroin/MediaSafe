@@ -5,7 +5,7 @@
  * here* without reading either label.
  *
  * Rectilinear, filled, `currentColor`, in the same vocabulary as `nav-icons.tsx` and
- * `mark-up-to-icon.tsx` — `DESIGN.md` §10: *there is no icon set; the handful that exist
+ * `mark-up-to-icon.tsx` — *there is no icon set; the handful that exist
  * are hand-drawn rectilinear SVGs sharing one vocabulary with the press mark.* The tick is
  * a hexagon rather than a stroke for the same reason `MarkUpToIcon`'s wedge is a polygon
  * and not two rotated `rect`s glued together: one filled shape, not a stroked path, keeps

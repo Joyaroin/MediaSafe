@@ -76,7 +76,7 @@ export function DeleteListDialog({
   }
 
   return (
-    // Issue #311 re-narrows the frame: `DESIGN.md` §12 named this dialog as borrowing
+    // Issue #311 re-narrows the frame: this dialog was named as borrowing
     // `border-2 border-accent` — the write-failure toast's own frame — for a routine
     // dialog that is neither a failure nor irreversible. `border-hair` keeps the same
     // weight and the same surface; only the colour that claimed *failure* is gone.

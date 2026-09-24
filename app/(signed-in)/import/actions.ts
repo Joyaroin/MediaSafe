@@ -14,8 +14,8 @@ import { requireUserId } from "@/lib/session";
 import { isUnresolvedTitle, type CatalogueKey, type TitleKind } from "@/tmdb/mirror";
 
 /**
- * The one Server Action the import screen drives, once per chunk of ~25 titles
- * (`SPEC.md` §7). It is the only caller of `applyImportChunk` that fetches from TMDB —
+ * The one Server Action the import screen drives, once per chunk of ~25 titles.
+ *  It is the only caller of `applyImportChunk` that fetches from TMDB —
  * `applyImportChunk` itself takes a mirror **passed in**, precisely so nothing in `db/`
  * ever calls the network (issue #72).
  *
@@ -38,7 +38,7 @@ export type ImportChunkActionOutcome =
       readonly titlesAdded: number;
       readonly watchesAdded: number;
       readonly arrivedAbandoned: number;
-      /** Named, not counted as done, and the run continues past them (`SPEC.md` §7). */
+      /** Named, not counted as done, and the run continues past them. */
       readonly skipped: readonly SkippedTitle[];
     }
   | { readonly ok: false; readonly reference: string | null };
@@ -61,7 +61,7 @@ export type ImportChunkActionOutcome =
  * resolved"* means, and is not caught here. It falls through to the outer `catch`, which
  * is the *halt* behaviour: reported to Sentry, answered with a reference id, and nothing
  * in this chunk is assumed written. Collapsing the two — treating a TMDB outage the same
- * as a dead id — is exactly the mistake `SPEC.md` §7 calls out: a chunk hit mid-outage
+ * as a dead id — is exactly the mistake the rule calls out: a chunk hit mid-outage
  * would silently report all 25 of its titles as *not on TMDB* instead of halting the run
  * where a reader can see it and retry.
  */

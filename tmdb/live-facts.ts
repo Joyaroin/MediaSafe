@@ -3,7 +3,7 @@ import { integerFrom, textFrom } from "./mirror";
 /**
  * TMDB's responses → the three things title detail shows and never stores.
  *
- * ADR-0001's metadata caching policy draws a line down the middle of TMDB's fields, and
+ * The metadata caching policy draws a line down the middle of TMDB's fields, and
  * `tmdb/mirror.ts` owns the left-hand column — name, kind, release year, poster path,
  * `in_production`, runtime, every episode's number, name and air date. **This file owns
  * the right-hand column**: synopsis, cast and crew, and watch providers. Nothing here is
@@ -86,7 +86,7 @@ export interface CastMember {
 }
 
 /**
- * Never a spreadsheet (`SPEC.md` §7's top-ranked principle): the whole cast list can run
+ * Never a spreadsheet (the top-ranked principle): the whole cast list can run
  * to hundreds of names, so this is the lead billing and nothing past it.
  */
 const MAX_CAST = 8;
@@ -156,7 +156,7 @@ export interface WatchProvider {
 }
 
 /**
- * Where this title can be **streamed**, in one region. CONTEXT.md's glossary: *"a
+ * Where this title can be **streamed**, in one region. The glossary: *"a
  * service a title can be streamed on"* — so this reads `flatrate`, `free` and `ads`
  * (TMDB's three subscription-shaped buckets) and never `buy` or `rent`, which are a
  * transaction MediaSafe has no record of and no view onto.

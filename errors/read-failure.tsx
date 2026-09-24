@@ -9,7 +9,7 @@ import { GHOST_RECOVERY } from "./recovery-buttons";
 import { ReferenceLine } from "./reference-line";
 
 /**
- * The read-failure treatment, per DESIGN.md's States section: inline, left-aligned, a
+ * The read-failure treatment, per the States register: inline, left-aligned, a
  * `2px` `accent` top border, the heading at `text-bill-md` in `accent`, a ghost *Try
  * again*, and a dim tabular reference id.
  *
@@ -24,7 +24,7 @@ import { ReferenceLine } from "./reference-line";
  *
  * `tvtracker` is the reason. A failed read there returned `[]` and rendered the empty
  * library, so a database that was down and a library that was empty were the same screen.
- * SPEC.md §3.2 makes them structurally separate in the data path; this component is what
+ * The rule makes them structurally separate in the data path; this component is what
  * makes them separate on the glass. Do not centre it, do not soften the border, and do not
  * reuse the empty state's heading colour here.
  */

@@ -10,7 +10,7 @@ import { DEFAULT_KIND_MODE, type KindMode } from "@/app/(signed-in)/library/kind
  * and [#274](https://github.com/Joyaroin/MediaSafe/issues/274) made every tile and card on
  * Up next open the title's own page, which settled a real complaint and created this one:
  * a title opened from a rail used to raise a sheet over the tab and now navigates away
- * from it. `DESIGN.md` §7 records the objection that was answered rather than dismissed —
+ * from it. The objection was answered rather than dismissed —
  * *a title opened from a rail was "a one-way door", and the reader's scroll position in
  * five horizontal tracks was gone on the way back*. This is where that cost is paid.
  *
@@ -40,7 +40,7 @@ import { DEFAULT_KIND_MODE, type KindMode } from "@/app/(signed-in)/library/kind
  *
  * ── *Restore* is a word this glossary spends carefully ───────────────────────────────
  *
- * `CONTEXT.md` lists *restore* among the words to avoid **for import** — an import merges
+ * *Restore* is among the words to avoid **for import** — an import merges
  * and never removes, and calling it a restore promises a backup this application does not
  * take. Nothing here is on screen, so no reader ever meets the word; it is a name for a
  * module, and the domain term it might be confused with is one directory away in

@@ -25,7 +25,7 @@ export const PROGRAMME_NOTE_SECTION = "mt-7";
  * Named here, beside the section rhythm, for that constant's own reason and on its own
  * evidence: issue #253 added the episode page's synopsis and its *no synopsis yet*
  * sentence, which took this string from one copy to three inside `live-title-facts.tsx`
- * alone. `DESIGN.md` §10 — *where a treatment must not drift, it is a named class string
+ * alone. The rule — *where a treatment must not drift, it is a named class string
  * in the module that owns it* — and three copies of a measure is three paragraphs that
  * can come to be set three widths.
  *
@@ -42,7 +42,7 @@ export const SYNOPSIS_PROSE = "max-w-[68ch] text-note leading-relaxed text-dim t
  * ── Grouping, not outlining ─────────────────────────────────────────────────────────
  *
  * The screen this restructure follows draws a `1px` border around each block. This does
- * not, and the difference is `DESIGN.md` §0: the linen redesign put `--raised` *below*
+ * not, and the difference is this: the linen redesign put `--raised` *below*
  * `--ground`, and the whole point of that inversion is that **a card no longer needs a
  * line around it to read as a card**. Library cells, search results and list rows already
  * work this way. A bordered card here would be the only outlined surface in the
@@ -72,8 +72,8 @@ export const PROGRAMME_NOTE_CARD_PAD = "px-4 py-4";
 /**
  * The eyebrow above a card's heading — `CANADA`, `WATCHING`.
  *
- * `label-line` is the uppercase 11px register `DESIGN.md` §0 declares, and `--dim` rather
- * than the accent: §0 allows one accent per screen and title detail spends it on the
+ * `label-line` is the uppercase 11px register, and `--dim` rather
+ * than the accent: one accent is allowed per screen and title detail spends it on the
  * progress bar, which is the most literal *what is live* on the page.
  */
 export const PROGRAMME_NOTE_EYEBROW = "label-line text-dim";

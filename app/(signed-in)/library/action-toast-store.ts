@@ -21,7 +21,7 @@ import {
 /**
  * How long the offer stands before it dismisses itself. Long enough to read a title and an
  * episode and decide, short enough that a reader who meant the press does not go on looking
- * at a notice about it. Not a token in the duration ramp `DESIGN.md` §9 names for the
+ * at a notice about it. Not a token in the duration ramp named for the
  * route-pending delay: that ramp is for motion timed against a repaint, and this is a
  * reading window, the same kind of number `errors/connectivity.ts` and other plain
  * `setTimeout` durations in this codebase already carry as a literal.

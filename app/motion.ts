@@ -78,7 +78,7 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  * nothing holding the pair together. The rule now has one home.
  *
  * What stays here is what only Motion can express — the springs above, for the things a
- * finger can catch mid-flight. That is the dividing line `DESIGN.md`'s motion section
+ * finger can catch mid-flight. That is the dividing line the motion register
  * draws, and it is now also the line this file's exports fall on.
  *
  * ── #270 reversed one word of this, and left the conclusion standing ─────────────────

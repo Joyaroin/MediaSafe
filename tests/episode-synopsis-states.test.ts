@@ -15,7 +15,7 @@ import {
  *
  * `tvtracker` is the reason the rule exists: a failed read there returned `[]` and rendered
  * the empty library, so a database that was down and a library that was empty were the same
- * screen. `SPEC.md` §3.2 makes the two structurally separate in the data path,
+ * screen. The rule makes the two structurally separate in the data path,
  * `errors/read-failure.tsx` makes them separate on the glass, and this file is the third
  * place that separation has to hold — **in the words**, on the one surface where a
  * catalogue gap and a network failure land in the same region of the same page.
@@ -82,7 +82,7 @@ describe("the two things an empty synopsis section can mean", () => {
   });
 
   /**
-   * Neither carries a technical string. `SPEC.md` §6: every user-facing string is a plain
+   * Neither carries a technical string. Every user-facing string is a plain
    * sentence — no status, no error code, no exception message — and *the one technical
    * string allowed anywhere is the reference id*, which is drawn beside the failure by
    * `ReferenceLine` rather than interpolated into it. A digit appearing in either of these

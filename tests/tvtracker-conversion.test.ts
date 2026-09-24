@@ -21,7 +21,7 @@ import {
 import { parseTvtrackerDump, type TvtrackerExport } from "@/scripts/convert-tvtracker/parse";
 
 /**
- * **Test 1 of `SPEC.md` §6's four** — *"the import mapping, a pure function in `scripts/`,
+ * **Test 1 of the four** — *"the import mapping, a pure function in `scripts/`,
  * tested against the committed export"* (issue #71).
  *
  * This is the assertion the whole conversion was shaped to make possible. `map.ts` touches
@@ -336,7 +336,7 @@ describe("the mapping, against the real export", () => {
   });
 
   it("writes one watch per recorded viewing, rewatches included", () => {
-    // Far more than `SPEC.md` §7's 18,715, and the difference is the point: that figure
+    // Far more than the spec's 18,715, and the difference is the point: that figure
     // counts one watch per *episode*, because it was derived from the v3 tables alone.
     // `legacy` records one per *viewing*, and 1,209 episodes were viewed more than once.
     const result = convert();
@@ -352,7 +352,7 @@ describe("the mapping, against the real export", () => {
     const dated = result.json.watches.filter((watch) => watch.watched_at !== null);
 
     /**
-     * **19,726 dated watches, where `SPEC.md` §7 says 18.**
+     * **19,726 dated watches, where the spec says 18.**
      *
      * That figure — and #16 §4's *"the only genuine `last_watched_at` values in the
      * library"* — was measured from the v3 tables, which kept *which* episodes were watched
@@ -800,7 +800,7 @@ describe("convert.confirm.json, as committed", () => {
      * that guards them is asserted directly below instead.
      */
     const result = convert({ confirmations: committed.confirmations, unplaceable: [] });
-    // The figure `SPEC.md` §7 and #16 both carry, and now the one the seed actually holds.
+    // The figure the spec and #16 both carried, and now the one the seed actually holds.
     expect(result.json.titles).toHaveLength(462);
     expect(result.json.watches).toHaveLength(19_934);
     expect(watchesFor(result, HUDSON_AND_REX)).toHaveLength(53);

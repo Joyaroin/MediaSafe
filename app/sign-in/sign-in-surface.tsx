@@ -13,7 +13,7 @@ import { writeSignupTimezoneCookie } from "@/lib/timezone";
 import { readLaunchMode, serverLaunchMode, subscribeToLaunchMode } from "./launch-mode";
 
 /**
- * Screen 1 of `docs/design/v1-surfaces.md`: **one control and no form.**
+ * Screen 1: **one control and no form.**
  *
  * There is no password, no magic link and no email field anywhere in the system (#8), so
  * there is nothing to type and nothing to validate. What that leaves is a button, a
@@ -123,7 +123,7 @@ export function SignInSurface({
           type="button"
           onClick={continueWithGoogle}
           disabled={inFlight}
-          // DESIGN.md, Buttons: the one primary action on a surface is solid `accent`
+          // Buttons: the one primary action on a surface is solid `accent`
           // with `accent-ink` text. There is exactly one action here, so this is it.
           className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
         >

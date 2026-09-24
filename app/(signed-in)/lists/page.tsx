@@ -6,7 +6,7 @@ import { NavTransition } from "../nav-transition";
 /**
  * The Lists destination — issue #146. Its own route on both devices: a nav cell on the
  * desktop masthead (`app/nav-cells.tsx`) and a tab on the phone (`app/tab-bar.tsx`), never
- * a rail on Up next — `SPEC.md` §9 permits rails there for recency groupings, and an
+ * a rail on Up next — rails there are permitted for recency groupings, and an
  * arbitrary list a reader made by hand is a different claim from *what do I watch
  * tonight*.
  *

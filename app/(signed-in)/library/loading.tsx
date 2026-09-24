@@ -6,7 +6,7 @@ import { LibraryHeading } from "./library-heading";
  *
  * ── The formula, and where it comes from ─────────────────────────────────────────────
  *
- * `DESIGN.md` §9, radius 1: **`loading.tsx` renders what the segment's `error.tsx` already
+ * Radius 1: **`loading.tsx` renders what the segment's `error.tsx` already
  * renders, less the failure.** Put beside `library/error.tsx` this file is that sentence
  * literally — the same `<main>`, the same `LibraryHeading`, the same `px-6` content gutter,
  * and one dim line where `ReadFailure` would be.
@@ -34,9 +34,9 @@ import { LibraryHeading } from "./library-heading";
  * ── No filter bar, and nothing reserved ──────────────────────────────────────────────
  *
  * `LibraryHeading` is rendered without `children` here, for the reason it is rendered without
- * them on the empty screen and the failed one: `SPEC.md` §9 forbids reserving space for
- * controls that have nothing to act on, and a chip row over a grid that has not arrived has
- * nothing to act on. Nothing below reserves the grid's height either — §9 is explicit that a
+ * them on the empty screen and the failed one: reserving space for
+ * controls that have nothing to act on is forbidden, and a chip row over a grid that has not arrived has
+ * nothing to act on. Nothing below reserves the grid's height either — the rule is explicit that a
  * region holding a box open is claiming to know how large its answer is, and a library is any
  * size at all.
  *

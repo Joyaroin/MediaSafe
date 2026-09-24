@@ -6,7 +6,7 @@ in an allowlist** — the step 3 conversion and its test:
 
 ```
 scripts/convert-tvtracker/cli.ts       ← reads the archive, writes the seed fixture
-tests/tvtracker-conversion.test.ts     ← SPEC.md §6's test 1, which reads it by definition
+tests/tvtracker-conversion.test.ts     ← test 1 of the four, which reads it by definition
 ```
 
 Until [#71](https://github.com/Joyaroin/MediaSafe/issues/71) this section said *archived
@@ -27,7 +27,7 @@ rebuilt from the timestamp — would slip past it. It is a tripwire on the obvio
 not a proof.
 
 Committed by issue [#60](https://github.com/Joyaroin/MediaSafe/issues/60), which is
-`SPEC.md` §8 **step 0** — the one step in the build order that could be started too late.
+**step 0** of the build order — the one step that could be started too late.
 
 | | |
 | --- | --- |
@@ -39,7 +39,7 @@ Committed by issue [#60](https://github.com/Joyaroin/MediaSafe/issues/60), which
 
 ## The two files, and why there are two
 
-`SPEC.md` §8 named a single `fixtures/tvtracker-export.sql.gz`. The export is actually two
+The build order named a single `fixtures/tvtracker-export.sql.gz`. The export is actually two
 halves and **both are needed**, so both are here:
 
 | File | What it holds | Altered? |
@@ -121,7 +121,7 @@ be checked against the schema half, which declares no `storage` object at all:
 gzcat fixtures/tvtracker-2026-08-16T04-27-53Z-data.redacted.sql.gz | grep 'Data for Name:'
 ```
 
-`watch_events` being empty is not a dump error. `tvtracker`'s ADR-0003 called events
+`watch_events` being empty is not a dump error. `tvtracker` called events
 canonical and nothing ever wrote one, so **the conversion reads `shows` and
 `episode_overrides`, never `watch_events`.**
 
@@ -139,7 +139,7 @@ preserved. See *`shows.legacy` is watch history* below — reading only the firs
 | a second account | 10 | 7 |
 
 This resolves what looked like a contradiction between documents: **472 is the table total,
-462 is Adham's**, and `SPEC.md` §8's "462 titles" for the seed was right all along — it
+462 is Adham's**, and the "462 titles" figure for the seed was right all along — it
 already assumes the filter.
 
 **So step 3's conversion script must filter to `21cbd8c5-…` when producing
@@ -221,7 +221,7 @@ in `shows.legacy` — including two things its own v3 tables threw away:
   `len(dates) == rewatchCount + 1` holds for 18,423 of 18,443 episodes, so the two records
   corroborate each other.
 
-`SPEC.md` §7 says *"18 watches are dated — the only genuine `last_watched_at` values in the
+The build spec said *"18 watches are dated — the only genuine `last_watched_at` values in the
 library"* and *"`source_key` … always `:1` in this file"*; #16 says *"there is no rewatch
 data in the library, and there never was."* **All three were reached from the v3 tables
 without opening `legacy`, and all three are wrong.** Following them would have discarded
@@ -254,7 +254,7 @@ episodes that were never watched, undetectably.
 
 ### The day-one split this file implies
 
-| | this file | `SPEC.md` §7 |
+| | this file | the spec |
 | --- | --- | --- |
 | watching | 63 | 62 |
 | abandoned | **155** | 155 |

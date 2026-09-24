@@ -9,10 +9,9 @@ import { SignInSurface } from "./sign-in-surface";
  *
  * ── No masthead ──────────────────────────────────────────────────────────────────────
  *
- * `DESIGN.md` says the masthead is present at every width, and it is — on every signed-in
+ * The masthead is present at every width, and it is — on every signed-in
  * surface. It is not here, and the reason is that its only control is the Settings
- * entrance, which leads somewhere a signed-out reader cannot go. `SPEC.md` §9 forbids
- * reserved space and placeholder destinations; a masthead on this page would be both.
+ * entrance, which leads somewhere a signed-out reader cannot go. Reserved space and placeholder destinations are forbidden; a masthead on this page would be both.
  * What this page needs from the masthead is the press mark and the wordmark, so it
  * carries those itself.
  *
@@ -48,7 +47,7 @@ export default async function SignInPage({
   /**
    * **Whether**, not what. Better Auth puts a machine-readable code here and Google
    * sometimes adds an `error_description` of its own; neither is a sentence and neither
-   * is ours. `SPEC.md` §6 allows the reader one technical string and this is not it.
+   * is ours. The reader is allowed one technical string and this is not it.
    */
   const arrivedFailed = typeof error === "string" && error.length > 0;
 

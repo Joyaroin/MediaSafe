@@ -1,7 +1,7 @@
 import type { TitleKind } from "@/tmdb/mirror";
 
 /**
- * MediaSafe's native import format, declared once (issue #69, `SPEC.md` §7).
+ * MediaSafe's native import format, declared once (issue #69).
  *
  * ── Why this file exists at all ───────────────────────────────────────────────────────
  *
@@ -13,7 +13,7 @@ import type { TitleKind } from "@/tmdb/mirror";
  * ── The one rule that matters more than the shape ─────────────────────────────────────
  *
  * `title` and `episode` are **global and unowned** — one row per TMDB id, shared by every
- * account (ADR-0001). A file that could write a name, a poster path, an air date or a
+ * account. A file that could write a name, a poster path, an air date or a
  * runtime would let one account rewrite what every account reads. So the native format
  * carries **facts about you and never borrowed metadata**, and `readNativeImportFile`
  * refuses a file that carries any of it rather than silently ignoring the field — a field
@@ -39,7 +39,7 @@ export interface NativeImportTitle {
 /**
  * One watch, keyed to the episode it happened on. `key` becomes `watch.source_key` —
  * `<tmdb_episode_id>:<occurrence>`, always `:1` in this file because there are no
- * rewatches to express (`SPEC.md` §7).
+ * rewatches to express.
  */
 export interface NativeImportWatch {
   readonly tmdbId: number;

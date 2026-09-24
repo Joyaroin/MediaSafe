@@ -214,7 +214,7 @@ describe("addTitleToLibraryWatched", () => {
 
       const entryId = await entryIdFor(tx, userId, mirror);
       const rows = await watchRowsOf(tx, userId, entryId);
-      // A film's watch carries no episode — the shape ADR-0001 gives it, and the one
+      // A film's watch carries no episode — the shape the schema gives it, and the one
       // `recordWatch` already writes for the same title.
       expect(rows).toHaveLength(1);
       expect(rows[0].episodeId).toBeNull();
@@ -330,7 +330,7 @@ describe("addTitleToLibraryWatched", () => {
       await addTitleToLibraryWatched(userId, mirror, nextKey(), tx);
       const pressedAgain = await addTitleToLibraryWatched(userId, mirror, nextKey(), tx);
 
-      // A second row against a film is a **rewatch** (`CONTEXT.md`, ADR-0001), and one
+      // A second row against a film is a **rewatch**, and one
       // tap on *Add — watched* has no business claiming the reader saw it twice.
       expect(pressedAgain).toMatchObject({ added: false, recorded: 0 });
       expect(
@@ -409,7 +409,7 @@ describe("addTitleToLibraryWatched", () => {
 
       await addTitleToLibraryWatched(userId, mirror, nextKey(), tx);
 
-      // `recordWatch` clears `abandoned_at`; a backfill does not — ADR-0001 amendment 9,
+      // `recordWatch` clears `abandoned_at`; a backfill does not — amendment 9,
       // which `markWatchedUpTo` already stands on and this write joins.
       expect(await abandonedAtOf(tx, entryId)).not.toBeNull();
       expect(await stateOf(tx, entryId)).toBe("abandoned");
@@ -473,7 +473,7 @@ describe("addTitleToLibraryWatched", () => {
       await addTitleToLibrary(stranger, mirror, tx);
       await addTitleToLibraryWatched(owner, mirror, nextKey(), tx);
 
-      // `title` and `episode` are global (ADR-0001); `watch` and `library_entry` are not,
+      // `title` and `episode` are global; `watch` and `library_entry` are not,
       // and this is the write where the two meet in one transaction.
       expect(await watchedEpisodes(tx, owner, await entryIdFor(tx, owner, mirror))).toEqual([
         "1-1",
@@ -517,9 +517,9 @@ describe("addTitleToLibraryWatched", () => {
     ]);
 
     const entryId = await entryIdFor(db, userId, mirror);
-    // Six rows, not twelve. A duplicate here is a **rewatch** (`CONTEXT.md`), and a
+    // Six rows, not twelve. A duplicate here is a **rewatch**, and a
     // phantom one is indistinguishable on every screen from one the reader made —
-    // ADR-0001 amendment 4 counts 1,156 real ones already in the library.
+    // There are 1,156 real ones already in the library.
     expect(await watchedEpisodes(db, userId, entryId)).toEqual([
       "1-1",
       "1-2",

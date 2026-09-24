@@ -181,7 +181,7 @@ describe("getUnownedTitleDetail", () => {
         [2, 1],
       ]);
       // Unnamed stays null rather than becoming a number — the surface, not the read, is
-      // where `Not yet named` is written (`CONTEXT.md`'s Named Episode Rule).
+      // where `Not yet named` is written (the Named Episode Rule).
       expect(detail.episodes[1].name).toBeNull();
     }));
 

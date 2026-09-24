@@ -29,7 +29,7 @@ import { TitleDetailView } from "./title-detail-view";
  * The file itself stays rather than folding into `page.tsx`: the route file reads nothing
  * and this is the surface, which is the arrangement `episode-detail-body.tsx` keeps for
  * the same reason. The read is unguarded either way, so a failure throws into `error.tsx`
- * above it and nothing catches, per `SPEC.md` §3.
+ * above it and nothing catches, per the rule.
  */
 export async function TitleDetailBody({
   entryId,

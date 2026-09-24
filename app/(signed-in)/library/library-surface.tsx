@@ -25,24 +25,24 @@ import { ProgrammeNoteLayout } from "./programme-note-layout";
 /**
  * The populated library's whole shell: the heading bar's chips, filter field and sort
  * select (#57, `library-filter-bar.tsx`), the bill on the left, and the programme note on
- * the right (#58, `DESIGN.md`'s Never-Navigate-Away Rule). `library/page.tsx` still does
+ * the right (#58, the Never-Navigate-Away Rule). `library/page.tsx` still does
  * the one server read and decides whether the library is empty; this owns everything a
  * reader can do once it is not.
  *
  * ── TONIGHT lived here once — issue #136 moved it out ────────────────────────────────
  *
  * Issue #100 put a desktop-only *Up next* row (`up-next-row.tsx`) above the bill, because
- * Up next was not a desktop destination of its own yet — `SPEC.md` §7 said so explicitly.
+ * Up next was not a desktop destination of its own yet, explicitly.
  * #136 gave Up next a real desktop page (`sidebar.tsx`'s own destination, rendering
  * `(signed-in)/up-next/page.tsx`) and, with it, deleted the row: a reader who wants what
  * they are part-way through now has a page for it rather than a second, narrower copy of
- * the same read squeezed above the library grid. This component and `SPEC.md` §7's own
+ * the same read squeezed above the library grid. This component and
  * layout divergence 1 were amended in the same diff for the same reason.
  *
  * ── Two axes that narrow, one that selects, one that is a real navigation ────────────
  *
  * `entries` arrives already in the order `sort` asked for — decided in SQL
- * (`db/access.ts`), because `SPEC.md` §7 makes sort a URL fact worth linking to. The chip
+ * (`db/access.ts`), because sort is a URL fact worth linking to. The chip
  * and the filter-by-typing field are the opposite kind of state: they narrow `entries`
  * down client-side, without changing its order and without asking Postgres again — the
  * whole library is already on the wire. **Which entry is selected is a third, independent
@@ -52,11 +52,11 @@ import { ProgrammeNoteLayout } from "./programme-note-layout";
  * ── Zero matches lives here, not on the page; neither does "nothing selected" ─────────
  *
  * `entries.length === 0` is `page.tsx`'s branch: a genuinely empty library. This component
- * is never reached in that case, so it never needs a pane-less layout — `DESIGN.md`'s pane
+ * is never reached in that case, so it never needs a pane-less layout — the pane
  * exists to answer *"tell me about the entry I just clicked"*, and there is always at
  * least one entry here to click. `visible.length === 0` with `entries.length > 0` is a
  * different fact — the library is intact and the filter matched nothing — and
- * `DESIGN.md`'s States section asks for a third, distinct treatment for exactly that
+ * the States register asks for a third, distinct treatment for exactly that
  * difference. The pane renders through it regardless: narrowing the grid's view is not a
  * reason to forget which entry was already open.
  */
@@ -111,7 +111,7 @@ export function LibrarySurface({
  *
  * `ListsRail` reads no selection state of its own; this component's one `useIsSelecting()`
  * read below covers it too, the same way it already covers the chips, the field and the
- * sort control. That is `SPEC.md`'s reason restated for a second control: a chip or a list
+ * sort control. That is the same reason restated for a second control: a chip or a list
  * card pressed mid-selection would act on titles the selection can no longer show.
  */
 function LibraryColumn({
@@ -182,7 +182,7 @@ function LibraryColumn({
             <KindModeControl value={mode} onChange={changeMode} />
 
             {/* Shows only. Two of the six chips describe being part-way through a run of
-                episodes, which is not a thing a film can be (`CONTEXT.md`), and Films mode
+                episodes, which is not a thing a film can be, and Films mode
                 shows all three of its states at once as groups instead. */}
             {mode === "show" ? <LibraryChips value={chip} onChange={setChip} /> : null}
 
@@ -202,7 +202,7 @@ function LibraryColumn({
       {/* The order of these three matters, and it is the order of the questions.
           *Is there anything of this kind at all* comes first, because a reader with no
           films has not filtered anything — telling them to clear a filter they never set
-          is the confusion `SPEC.md` §3 is about. Only once there is something to narrow
+          is the confusion the rule is about. Only once there is something to narrow
           can narrowing to nothing mean anything. */}
       {ofThisKind.length === 0 ? (
         <NothingOfThisKind mode={mode} />

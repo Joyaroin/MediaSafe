@@ -4,7 +4,7 @@ import { ListsHeading } from "./lists-heading";
 /**
  * The Lists destination, which is still reading.
  *
- * `DESIGN.md` §9, radius 1: `loading.tsx` renders what the segment's `error.tsx` already
+ * Radius 1: `loading.tsx` renders what the segment's `error.tsx` already
  * renders, less the failure — the same `<main>`, the same `ListsHeading`, and one dim line
  * where `ReadFailure` would be. `ListsHeading` is already shared by the populated screen
  * and the failure boundary for the reason its own docblock gives; this is that component's

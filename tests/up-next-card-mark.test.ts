@@ -24,7 +24,7 @@ import { createWriteFailureStore } from "@/errors/write-failure";
  *
  * `up-next-mark.ts` is deliberately two halves: a hook, which is a `useSyncExternalStore`
  * binding and a six-second timer, and the rules underneath it, which take the marks store
- * as an argument. This suite has no DOM and does not want one (`SPEC.md` §6), so the rules
+ * as an argument. This suite has no DOM and does not want one, so the rules
  * are what is asserted — the same split `tests/watch-marks.test.ts` makes for the episode
  * row, and for the same reason: a test that rendered components would spend its weight on
  * wiring and reach none of the properties the ticket is about.
@@ -185,7 +185,7 @@ describe("an Ongoing tile's mark", () => {
     const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
     expect(reading.episode?.episodeId).toBe("episode-1-2");
     // A tile that advanced and stayed advanced would be the only evidence of a watch that
-    // was never recorded. `SPEC.md` §3.3.
+    // was never recorded — a lost write is never silent.
     expect(reading.marked).toBeNull();
     expect(failures.get()).toHaveLength(1);
   });
@@ -201,7 +201,7 @@ describe("an Ongoing tile's mark", () => {
 
     const [lost] = failures.get();
     expect(lost.title).toBe(TITLE_NAME);
-    // The one function that names an episode — never the number alone (`CONTEXT.md`).
+    // The one function that names an episode — never the number alone.
     expect(lost.episode).toBe("Season 1, Episode 2 — Mijo");
     expect(lost.reference).toBe("sentry-1");
   });
@@ -469,7 +469,7 @@ describe("an Ongoing tile's mark", () => {
  * It lives in `up-next-mark.ts`'s pure half for the reason everything else in that half
  * does: *which picture* is a derivation this module owns. Asserting it against a rendered
  * card would put the one property the ticket exists for behind a DOM this suite
- * deliberately does not have (`SPEC.md` §6), and would let the rule drift into the
+ * deliberately does not have, and would let the rule drift into the
  * component that renders it.
  *
  * ── What #320 changed here ───────────────────────────────────────────────────────────
@@ -489,7 +489,7 @@ describe("the picture a next-episodes surface draws", () => {
     const entry = entryWith([episodeAt(1, 2), episodeAt(1, 3)]);
 
     // `entryWith` sets a stillPath too (`/still.jpg`) — #246's mirrored field, still in the
-    // data (`SPEC.md`'s no-schema-change constraint) and still ignored by this rule.
+    // data (the no-schema-change constraint) and still ignored by this rule.
     expect(cardPicture(entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
   });
 
@@ -497,7 +497,7 @@ describe("the picture a next-episodes surface draws", () => {
     const entry = entryWith([episodeAt(1, 2)], false, { posterPath: null });
 
     // The existing rule, unchanged: the frame keeps its space and nothing is drawn in it.
-    // No glyph and no apology — `DESIGN.md` §8.
+    // No glyph and no apology.
     expect(cardPicture(entry)).toEqual({ kind: "none" });
   });
 

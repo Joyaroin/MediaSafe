@@ -25,7 +25,7 @@ import { CARD, CARD_WIDTH, FRAME } from "./up-next-episode-card";
  *
  * ── What is drawn, and what waits ────────────────────────────────────────────────────
  *
- * `DESIGN.md` §9's principle exactly: **everything already in hand renders at once, at full
+ * The pending principle exactly: **everything already in hand renders at once, at full
  * strength**. The poster and the name are facts the add wrote from the series before it
  * answered the press, so they are drawn — the poster in the card's own 16:9 frame, centre
  * cropped, which is #269's rule for a card with no still and is the same rule here for a
@@ -97,7 +97,7 @@ export function UpNextPendingCard({
  * The poster, cropped into the card's 16:9 frame — `CardFrame`'s poster branch (#269), at
  * the one measure both cards share.
  *
- * A title with no poster gets the held frame and nothing in it: `DESIGN.md` §8's
+ * A title with no poster gets the held frame and nothing in it: the
  * missing-artwork rule, and the same `EpisodeStill` with no path that the episode card
  * falls back to. No glyph, no initials, no apology — and, emphatically, no shimmer.
  */
@@ -114,8 +114,7 @@ function PendingFrame({
 
   return (
     <div className={`still ${FRAME}`}>
-      {/* TMDB's CDN, never Vercel's metered optimiser — `app/poster.tsx`'s reasoning, which
-          ADR-0001 fixes. */}
+      {/* TMDB's CDN, never Vercel's metered optimiser — `app/poster.tsx`'s reasoning. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="block h-full w-full object-cover object-center"

@@ -11,7 +11,7 @@ import { NavTransition } from "../nav-transition";
 /**
  * The library — your library as a place you can look at, rather than a query you can run.
  *
- * The desktop landing screen (`SPEC.md` §7) and the first surface in this application that
+ * The desktop landing screen and the first surface in this application that
  * reads owned rows in bulk. Everything on it comes from one query: `listLibraryEntries`
  * joins the derived-state views, so where a title stands and what is next in it are
  * answered by `db/views.ts` and are not re-derived here or anywhere else. Since #219 that
@@ -29,8 +29,8 @@ import { NavTransition } from "../nav-transition";
  *
  *  - **`entries` is empty** → the library is genuinely empty. This is reachable *only*
  *    because the query returned zero rows, and it says so on screen in the empty
- *    treatment's own voice. No filter bar and no programme note render here — `SPEC.md`
- *    §9 forbids reserving space for controls with nothing to act on, and a chip that would
+ *    treatment's own voice. No filter bar and no programme note render here —
+ *    reserving space for controls with nothing to act on is forbidden, and a chip that would
  *    read "0" for every state, or a pane with nothing to select into, are exactly that.
  *  - **The read failed** → the query throws, this component never renders, and
  *    `error.tsx` draws the read-failure treatment in its place.
@@ -48,7 +48,7 @@ import { NavTransition } from "../nav-transition";
  *
  * ── Sort is the one control that is a real navigation ────────────────────────────────
  *
- * `SPEC.md` §7: *sort state lives in the URL.* The chip and the filter-by-typing field are
+ * *Sort state lives in the URL.* The chip and the filter-by-typing field are
  * ordinary client state, narrowing what this page already fetched — but the order itself
  * is decided in SQL (`db/access.ts`'s four `ORDER BY`s), so changing it has to re-run this
  * read. `?sort=`, read here and handed to `cachedLibraryEntries`, is what makes a link to
@@ -63,7 +63,7 @@ import { NavTransition } from "../nav-transition";
  * ── Why the populated branch owns its own `<main>` ────────────────────────────────────
  *
  * The populated case needs a two-column layout — the bill on the left, the programme note
- * on the right (`DESIGN.md`'s Never-Navigate-Away Rule) — so `LibrarySurface` brings that
+ * on the right (the Never-Navigate-Away Rule) — so `LibrarySurface` brings that
  * `<main>` with it (through `programme-note-layout.tsx`, shared with the desktop Up next
  * rails since #137) rather than this page wrapping one around it. The two branches are
  * mutually exclusive, so there is never a nested `<main>` on screen.
@@ -101,7 +101,7 @@ export default async function LibraryPage({
    * stores a resolved value and lets a rejection through untouched, so there is no cache
    * state in which a database that is down comes back as a library with nothing in it.
    *
-   * Cached since issue #219, which reversed `SPEC.md` §3.1's read-cache clause and proved
+   * Cached since issue #219, which reversed the read-cache clause and proved
    * the machinery here. This is the same query it always was — `cache/tags.ts` wraps
    * `listLibraryEntries`, keyed by this account and this sort, and every write that can
    * change what this grid shows busts the tag inside its own action. What changed for

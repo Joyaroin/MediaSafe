@@ -41,7 +41,7 @@ export function ActionToasts() {
         className="pointer-events-auto w-full border-2 border-accent bg-ground p-4 lg:w-[420px]"
       >
         {/* Named in full, both of them, the same restraint `write-failure-toast.tsx` keeps
-            for the same reason: CONTEXT.md gives episodes real names, and a sentence with
+            for the same reason: episodes have real names, and a sentence with
             one folded into it collides with its own punctuation. */}
         <p className="text-item text-text">{offer.title}</p>
         {offer.episode ? <p className="text-item text-dim">{offer.episode}</p> : null}

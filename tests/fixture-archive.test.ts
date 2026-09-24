@@ -214,7 +214,7 @@ describe("no Supabase auth row is in this repository", () => {
  * it took a visible diff to say so.
  *
  * **Both entries are required, and the second is the one that is easy to miss.**
- * `SPEC.md` §6 defines test 1 as *"a pure function in `scripts/`, tested against the
+ * Test 1 of the four is *"a pure function in `scripts/`, tested against the
  * committed export"*, so the test necessarily names the file too. An allowlist of one
  * would have failed the first time that test was written, and widening an allowlist under
  * deadline is how it turns into a comment.
@@ -278,7 +278,7 @@ describe("only the conversion names the archive", () => {
 
     // And the allowlist is not allowed to go quietly dead. Test 1 reads the export by
     // definition, so if nothing names it any more, either the test stopped reading the
-    // real archive — which is the assertion `SPEC.md` §6 is buying — or this list is
+    // real archive — which is the assertion being bought — or this list is
     // describing a file that no longer exists.
     expect(naming).toContain("tests/tvtracker-conversion.test.ts");
   });

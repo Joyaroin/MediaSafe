@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 /**
  * Sentry on the Node.js runtime, loaded by `instrumentation.ts`'s `register()`.
  *
- * `SPEC.md` §6 asks for Sentry and nothing else from it: this is error reporting, not
+ * Sentry is here and nothing else is asked of it: this is error reporting, not
  * observability. Tracing and profiling are off — every span this app could produce is one
  * person's page load, and the free tier's quota is better spent on the errors an owner
  * actually reads back a reference id for.

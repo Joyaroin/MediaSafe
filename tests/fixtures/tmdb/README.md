@@ -7,7 +7,7 @@ The fixtures the mirror mapping is tested against (`tests/tmdb-mirror.test.ts`).
 reference at `developer.themoviedb.org` and trimmed only by *removing whole results and
 whole episodes* — never by removing a field from a result or an episode that was kept.
 That distinction is the point of these files: the mapping's job is to write the mirrored
-fields **and no others** (ADR-0001, Metadata caching policy), and a fixture with
+fields **and no others** (the metadata caching policy), and a fixture with
 `overview`, `backdrop_path`, `vote_average`, `credits` and `watch/providers` pruned out
 of it could not prove that the mapping ignores them.
 
@@ -78,7 +78,7 @@ and both are assertions in the test file rather than claims:
 
 `movie-credits.json`, `tv-credits.json`, `movie-watch-providers.json` and
 `tv-watch-providers.json` back `tests/tmdb-live-facts.test.ts` — the mapping in
-`tmdb/live-facts.ts` for the fields ADR-0001 fetches live and never stores. Unlike the
+`tmdb/live-facts.ts` for the fields fetched live and never stored. Unlike the
 four mirror captures at the top of this file, **these are hand-built to TMDB's documented response shape** for
 `/movie/{id}/credits`, `/tv/{id}/credits` and `/movie|tv/{id}/watch/providers`, not a live
 capture — no TMDB key is reachable from this environment. They deliberately carry the

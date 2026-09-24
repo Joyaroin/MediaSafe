@@ -39,7 +39,7 @@ describe("Lists and its detail route", () => {
   });
 
   /**
-   * `lists/[listId]`'s `<h1>` is `{detail.name}`, read from the database — DESIGN.md §9's
+   * `lists/[listId]`'s `<h1>` is `{detail.name}`, read from the database — the
    * back-link shape, the same one `titles/[entryId]/loading.tsx` follows. The list's own
    * page is never reached by `lists/loading.tsx`'s boundary, which would print *Lists* over
    * one list's own contents.

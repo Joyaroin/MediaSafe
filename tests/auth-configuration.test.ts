@@ -36,7 +36,7 @@ describe("what the auth configuration commits to", () => {
 
     it("has email and password turned off in writing", () => {
       // Written out rather than defaulted, so that turning it on is a visible diff and
-      // not an absence nobody notices. SPEC.md §6 and issue #8.
+      // not an absence nobody notices. Issue #8.
       expect(authOptions.emailAndPassword.enabled).toBe(false);
     });
 
@@ -177,7 +177,7 @@ describe("what the auth configuration commits to", () => {
  * credential nobody configured. This closes the other half, the one a future ticket could
  * reopen by accident: a field on a page.
  *
- * It is a static scan rather than a render, in the same spirit as SPEC.md §6's static
+ * It is a static scan rather than a render, in the same spirit as the static
  * route-manifest check: the constraint is machine-checked rather than remembered, and it
  * costs no renderer, no jsdom and no test database. It reads the source because that is
  * where the mistake would be written.

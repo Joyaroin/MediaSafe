@@ -14,14 +14,13 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * Issue #40 is a prefactor: `db/access.ts` has no library entries and no watches to read
  * yet, so what is testable now is the *mechanism* — that a user id becomes a `user_id`
  * predicate, and that the harness these tests run in genuinely reaches Postgres and
- * genuinely leaves nothing behind. Step 4's watch-idempotency assertions (SPEC.md §6,
- * test 3) are added to a file shaped exactly like this one, and add no infrastructure.
+ * genuinely leaves nothing behind. Step 4's watch-idempotency assertions are added to a file shaped exactly like this one, and add no infrastructure.
  *
  * A harness that silently no-ops is the failure worth designing against: it would pass
  * every assertion written against it forever. Most of the first block below exists only
  * to make that impossible.
  *
- * ── Why this is here, when SPEC.md §6 names four tests that earn their keep ──────────
+ * ── Why this is here, when only four tests earn their keep ───────────────────────────
  *
  * These are added knowingly, on the same grounds as `tests/migrator-transaction.test.ts`
  * argued for itself. The rule's reasoning is that everything else "fails loudly and
@@ -35,7 +34,7 @@ const database = setUpTestDatabase("mediasafe_access_test");
 
 /**
  * A stand-in for the owned tables that build step 2 brings — `library_entry`, `watch`,
- * `list`, `list_membership`, each of them `user_id text NOT NULL` per ADR-0001.
+ * `list`, `list_membership`, each of them `user_id text NOT NULL`.
  *
  * It lives here rather than in `db/schema.ts` because it is not part of the schema:
  * it is created inside a test's transaction and vanishes with the rollback. What it
@@ -62,7 +61,7 @@ async function createFixtureTable(tx: Transaction) {
 /**
  * A compile-time assertion, deliberately not an `it()`.
  *
- * `title` and `episode` are global and shared across accounts (ADR-0001): no `user_id`
+ * `title` and `episode` are global and shared across accounts: no `user_id`
  * to filter, and no user to filter it by. `ownedBy` must refuse them. There is no
  * runtime behaviour to assert here — the check is that `tsc` reports an error on the
  * line below, and it is carried by `npm run typecheck`, not by vitest. If `ownedBy` ever

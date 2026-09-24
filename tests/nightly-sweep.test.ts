@@ -15,7 +15,7 @@ import type { FindByExternalId } from "@/app/api/cron/nightly-sweep/reconcile-ti
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * The nightly sweep (ADR-0001, issue #115), against real Postgres.
+ * The nightly sweep, against real Postgres.
  *
  * ── What this file is, and is not ─────────────────────────────────────────────────────
  *
@@ -23,7 +23,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * are exercised directly, exactly as every other write in that module is tested. The
  * orchestration around them — one title at a time, a failure never stopping the run, no
  * stamp on a skip — is `run-sweep.ts`'s `runNightlySweep`, exercised here with a stub
- * `FetchMirror` so nothing here touches TMDB or the network (`SPEC.md` §6).
+ * `FetchMirror` so nothing here touches TMDB or the network.
  *
  * `setUpTestDatabase` and `inTransaction` from issue #40's harness, and nothing else.
  */
@@ -282,7 +282,7 @@ describe("refreshTitleMirror", () => {
   it("fills in the release date and the episode still on a title that had neither", () =>
     inTransaction(async (tx) => {
       /**
-       * The backfill, and the reason ADR-0001 amendment 10 ships no backfill migration.
+       * The backfill, and the reason amendment 10 ships no backfill migration.
        * `seedTitle` writes the pre-amendment row exactly — `release_date` NULL, no
        * episodes — and the sweep is what fills both columns as it reaches each title,
        * which is amendment 5's mechanism reused for amendment 5's reason: a one-off

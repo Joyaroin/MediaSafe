@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
  *     booleans that only change at the two ends of the track. Scroll events arrive about
  *     once per displayed frame, so the waste is proportional to the refresh rate — during
  *     the one interaction where the main thread can least spare it.
- *  2. **The phone sheet's scrim animated its own `backdrop-filter`.** `DESIGN.md` §5: a
+ *  2. **The phone sheet's scrim animated its own `backdrop-filter`.** A
  *     backdrop filter repaints everything behind it, on every frame it is composited over
  *     moving content. A full-viewport blur whose opacity is animating is the worst case
  *     for that rule, and §5 draws the line it was on the wrong side of — *glass is chrome

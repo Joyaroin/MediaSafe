@@ -4,7 +4,7 @@ import { chunkImportFile, IMPORT_CHUNK_SIZE } from "@/import/chunking";
 import type { NativeImportFile } from "@/import/native-format";
 
 /**
- * `import/chunking.ts` (issue #73) — the client-side half of `SPEC.md` §7's ~25-title
+ * `import/chunking.ts` (issue #73) — the client-side half of the ~25-title
  * pages. Pure, so every case here runs with no network and no server action behind it.
  *
  * The one property worth a test on its own: a watch never lands in a different chunk from
@@ -41,7 +41,7 @@ describe("chunkImportFile", () => {
     expect(chunks[2]!.titles).toHaveLength(12);
   });
 
-  it("defaults to SPEC.md §7's chunk size of ~25", () => {
+  it("defaults to the chunk size of ~25", () => {
     const chunks = chunkImportFile(titleFile(50, 0));
     expect(chunks[0]!.titles).toHaveLength(IMPORT_CHUNK_SIZE);
   });
@@ -66,7 +66,7 @@ describe("chunkImportFile", () => {
   });
 
   it("21 titles with no watches still become their own chunk", () => {
-    // SPEC.md §7 — titles and watches are independent, and a title with nothing to
+    // Titles and watches are independent, and a title with nothing to
     // watch is not a title chunking may drop.
     const chunks = chunkImportFile(titleFile(21, 0), 25);
     expect(chunks).toHaveLength(1);

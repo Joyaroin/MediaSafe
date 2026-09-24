@@ -23,7 +23,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * ── Why this is not `up-next.test.ts` ─────────────────────────────────────────────────
  *
- * This rail carries no `SPEC.md` §7 ordering — that rule is about *up next*, and a
+ * This rail carries no up-next ordering — that rule is about *up next*, and a
  * watchlist film has neither a watch to be recent nor a next episode to be dated. So this
  * file checks a different, smaller thing: which titles the rail holds, ordered Title A–Z,
  * and that a **film** — which `up-next.test.ts`'s membership never has to reason about,

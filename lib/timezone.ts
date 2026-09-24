@@ -4,7 +4,7 @@
  * ── Why this exists at build step 1 ──────────────────────────────────────────────────
  *
  * The control that *changes* a zone is build step 7. `user.timezone` ships now anyway,
- * because of the property ADR-0001 and SPEC.md §5 both insist on: **the zone is a
+ * because of the property the schema and the rules both insist on: **the zone is a
  * read-time lens, not a write-time stamp.** The streak and year-in-review queries join
  * `user.timezone` against every past watch, so an account that was created without one
  * does not have a few mislabelled rows waiting for step 7 to fix — it has a history
@@ -83,7 +83,7 @@ const LONGEST_PLAUSIBLE_ZONE = 64;
  * So this catch is a `RangeError` being used as the answer to a question, which is what
  * the API offers. It manufactures no result from a failure — the caller's fallback is
  * chosen for the *absence* of a zone, not for an error, and nothing that could be a read
- * of the database passes through here. SPEC.md §3.2 is about the other thing.
+ * of the database passes through here. The empty-versus-failed rule is about the other thing.
  *
  * Exported: step 7's control validates a zone before it lets it reach Better Auth's
  * update path, the same question asked of the signup cookie below.

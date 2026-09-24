@@ -1,4 +1,4 @@
-# squawk, over the generated `.sql` in `drizzle/`. Test 4 of the four in `SPEC.md` §6,
+# squawk, over the generated `.sql` in `drizzle/`. Test 4 of the four,
 # and the thing that makes **expand-contract mechanically checkable** rather than
 # remembered: `main` is production, no staging, nothing gates a merge, and Neon Free
 # keeps six hours of history. A dropped column is not a rollback problem here — it is a
@@ -74,8 +74,8 @@ excluded_rules = [
   "adding-not-nullable-field",
   "adding-required-field",
 
-  # Type preferences, settled elsewhere. `db/schema.ts` and ADR-0001 choose the column
-  # types, CONTEXT.md binds their names, and squawk is not the place to relitigate either.
+  # Type preferences, settled elsewhere. `db/schema.ts` chooses the column
+  # types, the domain language binds their names, and squawk is not the place to relitigate either.
   "adding-serial-primary-key-field",
   "ban-char-field",
   "prefer-bigint-over-int",

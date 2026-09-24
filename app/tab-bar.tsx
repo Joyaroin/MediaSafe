@@ -10,12 +10,12 @@ import { PHONE_BAR, SELECTING_ATTRIBUTE } from "./phone-bar";
 import { useUpNextRepress } from "./use-up-next-repress";
 
 /**
- * The phone tab bar — issue #102, closing `SPEC.md` §10.3's temporary-deviation bullet,
- * widened to four by issue #146, and redrawn by the linen redesign's turn 9 (`docs/design/prototypes/mediasafe-phone-up-next.html`).
+ * The phone tab bar — issue #102, closing a temporary-deviation bullet,
+ * widened to four by issue #146, and redrawn by the linen redesign's turn 9.
  *
  * ── What turn 9 changed, and what it took away ────────────────────────────────────────
  *
- * `DESIGN.md`'s Navigation section used to read *fixed tabs at the bottom on a `1px` gap
+ * The Navigation register used to read *fixed tabs at the bottom on a `1px` gap
  * over `hair`, with a `hair` top border. Each tab is a rectilinear icon over a label.
  * Active is inverted to bone/ink.* Two of those four sentences are gone:
  *
@@ -74,7 +74,7 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * **Issue #227 spent it on Stats.** Lists stopped being a tab on the phone: #223 had put a
  * rail of every list above the Library grid, so the phone already reached every list in one
  * tap from a tab it lands on anyway, and the tab that used to do that job had nothing left
- * to do. The four stayed four — `SPEC.md` §9's tab budget is unchanged and no fifth was
+ * to do. The four stayed four — the tab budget is unchanged and no fifth was
  * ever added.
  *
  * **Issue #249 spends it on You, and this time the page behind it is gone.** `/stats` is
@@ -104,7 +104,7 @@ const TABS = [
  * collapsed into one motion, so every navigation animates identically and there is no
  * direction for this file to decide.
  *
- * The reasoning is in `globals.css` beside the animation and in `DESIGN.md` §7, recorded
+ * The reasoning is in `globals.css` beside the animation, recorded
  * as the reversal it is. What was right about the old rule and is worth keeping in mind if
  * anyone rebuilds it: direction came from the bar's own geometry rather than from history,
  * because the row in front of the reader is the only thing that makes "forward" mean

@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 /**
  * The build command Vercel runs, and the ordering that makes `main`-is-production safe.
  *
- * **The migration is the first half of the build command** (`SPEC.md` §6, issue #39).
+ * **The migration is the first half of the build command**.
  * That ordering is the whole safety property. A migration that fails fails the build,
  * so `next build` never runs, so there is no build output, so Vercel creates no
  * deployment, so the previous one keeps serving — against the schema the rolled-back

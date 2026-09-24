@@ -26,7 +26,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  *
  * ── It navigates on desktop too, and the Never-Navigate-Away Rule still holds ───────
  *
- * `DESIGN.md`: *on desktop, inspecting a candidate replaces the programme note's contents
+ * The rule: *on desktop, inspecting a candidate replaces the programme note's contents
  * and leaves the bill exactly where it was — nothing about **browsing your season** should
  * cost you your place in it.* That rule is about browsing, and this is the one act on the
  * pane that is not browsing. It is also the act the ticket most wants taken off the pane: a
@@ -67,7 +67,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  *
  * *In copy.* The slot that holds *Watching it again clears it* on the abandon row holds
  * *Nothing brings them back* here. Same position in the sentence, opposite promise, and it
- * is the honest one: `SPEC.md`'s caveat is that watches this application recorded are
+ * is the honest one: the caveat is that watches this application recorded are
  * restorable by no means at all, in the product or out of it.
  *
  * ── No longer quiet, and the accent is spent knowingly ────────────────────────────────
@@ -77,7 +77,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * and left the reservation exactly as it was. This control used to take neither border nor
  * fill nor icon rather than compete with that reservation. Issue #195 spends it anyway,
  * knowingly and by name — `GHOST_RECOVERY`, the register the whole underline conversion
- * reuses (`DESIGN.md` §12 owes a ticket to settle what the accent means; this adds to that
+ * reuses (a ticket is still owed to settle what the accent means; this adds to that
  * question rather than resolving it). Loudness is still not what protects a reader here —
  * the confirmation's real numbers are, and they are one navigation away — but the control
  * has to read as pressable to get there at all.

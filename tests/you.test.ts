@@ -17,7 +17,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *    watch (`db/views.ts`), so a count of finished library entries with no per-kind filter
  *    is *titles finished* wearing the wrong label — and on the sort of library this app is
  *    built for, mostly films, it would be wrong by a lot while looking entirely healthy.
- *  - **Shows completed re-deriving `finished`.** The rule is ADR-0001's and the view is its
+ *  - **Shows completed re-deriving `finished`.** The rule is the schema's and the view is its
  *    one home. A `where in_production = false and not exists (…)` written into
  *    `db/access.ts` would be a second copy that agrees today and drifts on the next
  *    amendment, so the assertions below fix the *behaviour* the view defines — a show still
@@ -385,7 +385,7 @@ describe("the watch times, and what they are short by", () => {
 
       const figures = await accountFigures(userId, tx);
 
-      // `CONTEXT.md`, Watch time: *a watch with no date still counts: this is derived from
+      // Watch time: *a watch with no date still counts: this is derived from
       // what you watched, not when.* The page's qualification line says so too, and this
       // is the half of that claim the database is responsible for.
       expect(figures.undatedWatches).toBe(2);

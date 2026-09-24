@@ -6,7 +6,7 @@ import { defineConfig } from "vitest/config";
  * Tests run against the real local Docker Postgres — `docker compose up -d` first, or
  * `npm run db:up`. There is no in-memory substitute and no mocked constraint: the
  * properties worth testing here live in Postgres, and a mock of a unique constraint
- * tests the mock (SPEC.md §6).
+ * tests the mock.
  */
 export default defineConfig({
   test: {

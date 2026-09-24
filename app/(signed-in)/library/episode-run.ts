@@ -95,7 +95,7 @@ export interface EpisodeInRun<T> {
  * *different* show, or one this show no longer has because a sweep repointed it. The
  * caller turns it into a 404, which is what a route with no such episode beneath it is;
  * throwing would render the read-failure treatment, and *this did not load* would be a
- * lie about a read that succeeded and found nothing (`SPEC.md` §3.2, and the whole of
+ * lie about a read that succeeded and found nothing (the whole of
  * `AGENTS.md`'s first rule pointed the other way round).
  */
 export function locateEpisode<T extends { readonly id: string; readonly seasonNo: number }>(

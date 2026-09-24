@@ -14,7 +14,7 @@ import { createScratchDatabase, type ScratchDatabase } from "./scratch-database"
  *
  * ── What it is not ───────────────────────────────────────────────────────────────────
  *
- * There is no in-memory substitute and no mocked constraint (SPEC.md §6). The properties
+ * There is no in-memory substitute and no mocked constraint. The properties
  * worth testing here — `UNIQUE (user_id, source, source_key)`, `ON DELETE CASCADE`, the
  * derived-state views — live in Postgres, and a mock of a unique constraint tests the
  * mock. Migrations are applied by `db/migrate.ts`, the runner production runs, so a
@@ -35,7 +35,7 @@ import { createScratchDatabase, type ScratchDatabase } from "./scratch-database"
  *
  * ── Growing it ───────────────────────────────────────────────────────────────────────
  *
- * Step 4's watch-idempotency assertions (SPEC.md §6, test 3) add a file that calls
+ * Step 4's watch-idempotency assertions add a file that calls
  * `setUpTestDatabase` and `inTransaction` and nothing else. That is the whole point of
  * building this now: the assertions arrive, the infrastructure does not.
  */
@@ -113,8 +113,8 @@ export function setUpTestDatabase(name: string): TestDatabase {
  * isolated and exactly what makes a race unreachable from inside it. A read-then-write
  * that is safe alone and wrong when two of it interleave is invisible to every other file
  * in this directory, and it is a class of bug this schema is unusually exposed to: a
- * duplicated `watch` row is a **rewatch** (`CONTEXT.md`), and 1,156 genuine ones are
- * already in the library (`docs/adr/0001-watch-identity-and-derived-state.md`, amendment
+ * duplicated `watch` row is a **rewatch**, and 1,156 genuine ones are
+ * already in the library (amendment
  * 4), so a phantom one looks exactly like something the reader did.
  *
  * ── The cost, stated because it is real ──────────────────────────────────────────────

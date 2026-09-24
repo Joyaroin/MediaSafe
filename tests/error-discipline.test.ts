@@ -4,7 +4,7 @@ import { createConnectivityStore } from "@/errors/connectivity";
 import { createWriteFailureStore } from "@/errors/write-failure";
 
 /**
- * ── Why these tests exist, when SPEC.md §6 says four tests earn their keep ─────────
+ * ── Why these tests exist, when only four tests earn their keep ───────────────────
  *
  * The rule's reasoning is that everything else "fails loudly and cheaply to an app used
  * daily by its owner". Two of the three surfaces built in issue #41 are outside that
@@ -13,8 +13,8 @@ import { createWriteFailureStore } from "@/errors/write-failure";
  * **The write-failure toast has no caller at all.** Nothing in the app writes yet; step 4
  * is the first caller. Until then no amount of daily use exercises it, so "it fails
  * loudly" is simply false — it fails silently, for two build steps, and the property it
- * would fail on is the one the product is built around (SPEC.md §3.3, *a lost write is
- * never silent*). A toast that quietly auto-dismisses is that constraint broken, and it
+ * would fail on is the one the product is built around — *a lost write is
+ * never silent*. A toast that quietly auto-dismisses is that constraint broken, and it
  * is broken invisibly.
  *
  * **Connectivity is not part of daily use.** The banner is exercised only when the
@@ -123,7 +123,7 @@ describe("the write-failure toast store", () => {
   });
 
   it("never dismisses a failure on its own", () => {
-    // SPEC.md §3.3. The toast is the entire mechanism by which a lost write is not
+    // The toast is the entire mechanism by which a lost write is not
     // silent; a timer anywhere in this store makes the write silent again after it
     // fires, and nothing in the app would notice.
     vi.useFakeTimers();
@@ -159,7 +159,7 @@ describe("the write-failure toast store", () => {
    * `standing()` — issue #113. Every caller of this store guards on a handle held in a ref
    * to keep AGENTS.md's *one toast per lost write, not one per attempt*, and without a way
    * to ask whether the toast is still there, a handle the reader dismissed goes on
-   * suppressing later failures for ever. That is `SPEC.md` §3.3 broken by the reader's own
+   * suppressing later failures for ever. That is *never silent* broken by the reader's own
    * tidying up, so the question has to be answerable.
    */
   it("says a raised failure is standing until it goes", () => {

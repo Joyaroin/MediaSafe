@@ -10,7 +10,7 @@ import { authClient } from "@/lib/auth-client";
 /**
  * Sign out other devices — issue #124, the second third of the Account section.
  *
- * `SPEC.md` §7: *Adham chose to stay signed in on the current device, which makes the
+ * *Adham chose to stay signed in on the current device, which makes the
  * usual label a lie.* This ends every session but this one, and the label says exactly
  * that rather than "sign out everywhere".
  *
@@ -25,7 +25,7 @@ import { authClient } from "@/lib/auth-client";
  *
  * ── No count, no list — and no failure state to roll back to ───────────────────────────
  *
- * `SPEC.md` §7 forbids both outright: *no session list — that is admin chrome.* This
+ * Both are forbidden outright: *no session list — that is admin chrome.* This
  * control has one thing to say either way — it worked, or it did not — and the response
  * body is not even read for a count. Pressing it with nothing else signed in is not
  * checked for separately: Better Auth's endpoint deletes zero rows exactly as happily as

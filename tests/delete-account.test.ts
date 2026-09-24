@@ -27,7 +27,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * against a migrated Postgres through issue #40's harness, and the two that matter most
  * are the ones nothing else in the suite would notice going wrong:
  *
- *  - **`title` and `episode` survive.** ADR-0001 keeps the catalogue global and unowned, so
+ *  - **`title` and `episode` survive.** The catalogue is global and unowned, so
  *    a cascade that reached it would let one person's departure empty every other
  *    account's library. Nothing on any screen would say so.
  *  - **The counts shown are the rows removed.** The delete-account page states what will be
@@ -38,7 +38,7 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * `accountFootprint` and `deleteAccount` take a user id the caller already resolved and
  * the harness's transaction. Nothing here reaches TMDB, Google or Better Auth's HTTP
- * handler — which is also the assertion `SPEC.md` §8 wants about deletion itself: it is
+ * handler — which is also the assertion wanted about deletion itself: it is
  * one statement against Postgres, and there is no outbound call in it to make.
  */
 

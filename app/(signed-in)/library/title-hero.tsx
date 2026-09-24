@@ -47,7 +47,7 @@ import { titleMetaLine } from "./title-meta-line";
  * application offers any more — no control here, and no *Abandon* on the library's
  * selection bar. The state itself is not gone: a title abandoned before the controls were
  * retired still reads *Abandoned* on the line above, and recording a watch still clears it
- * (`CONTEXT.md`'s *"watching it again clears it"*, and `db/views.ts`'s first branch, both
+ * (*"watching it again clears it"*, and `db/views.ts`'s first branch, both
  * unchanged). It is a state nothing new can enter, deliberately, rather than a state that
  * was deleted out from under the rows already in it.
  *
@@ -57,7 +57,7 @@ import { titleMetaLine } from "./title-meta-line";
  *
  * ── The bar takes the accent, and the state word gives it up ────────────────────────
  *
- * `DESIGN.md` §0: one accent per screen, marking what is live. `STATE_LABELS` draws
+ * One accent per screen, marking what is live. `STATE_LABELS` draws
  * *Watching* in the accent, and a bar drawn in it too would be two accented things inside
  * one block. The bar keeps it, because *how far through you are right now* is the most
  * literal reading of *live* on this page — and the word sits directly above the bar saying
@@ -114,7 +114,7 @@ export function TitleHero({
    * A film has two positions and the word already says which — a bar that is empty or full
    * is a lot of pixels for a boolean. A show with no mirrored episodes is TMDB not having
    * them yet, and a bar at zero would report that as *nothing watched*, which is the
-   * failure-looks-like-emptiness confusion `SPEC.md` §3 is written against.
+   * failure-looks-like-emptiness confusion the rules are written against.
    */
   const progress =
     detail.kind === "show" && detail.episodes.length > 0
@@ -185,7 +185,7 @@ export function TitleHero({
           <p className="label-line text-dim">{state.label}</p>
 
           {/**
-           * **The way out of the one state nothing can enter.** `CONTEXT.md`: *watching it
+           * **The way out of the one state nothing can enter.** *Watching it
            * again clears it* — and until this batch that sentence was printed on the
            * library cell, which was the only place a reader ever met it. The cell became a
            * poster column with room for the state word alone, and rather than let the fact

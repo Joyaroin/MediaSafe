@@ -29,7 +29,7 @@ import { removeTitleAction, type RemoveTitleOutcome } from "./actions";
  *
  * ── Ghost, where the delete-account button is solid ──────────────────────────────────
  *
- * `DESIGN.md`'s Buttons section scopes the solid accent — `bg-accent` on `text-accent-ink`
+ * The Buttons register scopes the solid accent — `bg-accent` on `text-accent-ink`
  * since issue #134 renamed the ink, `signal` on `ink` before it — to the phone's recording
  * control and *the one primary recovery action*; issue #125 widened it for deleting an
  * account and said so out loud. **This does not widen it again**, and the difference is not
@@ -38,7 +38,7 @@ import { removeTitleAction, type RemoveTitleOutcome } from "./actions";
  * one, so a solid accent field would sit on the page from the moment it loads — the accent
  * used as a ground rather than as an event, and a colour that means *a watch was recorded*
  * spent on a page where nothing has been. The ghost treatment keeps it an outline until the
- * hover inverts it, and the inversion is an affordance `DESIGN.md` already sanctions.
+ * hover inverts it, and the inversion is an already-sanctioned affordance.
  *
  * `GHOST_RECOVERY` is named for where it was first needed, and its own docblock says it is
  * *only errors-only today*. This is the second kind of surface to want it.

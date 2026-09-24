@@ -12,9 +12,9 @@
  *
  * ── The image is a plain `<img>`, deliberately ───────────────────────────────────────
  *
- * ADR-0001: *posters are referenced by `poster_path` and served from TMDB's CDN. No image
+ * The rule: *posters are referenced by `poster_path` and served from TMDB's CDN. No image
  * blobs are stored.* `next/image` would put Vercel's metered image optimiser between the
- * two, and `SPEC.md` §3.8's £5/month ceiling with £0 spent is a constraint 462 titles of
+ * two, and the £5/month ceiling with £0 spent is a constraint 462 titles of
  * borrowed artwork is exactly the shape of thing that quietly starts costing.
  *
  * ── One CDN size per surface, not one fixed size everywhere ─────────────────────────
@@ -105,7 +105,7 @@ export function Poster({
          * real text. An `alt` here would make a screen reader read every title twice.
          *
          * eslint-disable-next-line @next/next/no-img-element -- See the note above: the
-         * artwork is served from TMDB's CDN by ADR-0001, and `next/image` would route it
+         * artwork is served from TMDB's CDN, and `next/image` would route it
          * through Vercel's metered optimiser.
          */
         // eslint-disable-next-line @next/next/no-img-element

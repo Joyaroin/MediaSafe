@@ -219,7 +219,7 @@ export function ProgrammeNoteContent({
 
       {/* The season chips and the full episode list, kept as they are. The screen this
           follows replaces them with a grid of episode numbers and one expanded card —
-          which shows numbers where `CONTEXT.md` says *an episode is never referred to by
+          which shows numbers where *an episode is never referred to by
           number alone*, and hides which episodes are watched behind a selection.
 
           **The card is a show's, not the page's.** A film's watched mark lives in the hero

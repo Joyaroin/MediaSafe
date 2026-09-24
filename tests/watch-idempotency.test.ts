@@ -7,7 +7,7 @@ import { episode, libraryEntry, title, user, watch } from "@/db/schema";
 import { inTransaction, setUpTestDatabase } from "./support/database";
 
 /**
- * `recordWatch`, against real Postgres — issue #85, `SPEC.md` §6's test 3.
+ * `recordWatch`, against real Postgres — issue #85, and test 3 of the four.
  *
  * ── Why this is the one test step 4 earns ────────────────────────────────────────────
  *
@@ -119,7 +119,7 @@ async function seedFilm(tx: Transaction, userId: UserId): Promise<{ entryId: str
 /**
  * What import writes, directly against the table — never through `recordWatch`, which is
  * the application path and the one path that clears `abandoned_at`. `watchedAt: null` is
- * the undated case `SPEC.md` §7 says 19,391 of these are not, and 18 of them still are.
+ * the undated case 19,391 of these are not, and 18 of them still are.
  */
 async function importedWatch(
   tx: Transaction,

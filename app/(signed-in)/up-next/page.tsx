@@ -131,7 +131,7 @@ export default async function UpNextPage() {
    * *what time is it*, the same failure a second answer to *what day is it* would be.
    *
    * `requireTimezone()` reads `user.timezone` off the session — the column `lib/timezone.ts`
-   * fills at signup and Settings' control changes, and which `SPEC.md` §5 makes the
+   * fills at signup and Settings' control changes, and which is the
    * read-time lens for every day boundary in the application. It is `NOT NULL`, so there is
    * no "or else" branch here and there is not meant to be one.
    *
@@ -156,7 +156,7 @@ export default async function UpNextPage() {
               page answers its own empty case; a failure in either read throws past both
               into `error.tsx`.
 
-              **The desktop does not get this.** `SPEC.md`'s *Specced, but later* still
+              **The desktop does not get this.** *Specced, but later* still
               carries *desktop rails other than Up next's three (Upcoming)*, and #245 asks
               for a phone pager rather than a second desktop rail — so the gate below is
               the same `lg:hidden` the phone's rails already sat behind, and the desktop's

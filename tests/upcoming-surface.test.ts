@@ -27,7 +27,7 @@ import { ReadFailure } from "@/errors/read-failure";
  *     this whole application is shaped around, on its second page.
  *  3. **An episode with no still keeps the row's measure.** A collapsed row is a layout
  *     fault that reads as a missing episode.
- *  4. **An unnamed episode is not numbered twice.** `CONTEXT.md`'s Named Episode Rule.
+ *  4. **An unnamed episode is not numbered twice.** The Named Episode Rule.
  *
  * #252 adds the films under them, and three more of the same kind:
  *
@@ -150,7 +150,7 @@ describe("the four headings", () => {
     expect(at("Later")).toBeGreaterThan(at("Thursday"));
   });
 
-  /** A day with nothing on it has no heading — `SPEC.md` §8's rule for a rail, applied to
+  /** A day with nothing on it has no heading — the rule for a rail, applied to
    *  a group. Nothing reserves space for a bucket that is empty. */
   it("draws no heading for a day with nothing on it", () => {
     const markup = render([episodeOn("2026-12-01")]);
@@ -191,7 +191,7 @@ describe("nothing upcoming, and a read that failed", () => {
   });
 
   /** And it borrows neither of the two sentences already on this route.
-   *  `docs/design/v1-surfaces.md` §6: these read differently and must not share copy. */
+   *  These read differently and must not share copy. */
   it("does not borrow the landing screen's or the desktop's empty sentence", () => {
     const markup = render([]);
 
@@ -233,7 +233,7 @@ describe("a row that is missing something", () => {
   });
 
   /** An episode announced without a name prints its code and stops. The number is not
-   *  repeated in the name's place — `CONTEXT.md`'s *never referred to by number alone*,
+   *  repeated in the name's place — *never referred to by number alone*,
    *  which the code has already satisfied once. */
   it("does not number an unnamed episode twice", () => {
     const markup = render([episodeOn(TODAY, { episodeName: null })]);
@@ -369,8 +369,8 @@ describe("the films you are waiting for", () => {
   });
 
   /**
-   * **The accent, and only on the countdown.** `DESIGN.md` §3 rations the accent and amends
-   * itself for exactly this line; the amendment's second condition is that the date it
+   * **The accent, and only on the countdown.** The accent is rationed, and narrowed
+   * for exactly this line; the amendment's second condition is that the date it
    * counts to is *not* accented, so the two lines must not drift into matching. Nothing
    * else about the card is chromatic — no chip, no badge, no check.
    */
@@ -414,7 +414,7 @@ describe("the two halves, and the one sentence", () => {
     expect(markup).toContain("Severance");
   });
 
-  /** And each half is absent rather than empty-headed — `SPEC.md` §8, per section. */
+  /** And each half is absent rather than empty-headed, per section. */
   it("draws no head over a half that has nothing", () => {
     expect(renderFilms([filmOn("2026-09-05")])).not.toContain("Upcoming episodes");
     expect(render([episodeOn(TODAY)])).not.toContain("Upcoming movies");
@@ -630,7 +630,7 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page.match(/new Date\(\)/g)).toHaveLength(1);
   });
 
-  /** The pager is the phone's. `SPEC.md`'s *Specced, but later* still carries *desktop
+  /** The pager is the phone's. *Specced, but later* still carries *desktop
    *  rails other than Up next's three (Upcoming)*, and #245 asked for a phone pager. */
   it("leaves the desktop's three rails alone", () => {
     expect(page).toMatch(/className="hidden lg:block"[\s\S]*<UpNextRailsSurface/);

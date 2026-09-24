@@ -61,8 +61,8 @@ const NAV_PAGES = [
 
 describe("one motion, and nothing that has to choose between motions", () => {
   it("attaches no transition type anywhere, so nothing can attach the wrong one", () => {
-    // Three vocabularies were removed rather than retuned — `DESIGN.md` §7 records the
-    // reversal and `globals.css` carries the reasoning beside the animation. What guards
+    // Three vocabularies were removed rather than retuned — the
+    // reversal is recorded and `globals.css` carries the reasoning beside the animation. What guards
     // the collapse is that no surface spells a type at all: one stray `transitionTypes`
     // is how a single screen quietly starts moving differently from every other.
     for (const dir of ["app"]) {

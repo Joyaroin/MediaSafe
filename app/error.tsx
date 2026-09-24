@@ -6,14 +6,14 @@ import { referenceForBoundary } from "@/errors/reference";
 /**
  * The route-level boundary. Every read in the application throws into this.
  *
- * It is shipped now, with almost nothing to catch, because SPEC.md §11's build step 1 says
+ * It is shipped now, with almost nothing to catch, because build step 1 says
  * so and the reasoning is arithmetic: retrofitting the error discipline means auditing
  * every read in the app, and the number of reads only goes up. Today it is one.
  *
  * ── The reference id ───────────────────────────────────────────────────────────────
  *
  * `referenceForBoundary` reports the error and returns the id printed on screen — the
- * Sentry event id itself, per SPEC.md §6, with the `digest` attached as a tag rather than
+ * Sentry event id itself, with the `digest` attached as a tag rather than
  * printed. `errors/reference.ts` carries the whole argument: why the digest identifies a
  * *kind* of failure and not the reader's, and how the tag joins this event to the one
  * `instrumentation.ts` sent from the server with the stack in it.

@@ -13,7 +13,7 @@ import {
 /**
  * The theme control — Settings' Profile section, beneath the timezone.
  *
- * `SPEC.md` §7's *Out of scope entirely* list banned this outright until the linen
+ * The *Out of scope entirely* list banned this outright until the linen
  * redesign; that bullet now carries the reversal, the three-state shape, and the reason
  * the ban stopped being defensible: the redesign recoloured the light palette only, so a
  * reader on a device set to dark had no way to reach one of the two palettes the product

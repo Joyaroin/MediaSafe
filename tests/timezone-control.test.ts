@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }))
  *
  * Same shape as `tests/display-name-control.test.ts`: `renderToStaticMarkup` against the
  * initial render only, since `vitest.config.mts` runs with no jsdom and there is no
- * click-and-observe here — only what the first render could get wrong. `SPEC.md` §7's
+ * click-and-observe here — only what the first render could get wrong. The
  * acceptance criteria this covers:
  *
  *  1. **Shows the current zone as text.**

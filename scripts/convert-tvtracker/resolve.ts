@@ -25,7 +25,7 @@ import type { EpisodeIndex, IndexedEpisode } from "./map";
  *
  * ── Deliberately untested, and this paragraph is the decision ─────────────────────────
  *
- * `SPEC.md` §6 names four tests that earn their keep, and #68 put this file outside them
+ * Four tests earn their keep, and #68 put this file outside them
  * in the same terms `tmdb/catalogue.ts` uses: *"TMDB's contract is not ours to assert and a
  * mock of it drifts silently. A resolution failure halts the conversion in front of a
  * human."* What this file does is build URLs, check statuses and hand the bodies to
@@ -52,7 +52,7 @@ const TMDB_API = "https://api.themoviedb.org/3";
 /**
  * How many TMDB requests are in flight at once.
  *
- * TMDB permits roughly 40 requests a second and publishes no quota (`SPEC.md` §6). This is
+ * TMDB permits roughly 40 requests a second and publishes no quota. This is
  * a one-off script run by a person at a terminal, so it is tuned for *finishing* rather
  * than for speed: 8 in flight against ~150ms round trips sits near 50 requests a second at
  * worst, and `withRetry` below absorbs a 429 rather than losing the run.

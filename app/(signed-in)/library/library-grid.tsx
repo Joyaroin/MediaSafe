@@ -7,13 +7,13 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  *
  * ── The column count is the only thing that changes ──────────────────────────────────
  *
- * `SPEC.md` §7 lists the three places the phone and the desktop genuinely diverge, and
+ * Three places are where the phone and the desktop genuinely diverge, and
  * the library grid is in none of them: *"the library tile and grid. Same component, same
  * information. Column count differs; nothing else does."* So there is exactly one `grid`
  * here with two breakpoints on it, and no second layout to keep in step.
  *
- * **2 columns, 3 at `≥1280px` (`xl:`), 4 at `≥1536px` (`2xl:`)** — `DESIGN.md`'s Layout
- * section, and the reference build's `grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`
+ * **2 columns, 3 at `≥1280px` (`xl:`), 4 at `≥1536px` (`2xl:`)** — the Layout
+ * register, and the reference build's `grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`
  * verbatim.
  *
  * ── And **one** column below `640px`, which is a deviation, on evidence ──────────────
@@ -26,8 +26,8 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * (552px of content in a 388px viewport).
  *
  * The reference build never met this, because its bill is `hidden lg:block` — the
- * prototype's phone has no grid at all, and `DESIGN.md`'s Phone section says so. `SPEC.md`
- * §7 overrules that and puts the same grid on both devices, and this is the consequence
+ * prototype's phone has no grid at all, and the Phone register said so. That is
+ * overruled: the same grid goes on both devices, and this is the consequence
  * of the overrule arriving at 390px.
  *
  * One column is the smallest answer that stays inside the ticket's own constraint: *the
@@ -41,16 +41,16 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * Two columns return at `sm` (`≥640px`), where a cell is 320px and the title has 194px —
  * enough for the longest ordinary name.
  *
- * (`DESIGN.md`'s Phone section says the bill's grid *"is not rendered at all on phone"*.
+ * (The Phone register said the bill's grid *"is not rendered at all on phone"*.
  * That is the reference build describing itself — the prototype's phone screen is TONIGHT
- * and a deck, and its grid is behind `hidden lg:block`. `SPEC.md` §7 is the later document
- * and settles it the other way, and #56 says so in as many words: *the column count is the
+ * and a deck, and its grid is behind `hidden lg:block`. The later ruling
+ * settles it the other way, and #56 says so in as many words: *the column count is the
  * only thing that changes between devices*. The phone reaches this through its own tab,
  * which is build step 5's.)
  *
  * ── Structure was drawn, not spaced. Turn 9 spaces it ────────────────────────────────
  *
- * `DESIGN.md`'s Hairline Rule had cells divided by `1px` `hair` borders on their bottom
+ * The Hairline Rule had cells divided by `1px` `hair` borders on their bottom
  * and right edges — not by gaps, not by cards, no `gap` on this grid and no radius on a
  * cell. The linen redesign reverses that here: the cells are `--raised` cards at an
  * `18px` radius with a `10px` gap between them, and the hairlines are gone.
@@ -62,13 +62,13 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  * a well pressed into the sheet and reads as a distinct object with no line around it and
  * no shadow under it. Same information, same measure, one fewer device drawing it.
  *
- * There is still **no shadow anywhere** — `docs/design/prototypes/mediasafe-mobile-handoff.md`
- * is explicit in its Geometry table that the tone difference between `--raised` and
+ * There is still **no shadow anywhere** — the Geometry table is
+ * explicit that the tone difference between `--raised` and
  * `--ground` is the only lift in the design.
  *
  * ── 472 of these ─────────────────────────────────────────────────────────────────────
  *
- * `docs/design/v1-surfaces.md` §7 sizes the library at 472 titles on day one, and this
+ * The library is sized at 472 titles on day one, and this
  * renders all of them. No pagination, no virtual list, no "show more": the whole point of
  * the screen is *your library as a place you can look at, rather than a query you can
  * run*, and 472 rows of already-fetched text is not what makes a page slow. What would is
@@ -77,7 +77,7 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
  *
  * **Amended by #57, then by #58.** This component itself still takes no input and is
  * still not marked `"use client"`. #57 put it inside `LibrarySurface`'s client boundary
- * regardless — the chip and the filter-by-typing field (`SPEC.md` §7) narrow this same
+ * regardless — the chip and the filter-by-typing field narrow this same
  * already-fetched array without a second database read, and the only place that slice can
  * happen is client state above this component, so 472 cells now hydrate whether or not any
  * one of them takes input. That is the trade this ticket takes deliberately rather than
@@ -125,7 +125,7 @@ export function LibraryGrid({
       // the card, so a `14px` list gutter is what puts the card's *edge* on 22px. Turn
       // 9's rule for every list that carries cards, and the reason the search results
       // and the list rows carry the same number.
-      // No `lg:` gutter override: `SPEC.md` §7 allows the column count to be the only
+      // No `lg:` gutter override: the column count is allowed to be the only
       // thing that differs between devices, and `tests/library-surface.test.ts` enforces
       // it by rejecting any breakpoint prefix here that is not `grid-cols`. The `14px`
       // gutter is the measure at every width.

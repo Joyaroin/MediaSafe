@@ -12,12 +12,12 @@ import { SearchSurface } from "./search-surface";
  * Search — the catalogue, to add something you do not have.
  *
  * The first way anything gets into a library. Until this screen or import exists, every
- * library surface is unpopulatable, which is why `SPEC.md` §8's build order puts search
+ * library surface is unpopulatable, which is why the build order puts search
  * *with* the library rather than after it.
  *
  * ── One design at two densities ──────────────────────────────────────────────────────
  *
- * `docs/design/v1-surfaces.md` §5 lists search among the four things that are one design
+ * Search is one of the four things that are one design
  * on both devices: *"identical on both. It is a low-frequency action on both devices and
  * there is no evidence the intent differs."* So there is no `lg:` divergence here beyond
  * the reading measure, and there is deliberately none to add.
@@ -66,7 +66,7 @@ export default async function SearchPage() {
    * in a page that is otherwise complete, and a hole with nothing in it reads as missing.
    * A rail is not a hole: it appears under the field or it does not, and reserving a strip
    * of pending space for something that may turn out to be absent entirely — an account
-   * with no watches — would be `SPEC.md` §9's reserved space for a thing with nothing to
+   * with no watches — would be reserved space for a thing with nothing to
    * act on. It arrives when it arrives.
    *
    * Built from `KIND_MODES` rather than written out twice, so a mode cannot be added to
@@ -84,7 +84,7 @@ export default async function SearchPage() {
   return (
     <NavTransition>
       {/* `px-[22px]` is turn 9's page gutter, at every width:
-          `docs/design/v1-surfaces.md` §5 keeps search *identical on both devices*, so
+          search is *identical on both devices*, so
           there is no `lg:` gutter to add. The results list inside `SearchSurface` carries
           its own `14px` instead, so that a card's edge sits inside the text gutter rather
           than on it. */}

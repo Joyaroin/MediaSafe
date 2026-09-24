@@ -1,33 +1,16 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════════════
-   The visual world — the mobile handoff, committed at
-   `docs/design/prototypes/mediasafe-mobile-handoff.md` with its board beside it at
-   `mediasafe-mobile.html`. **That is the path to cite**, here and in every component: until
-   issue #255 this file named the palette's source as `design_handoff_phone_linen`, which was
-   not a path to anything and could not be opened by anyone reading the comment. Citing a
-   prototype that was never committed is the failure `tvtracker` carries a dozen times over,
-   and it had started here.
+   The visual world. **This stylesheet is the single declaration site for every token**,
+   and there is no second copy of any value anywhere. Until issue #255 this file named the
+   palette's source as `design_handoff_phone_linen`, which was not a path to anything and
+   could not be opened by anyone reading the comment. Citing a prototype that was never
+   committed is the failure `tvtracker` carries a dozen times over, and it had started here.
 
-   Two older prototypes sit alongside it as historical reference, neither of them current:
-   `mediasafe-phone-up-next.html`, the exploration board whose turn 9 this file used to quote
-   values from, and `design/catalogue-wall.html`, whose palette arrived in issue #134 and
-   which still supplies the dark values below. The bone/ink/vermilion letterpress world #134
-   replaced is gone from the type ramp and the utilities as well.
-
-   **`DESIGN.md` is written from this file rather than the other way round** (issue #144),
-   and it *outranks any prototype*, the handoff included — its own Precedence line, and
-   unchanged by #255. What the handoff is, is the **source of these seven values**, which is
-   a narrower claim than authority: `DESIGN.md` decides what a token is for and what may be
-   drawn with it, and the handoff decides what `--ground` is set to. Where the two would
-   genuinely disagree, issue #245's Precedence section is what settles it, by amending the
-   older document in the same commit as the code rather than by either one silently winning.
-
-   This stylesheet is the single declaration site for every token, and `tests/palette.test.ts`
-   is what keeps that true in all three places the values could drift: it reads the seven out
-   of the committed handoff, out of this file, and out of `DESIGN.md`'s §2 table, and fails if
-   any of them disagrees. That table used to be a third copy nothing checked, and it had been
-   wrong since #134 — two palettes out of date by the time #255 read it.
+   The dark values arrived in issue #134 from the Catalogue Wall palette and are unchanged.
+   The light values are the mobile brief that landed after it, which #255 closed the gap to
+   and #327 restated in OKLCH. The bone/ink/vermilion letterpress world #134 replaced is
+   gone from the type ramp and the utilities as well.
 
    The colour tokens are declared once — `--ground`, `--raised`, `--hair`, `--text`,
    `--dim`, `--accent`, `--accent-ink` — as plain custom properties on `:root`,
@@ -93,31 +76,25 @@
 :root {
   /* Light — the desktop in daylight, and since the linen redesign the phone in daylight
      too. The Catalogue Wall's bone/white/near-black light palette is replaced here by the
-     mobile handoff's own token table, committed at
-     `docs/design/prototypes/mediasafe-mobile-handoff.md` and drawn at
-     `docs/design/prototypes/mediasafe-mobile.html`.
+     mobile brief's own token table.
 
-     **These seven values are the handoff's, not an approximation of them** — that was
+     **These seven values are the brief's, not an approximation of them** — that was
      issue #255's claim, and it still holds for six of the seven. They used to be turn 9 of
-     the *earlier exploration board* — the one now committed beside it as
-     `mediasafe-phone-up-next.html`, which this file cited as `design_handoff_phone_linen`
+     an *earlier exploration board*, which this file cited as `design_handoff_phone_linen`
      against no path at all. That board was the direction; this table is the brief that
      landed after it, and the two differed in all seven values. Issue #255 closed that gap.
      Issue #327 reopened exactly one cell of it, deliberately: `--dim` no longer carries the
-     handoff's own number, for the reason at its declaration below. **The handoff itself is
-     no longer the source of truth these values are checked against** — `DESIGN.md` §2 is,
-     since #327 — though the handoff stays committed, unedited, as the record of what was
-     actually asked for.
+     brief's own number, for the reason at its declaration below.
 
      The tone relationship inverting is still the point — `--raised` sits *below*
      `--ground` (they were `#eeede6` on `#f7f5ed` before this file restated them below;
      the OKLCH lightness positions are unchanged), so a card reads as a well pressed into
      the sheet rather than a panel floating above it, which is what lets the whole redesign
-     carry no shadows at all. The handoff's Geometry table says so in as many words: *none
+     carry no shadows at all. The brief's Geometry table said so in as many words: *none
      on cards — the `--raised` / `--ground` step is the only lift*.
 
      ── Restated in OKLCH — issue #327 ──────────────────────────────────────────────────
-     Every value below used to be a hex triplet copied from the handoff's table. It is now
+     Every value below used to be a hex triplet copied from the brief's table. It is now
      `oklch()`, on one hue (95°, the linen's own), because a hex triplet hides exactly the
      three things a palette lives or dies on: whether a hue has drifted, whether a divider
      has picked up more chroma than the sheet it divides, and where a value actually sits on
@@ -131,8 +108,8 @@
      leaves the ground (`0.012` at the top of the ramp down to `0.006` at the bottom), so no
      hairline is ever more chromatic than the sheet it divides. The full derivation and the
      gamut check are in the research note committed on the `docs/visual-refinement-research`
-     branch (§2.2, not yet on the default branch as of this writing); `DESIGN.md` §0's
-     fourth amendment carries the summary that lives here instead. */
+     branch (§2.2, not yet on the default branch as of this writing); the summary lives
+     here instead. */
   --ground: oklch(96.9% 0.012 95);
   --raised: oklch(94.5% 0.012 95);
   --hair: oklch(86.9% 0.012 95);
@@ -255,8 +232,8 @@
 }
 
 /* ── The three theme states ──────────────────────────────────────────────────────────
-   `SPEC.md` §7 banned a theme picker until the linen redesign; that bullet now carries
-   the reversal and the reasoning. What the ban leaves behind is the shape below: the
+   A theme picker was banned until the linen redesign; that ban is reversed here, with
+   the reasoning below. What the ban leaves behind is the shape below: the
    system is still asked **unless** the reader has explicitly answered otherwise, so
    *system* is the default rather than one of two equal options.
 
@@ -434,7 +411,7 @@
      This said, until now, that a radius *scale* was deliberately not invented: the
      redesign's values were per-surface measures from one handoff, not a ramp, and a
      `--radius-sm/md/lg` for seven one-off numbers would have been a fifth thing to keep
-     in step against `DESIGN.md` §10's own argument. Reversed here, because "one-off"
+     in step against the argument for declaring nothing twice. Reversed here, because "one-off"
      stopped being true — nine distinct raw radii were doing nine different jobs across
      roughly thirty call sites, and rounding the application further meant finding all
      nine by hand, every time.
@@ -583,7 +560,7 @@
   /* Issue #301. Not a motion — nothing here travels or eases — but named and kept on
      this ramp for the same reason the ramp exists at all: a delay a reader can feel is
      a decision, not a literal buried at a call site. Up next renders in 175–235ms and
-     the library in 156–235ms (`DESIGN.md` §9); this clears the slower of the two with
+     the library in 156–235ms; this clears the slower of the two with
      room for jitter, so a wifi navigation never shows the pending state it is held in
      front of. */
   --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
@@ -754,13 +731,13 @@
 }
 
 /* ── The plate line — issue #330 ─────────────────────────────────────────────────────
-   `DESIGN.md` §4's one sanctioned exception to *no shadow, no second hairline weight*: an
+   The one sanctioned exception to *no shadow, no second hairline weight*: an
    inset hairline at 9% ink, mixed `in oklab` for the same reason `frosted` mixes `in oklab`
    rather than `in srgb` — these tokens live in OKLCH, and an `srgb` mix of them can visibly
    shift hue partway through. It is what lets a `--raised` card read as raised without a
    shadow, and what lets artwork read as mounted on the sheet rather than pasted onto it.
 
-   **A call-site expression, not a token.** `DESIGN.md`'s own argument against declaring a
+   **A call-site expression, not a token.** The standing argument against declaring a
    value nothing else needs — the wash and the tinted track keep the same discipline. This
    utility exists only so the expression is written once rather than pasted at every raised
    container the way `field-well` and `frosted` record their own pre-naming history; nothing
@@ -1951,7 +1928,7 @@
 }
 
 /* ── Held, before it ever paints — issue #301 ────────────────────────────────────────
-   `DESIGN.md` §9 radius 1 only: a whole route's own pending state. Held invisible past
+   Radius 1 only: a whole route's own pending state. Held invisible past
    `--dur-pending-hold`, a navigation that resolves before the hold ends never shows the
    bars at all — the reader presses, and the next thing painted is the destination
    itself, with the existing fade and rise landing on it. A navigation slower than the

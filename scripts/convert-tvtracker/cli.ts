@@ -24,7 +24,7 @@ import { resolveEpisodeIndex } from "./resolve";
  *
  * `fixtures/` holds the only surviving copy of `tvtracker`'s database, and
  * `tests/fixture-archive.test.ts` keeps an allowlist of exactly two files that may name
- * it: this one, and `SPEC.md` §6's test 1. Nothing else, and the check fails for anything
+ * it: this one, and test 1 of the four. Nothing else, and the check fails for anything
  * else.
  *
  * ── It prints what it dropped, not only what it wrote ─────────────────────────────────

@@ -10,7 +10,7 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  *
  * ── What it was, and what turn 9 made it ─────────────────────────────────────────────
  *
- * `DESIGN.md`, Components, described this cell as *a full-width button, **not a card**.
+ * Components described this cell as *a full-width button, **not a card**.
  * Ground `ground`, hairline right and bottom borders, `1rem` padding, `1rem` gap. Left:
  * the plate at `78×104px` … Hover fills the cell with `raised`. No shadow, no lift, no
  * radius, no scale.* Almost none of that sentence survives, and this docblock quoted it
@@ -23,8 +23,8 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * acknowledgement instead. Still **no shadow and no lift**: the `--raised`/`--ground`
  * tone step is the only depth in the redesign.
  *
- * The plate went to a poster in #135 (`app/poster.tsx`); `DESIGN.md` was rewritten from
- * the built world in #144, and its section 0 now records this reversal among the rest.
+ * The plate went to a poster in #135 (`app/poster.tsx`); the register was rewritten from
+ * the built world in #144, and now records this reversal among the rest.
  *
  * ── Where the button goes, since #58 ──────────────────────────────────────────────────
  *
@@ -72,7 +72,7 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * cell modifies the artwork now modifies the bar with it, which is right: they are the
  * same title in the same state.
  *
- * **No numeral anywhere near it** — DESIGN.md §11's own remaining rule, amended by this
+ * **No numeral anywhere near it** — the remaining rule, amended by this
  * ticket rather than reopened: a count may not stand as chrome on a surface reached to do
  * something else, and this bar is chrome by construction.
  *
@@ -87,9 +87,9 @@ import { SelectionCheckBadge } from "./selection-check-badge";
 
 /**
  * The poster's width in the bill grid — `66px` since turn 9, down from the `78px` that
- * was one of `DESIGN.md`'s five fixed measures before #135. It is fixed at every
+ * was one of the five fixed measures before #135. It is fixed at every
  * breakpoint: the column count is what changes between a phone and a desktop, and nothing
- * else is (`SPEC.md` §7). Height is not set — the `poster` utility's `2/3` aspect ratio
+ * else is. Height is not set — the `poster` utility's `2/3` aspect ratio
  * derives it from this width, so a real poster is never cropped to fit a fixed box.
  *
  * `66` and `78` land in the same `w92` CDN bucket, so the smaller measure changes what is

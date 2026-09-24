@@ -20,8 +20,8 @@ import { seasonHeading } from "@/app/(signed-in)/library/season-grouping";
  */
 
 /**
- * `S02 · E05` — the prototype's own code line
- * (`docs/design/prototypes/mediasafe-mobile.html`), zero-padded to two digits so a run of
+ * `S02 · E05` — the prototype's own code line,
+ * zero-padded to two digits so a run of
  * cards does not ripple sideways as a show crosses episode nine.
  *
  * **Season 0 is `Specials`, not `S00`.** `season-grouping.ts`'s `seasonHeading` is the one
@@ -46,12 +46,12 @@ function pad(number: number): string {
 
 /**
  * `+8 remaining` — how much of this show is left **after** the episode the card is
- * offering, and the one count `SPEC.md` §7's *no counts, anywhere* is narrowed to allow
+ * offering, and the one count *no counts, anywhere* is narrowed to allow
  * (#250).
  *
  * The number is not derived here and is not derived in the card either: it is
- * `library_entry_remaining`, this build's one definition of *Remaining* (`CONTEXT.md`,
- * `db/views.ts`), minus the episode being offered and minus whatever the reader has marked
+ * `library_entry_remaining`, this build's one definition of *Remaining*
+ * (`db/views.ts`), minus the episode being offered and minus whatever the reader has marked
  * from this card since the page loaded. Minting a second count here — walking the queue,
  * or counting released episodes — would be a second answer to *how much is left* that
  * could disagree with the sort key ordering the very rail these cards sit on.
@@ -61,7 +61,7 @@ function pad(number: number): string {
  * `mediasafe-mobile.html`'s `remainingAfter` skips anything unreleased, so for a show with
  * announced-but-unaired episodes this prints a larger number than the mock would. **The
  * divergence is deliberate and the mock is not the authority here.** The handoff binds
- * *appearance*; what the word *Remaining* counts is a domain question, and `CONTEXT.md`
+ * *appearance*; what the word *Remaining* counts is a domain question, and the glossary
  * answers it — *how much of a show you have left* — with `db/views.ts` arguing the
  * unreleased half at length, because *how much of the whole series is left* is a different
  * question from *how much of it could I watch today*.

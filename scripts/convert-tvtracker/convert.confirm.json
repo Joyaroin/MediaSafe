@@ -1,6 +1,6 @@
 {
   "$comment": [
-    "The two enforced gates on this conversion (SPEC.md §7, issues #16, #61 and #71).",
+    "The two enforced gates on this conversion (issues #16, #61 and #71).",
     "",
     "── confirmations: ambiguous watermarks ──────────────────────────────────────────────",
     "",

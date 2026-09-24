@@ -2,7 +2,7 @@
 #
 # The tickets in this repository declare their dependencies in prose, under a `## Blocked
 # by` heading, because GitHub's own blocking relationship is Pro-or-above and was declined
-# along with rulesets and branch protection (`SPEC.md` §6, issue #17). Prose is the
+# along with rulesets and branch protection. Prose is the
 # tracker; this workflow is what stops it going stale.
 #
 # ── Why a label at all ───────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import { ReferenceLine } from "./reference-line";
 import { type RaisedWriteFailure, writeFailures } from "./write-failure";
 
 /**
- * DESIGN.md, States: *a persistent toast on solid `ground` inside a `2px` `accent` border —
+ * States: *a persistent toast on solid `ground` inside a `2px` `accent` border —
  * `420px` bottom-right on desktop, full-bleed above the tab bar on phone. Heading at
  * `text-bill-sm` in `accent`, the affected title and episode named in full, a solid *Try
  * again*, a ghost *Dismiss*, and a copyable reference id. It does not auto-dismiss.*
@@ -34,7 +34,7 @@ import { type RaisedWriteFailure, writeFailures } from "./write-failure";
  *
  * Note what the call cannot pass: a message. The toast writes its own sentences from the
  * title and the episode, so there is no route by which an exception's text reaches the
- * screen — DESIGN.md allows exactly one technical string anywhere, and it is the
+ * screen — exactly one technical string is allowed anywhere, and it is the
  * reference id.
  *
  * ── It leaves visibly now, and that is this file's own state, not the store's — #333 ──
@@ -147,7 +147,7 @@ function WriteFailureToast({
       <h2 className="bill-title text-bill-sm text-accent">That did not save</h2>
 
       {/* Named in full, both of them, and set as their own block rather than folded into
-          the sentence. CONTEXT.md gives episodes real names — "Season 2, Episode 4 —
+          the sentence. Episodes have real names — "Season 2, Episode 4 —
           Woe's Hollow" — and a sentence with one of those inside it collides with its own
           punctuation and stops being readable at exactly the moment it matters. */}
       <p className="mt-3 text-item text-text">{failure.title}</p>
