@@ -164,3 +164,21 @@ test("giving up moves a show into Dropped, and resuming takes it back out", asyn
   await page.getByRole("button", { name: "Resume watching" }).click();
   await expect(page.getByText("Dropped", { exact: true })).toHaveCount(0);
 });
+
+// ── Search ──────────────────────────────────────────────────────────────────────────
+
+test("one search finds films and shows together, in two groups", async ({ page }) => {
+  // Search reaches the live catalogue. A placeholder token (a `test-` prefix, as the
+  // local `.env` carries) cannot, so the property is unprovable here rather than failing.
+  test.skip(
+    (process.env.TMDB_READ_ACCESS_TOKEN ?? "test-").startsWith("test-"),
+    "needs a real TMDB_READ_ACCESS_TOKEN",
+  );
+
+  await page.setViewportSize(DESKTOP);
+  await page.goto("/search");
+  await page.getByLabel("Search films and shows").fill("Severance");
+
+  await expect(page.getByRole("heading", { name: "Shows", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Films", level: 2 })).toBeVisible();
+});

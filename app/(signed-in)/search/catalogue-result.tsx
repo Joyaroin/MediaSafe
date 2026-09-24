@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { useRef, useState } from "react";
 
+import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { referenceFor } from "@/errors/reference";
 import { QUIET_RECORDING_CONTROL_LABELLED_COMPACT } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
@@ -259,11 +260,18 @@ export function CatalogueResultRow({
 
       {inLibrary ? (
         /**
-         * It says so, and there is nothing to press. Not a disabled button: a control the
-         * reader can reach and cannot use is an invitation withdrawn, and this is a
-         * statement of fact about their library.
+         * It says so, and it goes there. Not a disabled Add: a control the reader can reach
+         * and cannot use is an invitation withdrawn. Issue #357 makes the statement a way to
+         * the title's own page — the catalogue address sends a held title on to it.
          */
-        <p className="shrink-0 text-meta text-dim">In your library</p>
+        <Link
+          href={`/catalogue/${result.kind}/${result.tmdbId}`}
+          aria-label={`${result.name} is in your library — open it`}
+          className="flex h-11 shrink-0 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink"
+        >
+          <CheckmarkIcon className="h-3.5 w-3.5" />
+          In your library
+        </Link>
       ) : (
         /**
          * A vermilion pill — `34px` tall at a `17px` radius, `--accent` filled with an

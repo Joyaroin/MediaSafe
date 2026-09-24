@@ -21,6 +21,7 @@ import {
 import { requireUserId } from "@/lib/session";
 
 import { addTitleAnswering } from "./add-title";
+import type { BothKinds, KindOutcome } from "./search-groups";
 
 /**
  * The two things the search screen asks the server for.
@@ -63,46 +64,56 @@ export interface MarkedResult extends CatalogueResult {
   readonly inLibrary: boolean;
 }
 
-export type SearchOutcome =
-  | { readonly ok: true; readonly results: readonly MarkedResult[] }
-  /** MediaSafe could not reach the catalogue. **Not** the same as it having nothing. */
-  | { readonly ok: false; readonly reference: string | null };
-
 export type AddOutcome =
   | { readonly ok: true }
   | { readonly ok: false; readonly reference: string | null };
 
 /**
- * Search the catalogue by name, and mark the results this account already holds.
+ * Search the catalogue by name, for films and shows at once, and mark the results this
+ * account already holds — issue #357, which retired the Shows/Films toggle a reader had to
+ * set before typing.
  *
- * *Search*, not *filter*: the first is reserved for the catalogue and the second
- * for your own library, and this one has never seen your library except to answer *do you
- * have this*.
+ * *Search*, not *filter*: the first is reserved for the catalogue and the second for your
+ * own library, and this one has never seen your library except to answer *do you have
+ * this*.
+ *
+ * ── Two searches, not one mixed one ──────────────────────────────────────────────────
+ *
+ * TMDB's multi-search ranks films and shows against each other, and filtering or grouping
+ * its mixed page afterwards would return three films whenever seventeen of twenty were
+ * shows — hiding the best film for a query behind better-ranked shows. So each kind is
+ * searched on its own endpoint, in parallel, and keeps its own ranking; the screen draws
+ * them as two groups (`search-groups.ts`).
+ *
+ * ── Each kind answers for itself ─────────────────────────────────────────────────────
+ *
+ * One kind failing does not fail the other. A failed kind comes back as `{ ok: false }`
+ * with its own reference, and the screen draws it as a failure beside the kind that
+ * succeeded — never as a kind with nothing in it.
  */
-export async function searchCatalogueAction(
-  kind: TitleKind,
-  query: string,
-): Promise<SearchOutcome> {
+export async function searchCatalogueAction(query: string): Promise<BothKinds> {
   const userId = await requireUserId();
 
-  try {
-    const trimmed = query.trim();
-    // A blank query is not a search. The screen does not send one — its *not yet typed*
-    // state is what a blank field renders — and if something else ever does, the honest
-    // answer is that nothing was asked, not that nothing matched.
-    if (!trimmed) return { ok: true, results: [] };
+  const trimmed = query.trim();
+  // A blank query is not a search. The screen does not send one, and if something else
+  // ever does, the honest answer is that nothing was asked, not that nothing matched.
+  if (!trimmed) {
+    return { show: { ok: true, results: [] }, film: { ok: true, results: [] } };
+  }
 
-    /**
-     * One kind, chosen by the screen's Films/Shows mode, and therefore two endpoints
-     * rather than a filter over `/search/multi`.
-     *
-     * `tmdb/mirror.ts` argued for the multi-search when this field returned both kinds,
-     * and that argument was about ranking films and shows *against each other*. With a
-     * mode there is nothing to rank across: the reader has said which kind they want, and
-     * filtering a mixed response after the fact would return three results whenever
-     * seventeen of twenty were the other kind — and would hide the best film for a query
-     * behind twenty better-ranked shows.
-     */
+  const [show, film] = await Promise.all([
+    searchOneKind(userId, "show", trimmed),
+    searchOneKind(userId, "film", trimmed),
+  ]);
+  return { show, film };
+}
+
+async function searchOneKind(
+  userId: Awaited<ReturnType<typeof requireUserId>>,
+  kind: TitleKind,
+  trimmed: string,
+): Promise<KindOutcome> {
+  try {
     const results = await searchCatalogueOfKind(kind, trimmed);
     const held = await libraryCatalogueKeys(userId, results);
 
@@ -114,7 +125,7 @@ export async function searchCatalogueAction(
       })),
     };
   } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "search" }) };
+    return { ok: false, reference: referenceFor(error, { surface: "search", kind }) };
   }
 }
 
