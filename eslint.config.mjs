@@ -233,11 +233,6 @@ const eslintConfig = defineConfig([
     // nothing. It is third-party reference material, not application code: it renders with
     // `ReactDOM.render` and assigns to `module`, so linting it means CI failing on
     // somebody else's file. Nothing imports it.
-    //
-    // **The one file, not the directory.** `docs/design/prototypes/**` was the first
-    // spelling and it ignores too much: the prototypes are `.html` and `.js` today, and a
-    // `.tsx` one dropped in there later would go unlinted with nothing to say it had.
-    "docs/design/prototypes/support.js",
     // Playwright's own output, and the reason it has to be named here rather than left to
     // `.gitignore`. Both directories are already git-ignored (`.gitignore:20-21`), but
     // ESLint's flat config does not read `.gitignore` — so the moment the browser suite
@@ -252,9 +247,9 @@ const eslintConfig = defineConfig([
     "test-results/**",
   ]),
   {
-    // SPEC.md §3.2 — no `catch` returns `[]` — SPEC.md §3.1's amendment — no cache key
+    // Constraint 2 — no `catch` returns `[]` — the cache amendment — no cache key
     // without an account — and issue #332's timing ramp are all enforced rather than
-    // remembered. `npm run lint` is one of the three things CI runs (SPEC.md §6), which
+    // remembered. `npm run lint` is one of the three things CI runs, which
     // is why these constraints live here and not in a test: a test would never see a
     // pull request.
     plugins: {

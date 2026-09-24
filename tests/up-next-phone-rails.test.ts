@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * five vertical groups this ticket deleted.
  *
  * Everything here is a property that would fail **silently** rather than on sight, which is
- * the line `SPEC.md` §6 draws around what earns a test:
+ * the line drawn around what earns a test:
  *
  *  1. **The next-episodes rail is all three orderings, in one sequence.** This is the
  *     ticket's own named failure and the reason it asks for Opus: get the concatenation
@@ -145,7 +145,7 @@ describe("the Up next row's meta line carries no air date and no runtime", () =>
   });
 
   it("still names the episode as real text beside the code, never the code alone", () => {
-    // SPEC.md §4 — the code is a separate dim label, the episode's own name is the line
+    // The code is a separate dim label, the episode's own name is the line
     // underneath it, and shortening the meta line must not collapse the two into one.
     expect(code).toMatch(
       /className="bill-title text-bill-xs text-text">\{code\}/,
@@ -485,7 +485,7 @@ describe("both rails snap to the page gutter and leave the next card peeking", (
 
 describe("the count is on the card and never on a rail head", () => {
   /**
-   * `SPEC.md` §7's *no counts, anywhere* is **narrowed** by #250 rather than dropped: the
+   * *No counts, anywhere* is **narrowed** by #250 rather than dropped: the
    * card gains the one number that tells a reader whether they are three from the end or
    * thirty, and the rail head keeps the rule. A numeral on a head would be the *showing 10
    * of 62* line with the words filed off.
@@ -517,13 +517,6 @@ describe("the count is on the card and never on a rail head", () => {
     const section = sourceAt(RAIL_SECTION);
     expect(section).not.toMatch(/<Link\b/);
     expect(section).not.toMatch(/from "next\/link"/);
-  });
-
-  /** SPEC records the narrowing, which is its own acceptance criterion. */
-  it("has SPEC recording the narrowing rather than contradicting the build", () => {
-    const spec = sourceAt("SPEC.md");
-    expect(spec).toMatch(/No counts on a rail head/);
-    expect(spec).toMatch(/#250/);
   });
 });
 
@@ -593,7 +586,7 @@ describe("empty and failed are never the same thing", () => {
   /**
    * The two sentences answer two questions and must not be collapsed into one. The phone
    * asks *no next episode and no watchlist film*; the desktop asks *nothing watching and
-   * nothing dated to come back*. `docs/design/v1-surfaces.md` §6: these read differently
+   * nothing dated to come back*. These read differently
    * and must not share copy.
    */
   it("keeps the phone's sentence and the desktop's distinct", () => {
@@ -709,7 +702,7 @@ describe("every tile and card on Up next opens the thing it names", () => {
      * else.
      *
      * That the two are **siblings** rather than nested is the part that matters, and it is
-     * `SPEC.md`'s rule for the season row restated: a control inside a link is a control
+     * the rule for the season row restated: a control inside a link is a control
      * every press of which is also a navigation. `up-next-episode-card.tsx` has always
      * been shaped this way; the row is the same shape.
      */
@@ -835,7 +828,7 @@ describe("every tile and card on Up next opens the thing it names", () => {
   });
 
   /**
-   * **On `lg` and up nothing navigates**, which is `DESIGN.md`'s Never-Navigate-Away Rule
+   * **On `lg` and up nothing navigates**, which is the Never-Navigate-Away Rule
    * and the whole reason the pane exists. The desktop branch has to stop the link before
    * the browser follows it, and that `preventDefault` is the one line standing between the
    * two-pane layout and a full page load on every tile press.
@@ -869,7 +862,7 @@ describe("every tile and card on Up next opens the thing it names", () => {
  * each other, and so does every pixel of the rendered card — the only thing that changes
  * is what a fat finger lands on, which no test in this repository can see.
  *
- * The second half is `DESIGN.md`'s bounding-rect guarantee (§6) and #250's own
+ * The second half is the bounding-rect guarantee and #250's own
  * *the rail never reflows under a thumb*: the dead zone comes out of the link's own
  * bottom padding rather than out of the card's height, so the box is unchanged. A dead
  * zone that made the card taller would be a fix for one complaint that caused another.
@@ -897,7 +890,7 @@ describe("the recording control has a dead zone from the card's tap area", () =>
     expect(code).not.toMatch(/pb-1/);
   });
 
-  /** The control's target is untouched. `44px` is `DESIGN.md` §6's floor and the one
+  /** The control's target is untouched. `44px` is the floor and the one
    *  direction a dead zone must never come out of.
    *
    *  **Updated for the press register (#282), and again for #283's loud one.** The hit box
@@ -949,108 +942,6 @@ describe("the recording control has a dead zone from the card's tap area", () =>
   });
 });
 
-/**
- * The documents, amended in this commit rather than after it — `CLAUDE.md` binds them and
- * `DESIGN.md` records two prior occasions where a note and the code it described drifted
- * apart silently. Both reversals are written as reversals.
- */
-describe("the documents record the reversal", () => {
-  it("has DESIGN.md saying a tap on Up next opens a page", () => {
-    const design = sourceAt("DESIGN.md");
-    const from = design.indexOf("### Opening a title");
-    const section = design.slice(from, design.indexOf("\n### ", from + 4));
-
-    expect(section).toMatch(/#274/);
-    expect(section).toMatch(/opens the title's own page/);
-
-    /**
-     * **The sheet survives only inside a quotation.** `CLAUDE.md` asks a reversal to be
-     * written as one, so the sentence this section used to open with is kept — in a
-     * blockquote, in the past tense. What must not survive is the same sentence asserted
-     * in the document's own voice, which is the drift `DESIGN.md` records two prior
-     * occasions of. So the check is over the section's *unquoted* lines.
-     */
-    const asserted = section
-      .split("\n")
-      .filter((line) => !line.trimStart().startsWith(">"))
-      .join("\n");
-
-    expect(asserted).not.toMatch(/raises a sheet over the tab/);
-  });
-
-  it("has SPEC.md §7's surfaces section carrying the same reversal", () => {
-    const spec = sourceAt("SPEC.md");
-    const surfaces = spec.slice(
-      spec.indexOf("## 7. The surfaces"),
-      spec.indexOf("### Up next — ordering"),
-    );
-
-    expect(surfaces).toMatch(/#274/);
-    /** And #291's half of it, so that divergence 3 does not go on describing a card that
-     *  opens the show after the card stopped doing that. */
-    expect(surfaces).toMatch(/#291/);
-  });
-
-  /**
-   * **Issue #291 — the card's destination is recorded as a *reversal*, not overwritten.**
-   *
-   * The same decision has now been made in both directions: #274 pointed the card at the
-   * show because every card on the tab should lead to the same kind of place, and #291
-   * points it back because a card leads to the thing it names. Both arguments are real,
-   * which is exactly why the losing one has to stay legible — a note that simply replaced
-   * #274's reasoning invites a third pass to re-derive it and swing back.
-   *
-   * So this asserts four things, and they are the acceptance criterion's four: the
-   * decision being reversed is named, this spec is named, the reason is given, and the
-   * superseded reasoning is still **there** — in the blockquoted, past-tense form this
-   * file already uses for its reversals, and no longer in the document's own voice.
-   */
-  it("has DESIGN.md recording the card's destination as a reversal of #274", () => {
-    const design = sourceAt("DESIGN.md");
-    const from = design.indexOf("### Opening a title");
-    const section = design.slice(from, design.indexOf("\n### ", from + 4));
-
-    expect(section).toMatch(/#274/);
-    expect(section).toMatch(/#287/);
-    expect(section).toMatch(/#291/);
-    expect(section).toMatch(/a card leads to the thing it names/);
-
-    const lines = section.split("\n");
-    const quoted = lines
-      .filter((line) => line.trimStart().startsWith(">"))
-      .join("\n");
-    const asserted = lines
-      .filter((line) => !line.trimStart().startsWith(">"))
-      .join("\n");
-
-    expect(quoted).toMatch(/the same kind of place/);
-    expect(asserted).not.toMatch(/the same kind of place/);
-  });
-
-  /**
-   * **And #277's framing, which is the part a future reader is owed.** The hardening is
-   * defensible on its own and it is *not* a fix — the report was never reproduced. A
-   * document that recorded the change without recording that would leave the next reader
-   * believing the Android misfire was dealt with, and there is nothing in the build that
-   * would correct them.
-   */
-  it("has DESIGN.md recording the Android hardening as a hypothesis rather than a fix", () => {
-    const design = sourceAt("DESIGN.md");
-    const from = design.indexOf("### The Android tap");
-    expect(from).toBeGreaterThan(-1);
-
-    const section = design.slice(from, design.indexOf("\n### ", from + 4));
-
-    expect(section).toMatch(/#277/);
-    expect(section).toMatch(/unreproduced/);
-    expect(section).toMatch(/dead zone/);
-    // The pager's half of the same hardening, so the section covers both halves rather
-    // than the one that is visible in a card.
-    expect(section).toMatch(/pager/);
-    // And it must say what happens if the misfire survives, which is the recoverable part.
-    expect(section).toMatch(/did not address it|was not addressed here/);
-  });
-});
 
 /** Every `.ts`/`.tsx` under a directory. A list of files goes stale; a walk does not. */
 function sourceFiles(root: string): string[] {

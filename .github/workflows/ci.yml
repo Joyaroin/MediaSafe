@@ -2,7 +2,7 @@
 #
 # **This gates nothing, because nothing can gate a merge here.** Rulesets and branch
 # protection are Pro-or-above on a private repository and both ways of paying were
-# declined (`SPEC.md` §6, issue #17). A red check is a red X next to a button that still
+# declined. A red check is a red X next to a button that still
 # works. That is the accepted shape: running the checks is free, and the alternative —
 # not knowing — is worse than knowing and choosing.
 #
@@ -18,7 +18,7 @@
 #
 # What this deliberately does not run: **most** of the test suite. `npm test` needs a real
 # Postgres and the WebSocket proxy in front of it (`vitest.config.mts`), which is two
-# service containers here, and `SPEC.md` §6 names typecheck, lint and build as the CI set.
+# service containers here, and the CI set is typecheck, lint and build.
 #
 # Five files are the exception, and they are exceptions for the same reason: none of them
 # needs a database.
@@ -28,8 +28,6 @@
 #   - `tests/fixture-archive.test.ts` reads the committed archives and nothing else —
 #     #60's *the rescue archive is intact and nothing loads it*.
 #   - `tests/tvtracker-conversion.test.ts` runs the pure import mapping over that archive.
-#   - `tests/palette.test.ts` reads the stylesheet, `DESIGN.md` and the committed design
-#     handoff, and asserts the three agree — #255.
 #   - `tests/corners.test.ts` reads the stylesheet's radius scale and sweeps the source
 #     tree for a raw radius outside it — #318.
 #
@@ -68,7 +66,7 @@ jobs:
         with:
           # Matches the Node major Vercel runs, so a build that passes here is a build
           # that passes there. Local development is 22-or-newer
-          # (docs/local-development.md); this pins the one that has to agree with
+          # for local development; this pins the one that has to agree with
           # production, and only that.
           node-version: "22"
           cache: npm
@@ -117,7 +115,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
 
-      # Test 2 of the four in `SPEC.md` §6 — constraint 5, machine-checked. It reads the
+      # Test 2 of the four — constraint 5, machine-checked. It reads the
       # route manifest and the compiled proxy matcher out of the build above and asserts
       # the second covers the first, so it depends on *Build* having produced a `.next`
       # rather than only on *Install*: with no build it fails loudly rather than passing
@@ -138,7 +136,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:fixtures
 
-      # Test 1 of the four in `SPEC.md` §6 — the import mapping, run over the committed
+      # Test 1 of the four — the import mapping, run over the committed
       # export (#71). It joins the two steps above for the same reason they are here: the
       # mapping is pure, so it needs neither the database nor the build, only the archive
       # that is already in the repository.
@@ -150,25 +148,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:conversion
 
-      # The palette (#255), on the admission rule this file states above: it needs neither
-      # the database nor the build, only `app/globals.css`, `DESIGN.md` and the committed
-      # handoff, and it enforces a property *of a pull request*.
-      #
-      # It is here because the alternative was a lie in three files. `globals.css`,
-      # `DESIGN.md` and the suite's own docblock all claimed a drifted token would "fail
-      # CI", while `npm test` does not run here and the file was reachable only by someone
-      # running the full local suite with Docker up. That is the habit-not-a-check failure
-      # the *Fixture archive* step above exists to avoid, and this ticket had written it
-      # into the very stylesheet whose one-declaration-site argument it was making.
-      #
-      # What it would have caught is not hypothetical: the seven values had already drifted
-      # from the handoff, and `DESIGN.md`'s own table had been two palettes out of date
-      # since #134, unread by anything.
-      - name: Palette
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run test:palette
-
-      # The corner scale (#318), on the same admission rule as the step above: it needs
+      # The corner scale (#318), on the admission rule this file states above: it needs
       # neither the database nor the build, only `app/globals.css` and the source tree, and
       # it enforces a property *of a pull request* — a raw radius reintroduced anywhere
       # under `app/` or `errors/` fails here rather than waiting for someone running the
@@ -177,7 +157,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:corners
 
-      # Test 4 of the four in `SPEC.md` §6. Narrowed to destructive rules in
+      # Test 4 of the four. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather
       # than remembered, on a database whose only safety net is six hours of Neon history.
       - name: squawk

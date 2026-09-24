@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Issue #330 — the plate line, and the dark poster ring that replaces it (`SPEC.md`'s
+ * Issue #330 — the plate line, and the dark poster ring that replaces it (the
  * spec-326 Polish section).
  *
  * A card reads as raised without a shadow, and artwork reads as mounted on the sheet
@@ -223,31 +223,5 @@ describe("nothing else does", () => {
 
   it("is looking at a tree that has files in it", () => {
     expect(sourceFiles().length).toBeGreaterThan(50);
-  });
-});
-
-describe("DESIGN.md §4 names the plate line as the one sanctioned exception", () => {
-  const DESIGN_DOC = sourceAt("DESIGN.md");
-  const start = DESIGN_DOC.indexOf("## 4. Hierarchy comes from scale and weight");
-  const end = DESIGN_DOC.indexOf("## 5. Glass is chrome only");
-  const section4 = DESIGN_DOC.slice(start, end);
-
-  it("the section exists where earlier sections expect it", () => {
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-  });
-
-  it("names the plate line and its 9% ink expression", () => {
-    expect(section4).toMatch(/plate line/i);
-    expect(section4).toContain("9%");
-  });
-
-  it("states fields are excluded", () => {
-    expect(section4.toLowerCase()).toContain("not fields");
-  });
-
-  it("states the dark poster ring replaces it, never both", () => {
-    expect(section4.toLowerCase()).toMatch(/ring/);
-    expect(section4.toLowerCase()).toContain("never both");
   });
 });

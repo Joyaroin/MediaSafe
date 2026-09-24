@@ -10,7 +10,7 @@ import { snappy } from "@/app/motion";
  * The press, asserted against the spring it claims to come from — issues #270, #281, #282.
  *
  * The press is CSS and stays CSS: it costs no client boundary and no per-frame JavaScript,
- * and `DESIGN.md`'s motion section holds why. What it is made of changed in #281, and #282
+ * and the motion register holds why. What it is made of changed in #281, and #282
  * gave it a register — two sizes, chosen by one property the call site sets.
  *
  * ── What #270 shipped, and why this file did not catch it ────────────────────────────
@@ -140,8 +140,8 @@ const REGISTER_PROPERTY = "--press-register";
 /**
  * **The third register — issue #283.** The recording checkmark presses harder than any
  * other control in the application: `0.900` in, `1.045` past rest. It is the act the
- * product is built around and the most repeated gesture in it, and `DESIGN.md` §3 already
- * rations the accent to exactly that act — so the loudest press and the only sanctioned
+ * product is built around and the most repeated gesture in it, and the accent is already
+ * rationed to exactly that act — so the loudest press and the only sanctioned
  * use of colour now mark the same thing rather than two different things.
  *
  * It is a **third value of the one property**, declared the same way at the call site, so
@@ -724,24 +724,6 @@ describe("the press answers the gesture the product is built around", () => {
     expect(codeOf(WATCH_MARK)).not.toMatch(/^\s*"use client"/m);
   });
 
-  /**
-   * **`DESIGN.md` records that the loudest press and the rationed accent mark the same
-   * act.** The document is where the two rules live that this ticket ties together — §3's
-   * rationing of the accent to *this was recorded*, and the press's register table — so an
-   * entry naming only the numbers would leave the next change built against a document
-   * that never says why they are the loudest.
-   */
-  it("is recorded in DESIGN.md as the press and the accent saying one thing", () => {
-    const doc = readFileSync(path.join(REPOSITORY_ROOT, "DESIGN.md"), "utf8");
-    const at = doc.indexOf("#283");
-    expect(at, "DESIGN.md must record the recording register").toBeGreaterThan(-1);
-
-    const entry = doc.slice(Math.max(0, at - 600), at + 2000);
-    expect(entry).toContain("0.900");
-    expect(entry).toContain("1.045");
-    expect(entry).toMatch(/accent/);
-    expect(entry).toMatch(/ration/i);
-  });
 
   it("costs no client boundary and no per-frame JavaScript", () => {
     // The whole reason the press is in CSS. `watch-mark-motion.tsx` is class strings a
@@ -1220,7 +1202,7 @@ describe("the hold and the press are one hand on a library cell", () => {
     expect(blockDepthOf('.pressable[data-landed="true"]')).toBe(0);
     expect(pressableUtility()).not.toContain("data-holding");
 
-    // Recorded where the rules live, not only in DESIGN.md.
+    // Recorded where the rules live.
     expect(holdNote()).toMatch(/[Uu]nlayered/);
   });
 
@@ -1291,23 +1273,15 @@ describe("the hold and the press are one hand on a library cell", () => {
    * claiming a provenance beside a value that stopped coming from it is the exact failure
    * this file exists to prevent, and the hold's note was one edit away from being it.
    */
-  it("cites the hold's new derivation in the stylesheet and in DESIGN.md", () => {
+  it("cites the hold's new derivation in the stylesheet", () => {
     expect(holdNote()).toContain("--press-compress");
     expect(holdNote()).toContain("--press-pop");
 
     // And no copy of the numbers the hold used to carry survives in the *rules*. The
-    // prose may name them — this file records a reversal as a reversal, as `DESIGN.md`
-    // does — but a literal amplitude left in a declaration is the thing being removed.
+    // prose may name them — this file records a reversal as a reversal — but a literal
+    // amplitude left in a declaration is the thing being removed.
     expect(CSS_CODE).not.toContain("1.035");
     expect(CSS_CODE).not.toContain("scale(0.95)");
-
-    const design = readFileSync(path.join(REPOSITORY_ROOT, "DESIGN.md"), "utf8");
-    const paragraphs = design.split(/\n{2,}/).filter((text) => text.includes("select-land"));
-
-    expect(
-      paragraphs.some((text) => text.includes("--press-compress") && text.includes("--press-pop")),
-      "DESIGN.md must say where the hold's two numbers now come from",
-    ).toBe(true);
   });
 });
 

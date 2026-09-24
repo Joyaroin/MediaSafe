@@ -28,9 +28,9 @@ import { describe, expect, it } from "vitest";
  * A call site either **declares** one of the three meanings — imports the constant from
  * `app/accent-meaning.ts` and reads `.ink`/`.solid` off it, the way #310 and #311 already
  * migrated seven of them — or it is a **documented literal exception**: named in
- * `ACCENT_CALL_SITES` below with a reason, the way `DESIGN.md` §3 already carries the
+ * `ACCENT_CALL_SITES` below with a reason, the way the role table already carries the
  * brand mark, the failure system and a surface's primary action as roles that predate and
- * were never part of §12's disagreement. What a call site may not do is neither — reach
+ * were never part of the disagreement. What a call site may not do is neither — reach
  * for the token with no entry here — and the whole-tree walk below is what catches that:
  * it is not a fixed list of files somebody remembered to update, it is every `.ts`/`.tsx`
  * file under `app/`, `errors/` and `lib/`, same as `tests/palette.test.ts`'s shadow sweep
@@ -119,7 +119,7 @@ interface AccentSite {
 
 /**
  * The frozen manifest. Built from the tree on 2026-09-02, against the state #311 left it
- * in — never from `DESIGN.md` §12's own list, which #310's docblock already found stale
+ * in — never from the older hand-kept list, which #310's docblock already found stale
  * (it cites `rating-control.tsx` and `up-next-tile.tsx`, and neither exists in this tree).
  *
  * **Declared meanings** (`RECORDS_A_WATCH`, `LIVE_EDGE_OF_THE_RECORD`, `THE_BUTTON_REGISTER`)
@@ -129,9 +129,9 @@ interface AccentSite {
  * and the hover pair are typed, because `AccentMeaning` exports no `hover:`-prefixed form,
  * but they are the button register's own hover state and not a fourth meaning.
  *
- * **Literal exceptions** are every other role `DESIGN.md` §3 already names and §12 never
+ * **Literal exceptions** are every other role the table already names and nothing ever
  * contested — the brand mark, the failure system, a surface's primary action, and the two
- * screens' rail-heading register — plus the two amendments §3 already records by number
+ * screens' rail-heading register — plus the two amendments the table already records by number
  * (#251's pager rule, #252's countdown).
  */
 const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
@@ -179,7 +179,7 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason:
       "the wordmark's struck bar, fill=\"var(--color-accent)\" — an SVG fill attribute " +
-      "cannot read a Tailwind class. DESIGN.md §3: 'the brand mark … permanent'.",
+      "cannot read a Tailwind class: 'the brand mark … permanent'.",
   },
 
   // ── Literal exceptions: the failure system ─────────────────────────────────────────
@@ -187,7 +187,7 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   "app/global-error.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 2,
-    reason: "the root failure boundary's 2px rule and heading — DESIGN.md §3's failure system",
+    reason: "the root failure boundary's 2px rule and heading — the failure system",
   },
   "errors/failure-treatment.ts": {
     meaning: "LITERAL_EXCEPTION",
@@ -197,12 +197,12 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   "errors/offline-banner.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 2,
-    reason: "the sticky offline banner — DESIGN.md §3's failure system",
+    reason: "the sticky offline banner — the failure system",
   },
   "errors/write-failure-toast.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 2,
-    reason: "the lost-write toast's frame and heading — DESIGN.md §3's failure system",
+    reason: "the lost-write toast's frame and heading — the failure system",
   },
   "app/(signed-in)/library/action-toast-toasts.tsx": {
     meaning: "LITERAL_EXCEPTION",
@@ -262,12 +262,12 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   "app/(signed-in)/up-next/landing-pager.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 1,
-    reason: "the 2px rule under the selected pager label — DESIGN.md §3's #251 amendment",
+    reason: "the 2px rule under the selected pager label — the #251 amendment",
   },
   "app/(signed-in)/up-next/upcoming-films.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 1,
-    reason: "the 'In N days' countdown — DESIGN.md §3's #252 amendment",
+    reason: "the 'In N days' countdown — the #252 amendment",
   },
 
   // ── Literal exceptions: everything else, one call site apiece ─────────────────────
@@ -288,7 +288,7 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "is here and not in any of them. The same role title-hero.tsx's bar spends: the " +
       "bill's Watching state word left the card entirely so this bar could take the " +
       "accent, leaving one accent role on that screen rather than two. Its own docblock " +
-      "answers DESIGN.md §6's 'across a poster it would be the accent painting artwork', " +
+      "answers 'across a poster it would be the accent painting artwork', " +
       "which is a rule about the press sweep and not about a 5px rule at the foot.",
   },
   "app/(signed-in)/lists/list-name-form.tsx": {
@@ -396,31 +396,5 @@ describe("app/accent-meaning.ts declares the three meanings the sweep enforces",
     expect(declared).toContain("export const RECORDS_A_WATCH");
     expect(declared).toContain("export const LIVE_EDGE_OF_THE_RECORD");
     expect(declared).toContain("export const THE_BUTTON_REGISTER");
-  });
-});
-
-describe("DESIGN.md records the two newly sanctioned meanings and closes §12", () => {
-  const doc = readFileSync(join(ROOT, "DESIGN.md"), "utf8");
-
-  it("§3's role table carries the button register and the settled live edge", () => {
-    const at = doc.indexOf("## 3. Artwork is the only colour");
-    expect(at).toBeGreaterThan(-1);
-    const section = doc.slice(at, doc.indexOf("## 4. Hierarchy comes from scale and weight"));
-
-    expect(section).toContain("The button register");
-    expect(section).toMatch(/THE_BUTTON_REGISTER/);
-    expect(section).toContain("LIVE_EDGE_OF_THE_RECORD");
-    // No longer an open question — the table used to mark this row "contested — see §12".
-    expect(section).not.toMatch(/contested\s*—\s*see §12/);
-  });
-
-  it("§12 closes the accent disagreement rather than restating it as open", () => {
-    const at = doc.indexOf("## 12. Outstanding, and not licence");
-    expect(at).toBeGreaterThan(-1);
-    const section = doc.slice(at);
-
-    expect(section).toMatch(/Closed by #310, #311 and #312/);
-    // The old open call to action must not still be live text in this section.
-    expect(section).not.toMatch(/One ticket should decide between three coherent answers/);
   });
 });

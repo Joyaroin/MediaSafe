@@ -5,41 +5,26 @@ single deploy target.
 
 ```bash
 npm install
-./scripts/provision.sh   # writes .env — or hand-write the two lines in the doc below
+./scripts/provision.sh   # writes .env
 npm run db:up
 npm run dev
 ```
 
-Full setup, the container topology and the troubleshooting list are in
-[`docs/local-development.md`](docs/local-development.md).
-
-## The documents
-
-Read them in this order; where two disagree, the higher one wins.
-
-| | |
-| --- | --- |
-| [`SPEC.md`](SPEC.md) | The build spec. Build order, the eight constraints, the v1 boundary. **Start here.** |
-| [`CONTEXT.md`](CONTEXT.md) | The domain language. Binding on every identifier, table name and string on screen. |
-| [`docs/adr/0001-…`](docs/adr/0001-watch-identity-and-derived-state.md) | The schema and what is derived rather than stored. |
-| [`DESIGN.md`](DESIGN.md) | The visual world. Tokens, rules, components. |
-| [`docs/deployment.md`](docs/deployment.md) | Merge to production, previews, CI, and how to roll back. |
-| [`docs/design/v1-surfaces.md`](docs/design/v1-surfaces.md) | The screens. Partly superseded — see `SPEC.md` §10.2. |
-| [`PRODUCT.md`](PRODUCT.md) | Historical. Stale in eight places. Do not build from it. |
-| [`fixtures/README.md`](fixtures/README.md) | The rescued `tvtracker` export — what it holds, what was stripped out of it, and why nothing loads it. |
+`scripts/provision.sh` writes the two lines `.env` needs; `npm run db:up` brings up
+Postgres and the WebSocket proxy in front of it and runs the migrations.
 
 ## The shape of the code
 
 | | |
 | --- | --- |
-| `app/` | The Next.js app. `globals.css` is `DESIGN.md`'s token layer and the only styling that exists. |
+| `app/` | The Next.js app. `globals.css` is the token layer and the only styling that exists. |
 | `db/` | `driver.ts` owns the one driver, `client.ts` the app's pool, `migrate.ts` the migration runner. |
 | `drizzle/` | Generated migrations, committed as plain SQL. Read `drizzle/README.md` before adding one. |
 | `errors/` | The three failure surfaces and the reference id. Read `AGENTS.md` before adding a fourth. |
 | `eslint-rules/` | Local rules. One so far: `no-empty-catch`, which is constraint 2 made mechanical. |
 | `fixtures/` | **The only surviving copy of `tvtracker`'s database**, archived and never loaded. Read [`fixtures/README.md`](fixtures/README.md) before touching it — the `auth` schema was removed and the reasons matter. |
 | `scripts/` | `build.ts` is the deploy build command — the migration is its first half. `provision.sh` is the setup wizard. |
-| `tests/` | Vitest, against a real local Postgres. `tests/e2e/` is the one exception — Playwright, `npm run test:e2e`, run locally only (`docs/local-development.md`). |
+| `tests/` | Vitest, against a real local Postgres. `tests/e2e/` is the one exception — Playwright, `npm run test:e2e`, run locally only. |
 | `vercel.json` | Declares the framework as `nextjs` and the build command. See below — it is load-bearing, not boilerplate. |
 | `.squawk.toml` | squawk, narrowed to the destructive rules. Every exclusion carries its reason. |
 
@@ -56,7 +41,6 @@ project being recreated, rather than leaving it to a dashboard toggle nobody can
 It states the build command for the same reason, and there the stakes are higher: the build
 command's first half is the production migration, and `vercel.json` overrides the dashboard, so
 the migration cannot be dropped out of a deploy by a setting nobody is looking at.
-[`docs/deployment.md`](docs/deployment.md) has the whole path.
 
 ## What is true from the first merge
 
