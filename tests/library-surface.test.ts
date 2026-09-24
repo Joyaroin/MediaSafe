@@ -369,10 +369,9 @@ describe("the filter chips", () => {
     const finishedButton = chipButton(markup, "Finished");
 
     expect(finishedButton).toContain('aria-pressed="true"');
-    // `bg-ink` since the linen redesign, where `--text` became a mid-tone body colour
-    // and full strength moved to `--ink` (`app/globals.css`). The travelling
+    // `bg-text`, the full-strength neutral (`--ink` folded into `--text` in #357). The travelling
     // `layoutId` ground is unchanged in mechanism; it is an `18px`-radius pill now.
-    expect(finishedButton).toContain("bg-ink");
+    expect(finishedButton).toContain("bg-text");
     expect(finishedButton).toContain("text-ground");
     expect(finishedButton).toContain("rounded-[var(--radius-6)]");
   });
@@ -427,9 +426,9 @@ describe("a library cell with no selection provider above it", () => {
   });
 
   it("shows no check badge and no selection ring", () => {
-    // `bg-ink` is the badge's fill and nothing else in a cell uses it — the title is
-    // `text-ink`, which this does not match.
-    expect(plain).not.toContain("bg-ink");
+    // `bg-text` is the badge's fill and nothing else in a cell uses it — the title is
+    // `text-text`, which this does not match.
+    expect(plain).not.toContain("bg-text");
     expect(plain).not.toContain("outline-ink");
   });
 

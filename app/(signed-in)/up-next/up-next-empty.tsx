@@ -25,16 +25,16 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function UpNextEmpty() {
   return (
-    <section className="px-6 py-16 text-center">
+    <section className="px-gutter py-16 text-center">
       <h2 className="bill-title text-bill-lg text-text">You&rsquo;re caught up</h2>
 
       <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
-        Nothing in your library is watching right now. Search the catalogue to start
+        Nothing in your library is watching right now. Search for a show to start
         something new — the moment it&rsquo;s watching, it shows up here.
       </p>
 
-      <Link href="/search" className={`mt-5 inline-block ${SOLID_RECOVERY}`}>
-        Search the catalogue
+      <Link href="/search" className={`mt-5 ${SOLID_RECOVERY}`}>
+        Search films and shows
       </Link>
     </section>
   );

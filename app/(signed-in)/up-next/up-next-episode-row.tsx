@@ -166,7 +166,7 @@ const ROW = "relative flex min-h-[72px] items-center gap-3.5 py-2.5";
 /* #320 turned this row's picture from the episode's still into the title's poster, and
    #318 moved every radius onto the scale. Both, rather than either: the constant is the
    poster's, and the value it carries is the scale's own step for what used to be 8px. */
-const POSTER = "w-[104px] shrink-0 [--poster-radius:var(--radius-2)]";
+const POSTER = "w-[104px] shrink-0 [--poster-radius:var(--radius-1)]";
 
 function RowBody({
   entry,

@@ -518,7 +518,7 @@ function SectionHead({ heading, eyebrow }: { heading: string; eyebrow?: string }
       {eyebrow === undefined ? null : (
         <p className={PROGRAMME_NOTE_EYEBROW}>{eyebrow}</p>
       )}
-      <h3 className={`bill-title text-bill-sm text-ink${eyebrow === undefined ? "" : " mt-1"}`}>
+      <h3 className={`bill-title text-bill-sm text-text${eyebrow === undefined ? "" : " mt-1"}`}>
         {heading}
       </h3>
     </>
@@ -578,7 +578,7 @@ function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) 
             )}
 
             <div className="min-w-0">
-              <p className="truncate text-meta font-medium text-ink">{provider.name}</p>
+              <p className="truncate text-meta font-medium text-text">{provider.name}</p>
               <p className="text-meta text-dim">Stream</p>
             </div>
           </li>
@@ -632,7 +632,7 @@ function CastAndCrewLine({ credit }: { credit: CastAndCrew }) {
                 className="w-full [--poster-radius:var(--radius-5)]"
               />
 
-              <p className="mt-2 truncate text-meta font-medium text-ink">{one.name}</p>
+              <p className="mt-2 truncate text-meta font-medium text-text">{one.name}</p>
 
               {one.character === null ? null : (
                 <p className="truncate text-meta text-dim">{one.character}</p>

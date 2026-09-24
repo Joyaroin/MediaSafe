@@ -238,7 +238,7 @@ function MoreMenu({
             type="button"
             onClick={() => void toggleGiveUp()}
             disabled={pending}
-            className="flex h-11 items-center rounded-[var(--radius-3)] px-3 text-left text-item text-text hover:bg-raised"
+            className="flex h-11 items-center rounded-[var(--radius-1)] px-3 text-left text-item text-text hover:bg-raised"
           >
             {givenUp ? "Resume watching" : "Give up on this show"}
           </button>
@@ -246,7 +246,7 @@ function MoreMenu({
         <Link
           href={`/titles/${libraryEntryId}/remove`}
           aria-label={`Remove ${titleName} from your library`}
-          className="flex h-11 items-center rounded-[var(--radius-3)] px-3 text-item text-danger hover:bg-raised"
+          className="flex h-11 items-center rounded-[var(--radius-1)] px-3 text-item text-danger hover:bg-raised"
         >
           Remove from library
         </Link>
@@ -284,7 +284,7 @@ function FilmUnwatchItem({
         onUnwatched();
         void unwatch();
       }}
-      className="flex h-11 items-center rounded-[var(--radius-3)] px-3 text-left text-item text-text hover:bg-raised"
+      className="flex h-11 items-center rounded-[var(--radius-1)] px-3 text-left text-item text-text hover:bg-raised"
     >
       Mark as not watched
     </button>

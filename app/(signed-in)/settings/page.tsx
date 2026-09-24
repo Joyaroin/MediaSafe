@@ -95,7 +95,7 @@ export default async function SettingsPage() {
 
   return (
     <NavTransition>
-      <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
+      <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
         <SettingsHeading />
 
         <section aria-labelledby="profile-h" className="mt-12 border-t border-hair pt-6">

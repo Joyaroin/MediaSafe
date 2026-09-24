@@ -75,7 +75,7 @@ export function UpcomingRow({
         />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-item text-ink">{episode.titleName}</p>
+          <p className="truncate text-item text-text">{episode.titleName}</p>
 
           {/* The code and the name on one line. Where TMDB has announced the episode
               without naming it the code stands alone rather than being followed by the

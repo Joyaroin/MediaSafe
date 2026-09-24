@@ -99,7 +99,7 @@ describe("the Up next row draws a poster and not a still", () => {
     // `ROW_POSTER_WIDTH`/`POSTER` rather than left beside the new box under a stale name.
     expect(code).not.toMatch(/\bSTILL\b/);
     expect(code).not.toMatch(/\bROW_STILL_WIDTH\b/);
-    expect(code).toMatch(/\[--poster-radius:var\(--radius-2\)\]/);
+    expect(code).toMatch(/\[--poster-radius:var\(--radius-1\)\]/);
   });
 });
 

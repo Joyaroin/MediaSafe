@@ -28,7 +28,7 @@ export default function UpNextReadFailure({
     <main className="flex w-full flex-1 flex-col">
       <UpNextHeading />
 
-      <div className="px-6 py-5">
+      <div className="px-gutter py-5">
         <ReadFailure reference={reference} retry={retry} />
       </div>
     </main>

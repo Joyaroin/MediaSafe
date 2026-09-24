@@ -177,6 +177,6 @@ describe("where it sits on a list", () => {
   it("leaves the hand-order numeral alone — it is not part of the bar", () => {
     // The numeral is `--ink` on the poster's top corner and answers a different question
     // (`list-icon-grid.tsx`); a bar arriving at the other corner must not disturb it.
-    expect(iconGrid()).toContain("bg-ink");
+    expect(iconGrid()).toContain("bg-text");
   });
 });

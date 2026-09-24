@@ -65,7 +65,7 @@ export function FilmGroups({ entries }: { entries: readonly LibraryEntryRow[] })
             {/* The uppercase 11px label register declared as `label-line`,
                 not a bill-title step: these name a region of one screen, and a heading
                 that competes with the 34px screen title would read as four screens. */}
-            <h2 id={headingId} className="label-line px-[22px] text-dim">
+            <h2 id={headingId} className="label-line px-gutter text-dim">
               {heading}
             </h2>
 

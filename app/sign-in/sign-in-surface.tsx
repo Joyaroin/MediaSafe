@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 
-import { IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { SignInFailure } from "@/errors/sign-in-failure";
 import { signInTreatment } from "@/errors/sign-in-treatment";
@@ -125,7 +125,7 @@ export function SignInSurface({
           disabled={inFlight}
           // Buttons: the one primary action on a surface is solid `accent`
           // with `accent-ink` text. There is exactly one action here, so this is it.
-          className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
+          className={`${SOLID_RECOVERY} h-12 px-8 text-bill-xs`}
         >
           {inFlight ? "Taking you to Google" : "Continue with Google"}
         </button>

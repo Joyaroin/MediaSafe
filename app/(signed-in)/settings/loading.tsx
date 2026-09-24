@@ -11,7 +11,7 @@ import { SettingsHeading } from "./settings-heading";
  */
 export default function SettingsLoading() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
+    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
       <SettingsHeading />
 
       <div className="mt-12">

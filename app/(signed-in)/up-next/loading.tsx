@@ -10,7 +10,7 @@ export default function UpNextLoading() {
     <main className="flex w-full flex-1 flex-col">
       <UpNextHeading />
 
-      <div className="px-6 py-5">
+      <div className="px-gutter py-5">
         <PendingLine shape="rail" held />
       </div>
     </main>

@@ -58,7 +58,7 @@ export default async function DeleteAccountPage() {
   const footprint = await accountFootprint(userId);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12 lg:py-16">
+    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
       <DeleteAccountHeading />
 
       <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-text">

@@ -39,7 +39,7 @@ export default function RootFailure({
         {/* Not the read-failure treatment. That one is inline — it replaces a grid and
             leaves the page around it standing. This is the whole page, so it is set as
             one, and the `2px` accent rule sits at the top of the document. */}
-        <main className="mx-auto max-w-3xl border-t-2 border-accent px-6 py-16">
+        <main className="mx-auto max-w-3xl border-t-2 border-accent px-gutter py-16">
           <h1 className="bill-title text-bill-lg text-accent">
             MediaSafe did not start
           </h1>

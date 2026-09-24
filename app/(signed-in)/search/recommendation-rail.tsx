@@ -42,7 +42,7 @@ export async function RecommendationRail({
 
   if (!outcome.ok) {
     return (
-      <section className="px-[22px] pt-8">
+      <section className="px-gutter pt-8">
         {/* A thin client wrapper, because this region is server-rendered and has no
             client-side read to run again — `rail-read-failure.tsx` has the argument for
             why that is a `router.refresh()` rather than a `ReadFailure` without a
@@ -67,7 +67,7 @@ function Rail({ rail }: { rail: Recommendations }) {
           *Because you watched Breaking Bad* as one string wraps to two lines on a narrow
           phone for any title of normal length, and this heading register is a single
           11px line. */}
-      <div className="flex items-baseline justify-between gap-3 px-[22px] pb-3">
+      <div className="flex items-baseline justify-between gap-3 px-gutter pb-3">
         <h2 id="because-you-watched" className="label-line text-accent">
           Because you watched
         </h2>
@@ -76,7 +76,7 @@ function Rail({ rail }: { rail: Recommendations }) {
 
       <ol
         aria-labelledby="because-you-watched"
-        className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-[22px] px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-gutter px-gutter [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {rail.results.map((result, index) => (
           <li
@@ -102,7 +102,7 @@ function Rail({ rail }: { rail: Recommendations }) {
                 aboveFold={index < 2}
               />
 
-              <p className="mt-2 truncate text-meta text-ink">{result.name}</p>
+              <p className="mt-2 truncate text-meta text-text">{result.name}</p>
 
               {/* The **audience score**, which is not your rating — `CatalogueResult`'s
                   own note carries the argument, and the placement is half of it: this

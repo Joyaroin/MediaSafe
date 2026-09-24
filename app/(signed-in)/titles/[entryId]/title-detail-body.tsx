@@ -64,7 +64,7 @@ export async function TitleDetailBody({
       {/* Always on screen, unlike the desktop pane's conditional footer: nothing here
           renders until the mirrored read above has succeeded, so borrowed data is on
           screen the moment there is anything to attribute it on. */}
-      <TmdbAttribution className="mt-4 px-6 py-3" />
+      <TmdbAttribution className="mt-4 px-gutter py-3" />
     </>
   );
 }

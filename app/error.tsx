@@ -39,7 +39,7 @@ export default function ReadFailureBoundary({
   const reference = referenceForBoundary(error);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main className="mx-auto max-w-3xl px-gutter py-16">
       <ReadFailure reference={reference} retry={retry} />
     </main>
   );

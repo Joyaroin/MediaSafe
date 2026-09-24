@@ -108,13 +108,13 @@ export function ListTitleRow({
       </Poster>
 
       <div className="min-w-0 flex-1">
-        {/* `text-ink`, not `text-text` (#255). `bill-title text-bill-md` is a heading
+        {/* `text-text`, not `text-text` (#255). `bill-title text-bill-md` is a heading
             register, and `search-surface.tsx` and `library-filter-bar.tsx` both ink it.
             This row and the phone title sheet's — the two that drew the register as a
             *title over a meta line* — both carried the body colour instead. Two peers
             disagreeing was an oversight rather than a distinction, so both were inked;
             #250 has since deleted the sheet, leaving this row as the only one of the pair. */}
-        <h2 className="bill-title text-bill-md text-ink">{title.name}</h2>
+        <h2 className="bill-title text-bill-md text-text">{title.name}</h2>
         {meta === null ? null : (
           <p className="code-line mt-1 text-dim" data-numeric>
             {meta}

@@ -9,8 +9,8 @@
  */
 export function UpNextHeading() {
   return (
-    <div className="px-[22px] pt-1.5 pb-0.5 lg:px-6">
-      <h1 className="screen-title text-screen text-ink">Up next</h1>
+    <div className="px-gutter pt-1.5 pb-0.5">
+      <h1 className="screen-title text-screen text-text">Up next</h1>
     </div>
   );
 }

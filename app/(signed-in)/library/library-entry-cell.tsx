@@ -168,7 +168,7 @@ export function LibraryEntryCell({
           ragged row rather than one long name.
         */}
         <p
-          className={`mt-2 line-clamp-2 break-words text-item leading-snug font-medium ${abandoned ? "text-dim" : "text-ink"}`}
+          className={`mt-2 line-clamp-2 break-words text-item leading-snug font-medium ${abandoned ? "text-dim" : "text-text"}`}
         >
           {entry.name}
         </p>

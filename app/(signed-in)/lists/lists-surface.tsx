@@ -84,7 +84,7 @@ export function ListsPanel({ initial }: { readonly initial: readonly ListSummary
 
   return (
     <>
-      <div className="px-[22px] pt-[18px]">
+      <div className="px-gutter pt-[18px]">
         <CreateListForm onCreated={onCreated} />
       </div>
 

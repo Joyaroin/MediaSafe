@@ -96,8 +96,8 @@ export function ThemeControl() {
             onClick={() => choose(value)}
             className={
               value === choice
-                ? "flex h-9 items-center rounded-[var(--radius-6)] bg-ink px-4 text-item font-medium text-ground"
-                : "flex h-9 items-center rounded-[var(--radius-6)] bg-raised px-4 text-item font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink"
+                ? "flex h-9 items-center rounded-[var(--radius-6)] bg-text px-4 text-item font-medium text-ground"
+                : "flex h-9 items-center rounded-[var(--radius-6)] bg-raised px-4 text-item font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
             }
           >
             {label}

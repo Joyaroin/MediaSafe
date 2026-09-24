@@ -67,7 +67,7 @@ export function ListDetailBody({
           name: the bar is chrome that every list route shares, and this control belongs to
           the one thing below it. `px-6` is the rows' own gutter, which is what the bar
           above and the attribution below both use. */}
-      <div className="flex items-center justify-end px-6 pb-3">
+      <div className="flex items-center justify-end px-gutter pb-3">
         <ListViewControl value={view} onChange={choose} />
       </div>
 

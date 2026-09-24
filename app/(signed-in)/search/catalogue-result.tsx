@@ -164,7 +164,7 @@ export function CatalogueResultRow({
         posterPath={result.posterPath}
         name={result.name}
         width={52}
-        className="w-[52px] shrink-0 [--poster-radius:var(--radius-3)]"
+        className="w-[52px] shrink-0 [--poster-radius:var(--radius-1)]"
         aboveFold={aboveFold}
       />
 
@@ -183,7 +183,7 @@ export function CatalogueResultRow({
             The **name** rather than the whole row: the row also carries *Add*, and a link
             wrapping a button is neither a valid nesting nor an honest target — a press
             near the edge would have to guess which of the two was meant. */}
-        <h2 className="text-card font-semibold leading-tight tracking-[-0.012em] text-ink">
+        <h2 className="text-bill-xs font-semibold leading-tight tracking-[-0.012em] text-text">
           <Link
             href={`/catalogue/${result.kind}/${result.tmdbId}`}
             className="transition-opacity duration-[var(--dur-fast)] hover:opacity-80"
@@ -267,7 +267,7 @@ export function CatalogueResultRow({
         <Link
           href={`/catalogue/${result.kind}/${result.tmdbId}`}
           aria-label={`${result.name} is in your library — open it`}
-          className="flex h-11 shrink-0 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-ink"
+          className="flex h-11 shrink-0 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
         >
           <CheckmarkIcon className="h-3.5 w-3.5" />
           In your library

@@ -471,7 +471,7 @@ function PagerTabs({
     <div
       role="tablist"
       aria-label="Watching and Coming up"
-      className="relative flex gap-[26px] px-[22px] pt-[18px]"
+      className="relative flex gap-[26px] px-gutter pt-[18px]"
       onKeyDown={onKeyDown}
     >
       {PAGES.map((one, index) => (
@@ -517,7 +517,7 @@ function PagerTabs({
           drawn as an element rather than a border for the reason given above. */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[22px] bottom-0 h-px bg-hair"
+        className="pointer-events-none absolute inset-x-gutter bottom-0 h-px bg-hair"
       />
     </div>
   );

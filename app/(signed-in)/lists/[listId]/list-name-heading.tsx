@@ -111,7 +111,7 @@ export function ListNameHeading({
           autoFocus
           aria-invalid={duplicate}
           aria-describedby={duplicate ? "rename-duplicate" : undefined}
-          className="w-full bg-transparent text-item text-ink focus:outline-none"
+          className="w-full bg-transparent text-item text-text focus:outline-none"
         />
       </label>
       <button type="submit" disabled={pending} className={PRIMARY_BUTTON_COMPACT}>

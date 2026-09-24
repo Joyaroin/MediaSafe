@@ -101,13 +101,13 @@ export function ProgrammeNoteContent({
       />
 
       <div
-        className={`mt-8 grid gap-8 px-[22px] lg:px-10 ${
+        className={`mt-8 grid gap-8 px-gutter lg:px-10 ${
           isShow ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""
         }`}
       >
         {isShow ? (
           <section aria-labelledby="episodes-h" className="min-w-0">
-            <h2 id="episodes-h" className="bill-title text-bill-sm text-ink">
+            <h2 id="episodes-h" className="bill-title text-bill-sm text-text">
               Episodes
             </h2>
             <ProgrammeNoteEpisodes
@@ -124,7 +124,7 @@ export function ProgrammeNoteContent({
         <div className="flex min-w-0 flex-col gap-2">{facts}</div>
       </div>
 
-      <div className="mt-10 border-t border-hair px-[22px] pt-6 lg:px-10">
+      <div className="mt-10 border-t border-hair px-gutter pt-6 lg:px-10">
         <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
       </div>
     </div>

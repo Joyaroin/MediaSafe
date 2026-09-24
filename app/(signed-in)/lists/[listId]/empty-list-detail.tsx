@@ -6,11 +6,11 @@
  */
 export function EmptyListDetail() {
   return (
-    <section className="px-6 py-16 text-center">
+    <section className="px-gutter py-16 text-center">
       <h2 className="bill-title text-bill-lg text-text">Nothing here yet</h2>
 
       <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
-        Open anything from the catalogue and choose &ldquo;Add to list&rdquo; to put it
+        Open any title and choose &ldquo;Add to list&rdquo; to put it
         here.
       </p>
     </section>

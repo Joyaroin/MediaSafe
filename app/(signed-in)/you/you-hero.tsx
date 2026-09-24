@@ -34,7 +34,7 @@ export function YouHero({
   const initials = initialsFrom(displayName);
 
   return (
-    <section className="flex items-center gap-4 px-[22px] pt-5 pb-2 lg:px-10 lg:pt-7">
+    <section className="flex items-center gap-4 px-gutter pt-5 pb-2 lg:px-10 lg:pt-7">
       {avatarUrl === null ? (
         /**
          * The fallback, and the reason `--raised` is the right ground for it: turn 9 puts
@@ -73,7 +73,7 @@ export function YouHero({
         />
       )}
 
-      <p className="min-w-0 truncate text-bill-md font-medium text-ink">{displayName}</p>
+      <p className="min-w-0 truncate text-bill-md font-medium text-text">{displayName}</p>
     </section>
   );
 }

@@ -62,8 +62,8 @@
    Two things it is still not, and both were decided against on purpose:
 
    - **Not the selected tab.** The handoff draws the active tab in the accent and then
-     names the alternative itself — *if that reservation must hold, use `--ink` instead;
-     the design still reads correctly* — and `--ink` is what `tab-bar.tsx` uses. The tab
+     names the alternative itself — *if that reservation must hold, use the full-strength neutral
+     instead* — and `--text` is what `tab-bar.tsx` uses. The tab
      bar is the only chrome on all four screens, so an accent there is the one spend that
      is never off-screen, and a Watching label two centimetres above a permanently
      vermilion tab is a signal competing with wallpaper. Turn 9's own closing note
@@ -115,7 +115,7 @@
   --hair: oklch(86.9% 0.012 95);
   --text: oklch(32.3% 0.008 95);
   --dim: oklch(52.8% 0.010 95);
-  --accent: oklch(47.4% 0.166 30);
+  --accent: oklch(47.4% 0.166 35);
   --accent-ink: oklch(96.9% 0.012 95);
   /* The destructive action's colour — issue #357. A red a step cooler than the accent and
      never a fill at rest, so Remove cannot be mistaken for the primary action. */
@@ -160,21 +160,11 @@
      handoff's three names resolve to; there is no `bg-well`, `text-body` or
      `border-rule-soft` to reach for, deliberately. */
 
-  /* ── The heading step, re-derived rather than dropped ────────────────────────────────
-     `--ink` is the one token the handoff replaces nothing for, and adopting its table
-     unchanged would have quietly broken it. The old `--text` was `#59584e` — ~6:1 on
-     `--raised`, correct for a metadata line and thin for a 34px heading — so `--ink` sat a
-     step below it at `#3d3c35`. The handoff's `--text` is `#34342f`, which is **darker than
-     that old heading token**. Keeping `#3d3c35` would have rendered every heading in the app
-     lighter than the body text beneath it: an inverted hierarchy on every screen, and the
-     one failure mode this token exists to prevent.
-
-     So the value is re-derived below the new primary rather than the token being retired.
-     It is 15.1:1 on `--ground` against `--text`'s 11.5:1 — a 1.32× step, narrower than the
-     old 1.55× because the new body colour is itself far stronger and a proportional step
-     would have landed on near-black. Restated in `oklch()` by #327 alongside every other
-     token here, its lightness position is unchanged. */
-  --ink: oklch(23.8% 0.006 95);
+  /* ── No separate heading step — issue #357 ──────────────────────────────────────────
+     There was an `--ink` a step darker than `--text` for headings. In dark the two were the
+     same value, and the code used them interchangeably, so it is gone: headings and body
+     share `--text`, which is 11.5:1 on the light ground. Weight and size carry the
+     hierarchy. */
 
   /* ── The phone tab bar's height, and why it is declared here ──────────────────────
      `44px` cell + `8px` top padding + `22px` bottom padding + the `1px` `hair` top
@@ -207,15 +197,6 @@
      instead and the brick character is kept. The higher contrast amber offered was never the
      reason it was chosen in the first place.
 
-     `--dark-ink` is still not a redesign of anything, and the reasoning is unchanged by the
-     restatement: `--ink` is declared on `:root`, so without a dark value it would carry the
-     light value into dark too and paint every heading near-black on a near-black ground. In
-     dark `--text` is already the brightest neutral on the sheet, so there is no
-     darker-than-body step to give a heading, and `--ink` is declared equal to `--text` —
-     same value, so `text-ink` means *full strength for a heading* in both schemes rather
-     than meaning nothing in one of them. Equal is not lighter, which is the property this
-     token protects.
-
      **Why the dark palette is a named set rather than a second `:root` block.** There are
      two ways to be in dark — the system asked, or the reader answered — and they are two
      different selectors that cannot share one declaration block, because one of them lives
@@ -232,7 +213,6 @@
   --dark-accent: oklch(75% 0.153 35);
   --dark-accent-ink: oklch(13.9% 0.004 95);
   --dark-danger: oklch(72% 0.15 22);
-  --dark-ink: oklch(96.3% 0.006 95);
 }
 
 /* ── The three theme states ──────────────────────────────────────────────────────────
@@ -263,7 +243,6 @@
     --accent: var(--dark-accent);
     --accent-ink: var(--dark-accent-ink);
     --danger: var(--dark-danger);
-    --ink: var(--dark-ink);
   }
 }
 
@@ -278,7 +257,6 @@
   --accent: var(--dark-accent);
   --accent-ink: var(--dark-accent-ink);
   --danger: var(--dark-danger);
-  --ink: var(--dark-ink);
 }
 
 /* The reader answered *Light*. The colours need no rule — `:root`'s own values are
@@ -336,7 +314,6 @@
   --color-dim: var(--dim);
   /* Headings, title names and filled-field text — one step darker than `--text` in
      light, identical to it in dark. See `:root` above for why it exists at all. */
-  --color-ink: var(--ink);
   /* The one reserved accent: recording a watch, and nothing else. */
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
@@ -348,60 +325,32 @@
   --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   --font-text: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
 
-  /* ── The bill's type ramp ───────────────────────────────────────
-     Five display steps and three text steps. Nine sizes total, and
-     nothing off-ramp: a bill is set from a case of known sizes, and
-     an arbitrary rem value is the tell that no case exists. The ninth
-     is the code line's `0.75rem`, baked into its utility because the
-     code line is one size everywhere.
+  /* ── The type scale — one scale, issue #357 ────────────────────
+     Every size the app sets text at, largest first, in `rem` so a
+     reader who raises their browser's base size gets larger text
+     everywhere rather than only on the surfaces one of two scales
+     happened to cover. There used to be two: a `rem` ramp for titles
+     and prose, and a `px` register beside it with two sizes the ramp
+     already held (`--text-card` was `--text-bill-xs`, `--text-tile`
+     was `--text-note` to within a fifth of a pixel). The duplicates
+     are gone and the rest are here once, at the same size they were
+     at the default 16px base.
 
-     Each token declares a font size and NOTHING else — there is no
-     paired `--text-*--line-height`. That separation is what lets one
-     size serve both a name and a plain running line.
-
-     Re-cut in this change: the five display steps came down by about a
-     third, and the three text steps went up slightly. The old ramp was
-     drawn for condensed 900 caps, where a name is a graphic element and
-     wants to be enormous. Set in sentence case at `wdth 85 / wght 700`
-     the same size stops reading as a poster and starts reading as a
-     shout, so the case change and the re-cut are one decision, not two. */
-  --text-bill-xl: 2.4rem; /* the programme note's title          */
-  --text-bill-lg: 1.9rem; /* phone hero, full-surface headlines  */
-  --text-bill-md: 1.45rem; /* a bill entry, inline headlines      */
+     Each token declares a font size and nothing else — no paired
+     line height — so one size can serve a name and a running line. */
+  --text-bill-xl: 2.4rem; /* a title's own page                  */
+  --text-screen: 2.125rem; /* the four destinations' titles       */
+  --text-bill-lg: 1.9rem; /* hero and full-surface headlines     */
+  --text-bill-md: 1.45rem; /* inline headlines                    */
   --text-bill-sm: 1.2rem; /* section heads, row titles, toast    */
-  --text-bill-xs: 1rem; /* wordmark, compact row titles        */
+  --text-row: 1.0625rem; /* library cell title                  */
+  --text-bill-xs: 1rem; /* compact titles, search field, cards */
   --text-note: 0.95rem; /* synopsis and running prose          */
   --text-item: 0.875rem; /* episode names, metadata, fields     */
+  --text-meta: 0.8125rem; /* year, count, meta line, quiet links */
   --text-fine: 0.75rem; /* attribution and legal notices       */
-
-  /* ── The linen register ─────────────────────────────────────────
-     The redesign's own scale, one token per row of the handoff's type
-     table. It sits *beside* the bill ramp above rather than replacing
-     it: the bill ramp still sets the programme note, the sign-in
-     surface, Settings and every other surface turn 9 did not draw, and
-     re-cutting it to hit these seven sizes would restyle all of them
-     to serve four screens.
-
-     They are declared in `px` and not `rem`, which is the one place
-     this file's own no-arbitrary-values rule needed a decision rather
-     than an application. The handoff calls the scale final and gives
-     it in px; the geometry it has to line up with — a 44px field, a
-     32px chip, a 66px poster — is in px for the hit-target reasons
-     that make 44 the number it is. A 34px title beside a 44px hit
-     target that both shift when a reader changes their browser's base
-     size is a layout nobody drew, so the register is pinned the way
-     the measures it sits inside already are.
-
-     The two steps the bill ramp already holds exactly are not
-     re-declared: body at 14px is `--text-item`, and there is no eighth
-     token here for it. */
-  --text-screen: 34px; /* the four screen titles              */
-  --text-row: 17px; /* library cell title                  */
-  --text-card: 16px; /* search result and list row title    */
-  --text-tile: 15px; /* Up next tile name, filled fields    */
-  --text-meta: 13px; /* year, count, meta line, quiet links */
-  --text-label: 11px; /* the label register — see `label-line` */
-  --text-tab: 10px; /* tab bar labels, and nothing else    */
+  --text-label: 0.6875rem; /* the label register — see `label-line` */
+  --text-tab: 0.625rem; /* tab bar labels, and nothing else    */
 
   /* The bill had no rounded corners and no drop shadows — depth was surface layering and
      hairlines, and this was zeroed deliberately rather than skipped.
@@ -439,14 +388,19 @@
      `--poster-radius` and `--still-radius` keep their names below rather than being
      replaced by a class. */
   --radius-none: 0px;
+  /* One small corner, not three: 8, 9 and 10px could not be told apart on screen, so
+     `--radius-1` and `--radius-1` folded into this step (issue #357). */
   --radius-1: 8px;
-  --radius-2: 9px;
-  --radius-3: 10px;
   --radius-4: 12px;
   --radius-5: 16px;
   --radius-6: 18px;
   --radius-7: 24px;
   --radius-full: 9999px;
+
+  /* The page gutter — issue #357. One side padding for every surface, where there were two
+     (a hard-coded 22px on the redesigned screens and Tailwind's 24px on the rest). Declared
+     as a spacing step so `px-gutter`, `-mx-gutter` and `scroll-pl-gutter` all read it. */
+  --spacing-gutter: 22px;
 
   --tracking-code: 0.005em;
 
@@ -733,7 +687,7 @@
   box-shadow: inset 0 0 0 1px var(--color-hair);
 
   &:focus-within {
-    box-shadow: inset 0 0 0 2px var(--color-ink);
+    box-shadow: inset 0 0 0 2px var(--color-text);
   }
 }
 
@@ -762,7 +716,7 @@
    dark — see the note beside them for why a poster needs the stronger value and a card does
    not. */
 @utility plate-line {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);
 }
 
 /* The app's static chrome, at the one blur radius §5's repaint reasoning allows.
@@ -1158,7 +1112,7 @@
      poster call site, the way `border-radius` above already reads a property instead of
      asking each call site to add a class. Overridden for dark just below, to the poster
      ring — one ring per element, always, never both. */
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);
 }
 
 /* The still (#253) — the frame at the top of an episode's page, over the `still_path`
@@ -1200,17 +1154,17 @@
   border-radius: var(--still-radius, var(--radius-1));
   /* The plate line's light-scheme default, `.poster`'s own note above and the reason
      restated rather than repeated: two crops of one treatment, not two treatments. */
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);
 }
 
 /* ── The dark poster ring — issue #330 ───────────────────────────────────────────────
-   In dark, 9% ink mixed against near-black is invisible — `--ink` is `--dark-ink` there,
+   In dark, 9% text mixed against near-black is invisible — `--text` is `--dark-text` there,
    the brightest neutral on the sheet, so the plate line above would need to seat a poster
    by drawing 9% of *light* into a *dark* corner, which the eye reads as nothing at all.
    What actually seats a white-background poster into a dark sheet is the stronger value:
    `--hair`, full strength, not mixed. So dark does not darken the plate line — it replaces
    it outright, on exactly the two artwork utilities above and nothing else. A raised
-   container's plate line is untouched by this block, because `--ink` flips to the bright
+   container's plate line is untouched by this block, because `--text` flips to the bright
    neutral automatically and 9% of it reads correctly on a dark card without any override —
    the ring is artwork's own exception, not a second dark palette rule.
 

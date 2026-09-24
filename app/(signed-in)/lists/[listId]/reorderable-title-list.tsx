@@ -218,7 +218,7 @@ export function ReorderableTitleList({
         {announcement}
       </div>
 
-      <ul className="px-6">
+      <ul className="px-gutter">
         {order.map((title, index) => {
           const shift = shiftFor(index, dragState, hoverIndex);
           const style: CSSProperties | undefined =

@@ -9,9 +9,9 @@
  * the rest.
  *
  * No padding wrapper, unlike `library-heading.tsx`: `page.tsx`'s own `<main>` already
- * carries the `px-[22px] pt-5` gutter that `loading.tsx` and `error.tsx` reuse verbatim, so
+ * carries the `px-gutter pt-5` gutter that `loading.tsx` and `error.tsx` reuse verbatim, so
  * a second copy here would double it.
  */
 export function SearchHeading() {
-  return <h1 className="screen-title text-screen text-ink">Search</h1>;
+  return <h1 className="screen-title text-screen text-text">Search</h1>;
 }

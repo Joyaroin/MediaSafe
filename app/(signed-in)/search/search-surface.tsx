@@ -225,7 +225,7 @@ function SearchField({
         placeholder={label}
         autoComplete="off"
         aria-label={label}
-        className="w-full bg-transparent text-card text-ink placeholder:text-dim focus:outline-none"
+        className="w-full bg-transparent text-bill-xs text-text placeholder:text-dim focus:outline-none"
       />
     </label>
   );
@@ -242,7 +242,7 @@ function InFlight() {
 function NoResults({ query }: { query: string }) {
   return (
     <section className="arrive mx-auto max-w-[60ch] py-10 text-center">
-      <h2 className="bill-title text-bill-md text-ink">Nothing by that name</h2>
+      <h2 className="bill-title text-bill-md text-text">Nothing by that name</h2>
       <p className="mt-4 text-item leading-relaxed text-dim">
         No film or show matches &ldquo;{query}&rdquo;. Try fewer words, or the name it was
         released under.
@@ -256,7 +256,7 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
     <div className="flex flex-col gap-8">
       {groups.map((group) => (
         <section key={group.kind} aria-labelledby={`search-${group.kind}-h`}>
-          <h2 id={`search-${group.kind}-h`} className="mb-3 text-bill-sm font-semibold text-ink">
+          <h2 id={`search-${group.kind}-h`} className="mb-3 text-bill-sm font-semibold text-text">
             {group.label}
           </h2>
           {group.state.kind === "failed" ? (

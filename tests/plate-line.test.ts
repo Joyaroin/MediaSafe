@@ -54,7 +54,7 @@ function utilityBody(name: string): string {
 }
 
 const PLATE_LINE_DECLARATION =
-  "box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 9%, transparent);";
+  "box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);";
 const POSTER_RING_DECLARATION = "box-shadow: inset 0 0 0 1px var(--color-hair);";
 
 describe("the plate line is a call-site expression, not a token", () => {
@@ -67,12 +67,12 @@ describe("the plate line is a call-site expression, not a token", () => {
   });
 
   it("appears exactly three times in the stylesheet: the utility, and .poster/.still's own default", () => {
-    const hits = [...CSS_CODE.matchAll(/box-shadow:\s*inset 0 0 0 1px color-mix\(in oklab, var\(--color-ink\) 9%, transparent\);/g)];
+    const hits = [...CSS_CODE.matchAll(/box-shadow:\s*inset 0 0 0 1px color-mix\(in oklab, var\(--color-text\) 9%, transparent\);/g)];
     expect(hits).toHaveLength(3);
   });
 
   it("field-well does not carry it — the field's own inset ring is the focus indicator", () => {
-    expect(utilityBody("field-well")).not.toContain("color-mix(in oklab, var(--color-ink) 9%, transparent)");
+    expect(utilityBody("field-well")).not.toContain("color-mix(in oklab, var(--color-text) 9%, transparent)");
   });
 });
 
@@ -165,6 +165,7 @@ const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number
   { file: "app/(signed-in)/you/you-heading.tsx", count: 1, reason: "the Settings button, a control rather than a container" },
   { file: "app/buttons.ts", count: 1, reason: "the secondary button, a control rather than a container" },
   { file: "app/(signed-in)/library/title-actions.tsx", count: 3, reason: "menu items, raised only on hover" },
+  { file: "app/(signed-in)/library/watch-menu.tsx", count: 1, reason: "a menu item, raised only on hover" },
 ];
 
 /** `you-list-card.tsx` carries both a must-carry and an exempt site, so a file's

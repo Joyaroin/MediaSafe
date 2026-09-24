@@ -53,7 +53,7 @@ export default async function ListDetailPage({
       )}
 
       {detail.titles.length === 0 ? null : (
-        <TmdbAttribution className="mt-4 px-6 py-3" />
+        <TmdbAttribution className="mt-4 px-gutter py-3" />
       )}
     </main>
   );

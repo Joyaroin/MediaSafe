@@ -34,7 +34,7 @@ export default function YouReadFailure({
     <main className="flex w-full flex-1 flex-col">
       <YouHeading />
 
-      <div className="px-6 lg:px-10">
+      <div className="px-gutter lg:px-10">
         <ReadFailure reference={reference} retry={retry} />
       </div>
     </main>

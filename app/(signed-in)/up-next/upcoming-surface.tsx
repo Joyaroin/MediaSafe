@@ -116,11 +116,11 @@ function UpcomingEpisodes({
 
   return (
     <section className="pt-[26px]">
-      <div className="px-[22px] pb-1">
+      <div className="px-gutter pb-1">
         <h2 className="label-line text-accent">Upcoming episodes</h2>
       </div>
 
-      <ul className="stagger-rise mt-2.5 flex flex-col gap-2 px-[22px]">
+      <ul className="stagger-rise mt-2.5 flex flex-col gap-2 px-gutter">
         {episodes.map((episode) => (
           <UpcomingRow key={episode.episodeId} episode={episode} today={today} />
         ))}

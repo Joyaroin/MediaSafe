@@ -159,16 +159,8 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   },
   "app/buttons.ts": {
     meaning: "THE_BUTTON_REGISTER",
-    tokens: 2,
+    tokens: 1,
     reason: "the primary button — issue #357's one solid main action per surface",
-  },
-  "errors/recovery-buttons.ts": {
-    meaning: "THE_BUTTON_REGISTER",
-    tokens: 10,
-    reason:
-      "GHOST_RECOVERY/_COMPACT and SOLID_RECOVERY/_COMPACT — #311's migration. The ghost " +
-      "pair's border-accent and hover:bg-accent/hover:text-accent-ink are the register's " +
-      "own literal companions: AccentMeaning has no hover-prefixed form to reach for.",
   },
   "app/(signed-in)/library/watch-mark-motion.tsx": {
     meaning: "RECORDS_A_WATCH",
@@ -388,13 +380,11 @@ describe("every accent use in the shipping tree is classified, and no others", (
 
 describe("comments are blanked before matching, so prose about the accent cannot pass or fail the sweep", () => {
   it("does not count a token merely quoted inside a comment", () => {
-    // `errors/recovery-buttons.ts`'s own docblock (line 63) names `text-accent`/`bg-accent`
-    // in backticks a few lines above the real declarations. Unstripped, this file would
-    // report 13 tokens rather than the 10 the manifest holds it to.
-    const stripped = code(source("errors/recovery-buttons.ts"));
-    expect(stripped).not.toContain("`text-accent`");
+    // `app/buttons.ts`'s docblock talks about the accent in prose; only its one real
+    // declaration — the primary button's `THE_BUTTON_REGISTER.solid` — may count.
+    const stripped = code(source("app/buttons.ts"));
     expect([...stripped.matchAll(ACCENT_TOKEN)]).toHaveLength(
-      ACCENT_CALL_SITES["errors/recovery-buttons.ts"].tokens,
+      ACCENT_CALL_SITES["app/buttons.ts"].tokens,
     );
   });
 

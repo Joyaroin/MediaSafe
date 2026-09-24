@@ -70,7 +70,7 @@ export async function Masthead() {
       // Held still while the content slides beneath it during a tab change — the same
       // anchoring `tab-bar.tsx` gets, and `globals.css` has the reason both need it.
       style={{ viewTransitionName: "phone-masthead" }}
-      className="sticky top-0 z-30 flex items-center justify-between gap-3 frosted px-[22px] pt-[18px] pb-1 lg:hidden"
+      className="sticky top-0 z-30 flex items-center justify-between gap-3 frosted px-gutter pt-[18px] pb-1 lg:hidden"
     >
       {/* The mark at 15px, its bar in the accent, and the wordmark as the label register
           in `--dim` — turn 9's own head row. */}

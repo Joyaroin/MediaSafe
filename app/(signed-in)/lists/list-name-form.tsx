@@ -150,7 +150,7 @@ export function ListNameForm({
             disabled={inFlight}
             placeholder="Name a new list"
             autoComplete="off"
-            className={`bg-transparent text-tile text-ink placeholder:text-dim focus:outline-none ${inputClassName}`}
+            className={`bg-transparent text-note text-text placeholder:text-dim focus:outline-none ${inputClassName}`}
           />
         </div>
 

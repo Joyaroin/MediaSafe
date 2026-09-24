@@ -1,4 +1,5 @@
-import { IN_FLIGHT } from "@/errors/recovery-buttons";
+import { THE_BUTTON_REGISTER } from "./accent-meaning";
+import { IN_FLIGHT } from "./button-states";
 
 /**
  * The three kinds of button — issue #357.
@@ -23,8 +24,8 @@ const BASE = `inline-flex shrink-0 items-center justify-center gap-2 rounded-[va
 const REGULAR = "h-11 min-w-11 px-5 text-item";
 const COMPACT = "h-9 min-w-9 px-3.5 text-meta";
 
-const PRIMARY = "bg-accent text-accent-ink hover:brightness-95";
-const SECONDARY = "bg-raised text-text hover:text-ink";
+const PRIMARY = `${THE_BUTTON_REGISTER.solid} hover:brightness-95`;
+const SECONDARY = "bg-raised text-text hover:text-text";
 const DESTRUCTIVE = "border border-danger text-danger hover:bg-danger hover:text-ground";
 
 export const PRIMARY_BUTTON = `${BASE} ${REGULAR} ${PRIMARY}`;

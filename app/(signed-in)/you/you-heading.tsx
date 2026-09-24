@@ -30,15 +30,15 @@ export const YOU_HEADING_ID = "you-heading";
 
 export function YouHeading() {
   return (
-    <div className="flex items-center justify-between gap-3 px-[22px] pt-5 lg:px-10">
-      <h1 id={YOU_HEADING_ID} className="screen-title text-screen text-ink">
+    <div className="flex items-center justify-between gap-3 px-gutter pt-5 lg:px-10">
+      <h1 id={YOU_HEADING_ID} className="screen-title text-screen text-text">
         You
       </h1>
       {/* Settings lives here now, not in the masthead or the sidebar: the navigation
           carries only the four destinations, and everything about your account is You. */}
       <Link
         href="/settings"
-        className="flex h-11 items-center gap-2 rounded-[var(--radius-full)] bg-raised px-4 text-item font-medium text-text transition-colors duration-[var(--dur-fast)] hover:text-ink"
+        className="flex h-11 items-center gap-2 rounded-[var(--radius-full)] bg-raised px-4 text-item font-medium text-text transition-colors duration-[var(--dur-fast)] hover:text-text"
       >
         <SettingsIcon className="h-4 w-4" />
         Settings

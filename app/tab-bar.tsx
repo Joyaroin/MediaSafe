@@ -136,7 +136,7 @@ const TABS = DESTINATIONS.map(({ href, label }) => ({
  * either a hover tint that no longer fades or a compression that no longer eases, which
  * is the press broken outright. This bar is `lg:hidden`, so the tint it drops is a hover
  * fade on a surface that only exists where there is no pointer to hover with; the press
- * it keeps is what a finger gets. `hover:text-ink` still applies, instantly.
+ * it keeps is what a finger gets. `hover:text-text` still applies, instantly.
  */
 const TAB = "pressable [--press-register:1] flex h-11 flex-col items-center justify-center gap-1";
 
@@ -235,7 +235,7 @@ export function TabBar() {
             // gesture. Every other tab's `<Link>` is exactly what it was before this
             // ticket.
             onClick={href === "/up-next" ? onUpNextLinkClick : undefined}
-            className={`${TAB} ${current ? "text-ink" : "text-dim hover:text-ink"}`}
+            className={`${TAB} ${current ? "text-text" : "text-dim hover:text-text"}`}
           >
             <Icon className={TAB_ICON} />
             <span className={TAB_LABEL}>{label}</span>

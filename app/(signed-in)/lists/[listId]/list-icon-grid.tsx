@@ -127,7 +127,7 @@ function IconCell({
               about where something sits in a list*. `tab-bar.tsx` made the same call for
               the same reason. */}
           <span
-            className="code-line absolute top-1.5 left-1.5 min-w-5 rounded-[var(--radius-full)] bg-ink px-1.5 py-0.5 text-center text-ground"
+            className="code-line absolute top-1.5 left-1.5 min-w-5 rounded-[var(--radius-full)] bg-text px-1.5 py-0.5 text-center text-ground"
             data-numeric
           >
             {title.position}

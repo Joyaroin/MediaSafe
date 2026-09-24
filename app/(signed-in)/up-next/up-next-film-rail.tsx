@@ -80,7 +80,7 @@ function FilmRow({
           posterPath={film.posterPath}
           name={film.titleName}
           width={POSTER_WIDTH}
-          className="w-12 shrink-0 transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-2)]"
+          className="w-12 shrink-0 transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-1)]"
           aboveFold={aboveFold}
         />
 

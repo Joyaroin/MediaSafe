@@ -99,12 +99,12 @@ export async function UnownedTitleBody({
           }
         />
 
-        <div className="mt-6 flex flex-col gap-8 px-[22px] lg:px-10">
+        <div className="mt-6 flex flex-col gap-8 px-gutter lg:px-10">
           <LiveTitleFactsStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
 
           {detail.kind === "show" ? (
             <section aria-labelledby="episodes-h" className="min-w-0">
-              <h2 id="episodes-h" className="bill-title text-bill-sm text-ink">
+              <h2 id="episodes-h" className="bill-title text-bill-sm text-text">
                 Episodes
               </h2>
               <UnownedEpisodes kind={detail.kind} episodes={detail.episodes} />
@@ -113,7 +113,7 @@ export async function UnownedTitleBody({
         </div>
       </div>
 
-      <TmdbAttribution className="mt-4 px-6 py-3" />
+      <TmdbAttribution className="mt-4 px-gutter py-3" />
     </>
   );
 }

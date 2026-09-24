@@ -6,14 +6,14 @@ import { RememberedTrack } from "./remembered-rail";
  * measures.
  *
  * Extracted rather than copied for the reason that file gave and #250 inherits: **the
- * gutters are load-bearing on each other.** `scroll-pl-[22px]` against the track's own
- * `px-[22px]` is what stops the first card of every rail parking under the page gutter,
+ * gutters are load-bearing on each other.** `scroll-pl-gutter` against the track's own
+ * `px-gutter` is what stops the first card of every rail parking under the page gutter,
  * and a second copy of that pairing is a second rail that snaps wrong. The two rails this
  * ticket builds hold different cards at different widths and share exactly this.
  *
  * ── The gutter is the page's, which is what *snap to the page gutter* means ──────────
  *
- * `22px`, matching `up-next-heading.tsx`'s `px-[22px]`, so a card's leading edge sits
+ * `22px`, matching `up-next-heading.tsx`'s `px-gutter`, so a card's leading edge sits
  * directly under the *Tonight* the reader is reading. The track carries the gutter rather
  * than the `<section>` precisely so it can bleed to the viewport edges — which is what
  * lets the trailing card be cut by the edge, and that overhang is the whole of *leave the
@@ -71,7 +71,7 @@ export function RailSection({
           apart because they sit in different places: a heading above a track, a control in
           a card's last row. What would violate the rule is a third — an accent badge, tile
           or state label alongside either. */}
-      <div className="px-[22px] pb-3">
+      <div className="px-gutter pb-3">
         <h2 className="label-line text-accent">{label}</h2>
       </div>
 
@@ -81,7 +81,7 @@ export function RailSection({
           under, which is why this component needs no second prop to say which rail it is. */}
       <RememberedTrack
         rail={label}
-        className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-[22px] px-[22px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-gutter px-gutter [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </RememberedTrack>

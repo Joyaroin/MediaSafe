@@ -147,7 +147,7 @@ export default async function UpNextPage() {
         <div className="hidden lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-6 lg:pr-4">
           <div className="min-w-0">{watching}</div>
           <div className="min-w-0">
-            <h2 className="px-[22px] pt-[26px] text-bill-sm font-semibold text-ink">Coming up</h2>
+            <h2 className="px-gutter pt-[26px] text-bill-sm font-semibold text-text">Coming up</h2>
             {comingUp}
           </div>
         </div>

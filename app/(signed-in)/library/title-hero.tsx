@@ -62,7 +62,7 @@ export function TitleHero({
     <section className="relative">
       <HeroBackdrop posterPath={posterPath} />
 
-      <div className="relative flex items-end gap-5 px-[22px] pt-20 lg:gap-8 lg:px-10 lg:pt-36">
+      <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
           className="w-[108px] shrink-0 lg:w-[200px]"
           style={
@@ -92,7 +92,7 @@ export function TitleHero({
             <p className="text-meta text-dim">{status.note}</p>
           )}
 
-          <h1 className="bill-title text-bill-lg text-ink lg:text-bill-xl">{name}</h1>
+          <h1 className="bill-title text-bill-lg text-text lg:text-bill-xl">{name}</h1>
 
           {meta === null ? null : (
             <p className="text-meta text-dim" data-numeric>
@@ -106,7 +106,7 @@ export function TitleHero({
         </div>
       </div>
 
-      <div className="relative mt-5 flex flex-col gap-5 px-[22px] lg:px-10 lg:pl-[272px]">
+      <div className="relative mt-5 flex flex-col gap-5 px-gutter lg:px-10 lg:pl-[272px]">
         <div className="flex flex-wrap items-center gap-3">{actions}</div>
         {synopsis}
       </div>

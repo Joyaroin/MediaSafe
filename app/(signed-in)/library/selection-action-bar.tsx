@@ -205,7 +205,7 @@ export function SelectionActionBar() {
         // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
         // treatment and the space the layout reserves* a fact about one string instead
         // of a claim about two. The row inside it is this bar's own.
-        className={`selection-action-bar-transition ${PHONE_BAR} items-center gap-2 px-[22px]`}
+        className={`selection-action-bar-transition ${PHONE_BAR} items-center gap-2 px-gutter`}
       >
         {/* Polite, not assertive: the count changes on every tap and this is the
             reader's own running total, not news about something that went wrong. */}

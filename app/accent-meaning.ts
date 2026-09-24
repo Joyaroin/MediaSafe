@@ -6,8 +6,8 @@
  * Seven surfaces were found painting `--accent` for a reason `app/globals.css`'s
  * own rule never named, and traced them to three coherent answers rather than one: the
  * accent has never meant only *recording a watch* — it has also meant *this is where the
- * record currently stands* and *this control lives in the register #195 moved fourteen of
- * them onto* — and nothing before this file said either of those out loud. **A call site
+ * record currently stands* and *this is the main action on the surface* (the primary
+ * button, since issue #357) — and nothing before this file said either of those out loud. **A call site
  * that reaches for `text-accent` or `bg-accent` directly is not wrong about the colour; it
  * is silent about which of the three reasons it is allowed to.** That silence is what let a
  * select caret and two dialog frames spend the same token on a fourth, unstated reason
@@ -100,13 +100,11 @@ export const LIVE_EDGE_OF_THE_RECORD: AccentMeaning = meaning(
 );
 
 /**
- * The third meaning: issue #195 moved fourteen controls onto the accent as their shared
- * register (the Buttons subsection), overriding two files' own prior *never
- * accent* reasoning in the open. `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`/
- * `SOLID_RECOVERY` and their compact variants are this meaning's `ink`/`solid` today.
- * Migrated onto this constant by issue #311, rendering exactly as before — the fourteen
- * controls this describes are unchanged, only the declaration is.
+ * The third meaning: the primary button. Issue #195 once put fourteen controls on the
+ * accent as a shared register; issue #357 narrowed it to the one main action on a surface
+ * (`app/buttons.ts`'s `PRIMARY_BUTTON`), so the accent says *this is the thing to do* and
+ * every other button is neutral.
  */
 export const THE_BUTTON_REGISTER: AccentMeaning = meaning(
-  "this is one of the fourteen controls #195 moved onto the accent as their shared register, not a state and not a fresh write",
+  "this is the primary button — the one main action on a surface (issue #357), not a state and not a fresh write",
 );

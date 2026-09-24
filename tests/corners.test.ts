@@ -58,9 +58,7 @@ const CSS_CODE = stripComments(CSS);
  */
 const RATCHET: { readonly token: string; readonly value: string; readonly was: string }[] = [
   { token: "--radius-none", value: "0px", was: "0 — unchanged, the floor" },
-  { token: "--radius-1", value: "8px", was: "7 — the poster/still default" },
-  { token: "--radius-2", value: "9px", was: "8 — the film rail poster, the Up next still" },
-  { token: "--radius-3", value: "10px", was: "9 — the search result poster" },
+  { token: "--radius-1", value: "8px", was: "7 — the poster/still default, and since #357 the 9px and 10px steps too" },
   { token: "--radius-4", value: "12px", was: "10 — the Up next tile, library cell and list posters" },
   { token: "--radius-5", value: "16px", was: "12 — the field well and four more posters" },
   { token: "--radius-6", value: "18px", was: "16 — rounded-2xl, on every card" },
@@ -192,5 +190,12 @@ describe("the check can fail", () => {
     expect(
       rawRadiusIn(stripComments("// was rounded-full\nconst x = 1;")),
     ).toEqual([]);
+  });
+});
+
+describe("the small corner is one step — issue #357", () => {
+  it("declares no 9px or 10px step beside the 8px one", () => {
+    expect(CSS_CODE).not.toMatch(/--radius-2:/);
+    expect(CSS_CODE).not.toMatch(/--radius-3:/);
   });
 });

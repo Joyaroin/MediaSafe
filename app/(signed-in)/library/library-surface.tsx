@@ -210,13 +210,13 @@ function LibraryTabs({
             aria-pressed={selected}
             onClick={() => onChange(view.value)}
             className={`relative flex h-9 flex-1 items-center justify-center rounded-[var(--radius-full)] text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
-              selected ? "text-ground" : "text-dim hover:text-ink"
+              selected ? "text-ground" : "text-dim hover:text-text"
             }`}
           >
             {selected ? (
               <m.span
                 layoutId="library-view"
-                className="absolute inset-0 rounded-[var(--radius-full)] bg-ink"
+                className="absolute inset-0 rounded-[var(--radius-full)] bg-text"
                 transition={snappy}
               />
             ) : null}
