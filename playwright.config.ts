@@ -41,8 +41,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  // CI keeps the concise line output for the log and an HTML report on disk for
-  // `.github/workflows/e2e.yml`'s artifact upload.
+  // Under `CI`, the concise line output for the log and an HTML report on disk. No
+  // workflow runs this suite any more; this branch only applies when `CI` is set by hand.
   reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
 
   use: {
