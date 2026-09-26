@@ -43,11 +43,15 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
   k3s. There is no NodeBalancer: k3s's built-in ServiceLB binds 80 and 443 on the VM's own
   public IP. k3s's bundled Traefik is disabled (`--disable traefik`), so Argo CD installs and
   owns Traefik like everything else.
+- **Secrets at rest.** k3s is installed with `--secrets-encryption`. Without it, k3s keeps every
+  Kubernetes Secret, including each one External Secrets copies out of Vault, unencrypted in
+  its datastore on the VM's disk.
 - **One VM, knowingly.** A VM failure or reboot is a full outage, and Vault comes back sealed.
   k3s upgrades are ours to run; nothing replaces the node for us.
 - **Terraform state.** Kept in a private Cloudflare R2 bucket through the S3 backend. The state
   holds the kubeconfig in plaintext and Terraform has no state encryption, so the R2 token
-  lives only in the password manager.
+  lives only in the password manager. That bucket is **created by hand**: Terraform can't
+  create the bucket its own state lives in.
 - **DNS.** Cloudflare A records for the root, `staging.` and `argocd.` hosts, pointing at the
   VM's public IP. Cloudflare proxy is off so cert-manager's HTTP-01 challenge works.
 - **Vault's disk.** A 10 GB Linode Block Storage volume, attached by Terraform, mounted on the
@@ -57,7 +61,10 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
   app-of-apps.
 - **Vault configuration.** A second Terraform root, run over `kubectl port-forward`, manages the
   KV v2 mount, the Kubernetes auth roles, per-environment policies and Google OIDC login. It never
-  manages secret values.
+  manages secret values. Its first apply runs with the root token, and creates the admin policy
+  and the Google login. After that it runs with the token from `vault login -method=oidc`, and
+  the root token is revoked. The admin OIDC client secret still lands in its state, because the
+  OIDC login config has to carry it.
 
 ### GitOps
 
@@ -69,7 +76,11 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
   to change the cluster.
 - **Argo CD UI.** Public at `argocd.<domain>`, signed in with Google OIDC (native, no Dex) and
   restricted to Adham's email. It uses its own Google OAuth client, separate from the app's
-  sign-in client.
+  sign-in client. It goes public only **after Vault exists** (stage 5), because its OIDC client
+  secret comes from Vault through External Secrets. Until then it's reached by port-forward.
+- **Argo CD's access to the gitops repo.** A read-only deploy key on `mediasafe-gitops`, added
+  as Argo CD's repository credential at bootstrap. CI writes to that repo with a separate
+  fine-grained PAT (see Delivery).
 
 ### Delivery
 
@@ -155,7 +166,9 @@ time, so staging's browser errors are tagged the same as prod's.
   shares a listener with the whole API, so it is never routed publicly.
 - **Unseal and root token.** Initialised with `-key-shares=1 -key-threshold=1`, and the unseal
   key is kept in the password manager. Linode has no KMS, so there's no auto-unseal: every pod
-  restart needs a manual unseal. The root token is revoked after bootstrap.
+  restart needs a manual unseal. The root token is revoked after bootstrap, but only once the
+  Google admin login has been shown to work. If that login breaks later,
+  `vault operator generate-root` makes a new root token from the unseal key.
 - **Secret values.** Entered by hand with `vault kv put`, never through Terraform (they would
   land in state in plaintext) and never through git.
 - **Backup.** A nightly `vault operator raft snapshot save` CronJob writes to Cloudflare R2. The
@@ -232,11 +245,13 @@ time, so staging's browser errors are tagged the same as prod's.
    `.github/workflows/image.yml`: on every push to `main` it pushes
    `ghcr.io/joyaroin/mediasafe:<sha>` (amd64, no attestations) and keeps the newest ten
    versions. It first runs when the branch merges, so pulling from GHCR is not yet verified.
-2. **Infrastructure.** Terraform creates the R2 state bucket, the VM (k3s via cloud-init) and
-   the Vault volume.
+2. **Infrastructure.** The R2 state bucket is created by hand. Terraform then creates the VM
+   (k3s via cloud-init, with `--secrets-encryption`), the Vault volume and the Cloudflare
+   records.
 3. **GitOps bootstrap.** Argo CD, the root Application and the `mediasafe-gitops` repo.
-4. **Ingress and TLS.** Traefik, cert-manager, the Cloudflare records and public Argo CD.
-5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested.
+4. **Ingress and TLS.** Traefik and cert-manager.
+5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo
+   CD made public with Google sign-in.
 6. **Staging app.**
 7. **NetworkPolicies.**
 8. **Prod on k3s, beside Vercel.**
