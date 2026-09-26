@@ -2,7 +2,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Produces the minimal server bundle copied into the production container.
+  output: "standalone",
 };
 
 /**

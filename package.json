@@ -49,6 +49,7 @@
     "auth": "^1.6.30",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "squawk-cli": "2.62.0",

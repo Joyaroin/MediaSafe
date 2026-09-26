@@ -1,0 +1,12 @@
+.git
+.next
+node_modules
+coverage
+playwright-report
+test-results
+tests/e2e/.auth
+.env*
+*.log
+.DS_Store
+.vercel
+dist

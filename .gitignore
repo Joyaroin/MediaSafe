@@ -51,3 +51,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Every other .env variant too; the example is the one meant to be committed (see above).
+.env*
+!.env.example
