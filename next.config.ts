@@ -1,9 +1,25 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+/**
+ * Everywhere but Vercel, the cache lives in Valkey (`cache-handler.mjs`), so a
+ * `revalidateTag` on one pod is seen by every pod. Vercel keeps its own shared cache.
+ *
+ * Decided at build time because it has to be: the standalone server runs with the config
+ * `next build` serialised, not with this file.
+ */
+const sharedCache: Partial<NextConfig> = process.env.VERCEL
+  ? {}
+  : {
+      cacheHandler: require.resolve("./cache-handler.mjs"),
+      // A per-pod copy in front of Valkey would bring back the disagreement it removes.
+      cacheMaxMemorySize: 0,
+    };
+
 const nextConfig: NextConfig = {
   // Produces the minimal server bundle copied into the production container.
   output: "standalone",
+  ...sharedCache,
 };
 
 /**
