@@ -21,9 +21,13 @@ COPY . .
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
+# The commit SHA, which Sentry cannot find here: `.git` is not in the build context. Used
+# for the source-map upload and the browser bundle; the runner sets it again below.
+ARG SENTRY_RELEASE
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     SENTRY_ORG=$SENTRY_ORG \
-    SENTRY_PROJECT=$SENTRY_PROJECT
+    SENTRY_PROJECT=$SENTRY_PROJECT \
+    SENTRY_RELEASE=$SENTRY_RELEASE
 
 # The source-map upload token is a BuildKit secret, never an ARG: build args are recorded in
 # the image history. Absent, `withSentryConfig` skips the upload and the build still passes.
@@ -47,6 +51,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+
+# The server SDK reads the release at run time, so it matches the source maps uploaded above.
+ARG SENTRY_RELEASE
+ENV SENTRY_RELEASE=$SENTRY_RELEASE
 
 RUN groupadd --system --gid 1001 nextjs \
   && useradd --system --uid 1001 --gid nextjs nextjs

@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stage 0 of 10 implemented
+- **Status:** Accepted, stages 0–1 implemented
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -228,7 +228,10 @@ time, so staging's browser errors are tagged the same as prod's.
 
 0. **Get the app ready for containers.** ✅ Done on `infra-migration`: the production image,
    the bundled migrator, the Valkey cache handler and its CI test, and the env docs.
-1. **Build and push the image.** A GitHub Actions workflow on `main` pushes to GHCR.
+1. **Build and push the image.** ✅ Written on `infra-migration` as
+   `.github/workflows/image.yml`: on every push to `main` it pushes
+   `ghcr.io/joyaroin/mediasafe:<sha>` (amd64, no attestations) and keeps the newest ten
+   versions. It first runs when the branch merges, so pulling from GHCR is not yet verified.
 2. **Infrastructure.** Terraform creates the R2 state bucket, the VM (k3s via cloud-init) and
    the Vault volume.
 3. **GitOps bootstrap.** Argo CD, the root Application and the `mediasafe-gitops` repo.
