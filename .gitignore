@@ -55,3 +55,9 @@ yarn-error.log*
 # Every other .env variant too; the example is the one meant to be committed (see above).
 .env*
 !.env.example
+
+# terraform — providers and plans are local; the lock file is committed.
+.terraform/
+*.tfplan
+*.tfstate
+*.tfstate.*

@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–1 implemented
+- **Status:** Accepted, stages 0–1 implemented, stage 2 written but not applied
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -48,10 +48,20 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
   its datastore on the VM's disk.
 - **One VM, knowingly.** A VM failure or reboot is a full outage, and Vault comes back sealed.
   k3s upgrades are ours to run; nothing replaces the node for us.
-- **Terraform state.** Kept in a private Cloudflare R2 bucket through the S3 backend. The state
-  holds the kubeconfig in plaintext and Terraform has no state encryption, so the R2 token
-  lives only in the password manager. That bucket is **created by hand**: Terraform can't
-  create the bucket its own state lives in.
+- **Terraform state.** Kept in a private Cloudflare R2 bucket through the S3 backend, with
+  `use_lockfile` locking. That bucket is **created by hand**: Terraform can't create the bucket
+  its own state lives in. R2 has no bucket versioning, so state backups are taken by hand
+  (`infra/terraform/README.md`). The kubeconfig is **not** in state: `fetch-kubeconfig` copies
+  it over SSH to the laptop, so the state never holds cluster-admin credentials.
+- **Where the code lives.** `infra/terraform/` in this repo, run through `./tf`, which loads
+  the Linode, Cloudflare and R2 tokens from Bitwarden into that one process's environment.
+- **Region and access.** `us-iad` (Washington DC), next to Neon's `aws-us-east-1`, on Ubuntu
+  24.04. A Linode Cloud Firewall allows 80/443 from anywhere and SSH/6443 only from the
+  laptop's current IP. Unattended security upgrades are on; automatic reboots are off, because
+  a reboot seals Vault.
+- **Rebuilds.** Changing cloud-init, the image or the SSH key replaces the VM. That is
+  intended: the cluster is rebuilt from git, and Vault's volume is reattached and mounted
+  without formatting (`lifecycle { prevent_destroy = true }` guards it).
 - **DNS.** Cloudflare A records for the root, `staging.` and `argocd.` hosts, pointing at the
   VM's public IP. Cloudflare proxy is off so cert-manager's HTTP-01 challenge works.
 - **Vault's disk.** A 10 GB Linode Block Storage volume, attached by Terraform, mounted on the
@@ -234,7 +244,9 @@ time, so staging's browser errors are tagged the same as prod's.
 
 ## Unverified at time of writing
 
-- Whether Terraform's S3 backend state locking (`use_lockfile`) works on Cloudflare R2.
+- Whether Terraform's S3 backend state locking (`use_lockfile`) works on Cloudflare R2. R2
+  supports the conditional write it uses, but neither vendor documents the combination.
+- Whether Neon's project is in `aws-us-east-1`; `us-iad` is only the right region if so.
 - ingress-nginx's current retirement status (it is not used either way).
 
 ## Rollout
@@ -245,9 +257,11 @@ time, so staging's browser errors are tagged the same as prod's.
    `.github/workflows/image.yml`: on every push to `main` it pushes
    `ghcr.io/joyaroin/mediasafe:<sha>` (amd64, no attestations) and keeps the newest ten
    versions. It first runs when the branch merges, so pulling from GHCR is not yet verified.
-2. **Infrastructure.** The R2 state bucket is created by hand. Terraform then creates the VM
-   (k3s via cloud-init, with `--secrets-encryption`), the Vault volume and the Cloudflare
-   records.
+2. **Infrastructure.** ✅ Written as `infra/terraform/`, validated, and the volume-mount
+   script tested against empty, reattached, foreign and missing disks. **Not applied yet**: it
+   needs the domain, the R2 state bucket and three tokens (`infra/terraform/README.md`).
+   Two checks happen at first apply: that R2 locking blocks a second plan, and that the API
+   certificate covers the public IP.
 3. **GitOps bootstrap.** Argo CD, the root Application and the `mediasafe-gitops` repo.
 4. **Ingress and TLS.** Traefik and cert-manager.
 5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo
