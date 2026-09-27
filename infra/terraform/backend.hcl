@@ -11,7 +11,7 @@ key    = "infra/terraform.tfstate"
 region = "auto"
 
 endpoints = {
-  s3 = "https://REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
+  s3 = "https://e611254754d8c1922b8ead788aab6f40.r2.cloudflarestorage.com"
 }
 
 # R2 is S3-compatible, not AWS: none of AWS's own checks apply.
