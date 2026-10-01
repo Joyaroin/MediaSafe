@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–1 implemented, stage 2 written but not applied
+- **Status:** Accepted, stages 0–2 implemented (stage 2 applied 2026-10-01)
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -244,8 +244,6 @@ time, so staging's browser errors are tagged the same as prod's.
 
 ## Unverified at time of writing
 
-- Whether Terraform's S3 backend state locking (`use_lockfile`) works on Cloudflare R2. R2
-  supports the conditional write it uses, but neither vendor documents the combination.
 - Whether Neon's project is in `aws-us-east-1`; `us-iad` is only the right region if so.
 - ingress-nginx's current retirement status (it is not used either way).
 
@@ -257,11 +255,11 @@ time, so staging's browser errors are tagged the same as prod's.
    `.github/workflows/image.yml`: on every push to `main` it pushes
    `ghcr.io/joyaroin/mediasafe:<sha>` (amd64, no attestations) and keeps the newest ten
    versions. It first runs when the branch merges, so pulling from GHCR is not yet verified.
-2. **Infrastructure.** ✅ Written as `infra/terraform/`, validated, and the volume-mount
-   script tested against empty, reattached, foreign and missing disks. **Not applied yet**: it
-   needs the domain, the R2 state bucket and three tokens (`infra/terraform/README.md`).
-   Two checks happen at first apply: that R2 locking blocks a second plan, and that the API
-   certificate covers the public IP.
+2. **Infrastructure.** ✅ Applied 2026-10-01 from `infra/terraform/`: VM `mediasafe-node`
+   at 139.144.213.62, the 10 GB Vault volume mounted at `/mnt/vault-data`, k3s
+   `v1.36.4+k3s1` Ready with secrets encryption on and no bundled Traefik, and the three
+   Cloudflare records resolving. Verified: R2 state locking blocks a concurrent plan, and
+   `kubectl` reaches the API over the public IP without a `tls-san` change.
 3. **GitOps bootstrap.** Argo CD, the root Application and the `mediasafe-gitops` repo.
 4. **Ingress and TLS.** Traefik and cert-manager.
 5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo

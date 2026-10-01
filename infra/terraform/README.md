@@ -51,10 +51,12 @@ ssh root@$(./tf output -raw ip_address) findmnt /mnt/vault-data    # the volume,
 kubectl get nodes                                                    # mediasafe  Ready
 ```
 
-Two things the design relies on that nobody has documented, checked here once:
+Two things the design relies on that nobody has documented. Both passed on 2026-10-01; rerun them
+after a Terraform or k3s upgrade:
 
-- **State locking on R2.** Start `./tf apply` and leave it at the prompt; in a second terminal
-  `./tf plan` must fail with *Error acquiring the state lock*. If it doesn't, locking is not
-  working and two applies must never overlap.
+- **State locking on R2.** Start `./tf apply -var vault_volume_size=11` (a plain apply with no
+  changes never stops to prompt, so it never holds the lock) and leave it at the prompt; in a
+  second terminal `./tf plan` must fail with *Error acquiring the state lock*. Answer `no` in
+  the first. Unlocking Bitwarden in the second terminal stales the first one's `BW_SESSION`.
 - **The API certificate covers the public IP.** `kubectl get nodes` above succeeding is the
   check. A TLS error naming the IP means `tls-san` has to be added to the k3s config.
