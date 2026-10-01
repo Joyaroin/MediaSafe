@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–2 implemented (stage 2 applied 2026-10-01)
+- **Status:** Accepted, stages 0–2 implemented (stage 2 applied 2026-10-01), stage 3 in progress
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -66,9 +66,13 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
   VM's public IP. Cloudflare proxy is off so cert-manager's HTTP-01 challenge works.
 - **Vault's disk.** A 10 GB Linode Block Storage volume, attached by Terraform, mounted on the
   host and given to Vault as a local PersistentVolume. It survives the VM being rebuilt.
-- **Argo CD bootstrap.** Terraform `helm_release` installs Argo CD once, together with a single
-  root Application. From then on Argo manages everything, including its own chart, through
-  app-of-apps.
+- **Argo CD bootstrap.** A script, `bootstrap/install` in the gitops repo, installs Argo CD
+  once per cluster: it renders the chart version and values that `apps/argocd.yaml` names,
+  adds the repository credential from Bitwarden, and applies a single root Application. From
+  then on Argo manages everything, including its own chart, through app-of-apps. *Revised
+  2026-10-01:* the first draft had Terraform install it, but the VM is rebuilt from scratch
+  whenever cloud-init changes, and Terraform state describing in-cluster objects would then
+  describe a cluster that no longer exists. The script keeps no state.
 - **Vault configuration.** A second Terraform root, run over `kubectl port-forward`, manages the
   KV v2 mount, the Kubernetes auth roles, per-environment policies and Google OIDC login. It never
   manages secret values. Its first apply runs with the root token, and creates the admin policy
@@ -78,10 +82,15 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
 
 ### GitOps
 
-- **Repository.** A separate repo, `Joyaroin/mediasafe-gitops`, holds:
+- **Repository.** A separate private repo, `Joyaroin/mediasafe-gitops`, holds:
+  - `apps/`: one plain `Application` file per thing that runs (no ApplicationSet);
+  - `platform/<name>/`: values for the platform charts — Argo CD, then Vault, External
+    Secrets Operator, cert-manager, Traefik and Valkey;
   - `charts/mediasafe`, with `values-staging.yaml` and `values-prod.yaml`;
-  - the app-of-apps `Application`s;
-  - the platform charts: Vault, External Secrets Operator, cert-manager, Traefik and Valkey.
+  - `bootstrap/`: the install script and the root Application.
+- **Argo CD's footprint.** Dex, notifications and the ApplicationSet controller are off: sign-in
+  is native Google OIDC, nothing sends notifications, and plain Applications need no
+  ApplicationSet controller.
 - **Sync policy.** Every Application is automated, with prune and selfHeal. Git is the only way
   to change the cluster.
 - **Argo CD UI.** Public at `argocd.<domain>`, signed in with Google OIDC (native, no Dex) and
@@ -260,7 +269,9 @@ time, so staging's browser errors are tagged the same as prod's.
    `v1.36.4+k3s1` Ready with secrets encryption on and no bundled Traefik, and the three
    Cloudflare records resolving. Verified: R2 state locking blocks a concurrent plan, and
    `kubectl` reaches the API over the public IP without a `tls-san` change.
-3. **GitOps bootstrap.** Argo CD, the root Application and the `mediasafe-gitops` repo.
+3. **GitOps bootstrap.** 🔄 `mediasafe-gitops` created and pushed, with the bootstrap
+   scripts and a temporary smoke app. Done when a commit reaches the cluster, a hand edit is
+   reverted, and removing the smoke app removes its namespace.
 4. **Ingress and TLS.** Traefik and cert-manager.
 5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo
    CD made public with Google sign-in.
