@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–2 implemented (stage 2 applied 2026-10-01), stage 3 in progress
+- **Status:** Accepted, stages 0–3 implemented (applied 2026-10-01)
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -269,9 +269,12 @@ time, so staging's browser errors are tagged the same as prod's.
    `v1.36.4+k3s1` Ready with secrets encryption on and no bundled Traefik, and the three
    Cloudflare records resolving. Verified: R2 state locking blocks a concurrent plan, and
    `kubectl` reaches the API over the public IP without a `tls-san` change.
-3. **GitOps bootstrap.** 🔄 `mediasafe-gitops` created and pushed, with the bootstrap
-   scripts and a temporary smoke app. Done when a commit reaches the cluster, a hand edit is
-   reverted, and removing the smoke app removes its namespace.
+3. **GitOps bootstrap.** ✅ Done 2026-10-01. Argo CD v3.5.3 is installed by
+   `bootstrap/install` and manages itself through `apps/argocd.yaml`. Verified with a smoke
+   app: a commit reached the cluster in under 4 minutes (Argo's polling interval; there is no
+   webhook), a hand edit was reverted in 2 seconds, and deleting the app from git removed it
+   and its namespace. A namespace is only removed if it is tracked as a manifest: Argo never
+   deletes one it merely auto-created with `CreateNamespace=true`.
 4. **Ingress and TLS.** Traefik and cert-manager.
 5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo
    CD made public with Google sign-in.
