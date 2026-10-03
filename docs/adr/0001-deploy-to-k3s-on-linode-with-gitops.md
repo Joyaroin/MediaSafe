@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–3 implemented (applied 2026-10-01)
+- **Status:** Accepted, stages 0–4 implemented
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -169,8 +169,16 @@ time, so staging's browser errors are tagged the same as prod's.
   still reads `process.env`. Each namespace has its own `SecretStore` and Vault role, so staging
   cannot read prod's secrets. The GHCR pull secret is a `read:packages` token in Vault, rendered
   by ESO as a `dockerconfigjson` Secret.
-- **Ingress.** Traefik implements Gateway API. cert-manager issues Let's Encrypt certificates via
-  HTTP-01.
+- **Ingress.** Traefik (chart 41.6.1, v3.7.13) implements Gateway API v1.6.1, the version it is
+  built against. One Gateway, `gateway/public`, has a plain-HTTP listener and one HTTPS listener
+  per hostname. cert-manager (v1.21.2) issues each listener's Let's Encrypt certificate from
+  the Gateway's `cert-manager.io/cluster-issuer` annotation, answering HTTP-01 through the
+  plain-HTTP listener. Everything else on HTTP gets a 301 to HTTPS; the challenge routes win
+  because an Exact path match outranks the redirect's prefix. No ACME contact email.
+  - Traefik's Service uses `externalTrafficPolicy: Local`, so the app sees the visitor's real
+    IP, which Better Auth's rate limiting keys on.
+  - Traefik's chart CRDs are skipped (`skipCrds`): its 25 Hub and IngressRoute CRDs were unused
+    and cost about 475 MiB of API-server memory.
 - **NetworkPolicies.** Default-deny in each namespace, enforced by k3s's built-in network-policy
   controller, with explicit allows:
   - gateway → app;
@@ -275,7 +283,17 @@ time, so staging's browser errors are tagged the same as prod's.
    webhook), a hand edit was reverted in 2 seconds, and deleting the app from git removed it
    and its namespace. A namespace is only removed if it is tracked as a manifest: Argo never
    deletes one it merely auto-created with `CreateNamespace=true`.
-4. **Ingress and TLS.** Traefik and cert-manager.
+4. **Ingress and TLS.** ✅ Done 2026-10-02. Verified from outside: HTTP→HTTPS 301 keeping the
+   path, browser-trusted production certificates for all three hostnames, and the client's
+   real IP reaching the backend. Notes from doing it:
+   - Argo CD's sync waves only order *creation* unless Applications get a health check;
+     `platform/argocd/values.yaml` adds the one from Argo's docs, so a wave now waits for the
+     last to be Healthy.
+   - Certificates were issued from Let's Encrypt staging first, then switched to production.
+   - With `skipCrds`, Argo stopped rendering Traefik's CRDs but did not prune them: they had no
+     tracking annotation. They were deleted by hand once, after checking none held objects.
+   - After that cleanup and a `k3s` restart, `k3s-server` dropped from 1.33 GB to 851 MiB; the
+     node has about 2.2 GB available.
 5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo
    CD made public with Google sign-in.
 6. **Staging app.**
