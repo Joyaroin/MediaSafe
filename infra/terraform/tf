@@ -24,7 +24,14 @@ bw unlock --check --session "$BW_SESSION" >/dev/null 2>&1 || {
 }
 
 # Bitwarden login items, named exactly like this. See README.md for the scope of each.
-secret() { bw get "$1" "$2" --session "$BW_SESSION"; }
+# The CLI reads a local copy of the vault: without a sync, an item added in the app is "Not found."
+bw sync --session "$BW_SESSION" >/dev/null
+secret() { # field item
+  bw get "$1" "$2" --session "$BW_SESSION" 2>/dev/null || {
+    echo "Bitwarden has no login item named exactly '$2' with a $1 set. Names must match character for character." >&2
+    exit 1
+  }
+}
 LINODE_TOKEN="$(secret password mediasafe/linode-token)"
 CLOUDFLARE_API_TOKEN="$(secret password mediasafe/cloudflare-token)"
 AWS_ACCESS_KEY_ID="$(secret username mediasafe/r2-terraform-state)"
