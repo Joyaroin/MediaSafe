@@ -77,8 +77,9 @@ Prices are from Akamai's North America pricing page, read 2026-09-26.
   KV v2 mount, the Kubernetes auth roles, per-environment policies and Google OIDC login. It never
   manages secret values. Its first apply runs with the root token, and creates the admin policy
   and the Google login. After that it runs with the token from `vault login -method=oidc`, and
-  the root token is revoked. The admin OIDC client secret still lands in its state, because the
-  OIDC login config has to carry it.
+  the root token is revoked. The admin OIDC client secret goes through the provider's write-only
+  `oidc_client_secret_wo` from an ephemeral variable, so it reaches Vault but never the state
+  or a plan file (Terraform 1.11+). Rotating it means bumping `oidc_client_secret_wo_version`.
 
 ### GitOps
 

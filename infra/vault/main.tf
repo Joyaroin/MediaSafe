@@ -131,8 +131,12 @@ resource "vault_jwt_auth_backend" "google" {
   description        = "Google sign-in for the admin."
   oidc_discovery_url = "https://accounts.google.com"
   oidc_client_id     = var.google_admin_client_id
-  oidc_client_secret = var.google_admin_client_secret
   default_role       = "admin"
+
+  # Write-only: sent to Vault, never stored in this stack's state or plan. To rotate the secret,
+  # update it in Bitwarden and increment the version — the only way Terraform knows to resend it.
+  oidc_client_secret_wo         = var.google_admin_client_secret
+  oidc_client_secret_wo_version = 1
 
   tune {
     # Offer it on the UI's sign-in page.

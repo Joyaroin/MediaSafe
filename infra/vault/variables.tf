@@ -10,7 +10,8 @@ variable "google_admin_client_id" {
 }
 
 variable "google_admin_client_secret" {
-  description = "Its secret. Lands in this stack's state, because Vault's OIDC config must hold it (ADR 0001)."
+  description = "Its secret. Ephemeral and passed only to a write-only argument, so it reaches Vault but never state or a plan file."
   type        = string
   sensitive   = true
+  ephemeral   = true
 }
