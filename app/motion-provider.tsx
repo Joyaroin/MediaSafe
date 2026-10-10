@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 import { ownsPointer, releasePops, type PressEnd } from "./gesture-rules";
 import { smooth } from "./motion";
-import { usePosterTilt } from "./poster-tilt";
+import { flattenTilt, usePosterTilt } from "./poster-tilt";
 
 /**
  * One `MotionConfig` at the root, for one reason each — and one `LazyMotion` around it,
@@ -185,6 +185,7 @@ function usePressMarks(): void {
 
     function onPointerDown(event: PointerEvent): void {
       clearPop();
+      flattenTilt();
       if (!event.isPrimary) return;
 
       const element = pressableUnder(event.target);

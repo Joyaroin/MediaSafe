@@ -33,7 +33,7 @@ export function PosterLink({
   return (
     <Link
       href={`/titles/${libraryEntryId}`}
-      onClick={() => carryPoster(libraryEntryId, posterPath)}
+      onClick={(event) => carryPoster(libraryEntryId, posterPath, event.currentTarget)}
       className={className}
     >
       {children}

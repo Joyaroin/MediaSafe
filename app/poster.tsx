@@ -51,6 +51,7 @@ export function Poster({
   className,
   aboveFold = false,
   children,
+  placeholderSrc = null,
 }: {
   /** TMDB's `poster_path`, or `null` when TMDB has no artwork for this title. */
   posterPath: string | null;
@@ -95,9 +96,22 @@ export function Poster({
    * and a control here would be a target sitting on top of whatever the poster is inside.
    */
   children?: ReactNode;
+  /**
+   * An image already on screen elsewhere, drawn as this box's background until the
+   * artwork's own (usually larger) file has loaded — the title hero's, so a poster that
+   * morphs in from a list lands on a picture rather than on an empty box (UI overhaul).
+   */
+  placeholderSrc?: string | null;
 }) {
   return (
-    <div className={`poster ${className}`}>
+    <div
+      className={`poster ${className}`}
+      style={
+        placeholderSrc
+          ? { backgroundImage: `url("${placeholderSrc}")`, backgroundSize: "cover" }
+          : undefined
+      }
+    >
       {posterPath === null ? null : (
         /**
          * `alt=""` and `aria-hidden`, because the poster is never the only place the

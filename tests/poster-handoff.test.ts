@@ -7,6 +7,7 @@ import {
   NOTHING_CARRIED,
   carry,
   posterFor,
+  shownFor,
   type Carried,
 } from "@/app/poster-handoff";
 
@@ -115,4 +116,21 @@ describe("the carried poster is session-scoped", () => {
       expect(memoryCode).not.toContain(store);
     },
   );
+});
+
+/**
+ * The image the pressed poster was showing — UI overhaul. The hero draws it underneath its
+ * own larger file so the morph never lands on an empty box.
+ */
+describe("the shown image travels with the poster", () => {
+  it("is carried for the entry it was pressed on, and only that entry", () => {
+    const carried = carry("entry-1", "/severance.jpg", "https://image.tmdb.org/t/p/w92/severance.jpg");
+    expect(shownFor(carried, "entry-1")).toBe("https://image.tmdb.org/t/p/w92/severance.jpg");
+    expect(shownFor(carried, "entry-2")).toBeNull();
+    expect(shownFor(NOTHING_CARRIED, "entry-1")).toBeNull();
+  });
+
+  it("is nothing when the pressed poster had not loaded", () => {
+    expect(shownFor(carry("entry-1", "/severance.jpg"), "entry-1")).toBeNull();
+  });
 });

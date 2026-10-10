@@ -17,6 +17,19 @@ const FINE_HOVER = "(hover: hover) and (pointer: fine)";
 /** Degrees at the poster's edge. Enough to read as depth, not enough to read as a card trick. */
 const MAX_TILT = 7;
 
+/** Set while the hook is mounted; `flattenTilt` calls it. */
+let flatten: (() => void) | null = null;
+
+/**
+ * Flatten the tilted poster **instantly** — called from `motion-provider.tsx`'s one
+ * `pointerdown` listener (the app keeps exactly one; `tests/press-spring.test.ts`). A press
+ * is usually a navigation and the poster is what the morph carries, so the snapshot it
+ * starts from has to be the poster's own shape, not a tilted, enlarged one mid-way back.
+ */
+export function flattenTilt(): void {
+  flatten?.();
+}
+
 export function usePosterTilt(): void {
   useEffect(() => {
     if (!window.matchMedia(FINE_HOVER).matches) return;
@@ -57,11 +70,22 @@ export function usePosterTilt(): void {
       rest();
     }
 
+    function onPress(): void {
+      cancelAnimationFrame(frame);
+      const poster = current;
+      if (poster === null) return;
+      poster.style.transition = "none";
+      rest();
+      requestAnimationFrame(() => poster.style.removeProperty("transition"));
+    }
+
     document.addEventListener("pointermove", onPointerMove, { passive: true });
+    flatten = onPress;
     document.documentElement.addEventListener("pointerleave", onLeave);
     window.addEventListener("blur", onLeave);
     return () => {
       document.removeEventListener("pointermove", onPointerMove);
+      flatten = null;
       document.documentElement.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("blur", onLeave);
       onLeave();

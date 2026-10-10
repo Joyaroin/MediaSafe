@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Poster, posterSrc } from "@/app/poster";
-import { HERO_POSTER_MEASURE } from "./hero-poster-measure";
+import { posterSrc } from "@/app/poster";
+import { HeroPoster } from "./hero-poster";
 
 /**
  * The head of a title's page — issue #357 — shared by a title you own and one you do not.
@@ -31,6 +31,7 @@ export function TitleHero({
   name,
   posterPath,
   posterTransitionName,
+  libraryEntryId,
   status,
   meta,
   progress,
@@ -41,6 +42,8 @@ export function TitleHero({
   posterPath: string | null;
   /** The poster morph's name, when a surface opened this page with one. */
   posterTransitionName?: string;
+  /** The entry this hero is for — what `HeroPoster` reads the carried image by. */
+  libraryEntryId?: string;
   /** Where the title stands, as a pill — owned titles only. */
   status?: {
     readonly label: string;
@@ -65,20 +68,14 @@ export function TitleHero({
 
       <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
-          className={HERO_POSTER_MEASURE}
+          className="shrink-0"
           style={
             posterTransitionName === undefined
               ? undefined
               : { viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }
           }
         >
-          <Poster
-            posterPath={posterPath}
-            name={name}
-            width={200}
-            className="w-full shadow-[0_24px_48px_rgb(0_0_0/0.35)] [--poster-radius:var(--radius-4)]"
-            aboveFold
-          />
+          <HeroPoster libraryEntryId={libraryEntryId} posterPath={posterPath} name={name} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-2 pb-1">

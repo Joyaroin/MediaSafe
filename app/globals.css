@@ -1879,9 +1879,10 @@
 }
 
 /* The one motion, retuned rather than multiplied (UI overhaul). The rise now settles on
-   `--spring-poster` — the same curve the poster morph lands on — and from a hair below full
-   size, so the arriving screen and the poster travelling into it read as one movement
-   instead of a fade with a poster in it. Still `--dur-quick`, still one motion for every
+   `--spring-poster` — the same curve the poster morph lands on — so the arriving screen and
+   the poster travelling into it read as one movement instead of a fade with a poster in
+   it. It does not scale: a page growing under a poster that is landing at its final size
+   is a page sliding out from under it, which read as the morph jerking at the end. Still `--dur-quick`, still one motion for every
    navigation: what read as flat was the curve, not the lack of a second vocabulary. */
 ::view-transition-new(root) {
   animation:
@@ -2044,12 +2045,10 @@
    arriving page may already carry, rather than replacing it. */
 @keyframes nav-rise {
   from {
-    translate: 0 12px;
-    scale: 0.985;
+    translate: 0 10px;
   }
   to {
     translate: 0 0;
-    scale: 1;
   }
 }
 

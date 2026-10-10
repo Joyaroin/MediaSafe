@@ -4,8 +4,7 @@ import { useParams } from "next/navigation";
 
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { carriedPosterFor } from "@/app/poster-handoff-memory";
-import { Poster } from "@/app/poster";
-import { HERO_POSTER_MEASURE } from "@/app/(signed-in)/library/hero-poster-measure";
+import { HeroPoster } from "@/app/(signed-in)/library/hero-poster";
 
 /**
  * The second half of issue #303's morph: the poster this route's own `loading.tsx` shows
@@ -57,15 +56,14 @@ export function PendingTitlePoster() {
   const params = useParams<{ entryId: string }>();
   const entryId = typeof params?.entryId === "string" ? params.entryId : null;
 
+  /* `HeroPoster`, the hero's own component — so when the read resolves and the hero
+     replaces this frame, the poster is the same size, file, radius and shadow, and the
+     swap changes nothing on screen. */
   const poster = (
-    <div className={HERO_POSTER_MEASURE}>
-      <Poster
-        posterPath={entryId === null ? null : carriedPosterFor(entryId)}
-        width={140}
-        className="w-full [--poster-radius:var(--radius-5)]"
-        aboveFold
-      />
-    </div>
+    <HeroPoster
+      libraryEntryId={entryId ?? undefined}
+      posterPath={entryId === null ? null : carriedPosterFor(entryId)}
+    />
   );
 
   if (entryId === null) return poster;

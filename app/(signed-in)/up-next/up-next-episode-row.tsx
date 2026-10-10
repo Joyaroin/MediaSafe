@@ -256,7 +256,7 @@ function RowLink({
   return (
     <Link
       href={`/titles/${entry.libraryEntryId}`}
-      onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}
+      onClick={(event) => carryPoster(entry.libraryEntryId, entry.posterPath, event.currentTarget)}
       aria-label={label}
       className={shared}
     >

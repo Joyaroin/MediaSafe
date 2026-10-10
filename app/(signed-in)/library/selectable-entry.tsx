@@ -126,7 +126,7 @@ export function SelectableEntry({
     }
 
     // Every screen size opens the title's own page. There is no side pane to load it into.
-    carryPoster(title.libraryEntryId, posterPath);
+    carryPoster(title.libraryEntryId, posterPath, event.currentTarget);
     router.push(`/titles/${title.libraryEntryId}`);
   }
 

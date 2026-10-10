@@ -78,6 +78,7 @@ export function ProgrammeNoteContent({
         name={detail.name}
         posterPath={detail.posterPath}
         posterTransitionName={posterTransitionName}
+        libraryEntryId={detail.libraryEntryId}
         status={{
           ...STATE_LABELS[detail.state],
           note: detail.state === "abandoned" ? "Watching it again clears this." : undefined,

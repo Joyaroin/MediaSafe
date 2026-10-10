@@ -387,7 +387,7 @@ describe("the poster morph, on one transition-name family", () => {
   it("wraps the phone's episode-press rows too, now that their destination has a poster", () => {
     expect(ROW).not.toMatch(/press !== "select"/);
     expect(ROW).toContain(
-      'onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}',
+      "onClick={(event) => carryPoster(entry.libraryEntryId, entry.posterPath, event.currentTarget)}",
     );
   });
 
