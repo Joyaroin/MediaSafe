@@ -99,10 +99,8 @@ test.beforeAll(async () => {
 test.use({ storageState: path.join(__dirname, ".auth", "selection-swap-session.json") });
 
 test.beforeEach(async ({ page }) => {
-  // Phone-only surface, the same 500×721 `poster-morph.spec.ts` standardises on:
-  // `selectable-entry.tsx`'s `DESKTOP_BREAKPOINT` (1024px) is what gives the hold below a
-  // *selection* to land in at all — at `lg` and up the same press selects the desktop pane
-  // instead, and the tab bar this test races is `lg:hidden` and never rendered.
+  // Phone width, the same 500×721 `poster-morph.spec.ts` standardises on: the tab bar this
+  // test races is `lg:hidden` and never rendered on a desktop.
   await page.setViewportSize({ width: 500, height: 721 });
 });
 

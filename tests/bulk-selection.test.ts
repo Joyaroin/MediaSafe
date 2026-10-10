@@ -4,6 +4,7 @@ import {
   createBulkSelection,
   type SelectableTitle,
 } from "@/app/(signed-in)/library/bulk-selection";
+import { rangeTo } from "@/app/(signed-in)/library/selectable-entry";
 import type { AddTitlesToListActionOutcome } from "@/app/(signed-in)/lists/actions";
 import { createWriteFailureStore } from "@/errors/write-failure";
 
@@ -440,5 +441,61 @@ describe("a lost bulk write", () => {
 
     expect(onlyToast(failures).title).toBe("Severance");
     expect(selection.read().selecting).toBe(true);
+  });
+});
+
+/**
+ * Shift-click — the UI overhaul's desktop bulk select. The store remembers where the last
+ * hold or toggle was; the grid supplies the order (`selectable-entry.tsx`'s `rangeTo`).
+ */
+describe("selecting a range", () => {
+  const ORDER = [SEVERANCE, ANDOR, SHOGUN];
+
+  it("anchors on the last title held or toggled, and forgets it when the mode ends", () => {
+    const { selection } = harness();
+    expect(selection.anchor()).toBeNull();
+
+    selection.hold(SEVERANCE);
+    expect(selection.anchor()).toBe(SEVERANCE.libraryEntryId);
+    selection.toggle(SHOGUN);
+    expect(selection.anchor()).toBe(SHOGUN.libraryEntryId);
+
+    selection.end();
+    expect(selection.anchor()).toBeNull();
+  });
+
+  it("covers the anchor to the click, in either direction", () => {
+    expect(rangeTo(ORDER, SEVERANCE.libraryEntryId, SHOGUN).map((one) => one.name)).toEqual([
+      "Severance",
+      "Andor",
+      "Shōgun",
+    ]);
+    expect(rangeTo(ORDER, SHOGUN.libraryEntryId, SEVERANCE).map((one) => one.name)).toEqual([
+      "Shōgun",
+      "Andor",
+      "Severance",
+    ]);
+  });
+
+  it("is just the click when there is no anchor in this grid", () => {
+    expect(rangeTo(ORDER, null, ANDOR)).toEqual([ANDOR]);
+    expect(rangeTo(ORDER, "entry-filtered-away", ANDOR)).toEqual([ANDOR]);
+  });
+
+  it("only ever adds, keeping what was already in where it was", () => {
+    const { selection } = harness();
+    selection.hold(SHOGUN);
+    selection.toggle(SEVERANCE);
+    selection.extend(rangeTo(ORDER, selection.anchor(), SHOGUN));
+
+    expect(names(selection)).toEqual(["Shōgun", "Severance", "Andor"]);
+    expect(selection.anchor()).toBe(SHOGUN.libraryEntryId);
+  });
+
+  it("does nothing outside the mode", () => {
+    const { selection } = harness();
+    selection.extend(ORDER);
+    expect(selection.read().selecting).toBe(false);
+    expect(names(selection)).toEqual([]);
   });
 });

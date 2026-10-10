@@ -307,9 +307,11 @@ describe("the grid", () => {
     expect(grid).toContain("xl:grid-cols-5");
     expect(grid).toContain("2xl:grid-cols-6");
 
-    // Nothing else is allowed to differ between devices, so no other breakpoint prefix
-    // may appear anywhere in the grid or its cells.
-    expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols)/);
+    // Nothing else is allowed to differ between devices but the desktop gutter, which
+    // lines the grid up with every other page's `lg:px-10` (UI overhaul) — so no other
+    // breakpoint prefix may appear anywhere in the grid or its cells.
+    expect(grid).toContain("lg:px-[34px]");
+    expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols|px-\[34px\])/);
   });
 
   it("spaces its cells as cards rather than dividing them with hairlines", () => {
