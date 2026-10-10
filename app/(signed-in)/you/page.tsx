@@ -1,6 +1,7 @@
 import { cachedAccountFigures, cachedYouRails } from "@/cache/tags";
 import { requireAvatarUrl, requireDisplayName, requireUserId } from "@/lib/session";
 import { EmptyYou } from "./empty-you";
+import { RecentlyWatchedSection } from "./recently-watched";
 import { YouHeading } from "./you-heading";
 import { YouHero } from "./you-hero";
 import { YouSurface } from "./you-surface";
@@ -91,6 +92,7 @@ export default async function YouPage() {
       <main className="flex w-full flex-1 flex-col">
         <YouHeading />
         <YouHero displayName={displayName} avatarUrl={avatarUrl} />
+        <RecentlyWatchedSection userId={userId} />
 
         {figures.titles === 0 ? (
           <EmptyYou />
