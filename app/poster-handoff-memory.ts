@@ -29,6 +29,12 @@ export function carryPoster(
   from?: Element | null,
 ): void {
   carried = carry(libraryEntryId, posterPath, shownIn(from));
+  // PROTOTYPE #370: name the pressed poster, at the press, with the pending frame's name.
+  const box = from?.querySelector<HTMLElement>(".poster") ?? null;
+  if (box !== null) {
+    box.style.viewTransitionName = `rail-poster-${libraryEntryId}`;
+    box.style.setProperty("view-transition-class", "poster");
+  }
 }
 
 /**
