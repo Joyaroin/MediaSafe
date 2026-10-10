@@ -386,6 +386,8 @@ export const BORROWED_READS = {
 export const UNCACHED_READS = {
   mostRecentlyWatchedTitle:
     "The Because you watched rail's seed: one indexed row, ordered and limited in SQL. The expensive half of that rail is the TMDB call it feeds, and that is cached in borrowed-facts.ts under the seed's own tag. Caching this as well would add a second place for the rail to disagree with the library about what you last watched, to save a lookup that costs less than the cache read.",
+  listRecentWatches:
+    "You's Recently watched: ten rows off the end of a partial index, ordered and limited in SQL — mostRecentlyWatchedTitle's reason, ten rows instead of one. It returns instants rather than days, so nothing in it is keyed on a clock, and caching it would add a second place for You to disagree with the watch a reader marked a moment ago.",
   accountFootprint:
     "Read once, on the delete-account confirmation, by a reader who is about to make it wrong. Caching a count somebody is reading in order to destroy buys nothing and adds a way for the number and the deletion to disagree.",
   accountsHoldingTitles:
