@@ -210,6 +210,8 @@ describe("getUnownedTitleDetail", () => {
         "episodes",
         "kind",
         "name",
+        // Issue #361: the poster's colour belongs to the title, the same for every account.
+        "posterColour",
         "posterPath",
         "releaseYear",
         "runtimeMins",

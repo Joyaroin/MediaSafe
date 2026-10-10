@@ -347,6 +347,12 @@ async function mirrorTitle(
         releaseYear: sql`excluded.release_year`,
         releaseDate: sql`excluded.release_date`,
         posterPath: sql`excluded.poster_path`,
+        /**
+         * The colour belongs to the poster it was taken from (issue #361). A new poster
+         * clears it, and the next fill takes a fresh one — the same poster keeps it, so
+         * a nightly refresh does not throw away a colour that is still right.
+         */
+        posterColour: sql`case when ${title.posterPath} is not distinct from excluded.poster_path then ${title.posterColour} end`,
         inProduction: sql`excluded.in_production`,
         runtimeMins: sql`excluded.runtime_mins`,
         metadataRefreshedAt: sql`now()`,
@@ -657,6 +663,74 @@ export async function accountsHoldingTitles(
     .where(inArray(libraryEntry.titleId, [...titleIds]));
 
   return rows.map((row) => asUserId(row.userId));
+}
+
+/** A title with a poster and no colour yet — what the colour fill works through. */
+export interface PosterColourCandidate {
+  readonly id: string;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  readonly posterPath: string;
+}
+
+/**
+ * The titles whose poster colour is still to be taken — issue #361's backfill, and its
+ * ongoing fill.
+ *
+ * *A poster and no colour* is the whole definition, and it covers every case at once: a
+ * title that predates the column, a title just added, a title whose poster the sweep just
+ * replaced (`mirrorTitle` clears the colour when the path changes) and a title whose
+ * last extraction failed. That is what makes the fill safe to re-run: it only ever asks
+ * for what is missing.
+ *
+ * `titleIds` narrows it to the titles one add just wrote; `cap` bounds a sweep's pass.
+ */
+export async function titlesWantingPosterColour(
+  scope: { readonly cap: number } | { readonly titleIds: readonly string[] },
+  executor: Executor = getDb(),
+): Promise<PosterColourCandidate[]> {
+  if ("titleIds" in scope && scope.titleIds.length === 0) return [];
+
+  const wanting = and(isNotNull(title.posterPath), isNull(title.posterColour));
+  const query = executor
+    .select({ id: title.id, kind: title.kind, tmdbId: title.tmdbId, posterPath: title.posterPath })
+    .from(title)
+    .where("titleIds" in scope ? and(wanting, inArray(title.id, [...scope.titleIds])) : wanting)
+    .orderBy(asc(title.id));
+  const rows = "cap" in scope ? await query.limit(scope.cap) : await query;
+
+  return rows.map((row) => ({
+    id: row.id,
+    // `title_kind_check` — see `asSweepCandidate`.
+    kind: row.kind as TitleKind,
+    tmdbId: row.tmdbId,
+    // The `where` above is `poster_path IS NOT NULL`.
+    posterPath: row.posterPath!,
+  }));
+}
+
+/**
+ * Store one title's poster colour — but only against the poster it was taken from.
+ *
+ * The fill reads a title, fetches its poster, and writes back seconds later. If the sweep
+ * replaced the poster in between, this colour describes an image the title no longer
+ * shows, so the `where` matches the path as well as the id and the write becomes a no-op.
+ * The title is then wanting again, and the next fill takes the right colour.
+ *
+ * Answers whether it wrote, so the caller busts only what changed.
+ */
+export async function writePosterColour(
+  titleId: string,
+  posterPath: string,
+  colour: string,
+  executor: Executor = getDb(),
+): Promise<boolean> {
+  const written = await executor
+    .update(title)
+    .set({ posterColour: colour })
+    .where(and(eq(title.id, titleId), eq(title.posterPath, posterPath)))
+    .returning({ id: title.id });
+  return written.length > 0;
 }
 
 /** What `repointTitle` was asked to do — `tmdb/reconcile.ts` reached the decision. */
@@ -4202,6 +4276,8 @@ export interface TitleDetailRow {
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /** `#rrggbb`, or `null` for no tint — issue #361; `app/poster-tint.ts` clamps it. */
+  readonly posterColour: string | null;
   /** Films only; `null` for shows. */
   readonly runtimeMins: number | null;
   readonly state: LibraryState;
@@ -4290,6 +4366,7 @@ export async function getTitleDetail(
       name: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      posterColour: title.posterColour,
       runtimeMins: title.runtimeMins,
       state: libraryEntryState.state,
       rating: libraryEntry.rating,
@@ -4367,6 +4444,7 @@ export async function getTitleDetail(
     name: row.name,
     releaseYear: row.releaseYear,
     posterPath: row.posterPath,
+    posterColour: row.posterColour,
     runtimeMins: row.runtimeMins,
     state: stateFrom(row.state),
     rating: row.rating,
@@ -4433,6 +4511,8 @@ export interface UnownedTitleDetailRow {
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /** `#rrggbb`, or `null` for no tint — issue #361; `app/poster-tint.ts` clamps it. */
+  readonly posterColour: string | null;
   readonly runtimeMins: number | null;
   /** Empty for a film, and for a show TMDB has no episode data for. */
   readonly episodes: readonly UnownedEpisodeDetail[];
@@ -4534,6 +4614,7 @@ export async function findUnownedTitleDetail(
       name: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      posterColour: title.posterColour,
       runtimeMins: title.runtimeMins,
     })
     .from(title)

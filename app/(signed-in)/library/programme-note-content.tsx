@@ -77,6 +77,7 @@ export function ProgrammeNoteContent({
       <TitleHero
         name={detail.name}
         posterPath={detail.posterPath}
+        posterColour={detail.posterColour}
         posterTransitionName={posterTransitionName}
         libraryEntryId={detail.libraryEntryId}
         status={{

@@ -1,5 +1,6 @@
 "use server";
 
+import { colourAfterAdd } from "@/app/api/cron/nightly-sweep/colour-after-add";
 import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
@@ -184,5 +185,6 @@ export async function applyImportChunkAction(
    * the bust is a framework call over a list rather than a round trip.
    */
   invalidateBorrowedFactsFor(mirroredKeys);
+  colourAfterAdd(mirroredTitleIds);
   return landed;
 }

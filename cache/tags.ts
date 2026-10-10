@@ -398,6 +398,8 @@ export const UNCACHED_READS = {
     "The remove confirmation's counts, read by a reader about to remove the title — `accountFootprint`'s reason exactly, one title down.",
   titlesDueForRefresh:
     "The nightly sweep's candidate list, ordered by `metadata_refreshed_at`, which the sweep itself then moves. A cached answer would hand tomorrow's run the same 200 titles it refreshed tonight.",
+  titlesWantingPosterColour:
+    "The poster colour fill's candidate list (issue #361), which the fill itself then empties. A cached answer would hand the next run the titles this one just coloured.",
   watchedTmdbEpisodeIds:
     "Read inside the sweep's reconciliation, from that run's transaction. `unstable_cache` cannot take an executor, so caching it would mean reading outside the transaction whose rows it is about.",
 } as const satisfies Record<string, string>;
@@ -841,6 +843,14 @@ export const INVALIDATES = {
    *  derived views are built from. */
   refreshTitleMirror: ["library", "up-next", "lists", "title-detail", "you"],
   repointTitle: ["library", "up-next", "lists", "title-detail", "you"],
+  /**
+   * Issue #361's `title.poster_colour`: the title page's hero, the featured Up next card,
+   * and the hover glow in the library grid and the You rails. Not `lists`, whose rows draw
+   * no tint. Like the mirror writes it changes a **global** row, so its callers bust every
+   * holder through `invalidateForOtherAccounts` — but it does not reach `mirrorTitle`, so
+   * it is not in `MIRRORS_SHARED_TITLE_ROWS`.
+   */
+  writePosterColour: ["library", "up-next", "title-detail", "you"],
   /** Writes `user.import_offer_answered_at`, which no cached read selects. */
   markImportOfferAnswered: [],
   /** `list` and `list_membership`, which only the two list reads join. */
