@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
+import { beginHoldOver } from "./hold-over";
 
 /**
  * **How long a card holds after a mark** — the UI overhaul's *longer pause*.
@@ -31,9 +32,27 @@ export function useHold(holding: string | null, onDone: () => void): void {
   });
   useEffect(() => {
     if (holding === null) return;
+    /* Watching stays as it was for the length of the hold (`hold-over.tsx`), so a server
+       render that no longer has this card cannot take it away mid-hold. */
+    const release = beginHoldOver();
     const timer = setTimeout(() => done.current(), HOLD_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      release();
+    };
   }, [holding]);
+}
+
+/**
+ * The finish moment's haptic — issue #367. A short pulse where the browser has
+ * `navigator.vibrate` (Android's Chrome and Firefox; Safari has none, and gets the line
+ * alone). Not motion, so it fires under reduced motion too.
+ */
+const FINISH_PULSE_MS = 30;
+
+export function finishPulse(): void {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  navigator.vibrate(FINISH_PULSE_MS);
 }
 
 /**

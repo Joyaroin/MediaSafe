@@ -10,6 +10,7 @@ import { UpcomingSurface } from "./upcoming-surface";
 import { readerDay } from "./upcoming-grouping";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextWatching } from "./up-next-rails";
+import { HoldOver } from "./hold-over";
 import { NavTransition } from "../nav-transition";
 
 /**
@@ -125,7 +126,11 @@ export default async function UpNextPage() {
    */
   const today = readerDay(zone, new Date());
 
-  const watching = <UpNextWatching rails={rails} films={films} />;
+  const watching = (
+    <HoldOver>
+      <UpNextWatching rails={rails} films={films} />
+    </HoldOver>
+  );
   const comingUp = (
     <UpcomingSurface episodes={upcoming} films={upcomingFilms} today={today} />
   );
