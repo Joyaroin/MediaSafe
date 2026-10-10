@@ -51,3 +51,8 @@ variable "vault_volume_size" {
   type        = number
   default     = 10
 }
+
+variable "cloudflare_account_id" {
+  description = "The Cloudflare account that holds R2. Not secret: it is in every R2 URL, including backend.hcl's."
+  type        = string
+}

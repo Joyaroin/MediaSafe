@@ -116,3 +116,38 @@ resource "cloudflare_dns_record" "site" {
   proxied = false
   comment = "MediaSafe infra/terraform"
 }
+
+# ── Vault's snapshots ────────────────────────────────────────────────────────────────────
+#
+# A nightly CronJob in the cluster (mediasafe-gitops, platform/vault) uploads a Raft snapshot
+# here. Snapshots are encrypted by Vault's own keyring, so they are useless without the unseal
+# key in Bitwarden. Fourteen nights are kept; a snapshot older than that is not worth restoring.
+#
+# The CronJob's R2 key is created by hand after this bucket exists, scoped to it alone, and
+# lives in Vault at kv/infra/vault-snapshots — never in this state.
+resource "cloudflare_r2_bucket" "vault_snapshots" {
+  account_id = var.cloudflare_account_id
+  name       = "${local.name}-vault-snapshots"
+  location   = "enam" # Eastern North America, near the VM. Honoured only at creation.
+}
+
+resource "cloudflare_r2_bucket_lifecycle" "vault_snapshots" {
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.vault_snapshots.name
+
+  rules = [
+    {
+      id         = "expire-after-14-days"
+      enabled    = true
+      conditions = { prefix = "" }
+      # Seconds. The provider doesn't document the unit; Cloudflare's API does.
+      delete_objects_transition = {
+        condition = { type = "Age", max_age = 14 * 86400 }
+      }
+      # Replaces the default rule R2 puts on a new bucket, which this resource would otherwise drop.
+      abort_multipart_uploads_transition = {
+        condition = { type = "Age", max_age = 7 * 86400 }
+      }
+    },
+  ]
+}

@@ -24,8 +24,15 @@ directory's.
    | Bitwarden item | Username | Password | Where to create it | Scope |
    |---|---|---|---|---|
    | `mediasafe/linode-token` | — | the token | Linode → API Tokens | Linodes: Read/Write, Volumes: Read/Write, Firewalls: Read/Write. Nothing else |
-   | `mediasafe/cloudflare-token` | — | the token | Cloudflare → My Profile → API Tokens | Zone → DNS → Edit, on your one zone |
+   | `mediasafe/cloudflare-token` | — | the token | Cloudflare → My Profile → API Tokens | Zone → DNS → Edit, on your one zone; Account → Workers R2 Storage → Edit (the snapshot bucket) |
    | `mediasafe/r2-terraform-state` | Access Key ID | Secret Access Key | Cloudflare → R2 → Manage API tokens | Object Read & Write, on `mediasafe-tfstate` only |
+
+   A fourth key is created **after the first apply that makes `mediasafe-vault-snapshots`**, and
+   goes into Vault rather than being read by `./tf`:
+
+   | Bitwarden item | Username | Password | Where to create it | Scope |
+   |---|---|---|---|---|
+   | `mediasafe/r2-vault-snapshots` | Access Key ID | Secret Access Key | Cloudflare → R2 → Manage API tokens | Object Read & Write, on `mediasafe-vault-snapshots` only |
 
 4. **Install the tools:** `brew install bitwarden-cli`, and log in once with `bw login`.
 
