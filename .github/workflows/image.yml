@@ -1,9 +1,9 @@
-# Image — build the production container on every push to `main` and push it to GHCR.
+# Image — build the production container on every push to `main`, push it to GHCR, and
+# deploy it to staging.
 #
-# Stage 1 of docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md. It builds and publishes;
-# it deploys nothing. Vercel keeps serving production until the cutover, and the step that
-# hands this image to the cluster (committing its tag to the gitops repo) arrives with
-# staging.
+# Stages 1 and 6 of docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md. Deploying is a
+# commit: the second job writes the new SHA into the gitops repo's values-staging.yaml, and
+# Argo CD rolls it out. Prod takes an image only through promote.yml.
 #
 # **One tag per image, the commit SHA, and nothing movable.** GitOps pins an exact image in
 # git; a `latest` or `main` tag would be a second answer to "what is running" that git does
@@ -20,7 +20,8 @@ on:
     # TEMPORARY: infra-migration builds too, so staging has an image before the migration's
     # one big PR merges. Remove it from this list in that PR, before merging.
     branches: [main, infra-migration]
-  # A rebuild without a commit, e.g. after changing a Sentry variable.
+  # A rebuild without a commit, e.g. after changing a Sentry variable. It deploys too, which
+  # is a no-op when staging already runs this SHA.
   workflow_dispatch:
 
 permissions:
@@ -83,3 +84,37 @@ jobs:
           package-name: mediasafe
           package-type: container
           min-versions-to-keep: 10
+
+  # Staging runs whatever was built last. A fine-grained token (GITOPS_TOKEN: Contents read and
+  # write on mediasafe-gitops, nothing else) is the only credential this repo holds for the
+  # cluster, and all it can do is change files Argo CD reads.
+  deploy-staging:
+    name: deploy to staging
+    needs: build
+    runs-on: ubuntu-latest
+    # A running deploy is never cancelled mid-push; GitHub keeps one waiting run at most, the
+    # newest, so an older SHA can't land after a newer one.
+    concurrency:
+      group: gitops-staging
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: Joyaroin/mediasafe-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Point staging at this image
+        env:
+          TAG: ${{ github.sha }}
+        run: |
+          yq -i '.image.tag = strenv(TAG)' charts/mediasafe/values-staging.yaml
+          if git diff --quiet; then
+            echo "Staging already runs $TAG."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Deploy MediaSafe ${TAG:0:7} to staging" \
+            -m "From ${{ github.server_url }}/${{ github.repository }}/commit/$TAG"
+          git push
