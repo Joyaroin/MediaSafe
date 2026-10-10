@@ -74,7 +74,7 @@ async function arriveAtYouByNavigation(page: Page): Promise<void> {
   await page.goto("/library");
   await page.locator('a[href="/you"]:visible').first().click();
   await page.waitForURL("**/you");
-  await expect(page.locator("dt", { hasText: "Episodes watched" })).toBeVisible();
+  await expect(page.getByRole("main").locator("dt", { hasText: "Episodes watched" })).toBeVisible();
   await page.waitForTimeout(1000);
 }
 
@@ -104,7 +104,7 @@ test("a hard load never shows a figure going backwards", async ({ page }) => {
   // arrival), the figure must never drop from its value back to zero in front of the
   // reader.
   await page.goto("/you");
-  await expect(page.locator("dt", { hasText: "Episodes watched" })).toBeVisible();
+  await expect(page.getByRole("main").locator("dt", { hasText: "Episodes watched" })).toBeVisible();
   await page.waitForTimeout(1000);
 
   const seen = await seenOf(page);
