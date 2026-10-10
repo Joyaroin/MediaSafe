@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Poster, posterSrc } from "@/app/poster";
+import { HERO_POSTER_MEASURE } from "./hero-poster-measure";
 
 /**
  * The head of a title's page — issue #357 — shared by a title you own and one you do not.
@@ -64,7 +65,7 @@ export function TitleHero({
 
       <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
-          className="w-[108px] shrink-0 lg:w-[200px]"
+          className={HERO_POSTER_MEASURE}
           style={
             posterTransitionName === undefined
               ? undefined

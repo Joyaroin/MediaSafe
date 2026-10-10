@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { carriedPosterFor } from "@/app/poster-handoff-memory";
 import { Poster } from "@/app/poster";
+import { HERO_POSTER_MEASURE } from "@/app/(signed-in)/library/hero-poster-measure";
 
 /**
  * The second half of issue #303's morph: the poster this route's own `loading.tsx` shows
@@ -51,21 +52,6 @@ import { Poster } from "@/app/poster";
  * identical name to the identical poster; only the rest of the hero's card appears around
  * it.
  */
-/**
- * The hero poster's measure, on the element that is the flex item — `loading.tsx` puts
- * this straight into a `flex items-start gap-4` row, exactly as `title-hero.tsx` does.
- *
- * Kept off the `Poster` itself for the reason `title-hero.tsx`'s docblock works through in
- * full: a percentage width on a poster nested inside a shrink-to-fit wrapper resolves
- * against a parent that is being sized from that same poster, and the two collapse each
- * other to almost nothing. The wrapper takes the measure and the poster takes `w-full`.
- *
- * The string is `title-hero.tsx`'s, character for character. Two copies rather than one
- * shared constant is what this pair has always been — the transition *name* is shared
- * through `poster-transition-name.ts` because it has to be computed; the measure is a
- * literal in both files, and this comment is what says they must move together.
- */
-const HERO_POSTER_MEASURE = "w-[34%] max-w-[140px] shrink-0";
 
 export function PendingTitlePoster() {
   const params = useParams<{ entryId: string }>();
