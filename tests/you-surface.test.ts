@@ -103,6 +103,26 @@ describe("the six figures", () => {
   });
 });
 
+describe("the figures' arrival — issue #368", () => {
+  const markup = render(figures({ episodesWatched: 1234 }));
+
+  it("server-renders every figure at its final value, never the zero a count starts from", () => {
+    // The page is correct before hydration and with JavaScript off: the count is a
+    // client-only flourish over markup that already says the true thing.
+    expect(markup).toContain(">1,234<");
+    expect(markup).not.toMatch(/aria-hidden="true">0</);
+    expect(markup).toContain(watchTimeInWords(60 * 24 * 40));
+    expect(markup).not.toContain("opacity:0");
+  });
+
+  it("hides the counting figure from screen readers and gives them the final value once", () => {
+    // Each count: one visible copy that may run through intermediate numbers, hidden from
+    // assistive technology, and one visually hidden copy that only ever holds the figure.
+    expect(markup).toContain('<span aria-hidden="true">1,234</span><span class="sr-only">1,234</span>');
+    expect(markup.match(/class="sr-only"/g)).toHaveLength(6);
+  });
+});
+
 describe("television and film watch time are never summed", () => {
   it("reports each separately, and prints no total of the two", () => {
     const television = 60 * 24 * 40;

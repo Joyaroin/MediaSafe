@@ -1,4 +1,5 @@
 import type { AccountFigures, LibraryStateGroupEntry } from "@/db/access";
+import { CountedFigure, FadedFigure } from "./figure-arrival";
 import { qualification, watchTimeInWords } from "./figures";
 import { YouTitleRail } from "./you-title-rail";
 
@@ -49,13 +50,22 @@ import { YouTitleRail } from "./you-title-rail";
  * `data-numeric` is `globals.css`'s hook for tabular figures, so the counts line up on
  * their digits down a column. It is on the watch times too — they are mostly digits, and
  * a column whose two halves used different figures would be visibly two columns.
+ *
+ * The value arrives through `figure-arrival.tsx` (issue #368): the counts count up, the
+ * watch times fade in, and the server's markup is the final figure either way.
  */
-function Figure({ label, value }: { readonly label: string; readonly value: string }) {
+function Figure({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: React.ReactNode;
+}) {
   return (
     <div className="rounded-[var(--radius-6)] bg-raised px-4 py-4">
       <dt className="label-line text-dim">{label}</dt>
       <dd data-numeric className="mt-2 text-bill-md font-medium text-text">
-        {value}
+        {children}
       </dd>
     </div>
   );
@@ -109,24 +119,27 @@ export function YouSurface({
   return (
     <div className="w-full pb-8">
       <Section label="Watch time" columns="sm:grid-cols-2">
-        <Figure
-          label="Television"
-          value={watchTimeInWords(figures.watchTime.televisionMinutes)}
-        />
-        <Figure label="Film" value={watchTimeInWords(figures.watchTime.filmMinutes)} />
+        <Figure label="Television">
+          <FadedFigure value={watchTimeInWords(figures.watchTime.televisionMinutes)} />
+        </Figure>
+        <Figure label="Film">
+          <FadedFigure value={watchTimeInWords(figures.watchTime.filmMinutes)} />
+        </Figure>
       </Section>
 
       <Section label="What you have watched" columns="grid-cols-2 lg:grid-cols-4">
-        <Figure
-          label="Episodes watched"
-          value={figures.episodesWatched.toLocaleString("en-GB")}
-        />
-        <Figure label="Films watched" value={figures.filmsWatched.toLocaleString("en-GB")} />
-        <Figure label="Shows watched" value={figures.showsWatched.toLocaleString("en-GB")} />
-        <Figure
-          label="Shows completed"
-          value={figures.showsCompleted.toLocaleString("en-GB")}
-        />
+        <Figure label="Episodes watched">
+          <CountedFigure value={figures.episodesWatched} />
+        </Figure>
+        <Figure label="Films watched">
+          <CountedFigure value={figures.filmsWatched} />
+        </Figure>
+        <Figure label="Shows watched">
+          <CountedFigure value={figures.showsWatched} />
+        </Figure>
+        <Figure label="Shows completed">
+          <CountedFigure value={figures.showsCompleted} />
+        </Figure>
       </Section>
 
       {/*
