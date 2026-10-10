@@ -5612,6 +5612,41 @@ export async function renameList(
 }
 
 /**
+ * You's *Shows you stopped* rail — issue #373. Every show in this account's library with
+ * `abandoned_at` set, most recently stopped first (tie-broken Title A–Z, then entry id, like
+ * every other state-group read here).
+ *
+ * Read off the column rather than `library_entry_state`'s `abandoned` branch: *stopped* is
+ * exactly the reader's own act of giving up, and the column is the act. Films are left
+ * out — the rail is about shows, and Start again (`unabandonTitle`) means returning to
+ * Continue watching, which a film does not have.
+ */
+export async function listStoppedShows(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<LibraryStateGroupEntry[]> {
+  return executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      runtimeMins: title.runtimeMins,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        isNotNull(libraryEntry.abandonedAt),
+        eq(title.kind, "show" satisfies TitleKind),
+      ),
+    )
+    .orderBy(desc(libraryEntry.abandonedAt), sql`lower(${title.name})`, libraryEntry.id);
+}
+
+/**
  * The You page's shows and films rails — issue #248. Shows are the entries standing at
  * *watching* or *caught up*; films are the entries standing at *finished*. Both rails are
  * ordered by their title's most recent **dated** watch first.

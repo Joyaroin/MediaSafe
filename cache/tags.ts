@@ -394,6 +394,8 @@ export const UNCACHED_READS = {
     "A write's own read: it resolves who to bust *for* the cache. Caching it would mean invalidation deciding who to invalidate from a cached answer, which is the one place a stale row turns into a bust that never happens.",
   libraryCatalogueKeys:
     "The search screen's already-added check, read against a set of keys that changes per query. The key would be the query, so the hit rate is the odds of the same reader searching the same thing twice.",
+  listStoppedShows:
+    "You's Shows you stopped: the account's abandoned shows, a handful of rows on the library_entry user index. Its one write, Start again, re-renders You from the action's own response, and an uncached read is the one that cannot hand back the tile the reader just took off the rail.",
   resolveSeedUserId:
     "`scripts/db-seed.ts` only. Nothing in the application calls it and there is no request around it to cache in.",
   titleFootprint:
