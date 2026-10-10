@@ -12,6 +12,7 @@ import {
   type WatchSubject,
 } from "@/app/(signed-in)/library/watch-marks";
 import type { QueuedEpisode, UpNextEntry, UpNextQueue } from "@/db/access";
+import { holdOverWhile } from "./hold-over";
 
 /**
  * One next-episodes card's mark, over the marks store the episode row already writes
@@ -356,9 +357,8 @@ export function markFromCard(
   entry: Pick<UpNextEntry, "libraryEntryId" | "titleName">,
   episode: QueuedEpisode,
 ): Promise<void> {
-  return marks.mark(
-    subjectOf(entry.libraryEntryId, episode),
-    namingFor(entry.titleName, episode),
+  return holdOverWhile(
+    marks.mark(subjectOf(entry.libraryEntryId, episode), namingFor(entry.titleName, episode)),
   );
 }
 
@@ -374,9 +374,8 @@ export function undoFromCard(
      carrying imported rewatches this was quietly deleting years of
      history while claiming to reverse one press. `db/access.ts`'s `undoWatch` is the
      inverse of the mark, and nothing else. */
-  return marks.undo(
-    subjectOf(entry.libraryEntryId, episode),
-    namingFor(entry.titleName, episode),
+  return holdOverWhile(
+    marks.undo(subjectOf(entry.libraryEntryId, episode), namingFor(entry.titleName, episode)),
   );
 }
 

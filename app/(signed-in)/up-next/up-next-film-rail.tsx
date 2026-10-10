@@ -16,6 +16,7 @@ import { exit } from "@/app/motion";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
+import { holdOverWhile } from "./hold-over";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
 import { UpNextGroup } from "./up-next-group";
@@ -122,13 +123,13 @@ function FilmRow({
       </Link>
 
       {held ? (
-        <HeldControl onUndo={undo} undoLabel={`Undo marking ${film.titleName} watched`} />
+        <HeldControl onUndo={() => void holdOverWhile(undo())} undoLabel={`Undo marking ${film.titleName} watched`} />
       ) : (
         <button
           type="button"
           onClick={() => {
             finishPulse();
-            attempt();
+            void holdOverWhile(attempt());
           }}
           disabled={pending || watched}
           aria-label={`Mark ${film.titleName} watched`}

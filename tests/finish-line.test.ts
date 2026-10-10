@@ -5,6 +5,11 @@ import {
   finishFactsFor,
   finishLine,
 } from "@/app/(signed-in)/up-next/finish-line";
+import {
+  beginHoldOver,
+  holdingOver,
+  holdOverWhile,
+} from "@/app/(signed-in)/up-next/hold-over";
 import type { QueuedEpisode } from "@/db/access";
 
 /**
@@ -67,5 +72,32 @@ describe("the facts a queued episode gives the line", () => {
         queued({ lastAiredInSeason: true, seasonAiring: true }),
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * The hold-over that keeps a finishing card on screen while the server's re-render, which
+ * no longer has it, is already in hand — `hold-over.tsx`. Its count is what `HoldOver`
+ * reads; the browser half is `tests/e2e/up-next-finish-moment.spec.ts`.
+ */
+describe("holding Watching over a hold and its writes", () => {
+  it("holds while any hold or write is open, and lets go when the last one ends", async () => {
+    expect(holdingOver()).toBe(false);
+
+    const release = beginHoldOver();
+    let land!: () => void;
+    const write = holdOverWhile(new Promise<void>((resolve) => (land = resolve)));
+    release();
+    release(); // A second release is a no-op.
+    expect(holdingOver()).toBe(true);
+
+    land();
+    await write;
+    expect(holdingOver()).toBe(false);
+  });
+
+  it("lets go when a write fails, too", async () => {
+    await expect(holdOverWhile(Promise.reject(new Error("lost")))).rejects.toThrow("lost");
+    expect(holdingOver()).toBe(false);
   });
 });
