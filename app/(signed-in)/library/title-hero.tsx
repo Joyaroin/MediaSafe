@@ -28,6 +28,12 @@ import { HeroPoster } from "./hero-poster";
  * (`app/poster-tint.ts`), down into `--ground`. A title with no colour draws the band
  * exactly as it did before — the softened poster and the neutral fade, nothing guessed.
  *
+ * ── It recedes as you scroll — issue #369 ────────────────────────────────────────────
+ *
+ * `hero-recede-band` and `hero-recede-poster` are a CSS scroll-driven animation
+ * (`app/globals.css`): the band fades and the poster shrinks as the page scrolls toward
+ * the episodes. No script, and static where the browser or the reader says so.
+ *
  * ── The poster sizes off its wrapper ─────────────────────────────────────────────────
  *
  * The wrapper carries the width and the `view-transition-name`, and the poster fills it
@@ -82,7 +88,7 @@ export function TitleHero({
 
       <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
-          className="shrink-0"
+          className="hero-recede-poster shrink-0"
           style={
             posterTransitionName === undefined
               ? undefined
@@ -140,7 +146,10 @@ function HeroBackdrop({
   tinted: boolean;
 }) {
   return (
-    <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[240px] overflow-hidden lg:h-[340px]">
+    <div
+      aria-hidden="true"
+      className="hero-recede-band absolute inset-x-0 top-0 h-[240px] overflow-hidden lg:h-[340px]"
+    >
       {posterPath === null ? null : (
         // eslint-disable-next-line @next/next/no-img-element -- decoration behind the head, from the same TMDB CDN `poster.tsx` reads with a plain <img> for its own stated reasons
         <img
