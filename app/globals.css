@@ -1114,6 +1114,31 @@
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);
 }
 
+/* The desktop tilt (`app/poster-tilt.ts`, UI overhaul): a poster under a mouse leans toward
+   it, and settles back when the mouse leaves. Fine pointers with hover only — a phone never
+   gets `data-tilting` — and nothing at all under reduced motion. `transform` rather than
+   `translate`/`rotate`, because the perspective has to be part of the same function list. */
+@media (hover: hover) and (pointer: fine) {
+  .poster {
+    /* `filter` too: this unlayered rule outranks the `transition` utility some call sites
+       put on a poster for their hover brighten, so it has to carry that one as well. */
+    transition:
+      transform var(--dur-slow) var(--ease-out-quart),
+      filter var(--dur-fast) var(--ease-out-quart);
+  }
+  .poster[data-tilting] {
+    transform: perspective(700px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+      scale(1.03);
+    transition-duration: var(--dur-fast);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster[data-tilting] {
+    transform: none;
+  }
+}
+
 /* The still (#253) — the frame at the top of an episode's page, over the `still_path`
    column #246 put in the mirror. `app/(signed-in)/library/episode-still.tsx` is its
    component and holds the argument; this is the poster's rule at the other ratio.
@@ -1853,10 +1878,15 @@
   animation: var(--dur-fast) var(--ease-out-quart) both nav-fade reverse;
 }
 
+/* The one motion, retuned rather than multiplied (UI overhaul). The rise now settles on
+   `--spring-poster` — the same curve the poster morph lands on — and from a hair below full
+   size, so the arriving screen and the poster travelling into it read as one movement
+   instead of a fade with a poster in it. Still `--dur-quick`, still one motion for every
+   navigation: what read as flat was the curve, not the lack of a second vocabulary. */
 ::view-transition-new(root) {
   animation:
     var(--dur-quick) var(--ease-out-quart) both nav-fade,
-    var(--dur-quick) var(--ease-out-quart) both nav-rise;
+    var(--dur-quick) var(--spring-poster) both nav-rise;
 }
 
 /* ── Arriving ───────────────────────────────────────────────────────────────────────
@@ -2014,10 +2044,12 @@
    arriving page may already carry, rather than replacing it. */
 @keyframes nav-rise {
   from {
-    translate: 0 10px;
+    translate: 0 12px;
+    scale: 0.985;
   }
   to {
     translate: 0 0;
+    scale: 1;
   }
 }
 

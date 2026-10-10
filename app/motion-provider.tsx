@@ -5,6 +5,7 @@ import { useEffect } from "react";
 
 import { ownsPointer, releasePops, type PressEnd } from "./gesture-rules";
 import { smooth } from "./motion";
+import { usePosterTilt } from "./poster-tilt";
 
 /**
  * One `MotionConfig` at the root, for one reason each — and one `LazyMotion` around it,
@@ -58,6 +59,7 @@ import { smooth } from "./motion";
  */
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   usePressMarks();
+  usePosterTilt();
 
   return (
     <LazyMotion features={() => import("./motion-features").then((mod) => mod.default)} strict>
