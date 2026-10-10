@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { unwatchCount } from "@/app/(signed-in)/library/unwatch-confirm";
+import { unwatchCount, unwatchNeedsConfirm } from "@/app/(signed-in)/library/unwatch-confirm";
 
 /**
  * Issue #315. `unwatchCount` is the one piece of the watch menu's confirmation that is a
@@ -34,5 +34,16 @@ describe("unwatchCount", () => {
     // it is asserted here only so a future caller sees this function was never meant to
     // answer it, rather than discovering that by reading the arithmetic.
     expect(unwatchCount(0)).toBe("0 watches");
+  });
+});
+
+describe("unwatchNeedsConfirm", () => {
+  it("lets a single watch go without asking — a re-mark puts it back", () => {
+    expect(unwatchNeedsConfirm(1)).toBe(false);
+  });
+
+  it("asks before taking rewatches, which nothing brings back", () => {
+    expect(unwatchNeedsConfirm(2)).toBe(true);
+    expect(unwatchNeedsConfirm(14)).toBe(true);
   });
 });

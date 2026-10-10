@@ -29,3 +29,15 @@ export function unwatchCount(watches: number): string {
   if (watches === 1) return "1 watch";
   return `${watches.toLocaleString("en-GB")} watches`;
 }
+
+/**
+ * Whether *Unwatch* asks before it writes — the UI overhaul, narrowing #315.
+ *
+ * The confirmation protects history, not the press. Unwatching an episode with one watch
+ * loses nothing a re-mark cannot restore but that watch's date, so the menu choice is the
+ * confirmation. With more than one, every rewatch goes — an import's included — and nothing
+ * brings them back, so it still asks, and still says how many.
+ */
+export function unwatchNeedsConfirm(watches: number): boolean {
+  return watches > 1;
+}
