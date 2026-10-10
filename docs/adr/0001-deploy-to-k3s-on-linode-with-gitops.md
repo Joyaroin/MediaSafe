@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–4 implemented
+- **Status:** Accepted, stages 0–4 implemented, stage 5 in progress
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -295,8 +295,17 @@ time, so staging's browser errors are tagged the same as prod's.
      tracking annotation. They were deleted by hand once, after checking none held objects.
    - After that cleanup and a `k3s` restart, `k3s-server` dropped from 1.33 GB to 851 MiB; the
      node has about 2.2 GB available.
-5. **Vault and ESO.** Also the snapshot CronJob, with a restore actually tested, and then Argo
-   CD made public with Google sign-in.
+5. **Vault and ESO.** 🔄 Vault, ESO and snapshots done 2026-10-10; Argo CD's Google sign-in next.
+   - Vault 2.1.1 (Raft, on the volume), configured by `infra/vault/`. Vault 2.0 made
+     `sys/generate-root` authenticated; it is re-enabled unauthenticated, because the recovery
+     path above needs it.
+   - External Secrets 2.11.0 without cluster-scoped kinds. Verified: staging reading prod's path
+     gets 403 from Vault.
+   - Nightly snapshot CronJob to R2 bucket `mediasafe-vault-snapshots` (Terraform, 14-day
+     expiry). The restore is `bootstrap/vault-restore-drill` in the gitops repo, and it passed:
+     the newest snapshot restored into a throwaway Vault, the original unseal key opened it,
+     `generate-root` minted a token from that key alone, and a canary written just before the
+     snapshot read back.
 6. **Staging app.**
 7. **NetworkPolicies.**
 8. **Prod on k3s, beside Vercel.**

@@ -92,7 +92,7 @@ his own uncommitted change; leave them out of every commit.
   limit needs it). Traefik's 25 unused CRDs skipped and hand-deleted once (they were untracked).
 - Verified from the internet: 301 redirect, trusted prod certs, real client IP; apex 404 (no app).
 
-### Stage 5 — Vault and External Secrets 🔄 (5a–5c done)
+### Stage 5 — Vault and External Secrets 🔄 (5a–5d done)
 - **5a ✅** (gitops `30e4f5f`, `aef68b7`): Vault 2.1.1 via chart 0.34.1, standalone + Raft, local
   PV `vault-data` → `/mnt/vault-data/raft` (Retain, Prune=false, claimRef `data-vault-0`), init
   container chowns to 100:1000. `enable_unauthenticated_access = ["generate-root"]` because Vault
@@ -110,6 +110,14 @@ his own uncommitted change; leave them out of every commit.
   creates `mediasafe-staging` and `mediasafe-prod`, each with SA `vault-reader` and SecretStore
   `vault`. Verified: each env read its own test value; staging reading prod's path got
   **403 permission denied** from Vault. Test values and app removed.
+- **5d ✅** (MediaSafe `14250c6`, gitops `e7d4771`): R2 bucket `mediasafe-vault-snapshots` in
+  `infra/terraform` (lifecycle: objects 14 days, abandoned multipart 7 days; the API stores
+  `maxAge` in seconds). CronJob `vault/vault-snapshot` at 03:00 UTC: init container
+  `hashicorp/vault:2.1.1` logs in as `vault-snapshot` with a projected token (audience `vault`),
+  saves the snapshot and reads `kv/infra/vault-snapshots` into an in-memory emptyDir;
+  `rclone/rclone:1.75.1` uploads it. **`bootstrap/vault-restore-drill` passed 2026-10-10**
+  (restore into a throwaway Vault, original unseal key, `generate-root` from the key alone,
+  canary read back). The drill is also the restore procedure.
 
 ---
 
@@ -117,7 +125,8 @@ his own uncommitted change; leave them out of every commit.
 
 - Argo apps, all **Synced/Healthy**: `root`, `argocd`, `gateway-api-crds`, `traefik`,
   `cert-manager`, `edge`, `vault`, `external-secrets`, `app-namespaces`.
-- Vault: initialised, **unsealed**, v2.1.1. KV `kv/` is **empty** (smoke values deleted).
+- Vault: initialised, **unsealed**, v2.1.1. KV holds only `kv/infra/vault-snapshots` (the R2 key).
+- R2 bucket `mediasafe-vault-snapshots`; first scheduled snapshot 2026-10-11 03:00 UTC.
 - Node memory: ~2.1 GiB used of 3.9 GiB; **~1.66 GiB available**. `k3s-server` ~1.09 GiB
   (grew ~220 MiB with External Secrets' 20 CRDs, 18 of them unused generators).
 - Cert expiry: all three 2026-12-31; cert-manager renews ~30 days before.
@@ -142,11 +151,12 @@ git -C ~/mediasafe-gitops log --oneline -5
 | Item | Holds | Used by |
 |---|---|---|
 | `mediasafe/linode-token` | password = Linode PAT (Linodes, Volumes, Firewalls RW) | `infra/terraform/tf` |
-| `mediasafe/cloudflare-token` | password = API token (Zone DNS Edit; **needs R2 Edit for 5d**) | `infra/terraform/tf` |
+| `mediasafe/cloudflare-token` | password = API token (Zone DNS Edit + Account R2 Edit) | `infra/terraform/tf` |
 | `mediasafe/r2-terraform-state` | username = access key id, password = secret (state bucket only) | both `./tf` |
 | `mediasafe/argocd-deploy-key` | secure note = SSH private key (read-only deploy key) | `bootstrap/install` |
 | `mediasafe/vault-unseal-key` | password = unseal key — **permanent, also keep offline** | `bootstrap/vault-unseal` |
 | `mediasafe/vault-root-token` | password = initial root token — **revoke in 5e, then delete** | `infra/vault/tf --root` |
+| `mediasafe/r2-vault-snapshots` | username = access key id, password = secret (Object RW, snapshot bucket only) | copied into `kv/infra/vault-snapshots`; `bootstrap/vault-restore-drill` |
 | `mediasafe/google-admin-oauth` | username = client id, password = secret ("MediaSafe admin", own GCP project, Testing mode) | `infra/vault/tf`, 5e |
 
 **Vault paths** (planned; all empty today): `kv/mediasafe/{staging,prod}/*` (app env),
@@ -203,30 +213,10 @@ SHA-256) because Homebrew is blocked by outdated Xcode Command Line Tools.
 
 ## 8. What comes next — in order
 
-### 5d — nightly Vault snapshots to R2, with a real restore test
-**Adham first:**
-1. Add **Account → Workers R2 Storage → Edit** to the Cloudflare token (`mediasafe/cloudflare-token`).
-2. After the bucket exists: create an R2 API token scoped to `mediasafe-vault-snapshots` only,
-   Object Read & Write → Bitwarden `mediasafe/r2-vault-snapshots` (username = key id,
-   password = secret).
-
-**Then build:**
-- `infra/terraform`: `cloudflare_r2_bucket` `mediasafe-vault-snapshots` + lifecycle rule deleting
-  objects after **14 days** (check the v5 resource names in the provider docs first).
-- Put the R2 key in Vault by hand: `vault kv put -mount=kv infra/vault-snapshots
-  access_key_id=… secret_access_key=… endpoint=https://e611254754d8c1922b8ead788aab6f40.r2.cloudflarestorage.com bucket=mediasafe-vault-snapshots`.
-- gitops `platform/vault/`: ServiceAccount `vault-snapshot` (ns `vault`) + CronJob at 03:00 UTC.
-  The job mounts a **projected SA token with audience `vault`**, logs in as role `vault-snapshot`,
-  runs `vault operator raft snapshot save`, reads the R2 key from `kv/infra/vault-snapshots`, and
-  uploads (rclone or aws-cli image). Add it as a source of `apps/vault.yaml` or its own app.
-- **Restore drill (must actually be done):** write a canary (`kv/infra/canary`), take a snapshot,
-  start a throwaway Vault (own namespace, emptyDir Raft), `vault operator raft snapshot restore
-  -force`, unseal it with the **original** unseal key, read the canary, delete the namespace.
-  Write the steps into a runbook (`bootstrap/` or `docs/`).
-
 ### 5e — Argo CD public with Google sign-in, then revoke the root token
 1. `vault kv put -mount=kv infra/argocd/google-oidc clientID=… clientSecret=…` (the
-   `mediasafe/google-admin-oauth` values).
+   `mediasafe/google-admin-oauth` values), and add `https://argocd.mediasafe.space/auth/callback`
+   to that Google client's authorized redirect URIs, or sign-in fails with `redirect_uri_mismatch`.
 2. gitops: in `argocd` — SA `vault-reader`, SecretStore `vault` (role `eso-argocd`), ExternalSecret →
    Secret `argocd-google-oidc` with label `app.kubernetes.io/part-of: argocd`.
 3. `platform/argocd/values.yaml`: `configs.cm.url: https://argocd.mediasafe.space`, `oidc.config`
@@ -296,3 +286,5 @@ Then:
 - Sentry Actions variables/secret unset (images build without Sentry until set).
 - ADR status line says stages 0–4; stage 5a–5c progress is recorded only here so far.
 - Cluster-map artifact is a 4 Oct snapshot (pre-Vault/ESO).
+- Nothing alerts on a failed snapshot Job (a sealed Vault fails it every night). Plan: a Sentry
+  cron monitor check-in from the CronJob.
