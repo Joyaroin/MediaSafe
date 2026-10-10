@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–4 implemented, stage 5 in progress
+- **Status:** Accepted, stages 0–5 implemented
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -295,7 +295,7 @@ time, so staging's browser errors are tagged the same as prod's.
      tracking annotation. They were deleted by hand once, after checking none held objects.
    - After that cleanup and a `k3s` restart, `k3s-server` dropped from 1.33 GB to 851 MiB; the
      node has about 2.2 GB available.
-5. **Vault and ESO.** 🔄 Vault, ESO and snapshots done 2026-10-10; Argo CD's Google sign-in next.
+5. **Vault and ESO.** ✅ Done 2026-10-10.
    - Vault 2.1.1 (Raft, on the volume), configured by `infra/vault/`. Vault 2.0 made
      `sys/generate-root` authenticated; it is re-enabled unauthenticated, because the recovery
      path above needs it.
@@ -306,6 +306,9 @@ time, so staging's browser errors are tagged the same as prod's.
      the newest snapshot restored into a throwaway Vault, the original unseal key opened it,
      `generate-root` minted a token from that key alone, and a canary written just before the
      snapshot read back.
+   - Argo CD public at `argocd.mediasafe.space` with Google sign-in only (same client as Vault's
+     admin login), local admin disabled. Then the root token was revoked, after checking
+     `generate-root -status` answers without a token.
 6. **Staging app.**
 7. **NetworkPolicies.**
 8. **Prod on k3s, beside Vercel.**

@@ -14,7 +14,7 @@ with the commands in [Verify the current state](#verify-the-current-state).
 
 | What | Where |
 |---|---|
-| App repo | `~/MediaSafe`, branch **`infra-migration`**, 16 commits ahead of `main`, **not pushed**. Everything ships as **one big PR** (Adham's choice). |
+| App repo | `~/MediaSafe`, branch **`infra-migration`**, ahead of `main` (`git log main..infra-migration`), **not pushed**. Everything ships as **one big PR** (Adham's choice). |
 | GitOps repo | `~/mediasafe-gitops` → `github.com/Joyaroin/mediasafe-gitops` (private), branch `main`, pushed. Argo CD syncs it. |
 | VM Terraform | `MediaSafe/infra/terraform/` — run with `./tf` |
 | Vault Terraform | `MediaSafe/infra/vault/` — run with `./tf` (`--root` was the first apply only) |
@@ -92,7 +92,7 @@ his own uncommitted change; leave them out of every commit.
   limit needs it). Traefik's 25 unused CRDs skipped and hand-deleted once (they were untracked).
 - Verified from the internet: 301 redirect, trusted prod certs, real client IP; apex 404 (no app).
 
-### Stage 5 — Vault and External Secrets 🔄 (5a–5d done)
+### Stage 5 — Vault, External Secrets, public Argo CD ✅ (5a–5e, done 2026-10-10)
 - **5a ✅** (gitops `30e4f5f`, `aef68b7`): Vault 2.1.1 via chart 0.34.1, standalone + Raft, local
   PV `vault-data` → `/mnt/vault-data/raft` (Retain, Prune=false, claimRef `data-vault-0`), init
   container chowns to 100:1000. `enable_unauthenticated_access = ["generate-root"]` because Vault
@@ -118,17 +118,29 @@ his own uncommitted change; leave them out of every commit.
   `rclone/rclone:1.75.1` uploads it. **`bootstrap/vault-restore-drill` passed 2026-10-10**
   (restore into a throwaway Vault, original unseal key, `generate-root` from the key alone,
   canary read back). The drill is also the restore procedure.
+- **5e ✅** (gitops `8fae650`, `d161b68`): Argo CD at `https://argocd.mediasafe.space`, Google
+  sign-in only. App `argocd-public` (`platform/argocd-public/`): SA `vault-reader` + SecretStore
+  (role `eso-argocd`) + ExternalSecret → Secret `argocd-google-oidc` (label
+  `app.kubernetes.io/part-of: argocd`) from `kv/infra/argocd/google-oidc`, and the HTTPRoute.
+  Kept out of `apps/argocd.yaml` so a sealed Vault degrades only this app and `bootstrap/install`
+  stays Vault-free. Same Google client as Vault's admin login. RBAC: `policy.default` empty,
+  `g, adhamseddik546@gmail.com, role:admin`, `scopes: [email]`. Verified: Google sign-in shows
+  all apps; `admin.enabled: false` (server logs `admin disabled`);
+  `argocd-initial-admin-secret` deleted. **Vault root token revoked**: lookup now 403s,
+  `generate-root -status` answers without a token, the Google admin login still works.
 
 ---
 
 ## 4. Current live state (2026-10-10)
 
-- Argo apps, all **Synced/Healthy**: `root`, `argocd`, `gateway-api-crds`, `traefik`,
-  `cert-manager`, `edge`, `vault`, `external-secrets`, `app-namespaces`.
-- Vault: initialised, **unsealed**, v2.1.1. KV holds only `kv/infra/vault-snapshots` (the R2 key).
+- Argo apps, all **Synced/Healthy**: `root`, `argocd`, `argocd-public`, `gateway-api-crds`,
+  `traefik`, `cert-manager`, `edge`, `vault`, `external-secrets`, `app-namespaces`.
+- Argo CD public at `https://argocd.mediasafe.space`, Google sign-in only, no local admin.
+- Vault: initialised, **unsealed**, v2.1.1, **no root token**. KV holds `kv/infra/vault-snapshots`
+  (the R2 key) and `kv/infra/argocd/google-oidc`.
 - R2 bucket `mediasafe-vault-snapshots`; first scheduled snapshot 2026-10-11 03:00 UTC.
-- Node memory: ~2.1 GiB used of 3.9 GiB; **~1.66 GiB available**. `k3s-server` ~1.09 GiB
-  (grew ~220 MiB with External Secrets' 20 CRDs, 18 of them unused generators).
+- Node memory: ~2.0 GiB working set of 3.9 GiB; **~1.83 GiB available** (after 5e). `k3s-server`
+  ~1.09 GiB as of 5c (grew ~220 MiB with External Secrets' 20 CRDs, 18 unused generators).
 - Cert expiry: all three 2026-12-31; cert-manager renews ~30 days before.
 
 ### Verify the current state
@@ -155,12 +167,14 @@ git -C ~/mediasafe-gitops log --oneline -5
 | `mediasafe/r2-terraform-state` | username = access key id, password = secret (state bucket only) | both `./tf` |
 | `mediasafe/argocd-deploy-key` | secure note = SSH private key (read-only deploy key) | `bootstrap/install` |
 | `mediasafe/vault-unseal-key` | password = unseal key — **permanent, also keep offline** | `bootstrap/vault-unseal` |
-| `mediasafe/vault-root-token` | password = initial root token — **revoke in 5e, then delete** | `infra/vault/tf --root` |
+| `mediasafe/vault-root-token` | ~~initial root token~~ **revoked 2026-10-10**; item to be deleted (in Trash 30 days) | nothing |
 | `mediasafe/r2-vault-snapshots` | username = access key id, password = secret (Object RW, snapshot bucket only) | copied into `kv/infra/vault-snapshots`; `bootstrap/vault-restore-drill` |
 | `mediasafe/google-admin-oauth` | username = client id, password = secret ("MediaSafe admin", own GCP project, Testing mode) | `infra/vault/tf`, 5e |
 
-**Vault paths** (planned; all empty today): `kv/mediasafe/{staging,prod}/*` (app env),
-`kv/infra/argocd/*` (Argo's Google secret), `kv/infra/vault-snapshots` (R2 key for backups).
+**Vault paths:** `kv/infra/vault-snapshots` (R2 key for backups) and
+`kv/infra/argocd/google-oidc` (Argo's Google client) are set; `kv/mediasafe/{staging,prod}/*`
+(app env) are planned for stage 6. No root token exists: if the Google login breaks, mint one
+with `vault operator generate-root` and the unseal key (proved by the restore drill).
 
 ---
 
@@ -183,9 +197,8 @@ vault login -method=oidc                    # Google; token in ~/.vault-token fo
 cd ~/MediaSafe/infra/terraform && ./tf plan         # VM, firewall, DNS
 cd ~/MediaSafe/infra/vault && ./tf plan             # Vault config (uses ~/.vault-token)
 
-# Argo UI (until 5e makes it public)
-kubectl -n argocd port-forward svc/argocd-server 8080:80   # http://localhost:8080
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+# Argo UI: https://argocd.mediasafe.space (Google). If sign-in is broken:
+argocd --core app list
 ```
 
 The Vault CLI is `~/.local/bin/vault` (2.1.1, installed from HashiCorp's release with a verified
@@ -212,26 +225,6 @@ SHA-256) because Homebrew is blocked by outdated Xcode Command Line Tools.
 ---
 
 ## 8. What comes next — in order
-
-### 5e — Argo CD public with Google sign-in, then revoke the root token
-1. `vault kv put -mount=kv infra/argocd/google-oidc clientID=… clientSecret=…` (the
-   `mediasafe/google-admin-oauth` values), and add `https://argocd.mediasafe.space/auth/callback`
-   to that Google client's authorized redirect URIs, or sign-in fails with `redirect_uri_mismatch`.
-2. gitops: in `argocd` — SA `vault-reader`, SecretStore `vault` (role `eso-argocd`), ExternalSecret →
-   Secret `argocd-google-oidc` with label `app.kubernetes.io/part-of: argocd`.
-3. `platform/argocd/values.yaml`: `configs.cm.url: https://argocd.mediasafe.space`, `oidc.config`
-   (issuer `https://accounts.google.com`, clientID/secret as `$argocd-google-oidc:clientID` /
-   `$argocd-google-oidc:clientSecret`, scopes `openid profile email`), `configs.rbac`
-   `policy.default: ""`, `g, adhamseddik546@gmail.com, role:admin`, `scopes: '[email]'`.
-4. HTTPRoute `argocd.mediasafe.space` → `argocd-server:80`, parent `gateway/public`
-   section `https-argocd`.
-5. Verify Google login in the browser and `argocd login argocd.mediasafe.space --sso`. Then set
-   `admin.enabled: false` and delete `argocd-initial-admin-secret`.
-6. Revoke the Vault root token (`vault token revoke` with it), delete
-   `mediasafe/vault-root-token` from Bitwarden, and confirm `vault operator generate-root -status`
-   answers without a token (the recovery path).
-7. Optional: GitHub webhook → Argo for instant syncs now that it's reachable.
-8. Record stage 5 in the ADR (status line + rollout entry), refresh the cluster-map artifact.
 
 ### Stage 6 — the app on staging (then prod values, still suspended)
 **Decision needed first:** stage 1's workflow only runs on `main`, so **no image exists in GHCR
@@ -284,7 +277,8 @@ Then:
 - Add `export KUBECONFIG=~/.kube/mediasafe.yaml` to `~/.zshrc` (Adham's file).
 - `ci.yml` uses `actions/checkout@v4` (deprecated Node 20); `image.yml` uses v7.
 - Sentry Actions variables/secret unset (images build without Sentry until set).
-- ADR status line says stages 0–4; stage 5a–5c progress is recorded only here so far.
-- Cluster-map artifact is a 4 Oct snapshot (pre-Vault/ESO).
+- Optional: GitHub webhook → Argo (`argocd.mediasafe.space/api/webhook`) for instant syncs.
+- `mediasafe/vault-root-token` deletion from Bitwarden: confirm it is done.
+- Cluster-map artifact is a 4 Oct snapshot (pre-Vault/ESO/public Argo).
 - Nothing alerts on a failed snapshot Job (a sealed Vault fails it every night). Plan: a Sentry
   cron monitor check-in from the CronJob.
