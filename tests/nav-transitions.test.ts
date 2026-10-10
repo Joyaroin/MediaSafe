@@ -878,3 +878,25 @@ describe("the tab bar crosses with the action bar instead of cutting, and inert 
     expect(SELECTION_ACTION_BAR).not.toContain('"data-selecting"');
   });
 });
+
+/**
+ * Settings is inside You — the UI overhaul. It is reached from You alone, so a reader in
+ * it keeps You marked on the bar, and its back bar names You rather than Up next.
+ */
+describe("Settings belongs to You", () => {
+  it("marks You current anywhere in Settings", () => {
+    expect(isCurrentRoute("/settings", "/you")).toBe(true);
+    expect(isCurrentRoute("/settings/delete-account", "/you")).toBe(true);
+    expect(isCurrentRoute("/settings", "/library")).toBe(false);
+    // Not by bare prefix, here either.
+    expect(isCurrentRoute("/settingsx", "/you")).toBe(false);
+  });
+
+  it("leaves Settings by a bar that names You", () => {
+    const settings = readFileSync("app/(signed-in)/settings/page.tsx", "utf8");
+    expect(settings).toContain("<BackBar origin={YOU} />");
+    expect(readFileSync("app/(signed-in)/settings/settings-heading.tsx", "utf8")).toContain(
+      'export const YOU = { label: "You", destination: "/you" } as const;',
+    );
+  });
+});

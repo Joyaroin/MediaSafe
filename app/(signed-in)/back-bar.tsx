@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { backOrigin } from "@/app/nav-route";
+import { backOrigin, isCurrentRoute, type BackOrigin } from "@/app/nav-route";
 import { previousPathname } from "@/app/previous-pathname";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 
@@ -52,10 +52,16 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * is slow to load and a route that failed to load are both routes a reader must be able
  * to leave, which is why this is drawn by all of their renders and not only the good one.
  */
-export function BackBar() {
+export function BackBar({ origin }: { readonly origin?: BackOrigin } = {}) {
   const pathname = usePathname();
   const previous = previousPathname(pathname);
-  const { label, destination } = backOrigin(previous);
+  /* A page reached from one place names that place (`origin`); a page reached from
+     anywhere names wherever the reader was. */
+  const { label, destination } = origin ?? backOrigin(previous);
+  /* History is the way back only when the previous page *is* that destination — a fixed
+     origin must not send `history.back()` somewhere it does not name. */
+  const viaHistory =
+    previous !== null && (origin === undefined || isCurrentRoute(previous, destination));
 
   return (
     <div className="border-b border-hair px-gutter py-4">
@@ -63,7 +69,7 @@ export function BackBar() {
       <Link
         href={destination}
         onClick={(event) => {
-          if (previous === null) return;
+          if (!viaHistory) return;
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
           event.preventDefault();

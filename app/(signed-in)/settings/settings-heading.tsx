@@ -9,5 +9,16 @@
  * a decision this ticket does not revisit.
  */
 export function SettingsHeading() {
-  return <h1 className="bill-title text-bill-lg text-text">Settings</h1>;
+  return (
+    <div className="px-gutter pt-5 lg:px-10">
+      <h1 className="screen-title text-screen text-text">Settings</h1>
+    </div>
+  );
 }
+
+/**
+ * Where Settings' back bar leads. Settings is reached from You alone, so its way back is
+ * You — not `backOrigin`'s Up next fallback, which is right for a title page reached from
+ * anywhere and wrong for a page reached from one place.
+ */
+export const YOU = { label: "You", destination: "/you" } as const;
