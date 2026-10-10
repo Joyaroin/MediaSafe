@@ -296,6 +296,11 @@ const NO_PENDING_STATE = [
    */
   "/welcome",
   /**
+   * A redirect to Library's Lists tab since the UI overhaul — it reads nothing and draws
+   * nothing, so there is no pending state for a boundary to stand in for.
+   */
+  "/lists",
+  /**
    * §9's second shape again. `isSignedIn()` decides between a redirect to `/` and a form
    * that is a literal in the source; `searchParams` is not a read. **§9 does not name this
    * route** — it lists `/welcome` — so this entry is that rule applied rather than quoted,
@@ -477,7 +482,6 @@ describe("every dynamic surface has a loading boundary", () => {
    * one would come back here as `unbounded`.
    */
   it("finds the boundary on every segment #181 converts that still exists", () => {
-    expect(hasBoundary("(signed-in)/lists")).toBe(true);
     expect(hasBoundary("(signed-in)/lists/[listId]")).toBe(true);
     expect(hasBoundary("(signed-in)/settings")).toBe(true);
     expect(hasBoundary("(signed-in)/settings/delete-account")).toBe(true);

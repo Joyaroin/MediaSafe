@@ -49,7 +49,8 @@ const NAV_PAGES = [
   "app/(signed-in)/up-next/page.tsx",
   "app/(signed-in)/search/page.tsx",
   "app/(signed-in)/library/page.tsx",
-  "app/(signed-in)/lists/page.tsx",
+  /** `lists/page.tsx` left this list in the UI overhaul: it is a redirect, and draws no
+   *  page for a transition to carry. */
   /** Issue #247, and the phone's fourth tab since #249 pointed it here and deleted the
    *  `/stats` line that used to sit above this one. #247's own note said wrapping the
    *  page before it was on the bar would leave that ticket changing one `href` rather

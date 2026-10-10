@@ -4,8 +4,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { EmptyLists } from "@/app/(signed-in)/lists/empty-lists";
-import ListsLoading from "@/app/(signed-in)/lists/loading";
 import ListDetailLoading from "@/app/(signed-in)/lists/[listId]/loading";
 import DeleteAccountLoading from "@/app/(signed-in)/settings/delete-account/loading";
 import SettingsLoading from "@/app/(signed-in)/settings/loading";
@@ -27,22 +25,14 @@ import SearchLoading from "@/app/(signed-in)/search/loading";
 
 const markupOf = (element: React.ReactElement) => renderToStaticMarkup(element);
 
-describe("Lists and its detail route", () => {
-  it("paints Lists' own heading, not the empty state", () => {
-    const pending = markupOf(createElement(ListsLoading));
-    const empty = markupOf(createElement(EmptyLists));
-
-    expect(pending).toContain("Lists");
-    expect(pending).toContain('role="status"');
-    expect(pending).not.toContain("Group it your own way");
-    expect(pending).not.toEqual(empty);
-  });
+describe("a list's own route", () => {
+  // `/lists` itself is a redirect to Library's Lists tab since the UI overhaul, so it has
+  // no pending boundary of its own to assert.
 
   /**
    * `lists/[listId]`'s `<h1>` is `{detail.name}`, read from the database — the
    * back-link shape, the same one `titles/[entryId]/loading.tsx` follows. The list's own
-   * page is never reached by `lists/loading.tsx`'s boundary, which would print *Lists* over
-   * one list's own contents.
+   * page has its own boundary rather than one printing *Lists* over one list's contents.
    */
   it("says which page is reading rather than inheriting Lists' own heading", () => {
     const pending = markupOf(createElement(ListDetailLoading));
