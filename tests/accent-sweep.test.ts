@@ -152,11 +152,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason: "EPISODE_NUMBER_UP_NEXT — #310's migration",
   },
-  "app/(signed-in)/library/programme-note-episodes.tsx": {
-    meaning: "LIVE_EDGE_OF_THE_RECORD",
-    tokens: 2,
-    reason: "the Next tag on the up-next episode's row — issue #357",
-  },
   "app/buttons.ts": {
     meaning: "THE_BUTTON_REGISTER",
     tokens: 1,
@@ -172,6 +167,21 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "ghost pair keeps its border literal in errors/recovery-buttons.ts. The three " +
       "QUIET_RECORDING_CONTROL variants keep their own hover:border-accent/hover:text-accent " +
       "literals — a different control (watched up to here), left untouched by this ticket.",
+  },
+  "app/(signed-in)/up-next/up-next-card.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason: "the filled check while an Up next card holds after a mark — the UI overhaul",
+  },
+  "app/(signed-in)/up-next/up-next-episode-row.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason: "'Watched' in place of the episode name while the card holds — the UI overhaul",
+  },
+  "app/(signed-in)/up-next/up-next-film-rail.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason: "'Watched' on a film card while it holds — the UI overhaul",
   },
 
   // ── Literal exceptions: the brand mark ─────────────────────────────────────────────

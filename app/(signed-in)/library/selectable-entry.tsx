@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { createContext, useContext } from "react";
 
 import { carryPoster } from "@/app/poster-handoff-memory";
 import type { SelectableTitle } from "./bulk-selection";
@@ -35,39 +36,51 @@ import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
  *
  * ── The poster morph's source, since issue #303 ──────────────────────────────────────
  *
- * `poster` and `posterTransitionName` arrive from `library-entry-cell.tsx`, which stays a
- * server component and gains no new client boundary of its own.
- *
- * **A raw `viewTransitionName` style, not React's `<ViewTransition>`.** `masthead.tsx` and
- * `tab-bar.tsx` are this codebase's existing precedent for the plain CSS property, and it
- * is what keeps this component renderable under Vitest: `title-hero.test.ts`'s own
- * docblock records that the installed React does not export `ViewTransition` — Next
- * supplies it at build time — so a component that imports it cannot be rendered under this
- * suite. `tests/library-surface.test.ts` renders every one of the 472 cells this wraps, so
- * that property is worth keeping rather than trading for the component form `title-hero.tsx`
- * and `up-next-episode-row.tsx` use — the browser's View Transition
- * API pairs on the CSS property alone and does not care which mechanism set it.
- * `titles/[entryId]/pending-poster.tsx` makes the identical trade for the identical
- * reason, one render test further down the same route.
+ * `poster` arrives from `library-entry-cell.tsx`, which stays a server component and gains
+ * no new client boundary of its own. It carries no morph name: the title page commits its
+ * loading screen first, so a morph could never form (`up-next-episode-row.tsx`'s
+ * `RowFrame`), and the UI overhaul kept the loading screen.
  */
+
 /**
- * The cutoff for "Desktop", and the same value every `lg:` Tailwind class
- * in this codebase compiles to. Named rather than inlined so there is exactly one place
- * to change if that value ever moves — the CSS classes would still need updating
- * separately, but at least this JS copy would no longer be a second, silent one.
- *
- * Exported since #197: `bulk-selection-provider.tsx` decides whether there is a selection
- * to join at the same breakpoint, and a second literal there would have been the silent
- * copy this constant exists to prevent.
+ * The grid's titles in the order it draws them — what a shift-click's range is measured
+ * over (UI overhaul, desktop bulk select). The store knows what is selected but not where
+ * anything sits, and the grid is the one place that knows both.
  */
-export const DESKTOP_BREAKPOINT = "(min-width: 1024px)";
+const SelectionOrder = createContext<readonly SelectableTitle[]>([]);
+
+export function SelectionOrderProvider({
+  titles,
+  children,
+}: {
+  titles: readonly SelectableTitle[];
+  children: React.ReactNode;
+}) {
+  return <SelectionOrder.Provider value={titles}>{children}</SelectionOrder.Provider>;
+}
+
+/**
+ * The titles a shift-click on `to` covers: from the last title held or toggled to `to`,
+ * either direction, in grid order. Just `to` when there is no anchor or it is not in this
+ * grid — a filter may have taken it off.
+ */
+export function rangeTo(
+  order: readonly SelectableTitle[],
+  anchor: string | null,
+  to: SelectableTitle,
+): readonly SelectableTitle[] {
+  const end = order.findIndex((one) => one.libraryEntryId === to.libraryEntryId);
+  const start = order.findIndex((one) => one.libraryEntryId === anchor);
+  if (start === -1 || end === -1) return [to];
+  return start <= end ? order.slice(start, end + 1) : order.slice(end, start + 1).reverse();
+}
+
 
 export function SelectableEntry({
   title,
   className,
   poster,
   posterPath,
-  posterTransitionName,
   children,
 }: {
   /** Everything the selection store needs about this cell, and nothing else. */
@@ -79,7 +92,6 @@ export function SelectableEntry({
   /** The same path `poster` was built from, handed over separately because the morph
    *  needs the raw value at the moment of a click and not the element built from it. */
   posterPath: string | null;
-  posterTransitionName: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -90,17 +102,19 @@ export function SelectableEntry({
   const selecting = useIsSelecting();
   const selected = useIsSelected(title.libraryEntryId);
   const gesture = useHoldToSelect(bulk, title);
+  const order = useContext(SelectionOrder);
 
-  function onClick(): void {
+  function onClick(event: React.MouseEvent): void {
     if (gesture.consumeSwallowedClick()) return;
 
     if (bulk !== null && selecting) {
-      bulk.toggle(title);
+      if (event.shiftKey) bulk.extend(rangeTo(order, bulk.anchor(), title));
+      else bulk.toggle(title);
       return;
     }
 
     // Every screen size opens the title's own page. There is no side pane to load it into.
-    carryPoster(title.libraryEntryId, posterPath);
+    carryPoster(title.libraryEntryId, posterPath, event.currentTarget);
     router.push(`/titles/${title.libraryEntryId}`);
   }
 
@@ -118,11 +132,7 @@ export function SelectableEntry({
       aria-pressed={selecting ? selected : undefined}
       className={`${className}${bulk === null ? "" : ` ${HOLDABLE}`}${selected ? ` ${SELECTED}` : ""}`}
     >
-      <div
-        className="relative"
-        // `viewTransitionClass` scopes the morph's spring to posters (#338).
-        style={{ viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }}
-      >
+      <div className="relative">
         {poster}
       </div>
       {children}

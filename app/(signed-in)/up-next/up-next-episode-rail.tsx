@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence } from "motion/react";
 import { useMemo } from "react";
 
 import {
@@ -13,8 +14,9 @@ import { UpNextEpisodeRow, UpNextPendingRow } from "./up-next-episode-row";
 import { useEntriesOnRail } from "./up-next-mark";
 
 /**
- * The phone's next-episodes group — one list over all three of Up next's rules, which is
- * #250's own shape and is unchanged by the move from a rail to a list.
+ * The phone's next-episodes group — one list over both halves of Continue watching, which
+ * is #250's own shape and is unchanged by the move from a rail to a list. A show whose Up
+ * next episode has not aired is not on it (`CONTINUE_WATCHING`); it is on Coming up.
  *
  * The name is kept as `UpNextEpisodeRail` while its callers and tests are: what it renders
  * is `UpNextGroup`'s vertical list, and `up-next-group.tsx` holds the argument for that.
@@ -27,7 +29,6 @@ export function UpNextEpisodeRail({
 }: {
   rails: {
     readonly ongoing: readonly UpNextRailEntry[];
-    readonly comingBack: readonly UpNextEntry[];
     readonly oldFriends: readonly UpNextEntry[];
   };
 }) {
@@ -36,10 +37,9 @@ export function UpNextEpisodeRail({
   const entries = useMemo(
     () => [
       ...rails.ongoing.filter(isEpisodeEntry),
-      ...rails.comingBack,
       ...rails.oldFriends,
     ],
-    [rails.ongoing, rails.comingBack, rails.oldFriends],
+    [rails.ongoing, rails.oldFriends],
   );
 
   const showing = useEntriesOnRail(entries);
@@ -49,7 +49,7 @@ export function UpNextEpisodeRail({
   if (pending.length === 0 && showing.length === 0) return null;
 
   return (
-    <UpNextGroup label="Continue watching">
+    <UpNextGroup label="Continue watching" hideLabel>
       {pending.map((entry, index) => (
         <UpNextPendingRow
           key={entry.libraryEntryId}
@@ -57,17 +57,21 @@ export function UpNextEpisodeRail({
           aboveFold={index < FIRST_RUN}
         />
       ))}
-      {showing.map((entry, index) => (
-        <UpNextEpisodeRow
-          key={entry.libraryEntryId}
-          entry={entry}
-          aboveFold={pending.length + index < FIRST_RUN}
-        />
-      ))}
+      {/* `initial={false}`: cards on the first paint arrive with the grid's own stagger,
+          not a second entrance. What this is for is the leaving — a card whose last aired
+          episode was just marked fades out after its hold, and `layout` closes the gap. */}
+      <AnimatePresence initial={false}>
+        {showing.map((entry, index) => (
+          <UpNextEpisodeRow
+            key={entry.libraryEntryId}
+            entry={entry}
+            aboveFold={pending.length + index < FIRST_RUN}
+          />
+        ))}
+      </AnimatePresence>
     </UpNextGroup>
   );
 }
 
-/** Rows asked for eagerly. Three, not the track's two: a vertical list puts more of itself
- *  above the fold than a horizontal one did. */
-const FIRST_RUN = 3;
+/** Cards asked for eagerly — about a phone screen's worth at the card's `56px` poster. */
+const FIRST_RUN = 6;

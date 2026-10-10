@@ -365,24 +365,33 @@ describe("an Ongoing tile's mark", () => {
     expect(stillOnRail(marks, comingBack.libraryEntryId, comingBack.queue)).toBe(true);
   });
 
-  it("takes the card off the rail when the last released episode is marked", async () => {
+  it("takes the card off the rail when the last released episode is marked, after its hold", async () => {
     const { marks, answerRecord } = harness();
     const entry = entryWith([episodeAt(1, 2)]);
+    const subject = {
+      libraryEntryId: entry.libraryEntryId,
+      episodeId: entry.queue.episodes[0].episodeId,
+    };
 
     expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(true);
 
     void markFromCard(marks, entry, entry.queue.episodes[0]);
     await settle();
 
-    // Optimistically, before the server has answered — the card leaves at the same moment
-    // it would have advanced.
+    // Optimistically finished, before the server has answered — but the card holds on the
+    // episode it just recorded (`HOLD_MS`) rather than vanishing under the thumb.
     const reading = readUpNextMark(marks, entry.libraryEntryId, entry.queue);
     expect(reading.finished).toBe(true);
     expect(reading.episode).toBeNull();
-    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(false);
+    expect(reading.phase).toBe("marking");
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(true);
 
     answerRecord[0]({ ok: true });
     await settle();
+    expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(true);
+
+    // The hold ends — the row's `useHold` calls `settle()` — and the card leaves.
+    marks.settle(subject);
     expect(stillOnRail(marks, entry.libraryEntryId, entry.queue)).toBe(false);
   });
 

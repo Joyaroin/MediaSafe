@@ -1,5 +1,6 @@
 import { PendingLine } from "@/app/pending-line";
-import { SettingsHeading } from "./settings-heading";
+import { BackBar } from "../back-bar";
+import { SettingsHeading, YOU } from "./settings-heading";
 
 /**
  * Settings, which is still reading.
@@ -11,10 +12,11 @@ import { SettingsHeading } from "./settings-heading";
  */
 export default function SettingsLoading() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
+      <BackBar origin={YOU} />
       <SettingsHeading />
 
-      <div className="mt-12">
+      <div className="mt-12 w-full max-w-3xl px-gutter lg:px-10">
         <PendingLine shape="form" held />
       </div>
     </main>

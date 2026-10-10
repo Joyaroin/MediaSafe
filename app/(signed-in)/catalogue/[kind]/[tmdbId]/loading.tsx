@@ -1,5 +1,7 @@
 import { BackBar } from "@/app/(signed-in)/back-bar";
-import { PendingLine } from "@/app/pending-line";
+import { TitleHeroSkeleton } from "@/app/(signed-in)/library/title-hero-skeleton";
+import { HERO_POSTER_MEASURE } from "@/app/(signed-in)/library/hero-poster-measure";
+import { PosterBlock } from "@/app/skeleton";
 
 /**
  * An unowned title's detail, still reading — a route whose heading is itself the answer.
@@ -11,12 +13,20 @@ import { PendingLine } from "@/app/pending-line";
  */
 export default function UnownedTitleLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <BackBar />
 
-      <div className="px-gutter py-5">
-        <PendingLine shape="detail" held />
-      </div>
+      {/* The hero's own layout, as on an owned title's page — nothing was carried here, so
+          the poster is a block in the hero's own measure rather than a picture. */}
+      <TitleHeroSkeleton
+        poster={
+          <div className="shrink-0 route-pending-hold">
+            <div className={HERO_POSTER_MEASURE}>
+              <PosterBlock className="w-full" radius="var(--radius-4)" />
+            </div>
+          </div>
+        }
+      />
     </main>
   );
 }

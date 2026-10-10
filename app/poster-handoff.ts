@@ -38,6 +38,12 @@ export interface CarriedPoster {
   /** `null` is a title TMDB has no artwork for — a real, present answer, and not the same
    *  fact as nothing having been carried at all (`Carried` below). */
   readonly posterPath: string | null;
+  /**
+   * The exact image URL the pressed poster was showing — already downloaded and decoded.
+   * The destination draws it underneath its own, larger image, so the morph never lands
+   * on an empty box while that one loads (UI overhaul: the morph jerked).
+   */
+  readonly shown: string | null;
 }
 
 /** Nothing carried yet this session, or the reader reached this title some way other than
@@ -48,8 +54,17 @@ export type Carried = CarriedPoster | null;
 export const NOTHING_CARRIED: Carried = null;
 
 /** Carry one title's poster, replacing whatever was carried before it. */
-export function carry(libraryEntryId: string, posterPath: string | null): Carried {
-  return { libraryEntryId, posterPath };
+export function carry(
+  libraryEntryId: string,
+  posterPath: string | null,
+  shown: string | null = null,
+): Carried {
+  return { libraryEntryId, posterPath, shown };
+}
+
+/** The image the pressed poster was showing, if it was this entry's. */
+export function shownFor(carried: Carried, libraryEntryId: string): string | null {
+  return carried !== null && carried.libraryEntryId === libraryEntryId ? carried.shown : null;
 }
 
 /**

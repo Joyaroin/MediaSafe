@@ -140,6 +140,16 @@ export interface BulkSelection {
   begin(): void;
   /** A tap while selecting: in if it is out, out if it is in. A no-op outside the mode. */
   toggle(title: SelectableTitle): void;
+  /**
+   * The title the last hold or toggle was on — where a shift-click's range starts — or
+   * `null` before either (UI overhaul, desktop bulk select).
+   */
+  anchor(): string | null;
+  /**
+   * A shift-click: put every one of `titles` in, leaving any already in where they are.
+   * It only ever adds, the way a range in a file manager does. A no-op outside the mode.
+   */
+  extend(titles: readonly SelectableTitle[]): void;
   /** *Done*, and everything else that ends the mode without acting. */
   end(): void;
   /**
@@ -296,6 +306,8 @@ export function createBulkSelection({
     }
   }
 
+  let lastTouched: string | null = null;
+
   return {
     subscribe(onChange) {
       listeners.add(onChange);
@@ -317,6 +329,7 @@ export function createBulkSelection({
       // Idempotent on purpose: a hold that lands on a cell already selected has nothing to
       // say. Toggling it off there would make the deepest gesture on the screen the one
       // that undoes itself.
+      lastTouched = title.libraryEntryId;
       if (indexOf(title.libraryEntryId) !== -1) {
         apply({ selecting: true });
         return;
@@ -329,6 +342,7 @@ export function createBulkSelection({
       // decided what one of those does. Guarding here as well as there is what keeps the
       // rule true of the store rather than of one caller.
       if (!view.selecting) return;
+      lastTouched = title.libraryEntryId;
 
       const at = indexOf(title.libraryEntryId);
       if (at === -1) {
@@ -338,7 +352,20 @@ export function createBulkSelection({
       settle(view.selected.filter((_, index) => index !== at));
     },
 
-    end: () => settle([]),
+    anchor: () => lastTouched,
+
+    extend(titles) {
+      if (!view.selecting) return;
+      if (titles.length > 0) lastTouched = titles[titles.length - 1].libraryEntryId;
+      const fresh = titles.filter((title) => indexOf(title.libraryEntryId) === -1);
+      if (fresh.length === 0) return;
+      settle([...view.selected, ...fresh]);
+    },
+
+    end() {
+      lastTouched = null;
+      settle([]);
+    },
 
     addToList(listId) {
       const titles = view.selected;

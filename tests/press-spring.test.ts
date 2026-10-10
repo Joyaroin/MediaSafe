@@ -684,11 +684,15 @@ describe("the press answers the gesture the product is built around", () => {
   it("moves the checkmark and not the up-next row around it", () => {
     const source = codeOf(EPISODE_ROW);
 
-    // The row element is not itself pressable.
-    const row = source.match(/const ROW = "([^"]*)"/);
-    expect(row, "the row must still declare its ROW classes").not.toBeNull();
-    expect(row![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
-    expect(source).toContain("<m.li layout className={ROW}>");
+    // The card element is not itself pressable. Its classes are `CARD`, shared with the
+    // film cards (`up-next-card-styles.ts`), and the hold adds a wash and nothing else.
+    const card = codeOf("app/(signed-in)/up-next/up-next-card-styles.ts").match(
+      /export const CARD =\s*"([^"]*)"/,
+    );
+    expect(card, "the card must still declare its CARD classes").not.toBeNull();
+    expect(card![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
+    expect(source).toContain("const ROW = CARD;");
+    expect(source).toContain("className={held ? `${ROW} watch-hold` : ROW}");
 
     // And the control slot is rendered after the pressable link closes, so the check is a
     // sibling of it rather than a descendant.
@@ -930,6 +934,10 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
   "app/(signed-in)/search/catalogue-result.tsx": ["control"],
+  // The search field's ✕ — clears the query and keeps the focus in the field.
+  "app/(signed-in)/search/search-surface.tsx": ["control"],
+  // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
+  "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
 
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
@@ -1040,6 +1048,8 @@ describe("every pressable call site declares a register or is deliberately left 
 
     expect(client).toEqual([
       "app/(signed-in)/search/catalogue-result.tsx",
+      "app/(signed-in)/search/search-surface.tsx",
+      "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
       "app/(signed-in)/up-next/up-next-film-rail.tsx",
       "app/tab-bar.tsx",

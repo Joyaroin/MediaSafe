@@ -1,5 +1,7 @@
 "use client";
 
+import { AnimatePresence } from "motion/react";
+import * as m from "motion/react-m";
 import Link from "next/link";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
@@ -8,11 +10,14 @@ import { useWatchMark } from "@/app/(signed-in)/library/use-watch-mark";
 import {
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
-  WatchSweep,
 } from "@/app/(signed-in)/library/watch-mark-motion";
+import { RECORDS_A_WATCH } from "@/app/accent-meaning";
+import { exit } from "@/app/motion";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
+import { HeldControl, useHold } from "./up-next-card";
+import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
 import { UpNextGroup } from "./up-next-group";
 
 /**
@@ -35,19 +40,19 @@ export function UpNextFilmRail({
 
   return (
     <UpNextGroup label="Films to watch">
-      {films.map((film, index) => (
-        <FilmRow key={film.libraryEntryId} film={film} aboveFold={index < FIRST_RUN} />
-      ))}
+      <AnimatePresence initial={false}>
+        {films.map((film, index) => (
+          <FilmRow key={film.libraryEntryId} film={film} aboveFold={index < FIRST_RUN} />
+        ))}
+      </AnimatePresence>
     </UpNextGroup>
   );
 }
 
 const FIRST_RUN = 3;
 
-/** A poster at the row's own measure — `2/3`, so `48px` of width is `72px` of picture,
- *  which is what sets the row's height against the episode row's `72px` floor. */
-const POSTER_WIDTH = 48;
-
+/** A film card is an episode card's material and measure (`up-next-card-styles.ts`), so
+ *  the two lists read as one. */
 function FilmRow({
   film,
   aboveFold,
@@ -61,38 +66,50 @@ function FilmRow({
     runtimeMins: film.runtimeMins,
   });
 
-  const { watched, phase, pending, attempt, settle } = useWatchMark({
+  const { watched, phase, pending, attempt, settle, undo } = useWatchMark({
     initialWatched: false,
     libraryEntryId: film.libraryEntryId,
     episodeId: null,
     titleName: film.titleName,
+    inlineUndo: true,
   });
+
+  /* The same hold as an episode card: the film stays, washed, with *Undo*, for `HOLD_MS`,
+     then leaves the list. */
+  const held = watched && phase === "marking";
+  useHold(held ? film.libraryEntryId : null, settle);
 
   if (watched && phase === "settled") return null;
 
   return (
-    <li className="relative flex min-h-[72px] items-center gap-3 py-2.5">
+    <m.li
+      layout
+      exit={{ opacity: 0, scale: 0.96, transition: exit }}
+      className={held ? `${CARD} watch-hold` : CARD}
+    >
       <Link
         href={`/titles/${film.libraryEntryId}`}
-        className="pressable group flex min-w-0 flex-1 items-center gap-3.5"
+        className="pressable group flex min-w-0 flex-1 items-center gap-3"
       >
         <Poster
           posterPath={film.posterPath}
           name={film.titleName}
-          width={POSTER_WIDTH}
-          className="w-12 shrink-0 transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-1)]"
+          width={CARD_POSTER_WIDTH}
+          className={`${CARD_POSTER} transition duration-[var(--dur-fast)] group-hover:brightness-110`}
           aboveFold={aboveFold}
         />
 
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-item leading-snug font-medium text-text">
+          <p className="truncate text-item leading-snug font-medium text-text">
             {film.titleName}
           </p>
 
           {/* No line at all for a film TMDB has neither dated nor timed, rather than a
               placeholder — `library-entry-cell.tsx` makes the same choice for the identical
               fact, and `app/poster.tsx` makes it for artwork it does not have. */}
-          {meta === null ? null : (
+          {held ? (
+            <p className={`mt-[3px] text-item font-medium ${RECORDS_A_WATCH.ink}`}>Watched</p>
+          ) : meta === null ? null : (
             <p className="code-line mt-[3px] text-dim" data-numeric>
               {meta}
             </p>
@@ -100,19 +117,21 @@ function FilmRow({
         </div>
       </Link>
 
-      <button
-        type="button"
-        onClick={attempt}
-        disabled={pending || watched}
-        aria-label={`Mark ${film.titleName} watched`}
-        className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
-      >
-        <span className={RECORDING_GLYPH}>
-          <CheckmarkIcon className="h-4 w-4" />
-        </span>
-      </button>
-
-      {phase === "marking" ? <WatchSweep onSettled={settle} /> : null}
-    </li>
+      {held ? (
+        <HeldControl onUndo={undo} undoLabel={`Undo marking ${film.titleName} watched`} />
+      ) : (
+        <button
+          type="button"
+          onClick={attempt}
+          disabled={pending || watched}
+          aria-label={`Mark ${film.titleName} watched`}
+          className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
+        >
+          <span className={RECORDING_GLYPH}>
+            <CheckmarkIcon className="h-4 w-4" />
+          </span>
+        </button>
+      )}
+    </m.li>
   );
 }

@@ -76,9 +76,10 @@ describe("the row travels instead of teleporting", () => {
     }
   });
 
-  /** The row's own box is unchanged — `ROW`'s class, not a second style. */
+  /** The card's own box is `ROW`'s class, not a second style; the hold adds its wash. */
   it("keeps ROW as the row's only class, on both row kinds", () => {
-    expect(row.match(/<m\.li layout className=\{ROW\}>/g)).toHaveLength(2);
+    expect(row).toContain("className={held ? `${ROW} watch-hold` : ROW}");
+    expect(row.match(/<m\.li layout className=\{ROW\}>/g)).toHaveLength(1);
   });
 
   /**
@@ -103,11 +104,8 @@ describe("the row travels instead of teleporting", () => {
    * still there, still exactly once (`nav-transitions.test.ts` already pins that count),
    * and it still sits inside the row Motion now animates.
    */
-  it("keeps the poster's ViewTransition nested inside the animated row", () => {
-    expect(row.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(row.indexOf("<m.li layout className={ROW}>")).toBeLessThan(
-      row.indexOf("<ViewTransition"),
-    );
+  it("carries no ViewTransition on the card — the morph could not form", () => {
+    expect(row.match(/<ViewTransition/g)).toBeNull();
   });
 
   /** No new client boundary — the row was already `"use client"`, and this ticket adds no

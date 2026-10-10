@@ -22,7 +22,7 @@ import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
  *  3. **`default: "none"` is on both.** Without it these four pages animate during the
  *     poster morph and every Suspense reveal, which is two animations fighting for the
  *     same pixels.
- *  4. **The chrome is anchored.** If the masthead and tab bar lose their names they slide
+ *  4. **The chrome is anchored.** If the tab bar loses its name it slides
  *     with the content, the whole viewport appears to move, and the direction stops
  *     meaning anything.
  *  5. **It stays phone-only.** The desktop sidebar must not start sliding.
@@ -30,7 +30,6 @@ import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
 
 const GLOBALS = readFileSync("app/globals.css", "utf8");
 const TAB_BAR = readFileSync("app/tab-bar.tsx", "utf8");
-const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
 const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
@@ -50,7 +49,8 @@ const NAV_PAGES = [
   "app/(signed-in)/up-next/page.tsx",
   "app/(signed-in)/search/page.tsx",
   "app/(signed-in)/library/page.tsx",
-  "app/(signed-in)/lists/page.tsx",
+  /** `lists/page.tsx` left this list in the UI overhaul: it is a redirect, and draws no
+   *  page for a transition to carry. */
   /** Issue #247, and the phone's fourth tab since #249 pointed it here and deleted the
    *  `/stats` line that used to sit above this one. #247's own note said wrapping the
    *  page before it was on the bar would leave that ticket changing one `href` rather
@@ -87,7 +87,6 @@ describe("one motion, and nothing that has to choose between motions", () => {
     // *code* — the attachment sweep above is what holds that.
     expect(TAB_BAR).not.toMatch(/TABS\.findIndex\([^)]*isCurrentRoute/);
     expect(TAB_BAR).not.toMatch(/return \["nav-/);
-    expect(MASTHEAD).not.toMatch(/\["nav-/);
   });
 
   it("draws no per-class rule, so a leftover class would animate nothing", () => {
@@ -189,18 +188,17 @@ describe("the poster morph's spring is scoped to posters, not to every group", (
     expect(groupRule("\\*\\.poster")).toContain("var(--spring-poster)");
   });
 
-  it("leaves the masthead and tab-bar groups out of the poster rule's scope", () => {
-    // Neither chrome group carries the `poster` class, and the selector that reaches them
+  it("leaves the tab-bar group out of the poster rule's scope", () => {
+    // The chrome group does not carry the `poster` class, and the selector that reaches them
     // is a name, not `*` — so the scoped rule above cannot address them at all, rather
     // than addressing them and being overridden afterwards.
     const posterRule = groupRule("\\*\\.poster");
-    expect(posterRule).not.toContain("phone-masthead");
     expect(posterRule).not.toContain("phone-tab-bar");
 
-    // And the existing override — `animation: none` on the two named chrome groups — is
+    // And the existing override — `animation: none` on the named chrome group — is
     // still the rule that keeps them still, unaffected by where the spring now lives.
     expect(GLOBALS).toMatch(
-      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+      /::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
   });
 
@@ -208,11 +206,11 @@ describe("the poster morph's spring is scoped to posters, not to every group", (
     // The five halves of the morph named in `app/globals.css`'s own note beside the rule —
     // a call site that mints a name without the class is a poster the scoped rule cannot
     // reach, and the morph silently reverts to the browser's stock curve for it alone.
+    // The pair that remains: the title's loading frame and its hero, which share a name so
+    // the poster holds perfectly still while the page fills in around it (UI overhaul).
     const POSTER_CALL_SITES = [
       "app/(signed-in)/library/title-hero.tsx",
-      "app/(signed-in)/library/selectable-entry.tsx",
       "app/(signed-in)/titles/[entryId]/pending-poster.tsx",
-      "app/(signed-in)/up-next/up-next-episode-row.tsx",
     ];
 
     for (const file of POSTER_CALL_SITES) {
@@ -313,9 +311,8 @@ describe("where the wrapper lives", () => {
 });
 
 describe("the chrome stays still", () => {
-  it("names both pieces so they leave the root snapshot", () => {
+  it("names the tab bar so it leaves the root snapshot (there is no phone masthead)", () => {
     expect(TAB_BAR).toContain('viewTransitionName: "phone-tab-bar"');
-    expect(MASTHEAD).toContain('viewTransitionName: "phone-masthead"');
   });
 
   it("holds those groups still and hides the outgoing copy", () => {
@@ -323,10 +320,10 @@ describe("the chrome stays still", () => {
     // length of the transition, which reads as a flicker on the one element that is
     // meant to be the still point.
     expect(GLOBALS).toMatch(
-      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+      /::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
     expect(GLOBALS).toMatch(
-      /::view-transition-old\(phone-masthead\),\s*::view-transition-old\(phone-tab-bar\)\s*\{[^}]*display:\s*none/,
+      /::view-transition-old\(phone-tab-bar\)\s*\{[^}]*display:\s*none/,
     );
   });
 
@@ -345,61 +342,39 @@ const DETAIL_VIEW = readFileSync(
 );
 
 describe("the poster morph, on one transition-name family", () => {
-  it("gives the Up next row and the page it opens the same name", () => {
-    // Same minting function, same argument shape: the row's entry id and the page's.
-    expect(ROW).toContain("railPosterTransitionName(entry.libraryEntryId)");
+  /**
+   * **The list-to-title morph is gone — the UI overhaul.** The title page commits its
+   * loading screen first, so a list poster and the hero never shared a commit and no pair
+   * formed (Next's `view-transitions.md`: "no pair forms"); measured, the poster never left
+   * its final rectangle. The owner kept the loading screen and dropped the morph. What is
+   * left is the loading frame → hero pair, which holds the poster still while the page
+   * arrives, and the carried picture, which puts the poster on the loading frame at once.
+   */
+  it("names no poster on the Up next card", () => {
+    expect(ROW).not.toMatch(/<ViewTransition/);
+    expect(ROW).not.toContain("railPosterTransitionName");
+  });
+
+  it("pairs the loading frame with the hero on the shared name", () => {
     expect(DETAIL_VIEW).toContain(
       "posterTransitionName={railPosterTransitionName(current.libraryEntryId)}",
     );
+    expect(readFileSync("app/(signed-in)/titles/[entryId]/pending-poster.tsx", "utf8")).toContain(
+      "viewTransitionName: railPosterTransitionName(entryId)",
+    );
   });
 
-  it("keeps every half minting from the shared module rather than spelling the name", () => {
-    for (const [label, source] of [
-      ["up-next-episode-row.tsx", ROW],
-      ["title-detail-view.tsx", DETAIL_VIEW],
-    ] as const) {
-      expect(source, `${label} imports the minting function`).toMatch(
-        /import \{ railPosterTransitionName \} from "[^"]*poster-transition-name"/,
-      );
-      // A hand-written template literal is how the two families drifted apart in the first
-      // place — a rename would touch the module and leave the copy behind.
-      expect(source, `${label} spells a name by hand`).not.toMatch(
-        /`[a-z]+-poster-\$\{/,
-      );
-    }
-  });
-
-  it("wraps the row's poster in exactly one view transition", () => {
-    // There is no side pane any more to hold the same name, so the row always names its
-    // poster — one `<ViewTransition>`, no early unwrapped return.
-    expect(ROW.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(ROW).not.toMatch(/return frame;/);
-  });
-
-  /**
-   * **Issue #303 reverses this suite's own prior assertion of the opposite.** Until this
-   * ticket the condition above read `if (press !== "select" || selected) return frame;`,
-   * and this test asserted exactly that string — the phone's `press="episode"` rows were
-   * deliberately unwrapped, on the reasoning quoted in `up-next-episode-row.tsx`'s own
-   * docblock: *"the phone's row navigates to a different page and has nothing to share."*
-   * The phone title route's pending frame carries a poster now
-   * (`app/poster-handoff-memory.ts`), so that premise no longer holds, and the row wraps
-   * on both presses. `selected` is unaffected: it still answers true only for the pane's
-   * own selection, which a `press="episode"` row never writes to.
-   */
-  it("wraps the phone's episode-press rows too, now that their destination has a poster", () => {
-    expect(ROW).not.toMatch(/press !== "select"/);
+  it("still carries the tapped poster's picture to the loading frame", () => {
     expect(ROW).toContain(
-      'onClick={() => carryPoster(entry.libraryEntryId, entry.posterPath)}',
+      "onClick={(event) => carryPoster(entry.libraryEntryId, entry.posterPath, event.currentTarget)}",
     );
   });
 
   it("leaves the fixed chrome out of the root snapshot, exactly as before", () => {
     // The morph collapsing to one family must not disturb what is held still under it.
     expect(TAB_BAR).toContain('viewTransitionName: "phone-tab-bar"');
-    expect(MASTHEAD).toContain('viewTransitionName: "phone-masthead"');
     expect(GLOBALS).toMatch(
-      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+      /::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
   });
 });
@@ -880,5 +855,27 @@ describe("the tab bar crosses with the action bar instead of cutting, and inert 
       /import \{[^}]*SELECTING_ATTRIBUTE[^}]*\} from "@\/app\/phone-bar"/,
     );
     expect(SELECTION_ACTION_BAR).not.toContain('"data-selecting"');
+  });
+});
+
+/**
+ * Settings is inside You — the UI overhaul. It is reached from You alone, so a reader in
+ * it keeps You marked on the bar, and its back bar names You rather than Up next.
+ */
+describe("Settings belongs to You", () => {
+  it("marks You current anywhere in Settings", () => {
+    expect(isCurrentRoute("/settings", "/you")).toBe(true);
+    expect(isCurrentRoute("/settings/delete-account", "/you")).toBe(true);
+    expect(isCurrentRoute("/settings", "/library")).toBe(false);
+    // Not by bare prefix, here either.
+    expect(isCurrentRoute("/settingsx", "/you")).toBe(false);
+  });
+
+  it("leaves Settings by a bar that names You", () => {
+    const settings = readFileSync("app/(signed-in)/settings/page.tsx", "utf8");
+    expect(settings).toContain("<BackBar origin={YOU} />");
+    expect(readFileSync("app/(signed-in)/settings/settings-heading.tsx", "utf8")).toContain(
+      'export const YOU = { label: "You", destination: "/you" } as const;',
+    );
   });
 });

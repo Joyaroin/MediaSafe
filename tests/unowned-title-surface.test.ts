@@ -147,7 +147,6 @@ describe("what the unowned route does not import", () => {
    * nothing to import; if either ever returns, it is that ticket's job to add it back here.
    */
   const OWNED = [
-    "remove-control",
     "programme-note-content",
     "programme-note-episodes",
     "use-watch-mark",
@@ -254,6 +253,11 @@ describe("where a list row goes", () => {
     // The one line issue #147 said would change when this ticket shipped. A list is not a
     // wall of dead posters any more: every row is a link.
     expect(row).toContain("`/catalogue/${title.kind}/${title.tmdbId}`");
-    expect(row).toContain("`/titles/${title.libraryEntryId}`");
+    // An owned row goes through `PosterLink`, which carries its poster to the title page
+    // (UI overhaul) and is the one place that spells the address.
+    expect(row).toContain("libraryEntryId={title.libraryEntryId}");
+    expect(
+      readFileSync(path.join(REPOSITORY_ROOT, "app/(signed-in)/library/poster-link.tsx"), "utf8"),
+    ).toContain("`/titles/${libraryEntryId}`");
   });
 });

@@ -9,6 +9,12 @@ import {
 } from "@/app/(signed-in)/lists/actions";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
 import { PHONE_BAR, SELECTING_ATTRIBUTE } from "@/app/phone-bar";
+
+const DESKTOP =
+  "lg:inset-x-auto lg:right-10 lg:bottom-6 lg:w-[460px] lg:rounded-[var(--radius-6)] lg:border lg:px-4 lg:pb-2";
+
+/** The phone bar, minus the `lg:hidden` that keeps the tab bar off a desktop. */
+const BAR = `${PHONE_BAR.replace(" lg:hidden", "")} ${DESKTOP}`;
 import type { ListSummary } from "@/db/access";
 import {
   GHOST_RECOVERY,
@@ -204,8 +210,10 @@ export function SelectionActionBar() {
         // `PHONE_BAR` is the tab bar's own recipe, shared rather than restated
         // (`app/phone-bar.ts`) — which is what makes *it reuses the tab bar's frosted
         // treatment and the space the layout reserves* a fact about one string instead
-        // of a claim about two. The row inside it is this bar's own.
-        className={`selection-action-bar-transition ${PHONE_BAR} items-center gap-2 px-gutter`}
+        // of a claim about two. The row inside it is this bar's own. `DESKTOP` turns the
+        // same bar into a floating panel at `lg`, where there is no tab bar to stand in
+        // for (UI overhaul: bulk select at every width).
+        className={`selection-action-bar-transition ${BAR} items-center gap-2 px-gutter`}
       >
         {/* Polite, not assertive: the count changes on every tap and this is the
             reader's own running total, not news about something that went wrong. */}

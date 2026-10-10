@@ -1,20 +1,22 @@
-import { Masthead } from "../masthead";
 import { PathnameMemory } from "../previous-pathname";
 import { Sidebar } from "../sidebar";
 import { TabBar } from "../tab-bar";
 
 /**
- * The signed-in shell: the phone masthead, the desktop sidebar, the tab bar, and the
- * container everything else sits in.
+ * The signed-in shell: the desktop sidebar, the tab bar, and the container everything
+ * else sits in.
  *
  * Layout: *one centred column capped at `1800px`, running full-height as a
  * flex column* — the same wrapper the prototype opens with. Issue #136 turned that one
- * column into two shapes: a flex column on phone (masthead, then the page, then the tab
- * bar clearance), and `lg:flex-row` on desktop (the sidebar as a fixed-width column on
- * the left, the page filling what is left of the row). `Sidebar` renders its own `hidden
- * ... lg:flex`, and `Masthead`/`TabBar` render their own `lg:hidden` — this file switches
- * the row direction and nothing else, the same split every component in it already draws
- * for itself.
+ * column into two shapes: a flex column on phone (the page, then the tab bar clearance),
+ * and `lg:flex-row` on desktop (the sidebar as a fixed-width column on the left, the page
+ * filling what is left of the row). `Sidebar` renders its own `hidden ... lg:flex`, and
+ * `TabBar` its own `lg:hidden` — this file switches the row direction and nothing else.
+ *
+ * **There is no phone masthead** since the UI overhaul. It carried the wordmark and the
+ * reader's name — the one an app needs no reminding of on every screen, the other already
+ * on You — and Settings had already left it for You. It cost the first ~70px of every
+ * phone screen.
  *
  * ── This layout is not the gate ──────────────────────────────────────────────────────
  *
@@ -26,7 +28,7 @@ import { TabBar } from "../tab-bar";
  *
  * The route group `(signed-in)` adds no path segment. `/settings` is `/settings`; the
  * parentheses only say which routes wear this shell — which is why the sign-in route,
- * outside the group, has no masthead or sidebar.
+ * outside the group, has no sidebar or tab bar.
  *
  * ── The bottom padding belongs here, not to each page ────────────────────────────────
  *
@@ -92,9 +94,8 @@ export default function SignedInLayout({
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col pb-[var(--tab-bar-height)] lg:flex-row lg:pb-0">
       <PathnameMemory />
-      <Masthead />
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col pt-3 lg:pt-0">{children}</div>
       <TabBar />
     </div>
   );

@@ -46,12 +46,8 @@ describe("remainingInWords", () => {
     expect(remainingInWords(8)).toBe("+8 remaining");
   });
 
-  /**
-   * Printed, not withheld. *None left after this one* is the most useful thing this line
-   * ever says, and an absence at zero would be indistinguishable from a card with no
-   * answer at all.
-   */
-  it("prints zero rather than going absent", () => {
-    expect(remainingInWords(0)).toBe("+0 remaining");
+  /** Withheld at zero: with aired-only counting, zero is *this is the last one out*. */
+  it("goes absent at zero", () => {
+    expect(remainingInWords(0)).toBeNull();
   });
 });

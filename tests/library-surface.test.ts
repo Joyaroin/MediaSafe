@@ -273,21 +273,15 @@ describe("the library entry cell", () => {
  * what keeps this cell renderable here at all, so this suite is the one place the actual
  * name (not just its presence in source) can be asserted against a render.
  */
-describe("the library entry cell's poster morph source", () => {
-  it("carries the same name family the title's own page uses", () => {
-    const markup = cell();
-
-    // `poster-transition-name.ts`'s one function, not a hand-spelled copy of it — a rename
-    // there would otherwise leave this cell pairing against a stale name.
-    expect(markup).toContain('view-transition-name:rail-poster-entry-1');
-  });
-
-  it("names a different cell by its own entry id", () => {
-    const markup = renderToStaticMarkup(
-      withSelection(createElement(LibraryEntryCell, { entry: entry({ libraryEntryId: "e2" }) })),
-    );
-
-    expect(markup).toContain("view-transition-name:rail-poster-e2");
+/**
+ * **No morph name on a library cell** — the UI overhaul. The title page commits its loading
+ * screen first, so a cell and the hero never land in the same commit and no pair could form
+ * (Next's `view-transitions.md`). The loading screen was kept; the name went. A name left
+ * here would be a morph that sometimes runs — on a cached page — and usually does not.
+ */
+describe("the library entry cell carries no morph name", () => {
+  it("names no view transition", () => {
+    expect(cell()).not.toContain("view-transition-name");
   });
 });
 
@@ -307,9 +301,11 @@ describe("the grid", () => {
     expect(grid).toContain("xl:grid-cols-5");
     expect(grid).toContain("2xl:grid-cols-6");
 
-    // Nothing else is allowed to differ between devices, so no other breakpoint prefix
-    // may appear anywhere in the grid or its cells.
-    expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols)/);
+    // Nothing else is allowed to differ between devices but the desktop gutter, which
+    // lines the grid up with every other page's `lg:px-10` (UI overhaul) — so no other
+    // breakpoint prefix may appear anywhere in the grid or its cells.
+    expect(grid).toContain("lg:px-[34px]");
+    expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols|px-\[34px\])/);
   });
 
   it("spaces its cells as cards rather than dividing them with hairlines", () => {

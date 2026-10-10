@@ -72,21 +72,16 @@ describe("the pending line is the settled treatment", () => {
   });
 
   /**
-   * **Reason 1: a skeleton is a count.** §11 forbids counts, and a placeholder per row
-   * would be a claim about how many rows are coming. Three, always, on every surface — a
-   * mark that a region is reading rather than an estimate of what is in it.
+   * **Reason 1: a skeleton is a count** — answered since the UI overhaul by the route
+   * drawing one screen of its own layout (`app/skeleton.tsx`). The boundary takes no props,
+   * so nothing about the data can reach how many cells it draws: one screen, always.
    */
-  it("draws a count that belongs to the shape, never to the data", () => {
-    // The library boundary picks the `rows` shape, and that shape rendered alone gives the
-    // identical bar count: the boundary contributes a heading and a box and contributes
-    // nothing at all to how many bars are drawn. That is the whole of reason 1 — a
-    // placeholder per item would be a claim about how many items are coming, made before
-    // anything is known.
+  it("draws one screen of the grid it becomes, whatever the library holds", () => {
+    expect(LibraryLoading.length).toBe(0);
     const boundary = markupOf(createElement(LibraryLoading));
-    const shapeAlone = markupOf(createElement(PendingLine, { shape: "rows" }));
-    expect(boundary.match(/pending-bar/g)).toHaveLength(
-      shapeAlone.match(/pending-bar/g)!.length,
-    );
+    expect(boundary.match(/aspect-\[2\/3\]/g)).toHaveLength(12);
+    expect(boundary).toContain('role="status"');
+    expect(boundary).toContain("Reading");
   });
 
   it("gives an unclassified caller the smallest treatment, not the largest", () => {
@@ -173,8 +168,8 @@ describe("the held prop, and only the held prop, gates the hold", () => {
   it("changes nothing else about the render", () => {
     // Same bars, same word, same role — the hold is a class on the wrapper and nothing
     // about what §9's treatment actually draws.
-    const bare = markupOf(createElement(PendingLine, { shape: "rows" }));
-    const held = markupOf(createElement(PendingLine, { shape: "rows", held: true }));
+    const bare = markupOf(createElement(PendingLine, { shape: "form" }));
+    const held = markupOf(createElement(PendingLine, { shape: "form", held: true }));
     expect(held.replace(' route-pending-hold', '')).toEqual(bare);
   });
 
@@ -433,7 +428,12 @@ describe("what replaces a pending region arrives", () => {
   });
 
   it("gives the panel and the episode list an entrance", () => {
-    expect(PANEL).toContain('className="arrive-panel');
+    // On what is around the hero poster and under it, not on the whole panel: the poster
+    // is the morph's landing and must not fade and drop after it lands (UI overhaul).
+    expect(PANEL).toContain("className={`arrive-panel mt-8 grid");
+    expect(readFileSync("app/(signed-in)/library/title-hero.tsx", "utf8")).toContain(
+      'className="arrive-panel flex min-w-0 flex-1 flex-col',
+    );
     expect(EPISODES).toMatch(/className=\{`arrive \$\{PROGRAMME_NOTE_SECTION\}`\}/);
   });
 

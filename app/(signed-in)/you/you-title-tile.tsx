@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { Poster } from "@/app/poster";
@@ -37,17 +37,20 @@ export function YouTitleTile({
   });
 
   return (
-    <Link
-      href={`/titles/${entry.libraryEntryId}`}
+    <PosterLink
+      libraryEntryId={entry.libraryEntryId}
+      posterPath={entry.posterPath}
       className={`pressable group block ${TILE} text-left`}
     >
-      <Poster
-        posterPath={entry.posterPath}
-        name={entry.titleName}
-        width={TILE_WIDTH}
-        className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110"
-        aboveFold={aboveFold}
-      />
+      <div>
+        <Poster
+          posterPath={entry.posterPath}
+          name={entry.titleName}
+          width={TILE_WIDTH}
+          className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110"
+          aboveFold={aboveFold}
+        />
+      </div>
 
       <p className="mt-2 line-clamp-2 text-item leading-snug text-text">{entry.titleName}</p>
 
@@ -56,6 +59,6 @@ export function YouTitleTile({
           {meta}
         </p>
       )}
-    </Link>
+    </PosterLink>
   );
 }

@@ -45,39 +45,22 @@ function pad(number: number): string {
 }
 
 /**
- * `+8 remaining` — how much of this show is left **after** the episode the card is
- * offering, and the one count *no counts, anywhere* is narrowed to allow
- * (#250).
+ * `+8 remaining` — how many aired episodes come **after** the one the card is offering,
+ * or `null` when none do (#250, narrowed by the UI overhaul).
  *
- * The number is not derived here and is not derived in the card either: it is
- * `library_entry_remaining`, this build's one definition of *Remaining*
- * (`db/views.ts`), minus the episode being offered and minus whatever the reader has marked
- * from this card since the page loaded. Minting a second count here — walking the queue,
- * or counting released episodes — would be a second answer to *how much is left* that
- * could disagree with the sort key ordering the very rail these cards sit on.
+ * The number is not derived here: it is the read's *Remaining* (`CONTEXT.md`, and
+ * `upNextRead` in `db/access.ts`), minus the episode being offered and minus whatever the
+ * reader has marked from this card since the page loaded.
  *
- * ── It counts unreleased episodes, and the prototype's mock does not ─────────────────
+ * **Aired only.** It used to count every unwatched episode TMDB lists, so JoJo printed
+ * `+8 remaining` beside an episode that had not aired — a number about the series, on a
+ * surface that is about tonight. The rail that justified counting unaired episodes (Coming
+ * back) is gone from Continue watching, and with it the argument.
  *
- * `mediasafe-mobile.html`'s `remainingAfter` skips anything unreleased, so for a show with
- * announced-but-unaired episodes this prints a larger number than the mock would. **The
- * divergence is deliberate and the mock is not the authority here.** The handoff binds
- * *appearance*; what the word *Remaining* counts is a domain question, and the glossary
- * answers it — *how much of a show you have left* — with `db/views.ts` arguing the
- * unreleased half at length, because *how much of the whole series is left* is a different
- * question from *how much of it could I watch today*.
- *
- * The rail is what settles it. A **coming back** card's episode is unaired by definition
- * (`COMING_BACK`), and on most such shows every remaining episode is. Counting released
- * episodes only would print `+0 remaining` on precisely the cards whose entire reason for
- * being on the rail is that there is more coming — the most confidently wrong number this
- * line could carry.
- *
- * **Zero is printed, not withheld.** `+0 remaining` is the most useful thing this line
- * ever says: the rule the count exists to serve is *am I three from the end or thirty*,
- * and *none* is the end. An absent line at zero would also be indistinguishable from a
- * line the card simply had no answer for, which is the confusion every other absence on
- * this surface is careful to avoid.
+ * **Zero is withheld.** With aired-only counting, zero means *this is the last one you can
+ * watch now*, and the card's own episode line already says what to watch; a `+0` beside it
+ * is a line that reads as noise on most cards of a caught-up library.
  */
-export function remainingInWords(remainingAfter: number): string {
-  return `+${remainingAfter} remaining`;
+export function remainingInWords(remainingAfter: number): string | null {
+  return remainingAfter > 0 ? `+${remainingAfter} remaining` : null;
 }

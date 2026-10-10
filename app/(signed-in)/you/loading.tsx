@@ -1,30 +1,53 @@
-import { PendingLine } from "@/app/pending-line";
+import { Block, PosterBlock, SkeletonRegion } from "@/app/skeleton";
 import { YouHeading } from "./you-heading";
 
 /**
- * You, which is still reading.
- *
- * Radius 1: `loading.tsx` renders what the segment's `error.tsx` already
- * renders, less the failure — the same `<main>`, the same `YouHeading`, and one dim line
- * where `ReadFailure` would be. `lists/loading.tsx` is the same shape.
- *
- * The boundary is on this segment rather than on the shell, for `library/loading.tsx`'s
- * own reason: `(signed-in)/layout.tsx` holds the masthead, the sidebar and the tab bar,
- * and a reader who cannot leave a slow screen is worse off than one watching a frozen one.
- *
- * **The hero is not drawn here either.** It could be — the session is a server read this
- * boundary's page will make anyway — but a `loading.tsx` renders before that page runs at
- * all, so it has nothing to draw the name from. One pending line under the heading is the
- * honest amount of this screen to promise.
+ * You, reading — its heading at once, then the page it becomes: the avatar and name, the
+ * two watch-time figures, the four counts, and a rail of title tiles at their own `132px`
+ * (`app/skeleton.tsx` has the reasoning). The figures are the layout's — two and four,
+ * because the page always draws two and four — never a guess at the data.
  */
 export default function YouLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <YouHeading />
+      <SkeletonRegion className="gap-0 pb-8">
+        <div className="flex items-center gap-4 px-gutter pt-5 pb-2 lg:px-10 lg:pt-7">
+          <Block className="h-[84px] w-[84px] shrink-0 [--poster-radius:var(--radius-full)]" />
+          <Block className="h-6 w-40" />
+        </div>
 
-      <div className="px-gutter py-5 lg:px-10">
-        <PendingLine shape="rows" held />
-      </div>
+        <div className="px-gutter py-4 lg:px-10">
+          <Block className="h-2.5 w-24" />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Block className="h-[84px] w-full [--poster-radius:var(--radius-6)]" />
+            <Block className="h-[84px] w-full [--poster-radius:var(--radius-6)]" />
+          </div>
+        </div>
+
+        <div className="px-gutter py-4 lg:px-10">
+          <Block className="h-2.5 w-36" />
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {["a", "b", "c", "d"].map((key) => (
+              <Block key={key} className="h-[84px] w-full [--poster-radius:var(--radius-6)]" />
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <div className="px-gutter pb-3 lg:px-10">
+            <Block className="h-4 w-20" />
+          </div>
+          <div className="flex gap-3 overflow-hidden px-gutter lg:px-10">
+            {["a", "b", "c", "d", "e", "f"].map((key) => (
+              <span key={key} className="flex w-[132px] shrink-0 flex-col gap-2">
+                <PosterBlock className="w-full" />
+                <Block className="h-2.5 w-[80%]" />
+              </span>
+            ))}
+          </div>
+        </div>
+      </SkeletonRegion>
     </main>
   );
 }

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { requireDisplayName, requireTimezone, requireUserId } from "@/lib/session";
 import { DisplayNameControl } from "./display-name-control";
+import { BackBar } from "../back-bar";
 import { NavTransition } from "../nav-transition";
-import { SettingsHeading } from "./settings-heading";
+import { SettingsHeading, YOU } from "./settings-heading";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
 import { ThemeControl } from "./theme-control";
@@ -95,8 +96,11 @@ export default async function SettingsPage() {
 
   return (
     <NavTransition>
-      <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
+      <main className="flex w-full flex-1 flex-col">
+        <BackBar origin={YOU} />
         <SettingsHeading />
+
+        <div className="w-full max-w-3xl px-gutter pb-16 lg:px-10">
 
         <section aria-labelledby="profile-h" className="mt-12 border-t border-hair pt-6">
           <h2 id="profile-h" className="code-line text-dim">
@@ -188,6 +192,7 @@ export default async function SettingsPage() {
             </div>
           </div>
         </section>
+        </div>
       </main>
     </NavTransition>
   );

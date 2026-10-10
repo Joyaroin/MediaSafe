@@ -14,7 +14,7 @@ import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
  */
 export default function DeleteAccountLoading() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
+    <main className="arrive-fast mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
       <DeleteAccountHeading />
 
       <div className="mt-8">

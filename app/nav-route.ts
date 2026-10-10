@@ -5,8 +5,8 @@
  * to either file forgetting the other.
  *
  * `startsWith`, not equality: a destination can carry pushed and replaced routes under it,
- * and a reader inside one of those is still in that section. `sidebar-nav.tsx` extends the
- * same rule to *Settings*, for `/settings/delete-account`.
+ * and a reader inside one of those is still in that section. `OWNED` below adds the
+ * sections a destination holds at another address — Settings, inside You.
  *
  * **The example it was written for is gone.** Title detail sat at `/library/{entryId}`, so
  * this matched it to the Library tab and a reader on a title counted as being on the bar.
@@ -15,8 +15,20 @@
  * as being off the bar. `tab-bar.tsx`'s active-tab mark is where that is felt.
  */
 export function isCurrentRoute(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return [href, ...(OWNED[href] ?? [])].some(
+    (section) => pathname === section || pathname.startsWith(`${section}/`),
+  );
 }
+
+/**
+ * Sections that live *inside* a destination without being under its href — the UI
+ * overhaul. Settings is reached from You alone and is part of it, so a reader in Settings
+ * is on You: the tab stays marked rather than the bar going blank, which read as having
+ * left the app's four places altogether.
+ */
+const OWNED: Readonly<Record<string, readonly string[]>> = {
+  "/you": ["/settings"],
+};
 
 /**
  * Whether a press on `href` is a **re-press** — the reader already standing on the tab it

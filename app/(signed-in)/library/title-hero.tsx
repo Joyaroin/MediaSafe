@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Poster, posterSrc } from "@/app/poster";
+import { posterSrc } from "@/app/poster";
+import { HeroPoster } from "./hero-poster";
 
 /**
  * The head of a title's page — issue #357 — shared by a title you own and one you do not.
@@ -30,6 +31,7 @@ export function TitleHero({
   name,
   posterPath,
   posterTransitionName,
+  libraryEntryId,
   status,
   meta,
   progress,
@@ -40,6 +42,8 @@ export function TitleHero({
   posterPath: string | null;
   /** The poster morph's name, when a surface opened this page with one. */
   posterTransitionName?: string;
+  /** The entry this hero is for — what `HeroPoster` reads the carried image by. */
+  libraryEntryId?: string;
   /** Where the title stands, as a pill — owned titles only. */
   status?: {
     readonly label: string;
@@ -64,23 +68,22 @@ export function TitleHero({
 
       <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
-          className="w-[108px] shrink-0 lg:w-[200px]"
+          className="shrink-0"
           style={
             posterTransitionName === undefined
               ? undefined
               : { viewTransitionName: posterTransitionName, viewTransitionClass: "poster" }
           }
         >
-          <Poster
-            posterPath={posterPath}
-            name={name}
-            width={200}
-            className="w-full shadow-[0_24px_48px_rgb(0_0_0/0.35)] [--poster-radius:var(--radius-4)]"
-            aboveFold
-          />
+          <HeroPoster libraryEntryId={libraryEntryId} posterPath={posterPath} name={name} />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-2 pb-1">
+        {/* `arrive-panel` here and on the actions, and **not** on the section: the poster
+            is the morph's landing, and an ancestor animating from `opacity: 0` and 8px
+            down took the poster with it — it faded and dropped right after it landed, the
+            jerk at the end of every morph (UI overhaul). Everything around it still
+            arrives. */}
+        <div className="arrive-panel flex min-w-0 flex-1 flex-col gap-2 pb-1">
           {status === null || status === undefined ? null : (
             <p
               className={`self-start rounded-[var(--radius-full)] bg-ground/70 px-2.5 py-1 text-meta font-semibold ${status.className}`}
@@ -106,7 +109,7 @@ export function TitleHero({
         </div>
       </div>
 
-      <div className="relative mt-5 flex flex-col gap-5 px-gutter lg:px-10 lg:pl-[272px]">
+      <div className="arrive-panel relative mt-5 flex flex-col gap-5 px-gutter lg:px-10 lg:pl-[272px]">
         <div className="flex flex-wrap items-center gap-3">{actions}</div>
         {synopsis}
       </div>

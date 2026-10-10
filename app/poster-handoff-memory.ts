@@ -1,6 +1,6 @@
 "use client";
 
-import { carry, NOTHING_CARRIED, posterFor, type Carried } from "@/app/poster-handoff";
+import { carry, NOTHING_CARRIED, posterFor, shownFor, type Carried } from "@/app/poster-handoff";
 
 /**
  * The one variable `app/poster-handoff.ts` is threaded through — issue #303, in the shape
@@ -23,8 +23,26 @@ import { carry, NOTHING_CARRIED, posterFor, type Carried } from "@/app/poster-ha
 let carried: Carried = NOTHING_CARRIED;
 
 /** Carry one title's poster into the navigation that is about to happen. */
-export function carryPoster(libraryEntryId: string, posterPath: string | null): void {
-  carried = carry(libraryEntryId, posterPath);
+export function carryPoster(
+  libraryEntryId: string,
+  posterPath: string | null,
+  from?: Element | null,
+): void {
+  carried = carry(libraryEntryId, posterPath, shownIn(from));
+}
+
+/**
+ * The URL of the poster image inside `from` — the link or cell that was pressed — as the
+ * browser actually fetched it, or `null` when it has not finished loading (an image that
+ * is not yet decoded is no better a placeholder than none).
+ */
+function shownIn(from: Element | null | undefined): string | null {
+  const image = from?.querySelector<HTMLImageElement>(".poster img") ?? null;
+  return image !== null && image.complete && image.currentSrc !== "" ? image.currentSrc : null;
+}
+
+export function carriedShownFor(libraryEntryId: string): string | null {
+  return shownFor(carried, libraryEntryId);
 }
 
 /** The poster carried for this title, or `null` if nothing was carried for it. */

@@ -184,7 +184,9 @@ export function SearchSurface({
         ) : null}
       </div>
 
-      {phase.kind === "idle" ? rails : null}
+      {/* `arrive`, so the recommendations fade back up when the field is cleared rather
+          than snapping in under the reader's thumb. */}
+      {phase.kind === "idle" ? <div className="arrive">{rails}</div> : null}
     </>
   );
 }
@@ -210,23 +212,62 @@ function SearchField({
   onChange: (value: string) => void;
 }) {
   const label = "Search films and shows";
+  const input = useRef<HTMLInputElement>(null);
+
+  /* Emptying the field is the same change as backspacing it to nothing — `onChange("")`
+     cancels the pending search and brings the recommendations back — and the focus stays
+     in the field, so the next search is typed straight away. */
+  function clear() {
+    onChange("");
+    input.current?.focus();
+  }
 
   return (
-    <label className="field-well flex h-12 items-center gap-3 px-4">
+    <label className="field-well flex h-12 items-center gap-3 pl-4 pr-1">
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-dim" aria-hidden="true">
         <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
         <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
         <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
       </svg>
+      {/* `type="search"` for the keyboard's own Search key and Escape-to-clear, with the
+          browser's built-in clear glyph hidden — it differs per engine and is too small to
+          hit, which is the reason for the button beside it. */}
       <input
-        type="text"
+        ref={input}
+        type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && value !== "") {
+            event.preventDefault();
+            clear();
+          }
+        }}
         placeholder={label}
         autoComplete="off"
+        enterKeyHint="search"
         aria-label={label}
-        className="w-full bg-transparent text-bill-xs text-text placeholder:text-dim focus:outline-none"
+        className="w-full min-w-0 bg-transparent text-bill-xs text-text placeholder:text-dim focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
       />
+      {value === "" ? null : (
+        <button
+          type="button"
+          onClick={clear}
+          aria-label="Clear search"
+          className="pressable [--press-register:1] arrive flex h-11 w-11 shrink-0 items-center justify-center text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-hair">
+            <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden="true">
+              <path
+                d="M5 5l14 14M19 5L5 19"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+        </button>
+      )}
     </label>
   );
 }

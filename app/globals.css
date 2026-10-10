@@ -1114,6 +1114,31 @@
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);
 }
 
+/* The desktop tilt (`app/poster-tilt.ts`, UI overhaul): a poster under a mouse leans toward
+   it, and settles back when the mouse leaves. Fine pointers with hover only — a phone never
+   gets `data-tilting` — and nothing at all under reduced motion. `transform` rather than
+   `translate`/`rotate`, because the perspective has to be part of the same function list. */
+@media (hover: hover) and (pointer: fine) {
+  .poster {
+    /* `filter` too: this unlayered rule outranks the `transition` utility some call sites
+       put on a poster for their hover brighten, so it has to carry that one as well. */
+    transition:
+      transform var(--dur-slow) var(--ease-out-quart),
+      filter var(--dur-fast) var(--ease-out-quart);
+  }
+  .poster[data-tilting] {
+    transform: perspective(700px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+      scale(1.03);
+    transition-duration: var(--dur-fast);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster[data-tilting] {
+    transform: none;
+  }
+}
+
 /* The still (#253) — the frame at the top of an episode's page, over the `still_path`
    column #246 put in the mirror. `app/(signed-in)/library/episode-still.tsx` is its
    component and holds the argument; this is the poster's rule at the other ratio.
@@ -1224,6 +1249,65 @@
    to reach the fully-transparent end it always reaches. */
 @media (prefers-reduced-motion: reduce) {
   .watch-sweep {
+    animation-duration: 1ms;
+  }
+}
+
+/* The hold — the UI overhaul's replacement for the sweep on Up next's cards. The card
+   washes in the accent the moment a watch is recorded and stays washed for `HOLD_MS`
+   (`up-next-card.tsx`), so the confirmation is a state the reader can see rather than a
+   flash they have to catch. `RECORDS_A_WATCH` is the meaning: a watch exists because of a
+   press here. A tint and not the solid accent, so the card's text keeps its contrast.
+
+   The wash comes in from the check's side and fades up together, so it reads as spreading
+   from the press rather than switching on. */
+@utility watch-hold {
+  background-color: color-mix(in oklab, var(--color-accent) 14%, var(--color-raised));
+  transition: background-color var(--dur-slow) var(--ease-press);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+    transform-origin: right center;
+    pointer-events: none;
+    animation: watch-hold-in var(--dur-slow) var(--ease-press) forwards;
+  }
+}
+
+@keyframes watch-hold-in {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* The filled check arriving: a small overshoot, the press register's pop in miniature. */
+@utility check-pop {
+  animation: check-pop var(--dur-pop) var(--ease-press) backwards;
+}
+
+@keyframes check-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watch-hold::before,
+  .check-pop {
     animation-duration: 1ms;
   }
 }
@@ -1794,10 +1878,16 @@
   animation: var(--dur-fast) var(--ease-out-quart) both nav-fade reverse;
 }
 
+/* The one motion, retuned rather than multiplied (UI overhaul). The rise now settles on
+   `--spring-poster` — the same curve the poster morph lands on — so the arriving screen and
+   the poster travelling into it read as one movement instead of a fade with a poster in
+   it. It does not scale: a page growing under a poster that is landing at its final size
+   is a page sliding out from under it, which read as the morph jerking at the end. Still `--dur-quick`, still one motion for every
+   navigation: what read as flat was the curve, not the lack of a second vocabulary. */
 ::view-transition-new(root) {
   animation:
     var(--dur-quick) var(--ease-out-quart) both nav-fade,
-    var(--dur-quick) var(--ease-out-quart) both nav-rise;
+    var(--dur-quick) var(--spring-poster) both nav-rise;
 }
 
 /* ── Arriving ───────────────────────────────────────────────────────────────────────
@@ -1824,6 +1914,21 @@
 
 /* A panel that swaps has further to travel than a section filling in, and it is replacing
    something rather than joining it — so it takes the sheet's own heavier settle. */
+/* A route's loading screen arriving — the UI overhaul. Next commits a loading screen with no
+   view transition (only the page that replaces it gets one), so without this the tap was a
+   hard cut. `--dur-fast`, the leaving half of the one motion, and opacity only: short
+   enough to be over before the page replaces it, so the loading poster is never caught
+   half-faded in the snapshot that page's transition takes. */
+@utility arrive-fast {
+  animation: nav-fade var(--dur-fast) var(--ease-out-quart) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrive-fast {
+    animation-duration: 1ms;
+  }
+}
+
 @utility arrive-panel {
   animation: rise-in var(--dur-slow) var(--ease-press) backwards;
   animation-duration: 420ms;
@@ -1832,8 +1937,8 @@
 /* ── Reading, drawn ─────────────────────────────────────────────────────────────────
    `app/pending-line.tsx` carries the argument, including which of §9's four reasons each
    decision here answers. In short: lines and never blocks, so nothing can be mistaken for
-   a title with no artwork; the poster's own radius rather than a pill; opacity rather than
-   a sweeping gradient, so reduced motion has something to fall back to. */
+   a title with no artwork. The UI overhaul reversed that for whole routes — `app/skeleton.tsx`
+   argues it — and swapped the breathe for a shimmer with a still fallback. */
 @utility pending {
   display: flex;
   flex-direction: column;
@@ -1842,18 +1947,45 @@
 
 @utility pending-bar {
   display: block;
-  /* The height is the call site's, off the type ramp — `pending-line.tsx`'s `H`. A bar
-     stands in for a specific line of text, so it is that line's weight rather than one
-     measure used everywhere. */
+  position: relative;
+  overflow: hidden;
+  /* The height is the call site's — a line of text off the type ramp, a pill, a poster's
+     `2/3` well (`app/skeleton.tsx`). */
   border-radius: var(--poster-radius, var(--radius-1));
   background: var(--color-raised);
-  animation: pending-breathe 1.7s var(--ease-in-out-soft) infinite;
+  /* The shimmer — the UI overhaul, replacing the opacity breathe. A faint highlight
+     sweeps across the block on `transform` alone, so it is compositor work and costs no
+     paint per frame on a mid-range phone. `animation-delay: inherit` lets the stagger
+     below reach the sweep, so a page shimmers down its own reading order. */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in oklab, var(--color-text) 7%, transparent) 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+    animation: pending-shimmer 1.6s var(--ease-in-out-soft) infinite;
+    animation-delay: inherit;
+  }
 }
 
-/* Staggered down the page so a region reads as one thing breathing rather than as bars
-   blinking in lockstep — the difference between a surface that is working and a warning.
-   By position within its own group rather than by a flat child index, because a shape
-   nests its bars into rows and columns. */
+/* A card-shaped wait (`app/skeleton.tsx`): the card's own raised ground, with the blocks
+   inside one tone further from it so they still read on it. */
+@utility pending-card {
+  border-radius: var(--radius-6);
+  background: var(--color-raised);
+  & .pending-bar {
+    background: color-mix(in oklab, var(--color-text) 7%, var(--color-raised));
+  }
+}
+
+/* Staggered down the page so a region reads as one thing loading in its own order rather
+   than as blocks blinking in lockstep. By position within its own group rather than by a
+   flat child index, because a shape nests its blocks into rows and columns. */
 .pending-bar:nth-child(2) {
   animation-delay: 0.08s;
 }
@@ -1867,23 +1999,21 @@
   animation-delay: 0.24s;
 }
 
-@keyframes pending-breathe {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
+@keyframes pending-shimmer {
+  to {
+    transform: translateX(100%);
   }
 }
 
-/* The bars are the signal, so the event survives the animation being dropped — §6's rule,
-   and reason 3 in `pending-line.tsx`. They settle at the midpoint of the breathe rather
-   than at full strength, so a pending region still reads quieter than rendered content. */
+/* The blocks are the signal, so the event survives the sweep being dropped — §6's rule.
+   Still, page-shaped blocks read as *loading* without moving. */
 @media (prefers-reduced-motion: reduce) {
   .pending-bar {
     animation: none;
-    opacity: 0.72;
+  }
+  .pending-bar::after {
+    animation: none;
+    display: none;
   }
 }
 
@@ -1962,16 +2092,13 @@
   }
 }
 
-::view-transition-group(phone-masthead),
 ::view-transition-group(phone-tab-bar) {
   animation: none;
   z-index: 100;
 }
-::view-transition-old(phone-masthead),
 ::view-transition-old(phone-tab-bar) {
   display: none;
 }
-::view-transition-new(phone-masthead),
 ::view-transition-new(phone-tab-bar) {
   animation: none;
 }

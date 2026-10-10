@@ -3,6 +3,7 @@ import * as m from "motion/react-m";
 import type { CSSProperties, ReactNode } from "react";
 
 import { smooth } from "@/app/motion";
+import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
@@ -94,18 +95,22 @@ export function ListTitleRow({
         {title.position}
       </span>
 
-      <Poster
-        posterPath={title.posterPath}
-        name={title.name}
-        width={56}
+      <div
         className="w-14 shrink-0"
-        aboveFold={aboveFold}
       >
-        {/* The icon view's bar, on the row view's smaller poster. Both views of one list
-            answer the same question the same way; a bar that appeared on only one of them
-            would read as a fact about the view rather than about the title. */}
-        <PosterProgressBar progress={title.progress} />
-      </Poster>
+        <Poster
+          posterPath={title.posterPath}
+          name={title.name}
+          width={56}
+          className="w-14"
+          aboveFold={aboveFold}
+        >
+          {/* The icon view's bar, on the row view's smaller poster. Both views of one list
+              answer the same question the same way; a bar that appeared on only one of
+              them would read as a fact about the view rather than about the title. */}
+          <PosterProgressBar progress={title.progress} />
+        </Poster>
+      </div>
 
       <div className="min-w-0 flex-1">
         {/* `text-text`, not `text-text` (#255). `bill-title text-bill-md` is a heading
@@ -124,18 +129,23 @@ export function ListTitleRow({
     </>
   );
 
-  const inner = (
-    <Link
-      href={
-        title.libraryEntryId === null
-          ? `/catalogue/${title.kind}/${title.tmdbId}`
-          : `/titles/${title.libraryEntryId}`
-      }
-      className="flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-[var(--dur-fast)] hover:bg-raised"
-    >
-      {content}
-    </Link>
-  );
+  const rowClass =
+    "flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-[var(--dur-fast)] hover:bg-raised";
+
+  const inner =
+    title.libraryEntryId === null ? (
+      <Link href={`/catalogue/${title.kind}/${title.tmdbId}`} className={rowClass}>
+        {content}
+      </Link>
+    ) : (
+      <PosterLink
+        libraryEntryId={title.libraryEntryId}
+        posterPath={title.posterPath}
+        className={rowClass}
+      >
+        {content}
+      </PosterLink>
+    );
 
   return (
     <m.li

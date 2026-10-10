@@ -4,7 +4,7 @@ import { DIALOG_FRAME } from "@/app/buttons";
 import { useEffect, useRef, useState } from "react";
 
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { unwatchCount } from "./unwatch-confirm";
+import { unwatchCount, unwatchNeedsConfirm } from "./unwatch-confirm";
 import { UnwatchIcon } from "./unwatch-icon";
 import { watchMarks } from "./watch-marks";
 
@@ -207,8 +207,9 @@ export function WatchMenu({
               label="Undo"
               description="Takes back the most recent watch."
             />
+            {/* Asks only when there is history to lose (`unwatchNeedsConfirm`). */}
             <MenuItem
-              onClick={() => setConfirming(true)}
+              onClick={() => (unwatchNeedsConfirm(watches) ? setConfirming(true) : unwatch())}
               label="Unwatch"
               description="Removes every watch of it, including any from your import."
               icon={<UnwatchIcon className="h-4 w-4" />}

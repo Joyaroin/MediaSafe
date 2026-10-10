@@ -1,6 +1,12 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { LibraryEntryCell } from "./library-entry-cell";
+import { SelectionOrderProvider } from "./selectable-entry";
 import { LIBRARY_HEADING_ID } from "./library-heading";
+
+/** The grid's columns, gaps and gutters — shared with its loading state (`loading.tsx`), so
+ *  the wait is the grid it becomes. The reasoning for each value is beside the `<ol>`. */
+export const LIBRARY_GRID =
+  "grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 lg:px-[34px] xl:grid-cols-5 2xl:grid-cols-6";
 
 /**
  * The bill: every library entry, in one grid.
@@ -119,36 +125,45 @@ export function LibraryGrid({
   labelledBy?: string;
 }) {
   return (
-    <ol
-      aria-labelledby={labelledBy}
-      // `px-[14px]` and not the page's `22px`: the cell's own `14px` padding is inside
-      // the card, so a `14px` list gutter is what puts the card's *edge* on 22px. Turn
-      // 9's rule for every list that carries cards, and the reason the search results
-      // and the list rows carry the same number.
-      // No `lg:` gutter override: the column count is allowed to be the only
-      // thing that differs between devices, and `tests/library-surface.test.ts` enforces
-      // it by rejecting any breakpoint prefix here that is not `grid-cols`. The `14px`
-      // gutter is the measure at every width.
-      // **Columns, not rows.** The cell is a poster with a name under it now
-      // (`library-entry-cell.tsx`), so the grid counts in artwork rather than in
-      // full-width cards: three across on a phone, up to six on a wide desktop, which is
-      // the lists grid's own ramp (`lists/[listId]/list-icon-grid.tsx`) because they are
-      // the same content at the same size.
-      //
-      // `gap-x-3.5 gap-y-5` rather than one `gap-2.5`: the cells are no longer cards on a
-      // `--raised` ground, so what separates two of them sideways is whitespace alone,
-      // and the vertical gap has to clear a two-line name plus a state label before the
-      // next poster starts. Equal gaps in both directions read as a denser grid than it
-      // is.
-      className="stagger-rise mt-5 grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+    <SelectionOrderProvider
+      titles={entries.map((entry) => ({
+        libraryEntryId: entry.libraryEntryId,
+        titleId: entry.titleId,
+        name: entry.name,
+      }))}
     >
-      {entries.map((entry, index) => (
-        <LibraryEntryCell
-          key={entry.libraryEntryId}
-          entry={entry}
-          aboveFold={index < FIRST_ROW}
-        />
-      ))}
-    </ol>
+      <ol
+        aria-labelledby={labelledBy}
+        // `px-[14px]` and not the page's `22px`: the cell's own `14px` padding is inside
+        // the card, so a `14px` list gutter is what puts the card's *edge* on 22px. Turn
+        // 9's rule for every list that carries cards, and the reason the search results
+        // and the list rows carry the same number.
+        // `lg:px-[34px]` is the one other thing that differs between devices: You, the
+        // title page and Settings sit on `lg:px-10`, and a Library whose edge alone sat
+        // 18px further left read as a different app when switching tabs on a desktop (UI
+        // overhaul). `34px` for the reason `14px` is `22px` above — it puts the card edge
+        // on `40px`. `tests/library-surface.test.ts` allows this and nothing else.
+        // **Columns, not rows.** The cell is a poster with a name under it now
+        // (`library-entry-cell.tsx`), so the grid counts in artwork rather than in
+        // full-width cards: three across on a phone, up to six on a wide desktop, which is
+        // the lists grid's own ramp (`lists/[listId]/list-icon-grid.tsx`) because they are
+        // the same content at the same size.
+        //
+        // `gap-x-3.5 gap-y-5` rather than one `gap-2.5`: the cells are no longer cards on a
+        // `--raised` ground, so what separates two of them sideways is whitespace alone,
+        // and the vertical gap has to clear a two-line name plus a state label before the
+        // next poster starts. Equal gaps in both directions read as a denser grid than it
+        // is.
+        className={`stagger-rise mt-5 ${LIBRARY_GRID}`}
+      >
+        {entries.map((entry, index) => (
+          <LibraryEntryCell
+            key={entry.libraryEntryId}
+            entry={entry}
+            aboveFold={index < FIRST_ROW}
+          />
+        ))}
+      </ol>
+    </SelectionOrderProvider>
   );
 }

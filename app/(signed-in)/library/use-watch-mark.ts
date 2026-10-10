@@ -56,6 +56,7 @@ export function useWatchMark({
   episodeName,
   onRecorded,
   also,
+  inlineUndo = false,
 }: {
   readonly initialWatched: boolean;
   /** How many watches the server read found. Absent where the surface does not draw a
@@ -77,6 +78,12 @@ export function useWatchMark({
    * raises the toast with Undo alone.
    */
   readonly also?: () => ActionOffer["also"];
+  /**
+   * The surface draws its own *Undo* beside the mark — Up next's film card, which holds
+   * after a mark the way the episode cards do (`up-next-card.tsx`) — so no toast is
+   * raised: the same offer twice, in two places, is one too many.
+   */
+  readonly inlineUndo?: boolean;
 }) {
   const subject = useMemo<WatchSubject>(
     () => ({ libraryEntryId, episodeId }),
@@ -138,6 +145,10 @@ export function useWatchMark({
      */
     attempt: () =>
       watchMarks.mark(subject, naming, () => {
+        if (inlineUndo) {
+          onRecorded?.();
+          return;
+        }
         actionToasts.raise({
           title: titleName,
           episode: episodeName,

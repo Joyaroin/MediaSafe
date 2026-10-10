@@ -2915,10 +2915,8 @@ export interface UpNextEntry {
   readonly seasonNo: number;
   readonly episodeNo: number;
   /**
-   * Borrowed, and `null` where TMDB has not dated the episode. **Not the same fact as
-   * *released***: the rail deliberately carries undated and future-dated episodes, since
-   * *coming back* is the state whose whole content is an episode that has not aired
-   * (`COMING_BACK`).
+   * Borrowed. On Continue watching it is never `null` and never in the future — the
+   * membership requires the episode to have aired (`CONTINUE_WATCHING`).
    */
   readonly airDate: string | null;
   /** Borrowed. The episode's own runtime, not the title's. */
@@ -3012,20 +3010,20 @@ export function isEpisodeEntry(entry: UpNextRailEntry): entry is UpNextEntry {
  * ── The rule, transcribed ────────────────────────────────────────────────────────────
  *
  * > Your most recent watch of the title, descending. Undated titles fall back to the air
- * > date of their next unwatched episode, newest first. A next episode with no air date
- * > sinks below both, and closest-to-finishing survives as the final tiebreak.
+ * > date of their next unwatched episode, newest first. Closest-to-finishing survives as
+ * > the final tiebreak.
  *
  * **It is a cascade, not one comparison.** A title with any dated watch is ordered by
  * that watch and never consults an air date — so a watch from eight years ago still
- * outranks the whole fallback group, and a next episode TMDB has not dated sinks a title
- * only if the title had no dated watch to be ranked by in the first place. `rank` is that
- * cascade, and it leads the order.
+ * outranks the whole fallback group. `rank` is that cascade, and it leads the order.
+ *
+ * The rule used to have a third rank — a next episode with no air date, sunk below both.
+ * `CONTINUE_WATCHING` now requires the next episode to have aired, so no row reaches this
+ * order without an air date, and the rank is gone rather than kept unreachable.
  *
  * `at` then holds whichever date the rank chose. Two different kinds of date share one
  * expression, which is safe precisely because `rank` is compared first: a watch timestamp
- * is never compared against an air date. Rank 2 has no date at all and takes `-infinity`,
- * a constant that decides nothing and exists so the expression is never null — a null
- * here would make the cursor's comparison unanswerable rather than false.
+ * is never compared against an air date.
  *
  * The `::timestamptz` on the air date reads the server's zone, which `db/views.ts` is at
  * pains to keep out of what *released* means. Stated rather than hidden, and it is not
@@ -3036,8 +3034,7 @@ export function isEpisodeEntry(entry: UpNextRailEntry): entry is UpNextEntry {
  * ── Why *closest to finishing* is one term here and two in the library sort ──────────
  *
  * `orderByFor` needs a leading `case` to push `NULL` (a film) and `0` (a finished show)
- * to the bottom of its own sort. Neither reaches this order, and #137's COMING BACK rail
- * did not change that. `NULL` is a film's missing row, and no film is ever *watching* or
+ * to the bottom of its own sort. Neither reaches this order. `NULL` is a film's missing row, and no film is ever *watching* or
  * *caught up* — `library_entry_state`'s film branch reads *finished* the moment there is a
  * watch. `0` is a show with every episode watched, which is either *finished* or, if
  * `in_production` is not `false`, a *caught up* show with nothing after its progress and so
@@ -3060,18 +3057,8 @@ interface UpNextOrder {
 }
 
 function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
-  const rank = sql`
-      case
-        when ${lastWatchedAt} is not null then 0
-        when ${episode.airDate} is not null then 1
-        else 2
-      end`;
-  const at = sql`
-      coalesce(
-        ${lastWatchedAt},
-        ${episode.airDate}::timestamptz,
-        '-infinity'::timestamptz
-      )`;
+  const rank = sql`case when ${lastWatchedAt} is not null then 0 else 1 end`;
+  const at = sql`coalesce(${lastWatchedAt}, ${episode.airDate}::timestamptz)`;
   const remaining = libraryEntryRemaining.remaining;
   const name = sql`lower(${title.name})`;
   const entry = libraryEntry.id;
@@ -3104,9 +3091,7 @@ function upNextOrder(lastWatchedAt: SQL.Aliased<string | null>): UpNextOrder {
  * is the one nothing states: a title with no episode after your progress has no row there,
  * so there is nothing to render and nothing to offer. It removes a watchlist title (no
  * watches, so no progress) without being asked, and it removes the *watching* show whose
- * progress has passed every mirrored episode — you skipped one and watched the last. It is
- * also what keeps COMING BACK honest: a caught-up show that has genuinely run out of
- * listed episodes cannot appear on it, whatever `in_production` says.
+ * progress has passed every mirrored episode — you skipped one and watched the last.
  *
  * ── The title's most recent watch, joined rather than correlated ─────────────────────
  *
@@ -3151,54 +3136,38 @@ interface UpNextRow {
 }
 
 /**
- * **ONGOING and OLD FRIENDS' membership: `state = 'watching'`, and nothing else.**
+ * **Continue watching's membership: `state = 'watching'`, and the Up next episode has
+ * aired.**
  *
- * The deck's own predicate since #98, unchanged by the rails being three readers over it
- * — the two rails split this set by position in the order, not by a second predicate, so
- * there is no way for a title to satisfy both or neither.
+ * Continue watching is *something you can watch right now* (`CONTEXT.md`), and both halves
+ * are needed for that. `state = 'watching'` rules out abandoned, finished and watchlist
+ * titles — the same set Library's *Watching* chip holds. The air-date half rules out a show
+ * whose Up next episode is still to come.
  *
- * Abandoned outranks every derived state, so an abandoned title stays out whatever its
- * watches say; a watchlist title has no watches, so `library_entry_up_next` has no row for
- * it; *finished* is out on both counts. That is the same set Library's *Watching* chip
- * holds.
+ * ── Why the air-date half exists ────────────────────────────────────────────────────
  *
- * There is deliberately **no air-date filter on the next episode** here.
- * `library_entry_state` has already ruled out the case where nothing has aired, and §7's
- * rule expects an unaired or undated next episode to be *ordered* — that is what ranks 1
- * and 2 are for. Filtering here would make half of the rule unreachable.
+ * Without it, a show whose Up next episode had not aired drew on the list exactly like one
+ * that had — same code, same TMDB placeholder name, no check — and read as a glitch: *why is
+ * JoJo here when the next episode isn't out?* The old #137 COMING BACK rail put caught-up
+ * shows with a future-dated Up next episode on the same list on purpose; it is deleted, and
+ * Coming up (`listUpcomingEpisodes`) is now the one place a dated, unaired episode appears.
+ *
+ * It filters on the Up next episode rather than on the state, because *watching* is not
+ * *the next episode has aired*: a show with an older aired episode left unwatched is
+ * *watching* whatever its Up next episode's date says. Up next is a position, not a promise.
+ *
+ * **A null air date has not aired**, here exactly as in `db/views.ts`. A show whose Up next
+ * episode TMDB has not dated is on no part of Up next, and returns the day TMDB dates it and
+ * the day passes — the same read on a different day, nothing written.
  *
  * `satisfies`, not a bare string: `state` is a `text` column, so a typo here would be an
- * empty rail rather than an error — silent, on the one predicate that decides what the
+ * empty list rather than an error — silent, on the one predicate that decides what the
  * surface contains.
  */
-const WATCHING: SQL = eq(libraryEntryState.state, "watching" satisfies LibraryState);
-
-/**
- * **COMING BACK's membership: *caught up*, and the next episode's air date is in the
- * future.**
- *
- * The one rail that is not a slice of the deck. *Caught up* is `library_entry_state`'s
- * "every released episode has a watch, and the show has not ended" — nothing to watch now,
- * something to watch later — and this is the *later* made concrete:
- * `library_entry_up_next`'s episode, dated, and dated after today.
- *
- * **A null air date is not a future one.** `air_date > current_date` is null against a null
- * air date, which is false to a `WHERE`, so a caught-up show whose next episode TMDB has
- * not dated never appears here. That is the honest answer and not an omission: the rail
- * says *this is coming back on a day you could look up*, and there is no such day.
- *
- * **The rail empties itself.** Once the date passes, this predicate stops holding — and
- * `library_entry_state` moves the title to *watching* in the same moment, which is what
- * puts it on ONGOING instead. Neither transition is a write, a job or a stored flag; both
- * are the same read on a different day.
- *
- * `current_date` is the server's, the exception `db/views.ts` states and defends at length
- * for the identical comparison — an air date is a `date` with no instant in it to place in
- * a zone.
- */
-const COMING_BACK: SQL = sql`(
-    ${eq(libraryEntryState.state, "caught_up" satisfies LibraryState)}
-    and ${episode.airDate} > current_date
+const CONTINUE_WATCHING: SQL = sql`(
+    ${eq(libraryEntryState.state, "watching" satisfies LibraryState)}
+    and ${episode.airDate} is not null
+    and ${episode.airDate} <= current_date
   )`;
 
 /**
@@ -3277,11 +3246,24 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           airDate: episode.airDate,
           runtimeMins: episode.runtimeMins,
           stillPath: episode.stillPath,
-          /* Already joined, and joined for the sort rather than for this — `upNextOrder`'s
-             *closest to finishing* tiebreak reads the same column. Selecting it costs
-             nothing beyond the column, and reading it from anywhere else would be a second
-             answer to how much of a show is left. */
-          remaining: libraryEntryRemaining.remaining,
+          /* Remaining, as `CONTEXT.md` defines it: the *aired* episodes after the Up next
+             one — plus the Up next episode itself, which the card subtracts
+             (`countAfterShown`). It is not `library_entry_remaining`: that view counts every
+             unwatched episode, aired or not, because Library's sort needs `0` to mean
+             *finished* and nothing else. JoJo's `+8 remaining` beside an episode that had
+             not aired was this count reading that view.
+
+             Every episode after the Up next one is unwatched — Up next is the episode after
+             the furthest watched — so position and the air date are the whole test. */
+          remaining: sql<number>`(
+              select count(*)::int + 1
+              from episode later
+              where later.title_id = ${title.id}
+                and later.season_no > 0
+                and (later.season_no, later.episode_no)
+                  > (${libraryEntryUpNext.seasonNo}, ${libraryEntryUpNext.episodeNo})
+                and later.air_date <= current_date
+            )`.mapWith(Number),
         })
         .from(libraryEntry)
         .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -3309,11 +3291,8 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
 
 /**
  * The shared read's row, plus its run of markable episodes, as the entry every surface is
- * handed.
- *
- * The queue is a parameter rather than a lookup here because the two reads that produce it
- * differ by rail: `WATCHING`'s entries get `upNextQueues`' answer, and `COMING_BACK`'s get
- * `NOTHING_RELEASED` without a query being run for them (`listUpNextRails`).
+ * handed. The queue is a second read, keyed by the entry ids the first one chose
+ * (`listUpNextRails`).
  */
 function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
   return {
@@ -3356,14 +3335,14 @@ function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
 export const ONGOING_RAIL_SIZE = 12;
 
 /**
- * The three rails of the desktop Up next page — issue #137, and **a grouping over the
- * existing state and the existing order, evaluated on read**.
+ * Continue watching's two halves — issue #137's rails, less COMING BACK, which is deleted
+ * (`CONTINUE_WATCHING` says why) — and **a grouping over the existing state and the
+ * existing order, evaluated on read**.
  *
- * | Rail | Rule |
+ * | Half | Rule |
  * |---|---|
- * | **ONGOING** | *watching* ∩ the `ONGOING_RAIL_SIZE` most recently watched |
- * | **COMING BACK** | *caught up* ∧ the next episode's air date is in the future |
- * | **OLD FRIENDS** | *watching*, everything not in ONGOING |
+ * | **ONGOING** | Continue watching ∩ the `ONGOING_RAIL_SIZE` most recently watched |
+ * | **OLD FRIENDS** | Continue watching, everything not in ONGOING |
  *
  * **No column is added and no view is added.** Nothing here is stored, nothing is
  * refreshed and nothing can go stale, for the schema's reason: a stored copy of derived
@@ -3630,7 +3609,6 @@ export interface UpNextRails {
    * that can hold either shape, and `isPendingEntry` is how a surface tells them apart.
    */
   readonly ongoing: readonly UpNextRailEntry[];
-  readonly comingBack: readonly UpNextEntry[];
   readonly oldFriends: readonly UpNextEntry[];
 }
 
@@ -3691,25 +3669,17 @@ export async function listUpNextRails(
   const read = upNextRead(userId, executor);
 
   /**
-   * Three independent reads, overlapped rather than stacked: none takes another's rows.
+   * Two independent reads, overlapped rather than stacked: neither takes the other's rows.
    * `Promise.all` rejects on the first rejection, so a failure still reaches the caller's
    * boundary exactly as it did in series.
    *
-   * On the pool this checks out three connections instead of reusing one, which on a cold
-   * process is three WebSocket handshakes rather than one. It is still the shorter wall
-   * clock — the handshakes overlap too — and it is a trade of connection count for
-   * latency, made knowingly. Passed a transaction, node-postgres queues them all on that
-   * one connection, so this is correct there and merely no faster.
-   *
-   * **The third is #272's**, and it is here rather than sequential because it takes nothing
-   * from the other two: the pending read's membership is a column on `title`, not a set of
-   * entry ids the other reads produce. It is also the cheapest of the three by a wide
+   * **The second is #272's**: the pending read's membership is a column on `title`, not a
+   * set of entry ids the first read produces. It is the cheapest of the two by a wide
    * margin — an index on `episodes_mirrored_at`, read by `IS NULL`, over a set that is
    * empty on almost every load.
    */
-  const [watching, comingBack, pending] = await Promise.all([
-    read.rows(WATCHING, null),
-    read.rows(COMING_BACK, null),
+  const [watching, pending] = await Promise.all([
+    read.rows(CONTINUE_WATCHING, null),
     upNextPending(userId, executor),
   ]);
 
@@ -3732,15 +3702,6 @@ export async function listUpNextRails(
    * either way, the window function scans the same join, and it replaces the two reads
    * (`listWatchlist`, `listAbandoned`) this ticket deletes. It runs on a desktop load too,
    * for the reason `page.tsx` states at length: **the server does not know the viewport.**
-   *
-   * ── `COMING_BACK` is not asked, and that is provable rather than assumed ───────────
-   *
-   * That predicate is *caught up ∧ the next episode's air date is in the future*, and
-   * `upNextQueues` truncates a run at the first episode that is not released — `air_date
-   * <= current_date`. A future air date fails that on the first row, every time, so the
-   * answer for every coming-back entry is the empty run, and asking for it would be paying
-   * for a query whose result the predicate already determines. `NOTHING_RELEASED` below is
-   * that answer written down once.
    */
   const queues = await upNextQueues(
     userId,
@@ -3778,28 +3739,9 @@ export async function listUpNextRails(
    */
   return {
     ongoing: [...pending, ...watching.slice(0, ONGOING_RAIL_SIZE).map(watchingEntry)],
-    comingBack: comingBack.map((row) => upNextEntry(row, NOTHING_RELEASED)),
     oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(watchingEntry),
   };
 }
-
-/**
- * The run of a title with nothing released left to mark — every *coming back* entry's
- * queue, by construction rather than by query (`listUpNextRails`).
- *
- * **`more: false` is the load-bearing half.** It is the pair that says *this show has
- * nothing released left*, which is exactly true of a caught-up show whose next episode
- * airs in the future: there is nothing to mark today. `more: true` would claim a run the
- * read merely failed to fetch, and would leave the card waiting for a refill that no
- * reload could ever produce.
- *
- * Frozen at module scope so every coming-back entry shares one object rather than minting
- * one per row, the same reason `up-next-mark.ts` freezes its `UNWATCHED` view.
- */
-const NOTHING_RELEASED: UpNextQueue = Object.freeze({
-  episodes: Object.freeze([]),
-  more: false,
-});
 
 /**
  * One card of the landing screen's films rail (#250) — a poster, a name, a year and a
@@ -3835,7 +3777,14 @@ export interface LibraryStateGroupEntry {
 }
 
 /**
- * **The films rail's membership: standing at Watchlist, and a film** — issue #250.
+ * **The films rail's membership: standing at Watchlist, a film, and released** — issue
+ * #250, narrowed by the UI overhaul.
+ *
+ * *Released* is the film's half of `CONTINUE_WATCHING`'s rule: Films to watch is what you
+ * could watch tonight, and a film whose release date is still ahead — *Avengers: Secret
+ * Wars*, 2027 — is on Coming up (`listUpcomingFilms`) instead. **A null release date has
+ * not released**, exactly as a null air date has not aired, so an undated film is on
+ * neither list until TMDB dates it; it is still in the Library.
  *
  * Both halves are predicates and neither is a slice: `library_entry_state` decides the
  * first and `title.kind` the second, so a show on the watchlist and a film being watched
@@ -3877,6 +3826,8 @@ export async function listWatchlistFilms(
         ownedBy(userId, libraryEntry),
         eq(libraryEntryState.state, "watchlist" satisfies LibraryState),
         eq(title.kind, "film" satisfies TitleKind),
+        isNotNull(title.releaseDate),
+        lte(title.releaseDate, sql`current_date`),
       ),
     )
     .orderBy(sql`lower(${title.name})`, libraryEntry.id);

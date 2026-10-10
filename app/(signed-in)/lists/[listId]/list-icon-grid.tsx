@@ -1,8 +1,12 @@
 import Link from "next/link";
 
+import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
+
+/** The cell's link, owned or not — one press register for both. */
+const CELL_LINK = "pressable group block";
 
 /**
  * A custom list in **icon view** — Finder's, and named after it because it is the same
@@ -95,18 +99,17 @@ function IconCell({
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
       </button>
-      <Link
-        href={
-          title.libraryEntryId === null
-            ? `/catalogue/${title.kind}/${title.tmdbId}`
-            : `/titles/${title.libraryEntryId}`
-        }
-        className="pressable group block"
-      >
+      {title.libraryEntryId === null ? (
+        <Link
+          href={`/catalogue/${title.kind}/${title.tmdbId}`}
+          className={CELL_LINK}
+        >
         {/* `relative` is the numeral's, which hangs off the poster's own corner rather
             than the cell's — the same placement `SelectionCheckBadge` takes on a library
             cell, and for its reason: the cell's corner is a gutter away from anything. */}
-        <div className="relative">
+        <div
+          className="relative"
+        >
           <Poster
             posterPath={title.posterPath}
             name={title.name}
@@ -151,7 +154,65 @@ function IconCell({
             {title.releaseYear}
           </p>
         )}
-      </Link>
+        </Link>
+      ) : (
+        <PosterLink
+          libraryEntryId={title.libraryEntryId}
+          posterPath={title.posterPath}
+          className={CELL_LINK}
+        >
+        {/* `relative` is the numeral's, which hangs off the poster's own corner rather
+            than the cell's — the same placement `SelectionCheckBadge` takes on a library
+            cell, and for its reason: the cell's corner is a gutter away from anything. */}
+        <div
+          className="relative"
+        >
+          <Poster
+            posterPath={title.posterPath}
+            name={title.name}
+            width={POSTER_WIDTH}
+            className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-4)]"
+            aboveFold={aboveFold}
+          >
+            {/* The same bar the bill draws, on the same edge of the same poster — a list
+                is the library's titles in a hand order, and how far through one you are
+                does not change with the surface you meet it on. `null` for a title this
+                account does not own, which is a case the bill never has to draw
+                (`db/access.ts`'s `ListDetailTitleRow.progress`). */}
+            <PosterProgressBar progress={title.progress} />
+          </Poster>
+
+          {/* `--ink` on the poster, not the accent: this is the order the reader set, and
+              `app/globals.css` gives the accent three roles, none of which is *a fact
+              about where something sits in a list*. `tab-bar.tsx` made the same call for
+              the same reason. */}
+          <span
+            className="code-line absolute top-1.5 left-1.5 min-w-5 rounded-[var(--radius-full)] bg-text px-1.5 py-0.5 text-center text-ground"
+            data-numeric
+          >
+            {title.position}
+          </span>
+        </div>
+
+        {/* `break-words` for `library-entry-cell.tsx`'s measured reason: a long unbroken
+            word — most of a German title — cannot wrap inside a grid column, and without
+            this it pushes the column open and the page gains a horizontal scrollbar. */}
+        <p className="mt-2 line-clamp-2 break-words text-item leading-snug text-text">
+          {title.name}
+        </p>
+
+        {/* No line at all for a title TMDB has not dated, rather than a placeholder — the
+            same choice `library-entry-cell.tsx` makes for the identical fact. The kind is
+            dropped from the meta line the rows print: a poster at `2/3` beside a name is
+            already saying which of the two this is, and *Film* under every cell of a list
+            of films is a word repeated eleven times. */}
+        {title.releaseYear === null ? null : (
+          <p className="code-line mt-1 text-dim" data-numeric>
+            {title.releaseYear}
+          </p>
+        )}
+        </PosterLink>
+      )}
     </li>
   );
 }

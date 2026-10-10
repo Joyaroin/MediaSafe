@@ -618,10 +618,13 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page.match(/new Date\(\)/g)).toHaveLength(1);
   });
 
-  /** One structure on every screen size: the desktop stacks the same two halves the
-   *  phone pages between, rather than a desktop-only arrangement of its own. */
-  it("gives the desktop the same two halves, stacked", () => {
-    expect(page).toMatch(/className="hidden [^"]*lg:block"[\s\S]*\{watching\}[\s\S]*\{comingUp\}/);
+  /** One structure on every screen size, drawn once: the pager, on a phone and a
+   *  desktop alike. A second, CSS-hidden copy for the desktop mounted every card twice and
+   *  gave every poster two `ViewTransition`s sharing a name. */
+  it("draws the two halves once, paged on every screen size", () => {
+    expect(page.match(/<LandingPager\b/g)).toHaveLength(1);
+    expect(page).toContain("<LandingPager upNext={watching} upcoming={comingUp} />");
+    expect(page).not.toMatch(/className="[^"]*(lg:hidden|hidden lg:block)/);
   });
 
   /**
