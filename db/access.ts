@@ -2707,6 +2707,8 @@ export interface LibraryEntryRow {
   readonly name: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /** `#rrggbb`, or `null` — the hover glow's colour (issue #363, `app/poster-tint.ts`). */
+  readonly posterColour: string | null;
   /**
    * Film or show — borrowed, and read from `title` rather than kept beside the entry.
    *
@@ -2849,6 +2851,7 @@ export async function listLibraryEntries(
       name: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      posterColour: title.posterColour,
       kind: title.kind,
       state: libraryEntryState.state,
       upNextEpisodeId: libraryEntryUpNext.episodeId,
@@ -2885,6 +2888,7 @@ export async function listLibraryEntries(
     name: row.name,
     releaseYear: row.releaseYear,
     posterPath: row.posterPath,
+    posterColour: row.posterColour,
     // Parsed, not cast — `kindFrom`'s own note: a column Drizzle types as `string` is a
     // promise nothing at the type level checks.
     kind: kindFrom(row.kind),
@@ -3961,6 +3965,8 @@ export interface LibraryStateGroupEntry {
   readonly titleName: string;
   readonly releaseYear: number | null;
   readonly posterPath: string | null;
+  /** `#rrggbb`, or `null` — the hover glow's colour (issue #363, `app/poster-tint.ts`). */
+  readonly posterColour: string | null;
   /** Borrowed. `null` where TMDB has not published one. */
   readonly runtimeMins: number | null;
 }
@@ -4005,6 +4011,7 @@ export async function listWatchlistFilms(
       titleName: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      posterColour: title.posterColour,
       runtimeMins: title.runtimeMins,
     })
     .from(libraryEntry)
@@ -5714,6 +5721,7 @@ export async function listYouRails(
       titleName: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      posterColour: title.posterColour,
       runtimeMins: title.runtimeMins,
       kind: title.kind,
     })
@@ -5750,6 +5758,7 @@ export async function listYouRails(
       titleName: row.titleName,
       releaseYear: row.releaseYear,
       posterPath: row.posterPath,
+      posterColour: row.posterColour,
       runtimeMins: row.runtimeMins,
     };
     (row.kind === "show" ? shows : films).push(entry);

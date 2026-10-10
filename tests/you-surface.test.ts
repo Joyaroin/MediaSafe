@@ -52,6 +52,7 @@ function titleEntry(overrides: Partial<LibraryStateGroupEntry> = {}): LibrarySta
     titleName: "A Show",
     releaseYear: 2020,
     posterPath: null,
+    posterColour: null,
     runtimeMins: null,
     ...overrides,
   };

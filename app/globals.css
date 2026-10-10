@@ -351,6 +351,41 @@
   }
 }
 
+/* ── The poster glow — issue #363 ────────────────────────────────────────────────────
+   Hovering a poster in the Library grid or a You rail lights a soft glow around it in the
+   title's own colour; the rest of the tile stays neutral. `--glow` is set inline from
+   `app/poster-tint.ts`'s `posterGlowStyle`, and only on a title that has a colour, so a
+   title without one never gets this class and never glows.
+
+   On the tile's existing hover — the `pressable` the cell and the tile already are — and
+   only where hover is real (`hover: hover`), so a phone's tap never strands a glow on the
+   poster it opened. CSS only: the cell and the tile stay server components. Under reduced
+   motion the glow still comes, without easing in. The radius follows the poster inside it
+   (`--poster-radius`), so the glow is the poster's shape. */
+.poster-glow {
+  border-radius: var(--poster-radius, var(--radius-1));
+  transition: box-shadow var(--dur-base) var(--ease-out-quart);
+}
+
+@media (hover: hover) {
+  .pressable:hover .poster-glow {
+    box-shadow: 0 14px 30px -10px color-mix(in oklab, var(--glow) 85%, transparent);
+  }
+}
+
+/* The library cell is `offscreen-skippable`, whose `content-visibility` contains paint to
+   the cell — which would cut the glow off flat at the poster's sides. The clip margin
+   gives it room, and only on a cell that has a glow to give room to. */
+.offscreen-skippable:has(.poster-glow) {
+  overflow-clip-margin: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-glow {
+    transition: none;
+  }
+}
+
 /* ── The reader has asked for more contrast — issue #329 ─────────────────────────────
    `prefers-contrast: more` used to be ignored outright. It now closes the ramp by one
    step, in both schemes, with no value declared beyond the two tokens already on it:
