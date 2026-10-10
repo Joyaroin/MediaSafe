@@ -10,6 +10,7 @@ import {
   cardPicture,
   markFromCard,
   readUpNextMark,
+  seasonProgress,
   stillOnRail,
   undoFromCard,
 } from "@/app/(signed-in)/up-next/up-next-mark";
@@ -41,7 +42,12 @@ import { createWriteFailureStore } from "@/errors/write-failure";
 
 const TITLE_NAME = "Better Call Saul";
 
-function episodeAt(seasonNo: number, episodeNo: number, name: string | null = null): QueuedEpisode {
+function episodeAt(
+  seasonNo: number,
+  episodeNo: number,
+  name: string | null = null,
+  seasonReleased = 10,
+): QueuedEpisode {
   return {
     episodeId: `episode-${seasonNo}-${episodeNo}`,
     episodeName: name ?? `Episode ${seasonNo}-${episodeNo}`,
@@ -50,6 +56,7 @@ function episodeAt(seasonNo: number, episodeNo: number, name: string | null = nu
     lastAiredInSeason: false,
     seasonAiring: false,
     lastOfShow: false,
+    seasonReleased,
   };
 }
 
@@ -81,6 +88,8 @@ function entryWith(
     stillPath: "/still.jpg",
     remaining: episodes.length,
     inProduction: true,
+    seasonWatched: Math.max(0, (episodes[0]?.episodeNo ?? 1) - 1),
+    seasonReleased: episodes[0]?.seasonReleased ?? 10,
     queue: { episodes, more },
   };
 }
@@ -221,6 +230,7 @@ describe("an Ongoing tile's mark", () => {
         lastAiredInSeason: false,
         seasonAiring: false,
         lastOfShow: false,
+        seasonReleased: 10,
       },
       episodeAt(2, 5),
     ]);
@@ -565,5 +575,49 @@ describe("the picture a next-episodes surface draws", () => {
     // (`up-next-episode-card.tsx`) — and it keeps a picture while it does.
     expect(readUpNextMark(marks, entry.libraryEntryId, entry.queue).episode).toBeNull();
     expect(cardPicture(entry)).toEqual({ kind: "poster", path: "/bcs.jpg" });
+  });
+});
+
+/**
+ * The season bar across the card's poster — issue #364. A function of the card's position,
+ * so a mark, an Undo and a rollback all move it by the same rule that moves the episode.
+ */
+describe("the season progress a next-episodes card draws", () => {
+  it("starts at what the read found watched in the Up next episode's season", () => {
+    const entry = entryWith([episodeAt(1, 4, null, 8), episodeAt(1, 5, null, 8)]);
+
+    expect(seasonProgress(entry, entry.queue.episodes[0], 0)).toEqual({
+      watched: 3,
+      released: 8,
+    });
+  });
+
+  it("counts the held episode once a mark lands, and walks back on Undo", () => {
+    const entry = entryWith([episodeAt(1, 4, null, 8), episodeAt(1, 5, null, 8)]);
+    const [first, second] = entry.queue.episodes;
+
+    // Holding on the episode just marked: one of the run is watched.
+    expect(seasonProgress(entry, first, 1)).toEqual({ watched: 4, released: 8 });
+    // The hold ends and the next episode is on the card; nothing new is watched.
+    expect(seasonProgress(entry, second, 1)).toEqual({ watched: 4, released: 8 });
+    // Undo puts the position back, and the bar with it.
+    expect(seasonProgress(entry, first, 0)).toEqual({ watched: 3, released: 8 });
+  });
+
+  it("starts a season the run crosses into at nothing watched, against its own aired count", () => {
+    const entry = entryWith([episodeAt(1, 8, null, 8), episodeAt(2, 1, null, 3)]);
+    const [last, opener] = entry.queue.episodes;
+
+    // The season finale, held: the whole season is watched.
+    expect(seasonProgress(entry, last, 1)).toEqual({ watched: 8, released: 8 });
+    // Season 2's opener: none of its three aired episodes is watched yet.
+    expect(seasonProgress(entry, opener, 1)).toEqual({ watched: 0, released: 3 });
+    expect(seasonProgress(entry, opener, 2)).toEqual({ watched: 1, released: 3 });
+  });
+
+  it("shows the read's own answer on a card whose run arrived empty", () => {
+    const entry = { ...entryWith([]), seasonWatched: 5, seasonReleased: 6 };
+
+    expect(seasonProgress(entry, null, 0)).toEqual({ watched: 5, released: 6 });
   });
 });

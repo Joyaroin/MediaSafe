@@ -893,6 +893,9 @@ describe("listUpNextRails — what each rail contains", () => {
         remaining: 2,
         // Issue #367: TMDB's own flag, half of *That's the show*.
         inProduction: true,
+        // Issue #364: season 2, two aired, one of them watched.
+        seasonWatched: 1,
+        seasonReleased: 2,
         // Issue #220. Asserted whole here, rather than loosened to a matcher, because
         // this case is *everything a card is handed* — the queue is part of that and a
         // card cannot mark anything without it.
@@ -907,6 +910,7 @@ describe("listUpNextRails — what each rail contains", () => {
               lastAiredInSeason: true,
               seasonAiring: false,
               lastOfShow: false,
+              seasonReleased: 2,
             },
             {
               episodeId: show.episodeIds[2],
@@ -916,6 +920,7 @@ describe("listUpNextRails — what each rail contains", () => {
               lastAiredInSeason: true,
               seasonAiring: false,
               lastOfShow: true,
+              seasonReleased: 1,
             },
           ],
           more: false,
@@ -1012,6 +1017,40 @@ describe("listUpNextRails — what each rail contains", () => {
       expect(entry.queue.episodes).toMatchObject([
         { episodeNo: 2, lastAiredInSeason: true, seasonAiring: false, lastOfShow: true },
       ]);
+    });
+  });
+
+  /**
+   * Issue #364's bar: the Up next episode's season, aired episodes only — the same test
+   * `remaining` uses — with a skipped episode counted as unwatched and the specials and
+   * other seasons left out.
+   */
+  it("counts the Up next season's aired and watched episodes, and each queued season's aired", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 0, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 2, episodeNo: 1 },
+          { seasonNo: 2, episodeNo: 2 },
+          { seasonNo: 2, episodeNo: 3 },
+          { seasonNo: 2, episodeNo: 4 },
+          { seasonNo: 2, episodeNo: 5, airDate: UNRELEASED },
+          { seasonNo: 3, episodeNo: 1, airDate: UNRELEASED },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(2));
+      await markWatched(tx, show, 1, daysAgo(2));
+      // S2E1 skipped; S2E2 watched, so S2E3 is up next.
+      await markWatched(tx, show, 3, daysAgo(1));
+
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
+
+      expect(entry.episodeNo).toBe(3);
+      expect(entry.seasonWatched).toBe(1);
+      expect(entry.seasonReleased).toBe(4);
+      expect(entry.queue.episodes.map((one) => one.seasonReleased)).toEqual([4, 4]);
     });
   });
 

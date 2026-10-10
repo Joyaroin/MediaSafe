@@ -3005,6 +3005,18 @@ export interface UpNextEntry {
    */
   readonly inProduction: boolean | null;
   /**
+   * The Up next episode's season, as aired episodes with a watch over aired episodes —
+   * issue #364's bar across the card's poster, read when the page loads.
+   *
+   * *Aired* is `remaining`'s own test, so the bar and the count beside it never disagree
+   * about what exists yet. Only this season is read: every episode after the Up next one
+   * is unwatched by construction (`db/views.ts`), so a later season the card advances into
+   * starts at zero watched, and its aired count travels on the queued episode
+   * (`QueuedEpisode.seasonReleased`).
+   */
+  readonly seasonWatched: number;
+  readonly seasonReleased: number;
+  /**
    * The run of released episodes this card can mark without another read — issue #220,
    * widened from the Ongoing group to every next-episodes card by #250.
    *
@@ -3213,6 +3225,8 @@ interface UpNextRow {
   readonly stillPath: string | null;
   readonly remaining: number;
   readonly inProduction: boolean | null;
+  readonly seasonWatched: number;
+  readonly seasonReleased: number;
 }
 
 /**
@@ -3345,6 +3359,27 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
                   > (${libraryEntryUpNext.seasonNo}, ${libraryEntryUpNext.episodeNo})
                 and later.air_date <= current_date
             )`.mapWith(Number),
+          /* Issue #364: the Up next episode's season, aired against aired-and-watched.
+             Correlated like `remaining`, on the `(title_id, season_no, episode_no)`
+             unique index and `watch_episode_id_idx`. */
+          seasonWatched: sql<number>`(
+              select count(*)::int
+              from episode s
+              where s.title_id = ${title.id}
+                and s.season_no = ${libraryEntryUpNext.seasonNo}
+                and s.air_date <= current_date
+                and exists (
+                  select 1 from watch w
+                  where w.library_entry_id = ${libraryEntry.id} and w.episode_id = s.id
+                )
+            )`.mapWith(Number),
+          seasonReleased: sql<number>`(
+              select count(*)::int
+              from episode s
+              where s.title_id = ${title.id}
+                and s.season_no = ${libraryEntryUpNext.seasonNo}
+                and s.air_date <= current_date
+            )`.mapWith(Number),
         })
         .from(libraryEntry)
         .innerJoin(title, eq(title.id, libraryEntry.titleId))
@@ -3391,6 +3426,8 @@ function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
     stillPath: row.stillPath,
     remaining: row.remaining,
     inProduction: row.inProduction,
+    seasonWatched: row.seasonWatched,
+    seasonReleased: row.seasonReleased,
     queue,
   };
 }
@@ -3492,6 +3529,12 @@ export interface QueuedEpisode {
   readonly lastAiredInSeason: boolean;
   readonly seasonAiring: boolean;
   readonly lastOfShow: boolean;
+  /**
+   * How many episodes of this episode's season have aired — issue #364. The bar's
+   * denominator once the card advances into this season; `UpNextEntry.seasonReleased` is
+   * the same number for the head of the run.
+   */
+  readonly seasonReleased: number;
 }
 
 /**
@@ -3684,6 +3727,14 @@ async function upNextQueues(
             and s.season_no > 0
             and (s.season_no, s.episode_no) > (ranked.season_no, ranked.episode_no)
         )`,
+      /* Issue #364's denominator, under the same per-row bound and spelled-out `ranked.`. */
+      seasonReleased: sql<number>`(
+          select count(*)::int
+          from episode s
+          where s.title_id = ranked.title_id
+            and s.season_no = ranked.season_no
+            and s.air_date <= current_date
+        )`.mapWith(Number),
     })
     .from(ranked)
     // One past the depth, which is the row that answers `more`.
@@ -3712,6 +3763,7 @@ async function upNextQueues(
         lastAiredInSeason: row.lastAiredInSeason,
         seasonAiring: row.seasonAiring,
         lastOfShow: row.lastOfShow,
+        seasonReleased: row.seasonReleased,
       });
     }
     queues.set(entryId, {

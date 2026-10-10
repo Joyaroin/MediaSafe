@@ -44,6 +44,7 @@ function queued(facts: Partial<QueuedEpisode>): QueuedEpisode {
     lastAiredInSeason: false,
     seasonAiring: false,
     lastOfShow: false,
+    seasonReleased: 10,
     ...facts,
   };
 }
