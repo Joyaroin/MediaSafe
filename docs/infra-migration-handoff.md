@@ -130,7 +130,7 @@ his own uncommitted change; leave them out of every commit.
   `argocd-initial-admin-secret` deleted. **Vault root token revoked**: lookup now 403s,
   `generate-root -status` answers without a token, the Google admin login still works.
 
-### Stage 6 — staging 🔄 (deployed 2026-10-10; sign-in, seed and CI deploy pending)
+### Stage 6 — staging ✅ (2026-10-10)
 - gitops `77de0b0`: chart `charts/mediasafe` + `values-staging.yaml`, app `mediasafe-staging`.
   Waves: ExternalSecrets `mediasafe-app` (dataFrom `kv/mediasafe/staging/app`) and `ghcr-pull`
   (dockerconfigjson) + Valkey at −1 → migration Job as a **Sync hook** at 0 (not PreSync: PreSync
@@ -143,6 +143,26 @@ his own uncommitted change; leave them out of every commit.
 - Verified: migration 5 s; `/sign-in` 200 over TLS; sweep endpoint 401 without the secret; a
   manual sweep Job returned `{"candidates":0,…}`; app 95 Mi, Valkey 8 Mi, node ~1.72 GiB free.
 - Vault `kv/mediasafe/staging/app`: `SENTRY_DSN` deliberately empty (Sentry off on staging).
+- CI (MediaSafe `a760d34`): `image.yml` job `deploy-staging` commits each new SHA to
+  `values-staging.yaml` with `GITOPS_TOKEN` (fine-grained, Contents RW on mediasafe-gitops only,
+  an Actions secret **on MediaSafe**). Verified: one push → build → `Deploy MediaSafe a760d34 to
+  staging` commit → Argo migrated and rolled staging. `promote.yml` (manual) copies staging's SHA
+  to `values-prod.yaml`.
+
+### Stage 8 — prod on k3s beside Vercel ✅ (gitops `4d3c5e0`, 2026-10-10)
+- `apps/mediasafe-prod.yaml` + `values-prod.yaml`: `mediasafe.space` on `https-apex`, 2 replicas,
+  sweep **suspended** (Vercel Cron still runs it), image `a760d34` (= staging).
+- Vault `kv/mediasafe/prod/app`: own `BETTER_AUTH_SECRET` and `CRON_SECRET`; Google client ID and
+  secret, TMDB and the GHCR token copied from staging inside Vault; `DATABASE_URL` = Neon main,
+  pooled (`ep-morning-haze-axmzr7od`). **`SENTRY_DSN` empty: set it before the cutover**, or prod's
+  error screens have no reference id (AGENTS.md).
+- Google: the app client (`335937872978-8kpao8r7…`) has the staging and apex callbacks; its two
+  secrets are Vercel's and the one staging/prod share (only the latter is stored, in Vault).
+- Neon restore point: branch `pre-k3s-2026-10-10` from main (Adham, not verified from here).
+- Verified: migration `[migrate] up to date`; 2 replicas ~94 Mi each, node ~1.6 GiB free; sign-in
+  on `mediasafe.space` shows Adham's real library.
+- **Merge freeze on MediaSafe `main` is in effect** until the cutover: Vercel's build migrates on
+  every merge, and so does k3s prod on promotion, against the same database.
 
 ### Stage 7 — NetworkPolicies ✅ (gitops `5ef2c3c`, `335b4c6`, 2026-10-10)
 - k3s enforces policy with its embedded kube-router (not disabled in `config.yaml`).
@@ -164,8 +184,9 @@ his own uncommitted change; leave them out of every commit.
 
 - Argo apps, all **Synced/Healthy**: `root`, `argocd`, `argocd-public`, `gateway-api-crds`,
   `traefik`, `cert-manager`, `edge`, `vault`, `external-secrets`, `app-namespaces`,
-  `mediasafe-staging`.
-- Staging live at `https://staging.mediasafe.space` (Google sign-in works); NetworkPolicies on.
+  `mediasafe-staging`, `mediasafe-prod`.
+- Staging at `https://staging.mediasafe.space`, prod at `https://mediasafe.space` (beside Vercel,
+  same Neon main); Google sign-in works on both; NetworkPolicies on.
 - Argo CD public at `https://argocd.mediasafe.space`, Google sign-in only, no local admin.
 - Vault: initialised, **unsealed**, v2.1.1, **no root token**. KV holds `kv/infra/vault-snapshots`
   (the R2 key) and `kv/infra/argocd/google-oidc`.
@@ -263,19 +284,10 @@ SHA-256) because Homebrew is blocked by outdated Xcode Command Line Tools.
 
 ## 8. What comes next — in order
 
-### Stage 6 — what is left (staging runs; see section 3)
-- **CI deploy:** after the image push in `image.yml`, commit the new SHA into
-  `charts/mediasafe/values-staging.yaml`. Needs Adham's fine-grained PAT (Contents RW on
-  `mediasafe-gitops` only) as Actions secret `GITOPS_TOKEN` on MediaSafe. Then stage 6 is done
-  ("a merge deploys staging"). The prod promotion `workflow_dispatch` belongs to stage 8.
-- **Seed (optional):** Adham has signed in on staging, so his user exists; seed his library
-  from `fixtures/mediasafe-seed.json` with `npm run db:seed` against the staging URL, with
-  `DATABASE_WS_PROXY=` (empty) so the driver talks to Neon, not the local proxy.
-- **Recommended:** nightly `pg_dump` of Neon to R2: Neon's 6-hour history is the only backup.
+### Neon backup (recommended before the cutover)
+Nightly `pg_dump` of Neon main to R2: Neon's 6-hour history is the only backup.
 
-### Stages 8–10 (from the ADR)
-- **8 Prod beside Vercel:** prod values + secrets, promotion workflow; **freeze merges to `main`**
-  until 9 is done (two migrators on one Neon DB).
+### Stages 9–10 (from the ADR)
 - **9 Cutover:** OAuth redirect + `BETTER_AUTH_URL`, turn off Vercel git deploys and cron,
   unsuspend the prod CronJob.
 - **10 Cleanup:** delete Vercel project, `vercel.json`, the `VERCEL`/`VERCEL_ENV` branches in

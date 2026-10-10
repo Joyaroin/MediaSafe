@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–5 and 7 implemented, stage 6 nearly (CI deploy left)
+- **Status:** Accepted, stages 0–8 implemented; cutover next
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -311,14 +311,17 @@ time, so staging's browser errors are tagged the same as prod's.
    - Argo CD public at `argocd.mediasafe.space` with Google sign-in only (same client as Vault's
      admin login), local admin disabled. Then the root token was revoked, after checking
      `generate-root -status` answers without a token.
-6. **Staging app.** 🔄 Live 2026-10-10 at `staging.mediasafe.space`: chart `charts/mediasafe` in
-   the gitops repo, migration as an Argo Sync hook after the ExternalSecrets, Valkey with
-   `noeviction`, sign-in and a sweep verified. Left: CI committing each image's SHA to staging.
+6. **Staging app.** ✅ Done 2026-10-10 at `staging.mediasafe.space`: chart `charts/mediasafe` in
+   the gitops repo, migration as an Argo Sync hook after the ExternalSecrets (a PreSync hook would
+   run before the Secret exists), Valkey with `noeviction`. CI commits each image's SHA to
+   staging; sign-in, a sweep and a hands-off deploy verified.
 7. **NetworkPolicies.** ✅ Done 2026-10-10. Default-deny in the app namespaces with explicit
    allows, Vault reachable only from External Secrets and its own namespace, and each Gateway
    listener accepting routes only from its own namespace. Verified both ways (allowed paths
    work, others are refused) and with a forced certificate renewal. k3s applies policy to a new
    pod about a second late, so every Job waits for its network before starting work.
-8. **Prod on k3s, beside Vercel.**
+8. **Prod on k3s, beside Vercel.** ✅ Done 2026-10-10 at `mediasafe.space`, 2 replicas, sweep
+   suspended, promoted by `promote.yml`. The first migration found the schema up to date, and
+   sign-in shows real data. Merges to `main` are frozen until the cutover.
 9. **Cutover.**
 10. **Cleanup.**
