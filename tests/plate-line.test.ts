@@ -161,6 +161,7 @@ const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number
   { file: "app/(signed-in)/library/chip.tsx", count: 1, reason: "a filter chip" },
   { file: "app/(signed-in)/library/library-filter-bar.tsx", count: 1, reason: "the Watching chip" },
   { file: "app/(signed-in)/library/library-surface.tsx", count: 1, reason: "the Shows/Films/Lists segmented control track" },
+  { file: "app/(signed-in)/you/year-heatmap.tsx", count: 1, reason: "the heatmap's empty-day shade, a cell rather than a container" },
   { file: "app/(signed-in)/lists/[listId]/list-title-row.tsx", count: 1, reason: "raised only on hover, not at rest" },
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1, reason: "a stat figure card outside this ticket's named categories" },
   { file: "app/(signed-in)/you/you-hero.tsx", count: 2, reason: "the account avatar well" },

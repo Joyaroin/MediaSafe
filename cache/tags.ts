@@ -408,6 +408,8 @@ export const UNCACHED_READS = {
     "Read by a calendar app polling every few hours with no session, so nothing else reads the same key between polls. Caching it would add a second place for the calendar and Up next to disagree, for no hits.",
   watchedTmdbEpisodeIds:
     "Read inside the sweep's reconciliation, from that run's transaction. `unstable_cache` cannot take an executor, so caching it would mean reading outside the transaction whose rows it is about.",
+  listWatchesSince:
+    "You's year heatmap: one range scan of the (user_id, watched_at) partial index, keyed by a lower bound that moves with the clock. It returns instants and the reader's zone buckets them at render, so a cached entry would be keyed on a moving instant and add a second place for the grid to disagree with a watch just marked.",
 } as const satisfies Record<string, string>;
 
 /**

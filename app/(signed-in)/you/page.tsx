@@ -3,6 +3,7 @@ import { requireAvatarUrl, requireDisplayName, requireUserId } from "@/lib/sessi
 import { EmptyYou } from "./empty-you";
 import { RecentlyWatchedSection } from "./recently-watched";
 import { YouHeading } from "./you-heading";
+import { YearOfWatching } from "./year-of-watching";
 import { YouHero } from "./you-hero";
 import { YouSurface } from "./you-surface";
 import { NavTransition } from "../nav-transition";
@@ -97,7 +98,12 @@ export default async function YouPage() {
         {figures.titles === 0 ? (
           <EmptyYou />
         ) : (
-          <YouSurface figures={figures} shows={rails.shows} films={rails.films} />
+          <YouSurface
+            figures={figures}
+            shows={rails.shows}
+            films={rails.films}
+            afterFigures={<YearOfWatching userId={userId} />}
+          />
         )}
       </main>
     </NavTransition>
