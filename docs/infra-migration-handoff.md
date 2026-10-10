@@ -66,10 +66,11 @@ his own uncommitted change; leave them out of every commit.
 - Probes will hit **`/sign-in`** (no new route: constraint 5 forbids unauthenticated routes);
   verified it returns 200 with the database unreachable.
 
-### Stage 1 — image pipeline ✅ written, ⏳ unverified (`6c68661`)
+### Stage 1 — image pipeline ✅ verified 2026-10-10 (`6c68661`)
 - `.github/workflows/image.yml`: on push to `main`, builds `linux/amd64`, pushes
   `ghcr.io/joyaroin/mediasafe:<sha>` (only tag), no provenance/SBOM, keeps newest 10 versions.
-- **Runs for the first time when the big PR merges.** Verified locally only (amd64 build runs).
+- First CI run 2026-10-10 from `infra-migration` (temporary trigger, see section 1): built and
+  pushed `875187118c…`, which staging pulled with the `read:packages` token.
 - No Sentry Actions variables/secrets exist yet, so images build without Sentry (optional).
 
 ### Stage 2 — the node ✅ applied 2026-10-01 (`a95b4f6` … `42be9ab`)
@@ -128,6 +129,20 @@ his own uncommitted change; leave them out of every commit.
   all apps; `admin.enabled: false` (server logs `admin disabled`);
   `argocd-initial-admin-secret` deleted. **Vault root token revoked**: lookup now 403s,
   `generate-root -status` answers without a token, the Google admin login still works.
+
+### Stage 6 — staging 🔄 (deployed 2026-10-10; sign-in, seed and CI deploy pending)
+- gitops `77de0b0`: chart `charts/mediasafe` + `values-staging.yaml`, app `mediasafe-staging`.
+  Waves: ExternalSecrets `mediasafe-app` (dataFrom `kv/mediasafe/staging/app`) and `ghcr-pull`
+  (dockerconfigjson) + Valkey at −1 → migration Job as a **Sync hook** at 0 (not PreSync: PreSync
+  runs before wave −1, so the Secret wouldn't exist) → Deployment, Service, HTTPRoute, sweep
+  CronJob at 1. Valkey `8.1.10-alpine`, **noeviction** (any LRU policy could evict a tag-bust
+  timestamp while its entry survives → silent stale hit). App and jobs run read-only-rootfs.
+- Neon staging branch `ep-dry-resonance-axrzmo26` (us-east-2, pooled). It was created
+  schema-only, so it was emptied before the first migration (a schema-only branch copies the
+  tables but not drizzle's history → `relation already exists`).
+- Verified: migration 5 s; `/sign-in` 200 over TLS; sweep endpoint 401 without the secret; a
+  manual sweep Job returned `{"candidates":0,…}`; app 95 Mi, Valkey 8 Mi, node ~1.72 GiB free.
+- Vault `kv/mediasafe/staging/app`: `SENTRY_DSN` deliberately empty (Sentry off on staging).
 
 ---
 
