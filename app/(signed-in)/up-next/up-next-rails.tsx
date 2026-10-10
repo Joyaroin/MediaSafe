@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { LibraryStateGroupEntry, UpNextRails } from "@/db/access";
 import { UpNextEpisodeRail } from "./up-next-episode-rail";
 import { UpNextFilmRail } from "./up-next-film-rail";
@@ -35,13 +37,16 @@ import { UpNextNothing } from "./up-next-nothing";
 export function UpNextWatching({
   rails,
   films,
+  suggestions,
 }: {
   rails: UpNextRails;
   films: readonly LibraryStateGroupEntry[];
+  /** Issue #365's rail, drawn only under the empty state. */
+  suggestions: ReactNode;
 }) {
   const noEpisodes = rails.ongoing.length === 0 && rails.oldFriends.length === 0;
 
-  if (noEpisodes && films.length === 0) return <UpNextNothing />;
+  if (noEpisodes && films.length === 0) return <UpNextNothing suggestions={suggestions} />;
 
   return (
     <div className="pb-2">

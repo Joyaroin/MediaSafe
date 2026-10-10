@@ -1496,6 +1496,9 @@ describe("the reads that are cached, and the one that must never be", () => {
       // row from a database that did not answer.
       "findUnownedTitleDetail",
       "recommendationsFor",
+      // #365's trending fallback for Up next's empty state — about no title, so it is
+      // tagged by name and expires on the window alone.
+      "trendingTitles",
       "titleCastAndCrew",
       "titleWatchProviders",
       "getUnownedTitleDetail",

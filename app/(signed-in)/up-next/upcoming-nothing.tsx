@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * Upcoming with nothing on it — issue #251, and the handoff's own named state rather than
  * a blank second page.
@@ -33,14 +35,22 @@
  * of `errors/read-failure.tsx`'s left-aligned `accent` treatment, so the two can never be
  * mistaken for each other.
  */
-export function UpcomingNothing() {
+export function UpcomingNothing({
+  suggestions = null,
+}: {
+  /** Issue #365: the same rail of titles to add that Up next's empty state draws. */
+  suggestions?: ReactNode;
+}) {
   return (
-    <section className="px-gutter py-16 text-center">
-      <h2 className="bill-title text-bill-lg text-text">No release dates yet</h2>
+    <>
+      <section className="px-gutter py-16 text-center">
+        <h2 className="bill-title text-bill-lg text-text">No release dates yet</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
-        Nothing you keep has a date announced.
-      </p>
-    </section>
+        <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+          Nothing you keep has a date announced.
+        </p>
+      </section>
+      {suggestions}
+    </>
   );
 }

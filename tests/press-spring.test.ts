@@ -939,6 +939,8 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/search/search-surface.tsx": ["control"],
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
   "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
+  // The empty-state suggestions' *Add* (#365) — the search result's pill, under a poster.
+  "app/(signed-in)/up-next/suggestion-card.tsx": ["control"],
 
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
@@ -1050,6 +1052,7 @@ describe("every pressable call site declares a register or is deliberately left 
     expect(client).toEqual([
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
+      "app/(signed-in)/up-next/suggestion-card.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
       "app/(signed-in)/up-next/up-next-film-rail.tsx",

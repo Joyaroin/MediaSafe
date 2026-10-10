@@ -2661,6 +2661,9 @@ export interface UpNext {
  * shows), so a mode-blind seed would offer show recommendations under a field labelled
  * *Search for a film*.
  *
+ * `null` asks across both kinds — Up next's empty state (issue #365), which has no mode
+ * and wants whatever was watched last.
+ *
  * ── `null` is a real answer here, and not an empty list ─────────────────────────────
  *
  * A new account has watched nothing, and there is genuinely no title for the rail to be
@@ -2684,14 +2687,14 @@ export interface WatchedSeed {
 
 export async function mostRecentlyWatchedTitle(
   userId: UserId,
-  kind: TitleKind,
+  kind: TitleKind | null,
   executor: Executor = getDb(),
 ): Promise<WatchedSeed | null> {
   const [row] = await executor
     .select({ kind: title.kind, tmdbId: title.tmdbId, name: title.name })
     .from(watch)
     .innerJoin(title, eq(title.id, watch.titleId))
-    .where(and(ownedBy(userId, watch), eq(title.kind, kind)))
+    .where(and(ownedBy(userId, watch), kind === null ? undefined : eq(title.kind, kind)))
     .orderBy(sql`${watch.watchedAt} desc nulls last`, desc(watch.createdAt))
     .limit(1);
 

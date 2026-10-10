@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
 
@@ -40,18 +41,27 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  * shape, and the opposite of `errors/read-failure.tsx`'s left-aligned `accent` treatment,
  * so the two can never be mistaken for each other.
  */
-export function UpNextNothing() {
+export function UpNextNothing({
+  suggestions,
+}: {
+  /** Issue #365's rail of titles to add (`suggestion-rail.tsx`), drawn under the
+   *  sentence. It answers its own failure inline, so the sentence never depends on it. */
+  suggestions: ReactNode;
+}) {
   return (
-    <section className="px-gutter py-16 text-center">
-      <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
+    <>
+      <section className="px-gutter py-16 text-center">
+        <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
-        Add a show and its next episode turns up here.
-      </p>
+        <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+          Add a show and its next episode turns up here.
+        </p>
 
-      <Link href="/search" className={`mt-5 ${SOLID_RECOVERY}`}>
-        Search films and shows
-      </Link>
-    </section>
+        <Link href="/search" className={`mt-5 ${SOLID_RECOVERY}`}>
+          Search films and shows
+        </Link>
+      </section>
+      {suggestions}
+    </>
   );
 }
