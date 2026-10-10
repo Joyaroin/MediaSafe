@@ -267,6 +267,32 @@
   color-scheme: light;
 }
 
+/* ── The poster tint — issue #361 ────────────────────────────────────────────────────
+   A title's own colour, borrowed from its poster. **A separate family from the accent**,
+   and never on a control or on watch state: the accent's three roles above are
+   untouched (`app/accent-meaning.ts`), and a tint means only *this is that title*.
+
+   It is the one colour here that is not declared here, because it is data: each tinted
+   surface carries `--tint-light` and `--tint-dark` inline, from `app/poster-tint.ts`,
+   which has already clamped the stored colour for each theme so text over it keeps the
+   floor `tests/contrast.test.ts` enforces. What *is* declared here is which of the two a
+   surface reads as `--tint`, under the same three theme states as every token above. A
+   surface without the class, or a title without a colour, has no `--tint` at all and
+   draws untinted. */
+.poster-tint {
+  --tint: var(--tint-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .poster-tint {
+    --tint: var(--tint-dark);
+  }
+}
+
+:root[data-theme="dark"] .poster-tint {
+  --tint: var(--tint-dark);
+}
+
 /* ── The reader has asked for more contrast — issue #329 ─────────────────────────────
    `prefers-contrast: more` used to be ignored outright. It now closes the ramp by one
    step, in both schemes, with no value declared beyond the two tokens already on it:

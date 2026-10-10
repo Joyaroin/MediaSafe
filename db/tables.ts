@@ -123,9 +123,27 @@ export const title = pgTable(
     episodesMirroredAt: timestamp("episodes_mirrored_at", {
       withTimezone: true,
     }).defaultNow(),
+    /**
+     * The poster's dominant colour, as `#rrggbb` sRGB — issue #361. The title page hero,
+     * the featured Up next card and the poster hover glow are washed in it
+     * (`app/poster-tint.ts` clamps it per theme; it is never painted as stored).
+     *
+     * **Derived, not borrowed.** TMDB does not publish it: it is extracted from the
+     * poster image itself, with `sharp`, by `app/api/cron/nightly-sweep/fill-poster-colours.ts`
+     * — after an add, and on every sweep for any title with a poster and no colour. That
+     * is also the backfill, so there is no second writer. `mirrorTitle` writes `NULL`
+     * here whenever the poster path changes, which is what makes a refreshed poster get
+     * a fresh colour.
+     *
+     * NULL is ordinary: no poster, or not extracted yet. Either way the surface draws
+     * no tint, never a guessed one.
+     */
+    posterColour: text("poster_colour"),
   },
   (t) => [
     check("title_kind_check", sql`${t.kind} in ('film','show')`),
+    // `#rrggbb`, lower-case — the one spelling `app/poster-tint.ts` parses.
+    check("title_poster_colour_check", sql`${t.posterColour} ~ '^#[0-9a-f]{6}$'`),
     /**
      * An external id MediaSafe cannot hand back to TMDB is not evidence, it is a string.
      * `tmdb/mirror.ts` already declines to mirror anything that does not match, and its

@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 
+import { colourAfterAdd } from "@/app/api/cron/nightly-sweep/colour-after-add";
 import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
@@ -195,6 +196,7 @@ export async function addToLibraryAction(
    * way (`add-title.ts`), so nothing here has to handle what `after` cannot answer to.
    */
   after(mirrorEpisodes);
+  colourAfterAdd([titleId]);
 
   /**
    * Past the `catch`, so only a landed add busts anything (issue #219). The reader is on
@@ -317,5 +319,6 @@ export async function addWatchedToLibraryAction(
     userId,
   );
   invalidateBorrowedFactsFor([key]);
+  colourAfterAdd([titleId]);
   return { ok: true };
 }

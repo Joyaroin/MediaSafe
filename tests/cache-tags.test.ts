@@ -1397,6 +1397,9 @@ describe("every shared-mirror write busts the borrowed facts too", () => {
     "app/(signed-in)/catalogue/actions.ts",
     "app/(signed-in)/import/actions.ts",
     "app/api/cron/nightly-sweep/route.ts",
+    // Issue #361: not a mirror write, but `writePosterColour` changes the same global
+    // `title` row, so the colour an add takes behind its response owes both busts too.
+    "app/api/cron/nightly-sweep/colour-after-add.ts",
   ];
 
   /**
@@ -1421,7 +1424,7 @@ describe("every shared-mirror write busts the borrowed facts too", () => {
    * thing that list exists to make impossible, so a new name here is a prompt to check it
    * rather than a failure in itself.
    */
-  it("is called from those four files and no others", () => {
+  it("is called from those files and no others", () => {
     const callers = sourceFilesContaining("invalidateBorrowedFactsFor(");
 
     expect(callers.sort()).toEqual([...CALL_SITES].sort());

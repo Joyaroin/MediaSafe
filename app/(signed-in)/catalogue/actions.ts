@@ -1,5 +1,6 @@
 "use server";
 
+import { colourAfterAdd } from "@/app/api/cron/nightly-sweep/colour-after-add";
 import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
@@ -139,6 +140,7 @@ export async function addUnownedTitleToLibraryAction(
    * those entries, because holding a title is what takes you off this page.
    */
   invalidateBorrowedFactsFor([key]);
+  colourAfterAdd([titleId]);
   return { ok: true, libraryEntryId };
 }
 
@@ -210,5 +212,6 @@ export async function addUnownedTitleWatchedToLibraryAction(
     userId,
   );
   invalidateBorrowedFactsFor([key]);
+  colourAfterAdd([titleId]);
   return { ok: true, libraryEntryId };
 }

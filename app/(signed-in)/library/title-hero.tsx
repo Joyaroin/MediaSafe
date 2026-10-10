@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { posterSrc } from "@/app/poster";
+import { posterTintStyle } from "@/app/poster-tint";
 import { HeroPoster } from "./hero-poster";
 
 /**
@@ -20,6 +21,13 @@ import { HeroPoster } from "./hero-poster";
  * so the band behind the head is the poster itself, enlarged, blurred and faded into the
  * ground. It is decoration: `aria-hidden`, lazy, and absent when there is no poster.
  *
+ * ── And washed in the poster's own colour — issue #361 ────────────────────────────────
+ *
+ * When the title has a stored colour, the band takes it: a gradient from the colour,
+ * clamped for the reader's theme so text over it keeps the contrast floor
+ * (`app/poster-tint.ts`), down into `--ground`. A title with no colour draws the band
+ * exactly as it did before — the softened poster and the neutral fade, nothing guessed.
+ *
  * ── The poster sizes off its wrapper ─────────────────────────────────────────────────
  *
  * The wrapper carries the width and the `view-transition-name`, and the poster fills it
@@ -30,6 +38,7 @@ import { HeroPoster } from "./hero-poster";
 export function TitleHero({
   name,
   posterPath,
+  posterColour,
   posterTransitionName,
   libraryEntryId,
   status,
@@ -40,6 +49,8 @@ export function TitleHero({
 }: {
   name: string;
   posterPath: string | null;
+  /** `title.poster_colour` — `null` draws the untinted band. */
+  posterColour: string | null;
   /** The poster morph's name, when a surface opened this page with one. */
   posterTransitionName?: string;
   /** The entry this hero is for — what `HeroPoster` reads the carried image by. */
@@ -63,8 +74,11 @@ export function TitleHero({
   synopsis?: ReactNode;
 }) {
   return (
-    <section className="relative">
-      <HeroBackdrop posterPath={posterPath} />
+    <section
+      className={posterColour === null ? "relative" : "poster-tint relative"}
+      style={posterTintStyle(posterColour)}
+    >
+      <HeroBackdrop posterPath={posterPath} tinted={posterColour !== null} />
 
       <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
@@ -117,7 +131,14 @@ export function TitleHero({
   );
 }
 
-function HeroBackdrop({ posterPath }: { posterPath: string | null }) {
+function HeroBackdrop({
+  posterPath,
+  tinted,
+}: {
+  posterPath: string | null;
+  /** The section carries `--tint` (`poster-tint` in `app/globals.css`). */
+  tinted: boolean;
+}) {
   return (
     <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[240px] overflow-hidden lg:h-[340px]">
       {posterPath === null ? null : (
@@ -133,8 +154,13 @@ function HeroBackdrop({ posterPath }: { posterPath: string | null }) {
       <div
         className="absolute inset-0"
         style={{
-          background:
-            "linear-gradient(to bottom, color-mix(in oklab, var(--color-ground) 25%, transparent), var(--color-ground))",
+          background: tinted
+            ? // The wash: the tint over the softened poster, fully opaque from a third
+              // of the way down — above where the head's text starts — and fading into
+              // the ground. So the text sits on the tint, the ground, or a mix of the
+              // two, and `tests/poster-tint.test.ts` checks the floor on the tint.
+              "linear-gradient(to bottom, color-mix(in oklab, var(--tint) 85%, transparent), var(--tint) 35%, var(--color-ground))"
+            : "linear-gradient(to bottom, color-mix(in oklab, var(--color-ground) 25%, transparent), var(--color-ground))",
         }}
       />
     </div>

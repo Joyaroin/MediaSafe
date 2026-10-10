@@ -5,8 +5,10 @@ import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateForOtherAccounts } from "@/cache/tags";
 import { accountsHoldingTitles } from "@/db/access";
 import { findByExternalId, titleMirror } from "@/tmdb/catalogue";
+import { extractPosterColour } from "@/tmdb/poster-image";
 
 import { unauthorized } from "./authorize";
+import { fillPosterColours, POSTER_COLOUR_CAP } from "./fill-poster-colours";
 import { runNightlySweep } from "./run-sweep";
 
 /**
@@ -118,6 +120,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   ]);
 
   /**
+   * **Then the poster colours — issue #361, and the backfill.** After the refresh, so a
+   * poster the refresh just replaced (which clears its colour) is coloured in the same
+   * run. Every title with a poster and no colour, up to the cap: the first run after the
+   * column landed colours the whole library, and every run after it catches what an add
+   * or a new poster left. A failure inside it is reported by the fill and retried
+   * tomorrow; it cannot undo the refresh above, which has already committed.
+   *
+   * The same two busts as the refresh, for the same two populations: a colour shows on
+   * the holders' title pages, grid and rails, and on everybody else's unowned title page.
+   */
+  const colours = await fillPosterColours(extractPosterColour, { cap: POSTER_COLOUR_CAP });
+  invalidateForOtherAccounts(
+    "writePosterColour",
+    await accountsHoldingTitles(colours.filled.map(({ id }) => id)),
+  );
+  invalidateBorrowedFactsFor(colours.filled);
+
+  /**
    * A body, not a page: nothing renders this, and no
    * surface anywhere shows a refresh status. It exists only for the Vercel cron log.
    */
@@ -127,5 +147,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     skipped: outcome.failures.length,
     repointed: outcome.repointed.length,
     quarantined: outcome.quarantined.length,
+    coloured: colours.filled.length,
+    uncoloured: colours.failures.length,
   });
 }

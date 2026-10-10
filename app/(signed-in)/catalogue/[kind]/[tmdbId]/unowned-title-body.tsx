@@ -79,6 +79,7 @@ export async function UnownedTitleBody({
         <TitleHero
           name={detail.name}
           posterPath={detail.posterPath}
+          posterColour={detail.posterColour}
           meta={titleMetaLine(detail)}
           actions={
             <>
@@ -158,6 +159,9 @@ async function catalogueDetail(
     name: summary.name,
     releaseYear: summary.releaseYear,
     posterPath: summary.posterPath,
+    // Nobody has taken this poster's colour: it is taken only for a mirrored title, and
+    // looking at a title does not mirror it (see above). So no tint, never a guessed one.
+    posterColour: null,
     runtimeMins: summary.runtimeMins,
     /**
      * Empty because an unmirrored title genuinely has no episode list here, not because
