@@ -31,6 +31,11 @@
 #   - `tests/corners.test.ts` reads the stylesheet's radius scale and sweeps the source
 #     tree for a raw radius outside it — #318.
 #
+# One more runs against a service container rather than without one: `tests/cache-handler.test.ts`
+# needs a real Valkey, which unlike the database is empty, stateless and starts in a
+# second. It is the only check that a `revalidateTag` on one pod reaches another before
+# production does — staging runs a single replica and cannot show it.
+#
 # Each enforces a property *of a pull request*, and **a check that cannot run on a pull
 # request is a check that is not enforcing anything.** That is the whole admission rule,
 # and it is why these five run here and the rest of the suite does not.
@@ -59,13 +64,25 @@ jobs:
     name: typecheck, lint, build, squawk
     runs-on: ubuntu-latest
 
+    # For the cache handler's test only — see the header.
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          # Matches the Node major Vercel runs, so a build that passes here is a build
-          # that passes there. Local development is 22-or-newer
+          # Matches the Node major the production image runs (`node:22` in the Dockerfile),
+          # so a build that passes here is a build that passes there. Local development is 22-or-newer
           # for local development; this pins the one that has to agree with
           # production, and only that.
           node-version: "22"
@@ -78,7 +95,7 @@ jobs:
       # is committed — so the installer is matched to the lock rather than the lock
       # downgraded to the installer, which npm 11 would only rewrite again.
       #
-      # Node stays at 22 because Node is what the *build* runs on and Vercel runs 22.
+      # Node stays at 22 because Node is what the *build* runs on and the image runs 22.
       # npm is only the installer, so pinning the two separately is the honest split.
       - name: Use the npm that writes this lock file
         run: npm install --global npm@11
@@ -108,8 +125,8 @@ jobs:
         run: npm run lint
 
       # No DATABASE_URL, deliberately. `/` is `force-dynamic`, so nothing is prerendered
-      # and the build needs no database — and `VERCEL` is unset here, so `scripts/build.ts`
-      # runs `next build` alone. CI must never be able to migrate anything.
+      # and the build needs no database. `npm run build` is `next build` alone; migrations
+      # run only in the cluster's migration Job. CI must never be able to migrate anything.
       - name: Build
         id: build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -156,6 +173,13 @@ jobs:
       - name: Corners
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:corners
+
+      # The shared cache across two pods, against the Valkey service above.
+      - name: Cache handler
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          VALKEY_URL: redis://localhost:6379
+        run: npm run test:cache
 
       # Test 4 of the four. Narrowed to destructive rules in
       # `.squawk.toml`; this is what makes expand-contract mechanically checkable rather

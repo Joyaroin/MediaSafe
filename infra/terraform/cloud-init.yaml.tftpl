@@ -1,0 +1,71 @@
+#cloud-config
+# First boot of the MediaSafe node. Runs once per VM; any edit here replaces the VM.
+
+# Key-only SSH: the VM has no root password anyone knows, and none can be guessed at.
+ssh_pwauth: false
+
+package_update: true
+package_upgrade: true
+packages:
+  - unattended-upgrades
+
+write_files:
+  # Security updates install themselves; reboots never happen on their own. A reboot seals
+  # Vault, so it is done by hand, followed by an unseal.
+  - path: /etc/apt/apt.conf.d/52mediasafe-no-reboot
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "false";
+
+  - path: /etc/rancher/k3s/config.yaml
+    content: |
+      node-name: ${node_name}
+      # Traefik is installed and owned by Argo CD, not bundled with k3s.
+      disable:
+        - traefik
+      # Kubernetes Secrets are encrypted in k3s's datastore. Without this, every secret
+      # External Secrets copies out of Vault sits in plaintext on this disk.
+      secrets-encryption: true
+      write-kubeconfig-mode: "0600"
+
+  # Mounts Vault's volume, formatting it only if it has never held a filesystem. A volume
+  # reattached from a previous VM keeps its data. Fails rather than guesses: anything blkid
+  # cannot call "empty" is left alone.
+  - path: /usr/local/sbin/mount-vault-volume
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      DEV=${vault_volume_path}
+      MNT=/mnt/vault-data
+
+      # Terraform attaches the volume after the VM exists, so it can arrive after boot.
+      for i in $(seq 1 60); do [ -b "$DEV" ] && break; sleep 5; done
+      [ -b "$DEV" ] || { echo "vault volume never attached: $DEV" >&2; exit 1; }
+
+      # blkid -p: 0 = a filesystem is there, 2 = nothing is. Anything else is a refusal.
+      rc=0; blkid -p "$DEV" >/dev/null 2>&1 || rc=$?
+      if [ "$rc" -eq 2 ]; then
+        mkfs.ext4 -L vault-data "$DEV"
+      elif [ "$rc" -ne 0 ]; then
+        echo "blkid returned $rc for $DEV; refusing to format" >&2; exit 1
+      fi
+
+      mkdir -p "$MNT"
+      grep -qs "$DEV" /etc/fstab || echo "$DEV $MNT ext4 defaults,noatime,nofail 0 2" >> /etc/fstab
+      mountpoint -q "$MNT" || mount "$MNT"
+
+      # Vault's PersistentVolume points here. It exists only on the mounted volume, so if the
+      # mount ever fails Vault cannot start on the VM's own disk by mistake.
+      mkdir -p "$MNT/raft"
+
+  - path: /usr/local/sbin/install-k3s
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" sh -
+
+runcmd:
+  # k3s is installed only once Vault's disk is in place. If the mount fails, there is no
+  # cluster either — loud, rather than a cluster quietly writing Vault to the wrong disk.
+  - /usr/local/sbin/mount-vault-volume && /usr/local/sbin/install-k3s

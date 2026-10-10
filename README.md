@@ -1,7 +1,9 @@
 # MediaSafe
 
 A personal tracker for the films and shows I watch. Third iteration; single data path,
-single deploy target.
+single deploy target: k3s on one Linode VM, deployed by Argo CD from
+[`mediasafe-gitops`](https://github.com/Joyaroin/mediasafe-gitops)
+([ADR 0001](docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md)).
 
 ```bash
 npm install
@@ -23,24 +25,28 @@ Postgres and the WebSocket proxy in front of it and runs the migrations.
 | `errors/` | The three failure surfaces and the reference id. Read `AGENTS.md` before adding a fourth. |
 | `eslint-rules/` | Local rules. One so far: `no-empty-catch`, which is constraint 2 made mechanical. |
 | `fixtures/` | **The only surviving copy of `tvtracker`'s database**, archived and never loaded. Read [`fixtures/README.md`](fixtures/README.md) before touching it — the `auth` schema was removed and the reasons matter. |
-| `scripts/` | `build.ts` is the deploy build command — the migration is its first half. `provision.sh` is the setup wizard. |
+| `scripts/` | `provision.sh` is the setup wizard; `db-seed.ts` seeds a database through the app's own import. |
 | `tests/` | Vitest, against a real local Postgres. `tests/e2e/` is the one exception — Playwright, `npm run test:e2e`, run locally only. |
-| `vercel.json` | Declares the framework as `nextjs` and the build command. See below — it is load-bearing, not boilerplate. |
+| `infra/` | Terraform for the VM, its volume, firewall and DNS (`infra/terraform`), and for Vault's configuration (`infra/vault`). |
 | `.squawk.toml` | squawk, narrowed to the destructive rules. Every exclusion carries its reason. |
 
 Sentry is wired through `instrumentation.ts` (server and edge), `instrumentation-client.ts`
 (browser) and `withSentryConfig` in `next.config.ts`. The reference id a reader is shown **is**
 the Sentry event id; nothing here mints a second identifier.
 
-The Vercel project was created before this repository had a `package.json`, so Vercel's
-framework detection found nothing and the project settings kept `Other`. Under that preset a
-Next.js build compiles perfectly and then fails looking for a static `public/` directory.
-`vercel.json` states the framework in the repository, where it is reviewable and survives the
-project being recreated, rather than leaving it to a dashboard toggle nobody can see from here.
+## How it ships
 
-It states the build command for the same reason, and there the stakes are higher: the build
-command's first half is the production migration, and `vercel.json` overrides the dashboard, so
-the migration cannot be dropped out of a deploy by a setting nobody is looking at.
+Every push to `main` builds the image (`.github/workflows/image.yml`), pushes it to GHCR as
+`ghcr.io/joyaroin/mediasafe:<sha>`, and commits that SHA to staging in the gitops repo; Argo CD
+runs the migration Job, then rolls out. **Promote** (`.github/workflows/promote.yml`, run by
+hand) gives prod the image staging runs. The migration is an Argo CD Sync hook that runs before
+the new pods: a failed migration fails the sync and the old pods keep serving.
+
+- Staging: https://staging.mediasafe.space (own Neon branch). Prod: https://mediasafe.space.
+- The nightly sweep is a CronJob in each namespace calling `/api/cron/nightly-sweep` with
+  `CRON_SECRET`.
+- Secrets live in Vault and reach the pods through External Secrets; none are in git.
+- [`docs/infra-migration-handoff.md`](docs/infra-migration-handoff.md) is the runbook.
 
 ## What is true from the first merge
 

@@ -220,6 +220,8 @@ write_env DATABASE_URL "postgres://mediasafe:mediasafe@localhost:5432/mediasafe"
 note "DATABASE_URL points at Docker Postgres. 'npm run db:up' brings that container up."
 write_env DATABASE_WS_PROXY "localhost:5433"
 note "DATABASE_WS_PROXY is the local WebSocket proxy that fronts Docker Postgres."
+write_env VALKEY_URL "redis://localhost:6379"
+note "VALKEY_URL is the shared Next.js cache; 'npm run db:up' starts it too."
 note "Leave it OUT of Vercel — Neon speaks WebSocket itself, and setting it there"
 note "would route production through a proxy that does not exist."
 pause
@@ -445,6 +447,10 @@ DATABASE_URL=postgres://mediasafe:mediasafe@localhost:5432/mediasafe
 # through a proxy that does not exist.
 DATABASE_WS_PROXY=localhost:5433
 
+# The shared Next.js cache (cache-handler.mjs). `npm run db:up` starts it with the
+# database. Unset, nothing is cached: slower, never wrong. Not used on Vercel.
+VALKEY_URL=redis://localhost:6379
+
 # Better Auth. Google is the only sign-in method.
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:3000
@@ -457,11 +463,19 @@ NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
 SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
+# Read by the Sentry server SDK itself. Set per cluster namespace (staging, production);
+# leave unset locally.
+SENTRY_ENVIRONMENT=
 
 # TMDB, the single metadata source. A bearer token, sent as an Authorization
 # header, valid across TMDB's v3 and v4 APIs. Server-side only — never
 # NEXT_PUBLIC_, or it would be bundled and served to every visitor.
 TMDB_READ_ACCESS_TOKEN=
+
+# The nightly sweep's bearer token (app/api/cron/nightly-sweep/authorize.ts). Unset,
+# the route rejects every request. Vercel sets it for its own cron; the cluster's
+# CronJob reads it from Vault.
+CRON_SECRET=
 
 # Neon. Not used by the app locally — the app reads DATABASE_URL. These two are
 # recorded here so provisioning has one home, and are copied into Vercel:

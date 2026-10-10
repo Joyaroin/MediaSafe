@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# terraform, with the tokens this stack needs loaded from Bitwarden for this one command.
+#
+#   export BW_SESSION="$(bw unlock --raw)"
+#   ./tf init        # init with backend.hcl
+#   ./tf plan
+#   ./tf apply
+#
+# Nothing is written to disk: the tokens live in this process's environment and die with it.
+# Your current public IP becomes the only address allowed to SSH and kubectl in, so a plan
+# after your IP changes shows the firewall rule moving — that is expected.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+command -v bw >/dev/null || { echo "Install the Bitwarden CLI: brew install bitwarden-cli" >&2; exit 1; }
+unlock_hint='Unlock Bitwarden first: export BW_SESSION="$(bw unlock --raw)"'
+: "${BW_SESSION:?$unlock_hint}"
+# Each `bw unlock` invalidates the session key of every earlier one, so a session from
+# another terminal is a common way to be here. Without this check, bw falls back to
+# prompting for the master password once per token, mid-command.
+bw unlock --check --session "$BW_SESSION" >/dev/null 2>&1 || {
+  echo "BW_SESSION is stale (Bitwarden was locked or unlocked again elsewhere). $unlock_hint" >&2
+  exit 1
+}
+
+# Bitwarden login items, named exactly like this. See README.md for the scope of each.
+# The CLI reads a local copy of the vault: without a sync, an item added in the app is "Not found."
+bw sync --session "$BW_SESSION" >/dev/null
+secret() { # field item
+  bw get "$1" "$2" --session "$BW_SESSION" 2>/dev/null || {
+    echo "Bitwarden has no login item named exactly '$2' with a $1 set. Names must match character for character." >&2
+    exit 1
+  }
+}
+LINODE_TOKEN="$(secret password mediasafe/linode-token)"
+CLOUDFLARE_API_TOKEN="$(secret password mediasafe/cloudflare-token)"
+AWS_ACCESS_KEY_ID="$(secret username mediasafe/r2-terraform-state)"
+AWS_SECRET_ACCESS_KEY="$(secret password mediasafe/r2-terraform-state)"
+export LINODE_TOKEN CLOUDFLARE_API_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+
+ip="$(curl -fsS https://api.ipify.org)"
+export TF_VAR_admin_cidrs="[\"$ip/32\"]"
+
+if [[ "${1:-}" == "init" ]]; then
+  shift
+  exec terraform init -backend-config=backend.hcl "$@"
+fi
+exec terraform "$@"

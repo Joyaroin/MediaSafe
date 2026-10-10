@@ -1,0 +1,43 @@
+# Promote — give prod the image staging runs. Run by hand (Actions → Promote → Run workflow)
+# once staging has been checked.
+#
+# Stage 8 of docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md. It builds nothing: prod
+# takes exactly the SHA that staging was tested on, read from the gitops repo rather than
+# from this run, so a promotion can't ship something staging never ran.
+
+name: Promote
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitops-prod
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: promote staging to prod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: Joyaroin/mediasafe-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Copy staging's image to prod
+        run: |
+          tag="$(yq '.image.tag' charts/mediasafe/values-staging.yaml)"
+          [[ "$tag" =~ ^[0-9a-f]{40}$ ]] || { echo "Staging's tag is not a commit SHA: $tag" >&2; exit 1; }
+          TAG="$tag" yq -i '.image.tag = strenv(TAG)' charts/mediasafe/values-prod.yaml
+          if git diff --quiet; then
+            echo "Prod already runs $tag."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Promote MediaSafe ${tag:0:7} to prod" \
+            -m "Triggered by ${{ github.actor }} in ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          git push

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "tsx scripts/build.ts",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "lint:sql": "squawk --config=.squawk.toml --no-error-on-unmatched-pattern 'drizzle/*.sql'",
@@ -15,6 +15,7 @@
     "test:fixtures": "vitest run tests/fixture-archive.test.ts",
     "test:conversion": "vitest run tests/tvtracker-conversion.test.ts",
     "test:corners": "vitest run tests/corners.test.ts",
+    "test:cache": "vitest run tests/cache-handler.test.ts",
     "test:e2e": "playwright test",
     "convert:tvtracker": "tsx --env-file-if-exists=.env scripts/convert-tvtracker/cli.ts",
     "db:up": "docker compose up -d --wait && npm run db:migrate",
@@ -36,6 +37,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
+    "redis": "^6.2.1",
     "server-only": "^0.0.1",
     "ws": "^8.21.3"
   },
@@ -49,6 +51,7 @@
     "auth": "^1.6.30",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "squawk-cli": "2.62.0",

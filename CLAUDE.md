@@ -8,7 +8,8 @@
 that day. `app/`, `db/`, `lib/`, `tests/`, `drizzle/` and custom `eslint-rules/` all exist. This is
 a working codebase, not a spec-stage repo — do not treat it as greenfield.
 
-Stack: Next.js on Vercel, Postgres on Neon, Drizzle.
+Stack: Next.js on k3s (one Linode VM, Argo CD from `mediasafe-gitops`; ADR 0001), Postgres on
+Neon, Drizzle.
 
 Work is a `/wayfinder` map on GitHub Issues — read issue #1 before touching anything. The
 error discipline below is not optional.

@@ -4,7 +4,7 @@ import { DEFAULT_SEED_FILE, parseArgs } from "@/scripts/db-seed";
 
 /**
  * `parseArgs` — `npm run db:seed -- [file] [--user <id>]`'s own parsing, pulled out and
- * tested the way `scripts/build.ts`'s pure halves are: no library, and no database or
+ * tested as a pure function: no library, and no database or
  * network needed to assert what two flags mean.
  */
 

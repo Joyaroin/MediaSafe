@@ -1,7 +1,7 @@
 # Local environment. One of the two long-lived environments; the other
 # is production on Neon. There is no staging.
 #
-# Two containers, because the app and the migration runner use ONE driver —
+# Two database containers, because the app and the migration runner use ONE driver —
 # `drizzle-orm/neon-serverless` over a WebSocket `Pool`. That driver speaks
 # the Postgres wire protocol wrapped in a WebSocket, which vanilla Postgres does not
 # understand, so `wsproxy` unwraps it and forwards raw TCP. Swapping to `node-postgres`
@@ -52,6 +52,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  # The shared Next.js cache (`cache-handler.mjs`), as in the cluster: Valkey, no volume.
+  # Losing it costs a cold cache and nothing else, so there is nothing to persist.
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: mediasafe-valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
 volumes:
   postgres-data:
