@@ -133,8 +133,10 @@ describe("Up next — a region boundary, not a whole surface", () => {
     "utf8",
   );
 
-  it("paints the Up next heading and one pending line, not a second boundary", () => {
+  it("paints the Up next heading and the card grid it becomes, in one live region", () => {
     expect(source).toContain("UpNextHeading");
-    expect(source).toContain("PendingLine");
+    expect(source).toContain("<SkeletonRegion");
+    expect(source.match(/<SkeletonRegion/g)).toHaveLength(1);
+    expect(source).toContain("CARD_GRID");
   });
 });

@@ -1922,8 +1922,8 @@
 /* ── Reading, drawn ─────────────────────────────────────────────────────────────────
    `app/pending-line.tsx` carries the argument, including which of §9's four reasons each
    decision here answers. In short: lines and never blocks, so nothing can be mistaken for
-   a title with no artwork; the poster's own radius rather than a pill; opacity rather than
-   a sweeping gradient, so reduced motion has something to fall back to. */
+   a title with no artwork. The UI overhaul reversed that for whole routes — `app/skeleton.tsx`
+   argues it — and swapped the breathe for a shimmer with a still fallback. */
 @utility pending {
   display: flex;
   flex-direction: column;
@@ -1932,18 +1932,45 @@
 
 @utility pending-bar {
   display: block;
-  /* The height is the call site's, off the type ramp — `pending-line.tsx`'s `H`. A bar
-     stands in for a specific line of text, so it is that line's weight rather than one
-     measure used everywhere. */
+  position: relative;
+  overflow: hidden;
+  /* The height is the call site's — a line of text off the type ramp, a pill, a poster's
+     `2/3` well (`app/skeleton.tsx`). */
   border-radius: var(--poster-radius, var(--radius-1));
   background: var(--color-raised);
-  animation: pending-breathe 1.7s var(--ease-in-out-soft) infinite;
+  /* The shimmer — the UI overhaul, replacing the opacity breathe. A faint highlight
+     sweeps across the block on `transform` alone, so it is compositor work and costs no
+     paint per frame on a mid-range phone. `animation-delay: inherit` lets the stagger
+     below reach the sweep, so a page shimmers down its own reading order. */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in oklab, var(--color-text) 7%, transparent) 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+    animation: pending-shimmer 1.6s var(--ease-in-out-soft) infinite;
+    animation-delay: inherit;
+  }
 }
 
-/* Staggered down the page so a region reads as one thing breathing rather than as bars
-   blinking in lockstep — the difference between a surface that is working and a warning.
-   By position within its own group rather than by a flat child index, because a shape
-   nests its bars into rows and columns. */
+/* A card-shaped wait (`app/skeleton.tsx`): the card's own raised ground, with the blocks
+   inside one tone further from it so they still read on it. */
+@utility pending-card {
+  border-radius: var(--radius-6);
+  background: var(--color-raised);
+  & .pending-bar {
+    background: color-mix(in oklab, var(--color-text) 7%, var(--color-raised));
+  }
+}
+
+/* Staggered down the page so a region reads as one thing loading in its own order rather
+   than as blocks blinking in lockstep. By position within its own group rather than by a
+   flat child index, because a shape nests its blocks into rows and columns. */
 .pending-bar:nth-child(2) {
   animation-delay: 0.08s;
 }
@@ -1957,23 +1984,21 @@
   animation-delay: 0.24s;
 }
 
-@keyframes pending-breathe {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
+@keyframes pending-shimmer {
+  to {
+    transform: translateX(100%);
   }
 }
 
-/* The bars are the signal, so the event survives the animation being dropped — §6's rule,
-   and reason 3 in `pending-line.tsx`. They settle at the midpoint of the breathe rather
-   than at full strength, so a pending region still reads quieter than rendered content. */
+/* The blocks are the signal, so the event survives the sweep being dropped — §6's rule.
+   Still, page-shaped blocks read as *loading* without moving. */
 @media (prefers-reduced-motion: reduce) {
   .pending-bar {
     animation: none;
-    opacity: 0.72;
+  }
+  .pending-bar::after {
+    animation: none;
+    display: none;
   }
 }
 

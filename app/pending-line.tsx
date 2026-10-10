@@ -1,5 +1,8 @@
 /**
- * What a surface draws while it is reading.
+ * What a small region draws while it is reading — one line, or a settings form. Whole
+ * routes draw their own page-shaped skeletons (`app/skeleton.tsx`) since the UI overhaul,
+ * which reverses the *no blocks* rule below for them; what is left here is the treatment for
+ * a region pending beside content that already rendered.
  *
  * ── This reverses *there is no skeleton*, and answers its four reasons ────────────────
  *
@@ -36,14 +39,12 @@
  * wells, no per-item repetition, no attempt to guess a layout's extent. It is the rhythm
  * of the region, fixed, and it is the same on every surface that shares it.
  */
-export type PendingShape = "line" | "rows" | "detail" | "rail" | "form";
+export type PendingShape = "line" | "form";
 
 /** Bar heights, off the type ramp each bar stands in for — roughly cap height, so a bar
  *  reads as the weight of the line it replaces rather than as a rule across the page. */
 const H = {
   row: "h-[10px]", // --text-row 17px, a library cell's title
-  card: "h-[10px]", // --text-bill-xs 16px, a search result or list row title
-  note: "h-[9px]", // --text-note 0.95rem, running prose
   meta: "h-[8px]", // --text-meta 13px
   label: "h-[7px]", // --text-label 11px
 } as const;
@@ -57,15 +58,6 @@ function Bar({ h, w }: { h: string; w: string }) {
  * Two bars rather than one, because a row that is one bar reads as a rule and a row that
  * is two reads as a row.
  */
-function Row({ w, sub }: { w: string; sub: string }) {
-  return (
-    <span className="flex flex-col gap-[7px]">
-      <Bar h={H.row} w={w} />
-      <Bar h={H.meta} w={sub} />
-    </span>
-  );
-}
-
 /**
  * `line` is the default, and deliberately the smallest thing here.
  *
@@ -100,47 +92,6 @@ export function PendingLine({
       <span className="sr-only">Reading</span>
 
       {shape === "line" ? <Bar h={H.meta} w="w-[38%]" /> : null}
-
-      {shape === "rows" ? (
-        <span className="flex flex-col gap-[18px]">
-          <Row w="w-[58%]" sub="w-[31%]" />
-          <Row w="w-[44%]" sub="w-[26%]" />
-          <Row w="w-[51%]" sub="w-[22%]" />
-        </span>
-      ) : null}
-
-      {shape === "detail" ? (
-        <span className="flex flex-col gap-[9px]">
-          {/* The name, the year-and-runtime line under it, then the synopsis — the order a
-              detail page puts them in, at their own three measures. */}
-          <Bar h={H.card} w="w-[54%]" />
-          <Bar h={H.meta} w="w-[33%]" />
-          <span className="mt-[13px] flex flex-col gap-[9px]">
-            <Bar h={H.note} w="w-[92%]" />
-            <Bar h={H.note} w="w-[88%]" />
-            <Bar h={H.note} w="w-[61%]" />
-          </span>
-        </span>
-      ) : null}
-
-      {shape === "rail" ? (
-        <span className="flex flex-col gap-[15px]">
-          {/* A rail head sits in the label register above its track, so the pending rail
-              does too — and the cards below it are text pairs at the card's measure,
-              across rather than down, because that is the axis a rail runs on. */}
-          <Bar h={H.label} w="w-[22%]" />
-          <span className="flex gap-4">
-            <span className="flex w-[42%] shrink-0 flex-col gap-[7px]">
-              <Bar h={H.card} w="w-[76%]" />
-              <Bar h={H.meta} w="w-[48%]" />
-            </span>
-            <span className="flex w-[42%] shrink-0 flex-col gap-[7px]">
-              <Bar h={H.card} w="w-[64%]" />
-              <Bar h={H.meta} w="w-[40%]" />
-            </span>
-          </span>
-        </span>
-      ) : null}
 
       {shape === "form" ? (
         <span className="flex flex-col gap-[20px]">

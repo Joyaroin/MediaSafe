@@ -3,6 +3,11 @@ import { LibraryEntryCell } from "./library-entry-cell";
 import { SelectionOrderProvider } from "./selectable-entry";
 import { LIBRARY_HEADING_ID } from "./library-heading";
 
+/** The grid's columns, gaps and gutters — shared with its loading state (`loading.tsx`), so
+ *  the wait is the grid it becomes. The reasoning for each value is beside the `<ol>`. */
+export const LIBRARY_GRID =
+  "grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 lg:px-[34px] xl:grid-cols-5 2xl:grid-cols-6";
+
 /**
  * The bill: every library entry, in one grid.
  *
@@ -149,7 +154,7 @@ export function LibraryGrid({
         // and the vertical gap has to clear a two-line name plus a state label before the
         // next poster starts. Equal gaps in both directions read as a denser grid than it
         // is.
-        className="stagger-rise mt-5 grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 lg:px-[34px] xl:grid-cols-5 2xl:grid-cols-6"
+        className={`stagger-rise mt-5 ${LIBRARY_GRID}`}
       >
         {entries.map((entry, index) => (
           <LibraryEntryCell

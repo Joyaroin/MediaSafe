@@ -71,6 +71,7 @@ export function PendingTitlePoster() {
   return (
     // `viewTransitionClass` scopes the morph's spring to posters — issue #338.
     <div
+      className="shrink-0"
       style={{
         viewTransitionName: railPosterTransitionName(entryId),
         viewTransitionClass: "poster",

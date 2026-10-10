@@ -1,57 +1,53 @@
-import { PendingLine } from "@/app/pending-line";
+import { Block, PosterBlock, SkeletonRegion } from "@/app/skeleton";
 import { LibraryHeading } from "./library-heading";
+import { LIBRARY_GRID } from "./library-grid";
 
 /**
- * The library, which is still reading.
- *
- * ── The formula, and where it comes from ─────────────────────────────────────────────
- *
- * Radius 1: **`loading.tsx` renders what the segment's `error.tsx` already
- * renders, less the failure.** Put beside `library/error.tsx` this file is that sentence
- * literally — the same `<main>`, the same `LibraryHeading`, the same `px-6` content gutter,
- * and one dim line where `ReadFailure` would be.
- *
- * That is not a coincidence to be tidied up later. `library-heading.tsx`'s own docblock says
- * it is *"shared by three callers — the populated screen, the genuinely empty one, and the
- * failure boundary — so that a failed read is visibly the library, which did not load rather
- * than a bare error on a blank page."* **Pending is the fourth caller of a component built to
- * be shared by exactly this kind of set**, and the sentence it makes true is *the library,
- * which is still reading*.
- *
- * The heading does not wait because the heading is not pending: it is a literal in the
- * source, not an answer to a query. §9's whole principle is that everything already in hand
- * renders at once and only what is genuinely unresolved says it is waiting.
- *
- * ── Why the boundary is here and not on the shell ────────────────────────────────────
- *
- * `(signed-in)/layout.tsx` holds the masthead, the sidebar and the tab bar. A boundary above
- * them would take the navigation down with the surface, and a reader who cannot leave a slow
- * screen is worse off than one watching a frozen one. Because this boundary sits on the
- * library's own segment, the shell stays mounted and interactive for the whole read — which
- * is what makes *navigating away from a still-loading library* a thing that works rather than
- * a thing that is promised.
- *
- * ── No filter bar, and nothing reserved ──────────────────────────────────────────────
- *
- * `LibraryHeading` is rendered without `children` here, for the reason it is rendered without
- * them on the empty screen and the failed one: reserving space for
- * controls that have nothing to act on is forbidden, and a chip row over a grid that has not arrived has
- * nothing to act on. Nothing below reserves the grid's height either — the rule is explicit that a
- * region holding a box open is claiming to know how large its answer is, and a library is any
- * size at all.
- *
- * The grid arrives with the entrance it already has: `stagger-rise` is on `library-grid.tsx`,
- * so the instant this boundary resolves is the instant the bill rises in — one transition,
- * not a swap followed by an animation.
+ * The library, reading — its own heading at once (a literal, not an answer, so it does not
+ * wait), then the view control and one screen of the poster grid it becomes, in
+ * `LIBRARY_GRID`'s own columns (`app/skeleton.tsx` has the reasoning). Twelve cells
+ * whatever the library holds: the layout's count, never the data's.
  */
 export default function LibraryLoading() {
   return (
     <main className="flex w-full flex-1 flex-col">
       <LibraryHeading />
-
-      <div className="px-gutter py-5">
-        <PendingLine shape="rows" held />
-      </div>
+      <SkeletonRegion className="gap-0">
+        <div className="px-gutter lg:px-10">
+          <Block className="mt-4 h-[42px] w-full [--poster-radius:var(--radius-full)] lg:max-w-[420px]" />
+          <div className="mt-4 flex gap-2">
+            {CHIPS.map((width) => (
+              <Block key={width} className={`h-9 ${width} [--poster-radius:var(--radius-full)]`} />
+            ))}
+          </div>
+        </div>
+        <ul className={`mt-5 ${LIBRARY_GRID}`}>
+          {CELLS.map((width) => (
+            <li key={width} className="flex flex-col gap-2">
+              <PosterBlock className="w-full" radius="var(--radius-4)" />
+              <Block className={`h-2.5 ${width}`} />
+            </li>
+          ))}
+        </ul>
+      </SkeletonRegion>
     </main>
   );
 }
+
+const CHIPS = ["w-12", "w-20", "w-[88px]", "w-16"];
+
+/** The name line's width per cell, varied so the grid does not read as one cell stamped. */
+const CELLS = [
+  "w-[82%]",
+  "w-[64%]",
+  "w-[74%]",
+  "w-[58%]",
+  "w-[88%]",
+  "w-[69%]",
+  "w-[77%]",
+  "w-[61%]",
+  "w-[84%]",
+  "w-[56%]",
+  "w-[72%]",
+  "w-[66%]",
+];
