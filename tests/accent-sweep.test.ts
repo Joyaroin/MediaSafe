@@ -234,6 +234,11 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 2,
     reason: "the Add pill — the one primary action a search result offers",
   },
+  "app/(signed-in)/up-next/suggestion-card.tsx": {
+    meaning: "LITERAL_EXCEPTION",
+    tokens: 2,
+    reason: "the same Add pill, on Up next's empty-state suggestions (#365)",
+  },
 
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────
 

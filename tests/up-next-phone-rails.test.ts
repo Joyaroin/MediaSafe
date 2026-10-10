@@ -281,7 +281,7 @@ describe("empty and failed are never the same thing", () => {
    *  it gets the handoff's own sentence rather than a blank page. */
   it("gives a screen with nothing at all the handoff's sentence", () => {
     expect(sourceAt(SURFACE)).toMatch(
-      /if \(noEpisodes && films\.length === 0\) return <UpNextNothing \/>;/,
+      /if \(noEpisodes && films\.length === 0\) return <UpNextNothing suggestions=\{suggestions\} \/>;/,
     );
 
     const nothing = sourceAt(NOTHING);

@@ -597,9 +597,9 @@ describe("the page hands the pager both surfaces and one day", () => {
 
   it("draws Watching and Coming up as the pager's two pages", () => {
     expect(page).toMatch(/<LandingPager upNext=\{watching\} upcoming=\{comingUp\} \/>/);
-    expect(page).toMatch(/<UpNextWatching rails=\{rails\} films=\{films\} \/>/);
+    expect(page).toMatch(/<UpNextWatching\s+rails=\{rails\}\s+films=\{films\}\s+suggestions=/);
     expect(page).toMatch(
-      /<UpcomingSurface\s+episodes=\{upcoming\}\s+films=\{upcomingFilms\}\s+today=\{today\}\s*\/>/,
+      /<UpcomingSurface\s+episodes=\{upcoming\}\s+films=\{upcomingFilms\}\s+today=\{today\}\s+suggestions=/,
     );
   });
 

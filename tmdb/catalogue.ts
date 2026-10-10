@@ -300,6 +300,18 @@ export async function recommendationsFor(
 }
 
 /**
+ * What TMDB says is trending this week, films and shows together — issue #365's fallback
+ * for Up next's empty state, when the reader has watched nothing to seed recommendations
+ * from. `/trending/all/week` is a multi-kind list, so it goes through `catalogueResults`,
+ * which drops people and keeps TMDB's order.
+ */
+export async function trendingTitles(): Promise<CatalogueResult[]> {
+  const payload = await get<TmdbSearchPayload>("/trending/all/week", { page: "1" });
+
+  return catalogueResults(payload);
+}
+
+/**
  * Everything one add writes: the `title` row, and for a show every `episode` row under it.
  *
  * A show costs one request for the series and one per season. That is the price of episode

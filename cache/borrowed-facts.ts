@@ -10,6 +10,7 @@ import {
   episodeSynopsis,
   recommendationsFor,
   titleCastAndCrew,
+  trendingTitles,
   titleSynopsis,
   titleWatchProviders,
   type CastAndCrew,
@@ -319,6 +320,21 @@ export function cachedRecommendations(
   });
 
   return read(kind, tmdbId);
+}
+
+/**
+ * TMDB's trending titles — issue #365, Up next's empty-state fallback. The same for every
+ * reader, but keyed by the account all the same: `mediasafe/cache-key-carries-account`
+ * admits no exception, and the cost is one TMDB call per reader per window. Its tag names
+ * no title because the list is about none; it expires on the window alone.
+ */
+export function cachedTrendingTitles(userId: UserId): Promise<CatalogueResult[]> {
+  const read = unstable_cache(trendingTitles, ["trendingTitles", userId], {
+    tags: ["borrowed-facts:trending"],
+    revalidate: BORROWED_FACT_WINDOW_SECONDS,
+  });
+
+  return read();
 }
 
 export function cachedTitleCastAndCrew(

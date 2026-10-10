@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import {
   cachedUpcomingEpisodes,
   cachedUpcomingFilms,
@@ -11,6 +13,7 @@ import { readerDay } from "./upcoming-grouping";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextWatching } from "./up-next-rails";
 import { HoldOver } from "./hold-over";
+import { SuggestionRail } from "./suggestion-rail";
 import { NavTransition } from "../nav-transition";
 
 /**
@@ -126,13 +129,34 @@ export default async function UpNextPage() {
    */
   const today = readerDay(zone, new Date());
 
+  /**
+   * Issue #365's rail of titles to add, one per empty state. Constructed, not awaited —
+   * the search screen's shape (`search/page.tsx`): an element only reads TMDB if the
+   * empty state that holds it actually renders, and its own `Suspense` keeps that read off
+   * the page's first byte. No fallback, for the search screen's reason.
+   */
+  const suggestionsFor = (labelId: string) => (
+    <Suspense fallback={null}>
+      <SuggestionRail userId={userId} labelId={labelId} />
+    </Suspense>
+  );
+
   const watching = (
     <HoldOver>
-      <UpNextWatching rails={rails} films={films} />
+      <UpNextWatching
+        rails={rails}
+        films={films}
+        suggestions={suggestionsFor("suggestions-watching")}
+      />
     </HoldOver>
   );
   const comingUp = (
-    <UpcomingSurface episodes={upcoming} films={upcomingFilms} today={today} />
+    <UpcomingSurface
+      episodes={upcoming}
+      films={upcomingFilms}
+      today={today}
+      suggestions={suggestionsFor("suggestions-coming-up")}
+    />
   );
 
   return (
