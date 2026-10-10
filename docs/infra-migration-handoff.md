@@ -295,8 +295,8 @@ Nightly `pg_dump` of Neon main to R2: Neon's 6-hour history is the only backup.
 ### Stage 10 — cleanup 🔄
 - Code (in the migration PR): see the ADR's rollout entry 10. Typecheck, lint, build and the
   route-manifest test pass locally; the cache test needs Docker (CI runs it).
-- Adham: **check Neon isn't Vercel-managed** (Vercel → project → Storage tab) before deleting the
-  Vercel project; choose *disconnect*, never *delete*, for any connected store. Then disable the
+- Neon is **not** Vercel-managed (checked by Adham 2026-10-10: no store or integration in the
+  Vercel project), so deleting the project can't touch the database. Adham: delete it, then disable the
   Google client secret Vercel used and its redirect URI; `rm -r ~/MediaSafe/.vercel`.
 - Not done, on purpose: ~20 comments in app code that explain past choices by Vercel limits
   (still true history); `scripts/provision.sh`'s Vercel steps and `.env.example` (deny rule) —
