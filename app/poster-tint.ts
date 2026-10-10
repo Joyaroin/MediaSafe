@@ -65,6 +65,37 @@ export function posterTintStyle(colour: string | null): CSSProperties | undefine
   } as CSSProperties;
 }
 
+/**
+ * The hover glow's colour — issue #363 — the other role a poster's colour plays.
+ *
+ * A glow has no text on it, so the wash's contrast clamp does not apply, and the wash's
+ * own values would be invisible here: a 96% glow around a poster on a 96.9% ground is no
+ * glow at all. So it is a separate pair of numbers, at a mid lightness either theme can
+ * see against its ground, with the chroma capped so a neon poster glows rather than
+ * shouts. The hue is the poster's, as it is for the wash.
+ *
+ * **One value for both themes**, unlike the wash: a mid lightness sits as far from the
+ * light ground as from the dark one, so there is nothing for the theme to choose.
+ */
+export const GLOW = { l: 0.62, maxChroma: 0.14 } as const;
+
+/** The glow, as the `oklch()` a stylesheet reads. */
+export function glowFor(colour: string): string {
+  const { c, h } = hexToOklch(colour);
+  const { l, maxChroma } = GLOW;
+  return `oklch(${round(l * 100, 1)}% ${round(Math.min(c, maxChroma), 4)} ${round(h, 1)})`;
+}
+
+/**
+ * The custom property a glowing poster carries, read by `.poster-glow` in
+ * `app/globals.css` — or nothing for a title with no colour, which then has no glow at
+ * all rather than a guessed one.
+ */
+export function posterGlowStyle(colour: string | null): CSSProperties | undefined {
+  if (colour === null) return undefined;
+  return { "--glow": glowFor(colour) } as CSSProperties;
+}
+
 function round(value: number, places: number): number {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;

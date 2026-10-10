@@ -65,6 +65,7 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
     name: "Severance",
     releaseYear: 2022,
     posterPath: "/severance.jpg",
+    posterColour: null,
     // A show by default, because *Severance* is one and because the chip-and-grid screen
     // these fixtures were written for is the Shows mode. A film fixture overrides it.
     kind: "show" as TitleKind,

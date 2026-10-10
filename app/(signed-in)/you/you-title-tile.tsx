@@ -2,6 +2,7 @@ import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { Poster } from "@/app/poster";
+import { posterGlowStyle } from "@/app/poster-tint";
 import type { LibraryStateGroupEntry } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
 
@@ -42,7 +43,12 @@ export function YouTitleTile({
       posterPath={entry.posterPath}
       className={`pressable group block ${TILE} text-left`}
     >
-      <div>
+      {/* The glow is the wrapper's, not the poster's: `.poster` already spends its
+          `box-shadow` on the plate line (issue #363, `app/globals.css`). */}
+      <div
+        className={entry.posterColour === null ? undefined : "poster-glow"}
+        style={posterGlowStyle(entry.posterColour)}
+      >
         <Poster
           posterPath={entry.posterPath}
           name={entry.titleName}

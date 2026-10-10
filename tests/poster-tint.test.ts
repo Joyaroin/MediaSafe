@@ -2,7 +2,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { posterTintStyle, WASH, washFor } from "@/app/poster-tint";
+import {
+  GLOW,
+  glowFor,
+  posterGlowStyle,
+  posterTintStyle,
+  WASH,
+  washFor,
+} from "@/app/poster-tint";
 import { hexToOklch, oklabToHex } from "@/lib/oklab";
 
 import {
@@ -105,6 +112,21 @@ describe("posterTintStyle", () => {
       "--tint-light": washFor("#c0392b", "light"),
       "--tint-dark": washFor("#c0392b", "dark"),
     });
+  });
+});
+
+describe("the hover glow (issue #363)", () => {
+  it("keeps the poster's hue at a lightness both grounds can see", () => {
+    const blue = "#1e3cdc";
+    const [L, C, H] = parseOklch(glowFor(blue));
+    expect(L).toBeCloseTo(GLOW.l * 100, 1);
+    expect(C).toBe(GLOW.maxChroma);
+    expect(H).toBeCloseTo(hexToOklch(blue).h, 0);
+  });
+
+  it("is nothing at all for a title with no colour", () => {
+    expect(posterGlowStyle(null)).toBeUndefined();
+    expect(posterGlowStyle("#1e3cdc")).toEqual({ "--glow": glowFor("#1e3cdc") });
   });
 });
 

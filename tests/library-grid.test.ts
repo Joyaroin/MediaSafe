@@ -691,6 +691,7 @@ describe("LibraryEntryCell's progress bar", () => {
       name: "Severance",
       releaseYear: 2022,
       posterPath: "/severance.jpg",
+      posterColour: null,
       kind: "show" as TitleKind,
       state: "watching" as LibraryState,
       upNext: null,

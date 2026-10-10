@@ -98,6 +98,7 @@ describe("where it sits on the library bill", () => {
     name: "Severance",
     releaseYear: 2022,
     posterPath: "/severance.jpg",
+    posterColour: null,
     kind: "show" as TitleKind,
     state: "watching" as LibraryState,
     upNext: null,

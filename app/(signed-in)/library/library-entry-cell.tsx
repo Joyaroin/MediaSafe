@@ -1,6 +1,7 @@
 import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
+import { posterGlowStyle } from "@/app/poster-tint";
 import { CheckmarkIcon } from "./checkmark-icon";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
@@ -136,29 +137,42 @@ export function LibraryEntryCell({
             {/* `.55` for an abandoned title, on both surfaces that dim one. The linen
                 ground is lighter than the bone one this number was chosen against, so the
                 same title reads as further gone at the same opacity. */}
-            <Poster
-              posterPath={entry.posterPath}
-              name={entry.name}
-              width={BILL_POSTER_WIDTH}
-              className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
-              aboveFold={aboveFold}
+            {/* The glow's wrapper (issue #363) — on a plain element of this server
+                component, so the cell gains no client boundary; `.poster` already spends
+                its own `box-shadow` on the plate line. It carries the poster's radius so
+                the glow is the poster's shape. */}
+            <div
+              className={
+                entry.posterColour === null
+                  ? undefined
+                  : "poster-glow [--poster-radius:var(--radius-4)]"
+              }
+              style={posterGlowStyle(entry.posterColour)}
             >
-              {/* On the artwork, not under the name — `poster-progress-bar.tsx` has the
-                  argument. An abandoned title's bar dims with the poster it is inside,
-                  which is the pairing this cell has always drawn. */}
-              {entry.state === "watching" ? (
-                <PosterProgressBar progress={entry.progress} />
-              ) : null}
-              {entry.state === "finished" ? (
-                <span
-                  aria-label="Finished"
-                  role="img"
-                  className="absolute bottom-1.5 left-1.5 flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-text text-ground"
-                >
-                  <CheckmarkIcon className="h-3 w-3" />
-                </span>
-              ) : null}
-            </Poster>
+              <Poster
+                posterPath={entry.posterPath}
+                name={entry.name}
+                width={BILL_POSTER_WIDTH}
+                className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
+                aboveFold={aboveFold}
+              >
+                {/* On the artwork, not under the name — `poster-progress-bar.tsx` has the
+                    argument. An abandoned title's bar dims with the poster it is inside,
+                    which is the pairing this cell has always drawn. */}
+                {entry.state === "watching" ? (
+                  <PosterProgressBar progress={entry.progress} />
+                ) : null}
+                {entry.state === "finished" ? (
+                  <span
+                    aria-label="Finished"
+                    role="img"
+                    className="absolute bottom-1.5 left-1.5 flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-text text-ground"
+                  >
+                    <CheckmarkIcon className="h-3 w-3" />
+                  </span>
+                ) : null}
+              </Poster>
+            </div>
             {/* Renders nothing at all outside a selection provider — the desktop, always. */}
             <SelectionCheckBadge libraryEntryId={entry.libraryEntryId} />
           </>
