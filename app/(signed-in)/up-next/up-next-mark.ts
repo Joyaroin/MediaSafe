@@ -280,10 +280,9 @@ export function readUpNextMark(
  * fixed separately.
  *
  * The mirrored `still_path` (#246) is untouched in the data and still drawn by the episode
- * page that owns it (`episode-still.tsx`); this module simply stops reading it. `"still"`
- * stays a member of the type below rather than being deleted with the branch, because
- * `up-next-episode-card.tsx`'s retired `CardFrame` still pattern-matches on it — nothing
- * this module derives reaches that branch any more, but nothing renders that card either.
+ * page that owns it (`episode-still.tsx`). The compact row never reads it. `"still"` is
+ * `featuredPicture`'s below — issue #362's featured card is wide, so a still fits its frame
+ * rather than being squeezed into a poster's.
  *
  * ── What is left: the poster, or nothing ─────────────────────────────────────────────
  *
@@ -316,6 +315,23 @@ export type CardPicture =
 export function cardPicture(entry: Pick<UpNextEntry, "posterPath">): CardPicture {
   if (entry.posterPath !== null) return { kind: "poster", path: entry.posterPath };
   return { kind: "none" };
+}
+
+/**
+ * What the featured card puts in its frame — issue #362: the still of the episode it is
+ * showing, then the title's poster, then nothing. The card is wide, so the still is the
+ * natural picture; the poster stands in where TMDB has no still, rather than a blank frame.
+ *
+ * `shown` is the episode on the card — it moves with the mark, so the still does too.
+ * `null` is a card whose run arrived empty, which falls back to the head episode's still.
+ */
+export function featuredPicture(
+  entry: Pick<UpNextEntry, "posterPath" | "stillPath">,
+  shown: QueuedEpisode | null,
+): CardPicture {
+  const still = shown === null ? entry.stillPath : shown.stillPath;
+  if (still !== null) return { kind: "still", path: still };
+  return cardPicture(entry);
 }
 
 /** Watched against aired, in the shape `PosterProgressBar` takes. */

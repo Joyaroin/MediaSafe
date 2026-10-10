@@ -692,7 +692,13 @@ describe("the press answers the gesture the product is built around", () => {
     expect(card, "the card must still declare its CARD classes").not.toBeNull();
     expect(card![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
     expect(source).toContain("const ROW = CARD;");
-    expect(source).toContain("className={held ? `${ROW} watch-hold` : ROW}");
+    // The featured card (#362) is a wider box of the same material, and no more pressable.
+    const featured = codeOf("app/(signed-in)/up-next/up-next-card-styles.ts").match(
+      /export const FEATURED_CARD =\s*"([^"]*)"/,
+    );
+    expect(featured![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
+    expect(source).toContain("const card = featured ? FEATURED_CARD : ROW;");
+    expect(source).toContain("className={held ? `${card} watch-hold` :");
 
     // And the control slot is rendered after the pressable link closes, so the check is a
     // sibling of it rather than a descendant.

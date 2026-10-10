@@ -893,6 +893,8 @@ describe("listUpNextRails — what each rail contains", () => {
         remaining: 2,
         // Issue #367: TMDB's own flag, half of *That's the show*.
         inProduction: true,
+        // Issue #362: no colour has been extracted for this poster.
+        posterColour: null,
         // Issue #364: season 2, two aired, one of them watched.
         seasonWatched: 1,
         seasonReleased: 2,
@@ -911,6 +913,8 @@ describe("listUpNextRails — what each rail contains", () => {
               seasonAiring: false,
               lastOfShow: false,
               seasonReleased: 2,
+              // Issue #362: each queued episode's own still, for the featured card.
+              stillPath: "/cold-harbor.jpg",
             },
             {
               episodeId: show.episodeIds[2],
@@ -921,6 +925,7 @@ describe("listUpNextRails — what each rail contains", () => {
               seasonAiring: false,
               lastOfShow: true,
               seasonReleased: 1,
+              stillPath: null,
             },
           ],
           more: false,
@@ -1051,6 +1056,34 @@ describe("listUpNextRails — what each rail contains", () => {
       expect(entry.seasonWatched).toBe(1);
       expect(entry.seasonReleased).toBe(4);
       expect(entry.queue.episodes.map((one) => one.seasonReleased)).toEqual([4, 4]);
+    });
+  });
+
+  /** Issue #362: the featured card's tint is the poster's stored colour, read as it is. */
+  it("carries the poster's stored colour, and null where none is stored", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const coloured = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+        ],
+      });
+      const plain = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+        ],
+      });
+      await tx.update(title).set({ posterColour: "#3a6ea5" }).where(eq(title.id, coloured.titleId));
+      await markWatched(tx, coloured, 0, daysAgo(1));
+      await markWatched(tx, plain, 0, daysAgo(2));
+
+      const [first, second] = ongoingCards(await listUpNextRails(reader, tx));
+
+      expect(first.libraryEntryId).toBe(coloured.entryId);
+      expect(first.posterColour).toBe("#3a6ea5");
+      expect(second.posterColour).toBeNull();
     });
   });
 

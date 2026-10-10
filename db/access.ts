@@ -3014,6 +3014,11 @@ export interface UpNextEntry {
    */
   readonly inProduction: boolean | null;
   /**
+   * Borrowed (#361): the poster's dominant colour, `#rrggbb`, or `null` where none is
+   * stored. Only the featured card paints it (issue #362, through `app/poster-tint.ts`).
+   */
+  readonly posterColour: string | null;
+  /**
    * The Up next episode's season, as aired episodes with a watch over aired episodes —
    * issue #364's bar across the card's poster, read when the page loads.
    *
@@ -3234,6 +3239,7 @@ interface UpNextRow {
   readonly stillPath: string | null;
   readonly remaining: number;
   readonly inProduction: boolean | null;
+  readonly posterColour: string | null;
   readonly seasonWatched: number;
   readonly seasonReleased: number;
 }
@@ -3343,6 +3349,7 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           releaseYear: title.releaseYear,
           posterPath: title.posterPath,
           inProduction: title.inProduction,
+          posterColour: title.posterColour,
           episodeId: libraryEntryUpNext.episodeId,
           episodeName: episode.name,
           seasonNo: libraryEntryUpNext.seasonNo,
@@ -3435,6 +3442,7 @@ function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
     stillPath: row.stillPath,
     remaining: row.remaining,
     inProduction: row.inProduction,
+    posterColour: row.posterColour,
     seasonWatched: row.seasonWatched,
     seasonReleased: row.seasonReleased,
     queue,
@@ -3544,6 +3552,11 @@ export interface QueuedEpisode {
    * the same number for the head of the run.
    */
   readonly seasonReleased: number;
+  /**
+   * Borrowed (#246): this episode's own still, so the featured card (issue #362) can draw
+   * the still of whichever episode it has advanced to. `null` where TMDB has none.
+   */
+  readonly stillPath: string | null;
 }
 
 /**
@@ -3671,6 +3684,7 @@ async function upNextQueues(
       episodeName: episode.name,
       seasonNo: episode.seasonNo,
       episodeNo: episode.episodeNo,
+      stillPath: episode.stillPath,
       released:
         sql<boolean>`${episode.airDate} is not null and ${episode.airDate} <= current_date`.as(
           "released",
@@ -3706,6 +3720,7 @@ async function upNextQueues(
       episodeName: ranked.episodeName,
       seasonNo: ranked.seasonNo,
       episodeNo: ranked.episodeNo,
+      stillPath: ranked.stillPath,
       released: ranked.released,
       /* Issue #367's three facts. Evaluated per returned row, so after the depth filter
          below — at most `UP_NEXT_QUEUE_DEPTH + 1` per entry, not one per episode.
@@ -3773,6 +3788,7 @@ async function upNextQueues(
         seasonAiring: row.seasonAiring,
         lastOfShow: row.lastOfShow,
         seasonReleased: row.seasonReleased,
+        stillPath: row.stillPath,
       });
     }
     queues.set(entryId, {

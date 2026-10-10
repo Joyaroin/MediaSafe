@@ -76,9 +76,13 @@ describe("the row travels instead of teleporting", () => {
     }
   });
 
-  /** The card's own box is `ROW`'s class, not a second style; the hold adds its wash. */
+  /** The card's own box is `ROW`'s class — or the featured card's (#362), with its tint —
+   *  not a second style; the hold adds its wash. */
   it("keeps ROW as the row's only class, on both row kinds", () => {
-    expect(row).toContain("className={held ? `${ROW} watch-hold` : ROW}");
+    expect(row).toContain("const card = featured ? FEATURED_CARD : ROW;");
+    expect(row).toContain(
+      "className={held ? `${card} watch-hold` : tinted ? `${card} poster-tint` : card}",
+    );
     expect(row.match(/<m\.li layout className=\{ROW\}>/g)).toHaveLength(1);
   });
 

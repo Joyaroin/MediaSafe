@@ -15,6 +15,7 @@ import { exit, snappy } from "@/app/motion";
 import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
+import { posterTintStyle } from "@/app/poster-tint";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import {
   isPendingEntry,
@@ -26,9 +27,17 @@ import {
 import { episodeCode, remainingInWords } from "./episode-card-line";
 import { finishesSomething, finishFactsFor, finishLine, WATCHED } from "./finish-line";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
-import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
+import {
+  CARD,
+  CARD_POSTER,
+  CARD_POSTER_WIDTH,
+  FEATURED_CARD,
+  FEATURED_WASH,
+} from "./up-next-card-styles";
+import { FeaturedFrame } from "./up-next-featured-frame";
 import {
   cardPicture,
+  featuredPicture,
   queuedEpisodeFullName,
   seasonProgress,
   useUpNextMark,
@@ -59,13 +68,23 @@ import {
  * next episode slides in, or — if that was the last aired episode — the card leaves and the
  * cards below close the gap. `useUpNextMark`'s `held` is the episode being held, and the
  * store's own `marking` phase is the hold: nothing new is stored.
+ *
+ * ── Featured — issue #362 ────────────────────────────────────────────────────────────
+ *
+ * The show watched most recently is drawn wide (`featured`): its next episode's still,
+ * the poster's tint behind it. It is the same component with the same key, so it keeps
+ * every behaviour of a compact card — mark, hold, Undo, advance, leave — by construction,
+ * and when it leaves the next card turns featured by a prop change that `layout` animates
+ * rather than by a remount.
  */
 export function UpNextEpisodeRow({
   entry,
   aboveFold = false,
+  featured = false,
 }: {
   entry: UpNextEntry;
   aboveFold?: boolean;
+  featured?: boolean;
 }) {
   if (entry.queue.episodes.length === 0) {
     return (
@@ -74,7 +93,8 @@ export function UpNextEpisodeRow({
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
         held={null}
-        picture={cardPicture(entry)}
+        featured={featured}
+        picture={featured ? featuredPicture(entry, null) : cardPicture(entry)}
         progress={seasonProgress(entry, null, 0)}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
         aboveFold={aboveFold}
@@ -83,15 +103,17 @@ export function UpNextEpisodeRow({
     );
   }
 
-  return <MarkableRow entry={entry} aboveFold={aboveFold} />;
+  return <MarkableRow entry={entry} aboveFold={aboveFold} featured={featured} />;
 }
 
 function MarkableRow({
   entry,
   aboveFold,
+  featured,
 }: {
   entry: UpNextEntry;
   aboveFold: boolean;
+  featured: boolean;
 }) {
   const mark = useUpNextMark(entry);
 
@@ -119,7 +141,8 @@ function MarkableRow({
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
       held={mark.held === null ? null : finishLine(finishFactsFor(entry, mark.held))}
-      picture={mark.picture}
+      featured={featured}
+      picture={featured ? featuredPicture(entry, showing) : mark.picture}
       progress={seasonProgress(entry, showing, marked)}
       remainingAfter={countAfterShown(entry.remaining, shownAt, spent)}
       aboveFold={aboveFold}
@@ -182,6 +205,7 @@ function RowBody({
   code,
   episodeName,
   held,
+  featured,
   picture,
   progress,
   remainingAfter,
@@ -194,6 +218,7 @@ function RowBody({
   /** The line the card holds on after a mark — *Watched*, or a finish (#367) — or `null`
    *  while it is not holding. */
   held: string | null;
+  featured: boolean;
   picture: CardPicture;
   progress: SeasonProgress;
   remainingAfter: number;
@@ -201,6 +226,10 @@ function RowBody({
   control: React.ReactNode;
 }) {
   const label = `${entry.titleName} — ${code}${episodeName === null ? "" : `, ${episodeName}`}`;
+  /* The featured card's tint (#362), when the poster has a stored colour. Dropped while
+     the card holds, so the hold's accent wash (`.watch-hold`) is what shows. */
+  const tinted = featured && entry.posterColour !== null && held === null;
+  const card = featured ? FEATURED_CARD : ROW;
 
   return (
     /* `layout`, so the cards below glide up when one leaves; `exit`, so the one leaving
@@ -209,13 +238,31 @@ function RowBody({
     <m.li
       layout
       exit={{ opacity: 0, scale: 0.96, transition: exit }}
-      className={held ? `${ROW} watch-hold` : ROW}
+      className={held ? `${card} watch-hold` : tinted ? `${card} poster-tint` : card}
+      style={
+        tinted
+          ? { ...posterTintStyle(entry.posterColour), backgroundImage: FEATURED_WASH }
+          : undefined
+      }
+      data-featured={featured ? "" : undefined}
     >
-      <RowLink entry={entry} label={label}>
-        <RowFrame picture={picture} progress={progress} aboveFold={aboveFold} />
+      <RowLink entry={entry} label={label} stacked={featured && picture.kind === "still"}>
+        {featured ? (
+          <FeaturedFrame picture={picture} progress={progress} name={entry.titleName} />
+        ) : (
+          <RowFrame picture={picture} progress={progress} aboveFold={aboveFold} />
+        )}
 
         <div className="relative min-w-0 flex-1">
-          <p className="truncate label-line text-dim">{entry.titleName}</p>
+          <p
+            className={
+              featured
+                ? "truncate text-item font-semibold text-text"
+                : "truncate label-line text-dim"
+            }
+          >
+            {entry.titleName}
+          </p>
 
           {/* The episode lines are keyed on the code, so an advance is the old episode
               lifting out and the next one rising in — `popLayout`, so the two never stack
@@ -270,14 +317,18 @@ function RowBody({
 function RowLink({
   entry,
   label,
+  stacked,
   children,
 }: {
   entry: UpNextEntry;
   label: string;
+  /** A featured card's still sits above the text on a phone (#362). */
+  stacked: boolean;
   children: React.ReactNode;
 }) {
-  const shared =
-    "pressable group flex min-w-0 flex-1 items-center gap-3 text-left";
+  const shared = `pressable group flex min-w-0 flex-1 gap-3 text-left ${
+    stacked ? "flex-col sm:flex-row sm:items-center" : "items-center"
+  }`;
 
   return (
     <Link

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * The frame at the top of an episode's page — TMDB's `still_path`, mirrored by issue #246
  * and rendered here for the first time (issue #253).
@@ -47,6 +49,7 @@ export function EpisodeStill({
   width,
   className,
   aboveFold = false,
+  children,
 }: {
   /** TMDB's `still_path`, or `null` when the catalogue has no frame for this episode. */
   stillPath: string | null;
@@ -70,6 +73,9 @@ export function EpisodeStill({
    * The hero passes it explicitly.
    */
   aboveFold?: boolean;
+  /** Drawn over the still, inside its clipped box — `Poster`'s `children`, for the same
+   *  reason: the season bar on Up next's featured card (issue #362). */
+  children?: ReactNode;
 }) {
   return (
     <div className={`still ${className}`}>
@@ -91,6 +97,7 @@ export function EpisodeStill({
           decoding="async"
         />
       )}
+      {children}
     </div>
   );
 }

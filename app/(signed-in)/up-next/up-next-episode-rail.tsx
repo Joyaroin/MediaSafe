@@ -44,6 +44,20 @@ export function UpNextEpisodeRail({
 
   const showing = useEntriesOnRail(entries);
 
+  /**
+   * The featured card — issue #362: the first ongoing entry still on the rail. The read
+   * already orders Ongoing by most recent watch (`listUpNextRails`), so this is a position
+   * and not a sort. Pending titles are a separate list and never featured, and an old
+   * friend never is either: once Ongoing is marked empty, nothing is featured.
+   */
+  const ongoingIds = useMemo(
+    () => new Set(rails.ongoing.filter(isEpisodeEntry).map((entry) => entry.libraryEntryId)),
+    [rails.ongoing],
+  );
+  const head = showing[0];
+  const featuredId =
+    head !== undefined && ongoingIds.has(head.libraryEntryId) ? head.libraryEntryId : null;
+
   /* A group of nothing but pending rows is still a group — the reader has just added their
      first title, and the tab it was added for must not read as empty. */
   if (pending.length === 0 && showing.length === 0) return null;
@@ -66,6 +80,7 @@ export function UpNextEpisodeRail({
             key={entry.libraryEntryId}
             entry={entry}
             aboveFold={pending.length + index < FIRST_RUN}
+            featured={entry.libraryEntryId === featuredId}
           />
         ))}
       </AnimatePresence>
