@@ -14,6 +14,7 @@ import { RECORDS_A_WATCH } from "@/app/accent-meaning";
 import { exit, snappy } from "@/app/motion";
 import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
+import { PosterProgressBar } from "@/app/poster-progress-bar";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import {
   isPendingEntry,
@@ -29,8 +30,10 @@ import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
 import {
   cardPicture,
   queuedEpisodeFullName,
+  seasonProgress,
   useUpNextMark,
   type CardPicture,
+  type SeasonProgress,
   type UpNextMark,
 } from "./up-next-mark";
 
@@ -72,6 +75,7 @@ export function UpNextEpisodeRow({
         episodeName={entry.episodeName}
         held={null}
         picture={cardPicture(entry)}
+        progress={seasonProgress(entry, null, 0)}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
         aboveFold={aboveFold}
         control={null}
@@ -106,6 +110,8 @@ function MarkableRow({
   const spent = shownAt >= entry.queue.episodes.length;
   const showing =
     entry.queue.episodes[spent ? entry.queue.episodes.length - 1 : shownAt];
+  /* How many of the run are marked: the held episode is one of them. */
+  const marked = mark.held !== null ? shownAt + 1 : shownAt;
 
   return (
     <RowBody
@@ -114,6 +120,7 @@ function MarkableRow({
       episodeName={showing.episodeName}
       held={mark.held === null ? null : finishLine(finishFactsFor(entry, mark.held))}
       picture={mark.picture}
+      progress={seasonProgress(entry, showing, marked)}
       remainingAfter={countAfterShown(entry.remaining, shownAt, spent)}
       aboveFold={aboveFold}
       control={
@@ -176,6 +183,7 @@ function RowBody({
   episodeName,
   held,
   picture,
+  progress,
   remainingAfter,
   aboveFold,
   control,
@@ -187,6 +195,7 @@ function RowBody({
    *  while it is not holding. */
   held: string | null;
   picture: CardPicture;
+  progress: SeasonProgress;
   remainingAfter: number;
   aboveFold: boolean;
   control: React.ReactNode;
@@ -203,7 +212,7 @@ function RowBody({
       className={held ? `${ROW} watch-hold` : ROW}
     >
       <RowLink entry={entry} label={label}>
-        <RowFrame picture={picture} aboveFold={aboveFold} />
+        <RowFrame picture={picture} progress={progress} aboveFold={aboveFold} />
 
         <div className="relative min-w-0 flex-1">
           <p className="truncate label-line text-dim">{entry.titleName}</p>
@@ -284,9 +293,11 @@ function RowLink({
 
 function RowFrame({
   picture,
+  progress,
   aboveFold,
 }: {
   picture: CardPicture;
+  progress: SeasonProgress;
   aboveFold: boolean;
 }) {
   /* No morph name — the UI overhaul. The title page has a loading screen, and Next commits
@@ -300,7 +311,11 @@ function RowFrame({
       width={ROW_POSTER_WIDTH}
       className={POSTER}
       aboveFold={aboveFold}
-    />
+    >
+      {/* The current season, aired episodes only (#364). It moves as the mark lands
+          because `progress` is derived from the card's position. */}
+      <PosterProgressBar progress={progress} />
+    </Poster>
   );
 }
 

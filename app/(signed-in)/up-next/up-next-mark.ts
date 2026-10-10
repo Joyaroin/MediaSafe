@@ -318,6 +318,43 @@ export function cardPicture(entry: Pick<UpNextEntry, "posterPath">): CardPicture
   return { kind: "none" };
 }
 
+/** Watched against aired, in the shape `PosterProgressBar` takes. */
+export interface SeasonProgress {
+  readonly watched: number;
+  readonly released: number;
+}
+
+/**
+ * How far through its season the episode on the card is — issue #364's bar.
+ *
+ * `marked` is how many of the run the store calls watched (the card's position), and
+ * `shown` is the episode on the card: the one being held, or the next to watch. Derived
+ * from the position like everything else here, so the bar advances on a mark, walks back
+ * on Undo and on a rollback, and can never disagree with the episode beside it.
+ *
+ * The read's baseline belongs to the Up next episode's season only; a later season the run
+ * crosses into has no watch before the Up next episode (`UpNextEntry.seasonWatched`), so
+ * there it counts only what this card has marked. `shown === null` is the arrived-empty
+ * card, which shows the read's own answer.
+ */
+export function seasonProgress(
+  entry: Pick<UpNextEntry, "seasonNo" | "seasonWatched" | "seasonReleased" | "queue">,
+  shown: QueuedEpisode | null,
+  marked: number,
+): SeasonProgress {
+  if (shown === null) {
+    return { watched: entry.seasonWatched, released: entry.seasonReleased };
+  }
+  const baseline = shown.seasonNo === entry.seasonNo ? entry.seasonWatched : 0;
+  const markedHere = entry.queue.episodes
+    .slice(0, marked)
+    .filter((one) => one.seasonNo === shown.seasonNo).length;
+  return {
+    watched: Math.min(baseline + markedHere, shown.seasonReleased),
+    released: shown.seasonReleased,
+  };
+}
+
 /**
  * Whether this card still belongs on the next-episodes rail — the rule, written once.
  *
