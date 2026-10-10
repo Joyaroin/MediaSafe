@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   finishesSomething,
@@ -82,6 +82,13 @@ describe("the facts a queued episode gives the line", () => {
  * reads; the browser half is `tests/e2e/up-next-finish-moment.spec.ts`.
  */
 describe("holding Watching over a hold and its writes", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("holds while any hold or write is open, and lets go when the last one ends", async () => {
     expect(holdingOver()).toBe(false);
 
@@ -94,11 +101,16 @@ describe("holding Watching over a hold and its writes", () => {
 
     land();
     await write;
+    // Settled, but its render has not landed: still held, for the length of the wait.
+    expect(holdingOver()).toBe(true);
+    vi.advanceTimersByTime(1_500);
     expect(holdingOver()).toBe(false);
   });
 
-  it("lets go when a write fails, too", async () => {
+  it("lets go when a failed write's wait runs out, too", async () => {
     await expect(holdOverWhile(Promise.reject(new Error("lost")))).rejects.toThrow("lost");
+    expect(holdingOver()).toBe(true);
+    vi.advanceTimersByTime(1_500);
     expect(holdingOver()).toBe(false);
   });
 });
