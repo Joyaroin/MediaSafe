@@ -233,7 +233,7 @@ Valkey handler is off on Vercel). Either merge the PR before stage 6, or push on
 (`docker buildx build --platform linux/amd64 … --push` with a `write:packages` token).
 
 Then:
-- **Neon:** confirm the project's region (us-iad is right only for `aws-us-east-1`); create the
+- **Neon:** the project is in `aws-us-east-2` (Ohio), kept on purpose (ADR, *Unverified*); create the
   staging branch seeded from `fixtures/mediasafe-seed.json`; use **pooled** (`-pooler`) URLs.
 - **Vault values** per env under `kv/mediasafe/<env>/app`: `DATABASE_URL`, `BETTER_AUTH_SECRET`
   (prod = reuse Vercel's or every user is signed out; staging = new), `GOOGLE_CLIENT_ID/SECRET`,

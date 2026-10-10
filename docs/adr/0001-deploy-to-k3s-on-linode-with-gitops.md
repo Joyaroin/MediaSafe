@@ -262,7 +262,9 @@ time, so staging's browser errors are tagged the same as prod's.
 
 ## Unverified at time of writing
 
-- Whether Neon's project is in `aws-us-east-1`; `us-iad` is only the right region if so.
+- ~~Whether Neon's project is in `aws-us-east-1`.~~ Checked 2026-10-10: it is in **`aws-us-east-2`**
+  (Ohio). Kept: Vercel's default function region is `iad1` (D.C.), so production already crosses
+  D.C.–Ohio (about 10–15 ms per round trip), and moving either side costs a migration.
 - ingress-nginx's current retirement status (it is not used either way).
 
 ## Rollout

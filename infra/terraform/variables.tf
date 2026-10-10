@@ -9,7 +9,7 @@ variable "domain" {
 }
 
 variable "region" {
-  description = "Linode region. Keep it next to the Neon project's region: every query crosses this link."
+  description = "Linode region. Neon is in aws-us-east-2 (Ohio), one D.C.–Ohio hop away, the same as Vercel's iad1. See ADR 0001."
   type        = string
   default     = "us-iad"
 }
