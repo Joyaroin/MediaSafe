@@ -14,7 +14,7 @@ import { BackToListsBar } from "../back-to-lists-bar";
  */
 export default function ListDetailLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <BackToListsBar />
 
       {/* The list's name, then one screen of its rows — a position, a `56px` poster and a

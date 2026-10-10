@@ -2,7 +2,6 @@ import type { LibraryEntryRow } from "@/db/access";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import { CheckmarkIcon } from "./checkmark-icon";
-import { railPosterTransitionName } from "./poster-transition-name";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
 
@@ -132,7 +131,6 @@ export function LibraryEntryCell({
         // Issue #303: the one name family every poster morph pairs against
         // (`poster-transition-name.ts`) — the cell's own half of it, the fourth caller
         // beside the rail row, the desktop pane and the title's own page.
-        posterTransitionName={railPosterTransitionName(entry.libraryEntryId)}
         poster={
           <>
             {/* `.55` for an abandoned title, on both surfaces that dim one. The linen

@@ -3,10 +3,8 @@
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import Link from "next/link";
-import { ViewTransition } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
-import { railPosterTransitionName } from "@/app/(signed-in)/library/poster-transition-name";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
   RECORDING_GLYPH,
@@ -190,7 +188,7 @@ function RowBody({
       className={held ? `${ROW} watch-hold` : ROW}
     >
       <RowLink entry={entry} label={label}>
-        <RowFrame entry={entry} picture={picture} aboveFold={aboveFold} />
+        <RowFrame picture={picture} aboveFold={aboveFold} />
 
         <div className="relative min-w-0 flex-1">
           <p className="truncate label-line text-dim">{entry.titleName}</p>
@@ -266,31 +264,24 @@ function RowLink({
 }
 
 function RowFrame({
-  entry,
   picture,
   aboveFold,
 }: {
-  entry: UpNextEntry;
   picture: CardPicture;
   aboveFold: boolean;
 }) {
-  const frame = (
+  /* No morph name — the UI overhaul. The title page has a loading screen, and Next commits
+     that first, so a list poster and the hero never land in the same commit and the morph
+     could never form (Next's own `view-transitions.md`: "no pair forms"). The loading
+     screen was kept and the morph dropped; the poster still travels as a picture
+     (`carryPoster`), so the loading screen shows it at once. */
+  return (
     <Poster
       posterPath={picture.kind === "poster" ? picture.path : null}
       width={ROW_POSTER_WIDTH}
       className={POSTER}
       aboveFold={aboveFold}
     />
-  );
-
-  /* The poster-to-hero morph (#303). The name is unique on the page because Up next draws
-     this list once — it used to draw it twice, a phone copy and a desktop copy hidden by
-     CSS, and two `ViewTransition`s sharing a name is an error React reports and a morph
-     the browser refuses. */
-  return (
-    <ViewTransition name={railPosterTransitionName(entry.libraryEntryId)} default="poster">
-      {frame}
-    </ViewTransition>
   );
 }
 

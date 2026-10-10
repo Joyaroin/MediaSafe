@@ -1914,6 +1914,21 @@
 
 /* A panel that swaps has further to travel than a section filling in, and it is replacing
    something rather than joining it — so it takes the sheet's own heavier settle. */
+/* A route's loading screen arriving — the UI overhaul. Next commits a loading screen with no
+   view transition (only the page that replaces it gets one), so without this the tap was a
+   hard cut. `--dur-fast`, the leaving half of the one motion, and opacity only: short
+   enough to be over before the page replaces it, so the loading poster is never caught
+   half-faded in the snapshot that page's transition takes. */
+@utility arrive-fast {
+  animation: nav-fade var(--dur-fast) var(--ease-out-quart) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrive-fast {
+    animation-duration: 1ms;
+  }
+}
+
 @utility arrive-panel {
   animation: rise-in var(--dur-slow) var(--ease-press) backwards;
   animation-duration: 420ms;

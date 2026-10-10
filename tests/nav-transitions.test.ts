@@ -206,11 +206,11 @@ describe("the poster morph's spring is scoped to posters, not to every group", (
     // The five halves of the morph named in `app/globals.css`'s own note beside the rule —
     // a call site that mints a name without the class is a poster the scoped rule cannot
     // reach, and the morph silently reverts to the browser's stock curve for it alone.
+    // The pair that remains: the title's loading frame and its hero, which share a name so
+    // the poster holds perfectly still while the page fills in around it (UI overhaul).
     const POSTER_CALL_SITES = [
       "app/(signed-in)/library/title-hero.tsx",
-      "app/(signed-in)/library/selectable-entry.tsx",
       "app/(signed-in)/titles/[entryId]/pending-poster.tsx",
-      "app/(signed-in)/up-next/up-next-episode-row.tsx",
     ];
 
     for (const file of POSTER_CALL_SITES) {
@@ -342,50 +342,29 @@ const DETAIL_VIEW = readFileSync(
 );
 
 describe("the poster morph, on one transition-name family", () => {
-  it("gives the Up next row and the page it opens the same name", () => {
-    // Same minting function, same argument shape: the row's entry id and the page's.
-    expect(ROW).toContain("railPosterTransitionName(entry.libraryEntryId)");
+  /**
+   * **The list-to-title morph is gone — the UI overhaul.** The title page commits its
+   * loading screen first, so a list poster and the hero never shared a commit and no pair
+   * formed (Next's `view-transitions.md`: "no pair forms"); measured, the poster never left
+   * its final rectangle. The owner kept the loading screen and dropped the morph. What is
+   * left is the loading frame → hero pair, which holds the poster still while the page
+   * arrives, and the carried picture, which puts the poster on the loading frame at once.
+   */
+  it("names no poster on the Up next card", () => {
+    expect(ROW).not.toMatch(/<ViewTransition/);
+    expect(ROW).not.toContain("railPosterTransitionName");
+  });
+
+  it("pairs the loading frame with the hero on the shared name", () => {
     expect(DETAIL_VIEW).toContain(
       "posterTransitionName={railPosterTransitionName(current.libraryEntryId)}",
     );
+    expect(readFileSync("app/(signed-in)/titles/[entryId]/pending-poster.tsx", "utf8")).toContain(
+      "viewTransitionName: railPosterTransitionName(entryId)",
+    );
   });
 
-  it("keeps every half minting from the shared module rather than spelling the name", () => {
-    for (const [label, source] of [
-      ["up-next-episode-row.tsx", ROW],
-      ["title-detail-view.tsx", DETAIL_VIEW],
-    ] as const) {
-      expect(source, `${label} imports the minting function`).toMatch(
-        /import \{ railPosterTransitionName \} from "[^"]*poster-transition-name"/,
-      );
-      // A hand-written template literal is how the two families drifted apart in the first
-      // place — a rename would touch the module and leave the copy behind.
-      expect(source, `${label} spells a name by hand`).not.toMatch(
-        /`[a-z]+-poster-\$\{/,
-      );
-    }
-  });
-
-  it("wraps the row's poster in exactly one view transition", () => {
-    // There is no side pane any more to hold the same name, so the row always names its
-    // poster — one `<ViewTransition>`, no early unwrapped return.
-    expect(ROW.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(ROW).not.toMatch(/return frame;/);
-  });
-
-  /**
-   * **Issue #303 reverses this suite's own prior assertion of the opposite.** Until this
-   * ticket the condition above read `if (press !== "select" || selected) return frame;`,
-   * and this test asserted exactly that string — the phone's `press="episode"` rows were
-   * deliberately unwrapped, on the reasoning quoted in `up-next-episode-row.tsx`'s own
-   * docblock: *"the phone's row navigates to a different page and has nothing to share."*
-   * The phone title route's pending frame carries a poster now
-   * (`app/poster-handoff-memory.ts`), so that premise no longer holds, and the row wraps
-   * on both presses. `selected` is unaffected: it still answers true only for the pane's
-   * own selection, which a `press="episode"` row never writes to.
-   */
-  it("wraps the phone's episode-press rows too, now that their destination has a poster", () => {
-    expect(ROW).not.toMatch(/press !== "select"/);
+  it("still carries the tapped poster's picture to the loading frame", () => {
     expect(ROW).toContain(
       "onClick={(event) => carryPoster(entry.libraryEntryId, entry.posterPath, event.currentTarget)}",
     );

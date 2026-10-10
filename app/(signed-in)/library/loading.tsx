@@ -10,7 +10,7 @@ import { LIBRARY_GRID } from "./library-grid";
  */
 export default function LibraryLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <LibraryHeading />
       <SkeletonRegion className="gap-0">
         <div className="px-gutter lg:px-10">

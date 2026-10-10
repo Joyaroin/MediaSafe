@@ -8,7 +8,7 @@ import { SearchHeading } from "./search-heading";
  */
 export default function SearchLoading() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter pt-5 pb-12 lg:pb-16">
+    <main className="arrive-fast mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter pt-5 pb-12 lg:pb-16">
       <SearchHeading />
       <SkeletonRegion className="mt-5 gap-0">
         <Block className="h-12 w-full [--poster-radius:var(--radius-5)]" />

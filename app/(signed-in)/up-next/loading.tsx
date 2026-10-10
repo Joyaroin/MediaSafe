@@ -9,7 +9,7 @@ import { UpNextHeading } from "./up-next-heading";
  */
 export default function UpNextLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <UpNextHeading />
       <div className="w-full lg:max-w-6xl">
         <SkeletonRegion className="gap-0">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { PosterLink, posterMorph } from "@/app/(signed-in)/library/poster-link";
+import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
@@ -109,7 +109,6 @@ function IconCell({
             cell, and for its reason: the cell's corner is a gutter away from anything. */}
         <div
           className="relative"
-          style={title.libraryEntryId === null ? undefined : posterMorph(title.libraryEntryId)}
         >
           <Poster
             posterPath={title.posterPath}
@@ -167,7 +166,6 @@ function IconCell({
             cell, and for its reason: the cell's corner is a gutter away from anything. */}
         <div
           className="relative"
-          style={title.libraryEntryId === null ? undefined : posterMorph(title.libraryEntryId)}
         >
           <Poster
             posterPath={title.posterPath}

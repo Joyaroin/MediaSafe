@@ -104,10 +104,8 @@ describe("the row travels instead of teleporting", () => {
    * still there, still exactly once (`nav-transitions.test.ts` already pins that count),
    * and it still sits inside the row Motion now animates.
    */
-  it("keeps the poster's ViewTransition nested inside the animated row", () => {
-    expect(row.match(/<ViewTransition/g)).toHaveLength(1);
-    expect(row.indexOf("<m.li")).toBeGreaterThan(-1);
-    expect(row.indexOf("<m.li")).toBeLessThan(row.indexOf("<ViewTransition"));
+  it("carries no ViewTransition on the card — the morph could not form", () => {
+    expect(row.match(/<ViewTransition/g)).toBeNull();
   });
 
   /** No new client boundary — the row was already `"use client"`, and this ticket adds no

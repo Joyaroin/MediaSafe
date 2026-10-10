@@ -273,21 +273,15 @@ describe("the library entry cell", () => {
  * what keeps this cell renderable here at all, so this suite is the one place the actual
  * name (not just its presence in source) can be asserted against a render.
  */
-describe("the library entry cell's poster morph source", () => {
-  it("carries the same name family the title's own page uses", () => {
-    const markup = cell();
-
-    // `poster-transition-name.ts`'s one function, not a hand-spelled copy of it — a rename
-    // there would otherwise leave this cell pairing against a stale name.
-    expect(markup).toContain('view-transition-name:rail-poster-entry-1');
-  });
-
-  it("names a different cell by its own entry id", () => {
-    const markup = renderToStaticMarkup(
-      withSelection(createElement(LibraryEntryCell, { entry: entry({ libraryEntryId: "e2" }) })),
-    );
-
-    expect(markup).toContain("view-transition-name:rail-poster-e2");
+/**
+ * **No morph name on a library cell** — the UI overhaul. The title page commits its loading
+ * screen first, so a cell and the hero never land in the same commit and no pair could form
+ * (Next's `view-transitions.md`). The loading screen was kept; the name went. A name left
+ * here would be a morph that sometimes runs — on a cached page — and usually does not.
+ */
+describe("the library entry cell carries no morph name", () => {
+  it("names no view transition", () => {
+    expect(cell()).not.toContain("view-transition-name");
   });
 });
 

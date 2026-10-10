@@ -1,4 +1,4 @@
-import { PosterLink, posterMorph } from "@/app/(signed-in)/library/poster-link";
+import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { Poster } from "@/app/poster";
@@ -42,7 +42,7 @@ export function YouTitleTile({
       posterPath={entry.posterPath}
       className={`pressable group block ${TILE} text-left`}
     >
-      <div style={posterMorph(entry.libraryEntryId)}>
+      <div>
         <Poster
           posterPath={entry.posterPath}
           name={entry.titleName}

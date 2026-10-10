@@ -9,7 +9,7 @@ import { YouHeading } from "./you-heading";
  */
 export default function YouLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <YouHeading />
       <SkeletonRegion className="gap-0 pb-8">
         <div className="flex items-center gap-4 px-gutter pt-5 pb-2 lg:px-10 lg:pt-7">

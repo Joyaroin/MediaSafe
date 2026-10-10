@@ -12,7 +12,7 @@ import { SettingsHeading, YOU } from "./settings-heading";
  */
 export default function SettingsLoading() {
   return (
-    <main className="flex w-full flex-1 flex-col">
+    <main className="arrive-fast flex w-full flex-1 flex-col">
       <BackBar origin={YOU} />
       <SettingsHeading />
 

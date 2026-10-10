@@ -3,7 +3,7 @@ import * as m from "motion/react-m";
 import type { CSSProperties, ReactNode } from "react";
 
 import { smooth } from "@/app/motion";
-import { PosterLink, posterMorph } from "@/app/(signed-in)/library/poster-link";
+import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
@@ -97,7 +97,6 @@ export function ListTitleRow({
 
       <div
         className="w-14 shrink-0"
-        style={title.libraryEntryId === null ? undefined : posterMorph(title.libraryEntryId)}
       >
         <Poster
           posterPath={title.posterPath}
