@@ -229,6 +229,8 @@ describe("listWatchlistFilms", () => {
         titleName: "Arrival",
         releaseYear: 2016,
         posterPath: "/arrival.jpg",
+        // Issue #363: the hover glow's colour, NULL until the fill has taken one.
+        posterColour: null,
         runtimeMins: 116,
       });
     });
