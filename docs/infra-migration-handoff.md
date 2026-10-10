@@ -144,19 +144,35 @@ his own uncommitted change; leave them out of every commit.
   manual sweep Job returned `{"candidates":0,…}`; app 95 Mi, Valkey 8 Mi, node ~1.72 GiB free.
 - Vault `kv/mediasafe/staging/app`: `SENTRY_DSN` deliberately empty (Sentry off on staging).
 
+### Stage 7 — NetworkPolicies ✅ (gitops `5ef2c3c`, `335b4c6`, 2026-10-10)
+- k3s enforces policy with its embedded kube-router (not disabled in `config.yaml`).
+- **App namespaces** (in the chart, so prod gets them too): default-deny ingress+egress; DNS to
+  CoreDNS; Traefik → app 3000; sweep → app 3000; app → Valkey 6379; app and migrate → internet
+  443 (`0.0.0.0/0` minus 10/8, 172.16/12, 192.168/16, 100.64/10, 169.254/16).
+- **Vault:** ingress only, from `external-secrets` and the `vault` namespace. Egress left open:
+  the API server is on the node's public IP, and pinning it would break on a VM rebuild.
+- **Gateway:** `http` accepts routes from `Same` (the redirect and cert-manager's challenge
+  routes live in `gateway`); each HTTPS listener only from its own namespace.
+- Verified: site, Argo, probes, migrate, sweep, ESO refresh, snapshot all work; app → Vault,
+  app → Argo, other pods → Valkey/app/Vault all **blocked**; app → internet 443 and → Valkey
+  open; an HTTPRoute in `default` claiming `staging.` → `NotAllowedByListeners`; a forced
+  renewal of the Argo cert succeeded under `from: Same` (new cert to 2027-01-08).
+
 ---
 
 ## 4. Current live state (2026-10-10)
 
 - Argo apps, all **Synced/Healthy**: `root`, `argocd`, `argocd-public`, `gateway-api-crds`,
-  `traefik`, `cert-manager`, `edge`, `vault`, `external-secrets`, `app-namespaces`.
+  `traefik`, `cert-manager`, `edge`, `vault`, `external-secrets`, `app-namespaces`,
+  `mediasafe-staging`.
+- Staging live at `https://staging.mediasafe.space` (Google sign-in works); NetworkPolicies on.
 - Argo CD public at `https://argocd.mediasafe.space`, Google sign-in only, no local admin.
 - Vault: initialised, **unsealed**, v2.1.1, **no root token**. KV holds `kv/infra/vault-snapshots`
   (the R2 key) and `kv/infra/argocd/google-oidc`.
 - R2 bucket `mediasafe-vault-snapshots`; first scheduled snapshot 2026-10-11 03:00 UTC.
 - Node memory: ~2.0 GiB working set of 3.9 GiB; **~1.83 GiB available** (after 5e). `k3s-server`
   ~1.09 GiB as of 5c (grew ~220 MiB with External Secrets' 20 CRDs, 18 unused generators).
-- Cert expiry: all three 2026-12-31; cert-manager renews ~30 days before.
+- Cert expiry: apex and staging 2026-12-31, argocd 2027-01-08 (renewal test); cert-manager renews ~30 days before.
 
 ### Verify the current state
 
@@ -236,43 +252,28 @@ SHA-256) because Homebrew is blocked by outdated Xcode Command Line Tools.
 8. Argo won't delete a namespace created by `CreateNamespace=true`; track it as a manifest.
 9. Vault 2.0 authenticates `sys/generate-root` by default (re-enabled for recovery).
 10. Copying aligned commands with trailing `# comments` into zsh broke them; give bare commands.
+11. k3s's kube-router applies NetworkPolicy to a new pod ~1 s after it starts; until then its
+    connections are refused. Every Job waits for its network first (sweep, migrate, snapshot).
+12. A Neon **schema-only** branch copies tables but not drizzle's history: empty it before the
+    first migration or it fails with `relation … already exists`.
+13. Example commands with `<placeholders>` got pasted literally into Vault. Prompt with
+    `read -rs` and pipe to `vault kv patch … KEY=-` instead.
 
 ---
 
 ## 8. What comes next — in order
 
-### Stage 6 — the app on staging (then prod values, still suspended)
-**Decision needed first:** stage 1's workflow only runs on `main`, so **no image exists in GHCR
-until the big PR merges** (merging also deploys to Vercel prod, which should be harmless — the
-Valkey handler is off on Vercel). Either merge the PR before stage 6, or push one image by hand
-(`docker buildx build --platform linux/amd64 … --push` with a `write:packages` token).
+### Stage 6 — what is left (staging runs; see section 3)
+- **CI deploy:** after the image push in `image.yml`, commit the new SHA into
+  `charts/mediasafe/values-staging.yaml`. Needs Adham's fine-grained PAT (Contents RW on
+  `mediasafe-gitops` only) as Actions secret `GITOPS_TOKEN` on MediaSafe. Then stage 6 is done
+  ("a merge deploys staging"). The prod promotion `workflow_dispatch` belongs to stage 8.
+- **Seed (optional):** Adham has signed in on staging, so his user exists; seed his library
+  from `fixtures/mediasafe-seed.json` with `npm run db:seed` against the staging URL, with
+  `DATABASE_WS_PROXY=` (empty) so the driver talks to Neon, not the local proxy.
+- **Recommended:** nightly `pg_dump` of Neon to R2: Neon's 6-hour history is the only backup.
 
-Then:
-- **Neon:** the project is in `aws-us-east-2` (Ohio), kept on purpose (ADR, *Unverified*); create the
-  staging branch seeded from `fixtures/mediasafe-seed.json`; use **pooled** (`-pooler`) URLs.
-- **Vault values** per env under `kv/mediasafe/<env>/app`: `DATABASE_URL`, `BETTER_AUTH_SECRET`
-  (prod = reuse Vercel's or every user is signed out; staging = new), `GOOGLE_CLIENT_ID/SECRET`,
-  `TMDB_READ_ACCESS_TOKEN`, `CRON_SECRET` (new per env), `SENTRY_DSN`. GHCR pull token (classic
-  PAT, `read:packages`) under `kv/mediasafe/<env>/ghcr` → ExternalSecret `dockerconfigjson`.
-- **Chart** `mediasafe-gitops/charts/mediasafe` + `values-staging.yaml` / `values-prod.yaml`:
-  Deployment (probes on `/sign-in`, `envFrom` the synced Secret, `SENTRY_ENVIRONMENT`,
-  `VALKEY_URL`), Service, HTTPRoute (`staging.` / apex), PreSync Job `node dist/migrate.mjs`,
-  sweep CronJob (curl the Service with `Bearer $CRON_SECRET`; staging 07:00, prod 09:00 UTC, prod
-  **suspended**), Valkey Deployment + Service (no volume), ExternalSecrets.
-- `apps/mediasafe-staging.yaml`, later `apps/mediasafe-prod.yaml`.
-- **CI:** extend `image.yml` to commit the new tag into `values-staging.yaml` (fine-grained PAT,
-  Contents RW on `mediasafe-gitops` only, as an Actions secret); add a `workflow_dispatch` that
-  copies the staging tag to prod.
-- Google OAuth (the **app's** client): add `https://staging.mediasafe.space/api/auth/callback/google`
-  (and the apex one at cutover).
-- **Recommended addition:** nightly `pg_dump` of Neon to R2 — Neon's 6-hour history is currently
-  the only backup.
-- Done when: merge to `main` deploys staging, sign-in works there, one sweep has run.
-
-### Stages 7–10 (from the ADR)
-- **7 NetworkPolicies:** default-deny per namespace; allow gateway → app, app → Valkey,
-  ESO → Vault, Vault snapshot → R2, egress to Neon/TMDB/Google/Sentry. Also restrict the Gateway's
-  HTTPS listeners' `allowedRoutes` (today `from: All`, so any namespace could claim any hostname).
+### Stages 8–10 (from the ADR)
 - **8 Prod beside Vercel:** prod values + secrets, promotion workflow; **freeze merges to `main`**
   until 9 is done (two migrators on one Neon DB).
 - **9 Cutover:** OAuth redirect + `BETTER_AUTH_URL`, turn off Vercel git deploys and cron,
