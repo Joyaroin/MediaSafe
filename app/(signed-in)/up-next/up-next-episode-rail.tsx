@@ -13,8 +13,9 @@ import { UpNextEpisodeRow, UpNextPendingRow } from "./up-next-episode-row";
 import { useEntriesOnRail } from "./up-next-mark";
 
 /**
- * The phone's next-episodes group — one list over all three of Up next's rules, which is
- * #250's own shape and is unchanged by the move from a rail to a list.
+ * The phone's next-episodes group — one list over both halves of Continue watching, which
+ * is #250's own shape and is unchanged by the move from a rail to a list. A show whose Up
+ * next episode has not aired is not on it (`CONTINUE_WATCHING`); it is on Coming up.
  *
  * The name is kept as `UpNextEpisodeRail` while its callers and tests are: what it renders
  * is `UpNextGroup`'s vertical list, and `up-next-group.tsx` holds the argument for that.
@@ -27,7 +28,6 @@ export function UpNextEpisodeRail({
 }: {
   rails: {
     readonly ongoing: readonly UpNextRailEntry[];
-    readonly comingBack: readonly UpNextEntry[];
     readonly oldFriends: readonly UpNextEntry[];
   };
 }) {
@@ -36,10 +36,9 @@ export function UpNextEpisodeRail({
   const entries = useMemo(
     () => [
       ...rails.ongoing.filter(isEpisodeEntry),
-      ...rails.comingBack,
       ...rails.oldFriends,
     ],
-    [rails.ongoing, rails.comingBack, rails.oldFriends],
+    [rails.ongoing, rails.oldFriends],
   );
 
   const showing = useEntriesOnRail(entries);

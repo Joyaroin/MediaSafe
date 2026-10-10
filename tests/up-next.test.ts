@@ -34,12 +34,13 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  *
  * ── The rails, and why they share these assertions rather than copying them ───────────
  *
- * Issue #137 made Up next three rails over one definition, and the same argument applies a
+ * Issue #137 made Up next several rails over one definition, and the same argument applies a
  * second time: a rail that held a *different* order would be a silently wrong screen, and
- * three copies of one expectation are three places for one rule to drift. So the ordering
- * cases below are written once and run against three readers — ONGOING, OLD FRIENDS and
- * COMING BACK — through `OrderReader`, and the rails' own *membership* rules are asserted
- * separately at the foot of this file.
+ * two copies of one expectation are two places for one rule to drift. So the ordering
+ * cases below are written once and run against both readers — ONGOING and OLD FRIENDS —
+ * through `OrderReader`, and the rails' own *membership* rules are asserted separately at
+ * the foot of this file. (#137's COMING BACK rail is deleted: a show whose Up next episode
+ * has not aired is not on Continue watching.)
  *
  * ── No network, and nothing mocked ───────────────────────────────────────────────────
  *
@@ -235,9 +236,8 @@ async function seedWatching(
 }
 
 /**
- * A caught-up show that has something dated still to come — **COMING BACK's own membership,
- * as a seeder shaped exactly like `seedWatching`** so the ordering assertions below can be
- * run against that rail without being written a second time.
+ * A caught-up show that has something dated still to come — *coming back* (`CONTEXT.md`),
+ * shaped exactly like `seedWatching` so the two differ by one default.
  *
  * Episode 1 is released and watched, which is what makes *every released episode has a
  * watch* true; episodes 2 upwards are unreleased, which is what keeps the show out of
@@ -340,24 +340,10 @@ const OLD_FRIENDS: OrderReader = {
   entries: async (tx, userId) => (await listUpNextRails(userId, tx)).oldFriends,
 };
 
-const COMING_BACK: OrderReader = {
-  label: "listUpNextRails — COMING BACK",
-  seed: seedComingBack,
-  displace: displaceNothing,
-  names: (tx, userId) => railNames(tx, userId, (rails) => rails.comingBack),
-  entries: async (tx, userId) => (await listUpNextRails(userId, tx)).comingBack,
-};
-
 /**
- * The three terms of §7's order that every reader holds, whatever its membership is:
- * recency descending, closest-to-finishing as the tiebreak, and the total order underneath
- * both.
- *
- * The cascade's other two ranks — the air-date fallback and the group with no date at all —
- * are asserted in `describeTheCascade` below instead, against the *watching* readers only.
- * They are not shared because COMING BACK's membership forbids the states they turn on: a
- * next episode with no air date, or one whose air date has passed, is not a title coming
- * back, and a case that seeded one would be asserting that the rail is empty.
+ * The three terms of §7's order that every reader holds: recency descending,
+ * closest-to-finishing as the tiebreak, and the total order underneath both. The cascade's
+ * air-date fallback is asserted in `describeTheCascade` below.
  */
 function describeTheSharedTerms(reader: OrderReader): void {
   describe(`${reader.label} — the ordering`, () => {
@@ -436,8 +422,8 @@ function describeTheSharedTerms(reader: OrderReader): void {
 }
 
 /**
- * The cascade's other two ranks — the air-date fallback, and the group with no date to sort
- * by at all — against every reader over the *watching* set.
+ * The cascade's second rank — the air-date fallback — against every reader. A next episode
+ * with no air date is not on Continue watching at all, so it has no rank to assert.
  */
 function describeTheCascade(reader: OrderReader): void {
   describe(`${reader.label} — the ordering cascade`, () => {
@@ -505,60 +491,11 @@ function describeTheCascade(reader: OrderReader): void {
       });
     });
 
-    it("sinks a next episode with no air date below both groups", async () => {
-      await inTransaction(async (tx) => {
-        const user = await seedUser(tx, "reader");
-        await reader.displace(tx, user);
-
-        await reader.seed(tx, user, {
-          name: "Undatable",
-          watchedAt: null,
-          nextAirDate: null,
-        });
-        await reader.seed(tx, user, {
-          name: "Fallback",
-          watchedAt: null,
-          nextAirDate: daysFromToday(-400),
-        });
-        await reader.seed(tx, user, { name: "Recency", watchedAt: daysAgo(3000) });
-
-        expect(await reader.names(tx, user)).toEqual([
-          "Recency",
-          "Fallback",
-          "Undatable",
-        ]);
-      });
-    });
-
-    it("keeps a dated title in the recency group however undated its next episode is", async () => {
-      await inTransaction(async (tx) => {
-        const user = await seedUser(tx, "reader");
-        await reader.displace(tx, user);
-
-        await reader.seed(tx, user, {
-          name: "Watched yesterday",
-          watchedAt: daysAgo(1),
-          nextAirDate: null,
-        });
-        await reader.seed(tx, user, {
-          name: "Watched last week",
-          watchedAt: daysAgo(7),
-        });
-
-        expect(await reader.names(tx, user)).toEqual([
-          "Watched yesterday",
-          "Watched last week",
-        ]);
-      });
-    });
   });
 }
 
-for (const reader of [ONGOING, OLD_FRIENDS, COMING_BACK]) {
-  describeTheSharedTerms(reader);
-}
-
 for (const reader of [ONGOING, OLD_FRIENDS]) {
+  describeTheSharedTerms(reader);
   describeTheCascade(reader);
 }
 
@@ -624,7 +561,7 @@ function ongoingCards(rails: UpNextRails): readonly UpNextEntry[] {
 
 /** Every name on every rail, so a case can assert what is nowhere as well as what is where. */
 function everyRailName(rails: UpNextRails): string[] {
-  return [...rails.ongoing, ...rails.comingBack, ...rails.oldFriends].map(
+  return [...rails.ongoing, ...rails.oldFriends].map(
     (entry) => entry.titleName,
   );
 }
@@ -752,21 +689,24 @@ describe("listUpNextRails — what each rail contains", () => {
     });
   });
 
-  it("holds a caught-up title on COMING BACK while its next episode is still to air", async () => {
+  /**
+   * **Continue watching is what you can watch right now** (`CONTEXT.md`) — the JoJo case.
+   * A show whose Up next episode has not aired drew on the list with no check, beside shows
+   * that could be watched, and read as a glitch. It is on Coming up instead, and on no part
+   * of this read.
+   */
+  it("leaves a caught-up title off every rail while its next episode is still to air", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
-      await seedComingBack(tx, reader, { name: "Returning", watchedAt: daysAgo(30) });
+      await seedComingBack(tx, reader, { name: "Returning", watchedAt: daysAgo(1) });
+      await seedWatching(tx, reader, { name: "Watching", watchedAt: daysAgo(30) });
 
-      const rails = await listUpNextRails(reader, tx);
-
-      expect(rails.comingBack.map((entry) => entry.titleName)).toEqual(["Returning"]);
-      expect(rails.ongoing).toEqual([]);
-      expect(rails.oldFriends).toEqual([]);
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual(["Watching"]);
     });
   });
 
-  it("drops a title off COMING BACK once its next episode's air date has passed", async () => {
+  it("puts a returning title on Ongoing the day its next episode airs", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
@@ -777,35 +717,49 @@ describe("listUpNextRails — what each rail contains", () => {
 
       await tx
         .update(episode)
-        .set({ airDate: daysFromToday(-1) })
+        .set({ airDate: daysFromToday(0) })
         .where(eq(episode.id, returning.episodeIds[1]));
 
+      // The same read on a different day, and nothing was written to move it.
       const rails = await listUpNextRails(reader, tx);
-
-      // The same read on a different day, and nothing was written to move it: the episode
-      // has aired, so *caught up* is no longer true and COMING BACK's predicate no longer
-      // holds. `library_entry_state` says *watching*, which is ONGOING.
-      expect(rails.comingBack).toEqual([]);
       expect(rails.ongoing.map((entry) => entry.titleName)).toEqual(["Returning"]);
     });
   });
 
-  it("never puts a title with no future air date on COMING BACK", async () => {
+  it("leaves a watching title off every rail when its next episode has not aired", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
-      // Caught up — every *released* episode is watched, because a null air date is not
-      // released — with a next episode TMDB has not dated. There is no day to come back
-      // on, so the rail cannot say there is one.
+      // *Watching*, because episode 3 aired and is unwatched — but Up next is a position,
+      // episode 2, and that has not aired. Nothing on the card could be watched tonight.
+      await seedWatching(tx, reader, {
+        name: "Unaired next",
+        watchedAt: daysAgo(1),
+        nextAirDate: UNRELEASED,
+      });
+      await seedWatching(tx, reader, { name: "Aired next", watchedAt: daysAgo(2) });
+
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual(["Aired next"]);
+    });
+  });
+
+  it("leaves a title off every rail when TMDB has not dated its next episode", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+
+      // A null air date has not aired — `db/views.ts`'s rule, held here too.
+      await seedWatching(tx, reader, {
+        name: "Undated, watching",
+        watchedAt: daysAgo(1),
+        nextAirDate: null,
+      });
       await seedComingBack(tx, reader, {
-        name: "Undated return",
-        watchedAt: daysAgo(30),
+        name: "Undated, caught up",
+        watchedAt: daysAgo(1),
         nextAirDate: null,
       });
 
-      const rails = await listUpNextRails(reader, tx);
-
-      expect(everyRailName(rails)).toEqual([]);
+      expect(everyRailName(await listUpNextRails(reader, tx))).toEqual([]);
     });
   });
 
@@ -853,7 +807,7 @@ describe("listUpNextRails — what each rail contains", () => {
 
       const rails = await listUpNextRails(reader, tx);
 
-      expect(rails).toEqual({ ongoing: [], comingBack: [], oldFriends: [] });
+      expect(rails).toEqual({ ongoing: [], oldFriends: [] });
     });
   });
 
@@ -863,16 +817,12 @@ describe("listUpNextRails — what each rail contains", () => {
       const stranger = await seedUser(tx, "stranger");
 
       await seedWatching(tx, reader, { name: "Mine", watchedAt: daysAgo(5) });
-      await seedComingBack(tx, reader, { name: "Mine, returning", watchedAt: daysAgo(6) });
+      await seedWatching(tx, reader, { name: "Mine, older", watchedAt: daysAgo(6) });
       await seedWatching(tx, stranger, { name: "Theirs", watchedAt: daysAgo(1) });
-      await seedComingBack(tx, stranger, {
-        name: "Theirs, returning",
-        watchedAt: daysAgo(1),
-      });
 
       expect(everyRailName(await listUpNextRails(reader, tx))).toEqual([
         "Mine",
-        "Mine, returning",
+        "Mine, older",
       ]);
     });
   });
@@ -962,6 +912,36 @@ describe("listUpNextRails — what each rail contains", () => {
           more: false,
         },
       });
+    });
+  });
+
+  /**
+   * **Remaining counts aired episodes only** (`CONTEXT.md`). JoJo printed `+8 remaining`
+   * because this count read `library_entry_remaining`, which counts every unwatched
+   * episode TMDB lists — announced ones included. The entry's figure includes the episode
+   * being offered, which the card subtracts (`episode-card-line.ts`).
+   */
+  it("counts only aired episodes in what remains, and not the specials", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        episodes: [
+          { seasonNo: 0, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+          { seasonNo: 1, episodeNo: 4, airDate: UNRELEASED },
+          { seasonNo: 1, episodeNo: 5, airDate: UNRELEASED },
+          { seasonNo: 1, episodeNo: 6, airDate: null },
+        ],
+      });
+      await markWatched(tx, show, 1, daysAgo(1));
+
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
+
+      // Episode 2 offered, episode 3 aired after it: two, of which the card prints one.
+      expect(entry.episodeNo).toBe(2);
+      expect(entry.remaining).toBe(2);
     });
   });
 
@@ -1223,15 +1203,14 @@ describe("listUpNextRails — a title whose episodes have not mirrored", () => {
     });
   });
 
-  it("keeps the rails three, and puts pending on Ongoing rather than a fourth", async () => {
+  it("keeps the rails two, and puts pending on Ongoing rather than a third", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       await seedPending(tx, reader, "Just added");
 
       const rails = await listUpNextRails(reader, tx);
 
-      expect(Object.keys(rails).sort()).toEqual(["comingBack", "oldFriends", "ongoing"]);
-      expect(rails.comingBack).toEqual([]);
+      expect(Object.keys(rails).sort()).toEqual(["oldFriends", "ongoing"]);
       expect(rails.oldFriends).toEqual([]);
     });
   });
@@ -1477,39 +1456,6 @@ describe("listUpNextRails — an Ongoing tile's queue", () => {
         entry.queue.episodes.map((one) => one.episodeId),
       );
       expect(queued).not.toContain(theirs.episodeIds[1]);
-    });
-  });
-
-  /**
-   * **#250 reversed the shape this used to assert.** Every card on the phone's rail carries
-   * a check, so every entry carries a run — Coming back included, which used to have none.
-   *
-   * What is asserted instead is the thing that makes Coming back's run *right* rather than
-   * merely present: it is **empty, with `more: false`**, and no query was run to discover
-   * that. `COMING_BACK`'s predicate is *the next episode's air date is in the future* and
-   * `upNextQueues` truncates at the first episode that is not released, so the two together
-   * determine the answer — `listUpNextRails` supplies `NOTHING_RELEASED` rather than paying
-   * for a query whose result the predicate already fixes.
-   *
-   * The pair matters, and `false` is the load-bearing half: it is *this show has nothing
-   * released left*, which is exactly true today. `true` would claim a run the read merely
-   * failed to fetch and would leave the card waiting for a refill no reload could produce.
-   */
-  it("gives Coming back an empty run rather than no run", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const comingBack = await seedShow(tx, reader, {
-        episodes: [
-          { seasonNo: 1, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 2, airDate: UNRELEASED },
-        ],
-      });
-      await markWatched(tx, comingBack, 0, daysAgo(1));
-
-      const rails = await listUpNextRails(reader, tx);
-
-      expect(rails.comingBack).toHaveLength(1);
-      expect(rails.comingBack[0].queue).toEqual({ episodes: [], more: false });
     });
   });
 

@@ -210,9 +210,11 @@ function RowBody({
                 The air date and the runtime used to close this line with a third span —
                 deleted with `episodeMetaLine` (#321), rather than a placeholder. The
                 line is a flex row, so nothing is left to close a gap over. */}
-            <span className="code-line text-dim" data-numeric>
-              {remainingInWords(remainingAfter)}
-            </span>
+            {remainingAfter > 0 ? (
+              <span className="code-line text-dim" data-numeric>
+                {remainingInWords(remainingAfter)}
+              </span>
+            ) : null}
           </p>
 
           {/* No line at all where TMDB has not named the episode, rather than the number a

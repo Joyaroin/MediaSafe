@@ -146,23 +146,24 @@ describe("the Up next row's meta line carries no air date and no runtime", () =>
 });
 
 
-describe("the next-episodes rail is the three orderings concatenated", () => {
+describe("the next-episodes rail is the two orderings concatenated", () => {
   const source = sourceAt(EPISODE_RAIL);
 
   /**
-   * **The assertion this file exists for.** Ongoing, then coming back, then old friends —
-   * the sequence the five deleted groups expressed structurally, now expressed as one line
-   * of spread syntax that nothing else in the build would notice going wrong.
+   * **The assertion this file exists for.** Ongoing, then old friends — the sequence the
+   * five deleted groups expressed structurally, now expressed as one line of spread syntax
+   * that nothing else in the build would notice going wrong. Coming back was between them
+   * until it was deleted: a show whose Up next episode has not aired is not on this list.
    *
    * **#272 narrowed the first of the three and did not reorder them.** Ongoing can now hold
    * a title whose episodes have not mirrored, which has no run to mark and no episode to
    * draw, so `isEpisodeEntry` takes the episode-bearing half of that rail here — the same
-   * three arrays, in the same order, with the pending cards lifted out and drawn ahead of
+   * arrays, in the same order, with the pending cards lifted out and drawn ahead of
    * the whole sequence (below).
    */
-  it("spreads ongoing, then comingBack, then oldFriends, in that order", () => {
+  it("spreads ongoing, then oldFriends, in that order", () => {
     expect(source).toMatch(
-      /\[\s*\.\.\.rails\.ongoing\.filter\(isEpisodeEntry\),\s*\.\.\.rails\.comingBack,\s*\.\.\.rails\.oldFriends,?\s*\]/,
+      /\[\s*\.\.\.rails\.ongoing\.filter\(isEpisodeEntry\),\s*\.\.\.rails\.oldFriends,?\s*\]/,
     );
   });
 
@@ -198,16 +199,12 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
   it("memoises the concatenation rather than rebuilding it each render", () => {
     expect(source).toMatch(/const entries = useMemo\(/);
     expect(source).toMatch(
-      /\[rails\.ongoing,\s*rails\.comingBack,\s*rails\.oldFriends\],/,
+      /\[rails\.ongoing,\s*rails\.oldFriends\],/,
     );
   });
 
-  it("names all three, so none can be dropped without this failing", () => {
-    for (const rail of [
-      "rails.ongoing",
-      "rails.comingBack",
-      "rails.oldFriends",
-    ]) {
+  it("names both, so neither can be dropped without this failing", () => {
+    for (const rail of ["rails.ongoing", "rails.oldFriends"]) {
       expect({ rail, present: source.includes(rail) }).toEqual({
         rail,
         present: true,
@@ -217,10 +214,10 @@ describe("the next-episodes rail is the three orderings concatenated", () => {
 
   /** The read keeps them apart so this file can put them in order. A read that had already
    *  flattened them would put the rule where no surface could see it. */
-  it("leaves the read's three arrays as three", () => {
+  it("leaves the read's two arrays as two, and has no coming-back rail", () => {
     const access = sourceAt("db/access.ts");
     expect(access).toMatch(/export interface UpNextRails \{[^}]*\bongoing\b/);
-    expect(access).toMatch(
+    expect(access).not.toMatch(
       /export interface UpNextRails \{[^}]*\bcomingBack\b/,
     );
     expect(access).toMatch(

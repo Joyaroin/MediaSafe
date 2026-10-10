@@ -8,7 +8,7 @@ import { UpNextNothing } from "./up-next-nothing";
  *
  * | Rail | What is on it |
  * |---|---|
- * | **Continue watching** | ongoing, then coming back, then old friends — one rail |
+ * | **Continue watching** | ongoing, then old friends — one rail |
  * | **Films to watch** | the films standing at Watchlist |
  *
  * ── One empty state here, and it is not the rails' own ──────────────────────────────
@@ -39,10 +39,7 @@ export function UpNextWatching({
   rails: UpNextRails;
   films: readonly LibraryStateGroupEntry[];
 }) {
-  const noEpisodes =
-    rails.ongoing.length === 0 &&
-    rails.comingBack.length === 0 &&
-    rails.oldFriends.length === 0;
+  const noEpisodes = rails.ongoing.length === 0 && rails.oldFriends.length === 0;
 
   if (noEpisodes && films.length === 0) return <UpNextNothing />;
 

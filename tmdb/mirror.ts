@@ -415,6 +415,24 @@ export function textFrom(value: string | null | undefined): string | null {
   return value ? value : null;
 }
 
+/**
+ * An episode's name, or `null` where TMDB has not named it — and **TMDB's placeholder
+ * counts as not named** (`CONTEXT.md`, *Placeholder name*).
+ *
+ * TMDB fills an announced episode's name with `Episode 4` until the real one is known, and
+ * every surface then printed `S06 · E04` beside `Episode 4`: the number twice, which is the
+ * thing *an episode is never referred to by number alone* is there to stop. Normalising it
+ * here, on the way in, is what makes it true of every surface at once. The real name
+ * replaces `null` on the refresh after TMDB publishes it, as any borrowed column does.
+ */
+export function episodeNameFrom(value: string | null | undefined): string | null {
+  const name = textFrom(value);
+  return name === null || PLACEHOLDER_NAME.test(name) ? null : name;
+}
+
+/** Exported for `tests/episode-placeholder-names.test.ts`, which holds `drizzle/0011` to it. */
+export const PLACEHOLDER_NAME = /^Episode \d+$/;
+
 /** Exported for the same reason `textFrom` is — see its comment. */
 export function integerFrom(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
@@ -692,7 +710,7 @@ function episodeMirrors(seasons: readonly TmdbSeasonPayload[]): EpisodeMirror[] 
         episodeNo: integerFrom(episode.episode_number) ?? 0,
         // Load-bearing, not decorative: referring to an episode by
         // number alone is forbidden, which puts the name on ordinary list screens.
-        name: textFrom(episode.name),
+        name: episodeNameFrom(episode.name),
         airDate: dateFrom(episode.air_date),
         runtimeMins: integerFrom(episode.runtime),
         // `textFrom`, exactly as `posterPath` uses it: `""` is a path that would resolve
