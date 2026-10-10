@@ -22,3 +22,18 @@ export const CARD_GRID = "stagger-rise grid gap-2 px-gutter sm:grid-cols-2 2xl:g
 export const CARD_POSTER_WIDTH = 56;
 
 export const CARD_POSTER = "w-14 shrink-0 [--poster-radius:var(--radius-4)]";
+
+/**
+ * The featured card — issue #362: the show watched most recently, drawn across the whole
+ * grid row. The same raised material as `CARD`; on a phone the still sits above the text
+ * and the check beside the text, from `sm` they sit in one row.
+ */
+export const FEATURED_CARD =
+  "relative flex items-end gap-3 overflow-hidden rounded-[var(--radius-6)] bg-raised plate-line p-2.5 sm:col-span-2 sm:items-center 2xl:col-span-3";
+
+/**
+ * The featured card's wash, over its poster tint (`app/poster-tint.ts`, `.poster-tint` in
+ * `app/globals.css`): the tint in the corner the picture sits in, fading into the card's own
+ * ground — the title page hero's gradient, turned for a card.
+ */
+export const FEATURED_WASH = "linear-gradient(135deg, var(--tint), var(--color-raised) 75%)";

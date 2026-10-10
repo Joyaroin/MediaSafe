@@ -45,6 +45,7 @@ function queued(facts: Partial<QueuedEpisode>): QueuedEpisode {
     seasonAiring: false,
     lastOfShow: false,
     seasonReleased: 10,
+    stillPath: null,
     ...facts,
   };
 }

@@ -8,6 +8,7 @@ import type {
 import { createWatchMarks } from "@/app/(signed-in)/library/watch-marks";
 import {
   cardPicture,
+  featuredPicture,
   markFromCard,
   readUpNextMark,
   seasonProgress,
@@ -57,6 +58,7 @@ function episodeAt(
     seasonAiring: false,
     lastOfShow: false,
     seasonReleased,
+    stillPath: null,
   };
 }
 
@@ -88,6 +90,7 @@ function entryWith(
     stillPath: "/still.jpg",
     remaining: episodes.length,
     inProduction: true,
+    posterColour: null,
     seasonWatched: Math.max(0, (episodes[0]?.episodeNo ?? 1) - 1),
     seasonReleased: episodes[0]?.seasonReleased ?? 10,
     queue: { episodes, more },
@@ -231,6 +234,7 @@ describe("an Ongoing tile's mark", () => {
         seasonAiring: false,
         lastOfShow: false,
         seasonReleased: 10,
+        stillPath: null,
       },
       episodeAt(2, 5),
     ]);
@@ -619,5 +623,46 @@ describe("the season progress a next-episodes card draws", () => {
     const entry = { ...entryWith([]), seasonWatched: 5, seasonReleased: 6 };
 
     expect(seasonProgress(entry, null, 0)).toEqual({ watched: 5, released: 6 });
+  });
+});
+
+/**
+ * The featured card's picture — issue #362: the still of the episode on the card, then the
+ * title's poster, then nothing. It follows the episode, so it moves with the mark.
+ */
+describe("the picture the featured card draws", () => {
+  const withStill = (seasonNo: number, episodeNo: number, stillPath: string | null) => ({
+    ...episodeAt(seasonNo, episodeNo),
+    stillPath,
+  });
+
+  it("draws the shown episode's still, and the next one's once the mark advances", () => {
+    const entry = entryWith([withStill(1, 2, "/s1e2.jpg"), withStill(1, 3, "/s1e3.jpg")]);
+
+    expect(featuredPicture(entry, entry.queue.episodes[0])).toEqual({
+      kind: "still",
+      path: "/s1e2.jpg",
+    });
+    expect(featuredPicture(entry, entry.queue.episodes[1])).toEqual({
+      kind: "still",
+      path: "/s1e3.jpg",
+    });
+  });
+
+  it("falls back to the poster where TMDB has no still, and to nothing without either", () => {
+    const entry = entryWith([withStill(1, 2, null)]);
+    expect(featuredPicture(entry, entry.queue.episodes[0])).toEqual({
+      kind: "poster",
+      path: "/bcs.jpg",
+    });
+
+    const bare = entryWith([withStill(1, 2, null)], false, { posterPath: null });
+    expect(featuredPicture(bare, bare.queue.episodes[0])).toEqual({ kind: "none" });
+  });
+
+  it("draws the head episode's still for a card whose run arrived empty", () => {
+    const comingBack = entryWith([]);
+
+    expect(featuredPicture(comingBack, null)).toEqual({ kind: "still", path: "/still.jpg" });
   });
 });
