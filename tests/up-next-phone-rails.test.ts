@@ -99,7 +99,11 @@ describe("the Up next row draws a poster and not a still", () => {
     // `ROW_POSTER_WIDTH`/`POSTER` rather than left beside the new box under a stale name.
     expect(code).not.toMatch(/\bSTILL\b/);
     expect(code).not.toMatch(/\bROW_STILL_WIDTH\b/);
-    expect(code).toMatch(/\[--poster-radius:var\(--radius-1\)\]/);
+    // The card's poster box (`up-next-card-styles.ts`), shared with the film cards.
+    expect(code).toContain("const POSTER = CARD_POSTER;");
+    expect(sourceAt(`${UP_NEXT}/up-next-card-styles.ts`)).toMatch(
+      /\[--poster-radius:var\(--radius-4\)\]/,
+    );
   });
 });
 

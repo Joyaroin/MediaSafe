@@ -41,9 +41,8 @@ import { NavTransition } from "../nav-transition";
  * sorted for neither. One extra query on a page that already makes three, against two
  * surfaces that stay independently correct. All run on every load because
  * **the server does not know the viewport** — #136 deleted the one `matchMedia` branch this
- * build ever had, deliberately, so which surface renders is a Tailwind fact and not a
- * server one. `hidden lg:block` and `lg:hidden` below are the same device the deleted
- * desktop TONIGHT row used, for the same reason.
+ * build ever had, deliberately. Since the UI overhaul both devices draw the same pager, so
+ * no surface depends on the viewport at all.
  *
  * **Be precise about what that costs.** A desktop load pays for the films read without ever
  * rendering it, and both loads pay for the queue read inside `listUpNextRails` that only
@@ -136,17 +135,14 @@ export default async function UpNextPage() {
       <main className="flex w-full flex-1 flex-col">
         <UpNextHeading />
 
-        {/* One structure on every screen size: what you are watching, and what is coming
-            up. A phone pages between the two; a desktop stacks them. Each half answers its
-            own empty case, and a failure in any read throws past both into `error.tsx`. */}
-        <div className="lg:hidden">
+        {/* One structure, drawn once, on every screen size: what you are watching, and
+            what is coming up, paged. It used to be drawn twice — the pager for phones and a
+            stacked copy for desktops, one hidden by CSS — which mounted every card twice:
+            two marks stores' worth of subscriptions, and two `ViewTransition`s per poster
+            sharing a name, which breaks the poster morph on both. Each half answers its own
+            empty case, and a failure in any read throws past both into `error.tsx`. */}
+        <div className="w-full lg:max-w-6xl">
           <LandingPager upNext={watching} upcoming={comingUp} />
-        </div>
-
-        <div className="hidden max-w-4xl lg:block">
-          {watching}
-          <h2 className="px-gutter pt-10 text-bill-sm font-semibold text-text">Coming up</h2>
-          {comingUp}
         </div>
       </main>
     </NavTransition>

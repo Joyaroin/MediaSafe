@@ -173,6 +173,21 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
       "QUIET_RECORDING_CONTROL variants keep their own hover:border-accent/hover:text-accent " +
       "literals — a different control (watched up to here), left untouched by this ticket.",
   },
+  "app/(signed-in)/up-next/up-next-card.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason: "the filled check while an Up next card holds after a mark — the UI overhaul",
+  },
+  "app/(signed-in)/up-next/up-next-episode-row.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason: "'Watched' in place of the episode name while the card holds — the UI overhaul",
+  },
+  "app/(signed-in)/up-next/up-next-film-rail.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason: "'Watched' on a film card while it holds — the UI overhaul",
+  },
 
   // ── Literal exceptions: the brand mark ─────────────────────────────────────────────
 

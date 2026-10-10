@@ -145,6 +145,7 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
   { file: "app/(signed-in)/search/catalogue-result.tsx", count: 1 }, // a result row
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/up-next/upcoming-row.tsx", count: 1 }, // a list row
+  { file: "app/(signed-in)/up-next/up-next-card-styles.ts", count: 1 }, // a list row: Up next's cards
   { file: "app/(signed-in)/library/programme-note-section.ts", count: 1 }, // a programme-note panel
 ];
 

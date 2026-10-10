@@ -22,7 +22,7 @@ import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
  *  3. **`default: "none"` is on both.** Without it these four pages animate during the
  *     poster morph and every Suspense reveal, which is two animations fighting for the
  *     same pixels.
- *  4. **The chrome is anchored.** If the masthead and tab bar lose their names they slide
+ *  4. **The chrome is anchored.** If the tab bar loses its name it slides
  *     with the content, the whole viewport appears to move, and the direction stops
  *     meaning anything.
  *  5. **It stays phone-only.** The desktop sidebar must not start sliding.
@@ -30,7 +30,6 @@ import { backOrigin, isCurrentRoute, isTabRepress } from "@/app/nav-route";
 
 const GLOBALS = readFileSync("app/globals.css", "utf8");
 const TAB_BAR = readFileSync("app/tab-bar.tsx", "utf8");
-const MASTHEAD = readFileSync("app/masthead.tsx", "utf8");
 const WRAPPER = readFileSync("app/(signed-in)/nav-transition.tsx", "utf8");
 const LAYOUT = readFileSync("app/(signed-in)/layout.tsx", "utf8");
 
@@ -87,7 +86,6 @@ describe("one motion, and nothing that has to choose between motions", () => {
     // *code* — the attachment sweep above is what holds that.
     expect(TAB_BAR).not.toMatch(/TABS\.findIndex\([^)]*isCurrentRoute/);
     expect(TAB_BAR).not.toMatch(/return \["nav-/);
-    expect(MASTHEAD).not.toMatch(/\["nav-/);
   });
 
   it("draws no per-class rule, so a leftover class would animate nothing", () => {
@@ -189,18 +187,17 @@ describe("the poster morph's spring is scoped to posters, not to every group", (
     expect(groupRule("\\*\\.poster")).toContain("var(--spring-poster)");
   });
 
-  it("leaves the masthead and tab-bar groups out of the poster rule's scope", () => {
-    // Neither chrome group carries the `poster` class, and the selector that reaches them
+  it("leaves the tab-bar group out of the poster rule's scope", () => {
+    // The chrome group does not carry the `poster` class, and the selector that reaches them
     // is a name, not `*` — so the scoped rule above cannot address them at all, rather
     // than addressing them and being overridden afterwards.
     const posterRule = groupRule("\\*\\.poster");
-    expect(posterRule).not.toContain("phone-masthead");
     expect(posterRule).not.toContain("phone-tab-bar");
 
-    // And the existing override — `animation: none` on the two named chrome groups — is
+    // And the existing override — `animation: none` on the named chrome group — is
     // still the rule that keeps them still, unaffected by where the spring now lives.
     expect(GLOBALS).toMatch(
-      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+      /::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
   });
 
@@ -313,9 +310,8 @@ describe("where the wrapper lives", () => {
 });
 
 describe("the chrome stays still", () => {
-  it("names both pieces so they leave the root snapshot", () => {
+  it("names the tab bar so it leaves the root snapshot (there is no phone masthead)", () => {
     expect(TAB_BAR).toContain('viewTransitionName: "phone-tab-bar"');
-    expect(MASTHEAD).toContain('viewTransitionName: "phone-masthead"');
   });
 
   it("holds those groups still and hides the outgoing copy", () => {
@@ -323,10 +319,10 @@ describe("the chrome stays still", () => {
     // length of the transition, which reads as a flicker on the one element that is
     // meant to be the still point.
     expect(GLOBALS).toMatch(
-      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+      /::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
     expect(GLOBALS).toMatch(
-      /::view-transition-old\(phone-masthead\),\s*::view-transition-old\(phone-tab-bar\)\s*\{[^}]*display:\s*none/,
+      /::view-transition-old\(phone-tab-bar\)\s*\{[^}]*display:\s*none/,
     );
   });
 
@@ -397,9 +393,8 @@ describe("the poster morph, on one transition-name family", () => {
   it("leaves the fixed chrome out of the root snapshot, exactly as before", () => {
     // The morph collapsing to one family must not disturb what is held still under it.
     expect(TAB_BAR).toContain('viewTransitionName: "phone-tab-bar"');
-    expect(MASTHEAD).toContain('viewTransitionName: "phone-masthead"');
     expect(GLOBALS).toMatch(
-      /::view-transition-group\(phone-masthead\),\s*::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
+      /::view-transition-group\(phone-tab-bar\)\s*\{[^}]*animation:\s*none/,
     );
   });
 });

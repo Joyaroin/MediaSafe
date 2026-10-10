@@ -1228,6 +1228,65 @@
   }
 }
 
+/* The hold — the UI overhaul's replacement for the sweep on Up next's cards. The card
+   washes in the accent the moment a watch is recorded and stays washed for `HOLD_MS`
+   (`up-next-card.tsx`), so the confirmation is a state the reader can see rather than a
+   flash they have to catch. `RECORDS_A_WATCH` is the meaning: a watch exists because of a
+   press here. A tint and not the solid accent, so the card's text keeps its contrast.
+
+   The wash comes in from the check's side and fades up together, so it reads as spreading
+   from the press rather than switching on. */
+@utility watch-hold {
+  background-color: color-mix(in oklab, var(--color-accent) 14%, var(--color-raised));
+  transition: background-color var(--dur-slow) var(--ease-press);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+    transform-origin: right center;
+    pointer-events: none;
+    animation: watch-hold-in var(--dur-slow) var(--ease-press) forwards;
+  }
+}
+
+@keyframes watch-hold-in {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* The filled check arriving: a small overshoot, the press register's pop in miniature. */
+@utility check-pop {
+  animation: check-pop var(--dur-pop) var(--ease-press) backwards;
+}
+
+@keyframes check-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watch-hold::before,
+  .check-pop {
+    animation-duration: 1ms;
+  }
+}
+
 /* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
    The state that drives each bar's `width` already updates at the sweep's settle
    (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), so the only thing
@@ -1962,16 +2021,13 @@
   }
 }
 
-::view-transition-group(phone-masthead),
 ::view-transition-group(phone-tab-bar) {
   animation: none;
   z-index: 100;
 }
-::view-transition-old(phone-masthead),
 ::view-transition-old(phone-tab-bar) {
   display: none;
 }
-::view-transition-new(phone-masthead),
 ::view-transition-new(phone-tab-bar) {
   animation: none;
 }

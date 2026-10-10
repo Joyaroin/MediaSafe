@@ -106,6 +106,12 @@ export interface UpNextMark {
   readonly undoable: QueuedEpisode | null;
   /** The just-marked episode's animation phase, so the slot can play the sweep once. */
   readonly phase: WatchMarkPhase;
+  /**
+   * The episode the card is holding on — the one just recorded, while its mark is still
+   * `marking` — or `null`. The card draws this episode, washed, instead of `episode`
+   * until the hold ends (`up-next-card.tsx`'s `HOLD_MS`), and `settle()` is what ends it.
+   */
+  readonly held: QueuedEpisode | null;
   /** What goes in the card's frame — `cardPicture`'s answer. The card renders it and does
    *  not choose it (#269), and does not choose the frame's own ratio either — `2/3` on the
    *  row since #320, `16/9` on the retired next-episodes card. */
@@ -322,19 +328,16 @@ export function cardPicture(entry: Pick<UpNextEntry, "posterPath">): CardPicture
  *
  * ── The arrived-empty branch, and why it is not `finished` (#250) ────────────────────
  *
- * `finished` is *nothing released is left*, and it is true of two quite different cards.
- * One ran out **under the reader's thumb** — they marked the last released episode, and
- * the card has done its job. The other **arrived empty from the server**: every *coming
- * back* entry, whose next episode is dated in the future and so is not released today
- * (`listUpNextRails`'s `NOTHING_RELEASED`). That card has an episode to announce and
- * belongs on the rail; taking it off would be this ticket's own named failure — the rail
- * still rendering, still holding episodes, and quietly leaving shows out.
+ * An entry handed an empty run by the server was never markable, so nothing the reader
+ * does can finish it, and it stays. Coming back's entries used to be the common case;
+ * they are off Continue watching now, and what is left is `listUpNextRails`' defensive
+ * `more: true` fallback. An entry handed a non-empty run leaves when that run is spent.
  *
- * The two are told apart by the **server** run, which is a prop and does not change
- * between renders: an entry handed an empty run was never markable, so nothing the reader
- * does can finish it, and it stays. An entry handed a non-empty run leaves when that run
- * is spent. No client state is needed for the distinction, which is the whole reason it is
- * expressible here rather than as a fourth field on `UpNextQueue`.
+ * ── It leaves after the hold, not at the press ───────────────────────────────────────
+ *
+ * Marking a show's last aired episode spends its run at once, but the card holds on that
+ * episode, washed, with *Undo* beside it (`HOLD_MS`). So a spent card stays while its
+ * last mark is still `marking`, and leaves the moment `settle()` ends the hold.
  */
 export function stillOnRail(
   marks: WatchMarks,
@@ -342,7 +345,8 @@ export function stillOnRail(
   queue: UpNextQueue,
 ): boolean {
   if (queue.episodes.length === 0) return true;
-  return !readUpNextMark(marks, libraryEntryId, queue).finished;
+  const reading = readUpNextMark(marks, libraryEntryId, queue);
+  return !reading.finished || reading.phase === "marking";
 }
 
 /** Record a watch of `episode` from a card. The key, the rollback and the toast are all
@@ -463,6 +467,7 @@ export function useUpNextMark(
     pending,
     undoable,
     phase,
+    held: phase === "marking" ? marked : null,
     /** The entry's own poster, since #320 — no longer a function of the position, because
      *  there is no still left in this rule for the position to choose between. */
     picture: cardPicture(entry),
