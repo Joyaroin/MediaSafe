@@ -9,7 +9,7 @@ import { UpNextNothing } from "./up-next-nothing";
  * | Rail | What is on it |
  * |---|---|
  * | **Continue watching** | ongoing, then old friends — one rail |
- * | **Films to watch** | the films standing at Watchlist |
+ * | **Films to watch** | the released films standing at Watchlist — unreleased ones are on Coming up |
  *
  * ── One empty state here, and it is not the rails' own ──────────────────────────────
  *

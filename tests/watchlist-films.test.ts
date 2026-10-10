@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -57,6 +58,9 @@ interface EntrySpec {
   name?: string;
   kind?: "film" | "show";
   releaseYear?: number | null;
+  /** `YYYY-MM-DD`. Defaults to a date long past — a released film — since the films rail
+   *  holds released films only. `null` is TMDB not having dated it. */
+  releaseDate?: string | null;
   posterPath?: string | null;
   runtimeMins?: number | null;
   abandonedAt?: Date;
@@ -77,6 +81,7 @@ async function seedEntry(
       tmdbId: number,
       name: spec.name ?? `Title ${number}`,
       releaseYear: "releaseYear" in spec ? spec.releaseYear : 2019,
+      releaseDate: "releaseDate" in spec ? spec.releaseDate : "2019-06-01",
       posterPath: "posterPath" in spec ? spec.posterPath : `/poster-${number}.jpg`,
       runtimeMins:
         "runtimeMins" in spec ? spec.runtimeMins : kind === "film" ? 104 : null,
@@ -229,23 +234,55 @@ describe("listWatchlistFilms", () => {
     });
   });
 
-  /** Both absences are the answer rather than an error, and `titleMetaLine` drops the part
-   *  it does not have rather than placeholding it (`up-next-film-rail.tsx`). */
+  /** The absences are the answer rather than an error, and `titleMetaLine` drops the part
+   *  it does not have rather than placeholding it (`up-next-film-rail.tsx`). A null *year*
+   *  is no longer one of them: the year and the date are one TMDB field (`releaseFrom`), and
+   *  an undated film is not released, so it is not on this rail at all (below). */
   it("carries the absences TMDB really has", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
-      await seedEntry(tx, reader, {
-        name: "Undated",
-        releaseYear: null,
-        posterPath: null,
-        runtimeMins: null,
-      });
+      await seedEntry(tx, reader, { name: "Bare", posterPath: null, runtimeMins: null });
 
       const [row] = await listWatchlistFilms(reader, tx);
 
-      expect(row.releaseYear).toBeNull();
       expect(row.posterPath).toBeNull();
       expect(row.runtimeMins).toBeNull();
+    });
+  });
+
+  /**
+   * **Films to watch is what you could watch tonight** — the UI overhaul, the films half of
+   * the JoJo fix. A film still to be released is on Coming up (`listUpcomingFilms`).
+   */
+  it("leaves out a film whose release date is still ahead", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedEntry(tx, reader, { name: "Out", releaseDate: "2020-01-01" });
+      await seedEntry(tx, reader, { name: "Next year", releaseDate: "2099-01-01" });
+
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Out"]);
+    });
+  });
+
+  it("holds a film the day it is released", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const [{ today }] = (
+        await tx.execute<{ today: string }>(sql`select current_date::text as today`)
+      ).rows;
+      await seedEntry(tx, reader, { name: "Today", releaseDate: today });
+
+      expect(names(await listWatchlistFilms(reader, tx))).toEqual(["Today"]);
+    });
+  });
+
+  /** A null release date has not released, as a null air date has not aired. */
+  it("leaves out a film TMDB has not dated", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      await seedEntry(tx, reader, { name: "Undated", releaseYear: null, releaseDate: null });
+
+      expect(await listWatchlistFilms(reader, tx)).toEqual([]);
     });
   });
 });

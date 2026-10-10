@@ -3777,7 +3777,14 @@ export interface LibraryStateGroupEntry {
 }
 
 /**
- * **The films rail's membership: standing at Watchlist, and a film** — issue #250.
+ * **The films rail's membership: standing at Watchlist, a film, and released** — issue
+ * #250, narrowed by the UI overhaul.
+ *
+ * *Released* is the film's half of `CONTINUE_WATCHING`'s rule: Films to watch is what you
+ * could watch tonight, and a film whose release date is still ahead — *Avengers: Secret
+ * Wars*, 2027 — is on Coming up (`listUpcomingFilms`) instead. **A null release date has
+ * not released**, exactly as a null air date has not aired, so an undated film is on
+ * neither list until TMDB dates it; it is still in the Library.
  *
  * Both halves are predicates and neither is a slice: `library_entry_state` decides the
  * first and `title.kind` the second, so a show on the watchlist and a film being watched
@@ -3819,6 +3826,8 @@ export async function listWatchlistFilms(
         ownedBy(userId, libraryEntry),
         eq(libraryEntryState.state, "watchlist" satisfies LibraryState),
         eq(title.kind, "film" satisfies TitleKind),
+        isNotNull(title.releaseDate),
+        lte(title.releaseDate, sql`current_date`),
       ),
     )
     .orderBy(sql`lower(${title.name})`, libraryEntry.id);
