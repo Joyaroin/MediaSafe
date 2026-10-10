@@ -94,8 +94,12 @@ export function YouSurface({
   figures,
   shows,
   films,
+  afterFigures,
 }: {
   readonly figures: AccountFigures;
+  /** What sits between the figures and the rails — issue #372's year of watching, which
+   *  reads for itself and so arrives from `page.tsx` already rendered. */
+  readonly afterFigures?: React.ReactNode;
   /** Issue #248's shows and films rails — shows Watching or Caught up, films Finished,
    *  each most recent dated watch first (`db/access.ts`'s `listYouRails`). */
   readonly shows: readonly LibraryStateGroupEntry[];
@@ -154,6 +158,8 @@ export function YouSurface({
           {qualifies}
         </p>
       )}
+
+      {afterFigures}
 
       {/*
         Then the three rails — issue #248, and not a figure among them: a list, a show and

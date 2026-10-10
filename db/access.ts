@@ -6018,3 +6018,50 @@ export async function accountFigures(
     undatedWatches: watches.undatedWatches,
   };
 }
+
+/**
+ * You's year of watching — issue #372. Every **dated** watch at or after `since`, oldest
+ * first, with what the heatmap lists beneath the grid for a selected day.
+ *
+ * `since` is the caller's lower bound on the instant, chosen a little wider than the
+ * window (`you/heatmap.ts` draws the exact twelve months in the reader's zone and drops
+ * anything outside it). `watched_at is not null` plus the range on `watched_at` is the
+ * partial index `watch_user_id_watched_at_idx`, so this is one range scan of it.
+ *
+ * Undated watches are left out here and stay counted in You's qualification line.
+ */
+export interface YearWatch {
+  readonly watchId: string;
+  readonly libraryEntryId: string;
+  readonly titleName: string;
+  /** `null` for a film's watch. */
+  readonly seasonNo: number | null;
+  readonly episodeNo: number | null;
+  readonly episodeName: string | null;
+  readonly watchedAt: Date;
+}
+
+export async function listWatchesSince(
+  userId: UserId,
+  since: Date,
+  executor: Executor = getDb(),
+): Promise<YearWatch[]> {
+  const rows = await executor
+    .select({
+      watchId: watch.id,
+      libraryEntryId: watch.libraryEntryId,
+      titleName: title.name,
+      seasonNo: episode.seasonNo,
+      episodeNo: episode.episodeNo,
+      episodeName: episode.name,
+      watchedAt: watch.watchedAt,
+    })
+    .from(watch)
+    .innerJoin(title, eq(title.id, watch.titleId))
+    .leftJoin(episode, eq(episode.id, watch.episodeId))
+    .where(and(ownedBy(userId, watch), isNotNull(watch.watchedAt), gte(watch.watchedAt, since)))
+    .orderBy(asc(watch.watchedAt), asc(watch.id));
+
+  // `isNotNull` above is what makes the cast true; the column's type cannot know it.
+  return rows.map((row) => ({ ...row, watchedAt: row.watchedAt as Date }));
+}
