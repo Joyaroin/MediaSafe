@@ -176,6 +176,19 @@ export async function requireTimezone(): Promise<string> {
 }
 
 /**
+ * This reader's calendar feed token, or `null` before they have made a link — Settings'
+ * calendar control, issue #366. Off the resolved session like `requireTimezone`; the cookie
+ * cache is off (`lib/auth.ts`), so a token replaced a moment ago is the one read here.
+ */
+export async function requireCalendarFeedToken(): Promise<string | null> {
+  const session = await currentSession();
+
+  if (!session) redirect("/sign-in");
+
+  return session.user.calendarFeedToken ?? null;
+}
+
+/**
  * The display name for the masthead, or `null` with no session.
  *
  * Never redirects — the masthead is not the gate (`app/(signed-in)/layout.tsx`'s

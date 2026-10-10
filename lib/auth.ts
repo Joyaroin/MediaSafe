@@ -184,6 +184,25 @@ export const authOptions = {
         required: false,
         input: false,
       },
+
+      /**
+       * The secret in the reader's calendar feed URL — issue #366. A calendar app cannot
+       * sign in, so `/api/calendar/<token>.ics` is authenticated by this value alone, and
+       * replacing it (Settings' *Make a new link*) is what kills an old URL.
+       *
+       * Declared here for `timezone`'s reason. `required: false` because a reader who never
+       * asked for a feed has no secret to leak: the column stays null until they make one.
+       * `input: false` because the server mints it (`renewCalendarFeedToken` in
+       * `db/access.ts`); a client choosing its own token would be choosing a guessable one.
+       * `unique` so the feed's lookup by token is an index read and two accounts can never
+       * answer to one URL.
+       */
+      calendarFeedToken: {
+        type: "string",
+        required: false,
+        input: false,
+        unique: true,
+      },
     },
   },
 

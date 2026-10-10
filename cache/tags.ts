@@ -400,6 +400,10 @@ export const UNCACHED_READS = {
     "The nightly sweep's candidate list, ordered by `metadata_refreshed_at`, which the sweep itself then moves. A cached answer would hand tomorrow's run the same 200 titles it refreshed tonight.",
   titlesWantingPosterColour:
     "The poster colour fill's candidate list (issue #361), which the fill itself then empties. A cached answer would hand the next run the titles this one just coloured.",
+  calendarFeedOwner:
+    "The calendar feed's token lookup (issue #366): one unique-index row, and the answer must change the instant Settings makes a new link. A cached owner would keep a revoked URL working for the cache's lifetime.",
+  listCalendarFeed:
+    "Read by a calendar app polling every few hours with no session, so nothing else reads the same key between polls. Caching it would add a second place for the calendar and Up next to disagree, for no hits.",
   watchedTmdbEpisodeIds:
     "Read inside the sweep's reconciliation, from that run's transaction. `unstable_cache` cannot take an executor, so caching it would mean reading outside the transaction whose rows it is about.",
 } as const satisfies Record<string, string>;
@@ -853,6 +857,9 @@ export const INVALIDATES = {
   writePosterColour: ["library", "up-next", "title-detail", "you"],
   /** Writes `user.import_offer_answered_at`, which no cached read selects. */
   markImportOfferAnswered: [],
+  /** `user.calendar_feed_token`, which no cached read selects; the feed's own reads are
+   *  uncached (`UNCACHED_READS`). */
+  renewCalendarFeedToken: [],
   /** `list` and `list_membership`, which only the two list reads join. */
   createList: ["lists"],
   createListAndAddTitle: ["lists"],

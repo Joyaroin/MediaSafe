@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import {
   and,
   asc,
@@ -4305,6 +4307,160 @@ export async function listUpcomingFilms(
       ),
     )
     .orderBy(title.releaseDate, sql`lower(${title.name})`, libraryEntry.id);
+}
+
+/**
+ * ── The calendar feed — issue #366 ───────────────────────────────────────────────────
+ *
+ * A calendar app fetches `/api/calendar/<token>.ics` with no session, so the token is the
+ * whole credential. It lives on `user.calendar_feed_token` (`lib/auth.ts`), null until the
+ * reader first asks Settings for a link.
+ */
+
+/**
+ * Mints a new feed token for this account and returns it, replacing whatever was there —
+ * which is what kills the old URL: the old token stops matching any row the instant this
+ * commits.
+ *
+ * 32 random bytes, base64url: 43 URL-safe characters with 256 bits behind them, so a token
+ * cannot be guessed and two accounts never draw the same one (the column is unique anyway).
+ * Written here rather than through Better Auth for `markImportOfferAnswered`'s reason: the
+ * field is `input: false`, and there is no Better Auth flow for *the server decided this*.
+ */
+export async function renewCalendarFeedToken(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+
+  await executor.update(user).set({ calendarFeedToken: token }).where(eq(user.id, userId));
+
+  return token;
+}
+
+/**
+ * The account a feed token belongs to, or `null` when no account holds it — a token that
+ * was replaced, or one that never existed. `null` is a successful answer (the route turns it
+ * into a 404); a failed query throws like every read here.
+ *
+ * This is the one place a `UserId` is minted from something other than a session, and the
+ * token is why that is safe: it is a credential the owner was handed and can revoke.
+ */
+export async function calendarFeedOwner(
+  token: string,
+  executor: Executor = getDb(),
+): Promise<UserId | null> {
+  const [row] = await executor
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.calendarFeedToken, token))
+    .limit(1);
+
+  return row ? asUserId(row.id) : null;
+}
+
+/** One dated episode in the feed. */
+export interface CalendarFeedEpisode {
+  /** The event's identity: one episode is one event, however often the feed is fetched. */
+  readonly episodeId: string;
+  readonly libraryEntryId: string;
+  readonly titleName: string;
+  readonly seasonNo: number;
+  readonly episodeNo: number;
+  readonly episodeName: string | null;
+  /** `YYYY-MM-DD`, never null — the read's `is not null`, as in `UpcomingEpisode`. */
+  readonly airDate: string;
+}
+
+/** One unreleased film in the feed. */
+export interface CalendarFeedFilm {
+  /** The event's identity: the catalogue title, so removing and re-adding the film does
+   *  not mint a second event. */
+  readonly titleId: string;
+  readonly libraryEntryId: string;
+  readonly titleName: string;
+  /** `YYYY-MM-DD`, never null. */
+  readonly releaseDate: string;
+}
+
+export interface CalendarFeed {
+  readonly episodes: readonly CalendarFeedEpisode[];
+  readonly films: readonly CalendarFeedFilm[];
+}
+
+/**
+ * Everything the reader's calendar should hold: **every dated, unaired episode of a show in
+ * the library and every film in the library not yet released**, except titles the reader
+ * has stopped.
+ *
+ * Wider than Up next's Upcoming on purpose. That page lists what you are *watching*
+ * (`listUpcomingEpisodes`) and films on the watchlist (`listUpcomingFilms`); a calendar is
+ * where a show you have queued but not started, premiering next month, belongs too. The
+ * one state left out is *abandoned*: a show the reader stopped is one they asked to stop
+ * hearing about.
+ *
+ * The window and the `season_no > 0` domain are `listUpcomingEpisodes`' own, for its
+ * reasons — a day of slack for the timezones either side of UTC. A calendar holds yesterday
+ * happily, so nothing downstream narrows it.
+ *
+ * Unguarded: a failure throws, the route answers 500, and the calendar app keeps the events
+ * it already had and tries again later. An empty feed would instead delete every event.
+ */
+export async function listCalendarFeed(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<CalendarFeed> {
+  const notStopped = ne(libraryEntryState.state, "abandoned" satisfies LibraryState);
+
+  const [episodes, films] = await Promise.all([
+    executor
+      .select({
+        episodeId: episode.id,
+        libraryEntryId: libraryEntry.id,
+        titleName: title.name,
+        seasonNo: episode.seasonNo,
+        episodeNo: episode.episodeNo,
+        episodeName: episode.name,
+        airDate: sql<string>`${episode.airDate}`.as("air_date"),
+      })
+      .from(libraryEntry)
+      .innerJoin(title, eq(title.id, libraryEntry.titleId))
+      .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+      .innerJoin(episode, eq(episode.titleId, title.id))
+      .where(
+        and(
+          ownedBy(userId, libraryEntry),
+          notStopped,
+          eq(title.kind, "show" satisfies TitleKind),
+          gt(episode.seasonNo, 0),
+          isNotNull(episode.airDate),
+          sql`${episode.airDate} >= current_date - 1`,
+        ),
+      )
+      .orderBy(episode.airDate, sql`lower(${title.name})`, episode.seasonNo, episode.episodeNo),
+    executor
+      .select({
+        titleId: title.id,
+        libraryEntryId: libraryEntry.id,
+        titleName: title.name,
+        releaseDate: sql<string>`${title.releaseDate}`.as("release_date"),
+      })
+      .from(libraryEntry)
+      .innerJoin(title, eq(title.id, libraryEntry.titleId))
+      .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+      .where(
+        and(
+          ownedBy(userId, libraryEntry),
+          notStopped,
+          eq(title.kind, "film" satisfies TitleKind),
+          isNotNull(title.releaseDate),
+          sql`${title.releaseDate} >= current_date - 1`,
+        ),
+      )
+      .orderBy(title.releaseDate, sql`lower(${title.name})`, libraryEntry.id),
+  ]);
+
+  return { episodes, films };
 }
 
 /** One row of a season/episode list — issue #58's title detail. */
