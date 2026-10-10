@@ -934,7 +934,6 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/up-next-episode-row.tsx": ["surface", "surface"],
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
-  "app/(signed-in)/you/recently-watched.tsx": ["surface"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
 
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
