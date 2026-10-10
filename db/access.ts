@@ -2926,6 +2926,11 @@ export interface UpNextEntry {
   /** `library_entry_remaining`, unmodified — see this interface's own docblock. */
   readonly remaining: number;
   /**
+   * Borrowed — TMDB's `in_production`, `null` where it has not said. `false` is *the series
+   * has ended*, which is half of the finish moment's *That's the show* (issue #367).
+   */
+  readonly inProduction: boolean | null;
+  /**
    * The run of released episodes this card can mark without another read — issue #220,
    * widened from the Ongoing group to every next-episodes card by #250.
    *
@@ -3133,6 +3138,7 @@ interface UpNextRow {
   readonly runtimeMins: number | null;
   readonly stillPath: string | null;
   readonly remaining: number;
+  readonly inProduction: boolean | null;
 }
 
 /**
@@ -3239,6 +3245,7 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           titleName: title.name,
           releaseYear: title.releaseYear,
           posterPath: title.posterPath,
+          inProduction: title.inProduction,
           episodeId: libraryEntryUpNext.episodeId,
           episodeName: episode.name,
           seasonNo: libraryEntryUpNext.seasonNo,
@@ -3309,6 +3316,7 @@ function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
     runtimeMins: row.runtimeMins,
     stillPath: row.stillPath,
     remaining: row.remaining,
+    inProduction: row.inProduction,
     queue,
   };
 }
@@ -3397,6 +3405,19 @@ export interface QueuedEpisode {
   readonly episodeName: string | null;
   readonly seasonNo: number;
   readonly episodeNo: number;
+  /**
+   * The three facts the finish moment is decided from — issue #367, and
+   * `finish-line.ts` is where they become copy.
+   *
+   * - `lastAiredInSeason`: no aired episode follows this one in its season, so marking it
+   *   finishes what there is of the season.
+   * - `seasonAiring`: TMDB lists an episode after this one in its season that has not
+   *   aired — the season is still going.
+   * - `lastOfShow`: no numbered episode follows this one at all.
+   */
+  readonly lastAiredInSeason: boolean;
+  readonly seasonAiring: boolean;
+  readonly lastOfShow: boolean;
 }
 
 /**
@@ -3519,6 +3540,7 @@ async function upNextQueues(
   const ranked = executor
     .select({
       libraryEntryId: libraryEntryUpNext.libraryEntryId,
+      titleId: libraryEntryUpNext.titleId,
       episodeId: episode.id,
       episodeName: episode.name,
       seasonNo: episode.seasonNo,
@@ -3552,7 +3574,43 @@ async function upNextQueues(
     .as("ranked");
 
   const rows = await executor
-    .select()
+    .select({
+      libraryEntryId: ranked.libraryEntryId,
+      episodeId: ranked.episodeId,
+      episodeName: ranked.episodeName,
+      seasonNo: ranked.seasonNo,
+      episodeNo: ranked.episodeNo,
+      released: ranked.released,
+      /* Issue #367's three facts. Evaluated per returned row, so after the depth filter
+         below — at most `UP_NEXT_QUEUE_DEPTH + 1` per entry, not one per episode.
+
+         `ranked.` is spelled out rather than interpolated: Drizzle renders a subquery's
+         fields unqualified, and inside these correlated subqueries an unqualified
+         `title_id` would resolve to `s.title_id` and compare a row with itself. */
+      lastAiredInSeason: sql<boolean>`not exists (
+          select 1
+          from episode s
+          where s.title_id = ranked.title_id
+            and s.season_no = ranked.season_no
+            and s.episode_no > ranked.episode_no
+            and s.air_date <= current_date
+        )`,
+      seasonAiring: sql<boolean>`exists (
+          select 1
+          from episode s
+          where s.title_id = ranked.title_id
+            and s.season_no = ranked.season_no
+            and s.episode_no > ranked.episode_no
+            and (s.air_date is null or s.air_date > current_date)
+        )`,
+      lastOfShow: sql<boolean>`not exists (
+          select 1
+          from episode s
+          where s.title_id = ranked.title_id
+            and s.season_no > 0
+            and (s.season_no, s.episode_no) > (ranked.season_no, ranked.episode_no)
+        )`,
+    })
     .from(ranked)
     // One past the depth, which is the row that answers `more`.
     .where(lte(ranked.rank, UP_NEXT_QUEUE_DEPTH + 1))
@@ -3577,6 +3635,9 @@ async function upNextQueues(
         episodeName: row.episodeName,
         seasonNo: row.seasonNo,
         episodeNo: row.episodeNo,
+        lastAiredInSeason: row.lastAiredInSeason,
+        seasonAiring: row.seasonAiring,
+        lastOfShow: row.lastOfShow,
       });
     }
     queues.set(entryId, {

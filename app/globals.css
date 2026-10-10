@@ -1312,6 +1312,37 @@
   }
 }
 
+/* ── The finish moment's line — issue #367 ───────────────────────────────────────────
+   *All caught up*, *Season N done*, *That's the show* — and a film's *Watched* — rise into
+   the hold once, from `@starting-style`. The ink is the hold's own records-a-watch role;
+   this adds only the entrance. Under reduced motion the line still arrives, by opacity
+   alone. */
+.finish-line {
+  transform-origin: left center;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press);
+}
+
+@starting-style {
+  .finish-line {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finish-line {
+    transform: none;
+  }
+
+  @starting-style {
+    .finish-line {
+      transform: none;
+    }
+  }
+}
+
 /* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
    The state that drives each bar's `width` already updates at the sweep's settle
    (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), so the only thing

@@ -173,7 +173,9 @@ export async function seedShowWithSeason(
     const unique = randomUUID();
     const titleName = `E2E Fixture Season ${unique}`;
     const posterPath = `/e2e-fixture-${unique}.jpg`;
-    const tmdbId = Math.floor(Math.random() * 200_000_000);
+    // Capped so `tmdbId * 100 + episode` still fits `integer` (2^31 - 1); at 200M it
+    // overflowed about nine runs in ten.
+    const tmdbId = Math.floor(Math.random() * 20_000_000);
 
     const [titleRow] = await db
       .insert(schema.title)

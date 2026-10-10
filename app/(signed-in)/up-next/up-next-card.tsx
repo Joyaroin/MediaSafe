@@ -37,6 +37,18 @@ export function useHold(holding: string | null, onDone: () => void): void {
 }
 
 /**
+ * The finish moment's haptic — issue #367. A short pulse where the browser has
+ * `navigator.vibrate` (Android's Chrome and Firefox; Safari has none, and gets the line
+ * alone). Not motion, so it fires under reduced motion too.
+ */
+const FINISH_PULSE_MS = 30;
+
+export function finishPulse(): void {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  navigator.vibrate(FINISH_PULSE_MS);
+}
+
+/**
  * The control slot while a card holds: *Undo*, and the check filled solid.
  *
  * The check is drawn, not offered — it is a `span`, not a disabled button. The next episode

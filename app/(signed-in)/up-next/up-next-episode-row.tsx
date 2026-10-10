@@ -23,7 +23,8 @@ import {
   type UpNextRailEntry,
 } from "@/db/access";
 import { episodeCode, remainingInWords } from "./episode-card-line";
-import { HeldControl, useHold } from "./up-next-card";
+import { finishesSomething, finishFactsFor, finishLine, WATCHED } from "./finish-line";
+import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
 import {
   cardPicture,
@@ -69,7 +70,7 @@ export function UpNextEpisodeRow({
         entry={entry}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
-        held={false}
+        held={null}
         picture={cardPicture(entry)}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
         aboveFold={aboveFold}
@@ -111,7 +112,7 @@ function MarkableRow({
       entry={entry}
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
-      held={mark.held !== null}
+      held={mark.held === null ? null : finishLine(finishFactsFor(entry, mark.held))}
       picture={mark.picture}
       remainingAfter={countAfterShown(entry.remaining, shownAt, spent)}
       aboveFold={aboveFold}
@@ -122,7 +123,17 @@ function MarkableRow({
             undoLabel={`Undo marking ${queuedEpisodeFullName(mark.held)} watched`}
           />
         ) : (
-          <MarkControl mark={mark} />
+          <MarkControl
+            mark={mark}
+            onMark={() => {
+              /* The pulse goes with the press, not the render: it is the one part of
+                 the moment that cannot wait for the hold to draw. */
+              if (mark.episode !== null && finishesSomething(entry, mark.episode)) {
+                finishPulse();
+              }
+              mark.mark();
+            }}
+          />
         )
       }
     />
@@ -170,7 +181,9 @@ function RowBody({
   entry: UpNextEntry;
   code: string;
   episodeName: string | null;
-  held: boolean;
+  /** The line the card holds on after a mark — *Watched*, or a finish (#367) — or `null`
+   *  while it is not holding. */
+  held: string | null;
   picture: CardPicture;
   remainingAfter: number;
   aboveFold: boolean;
@@ -198,7 +211,7 @@ function RowBody({
               and the card keeps its height. */}
           <AnimatePresence mode="popLayout" initial={false}>
             <m.div
-              key={held ? `${code}-held` : code}
+              key={held !== null ? `${code}-held` : code}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10, transition: exit }}
@@ -209,7 +222,7 @@ function RowBody({
                 {/* `data-numeric` is the tabular-figures hook, so a list of cards does not
                     jitter as the numbers change width. Absent at zero
                     (`remainingInWords`). */}
-                {remainingAfter > 0 && !held ? (
+                {remainingAfter > 0 && held === null ? (
                   <span className="code-line text-dim" data-numeric>
                     {remainingInWords(remainingAfter)}
                   </span>
@@ -220,9 +233,13 @@ function RowBody({
                   records-a-watch ink. Otherwise the episode's name, or no line at all
                   where TMDB has not named it: an episode is never referred to by number
                   alone, and the code above has already said it once. */}
-              {held ? (
-                <p className={`mt-0.5 truncate text-item font-medium ${RECORDS_A_WATCH.ink}`}>
-                  Watched
+              {held !== null ? (
+                <p
+                  className={`mt-0.5 truncate text-item font-medium ${RECORDS_A_WATCH.ink}${
+                    held === WATCHED ? "" : " finish-line"
+                  }`}
+                >
+                  {held}
                 </p>
               ) : episodeName === null ? null : (
                 <p className="mt-0.5 truncate text-item leading-snug text-text">
@@ -291,7 +308,7 @@ function RowFrame({
  */
 const CHECK_HIT_BOX = `${RECORDING_HIT_BOX} ${IN_FLIGHT}`;
 
-function MarkControl({ mark }: { mark: UpNextMark }) {
+function MarkControl({ mark, onMark }: { mark: UpNextMark; onMark: () => void }) {
   const { episode, pending } = mark;
 
   /* A capped run that went dry — `UpNextQueue`'s own table has the case. The slot offers
@@ -301,7 +318,7 @@ function MarkControl({ mark }: { mark: UpNextMark }) {
   return (
     <button
       type="button"
-      onClick={mark.mark}
+      onClick={onMark}
       disabled={pending}
       /* The card prints the code line but never the season word, so this label is the only
          thing that says in full which episode a press records. */

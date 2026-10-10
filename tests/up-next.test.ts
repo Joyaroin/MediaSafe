@@ -891,6 +891,8 @@ describe("listUpNextRails — what each rail contains", () => {
         // episode being offered, and the card is what subtracts that one
         // (`episode-card-line.ts`).
         remaining: 2,
+        // Issue #367: TMDB's own flag, half of *That's the show*.
+        inProduction: true,
         // Issue #220. Asserted whole here, rather than loosened to a matcher, because
         // this case is *everything a card is handed* — the queue is part of that and a
         // card cannot mark anything without it.
@@ -901,12 +903,19 @@ describe("listUpNextRails — what each rail contains", () => {
               episodeName: "Cold Harbor",
               seasonNo: 2,
               episodeNo: 10,
+              // Issue #367: the season's last episode, with Season 3 after it.
+              lastAiredInSeason: true,
+              seasonAiring: false,
+              lastOfShow: false,
             },
             {
               episodeId: show.episodeIds[2],
               episodeName: "Unknown",
               seasonNo: 3,
               episodeNo: 1,
+              lastAiredInSeason: true,
+              seasonAiring: false,
+              lastOfShow: true,
             },
           ],
           more: false,
@@ -942,6 +951,67 @@ describe("listUpNextRails — what each rail contains", () => {
       // Episode 2 offered, episode 3 aired after it: two, of which the card prints one.
       expect(entry.episodeNo).toBe(2);
       expect(entry.remaining).toBe(2);
+    });
+  });
+
+  /**
+   * Issue #367's three facts, which `finish-line.ts` turns into the hold's copy. Each is
+   * relative to the queued episode itself, never to the Up next one.
+   */
+  it("says which queued episode finishes its season, whether the season is still airing, and which ends the show", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        inProduction: false,
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+          { seasonNo: 1, episodeNo: 4, airDate: UNRELEASED },
+          { seasonNo: 2, episodeNo: 1 },
+          { seasonNo: 2, episodeNo: 2 },
+          { seasonNo: 0, episodeNo: 1 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
+
+      expect(entry.inProduction).toBe(false);
+      // The run stops at S1E4, which has not aired.
+      expect(
+        entry.queue.episodes.map((one) => ({
+          code: `S${one.seasonNo}E${one.episodeNo}`,
+          last: one.lastAiredInSeason,
+          airing: one.seasonAiring,
+          end: one.lastOfShow,
+        })),
+      ).toEqual([
+        { code: "S1E2", last: false, airing: true, end: false },
+        { code: "S1E3", last: true, airing: true, end: false },
+      ]);
+    });
+  });
+
+  it("marks the final aired episode of the final season as the last of the show", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, reader, {
+        inProduction: false,
+        episodes: [
+          { seasonNo: 1, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 0, episodeNo: 9 },
+        ],
+      });
+      await markWatched(tx, show, 0, daysAgo(1));
+
+      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
+
+      // A special after it does not keep the show going.
+      expect(entry.queue.episodes).toMatchObject([
+        { episodeNo: 2, lastAiredInSeason: true, seasonAiring: false, lastOfShow: true },
+      ]);
     });
   });
 

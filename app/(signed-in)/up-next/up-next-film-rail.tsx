@@ -16,7 +16,7 @@ import { exit } from "@/app/motion";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
-import { HeldControl, useHold } from "./up-next-card";
+import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
 import { UpNextGroup } from "./up-next-group";
 
@@ -108,7 +108,11 @@ function FilmRow({
               placeholder — `library-entry-cell.tsx` makes the same choice for the identical
               fact, and `app/poster.tsx` makes it for artwork it does not have. */}
           {held ? (
-            <p className={`mt-[3px] text-item font-medium ${RECORDS_A_WATCH.ink}`}>Watched</p>
+            /* A film's finish moment (#367) keeps *Watched* — there is no season and no
+               show to have finished — but enters and pulses as the episode cards' do. */
+            <p className={`finish-line mt-[3px] text-item font-medium ${RECORDS_A_WATCH.ink}`}>
+              Watched
+            </p>
           ) : meta === null ? null : (
             <p className="code-line mt-[3px] text-dim" data-numeric>
               {meta}
@@ -122,7 +126,10 @@ function FilmRow({
       ) : (
         <button
           type="button"
-          onClick={attempt}
+          onClick={() => {
+            finishPulse();
+            attempt();
+          }}
           disabled={pending || watched}
           aria-label={`Mark ${film.titleName} watched`}
           className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}

@@ -47,6 +47,9 @@ function episodeAt(seasonNo: number, episodeNo: number, name: string | null = nu
     episodeName: name ?? `Episode ${seasonNo}-${episodeNo}`,
     seasonNo,
     episodeNo,
+    lastAiredInSeason: false,
+    seasonAiring: false,
+    lastOfShow: false,
   };
 }
 
@@ -77,6 +80,7 @@ function entryWith(
     runtimeMins: 47,
     stillPath: "/still.jpg",
     remaining: episodes.length,
+    inProduction: true,
     queue: { episodes, more },
   };
 }
@@ -209,7 +213,15 @@ describe("an Ongoing tile's mark", () => {
   it("names an episode TMDB has not named without printing its number instead", async () => {
     const { marks, failures, answerRecord } = harness();
     const entry = entryWith([
-      { episodeId: "episode-unnamed", episodeName: null, seasonNo: 2, episodeNo: 4 },
+      {
+        episodeId: "episode-unnamed",
+        episodeName: null,
+        seasonNo: 2,
+        episodeNo: 4,
+        lastAiredInSeason: false,
+        seasonAiring: false,
+        lastOfShow: false,
+      },
       episodeAt(2, 5),
     ]);
 
