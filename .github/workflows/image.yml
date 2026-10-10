@@ -17,7 +17,9 @@ name: Image
 
 on:
   push:
-    branches: [main]
+    # TEMPORARY: infra-migration builds too, so staging has an image before the migration's
+    # one big PR merges. Remove it from this list in that PR, before merging.
+    branches: [main, infra-migration]
   # A rebuild without a commit, e.g. after changing a Sentry variable.
   workflow_dispatch:
 

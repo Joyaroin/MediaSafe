@@ -14,7 +14,7 @@ with the commands in [Verify the current state](#verify-the-current-state).
 
 | What | Where |
 |---|---|
-| App repo | `~/MediaSafe`, branch **`infra-migration`**, ahead of `main` (`git log main..infra-migration`), **not pushed**. Everything ships as **one big PR** (Adham's choice). |
+| App repo | `~/MediaSafe`, branch **`infra-migration`**, ahead of `main` (`git log main..infra-migration`), pushed to GitHub (no PR yet). Everything ships as **one big PR** (Adham's choice). **Before merging, remove `infra-migration` from `image.yml`'s push branches.** |
 | GitOps repo | `~/mediasafe-gitops` → `github.com/Joyaroin/mediasafe-gitops` (private), branch `main`, pushed. Argo CD syncs it. |
 | VM Terraform | `MediaSafe/infra/terraform/` — run with `./tf` |
 | Vault Terraform | `MediaSafe/infra/vault/` — run with `./tf` (`--root` was the first apply only) |
