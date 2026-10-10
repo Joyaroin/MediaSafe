@@ -36,7 +36,7 @@ import {
  */
 
 /**
- * **The three exemptions, named.**
+ * **The four exemptions, named.**
  *
  * Everything else in the build must be behind the matcher. Adding a route to this list is
  * the visible diff issue #43 asks for — a line in a pull request with a name on it,
@@ -60,6 +60,13 @@ const EXEMPT = [
    * (`app/api/cron/nightly-sweep/route.ts`).
    */
   "/api/cron/nightly-sweep",
+  /**
+   * The reader's calendar feed (issue #366). A calendar app subscribing to a URL sends no
+   * cookie, so this is un-sessioned too — **not unauthenticated**: the last segment is a
+   * per-user secret token the route looks up itself, answering 404 without a match
+   * (`app/api/calendar/[feed]/route.ts`).
+   */
+  "/api/calendar/[feed]",
 ] as const;
 
 describe("every route is behind the proxy matcher", () => {
@@ -77,7 +84,7 @@ describe("every route is behind the proxy matcher", () => {
     expect(built.matcher).toEqual(config.matcher);
   });
 
-  it("covers every route in the build except the three named above", () => {
+  it("covers every route in the build except the four named above", () => {
     const audit = auditRouteProtection(built, EXEMPT);
 
     // Three separate assertions rather than one on the whole object, so a failure names
@@ -114,6 +121,12 @@ describe("every route is behind the proxy matcher", () => {
     // `api/cron/nightly-sweep$`, not `(?:$|/)`: unlike `api/auth`, this route has no
     // sub-paths, so nothing under it should inherit the exemption.
     expect(matcherRunsOn(built.matcher, "/api/cron/nightly-sweep/extra")).toBe(true);
+    // One segment under `api/calendar` is the feed; the prefix itself, anything deeper and
+    // a lookalike prefix stay behind the gate.
+    expect(matcherRunsOn(built.matcher, "/api/calendar/some-token.ics")).toBe(false);
+    expect(matcherRunsOn(built.matcher, "/api/calendar")).toBe(true);
+    expect(matcherRunsOn(built.matcher, "/api/calendar/some-token/extra")).toBe(true);
+    expect(matcherRunsOn(built.matcher, "/api/calendars/some-token")).toBe(true);
   });
 
   /**
@@ -204,11 +217,11 @@ describe("the check fails when the gate is widened", () => {
   it("reports an exemption left behind by a deleted route", () => {
     const audit = auditRouteProtection(
       {
-        // The cron route is still here, so only the deleted auth route goes stale —
-        // this fixture isolates one leftover exemption rather than two.
-        routes: ["/", "/sign-in", "/api/cron/nightly-sweep"],
+        // The cron and calendar routes are still here, so only the deleted auth route goes
+        // stale — this fixture isolates one leftover exemption rather than several.
+        routes: ["/", "/sign-in", "/api/cron/nightly-sweep", "/api/calendar/[feed]"],
         matcher: [
-          "/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$).*)",
+          "/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$|api/calendar/[^/]+$).*)",
         ],
       },
       EXEMPT,
@@ -433,7 +446,7 @@ describe("every dynamic surface has a loading boundary", () => {
   /**
    * And the route itself is in the build, behind the matcher like everything else.
    *
-   * It needs no exemption and gets none: `EXEMPT` above is the three routes a reader may
+   * It needs no exemption and gets none: `EXEMPT` above is the four routes a reader may
    * reach with no session, and an episode of a title in *your* library is the opposite of
    * that. Asserted positively rather than left to `audit.unprotected` being empty, for the
    * reason the boundary floor above exists — so that a route silently dropped from the

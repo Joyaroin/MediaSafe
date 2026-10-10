@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { carriesSessionCookie } from "@/lib/session-cookie";
 
 /**
- * Constraint 5, in one file: **no unauthenticated route may ever be added**. Every route in this application is behind a session except two, and the two are
+ * Constraint 5, in one file: **no unauthenticated route may ever be added**. Every route in this application is behind a session except four, and the four are
  * written out below rather than implied.
  *
  * The rule was once justified by previews carrying a copy of the real library.
@@ -29,7 +29,7 @@ import { carriesSessionCookie } from "@/lib/session-cookie";
  * exists to prevent. **It is un-sessioned, not unauthenticated**: the route checks a
  * bearer `CRON_SECRET` itself and rejects anything without it
  * (`app/api/cron/nightly-sweep/route.ts`). This comment says so precisely because the
- * list below must never read as three unprotected routes.
+ * list below must never read as four unprotected routes.
  *
  * ── This is a gate, not the authorization ────────────────────────────────────────────
  *
@@ -49,6 +49,13 @@ import { carriesSessionCookie } from "@/lib/session-cookie";
  * unless the matcher is widened in a diff someone can see.
  *
  * The page-level check is not redundant with this and never becomes so.
+ *
+ * ── A fourth, issue #366 ─────────────────────────────────────────────────────────────
+ *
+ * `api/calendar/[^/]+$` is the reader's calendar feed. A calendar app subscribing to a URL
+ * cannot sign in and sends no cookie. Like the sweep it is un-sessioned rather than
+ * unauthenticated: the path's last segment is a per-user secret token, which the route
+ * looks up itself and answers 404 without (`app/api/calendar/[feed]/route.ts`).
  */
 export function proxy(request: NextRequest): NextResponse {
   if (carriesSessionCookie(request)) return NextResponse.next();
@@ -64,7 +71,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 /**
- * **The matcher, and the three exemptions, as one literal.**
+ * **The matcher, and the four exemptions, as one literal.**
  *
  * It has to be a literal, and Next enforces that itself: a matcher assembled from
  * variables fails the build with *Entry `matcher[0]` need to be static strings or static
@@ -74,8 +81,8 @@ export function proxy(request: NextRequest): NextResponse {
  * in no `.js` file at all — grepping the JavaScript for it finds nothing and proves
  * nothing.
  *
- * **Three exemptions and one exclusion**, which are different things. An exemption is a
- * route a reader may reach without a session, and there are three. The exclusion is not a
+ * **Four exemptions and one exclusion**, which are different things. An exemption is a
+ * route a reader may reach without a session, and there are four. The exclusion is not a
  * route at all.
  *
  *  - **`sign-in$`** — the sign-in route. Anchored, so `/sign-in/anything` is covered
@@ -89,6 +96,9 @@ export function proxy(request: NextRequest): NextResponse {
  *    than relying on this gate — see the note above. Anchored with `$` alone, not
  *    `(?:$|/)`: the route has no sub-paths, so a future one would not inherit this
  *    exemption by accident the way `api/auth`'s deliberately lets its children.
+ *  - **`api/calendar/[^/]+$`** — issue #366's calendar feed, one segment and no deeper:
+ *    `/api/calendar` itself and anything two levels down stay covered. The route checks its
+ *    token itself, as above.
  *  - **`_next/`** — the exclusion. The compiled bundles, the image optimiser, the build
  *    output. Nothing in the route manifest maps under this prefix, and
  *    `tests/route-manifest.test.ts` asserts that rather than trusting this sentence, so
@@ -103,5 +113,7 @@ export function proxy(request: NextRequest): NextResponse {
  * that trade is wrong, it is a product decision, and it is not this file's to make.
  */
 export const config = {
-  matcher: ["/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$).*)"],
+  matcher: [
+    "/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$|api/calendar/[^/]+$).*)",
+  ],
 };

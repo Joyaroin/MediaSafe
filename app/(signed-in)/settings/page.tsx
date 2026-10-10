@@ -1,7 +1,15 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { requireDisplayName, requireTimezone, requireUserId } from "@/lib/session";
+import { calendarFeedUrl, publicOrigin } from "@/lib/calendar-feed";
+import {
+  requireCalendarFeedToken,
+  requireDisplayName,
+  requireTimezone,
+  requireUserId,
+} from "@/lib/session";
+import { CalendarFeedControl } from "./calendar-feed-control";
 import { DisplayNameControl } from "./display-name-control";
 import { BackBar } from "../back-bar";
 import { NavTransition } from "../nav-transition";
@@ -93,6 +101,11 @@ export default async function SettingsPage() {
   await requireUserId();
   const name = await requireDisplayName();
   const timezone = await requireTimezone();
+  const feedToken = await requireCalendarFeedToken();
+  const feedUrl =
+    feedToken === null
+      ? null
+      : calendarFeedUrl(publicOrigin(process.env.BETTER_AUTH_URL, await headers()), feedToken);
 
   return (
     <NavTransition>
@@ -138,6 +151,10 @@ export default async function SettingsPage() {
               Import a library ›
             </Link>
           </div>
+
+          {/* Issue #366. In Data because the feed is the library leaving the app — read-only,
+              but the same kind of thing as the import above, the other way round. */}
+          <CalendarFeedControl url={feedUrl} />
         </section>
 
         <section aria-labelledby="account-h" className="mt-12 border-t border-hair pt-6">
