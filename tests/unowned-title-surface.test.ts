@@ -147,7 +147,6 @@ describe("what the unowned route does not import", () => {
    * nothing to import; if either ever returns, it is that ticket's job to add it back here.
    */
   const OWNED = [
-    "remove-control",
     "programme-note-content",
     "programme-note-episodes",
     "use-watch-mark",

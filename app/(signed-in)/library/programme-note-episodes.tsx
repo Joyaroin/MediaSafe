@@ -21,7 +21,7 @@ import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
 import { HOLDABLE, useHoldGesture } from "./use-hold-to-select";
 import { WatchMenu } from "./watch-menu";
 import { SeasonChips } from "./season-chips";
-import { defaultSeason, episodeFullName, groupBySeason, seasonHeading } from "./season-grouping";
+import { defaultSeason, episodeFullName, groupBySeason } from "./season-grouping";
 import { useLiveEpisodes } from "./use-live-episodes";
 import { finishedSeasons, seasonMarkTarget } from "./title-page";
 import { useWatchMark } from "./use-watch-mark";
@@ -236,9 +236,10 @@ function SeasonList({
       />
 
       <div className={`arrive ${PROGRAMME_NOTE_SECTION}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="code-line text-dim">{seasonHeading(currentSeason)}</p>
-          {seasonTarget === null ? null : (
+        {/* No season label: the selected chip above already names the season, and the
+            label under it said the same word twice (the UI overhaul). */}
+        {seasonTarget === null ? null : (
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={() => setConfirming(seasonTarget)}
@@ -246,8 +247,8 @@ function SeasonList({
             >
               Mark season watched
             </button>
-          )}
-        </div>
+          </div>
+        )}
         <ol className={SEASON_LIST}>
           {currentEpisodes.map((one) => (
             <EpisodeLine
@@ -578,11 +579,6 @@ function EpisodeLine({
           </span>
         </span>
 
-        {episode.upNext && !watched ? (
-          <span className="shrink-0 rounded-[var(--radius-full)] bg-accent/15 px-2 py-0.5 text-meta font-semibold text-accent">
-            Next
-          </span>
-        ) : null}
       </span>
 
       <span className={TRAILING}>

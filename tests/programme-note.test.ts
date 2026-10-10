@@ -203,8 +203,8 @@ describe("the episode list", () => {
       .split("\n")
       .filter((one) => one.length > 0);
 
-    // "Season 1" twice: once as the sole season chip (issue #224), once as the heading
-    // over the rows it selects.
+    // "Season 1" once, as the sole season chip (issue #224). The heading that repeated it
+    // over the rows went in the UI overhaul.
     /**
      * **Four words, down from six.** *Rewatch* and *Unwatch* are gone from the row's
      * visible text entirely — a watched row carries `SETTLED_GLYPH`, which is a checkmark
@@ -213,7 +213,7 @@ describe("the episode list", () => {
      * slot for a count to hide among.
      */
     // The chip's tick carries a screen-reader word — ", watched" — for a finished season.
-    expect(visible).toEqual(["Season 1", ", watched", "Season 1", "E1", "Winter Is Coming"]);
+    expect(visible).toEqual(["Season 1", ", watched", "E1", "Winter Is Coming"]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {

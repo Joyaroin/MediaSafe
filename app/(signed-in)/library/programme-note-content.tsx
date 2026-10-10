@@ -6,7 +6,6 @@ import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { STATE_LABELS } from "./library-state";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { watchProgress } from "./progress-remaining";
-import { RemoveControl } from "./remove-control";
 import { TitleActions } from "./title-actions";
 import { TitleHero } from "./title-hero";
 import { titleMetaLine } from "./title-meta-line";
@@ -20,9 +19,8 @@ import { useLiveEpisodes } from "./use-live-episodes";
  *
  * The head (poster, where the title stands, how far through you are) with the one main
  * button under it and the synopsis; then the episodes, with where-to-watch and cast beside
- * them on a desktop; and *Remove from library* at the very foot, styled as destructive.
- * Remove used to sit directly under the head, above the episodes, where a reader reaching
- * for an episode passed it every time.
+ * them on a desktop. *Remove from library* is in the head's ⋯ menu alone — it was also a
+ * section at the very foot until the UI overhaul, two doors to one confirmation.
  *
  * ── The main button reads the live marks ─────────────────────────────────────────────
  *
@@ -122,10 +120,6 @@ export function ProgrammeNoteContent({
         ) : null}
 
         <div className="flex min-w-0 flex-col gap-2">{facts}</div>
-      </div>
-
-      <div className="mt-10 border-t border-hair px-gutter pt-6 lg:px-10">
-        <RemoveControl libraryEntryId={detail.libraryEntryId} titleName={detail.name} />
       </div>
     </div>
   );

@@ -211,7 +211,6 @@ const NAVIGATING_CONTROLS = [
     file: "app/(signed-in)/titles/[entryId]/remove/remove-frame.tsx",
     label: "‹ Back to your library",
   },
-  { file: "app/(signed-in)/library/remove-control.tsx", label: "Remove from library" },
   {
     file: "app/(signed-in)/titles/[entryId]/remove/remove-title-form.tsx",
     label: "Open your library ›",
