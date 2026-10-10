@@ -5639,6 +5639,7 @@ export async function listStoppedShows(
       titleName: title.name,
       releaseYear: title.releaseYear,
       posterPath: title.posterPath,
+      posterColour: title.posterColour,
       runtimeMins: title.runtimeMins,
     })
     .from(libraryEntry)
