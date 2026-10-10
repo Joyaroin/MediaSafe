@@ -50,9 +50,16 @@ test.beforeAll(async () => {
 
 test.use({ storageState: path.join(__dirname, ".auth", "poster-glow-session.json") });
 
-/** The tile that names `entry`, wherever the surface draws it. */
+/**
+ * The grid cell or rail tile that names `entry`. Not You's *Recently watched* rows (#371),
+ * which name the same title and are a list, which stays neutral (spec #360, decision 5).
+ */
 function tileFor(page: Page, entry: SeededTitle): Locator {
-  return page.locator(".pressable", { hasText: entry.titleName }).first();
+  return page
+    .locator('.pressable:not(section[aria-labelledby="recently-watched"] .pressable)', {
+      hasText: entry.titleName,
+    })
+    .first();
 }
 
 /** The glow wrapper's `box-shadow` once the pointer is on the tile, settled. */
