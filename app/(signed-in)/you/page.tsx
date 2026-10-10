@@ -6,6 +6,7 @@ import { YouHeading } from "./you-heading";
 import { YearOfWatching } from "./year-of-watching";
 import { YouHero } from "./you-hero";
 import { YouSurface } from "./you-surface";
+import { StoppedShows } from "./stopped-shows";
 import { NavTransition } from "../nav-transition";
 
 /**
@@ -105,6 +106,7 @@ export default async function YouPage() {
             afterFigures={<YearOfWatching userId={userId} />}
           />
         )}
+        <StoppedShows userId={userId} />
       </main>
     </NavTransition>
   );
