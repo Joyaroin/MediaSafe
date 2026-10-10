@@ -124,14 +124,16 @@ function MarkableRow({
           />
         ) : (
           <MarkControl
-            mark={mark}
-            onMark={() => {
-              /* The pulse goes with the press, not the render: it is the one part of
-                 the moment that cannot wait for the hold to draw. */
-              if (mark.episode !== null && finishesSomething(entry, mark.episode)) {
-                finishPulse();
-              }
-              mark.mark();
+            mark={{
+              ...mark,
+              mark() {
+                /* The pulse goes with the press, not the render: it is the one part of
+                   the moment that cannot wait for the hold to draw. */
+                if (mark.episode !== null && finishesSomething(entry, mark.episode)) {
+                  finishPulse();
+                }
+                mark.mark();
+              },
             }}
           />
         )
@@ -308,7 +310,7 @@ function RowFrame({
  */
 const CHECK_HIT_BOX = `${RECORDING_HIT_BOX} ${IN_FLIGHT}`;
 
-function MarkControl({ mark, onMark }: { mark: UpNextMark; onMark: () => void }) {
+function MarkControl({ mark }: { mark: UpNextMark }) {
   const { episode, pending } = mark;
 
   /* A capped run that went dry — `UpNextQueue`'s own table has the case. The slot offers
@@ -318,7 +320,7 @@ function MarkControl({ mark, onMark }: { mark: UpNextMark; onMark: () => void })
   return (
     <button
       type="button"
-      onClick={onMark}
+      onClick={mark.mark}
       disabled={pending}
       /* The card prints the code line but never the season word, so this label is the only
          thing that says in full which episode a press records. */
