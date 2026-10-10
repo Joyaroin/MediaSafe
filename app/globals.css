@@ -293,6 +293,64 @@
   --tint: var(--tint-dark);
 }
 
+/* ── The title page hero recedes as you scroll — issue #369 ──────────────────────────
+   The band (backdrop and tint) fades and draws up, and the poster shrinks toward the
+   title beside it, over the first `280px` of scroll, so the episodes get the screen. The
+   title and the actions keep their size: the head shrinks out of the way, it does not
+   leave.
+
+   **CSS only, driven by the document's scroll position** (`scroll(root)`) — no scroll
+   listener, nothing on the main thread. `transform` and `opacity` only, so nothing
+   reflows while the page moves. A browser without scroll-driven animations skips this
+   block and keeps the static hero, which is what every browser drew before; so does a
+   reader who asked for reduced motion, because a header that changes size as you scroll
+   is movement through space and nothing else.
+
+   **Longhands, not the `animation` shorthand.** The build's CSS minifier rewrote
+   `animation: linear both` as `animation: none`, dropping the fill mode, and an animation
+   without `both` stops applying the moment the scroll passes the end of its range.
+
+   Only `title-hero.tsx` carries these classes. The loading screen's skeleton does not,
+   and at the top of the page every keyframe is at its first frame, which is the identity
+   — so the poster morph lands on a poster exactly where and how large it was before.
+
+   `animation-timeline` comes after the `animation` shorthand, which resets it. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-recede-band,
+    .hero-recede-poster {
+      animation-timing-function: linear;
+      /* Held at the last frame past 280px, not dropped back to the full-size hero. */
+      animation-fill-mode: both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 280px;
+    }
+    .hero-recede-band {
+      animation-name: hero-band-recede;
+      transform-origin: top;
+    }
+    .hero-recede-poster {
+      animation-name: hero-poster-recede;
+      /* Toward the title it sits beside, so it shrinks into the head rather than away. */
+      transform-origin: bottom left;
+    }
+  }
+}
+
+@keyframes hero-band-recede {
+  to {
+    opacity: 0;
+    transform: scaleY(0.6);
+  }
+}
+
+@keyframes hero-poster-recede {
+  to {
+    opacity: 0.5;
+    transform: scale(0.6);
+  }
+}
+
 /* ── The reader has asked for more contrast — issue #329 ─────────────────────────────
    `prefers-contrast: more` used to be ignored outright. It now closes the ramp by one
    step, in both schemes, with no value declared beyond the two tokens already on it:
