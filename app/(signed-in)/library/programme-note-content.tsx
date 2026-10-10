@@ -73,7 +73,7 @@ export function ProgrammeNoteContent({
   );
 
   return (
-    <div className="arrive-panel pb-10">
+    <div className="pb-10">
       <TitleHero
         name={detail.name}
         posterPath={detail.posterPath}
@@ -100,7 +100,7 @@ export function ProgrammeNoteContent({
       />
 
       <div
-        className={`mt-8 grid gap-8 px-gutter lg:px-10 ${
+        className={`arrive-panel mt-8 grid gap-8 px-gutter lg:px-10 ${
           isShow ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""
         }`}
       >

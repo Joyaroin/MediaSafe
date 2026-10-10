@@ -433,7 +433,12 @@ describe("what replaces a pending region arrives", () => {
   });
 
   it("gives the panel and the episode list an entrance", () => {
-    expect(PANEL).toContain('className="arrive-panel');
+    // On what is around the hero poster and under it, not on the whole panel: the poster
+    // is the morph's landing and must not fade and drop after it lands (UI overhaul).
+    expect(PANEL).toContain("className={`arrive-panel mt-8 grid");
+    expect(readFileSync("app/(signed-in)/library/title-hero.tsx", "utf8")).toContain(
+      'className="arrive-panel flex min-w-0 flex-1 flex-col',
+    );
     expect(EPISODES).toMatch(/className=\{`arrive \$\{PROGRAMME_NOTE_SECTION\}`\}/);
   });
 

@@ -75,7 +75,7 @@ export async function UnownedTitleBody({
           hard-coded *Lists* that sent a reader who came from Search somewhere else. */}
       <BackBar />
 
-      <div className="arrive-panel pb-10">
+      <div className="pb-10">
         <TitleHero
           name={detail.name}
           posterPath={detail.posterPath}
@@ -99,7 +99,7 @@ export async function UnownedTitleBody({
           }
         />
 
-        <div className="mt-6 flex flex-col gap-8 px-gutter lg:px-10">
+        <div className="arrive-panel mt-6 flex flex-col gap-8 px-gutter lg:px-10">
           <LiveTitleFactsStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
 
           {detail.kind === "show" ? (
