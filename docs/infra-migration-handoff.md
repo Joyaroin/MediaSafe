@@ -14,7 +14,7 @@ with the commands in [Verify the current state](#verify-the-current-state).
 
 | What | Where |
 |---|---|
-| App repo | `~/MediaSafe`, branch **`infra-migration`**, ahead of `main` (`git log main..infra-migration`), pushed to GitHub (no PR yet). Everything ships as **one big PR** (Adham's choice). **Before merging, remove `infra-migration` from `image.yml`'s push branches.** |
+| App repo | `~/MediaSafe`, branch **`infra-migration`**, ahead of `main` (`git log main..infra-migration`), pushed to GitHub. Everything ships as **one big PR** (Adham's choice); the temporary `infra-migration` image trigger is already removed. |
 | GitOps repo | `~/mediasafe-gitops` → `github.com/Joyaroin/mediasafe-gitops` (private), branch `main`, pushed. Argo CD syncs it. |
 | VM Terraform | `MediaSafe/infra/terraform/` — run with `./tf` |
 | Vault Terraform | `MediaSafe/infra/vault/` — run with `./tf` (`--root` was the first apply only) |
@@ -287,13 +287,21 @@ SHA-256) because Homebrew is blocked by outdated Xcode Command Line Tools.
 ### Neon backup (recommended before the cutover)
 Nightly `pg_dump` of Neon main to R2: Neon's 6-hour history is the only backup.
 
-### Stages 9–10 (from the ADR)
-- **9 Cutover:** OAuth redirect + `BETTER_AUTH_URL`, turn off Vercel git deploys and cron,
-  unsuspend the prod CronJob.
-- **10 Cleanup:** delete Vercel project, `vercel.json`, the `VERCEL`/`VERCEL_ENV` branches in
-  `scripts/build.ts` and `next.config.ts`; update README and `CLAUDE.md`; mark the ADR implemented.
+### Stage 9 — cutover ✅ (2026-10-10)
+- Vercel cron disabled (Adham) + prod sweep unsuspended (gitops `48be8e2`): first k3s prod sweep
+  2026-10-11 09:00 UTC — check `kubectl -n mediasafe-prod get jobs` after.
+- Vercel git disconnected (Adham): no Vercel build on merge → the **merge freeze is over**.
 
----
+### Stage 10 — cleanup 🔄
+- Code (in the migration PR): see the ADR's rollout entry 10. Typecheck, lint, build and the
+  route-manifest test pass locally; the cache test needs Docker (CI runs it).
+- Adham: **check Neon isn't Vercel-managed** (Vercel → project → Storage tab) before deleting the
+  Vercel project; choose *disconnect*, never *delete*, for any connected store. Then disable the
+  Google client secret Vercel used and its redirect URI; `rm -r ~/MediaSafe/.vercel`.
+- Not done, on purpose: ~20 comments in app code that explain past choices by Vercel limits
+  (still true history); `scripts/provision.sh`'s Vercel steps and `.env.example` (deny rule) —
+  both describe Vercel setup and need a pass by Adham.
+- Refresh the cluster-map artifact.
 
 ## 9. Open items and loose ends
 

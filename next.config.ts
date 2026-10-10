@@ -1,25 +1,14 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
-/**
- * Everywhere but Vercel, the cache lives in Valkey (`cache-handler.mjs`), so a
- * `revalidateTag` on one pod is seen by every pod. Vercel keeps its own shared cache.
- *
- * Decided at build time because it has to be: the standalone server runs with the config
- * `next build` serialised, not with this file.
- */
-const sharedCache: Partial<NextConfig> = process.env.VERCEL
-  ? {}
-  : {
-      cacheHandler: require.resolve("./cache-handler.mjs"),
-      // A per-pod copy in front of Valkey would bring back the disagreement it removes.
-      cacheMaxMemorySize: 0,
-    };
-
 const nextConfig: NextConfig = {
   // Produces the minimal server bundle copied into the production container.
   output: "standalone",
-  ...sharedCache,
+  // The cache lives in Valkey (`cache-handler.mjs`), so a `revalidateTag` on one pod is seen
+  // by every pod. Without VALKEY_URL — local development, CI — the handler caches nothing.
+  cacheHandler: require.resolve("./cache-handler.mjs"),
+  // A per-pod copy in front of Valkey would bring back the disagreement it removes.
+  cacheMaxMemorySize: 0,
 };
 
 /**
@@ -28,7 +17,8 @@ const nextConfig: NextConfig = {
  * and the reference id leads to an event nobody can read.
  *
  * The upload needs `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` (all in
- * `.env.example`, all set in Vercel). Without them the build still succeeds and simply
+ * `.env.example`; in the image build they are `image.yml`'s Actions variables and secret).
+ * Without them the build still succeeds and simply
  * skips the upload — which is what a local `npm run build` does, and what a fork's build
  * would do.
  */

@@ -1,6 +1,6 @@
 # 0001 — Deploy to k3s on Linode with Argo CD, Vault and Helm
 
-- **Status:** Accepted, stages 0–8 implemented; cutover next
+- **Status:** Accepted, stages 0–9 implemented; stage 10 in the migration PR
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
 
@@ -323,5 +323,13 @@ time, so staging's browser errors are tagged the same as prod's.
 8. **Prod on k3s, beside Vercel.** ✅ Done 2026-10-10 at `mediasafe.space`, 2 replicas, sweep
    suspended, promoted by `promote.yml`. The first migration found the schema up to date, and
    sign-in shows real data. Merges to `main` are frozen until the cutover.
-9. **Cutover.**
-10. **Cleanup.**
+9. **Cutover.** ✅ Done 2026-10-10. Vercel's cron disabled and the prod CronJob unsuspended
+   together (sweep at 09:00 UTC on k3s from 2026-10-11); Vercel's git integration disconnected,
+   which ended the merge freeze. Users move to the new domain, so everyone signs in once there
+   whatever the auth secret: cookies don't cross domains.
+10. **Cleanup.** 🔄 In the migration PR: `vercel.json`, `scripts/build.ts` and its test removed
+    (`npm run build` is `next build`; migrations run only in the cluster's Job), the Valkey cache
+    handler unconditional in `next.config.ts`, the temporary `infra-migration` image trigger
+    removed, README and `CLAUDE.md` rewritten for k3s. Left for Adham: delete the Vercel project
+    (after confirming Neon is not Vercel-managed), disable the Google client secret Vercel used,
+    and remove its redirect URI.

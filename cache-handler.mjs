@@ -10,7 +10,7 @@ import { createClient } from "redis";
  * window. This handler moves the entries and the tag invalidations into Valkey, so a bust
  * on one pod is a bust on all of them.
  *
- * Wired in `next.config.ts` for every build except Vercel's, with the in-memory layer off
+ * Wired in `next.config.ts` for every build, with the in-memory layer off
  * (`cacheMaxMemorySize: 0`) — a per-pod copy in front of this would reintroduce exactly
  * the disagreement it exists to remove. Loaded by the server at run time with a plain
  * dynamic `import()`, not through the bundler, which is why it is JavaScript.
