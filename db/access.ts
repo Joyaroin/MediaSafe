@@ -5788,59 +5788,6 @@ export async function listYouRails(
 }
 
 /**
- * You's *Recently watched* — issue #371. The reader's last `RECENT_WATCHES` dated watches,
- * newest first, one row per watch (a rewatch is a second row, because it is a second time
- * the reader watched it).
- *
- * **Dated only.** A watch with no date (an import) has no place in *recent*, and
- * `watched_at is not null` is also the predicate of `watch_user_id_watched_at_idx`, so the
- * read is a backwards walk of that partial index and stops after ten rows.
- *
- * The instant is returned rather than a day: the day is the reader's, in the reader's zone,
- * and is worked out at render (`you/watch-day.ts`) so a change of zone in Settings is right
- * on the next visit.
- */
-export const RECENT_WATCHES = 10;
-
-export interface RecentWatch {
-  readonly watchId: string;
-  readonly libraryEntryId: string;
-  readonly titleName: string;
-  readonly posterPath: string | null;
-  /** `null` for a film's watch. */
-  readonly seasonNo: number | null;
-  readonly episodeNo: number | null;
-  /** `null` where TMDB has not named the episode (a placeholder name is stored as none). */
-  readonly episodeName: string | null;
-  readonly watchedAt: Date;
-}
-
-export async function listRecentWatches(
-  userId: UserId,
-  executor: Executor = getDb(),
-): Promise<RecentWatch[]> {
-  const rows = await executor
-    .select({
-      watchId: watch.id,
-      libraryEntryId: watch.libraryEntryId,
-      titleName: title.name,
-      posterPath: title.posterPath,
-      seasonNo: episode.seasonNo,
-      episodeNo: episode.episodeNo,
-      episodeName: episode.name,
-      watchedAt: watch.watchedAt,
-    })
-    .from(watch)
-    .innerJoin(title, eq(title.id, watch.titleId))
-    .leftJoin(episode, eq(episode.id, watch.episodeId))
-    .where(and(ownedBy(userId, watch), isNotNull(watch.watchedAt)))
-    .orderBy(desc(watch.watchedAt), desc(watch.id))
-    .limit(RECENT_WATCHES);
-
-  return rows.map((row) => ({ ...row, watchedAt: row.watchedAt as Date }));
-}
-
-/**
  * ── The figures You reports ──────────────────────────────────────────────────────────
  *
  * Issue #227 built this section for `/stats`, and issue #249 removed that page. What is
