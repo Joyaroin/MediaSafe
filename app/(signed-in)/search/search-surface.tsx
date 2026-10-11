@@ -297,7 +297,7 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
     <div className="flex flex-col gap-8">
       {groups.map((group) => (
         <section key={group.kind} aria-labelledby={`search-${group.kind}-h`}>
-          <h2 id={`search-${group.kind}-h`} className="mb-3 text-bill-sm font-semibold text-text">
+          <h2 id={`search-${group.kind}-h`} className="mb-3 bill-title text-bill-lg text-text">
             {group.label}
           </h2>
           {group.state.kind === "failed" ? (

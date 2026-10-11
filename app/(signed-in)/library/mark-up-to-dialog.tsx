@@ -106,7 +106,7 @@ export function MarkUpToDialog({
       // before its own entrance has finished.
       className={DIALOG_FRAME}
     >
-      <h2 id="mark-up-to-h" className="bill-title text-bill-sm text-text">
+      <h2 id="mark-up-to-h" className="bill-title text-bill-lg text-text">
         Watched up to here?
       </h2>
 

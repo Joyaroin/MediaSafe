@@ -17,11 +17,11 @@
  */
 export function Wordmark({
   markClassName,
-  nameClassName = "bill-title text-bill-xs leading-none",
+  nameClassName = "text-bill-xs font-semibold leading-none",
 }: {
   markClassName: string;
-  /** The name's type register. Defaults to the bill's — `masthead.tsx` passes turn 9's
-   *  label register instead. */
+  /** The name's type register. Defaults to Instrument Sans 600 — never the serif, which
+   *  is for titles (handoff §4, issue #396). */
   nameClassName?: string;
 }) {
   return (

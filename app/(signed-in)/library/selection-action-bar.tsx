@@ -251,7 +251,7 @@ export function SelectionActionBar() {
         aria-labelledby="bulk-add-to-list-h"
         className={`${DIALOG_FRAME} w-full max-w-[420px]`}
       >
-        <h2 id="bulk-add-to-list-h" className="bill-title text-bill-sm text-text">
+        <h2 id="bulk-add-to-list-h" className="bill-title text-bill-lg text-text">
           Add {formatTitleCount(view.selected.length)} to a list
         </h2>
 

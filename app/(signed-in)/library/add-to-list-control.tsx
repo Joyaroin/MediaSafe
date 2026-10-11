@@ -161,7 +161,7 @@ export function AddToListControl({
         aria-labelledby={`add-to-list-${titleId}-h`}
         className={`${DIALOG_FRAME} w-full max-w-[420px]`}
       >
-        <h2 id={`add-to-list-${titleId}-h`} className="bill-title text-bill-sm text-text">
+        <h2 id={`add-to-list-${titleId}-h`} className="bill-title text-bill-lg text-text">
           Add &ldquo;{titleName}&rdquo; to a list
         </h2>
 

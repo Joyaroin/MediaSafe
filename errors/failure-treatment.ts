@@ -10,8 +10,8 @@
  * reasoning is the argument: *a class string copied three times is a treatment that drifts
  * into three treatments the first time one of them is adjusted.* That is not hypothetical
  * here — it had already happened. The sign-out block was first written by hand at
- * `text-bill-sm`, which is the **write-failure toast's** heading step, so two documented
- * treatments were mixed on one screen; and the read-failure boundary was capping its prose
+ * `text-bill-sm`, which was then the **write-failure toast's** heading step, so two
+ * documented treatments were mixed on one screen; and the read-failure boundary was capping its prose
  * at `60ch`, which is the **zero-match** state's measure, not its own.
  *
  * These are class strings and not components, deliberately, on the grounds `app/globals.css`

@@ -89,7 +89,7 @@ export function DeleteListDialog({
       // before its own entrance has finished.
       className={DIALOG_FRAME}
     >
-      <h2 id={`delete-list-${listId}-h`} className="bill-title text-bill-sm text-text">
+      <h2 id={`delete-list-${listId}-h`} className="bill-title text-bill-lg text-text">
         Delete &ldquo;{listName}&rdquo;?
       </h2>
 

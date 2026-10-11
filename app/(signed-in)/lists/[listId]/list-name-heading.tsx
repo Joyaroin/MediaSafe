@@ -76,7 +76,7 @@ export function ListNameHeading({
   if (!editing) {
     return (
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <h1 className="bill-title text-bill-sm text-text">{name}</h1>
+        <h1 className="screen-title text-screen text-text">{name}</h1>
         <button
           type="button"
           onClick={() => {

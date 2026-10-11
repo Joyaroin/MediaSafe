@@ -9,8 +9,9 @@ import { type RaisedWriteFailure, writeFailures } from "./write-failure";
 /**
  * States: *a persistent toast on solid `ground` inside a `2px` `accent` border —
  * `420px` bottom-right on desktop, full-bleed above the tab bar on phone. Heading at
- * `text-bill-sm` in `accent`, the affected title and episode named in full, a solid *Try
- * again*, a ghost *Dismiss*, and a copyable reference id. It does not auto-dismiss.*
+ * Control size (`text-bill-xs`, sans 600, since issue #396) in `accent`, the affected
+ * title and episode named in full, a solid *Try again*, a ghost *Dismiss*, and a
+ * copyable reference id. It does not auto-dismiss.*
  *
  * **Its first caller is the add on the search screen** —
  * `app/(signed-in)/search/catalogue-result.tsx`, issue #55 — and that it was built before
@@ -144,7 +145,7 @@ function WriteFailureToast({
       }}
       className="write-failure-toast-transition pointer-events-auto border-2 border-accent bg-ground p-4"
     >
-      <h2 className="bill-title text-bill-sm text-accent">That did not save</h2>
+      <h2 className="text-bill-xs font-semibold text-accent">That did not save</h2>
 
       {/* Named in full, both of them, and set as their own block rather than folded into
           the sentence. Episodes have real names — "Season 2, Episode 4 —

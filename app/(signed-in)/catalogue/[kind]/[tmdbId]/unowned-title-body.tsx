@@ -105,7 +105,7 @@ export async function UnownedTitleBody({
 
           {detail.kind === "show" ? (
             <section aria-labelledby="episodes-h" className="min-w-0">
-              <h2 id="episodes-h" className="bill-title text-bill-sm text-text">
+              <h2 id="episodes-h" className="bill-title text-bill-lg text-text">
                 Episodes
               </h2>
               <UnownedEpisodes kind={detail.kind} episodes={detail.episodes} />
