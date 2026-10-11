@@ -175,8 +175,12 @@ describe("nothing upcoming, and a read that failed", () => {
       createElement(ReadFailure, { reference: "abc123", retry: () => {} }),
     );
 
-    expect(empty).toContain("text-center");
-    expect(failed).not.toContain("text-center");
+    // Charcoal (issue #397): both are the outlined panel, so the frame is shared. The
+    // heading's voice is not — the empty state heads in the serif, the failure in the sans
+    // at Row size — and only the failure carries a reference.
+    expect(empty).toContain("bill-title");
+    expect(failed).not.toContain("bill-title");
+    expect(failed).toContain("text-row font-semibold");
     expect(failed).toContain("abc123");
     expect(empty).not.toContain("abc123");
     expect(empty).not.toContain("No release dates yet".toLowerCase());

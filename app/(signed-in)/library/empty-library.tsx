@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { EMPTY_PANEL } from "@/app/buttons";
 
 /**
  * A library with nothing in it — and the state this whole screen's error discipline
@@ -48,15 +49,15 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function EmptyLibrary() {
   return (
-    <section className="px-gutter py-16 text-center">
+    <section className={EMPTY_PANEL}>
       <h2 className="bill-title text-bill-lg text-text">Your library is empty</h2>
 
-      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
+      <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
         Bring your library in from an export file in one go, or search for films and shows
         and add them one at a time.
       </p>
 
-      <Link href="/import" className={`mt-5 ${SOLID_RECOVERY}`}>
+      <Link href="/import" className={`mt-4 ${SOLID_RECOVERY}`}>
         Bring your library in
       </Link>
     </section>

@@ -1,10 +1,9 @@
 "use client";
 
-import * as m from "motion/react-m";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
-import { snappy } from "@/app/motion";
+import { SegmentedControl } from "@/app/segmented";
 import { ListsPanel } from "@/app/(signed-in)/lists/lists-surface";
 import type { LibraryEntryRow, ListSummary } from "@/db/access";
 import type { LibrarySort } from "@/db/library-sort";
@@ -195,35 +194,13 @@ function LibraryTabs({
   onChange: (view: LibraryView) => void;
 }) {
   return (
-    <div
-      role="group"
-      aria-label="What to show"
-      className="mt-4 flex w-full rounded-[var(--radius-full)] bg-raised p-[3px] lg:max-w-[420px]"
-    >
-      {LIBRARY_VIEWS.map((view) => {
-        const selected = view.value === value;
-
-        return (
-          <button
-            key={view.value}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => onChange(view.value)}
-            className={`relative flex h-9 flex-1 items-center justify-center rounded-[var(--radius-full)] text-meta font-medium transition-colors duration-[var(--dur-fast)] ${
-              selected ? "text-ground" : "text-dim hover:text-text"
-            }`}
-          >
-            {selected ? (
-              <m.span
-                layoutId="library-view"
-                className="absolute inset-0 rounded-[var(--radius-full)] bg-text"
-                transition={snappy}
-              />
-            ) : null}
-            <span className="relative z-10">{view.label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      label="What to show"
+      options={LIBRARY_VIEWS}
+      value={value}
+      onChange={onChange}
+      layoutId="library-view"
+      className="mt-4 w-full lg:max-w-[420px]"
+    />
   );
 }

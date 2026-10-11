@@ -8,7 +8,7 @@ import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { useWatchMark } from "@/app/(signed-in)/library/use-watch-mark";
 import {
-  RECORDING_GLYPH,
+  RECORDING_GLYPH_UP_NEXT,
   RECORDING_HIT_BOX,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
@@ -135,7 +135,7 @@ function FilmRow({
           aria-label={`Mark ${film.titleName} watched`}
           className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
         >
-          <span className={RECORDING_GLYPH}>
+          <span className={RECORDING_GLYPH_UP_NEXT}>
             <CheckmarkIcon className="h-4 w-4" />
           </span>
         </button>

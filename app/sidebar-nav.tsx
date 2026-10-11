@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { smooth } from "./motion";
+import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
 import { DESTINATIONS } from "./destinations";
 import { DESTINATION_ICONS } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
@@ -25,6 +26,9 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * #146 already made, carried into the nav that finally exists to carry it.
  *
  * ── No accent, on purpose ─────────────────────────────────────────────────────────────
+ *
+ * **Charcoal (issue #397) replaced the left rule below with the outlined item** — every
+ * selection in the app is one line now (`app/selection.ts`). The history stands:
  *
  * Every other "current" treatment in the build before this ticket was full inversion —
  * a solid `text`-coloured block with `ground`-coloured type, on the masthead's nav cells,
@@ -71,23 +75,20 @@ const PRIMARY = DESTINATIONS.map(({ href, label }) => ({
 }));
 
 
-/* Both states keep the transparent `2px` left border. It is pure spacing now — the
-   visible marker is `<CurrentMarker />`, one `layoutId` element that Motion slides down
-   the column between destinations instead of repainting a border in a new cell. Leaving
-   the border on both is what keeps the label from shifting 2px sideways as the marker
-   arrives, which is the tell that a marker was faked with a border. */
-const CURRENT =
-  "relative flex items-center gap-3 border-l-2 border-transparent py-2.5 pl-4 pr-5 text-text";
-const NOT_CURRENT =
-  "relative flex items-center gap-3 border-l-2 border-transparent py-2.5 pl-4 pr-5 text-dim transition-colors duration-[var(--dur-fast)] hover:text-text";
+/* Charcoal, issue #397: the current item is *outlined* (`app/selection.ts`), where it was a
+   `2px` left rule — `44px` high, a `20px` icon and a `15px` label. The line is
+   `<CurrentMarker />`, one `layoutId` element that Motion slides down the column between
+   destinations rather than repainting a line in a new cell. */
+const ITEM =
+  "relative flex h-11 items-center gap-3 rounded-[var(--radius-4)] px-3 text-note";
+const CURRENT = `${ITEM} ${SELECTED}`;
+const NOT_CURRENT = `${ITEM} ${UNSELECTED}`;
 
-/** The travelling `2px` rule. `-left-0.5` puts it back over the transparent border it
- *  replaces, so the marker lands exactly where the old static border sat. */
 function CurrentMarker() {
   return (
     <m.span
       layoutId="sidebar-current"
-      className="absolute -left-0.5 top-0 h-full w-0.5 bg-text"
+      className={`${SELECTED_MARKER} rounded-[var(--radius-4)]`}
       transition={smooth}
     />
   );
@@ -100,7 +101,7 @@ export function SidebarNav() {
 
   return (
     <>
-      <nav aria-label="Primary" className="flex flex-col py-2">
+      <nav aria-label="Primary" className="flex flex-col gap-1 px-2 py-2">
         {PRIMARY.map(({ href, label, Icon }) => {
           const current = isCurrent(href);
 
@@ -116,8 +117,8 @@ export function SidebarNav() {
               className={current ? CURRENT : NOT_CURRENT}
             >
               {current ? <CurrentMarker /> : null}
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="code-line">{label}</span>
+              <Icon className="h-5 w-5 shrink-0" />
+              <span>{label}</span>
             </Link>
           );
         })}

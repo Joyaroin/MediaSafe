@@ -2,16 +2,20 @@
 
 import { useState, useSyncExternalStore } from "react";
 
-import { GHOST_RECOVERY, SOLID_RECOVERY } from "./recovery-buttons";
+import { PLAIN_BUTTON, PRIMARY_BUTTON_COMPACT } from "@/app/buttons";
 import { ReferenceLine } from "./reference-line";
 import { type RaisedWriteFailure, writeFailures } from "./write-failure";
 
 /**
- * States: *a persistent toast on solid `ground` inside a `2px` `accent` border —
+ * A persistent toast, `raised`, inside a `1px` inset `danger` line at `--radius-6` —
  * `420px` bottom-right on desktop, full-bleed above the tab bar on phone. Heading at
- * Control size (`text-bill-xs`, sans 600, since issue #396) in `accent`, the affected
- * title and episode named in full, a solid *Try again*, a ghost *Dismiss*, and a
- * copyable reference id. It does not auto-dismiss.*
+ * Control size (`text-bill-xs`, sans 600) in `text`, the affected title and episode named
+ * in full, a filled *Try again*, a plain *Dismiss*, and a copyable reference id. It does
+ * not auto-dismiss.
+ *
+ * **Framed in `danger`, not the accent — Charcoal, issue #397.** The accent is the text
+ * colour now, so an accent frame would say nothing; `danger` says *something you did was
+ * lost*, and the line and the words say it together, so it is never colour alone.
  *
  * **Its first caller is the add on the search screen** —
  * `app/(signed-in)/search/catalogue-result.tsx`, issue #55 — and that it was built before
@@ -143,9 +147,9 @@ function WriteFailureToast({
           onLeft();
         }
       }}
-      className="write-failure-toast-transition pointer-events-auto border-2 border-accent bg-ground p-4"
+      className="write-failure-toast-transition pointer-events-auto rounded-[var(--radius-6)] bg-raised danger-line p-4"
     >
-      <h2 className="text-bill-xs font-semibold text-accent">That did not save</h2>
+      <h2 className="text-bill-xs font-semibold text-text">That did not save</h2>
 
       {/* Named in full, both of them, and set as their own block rather than folded into
           the sentence. Episodes have real names — "Season 2, Episode 4 —
@@ -156,7 +160,7 @@ function WriteFailureToast({
         <p className="text-item text-dim">{failure.episode}</p>
       ) : null}
 
-      <p className="mt-3 text-note leading-relaxed text-text">
+      <p className="mt-3 text-note leading-relaxed text-dim">
         Your change did not reach MediaSafe. Nothing else was affected.
       </p>
 
@@ -164,7 +168,7 @@ function WriteFailureToast({
         {/* Retrying does not take the toast down — whether the retry succeeded is the
             caller's to know, and it says so by resolving. */}
         {failure.retry ? (
-          <button type="button" onClick={failure.retry} className={SOLID_RECOVERY}>
+          <button type="button" onClick={failure.retry} className={PRIMARY_BUTTON_COMPACT}>
             Try again
           </button>
         ) : null}
@@ -172,7 +176,7 @@ function WriteFailureToast({
         <button
           type="button"
           onClick={() => writeFailures.dismiss(failure.id)}
-          className={GHOST_RECOVERY}
+          className={PLAIN_BUTTON}
         >
           Dismiss
         </button>

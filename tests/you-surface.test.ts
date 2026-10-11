@@ -188,10 +188,14 @@ describe("an account with an empty library", () => {
     expect(empty).not.toContain(">0<");
   });
 
-  it("is centred and unruled, where the read failure is neither", () => {
+  it("heads in the serif and carries no reference, where the read failure does neither", () => {
     // The two states have to be structurally different on the glass, and
-    // `error.tsx`'s own docblock. This is the empty half of that pair.
-    expect(empty).toContain("text-center");
+    // `error.tsx`'s own docblock. This is the empty half of that pair. Charcoal (issue
+    // #397) frames both in the outlined panel, so the frame no longer differs; the
+    // heading's voice and the reference id still do.
+    expect(empty).toContain("bill-title");
+    expect(empty).not.toContain("text-row");
+    expect(empty).not.toContain("Reference");
     expect(empty).not.toContain("border");
   });
 });

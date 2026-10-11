@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckmarkIcon } from "./checkmark-icon";
-import { ChipGround, chipClassName } from "./chip";
+import { ChipButton } from "./chip";
 import { seasonHeading } from "./season-grouping";
 
 /**
@@ -39,7 +39,7 @@ export function SeasonChips({
   finished: ReadonlySet<number>;
   selected: number;
   onSelect: (seasonNo: number) => void;
-  /** Namespaces the travelling fill's `layoutId` (`chip.tsx`) to this title, so the
+  /** Namespaces the travelling selected line's `layoutId` (`chip.tsx`) to this title, so the
    *  desktop pane and a phone route open on a different show at the same time never
    *  share a shared-layout group. */
   libraryEntryId: string;
@@ -51,26 +51,20 @@ export function SeasonChips({
       aria-label="Choose a season"
     >
       {seasons.map((seasonNo) => (
-        <button
+        <ChipButton
           key={seasonNo}
-          type="button"
-          aria-pressed={seasonNo === selected}
+          selected={seasonNo === selected}
           onClick={() => onSelect(seasonNo)}
-          className={chipClassName(seasonNo === selected)}
+          layoutId={`season-chip-selected-${libraryEntryId}`}
         >
-          {seasonNo === selected ? (
-            <ChipGround layoutId={`season-chip-selected-${libraryEntryId}`} />
+          {seasonHeading(seasonNo)}
+          {finished.has(seasonNo) ? (
+            <>
+              <CheckmarkIcon className="h-3 w-3" />
+              <span className="sr-only">, watched</span>
+            </>
           ) : null}
-          <span className="relative z-10 flex items-center gap-1.5">
-            {seasonHeading(seasonNo)}
-            {finished.has(seasonNo) ? (
-              <>
-                <CheckmarkIcon className="h-3 w-3" />
-                <span className="sr-only">, watched</span>
-              </>
-            ) : null}
-          </span>
-        </button>
+        </ChipButton>
       ))}
     </div>
   );

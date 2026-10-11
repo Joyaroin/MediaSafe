@@ -101,39 +101,39 @@ describe("the empty library, zero matches, and a failed read", () => {
    * names — see the file-level comment above.
    */
 
-  it("are centred alike, except the failure", () => {
-    expect(empty).toContain("text-center");
-    expect(zero).toContain("text-center");
-    expect(failed).not.toContain("text-center");
+  /**
+   * Charcoal (issue #397) frames all three in the one outlined panel (handoff §6), so a
+   * frame no longer tells them apart — it used to be centring for the two empty states and
+   * an accent top rule for the failure. What tells them apart now is the voice of the
+   * heading and the reference id below: the two empty states head in the serif
+   * (`bill-title`), the failure at Row size in the sans, and only the failure carries a
+   * reference.
+   */
+  it("share one frame, the outlined panel", () => {
+    for (const markup of [empty, zero, failed]) expect(markup).toContain("hair-line");
+    expect(empty).not.toContain("text-center");
+    expect(zero).not.toContain("text-center");
   });
 
-  it("share one heading colour between them, and the failure alone takes the other", () => {
-    expect(failed).toContain("text-accent");
-    // Vermilion is the failure's, and appears on no heading of the other two. The empty
-    // state's *button* is solid `accent` by the primary-recovery treatment,
-    // so this is a check on the heading text, not a blanket absence of the colour.
-    expect(empty).not.toContain("text-bill-lg text-accent");
-    expect(zero).not.toContain("text-bill-md text-accent");
+  it("head the two empty states in the serif, and the failure alone in the sans at Row size", () => {
+    expect(empty).toContain("bill-title");
+    expect(zero).toContain("bill-title");
+    expect(failed).not.toContain("bill-title");
+    expect(failed).toContain("text-row font-semibold");
+    expect(empty).not.toContain("text-row");
+    expect(zero).not.toContain("text-row");
   });
 
-  it("puts the empty library one heading step above zero matches and the failure", () => {
-    // `errors/failure-treatment.ts`: "text-bill-md is the step the type table
-    // names for the zero-match and read-failure headlines" — the same step, so the
-    // failure is told apart from zero matches by colour and border, not by size.
+  it("puts the empty library one heading step above zero matches", () => {
     expect(empty).toContain("text-bill-lg");
     expect(zero).toContain("text-bill-md");
-    expect(failed).toContain("text-bill-md");
     expect(zero).not.toContain("text-bill-lg");
-    expect(failed).not.toContain("text-bill-lg");
   });
 
-  it("differ by the top accent rule, which only the failure has", () => {
-    // The literal string `errors/failure-treatment.ts` exports as `FAILURE_SECTION` — not
-    // a bare "border-accent" search, which the zero-match state's own *ghost* recovery
-    // button would also match and make this pass for the wrong reason.
-    expect(failed).toContain("border-t-2 border-accent");
-    expect(empty).not.toContain("border-t-2 border-accent");
-    expect(zero).not.toContain("border-t-2 border-accent");
+  it("paints no heading in an alarm colour — the words and the heading's voice do it", () => {
+    for (const markup of [empty, zero, failed]) {
+      expect(markup).not.toMatch(/<h2[^>]*text-(accent|danger)/);
+    }
   });
 
   it("differ by the reference id, which only the failure has", () => {
@@ -337,10 +337,10 @@ describe("the filter chips", () => {
     renderToStaticMarkup(createElement(LibraryChips, { value, onChange: () => {} }));
 
   /**
-   * #132 wrapped each chip's label in a `<span>` so it can sit `z-10` above the travelling
-   * `<ChipGround />` — the label is no longer a button's direct text child. This walks each
-   * `<button>...</button>` block (they don't nest, so stopping at the first `</button>`
-   * after each opening tag is exact) and returns the one whose block contains the label.
+   * Each chip's label sits inside its face, a `<span>` within the `<button>` — the label is
+   * not a button's direct text child. This walks each `<button>...</button>` block (they
+   * don't nest, so stopping at the first `</button>` after each opening tag is exact) and
+   * returns the one whose block contains the label.
    */
   const chipButton = (markup: string, label: string) =>
     [...markup.matchAll(/<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g)]
@@ -349,8 +349,8 @@ describe("the filter chips", () => {
 
   it("renders exactly six, in the domain's words and the settled order", () => {
     const markup = chips();
-    const labels = [...markup.matchAll(/<span class="relative z-10">([^<]+)<\/span>/g)].map(
-      (match) => match[1],
+    const labels = [...markup.matchAll(/<button[^>]*>((?:(?!<\/button>)[\s\S])*)<\/button>/g)].map(
+      (match) => match[1].replace(/<[^>]+>/g, ""),
     );
 
     expect(labels).toEqual([
@@ -363,27 +363,35 @@ describe("the filter chips", () => {
     ]);
   });
 
-  it("fills the selected chip with ink and sets its label in the ground colour", () => {
+  it("outlines the selected chip and sets its label in text at 600 — Charcoal, issue #397", () => {
     const markup = chips("finished");
     const finishedButton = chipButton(markup, "Finished");
 
     expect(finishedButton).toContain('aria-pressed="true"');
-    // `bg-text`, the full-strength neutral (`--ink` folded into `--text` in #357). The travelling
-    // `layoutId` ground is unchanged in mechanism; it is an `18px`-radius pill now.
-    expect(finishedButton).toContain("bg-text");
-    expect(finishedButton).toContain("text-ground");
-    expect(finishedButton).toContain("rounded-[var(--radius-6)]");
+    expect(finishedButton).toContain("selected-line");
+    expect(finishedButton).toContain("font-semibold text-text");
+    // Outlined, not inverted: the solid `text` fill is the filled treatment's alone.
+    expect(finishedButton).not.toContain("bg-text");
+    expect(finishedButton).not.toContain("text-ground");
   });
 
-  it("keeps the Watching chip vermilion even unselected, and every other chip dim", () => {
+  it("leaves every unselected chip unlined and dim — Watching included", () => {
     const markup = chips("all");
-    const watchingButton = chipButton(markup, "Watching");
-    const finishedButton = chipButton(markup, "Finished");
 
-    expect(watchingButton).toContain('aria-pressed="false"');
-    expect(watchingButton).toContain("text-accent");
-    expect(finishedButton).toContain("text-dim");
-    expect(finishedButton).not.toContain("text-accent");
+    for (const label of ["Watching", "Caught up", "Finished", "Watchlist", "Dropped"]) {
+      const button = chipButton(markup, label);
+      expect(button).toContain('aria-pressed="false"');
+      expect(button).not.toContain("selected-line");
+      expect(button).toContain("text-dim");
+      expect(button).not.toContain("text-accent");
+    }
+  });
+
+  it("draws a 36px pill inside a 44px target", () => {
+    const button = chipButton(chips("all"), "Finished") ?? "";
+
+    expect(button).toMatch(/^<button[^>]*class="[^"]*\bh-11\b/);
+    expect(button).toMatch(/<span[^>]*class="[^"]*\bh-9\b/);
   });
 });
 

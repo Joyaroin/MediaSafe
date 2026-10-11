@@ -155,17 +155,14 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
  * `tests/accent-sweep.test.ts` holds its own sweep to.
  */
 const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number; readonly reason: string }[] = [
-  { file: "app/(signed-in)/settings/theme-control.tsx", count: 1, reason: "a segmented control option" },
-  { file: "app/(signed-in)/lists/[listId]/list-view-control.tsx", count: 1, reason: "a segmented control track" },
   { file: "app/(signed-in)/library/chip.tsx", count: 1, reason: "a filter chip" },
-  { file: "app/(signed-in)/library/library-filter-bar.tsx", count: 1, reason: "the Watching chip" },
-  { file: "app/(signed-in)/library/library-surface.tsx", count: 1, reason: "the Shows/Films/Lists segmented control track" },
   { file: "app/(signed-in)/you/year-heatmap.tsx", count: 1, reason: "the heatmap's empty-day shade, a cell rather than a container" },
   { file: "app/(signed-in)/lists/[listId]/list-title-row.tsx", count: 1, reason: "raised only on hover, not at rest" },
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1, reason: "a stat figure card outside this ticket's named categories" },
   { file: "app/(signed-in)/you/you-hero.tsx", count: 2, reason: "the account avatar well" },
   { file: "app/(signed-in)/you/you-heading.tsx", count: 1, reason: "the Settings button, a control rather than a container" },
-  { file: "app/buttons.ts", count: 2, reason: "the secondary button and the menu item, controls rather than containers" },
+  { file: "app/segmented.tsx", count: 1, reason: "the segmented control track — Library's view, a list's view and Settings' appearance share it (#397)" },
+  { file: "app/buttons.ts", count: 1, reason: "DIALOG_FRAME, which keeps its border and its one shadow; plate-line is a box-shadow too, and two on one element fight (#397)" },
   { file: "app/(signed-in)/library/watch-menu.tsx", count: 1, reason: "a menu item, raised only on hover" },
 ];
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import type { MarkedResult } from "@/app/(signed-in)/search/actions";
 import { useCatalogueAdd } from "@/app/(signed-in)/search/use-catalogue-add";
+import { PILL_TARGET, PRIMARY_PILL } from "@/app/buttons";
 import { Poster } from "@/app/poster";
 
 /**
@@ -49,11 +50,9 @@ export function SuggestionCard({
           type="button"
           onClick={() => void attempt(false)}
           aria-label={`Add ${result.name} to your library`}
-          className="pressable [--press-register:1] mt-1 flex h-11 items-center"
+          className={`pressable [--press-register:1] mt-1 ${PILL_TARGET}`}
         >
-          <span className="flex h-[30px] items-center rounded-[var(--radius-full)] bg-accent px-3.5 text-meta font-semibold text-accent-ink">
-            Add
-          </span>
+          <span className={PRIMARY_PILL}>Add</span>
         </button>
       )}
     </li>

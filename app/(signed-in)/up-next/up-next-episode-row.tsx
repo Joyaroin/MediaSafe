@@ -7,7 +7,7 @@ import Link from "next/link";
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
-  RECORDING_GLYPH,
+  RECORDING_GLYPH_UP_NEXT,
   RECORDING_HIT_BOX,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
@@ -393,7 +393,7 @@ function MarkControl({ mark }: { mark: UpNextMark }) {
       aria-label={`Mark ${queuedEpisodeFullName(episode)} watched`}
       className={CHECK_HIT_BOX}
     >
-      <span className={RECORDING_GLYPH}>
+      <span className={RECORDING_GLYPH_UP_NEXT}>
         <CheckmarkIcon className="h-4 w-4" />
       </span>
     </button>

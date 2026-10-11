@@ -44,9 +44,11 @@ vi.mock("next/navigation", () => ({
  * mistake.
  *
  * Genuine failure surfaces — `errors/write-failure-toast.tsx`, `errors/offline-banner.tsx`,
- * `errors/failure-treatment.ts`, `app/global-error.tsx` — are asserted unchanged, so a
- * regression here cannot quietly widen into an actual failure surface losing its own
- * treatment.
+ * `errors/failure-treatment.ts`, `app/global-error.tsx` — are asserted by their exact
+ * treatment, so a regression here cannot quietly widen into an actual failure surface
+ * losing its own. Charcoal (issue #397) changed three of these on purpose: the toast is
+ * framed in `danger`, the failure treatment is the outlined panel, and the dialog frame is
+ * `bg-raised`.
  */
 
 const ROOT = join(__dirname, "..");
@@ -150,14 +152,16 @@ describe("the dialogs that borrowed the failure frame are re-narrowed", () => {
     expect(dialogTag(path)).toMatch(/DIALOG_FRAME/);
   });
 
-  it("the shared frame still reads as a dialog — bordered, grounded, backdropped", () => {
+  it("the shared frame still reads as a dialog — bordered, raised, backdropped", () => {
     const frame = source("app/buttons.ts").match(/export const DIALOG_FRAME =\s*"([^"]*)"/)?.[1];
 
     expect(frame).toBeDefined();
     expect(frame).toMatch(/\bborder\b/);
     expect(frame).toMatch(/\bborder-hair\b/);
     expect(frame).not.toMatch(/\bborder-accent\b/);
-    expect(frame).toMatch(/\bbg-ground\b/);
+    // Charcoal (issue #397): a dialog is raised, so what sits inside takes its on-card form.
+    expect(frame).toMatch(/\bbg-raised\b/);
+    expect(frame).not.toMatch(/(^|\s)bg-ground(\s|$)/);
     expect(frame).toMatch(/backdrop:bg-ground\/80/);
   });
 
@@ -167,12 +171,14 @@ describe("the dialogs that borrowed the failure frame are re-narrowed", () => {
   });
 });
 
-describe("genuine failure surfaces keep the failure treatment exactly as it is", () => {
-  it("errors/write-failure-toast.tsx still frames the lost-write toast in the accent", () => {
-    expect(source("errors/write-failure-toast.tsx")).toContain(
-      "border-2 border-accent bg-ground p-4",
-    );
-    expect(source("errors/write-failure-toast.tsx")).toContain("text-bill-xs font-semibold text-accent");
+describe("genuine failure surfaces keep their failure treatment", () => {
+  it("errors/write-failure-toast.tsx frames the lost-write toast in danger, not the accent", () => {
+    // Charcoal (issue #397): the accent is the text colour now, so the frame that says
+    // *something you did was lost* is the `danger` line.
+    const toast = code(source("errors/write-failure-toast.tsx"));
+    expect(toast).toContain("bg-raised danger-line p-4");
+    expect(toast).toContain("text-bill-xs font-semibold text-text");
+    expect(toast).not.toMatch(/\bborder-accent\b|\btext-accent\b/);
   });
 
   it("errors/offline-banner.tsx still paints the sticky banner solid accent", () => {
@@ -181,12 +187,17 @@ describe("genuine failure surfaces keep the failure treatment exactly as it is",
     expect(banner).toMatch(/\btext-accent-ink\b/);
   });
 
-  it("errors/failure-treatment.ts still rules the read-failure/sign-in/sign-out treatment", () => {
+  it("errors/failure-treatment.ts rules the read-failure/sign-in/sign-out treatment as the outlined panel", () => {
+    // Charcoal (issue #397): the accent top rule and accent heading are gone. An inline
+    // failure is the outlined panel with a Row heading in `text`.
     expect(source("errors/failure-treatment.ts")).toContain(
-      'export const FAILURE_SECTION = "border-t-2 border-accent py-6";',
+      "export const FAILURE_SECTION = OUTLINED_PANEL;",
     );
     expect(source("errors/failure-treatment.ts")).toContain(
-      'export const FAILURE_HEADING = "bill-title text-bill-md text-accent";',
+      'export const FAILURE_HEADING = "text-row font-semibold text-text";',
+    );
+    expect(source("app/buttons.ts")).toContain(
+      'export const OUTLINED_PANEL = "rounded-[var(--radius-6)] hair-line p-5";',
     );
   });
 
