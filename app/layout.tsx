@@ -29,6 +29,10 @@ import "./globals.css";
  * stays the single source for both the key and the attribute — the drift this avoids
  * would be silent, and its symptom would be a theme that simply stops surviving reloads.
  *
+ * Because the attribute lands before hydration, `<html>` carries `suppressHydrationWarning`:
+ * the mismatch is the point, and without it every page load logs one for anyone with a
+ * pinned theme. It reaches `<html>`'s own attributes only, not anything rendered inside it.
+ *
  * The `try`/`catch` is not `AGENTS.md`'s forbidden shape: falling back to the system
  * palette when `localStorage` throws is the correct and complete answer, not an empty
  * result standing in for a failed read. `lib/theme.ts`'s `readThemeChoice()` makes the
@@ -79,7 +83,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-GB" className={archivo.variable}>
+    <html lang="en-GB" className={archivo.variable} suppressHydrationWarning>
       <head>
         {/* First in `<head>`, before the stylesheet and before anything paints — see
             `THEME_SCRIPT` above for why this cannot be a React effect. */}
