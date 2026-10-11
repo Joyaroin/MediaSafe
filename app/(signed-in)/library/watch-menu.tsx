@@ -154,7 +154,7 @@ export function WatchMenu({
     >
       {/* Never swapped out by `confirming` — issue #315's acceptance criterion that the
           episode being acted on stays identifiable while the confirmation is shown. */}
-      <h2 id="watch-menu-h" className="bill-title text-bill-sm text-text">
+      <h2 id="watch-menu-h" className="bill-title text-bill-lg text-text">
         {named}
       </h2>
 

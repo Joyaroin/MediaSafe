@@ -5,7 +5,7 @@ import { OfflineBanner } from "@/errors/offline-banner";
 import { WriteFailureToasts } from "@/errors/write-failure-toast";
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from "@/lib/theme";
 
-import { archivo } from "./fonts";
+import { fontVariables } from "./fonts";
 import { MotionProvider } from "./motion-provider";
 import { THEME_COLOR_SCHEME } from "./theme-color";
 import "./globals.css";
@@ -83,7 +83,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-GB" className={archivo.variable} suppressHydrationWarning>
+    <html lang="en-GB" className={fontVariables} suppressHydrationWarning>
       <head>
         {/* First in `<head>`, before the stylesheet and before anything paints — see
             `THEME_SCRIPT` above for why this cannot be a React effect. */}

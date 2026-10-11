@@ -4,7 +4,7 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
 
-import { archivo } from "./fonts";
+import { fontVariables } from "./fonts";
 import "./globals.css";
 
 /**
@@ -34,7 +34,7 @@ export default function RootFailure({
   );
 
   return (
-    <html lang="en-GB" className={archivo.variable}>
+    <html lang="en-GB" className={fontVariables}>
       <body>
         {/* Not the read-failure treatment. That one is inline — it replaces a grid and
             leaves the page around it standing. This is the whole page, so it is set as

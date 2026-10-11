@@ -410,11 +410,12 @@
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
 
-  /* The prototype loaded Archivo from a CDN. Here it is self-hosted by
-     `next/font`, which mints the family name into `--font-archivo`; the
-     two roles still differ by width axis, not by family.            */
-  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
-  --font-text: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  /* Two families, one role each — Charcoal, issue #396. Self-hosted by `next/font`
+     (`app/fonts.ts`), which mints each family name into its own variable. The system
+     stacks after them are not decoration: titles arrive in many languages, and a script
+     neither family draws falls through to them rather than to the browser's default. */
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-text: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
 
   /* ── The type scale — one scale, issue #357 ────────────────────
      Every size the app sets text at, largest first, in `rem` so a
@@ -428,20 +429,28 @@
      at the default 16px base.
 
      Each token declares a font size and nothing else — no paired
-     line height — so one size can serve a name and a running line. */
-  --text-bill-xl: 2.4rem; /* a title's own page                  */
-  --text-screen: 2.125rem; /* the four destinations' titles       */
-  --text-bill-lg: 1.9rem; /* hero and full-surface headlines     */
-  --text-bill-md: 1.45rem; /* inline headlines                    */
-  --text-bill-sm: 1.2rem; /* section heads, row titles, toast    */
-  --text-row: 1.0625rem; /* library cell title                  */
-  --text-bill-xs: 1rem; /* compact titles, search field, cards */
-  --text-note: 0.95rem; /* synopsis and running prose          */
-  --text-item: 0.875rem; /* episode names, metadata, fields     */
+     line height — so one size can serve a name and a running line.
+
+     Charcoal (issue #396) re-valued the names rather than renaming
+     them, so call sites change as little as possible; the roles are
+     the handoff's (§5.3): Display down to Numeral are the serif at
+     400, Row and below the sans. `--text-bill-sm` had no role in
+     that scale and is gone — its call sites became Heading, Row or
+     Control by what they title. */
+  --text-display: 5rem; /* Tonight's featured title — 8rem from `xl:`, below */
+  --text-bill-xl: 3.5rem; /* Title: a title's own page          */
+  --text-screen: 3rem; /* Screen: the destinations' titles      */
+  --text-figure: 2.125rem; /* Figure: You's name and counts     */
+  --text-bill-lg: 1.75rem; /* Heading: sections, empty states, dialogs */
+  --text-bill-md: 1.375rem; /* Numeral: episode numbers, positions */
+  --text-row: 1.0625rem; /* Row: row titles, failure headings   */
+  --text-bill-xs: 1rem; /* Control: 48px buttons, episode names, toast titles */
+  --text-note: 0.9375rem; /* Body: synopsis, prose, 44px buttons */
+  --text-item: 0.875rem; /* chip, pill, compact segment          */
   --text-meta: 0.8125rem; /* year, count, meta line, quiet links */
   --text-fine: 0.75rem; /* attribution and legal notices       */
-  --text-label: 0.6875rem; /* the label register — see `label-line` */
-  --text-tab: 0.625rem; /* tab bar labels, and nothing else    */
+  --text-label: 0.75rem; /* the label register — see `label-line` */
+  --text-tab: 0.6875rem; /* tab bar labels, and nothing else    */
 
   /* The bill had no rounded corners and no drop shadows — depth was surface layering and
      hairlines, and this was zeroed deliberately rather than skipped.
@@ -628,11 +637,20 @@
     color-scheme: light dark;
   }
 
+  /* Display is one token at two sizes (handoff §5.3: 80px, 128px on the desktop). Moving
+     the value rather than adding a `--text-display-xl` keeps one name for one role, so
+     the call site writes `text-display` and nothing breakpoint-shaped. `base` sits after
+     `theme` in the layer order, so this wins over the `@theme` declaration above. */
+  :root {
+    @variant xl {
+      --text-display: 8rem;
+    }
+  }
+
   body {
     background: var(--color-ground);
     color: var(--color-text);
     font-family: var(--font-text);
-    font-variation-settings: "wdth" 100;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -710,51 +728,48 @@
 
 /* ── The ten `@utility` rules ──────────────────────────────────────────────────────
    What a token cannot carry: a bundle of declarations that must always travel
-   together. A title that arrives without its width axis is not a smaller title, it is
-   a different typeface.                                                              */
+   together. A title that arrives without its family and weight is not a smaller title,
+   it is a different voice.                                                           */
 
+/* Both title bundles are Instrument Serif at its one weight, 400 (Charcoal, issue #396).
+   Weight is `font-weight` now, not a `wght` setting: the serif has no variable axes, and
+   Archivo's `wdth 85` cut has no counterpart to carry over. Tracking is the boards'
+   `-0.01em` throughout. */
 @utility bill-title {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 85, "wght" 700;
-  letter-spacing: -0.015em;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   line-height: 1.05;
   text-wrap: balance;
 }
 
 /* ── The linen redesign's two bundles ───────────────────────────────────────────────
-   Same argument as `bill-title` above: a screen title that arrives without its tracking
-   is not a smaller title, and a label that arrives without its caps and its `.12em` is
-   not a quieter label — it is a 11px sentence nobody can read.
+   Same argument as `bill-title` above: a screen title that arrives without its leading
+   is not a smaller title, and a label that arrives without its caps and its tracking is
+   not a quieter label — it is a 12px sentence nobody can read.
 
-   `screen-title` is **not** `bill-title` at a bigger step. `bill-title` is `wdth 85`,
-   the lightly-condensed cut the bill's names are set in; turn 9's titles are normal
-   width, one notch tighter in tracking and a shade looser in leading. Two utilities
-   rather than a variant because the two never appear on the same surface — the four
-   phone screen titles are these, everything the bill still sets is that. */
+   `screen-title` is **not** `bill-title` at a bigger step, though since Charcoal the two
+   differ only in leading: a destination's title is one line at `48 / 1` (handoff §5.3),
+   where `bill-title` serves Title, Heading and Numeral and keeps the looser `1.05` that
+   lets a two-line name breathe. */
 @utility screen-title {
   font-family: var(--font-display);
-  font-variation-settings: "wdth" 100, "wght" 700;
-  letter-spacing: -0.022em;
-  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1;
   text-wrap: balance;
 }
 
 /* The label register — group labels, state labels, the wordmark's own line. Uppercase
-   at 11px with `.12em` letting it breathe.
+   at 12px, Instrument Sans 600, with `.14em` letting it breathe (handoff §5.3).
 
    It is a second register beside `code-line` rather than a re-cut of it, and the split
-   is scope, not taste: `code-line` is on ~30 surfaces including every desktop one, and
-   the handoff redraws four phone screens. Turning `code-line` uppercase to serve them
-   would put caps on the programme note, Settings and the sign-in surface, which turn 9
-   never drew and which lost their caps deliberately in #134.
-
-   The handoff offers `IBM Plex Mono` for the prototype's monospaced look and makes it
-   optional; Archivo at `wdth 100 / wght 500` is the other branch it names, and it is the
-   one taken — a second family loaded for one 11px register is a real download and a real
-   layout shift for a difference that survives at most three words. */
+   is scope, not taste: `code-line` is on ~30 surfaces including every desktop one.
+   Turning `code-line` uppercase would put caps on the programme note, Settings and the
+   sign-in surface, which lost their caps deliberately in #134. */
 @utility label-line {
-  font-variation-settings: "wdth" 100, "wght" 500;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: var(--text-label);
   line-height: 1.35;
@@ -846,7 +861,7 @@
 }
 
 @utility code-line {
-  font-variation-settings: "wdth" 100, "wght" 600;
+  font-weight: 600;
   letter-spacing: var(--tracking-code);
   /* Baked in, not read from the ramp: the code line is one size everywhere, which is
      why this is the one step of the nine that is not a token. It rose from 0.625rem

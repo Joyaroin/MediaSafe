@@ -509,8 +509,8 @@ export function LiveFactSection<T>({
  * The heading steps up from `code-line` to a real one now that each section is a card
  * rather than a labelled run of text: inside a card the heading is the card's name, and a
  * dim monospace line reads as metadata about the content rather than as the thing it is
- * called. `text-bill-sm` sits well below the hero's title, which is what keeps the page
- * reading as one screen with sections rather than several stacked screens.
+ * called. Heading size (`text-bill-lg`) sits well below the hero's title, which is what
+ * keeps the page reading as one screen with sections rather than several stacked screens.
  */
 function SectionHead({ heading, eyebrow }: { heading: string; eyebrow?: string }) {
   return (
@@ -518,7 +518,7 @@ function SectionHead({ heading, eyebrow }: { heading: string; eyebrow?: string }
       {eyebrow === undefined ? null : (
         <p className={PROGRAMME_NOTE_EYEBROW}>{eyebrow}</p>
       )}
-      <h3 className={`bill-title text-bill-sm text-text${eyebrow === undefined ? "" : " mt-1"}`}>
+      <h3 className={`bill-title text-bill-lg text-text${eyebrow === undefined ? "" : " mt-1"}`}>
         {heading}
       </h3>
     </>

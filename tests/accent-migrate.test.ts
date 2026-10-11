@@ -172,7 +172,7 @@ describe("genuine failure surfaces keep the failure treatment exactly as it is",
     expect(source("errors/write-failure-toast.tsx")).toContain(
       "border-2 border-accent bg-ground p-4",
     );
-    expect(source("errors/write-failure-toast.tsx")).toContain("text-bill-sm text-accent");
+    expect(source("errors/write-failure-toast.tsx")).toContain("text-bill-xs font-semibold text-accent");
   });
 
   it("errors/offline-banner.tsx still paints the sticky banner solid accent", () => {
