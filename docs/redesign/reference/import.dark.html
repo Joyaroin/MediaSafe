@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>Import, running</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+</style>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<header style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 20px 0 12px">
+<a href="settings.dark.html" aria-label="Back to Settings" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 999px; background: #23211f; color: #f3f0ea; text-decoration: none; cursor: pointer">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; line-height: 1; letter-spacing: -0.01em; margin-left: 8px">Import</h1>
+</header>
+
+<div style="display: flex; flex-direction: column; padding: 0 20px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 28px; line-height: 1.1; padding: 18px 0 8px">Importing your library</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.45; color: #bab5ac">Keep this screen open. The import runs only while this screen is watching it, and closing it leaves the import exactly where it stands.</p>
+
+<section role="status" style="display: flex; flex-direction: column; margin-top: 20px; padding: 20px; border-radius: 20px; background: #23211f">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 80px; line-height: 0.9; letter-spacing: -0.01em">212</span>
+<span style="font-size: 15px; color: #bab5ac">of 472 titles</span>
+</div>
+<div aria-hidden="true" style="height: 4px; margin: 18px 0; border-radius: 2px; background-color: rgba(255,255,255,0.24)">
+<div style="width: 44.9%; height: 4px; border-radius: 2px; background-color: #f3f0ea"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; font-weight: 600">1,804</span>
+<span style="font-size: 13px; color: #bab5ac">watches</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; font-weight: 600">9</span>
+<span style="font-size: 13px; color: #bab5ac">marked dropped</span>
+</div>
+</div>
+</section>
+
+<p style="margin: 0; font-size: 13px; line-height: 1.45; color: #bab5ac; margin-top: 14px">Written about 25 titles at a time. Nothing already written is touched twice, so picking the same file again is always safe.</p>
+</div>
+
+<nav aria-label="Primary" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 4px 0; background: rgba(24,23,21,0.94); border-top: 1px solid #383531">
+<a href="tonight.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+<span>Tonight</span>
+</a>
+<a href="coming-up.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path><path d="M9 3v4"></path><path d="M15 3v4"></path></svg>
+<span>Coming up</span>
+</a>
+<a href="search.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>
+<span>Search</span>
+</a>
+<a href="library.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="16" rx="1"></rect><path d="M18.5 6l2 13.5"></path></svg>
+<span>Library</span>
+</a>
+<a href="you.dark.html" aria-current="page" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; text-decoration: none; color: #f3f0ea">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+<span>You</span>
+</a>
+</nav>
+
+</div>
+</body>
+</html>

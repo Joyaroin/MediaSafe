@@ -19,8 +19,8 @@
  * that accepts `oklch()` in a stylesheet accepts it in `theme-color` and a manifest's
  * `theme_color` on the same terms — both are "a CSS `<color>`", not "a hex triplet".
  */
-export const LIGHT_THEME_COLOR = "oklch(96.9% 0.012 95)";
-export const DARK_THEME_COLOR = "oklch(13.9% 0.004 95)";
+export const LIGHT_THEME_COLOR = "oklch(96.2% 0.006 85)";
+export const DARK_THEME_COLOR = "oklch(20.5% 0.004 85)";
 
 /**
  * The pair `Viewport["themeColor"]` wants — `app/layout.tsx` exports this directly rather

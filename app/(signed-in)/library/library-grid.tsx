@@ -64,9 +64,11 @@ export const LIBRARY_GRID =
  * The reversal is what the new palette buys. Under #134's light values `--raised` was
  * `#ffffff` against a `#f6f5f3` ground — a card would have been a white box on off-white,
  * which is why that world drew its structure in lines and needed the Hairline Rule to say
- * so. The handoff puts `--raised` *below* the ground (`#eeede6` on `#f7f5ed`), so a card is
- * a well pressed into the sheet and reads as a distinct object with no line around it and
- * no shadow under it. Same information, same measure, one fewer device drawing it.
+ * so. The linen handoff put `--raised` *below* the ground (`#eeede6` on `#f7f5ed`), so a
+ * card was a well pressed into the sheet and read as a distinct object with no line around
+ * it and no shadow under it. Same information, same measure, one fewer device drawing it.
+ * Charcoal (issue #395) puts `--raised` back *above* the ground in light — white on
+ * `#f4f2ee` — and the tone step is still the only lift.
  *
  * There is still **no shadow anywhere** — the Geometry table is
  * explicit that the tone difference between `--raised` and

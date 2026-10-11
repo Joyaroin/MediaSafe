@@ -2,11 +2,13 @@
      palette value is repeated as a literal rather than read from `--color-accent`,
      because it sits inside a standalone favicon document with no stylesheet to read a
      custom property from — if the accent ever moves, this is one of the two places to
-     change. Fixed to the dark palette's values (`design/catalogue-wall.html`'s `:root`):
-     a static favicon cannot follow `prefers-color-scheme` the way `app/press-mark.tsx`'s
+     change. Fixed to the dark palette's values (`--dark-ground`, and `--dark-accent`,
+     which since Charcoal is `--dark-text`, so the frame and the bar are one colour —
+     issue #395, the handoff's open question 6, proposed and built until answered): a
+     static favicon cannot follow `prefers-color-scheme` the way `app/press-mark.tsx`'s
      inline copy, rendered inside the page, does. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <rect width="24" height="24" fill="#0A0A0B"/>
-  <rect x="1" y="1" width="22" height="22" fill="none" stroke="#F4F4F2" stroke-width="2"/>
-  <rect x="5" y="10.5" width="14" height="3" fill="#FFB020"/>
+  <rect width="24" height="24" fill="#181715"/>
+  <rect x="1" y="1" width="22" height="22" fill="none" stroke="#F3F0EA" stroke-width="2"/>
+  <rect x="5" y="10.5" width="14" height="3" fill="#F3F0EA"/>
 </svg>

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion prototype, Tonight</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+@keyframes ms-roll-a{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes ms-roll-b{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes ms-pop{0%{transform:scale(0.6)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+@keyframes ms-drain-hero{from{stroke-dashoffset:0}to{stroke-dashoffset:188.5}}
+@keyframes ms-drain-row{from{stroke-dashoffset:0}to{stroke-dashoffset:106.8}}
+@keyframes ms-nod-a{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+@keyframes ms-nod-b{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;transition-duration:1ms!important}}
+</style>
+</helmet>
+<div style="width: 800px; height: 844px; box-sizing: border-box; display: flex; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<div style="position: relative; width: 390px; height: 844px; flex-shrink: 0; overflow: hidden; background: #181715">
+
+<section style="position: relative; height: 344px; overflow: hidden">
+<div aria-hidden="true" style="position: absolute; inset: 0; background-color: #3461c9; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 2px, rgba(255,255,255,0) 2px 16px)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.45) 15%, rgba(0,0,0,0) 26%), linear-gradient(to bottom, rgba(24,23,21,0) 22%, rgba(24,23,21,0.9) 39%, #181715 72%)"></div>
+<h1 style="position: absolute; left: 20px; top: 24px; margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1; color: #ffffff">Tonight</h1>
+
+<div style="position: absolute; left: 20px; right: 20px; bottom: 0; display: flex; flex-direction: column">
+<p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Up next</p>
+<h2 style="margin: 0 0 8px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 80px; line-height: 0.9; letter-spacing: -0.01em">The Bear</h2>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; height: 24px; margin-bottom: 10px">
+<span style="display: inline-block; font-family: {{hero.lineFont}}; font-style: {{hero.lineStyle}}; font-size: {{hero.lineSize}}; font-weight: 500; animation-name: {{hero.lineAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{hero.line}}</span>
+<span style="display: inline-block; font-size: 13px; color: #bab5ac; animation-name: {{hero.countAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{hero.count}}</span>
+</div>
+<div aria-hidden="true" style="display: flex; gap: {{seg.gap}}; margin-bottom: 16px; transition: gap 420ms cubic-bezier(0.65,0,0.35,1)">
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c1}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c2}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c3}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c4}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c5}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c6}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c7}}; transition: background-color 300ms ease-out"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background-color: {{seg.c8}}; transition: background-color 300ms ease-out"></span>
+</div>
+
+<div style="position: relative; height: 56px">
+<button type="button" onClick="{{heroMark}}" aria-label="Mark the next episode of The Bear watched" style="position: absolute; left: 0; top: 0; width: {{hero.w}}; height: 56px; display: flex; align-items: center; justify-content: center; gap: {{hero.gap}}; padding: 0; border: none; border-radius: {{hero.r}}; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; opacity: {{hero.btnOp}}; pointer-events: {{hero.btnPe}}; cursor: pointer; transition: width 320ms cubic-bezier(0.16,1,0.3,1), border-radius 320ms cubic-bezier(0.16,1,0.3,1), gap 320ms cubic-bezier(0.16,1,0.3,1), opacity 220ms ease-out">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span style="max-width: {{hero.labelW}}; opacity: {{hero.labelOp}}; overflow: hidden; transition: max-width 320ms cubic-bezier(0.16,1,0.3,1), opacity 120ms ease-out">Mark watched</span>
+</button>
+<svg aria-hidden="true" width="66" height="66" viewBox="0 0 66 66" style="position: absolute; left: -5px; top: -5px; opacity: {{hero.ringOp}}; transform: rotate(-90deg); pointer-events: none; transition: opacity 160ms ease-out"><circle cx="33" cy="33" r="30" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 188.5; animation-name: {{hero.drain}}; animation-duration: 1200ms; animation-timing-function: linear; animation-fill-mode: forwards"></circle></svg>
+<div style="position: absolute; left: 76px; right: 0; top: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; opacity: {{hero.infoOp}}; pointer-events: {{hero.infoPe}}; transition: opacity 200ms ease-out">
+<span style="font-size: 17px; font-weight: 600">Watched</span>
+<button type="button" onClick="{{heroUndo}}" style="height: 44px; padding: 0 18px; border: none; border-radius: 10px; background: #383531; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Undo</button>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; padding: 20px 20px 0">
+<div style="display: flex; align-items: center; height: 44px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 28px; line-height: 1.1">Also ready</h2>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 64px; max-height: {{r0.maxH}}; opacity: {{r0.op}}; overflow: hidden; box-shadow: inset 0 -1px 0 #383531; transition: max-height 320ms cubic-bezier(0.65,0,0.35,1), opacity 220ms ease-out">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #1f6b70"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Severance</span>
+<span style="align-self: flex-start; font-family: {{r0.lineFont}}; font-style: {{r0.lineStyle}}; font-size: {{r0.lineSize}}; color: {{r0.lineColor}}; animation-name: {{r0.lineAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{r0.line}}</span>
+</div>
+<button type="button" onClick="{{r0.undo}}" style="height: 44px; flex-shrink: 0; padding: 0 8px; border: none; background: none; color: #f3f0ea; font-family: inherit; font-size: 14px; font-weight: 600; opacity: {{r0.undoOp}}; pointer-events: {{r0.undoPe}}; cursor: pointer; transition: opacity 160ms ease-out">Undo</button>
+<button type="button" onClick="{{r0.mark}}" aria-label="Mark the next episode of Severance watched" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px; padding: 0; border: none; background: none; cursor: pointer">
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid {{r0.tickBorder}}; border-radius: 999px; background-color: {{r0.tickBg}}; color: {{r0.tickColor}}; transition-property: background-color, border-color, color; transition-duration: {{r0.tickDur}}; transition-timing-function: ease-out; animation-name: {{r0.popAnim}}; animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<svg aria-hidden="true" width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; opacity: {{r0.ringOp}}; transform: rotate(-90deg); pointer-events: none; transition: opacity 160ms ease-out"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation-name: {{r0.drain}}; animation-duration: 1200ms; animation-timing-function: linear; animation-fill-mode: forwards"></circle></svg>
+</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 64px; max-height: {{r1.maxH}}; opacity: {{r1.op}}; overflow: hidden; box-shadow: inset 0 -1px 0 #383531; transition: max-height 320ms cubic-bezier(0.65,0,0.35,1), opacity 220ms ease-out">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #8a4a2a"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Andor</span>
+<span style="align-self: flex-start; font-family: {{r1.lineFont}}; font-style: {{r1.lineStyle}}; font-size: {{r1.lineSize}}; color: {{r1.lineColor}}; animation-name: {{r1.lineAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{r1.line}}</span>
+</div>
+<button type="button" onClick="{{r1.undo}}" style="height: 44px; flex-shrink: 0; padding: 0 8px; border: none; background: none; color: #f3f0ea; font-family: inherit; font-size: 14px; font-weight: 600; opacity: {{r1.undoOp}}; pointer-events: {{r1.undoPe}}; cursor: pointer; transition: opacity 160ms ease-out">Undo</button>
+<button type="button" onClick="{{r1.mark}}" aria-label="Mark the next episode of Andor watched" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px; padding: 0; border: none; background: none; cursor: pointer">
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid {{r1.tickBorder}}; border-radius: 999px; background-color: {{r1.tickBg}}; color: {{r1.tickColor}}; transition-property: background-color, border-color, color; transition-duration: {{r1.tickDur}}; transition-timing-function: ease-out; animation-name: {{r1.popAnim}}; animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<svg aria-hidden="true" width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; opacity: {{r1.ringOp}}; transform: rotate(-90deg); pointer-events: none; transition: opacity 160ms ease-out"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation-name: {{r1.drain}}; animation-duration: 1200ms; animation-timing-function: linear; animation-fill-mode: forwards"></circle></svg>
+</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 64px; max-height: {{r2.maxH}}; opacity: {{r2.op}}; overflow: hidden; box-shadow: inset 0 -1px 0 #383531; transition: max-height 320ms cubic-bezier(0.65,0,0.35,1), opacity 220ms ease-out">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #8c2f3f"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Shōgun</span>
+<span style="align-self: flex-start; font-family: {{r2.lineFont}}; font-style: {{r2.lineStyle}}; font-size: {{r2.lineSize}}; color: {{r2.lineColor}}; animation-name: {{r2.lineAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{r2.line}}</span>
+</div>
+<button type="button" onClick="{{r2.undo}}" style="height: 44px; flex-shrink: 0; padding: 0 8px; border: none; background: none; color: #f3f0ea; font-family: inherit; font-size: 14px; font-weight: 600; opacity: {{r2.undoOp}}; pointer-events: {{r2.undoPe}}; cursor: pointer; transition: opacity 160ms ease-out">Undo</button>
+<button type="button" onClick="{{r2.mark}}" aria-label="Mark the season finale of Shōgun watched" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px; padding: 0; border: none; background: none; cursor: pointer">
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid {{r2.tickBorder}}; border-radius: 999px; background-color: {{r2.tickBg}}; color: {{r2.tickColor}}; transition-property: background-color, border-color, color; transition-duration: {{r2.tickDur}}; transition-timing-function: ease-out; animation-name: {{r2.popAnim}}; animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<svg aria-hidden="true" width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; opacity: {{r2.ringOp}}; transform: rotate(-90deg); pointer-events: none; transition: opacity 160ms ease-out"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation-name: {{r2.drain}}; animation-duration: 1200ms; animation-timing-function: linear; animation-fill-mode: forwards"></circle></svg>
+</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 64px; max-height: {{r3.maxH}}; opacity: {{r3.op}}; overflow: hidden; box-shadow: inset 0 -1px 0 #383531; transition: max-height 320ms cubic-bezier(0.65,0,0.35,1), opacity 220ms ease-out">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #5a4a78"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Slow Horses</span>
+<span style="align-self: flex-start; font-family: {{r3.lineFont}}; font-style: {{r3.lineStyle}}; font-size: {{r3.lineSize}}; color: {{r3.lineColor}}; animation-name: {{r3.lineAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{r3.line}}</span>
+</div>
+<button type="button" onClick="{{r3.undo}}" style="height: 44px; flex-shrink: 0; padding: 0 8px; border: none; background: none; color: #f3f0ea; font-family: inherit; font-size: 14px; font-weight: 600; opacity: {{r3.undoOp}}; pointer-events: {{r3.undoPe}}; cursor: pointer; transition: opacity 160ms ease-out">Undo</button>
+<button type="button" onClick="{{r3.mark}}" aria-label="Mark the next episode of Slow Horses watched" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px; padding: 0; border: none; background: none; cursor: pointer">
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid {{r3.tickBorder}}; border-radius: 999px; background-color: {{r3.tickBg}}; color: {{r3.tickColor}}; transition-property: background-color, border-color, color; transition-duration: {{r3.tickDur}}; transition-timing-function: ease-out; animation-name: {{r3.popAnim}}; animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<svg aria-hidden="true" width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; opacity: {{r3.ringOp}}; transform: rotate(-90deg); pointer-events: none; transition: opacity 160ms ease-out"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation-name: {{r3.drain}}; animation-duration: 1200ms; animation-timing-function: linear; animation-fill-mode: forwards"></circle></svg>
+</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 64px; max-height: {{r4.maxH}}; opacity: {{r4.op}}; overflow: hidden; transition: max-height 320ms cubic-bezier(0.65,0,0.35,1), opacity 220ms ease-out">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #6a3f7a"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Past Lives</span>
+<span style="align-self: flex-start; font-family: {{r4.lineFont}}; font-style: {{r4.lineStyle}}; font-size: {{r4.lineSize}}; color: {{r4.lineColor}}; animation-name: {{r4.lineAnim}}; animation-duration: 280ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)">{{r4.line}}</span>
+</div>
+<button type="button" onClick="{{r4.undo}}" style="height: 44px; flex-shrink: 0; padding: 0 8px; border: none; background: none; color: #f3f0ea; font-family: inherit; font-size: 14px; font-weight: 600; opacity: {{r4.undoOp}}; pointer-events: {{r4.undoPe}}; cursor: pointer; transition: opacity 160ms ease-out">Undo</button>
+<button type="button" onClick="{{r4.mark}}" aria-label="Mark Past Lives watched" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px; padding: 0; border: none; background: none; cursor: pointer">
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid {{r4.tickBorder}}; border-radius: 999px; background-color: {{r4.tickBg}}; color: {{r4.tickColor}}; transition-property: background-color, border-color, color; transition-duration: {{r4.tickDur}}; transition-timing-function: ease-out; animation-name: {{r4.popAnim}}; animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<svg aria-hidden="true" width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; opacity: {{r4.ringOp}}; transform: rotate(-90deg); pointer-events: none; transition: opacity 160ms ease-out"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation-name: {{r4.drain}}; animation-duration: 1200ms; animation-timing-function: linear; animation-fill-mode: forwards"></circle></svg>
+</button>
+</div>
+</section>
+
+<div aria-hidden="true" style="position: absolute; left: 20px; top: 0; width: 36px; height: 54px; border-radius: 6px; background-color: {{tv.bg}}; opacity: {{tv.o}}; transform: {{tv.t}}; transition: {{tv.tr}}; pointer-events: none"></div>
+
+<div role="status" style="position: absolute; left: 12px; right: 12px; bottom: 88px; display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: #23211f; box-shadow: inset 0 0 0 1px #ff7a6b; opacity: {{toast.o}}; transform: {{toast.t}}; pointer-events: {{toast.pe}}; transition: opacity 380ms cubic-bezier(0.16,1,0.3,1), transform 380ms cubic-bezier(0.16,1,0.3,1)">
+<span style="font-size: 16px; font-weight: 600">That did not save</span>
+<span style="font-size: 13px; line-height: 1.4; color: #bab5ac">Your change did not reach MediaSafe. Nothing else was affected.</span>
+<div style="display: flex; gap: 8px; margin-top: 6px">
+<button type="button" onClick="{{toastRetry}}" style="height: 44px; padding: 0 16px; border: none; border-radius: 10px; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Try again</button>
+<button type="button" onClick="{{toastDismiss}}" style="height: 44px; padding: 0 16px; border: none; border-radius: 10px; background: none; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Dismiss</button>
+</div>
+</div>
+
+<nav aria-label="Primary" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 4px 0; background: rgba(24,23,21,0.94); border-top: 1px solid #383531">
+<span style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; color: #f3f0ea">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+<span>Tonight</span>
+</span>
+<span style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; color: #bab5ac">
+<span aria-hidden="true" style="display: flex; color: {{nod.comingColor}}; animation-name: {{nod.coming}}; animation-duration: 320ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1); transition: color 320ms ease-out"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path><path d="M9 3v4"></path><path d="M15 3v4"></path></svg></span>
+<span>Coming up</span>
+</span>
+<span style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; color: #bab5ac">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>
+<span>Search</span>
+</span>
+<span style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; color: #bab5ac">
+<span aria-hidden="true" style="display: flex; color: {{nod.libraryColor}}; animation-name: {{nod.library}}; animation-duration: 320ms; animation-timing-function: cubic-bezier(0.16,1,0.3,1); transition: color 320ms ease-out"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="16" rx="1"></rect><path d="M18.5 6l2 13.5"></path></svg></span>
+<span>Library</span>
+</span>
+<span style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; color: #bab5ac">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+<span>You</span>
+</span>
+</nav>
+</div>
+
+<aside style="flex: 1; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; padding: 40px 36px; border-left: 1px solid #383531">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #bab5ac">Press Play first</span>
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 40px; line-height: 1">Try it</h2>
+</div>
+<ol style="display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0 0 0 20px; font-size: 15px; line-height: 1.45">
+<li>Tap <strong>Mark watched</strong>. The button narrows into the tick, a ring shows how long Undo lasts, then the next episode rises in.</li>
+<li>Tap the tick beside <strong>Severance</strong>. Only its episode line changes.</li>
+<li>Tap <strong>Andor</strong>. Its write is set to fail: the tick empties again and the message drops from that row.</li>
+<li>Tap <strong>Shōgun</strong>. It is a season finale, so the line turns italic, then the row travels to Coming up.</li>
+<li>Tap <strong>Past Lives</strong>. A watched film travels to Library.</li>
+</ol>
+<button type="button" onClick="{{reset}}" style="align-self: flex-start; height: 44px; padding: 0 18px; border: none; border-radius: 14px; background: #383531; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Start over</button>
+</aside>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":844}}'>
+class Component extends DCLogic {
+fresh() {
+return {
+hero: { phase: 'rest', idx: 0, done: false },
+rows: {
+sev: { phase: 'rest', ep: 0 },
+and: { phase: 'rest', ep: 0, retried: false },
+sho: { phase: 'rest', ep: 0 },
+slo: { phase: 'rest', ep: 0 },
+past: { phase: 'rest', ep: 0 }
+},
+toast: false,
+tv: null,
+nodComing: 0,
+nodLibrary: 0
+};
+}
+now() {
+return this.state && this.state.hero ? this.state : this.fresh();
+}
+later(key, ms, fn) {
+if (!this.timers) this.timers = {};
+if (this.timers[key]) clearTimeout(this.timers[key]);
+this.timers[key] = setTimeout(fn, ms);
+}
+cancel(key) {
+if (this.timers && this.timers[key]) { clearTimeout(this.timers[key]); this.timers[key] = null; }
+}
+componentWillUnmount() {
+if (!this.timers) return;
+for (var key in this.timers) { if (this.timers[key]) clearTimeout(this.timers[key]); }
+}
+setRow(id, patch) {
+var s = this.now();
+var rows = Object.assign({}, s.rows);
+rows[id] = Object.assign({}, rows[id], patch);
+this.setState(Object.assign({}, s, { rows: rows }));
+}
+renderVals() {
+var self = this;
+var s = this.now();
+var T = '#f3f0ea', D = '#bab5ac', G = '#181715';
+var SERIF = "'Instrument Serif', Georgia, serif";
+var HERO = ['S1 E2 · Hands', 'S1 E3 · Brigade', 'S1 E4 · Dogs', 'S1 E5 · Sheridan', 'S1 E6 · Ceres', 'S1 E7 · Review', 'S1 E8 · Braciole'];
+var ORDER = ['sev', 'and', 'sho', 'slo', 'past'];
+var DATA = {
+sev: { kind: 'next', bg: '#1f6b70', eps: ['S1 E2 · Half Loop', 'S1 E3 · In Perpetuity', 'S1 E4 · The You You Are'] },
+and: { kind: 'fail', bg: '#8a4a2a', eps: ['S1 E2 · That Would Be Me', 'S1 E3 · Reckoning', 'S1 E4 · Aldhani'] },
+sho: { kind: 'finish', bg: '#8c2f3f', eps: ['S1 E10 · A Dream of a Dream'] },
+slo: { kind: 'next', bg: '#5a4a78', eps: ['S1 E2 · Work Drinks', 'S1 E3 · Bad Tradecraft', 'S1 E4 · Visiting Hours'] },
+past: { kind: 'film', bg: '#6a3f7a', eps: ['Film · 2023'] }
+};
+
+function leave(id, dest) {
+var cur = self.now();
+var before = 0;
+for (var i = 0; i < ORDER.length; i++) {
+if (ORDER[i] === id) break;
+if (cur.rows[ORDER[i]].phase !== 'gone') before++;
+}
+var fromY = 408 + 64 * before + 5;
+var toX = dest === 'coming' ? 80.6 : 233.4;
+var rows = Object.assign({}, cur.rows);
+rows[id] = Object.assign({}, rows[id], { phase: 'gone' });
+self.setState(Object.assign({}, cur, { rows: rows, tv: { bg: DATA[id].bg, fromY: fromY, toX: toX, go: false } }));
+self.later('tv-go', 40, function () {
+var c = self.now();
+if (!c.tv) return;
+self.setState(Object.assign({}, c, { tv: Object.assign({}, c.tv, { go: true }) }));
+});
+self.later('tv-nod', 360, function () {
+var c = self.now();
+var patch = dest === 'coming' ? { nodComing: c.nodComing + 1 } : { nodLibrary: c.nodLibrary + 1 };
+self.setState(Object.assign({}, c, patch));
+});
+self.later('tv-end', 520, function () {
+var c = self.now();
+self.setState(Object.assign({}, c, { tv: null }));
+});
+}
+function commitRow(id) {
+var cur = self.now();
+var r = cur.rows[id];
+if (r.phase !== 'held') return;
+var kind = DATA[id].kind;
+if (kind === 'finish') {
+self.setRow(id, { phase: 'finished' });
+self.later(id + '-leave', 1100, function () { leave(id, 'coming'); });
+return;
+}
+if (kind === 'film') { leave(id, 'library'); return; }
+var next = Math.min(r.ep + 1, DATA[id].eps.length - 1);
+self.setRow(id, { phase: 'rest', ep: next });
+}
+function markRow(id) {
+var cur = self.now();
+var r = cur.rows[id];
+if (r.phase !== 'rest' && r.phase !== 'failed') return;
+self.setRow(id, { phase: 'held' });
+if (DATA[id].kind === 'fail' && !r.retried) {
+self.later(id, 700, function () {
+var c = self.now();
+if (c.rows[id].phase !== 'held') return;
+var rows = Object.assign({}, c.rows);
+rows[id] = Object.assign({}, rows[id], { phase: 'failed' });
+self.setState(Object.assign({}, c, { rows: rows, toast: true }));
+});
+return;
+}
+self.later(id, 1200, function () { commitRow(id); });
+}
+function undoRow(id) {
+var cur = self.now();
+if (cur.rows[id].phase !== 'held') return;
+self.cancel(id);
+self.setRow(id, { phase: 'rest' });
+}
+function rowView(id) {
+var r = s.rows[id];
+var gone = r.phase === 'gone';
+var fin = r.phase === 'finished';
+var filled = r.phase === 'held' || fin;
+return {
+maxH: gone ? '0px' : '64px',
+op: gone ? 0 : 1,
+line: fin ? 'Season 1, finished' : DATA[id].eps[r.ep],
+lineAnim: (r.ep + (fin ? 1 : 0)) % 2 === 0 ? 'ms-roll-a' : 'ms-roll-b',
+lineFont: fin ? SERIF : 'inherit',
+lineStyle: fin ? 'italic' : 'normal',
+lineSize: fin ? '18px' : '13px',
+lineColor: fin ? T : D,
+undoOp: r.phase === 'held' ? 1 : 0,
+undoPe: r.phase === 'held' ? 'auto' : 'none',
+tickBg: filled ? T : 'rgba(243,240,234,0)',
+tickBorder: filled ? T : D,
+tickColor: filled ? G : D,
+tickDur: r.phase === 'failed' ? '420ms' : '160ms',
+popAnim: filled ? 'ms-pop' : 'none',
+ringOp: r.phase === 'held' ? 1 : 0,
+drain: r.phase === 'held' ? 'ms-drain-row' : 'none',
+mark: function () { markRow(id); },
+undo: function () { undoRow(id); }
+};
+}
+
+var h = s.hero;
+var held = h.phase === 'held';
+var watched = h.done ? 8 : 1 + h.idx + (held ? 1 : 0);
+var seg = { gap: h.done ? '0px' : '4px' };
+for (var n = 1; n <= 8; n++) seg['c' + n] = n <= watched ? T : 'rgba(255,255,255,0.22)';
+
+var tv = s.tv;
+var tvView = tv
+? {
+bg: tv.bg,
+o: tv.go ? 0 : 1,
+t: tv.go ? 'translate(' + tv.toX + 'px, 764.5px) scale(0.22)' : 'translate(0px, ' + tv.fromY + 'px) scale(1)',
+tr: tv.go ? 'transform 420ms cubic-bezier(0.65,0,0.35,1), opacity 420ms ease-in' : 'none'
+}
+: { bg: 'rgba(0,0,0,0)', o: 0, t: 'translate(0px, 0px) scale(1)', tr: 'none' };
+
+return {
+hero: {
+w: held ? '56px' : '350px',
+r: held ? '28px' : '14px',
+gap: held ? '0px' : '10px',
+labelW: held ? '0px' : '170px',
+labelOp: held ? 0 : 1,
+btnOp: h.done ? 0 : 1,
+btnPe: held || h.done ? 'none' : 'auto',
+ringOp: held ? 1 : 0,
+drain: held ? 'ms-drain-hero' : 'none',
+infoOp: held ? 1 : 0,
+infoPe: held ? 'auto' : 'none',
+line: h.done ? 'Season 1, finished' : HERO[h.idx],
+lineAnim: (h.idx + (h.done ? 1 : 0)) % 2 === 0 ? 'ms-roll-a' : 'ms-roll-b',
+lineFont: h.done ? SERIF : 'inherit',
+lineStyle: h.done ? 'italic' : 'normal',
+lineSize: h.done ? '24px' : '17px',
+count: watched + ' of 8',
+countAnim: watched % 2 === 0 ? 'ms-roll-a' : 'ms-roll-b'
+},
+seg: seg,
+heroMark: function () {
+var c = self.now();
+if (c.hero.phase !== 'rest' || c.hero.done) return;
+self.setState(Object.assign({}, c, { hero: Object.assign({}, c.hero, { phase: 'held' }) }));
+self.later('hero', 1200, function () {
+var d = self.now();
+if (d.hero.phase !== 'held') return;
+var last = d.hero.idx >= HERO.length - 1;
+self.setState(Object.assign({}, d, { hero: { phase: 'rest', idx: last ? d.hero.idx : d.hero.idx + 1, done: last } }));
+});
+},
+heroUndo: function () {
+var c = self.now();
+if (c.hero.phase !== 'held') return;
+self.cancel('hero');
+self.setState(Object.assign({}, c, { hero: Object.assign({}, c.hero, { phase: 'rest' }) }));
+},
+r0: rowView('sev'),
+r1: rowView('and'),
+r2: rowView('sho'),
+r3: rowView('slo'),
+r4: rowView('past'),
+tv: tvView,
+toast: {
+o: s.toast ? 1 : 0,
+t: s.toast ? 'translateY(0px) scale(1)' : 'translateY(-120px) scale(0.92)',
+pe: s.toast ? 'auto' : 'none'
+},
+toastRetry: function () {
+var c = self.now();
+var rows = Object.assign({}, c.rows);
+rows.and = Object.assign({}, rows.and, { retried: true });
+self.setState(Object.assign({}, c, { rows: rows, toast: false }));
+self.later('retry', 60, function () { markRow('and'); });
+},
+toastDismiss: function () {
+var c = self.now();
+self.setState(Object.assign({}, c, { toast: false }));
+},
+nod: {
+coming: s.nodComing === 0 ? 'none' : s.nodComing % 2 === 1 ? 'ms-nod-a' : 'ms-nod-b',
+library: s.nodLibrary === 0 ? 'none' : s.nodLibrary % 2 === 1 ? 'ms-nod-a' : 'ms-nod-b',
+comingColor: D,
+libraryColor: D
+},
+reset: function () {
+if (self.timers) { for (var key in self.timers) { if (self.timers[key]) clearTimeout(self.timers[key]); } }
+self.timers = {};
+self.setState(self.fresh());
+}
+};
+}
+}
+</script>
+</body>
+</html>

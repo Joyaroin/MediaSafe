@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>First run, bring your library in</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+</style>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<p style="position: absolute; left: 20px; top: 26px; margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em">MediaSafe</p>
+
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 104px; height: 240px">
+<div style="position: absolute; top: 26px; width: 124px; height: 186px; box-sizing: border-box; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #383531; left: 62px; transform: rotate(-9deg)"></div>
+<div style="position: absolute; top: 26px; width: 124px; height: 186px; box-sizing: border-box; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #383531; left: 204px; transform: rotate(9deg)"></div>
+<div style="position: absolute; left: 127px; top: 4px; width: 136px; height: 204px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #23211f; box-shadow: inset 0 0 0 1.5px #383531">
+<svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M5 19h14"></path></svg>
+</div>
+</div>
+
+<main style="position: absolute; left: 20px; right: 20px; bottom: 100px; display: flex; flex-direction: column">
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; line-height: 1; letter-spacing: -0.01em">Bring your library in</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.45; color: #bab5ac; margin: 14px 0 24px">MediaSafe can bring in your whole library from an export file in one pass, every title and every watch, instead of adding titles one at a time. You can also start with an empty library and add titles as you go, from Search.</p>
+<a href="import.dark.html" style="height: 56px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 18px; border: none; border-radius: 14px; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 17px; font-weight: 600; text-decoration: none; cursor: pointer">
+<span>Bring your library in</span>
+</a>
+<a href="library-empty.dark.html" style="height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0 18px; border: none; border-radius: 14px; background: #23211f; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; margin-top: 10px">Start with an empty library</a>
+</main>
+
+<nav aria-label="Primary" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 4px 0; background: rgba(24,23,21,0.94); border-top: 1px solid #383531">
+<a href="tonight.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+<span>Tonight</span>
+</a>
+<a href="coming-up.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path><path d="M9 3v4"></path><path d="M15 3v4"></path></svg>
+<span>Coming up</span>
+</a>
+<a href="search.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>
+<span>Search</span>
+</a>
+<a href="library.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="16" rx="1"></rect><path d="M18.5 6l2 13.5"></path></svg>
+<span>Library</span>
+</a>
+<a href="you.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+<span>You</span>
+</a>
+</nav>
+
+</div>
+</body>
+</html>

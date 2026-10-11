@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>Motion spec</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+</style>
+<div style="width: 1100px; height: 1880px; box-sizing: border-box; display: flex; flex-direction: column; gap: 48px; padding: 64px; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<header style="display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #bab5ac">MediaSafe motion</p>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 104px; line-height: 0.9; letter-spacing: -0.01em">Nothing teleports</h1>
+<p style="margin: 0; max-width: 720px; font-size: 20px; line-height: 1.4; color: #bab5ac">Every action turns into its own result. Motion says where something came from, where it went, or whether it worked. It never decorates.</p>
+</header>
+
+<section style="display: flex; gap: 56px">
+
+<div style="flex: 3; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1.1">Timing</h2>
+<p style="margin: 0; font-size: 15px; color: #bab5ac">Outlined bars are already tokens in globals.css. Filled bars are new.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Press</span><span style="font-size: 13px; color: #bab5ac">100 ms</span><span aria-hidden="true" style="width: 25px; height: 12px; box-sizing: border-box; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #bab5ac"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Leave</span><span style="font-size: 13px; color: #bab5ac">140 ms</span><span aria-hidden="true" style="width: 35px; height: 12px; box-sizing: border-box; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #bab5ac"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Base, tab change</span><span style="font-size: 13px; color: #bab5ac">220 ms</span><span aria-hidden="true" style="width: 55px; height: 12px; box-sizing: border-box; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #bab5ac"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Tick pop</span><span style="font-size: 13px; color: #bab5ac">260 ms</span><span aria-hidden="true" style="width: 65px; height: 12px; box-sizing: border-box; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #bab5ac"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Line roll</span><span style="font-size: 13px; color: #bab5ac">280 ms</span><span aria-hidden="true" style="width: 70px; height: 12px; border-radius: 4px; background: #f3f0ea"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Morph, row close</span><span style="font-size: 13px; color: #bab5ac">320 ms</span><span aria-hidden="true" style="width: 80px; height: 12px; border-radius: 4px; background: #f3f0ea"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Arrive</span><span style="font-size: 13px; color: #bab5ac">380 ms</span><span aria-hidden="true" style="width: 95px; height: 12px; box-sizing: border-box; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #bab5ac"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Travel, rewind</span><span style="font-size: 13px; color: #bab5ac">420 ms</span><span aria-hidden="true" style="width: 105px; height: 12px; border-radius: 4px; background: #f3f0ea"></span></div>
+<div style="display: grid; grid-template-columns: 150px 64px minmax(0, 1fr); align-items: center; gap: 12px"><span style="font-size: 15px; font-weight: 600">Undo window</span><span style="font-size: 13px; color: #bab5ac">1200 ms</span><span aria-hidden="true" style="width: 300px; height: 12px; box-sizing: border-box; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #bab5ac"></span></div>
+</div>
+</div>
+
+<div style="flex: 2; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1.1">Easing by role</h2>
+<div style="display: flex; align-items: center; gap: 16px">
+<svg role="img" aria-label="Arrive curve: fast start, long soft landing" width="72" height="72" viewBox="-4 -4 88 88" style="flex-shrink: 0; border-radius: 10px; background: #23211f"><path d="M0 80 C 12.8 0, 24 0, 80 0" fill="none" stroke="#f3f0ea" stroke-width="2.5" stroke-linecap="round"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Arrive</span><span style="font-size: 13px; line-height: 1.4; color: #bab5ac">Things entering or settling. cubic-bezier(0.16, 1, 0.3, 1)</span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 16px">
+<svg role="img" aria-label="Leave curve: quick ease out" width="72" height="72" viewBox="-4 -4 88 88" style="flex-shrink: 0; border-radius: 10px; background: #23211f"><path d="M0 80 C 20 0, 40 0, 80 0" fill="none" stroke="#f3f0ea" stroke-width="2.5" stroke-linecap="round"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Leave</span><span style="font-size: 13px; line-height: 1.4; color: #bab5ac">Things going away, always faster than they came. cubic-bezier(0.25, 1, 0.5, 1)</span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 16px">
+<svg role="img" aria-label="Travel curve: slow start, slow end" width="72" height="72" viewBox="-4 -4 88 88" style="flex-shrink: 0; border-radius: 10px; background: #23211f"><path d="M0 80 C 52 80, 28 0, 80 0" fill="none" stroke="#f3f0ea" stroke-width="2.5" stroke-linecap="round"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Travel</span><span style="font-size: 13px; line-height: 1.4; color: #bab5ac">Things moving from one place to another. cubic-bezier(0.65, 0, 0.35, 1)</span></div>
+</div>
+<p style="margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: #bab5ac">Anything under a finger uses a spring instead, so it can follow and reverse: the existing snappy spring for dragging, smooth for settling, bouncy for the tick and the season finish only.</p>
+</div>
+
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1.1">Moments</h2>
+<div role="table" aria-label="Motion moments" style="display: flex; flex-direction: column">
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 0 0 10px; border-bottom: 1px solid #383531; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #bab5ac">
+<span role="columnheader">Moment</span><span role="columnheader">What moves</span><span role="columnheader">Time</span><span role="columnheader">With reduced motion</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Mark the featured episode</span><span role="cell">The button narrows into the tick. The progress segment fills and the count rolls.</span><span role="cell" style="color: #bab5ac">320 ms</span><span role="cell" style="color: #bab5ac">Tick, segment and count change at once.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Undo window</span><span role="cell">A ring drains around the tick while Undo is available.</span><span role="cell" style="color: #bab5ac">1200 ms</span><span role="cell" style="color: #bab5ac">Undo stays for the same time, with no ring.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Next episode</span><span role="cell">Only the episode line rises in. The title and artwork stay still.</span><span role="cell" style="color: #bab5ac">280 ms</span><span role="cell" style="color: #bab5ac">The line swaps.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Mark from a row</span><span role="cell">The tick fills and pops once.</span><span role="cell" style="color: #bab5ac">260 ms</span><span role="cell" style="color: #bab5ac">The tick fills.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Write lost</span><span role="cell">The tick empties slowly, the reverse of filling. The message drops from the row that failed and stays.</span><span role="cell" style="color: #bab5ac">420 + 380 ms</span><span role="cell" style="color: #bab5ac">The tick empties and the message appears.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Finish a season</span><span role="cell">The line sets in italic serif and holds. The progress segments join into one bar.</span><span role="cell" style="color: #bab5ac">1100 ms hold</span><span role="cell" style="color: #bab5ac">The italic line shows, with no movement.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; border-bottom: 1px solid #383531; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Leaves the list</span><span role="cell">The row closes. Its poster travels to the tab where it now lives, and that tab icon nods.</span><span role="cell" style="color: #bab5ac">320 + 420 ms</span><span role="cell" style="color: #bab5ac">The row disappears.</span>
+</div>
+<div role="row" style="display: grid; grid-template-columns: 200px minmax(0, 1.25fr) 110px minmax(0, 1fr); gap: 20px; padding: 14px 0; font-size: 15px; line-height: 1.4">
+<span role="cell" style="font-weight: 600">Change tab</span><span role="cell">One cross-fade, the same for every tab. No directional slides.</span><span role="cell" style="color: #bab5ac">220 ms</span><span role="cell" style="color: #bab5ac">Instant.</span>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1.1">Guardrails</h2>
+<ul style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 40px; margin: 0; padding: 0; list-style: none; font-size: 15px; line-height: 1.45">
+<li style="padding-bottom: 12px; border-bottom: 1px solid #383531">Animate transform and opacity only. The prototype animates width and height for simplicity; production should not.</li>
+<li style="padding-bottom: 12px; border-bottom: 1px solid #383531">No more than two things move at once.</li>
+<li style="padding-bottom: 12px; border-bottom: 1px solid #383531">A response starts within 100 ms of the touch, before the server answers.</li>
+<li style="padding-bottom: 12px; border-bottom: 1px solid #383531">Every moment has a still version, listed above.</li>
+<li>Tapping always works. Gestures are shortcuts, never the only way.</li>
+<li>Test on the real phone with the processor slowed four times.</li>
+</ul>
+</section>
+
+</div>
+</body>
+</html>

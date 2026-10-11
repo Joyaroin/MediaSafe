@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>Gesture demos</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+@keyframes ga-finger1{0%,7%{opacity:0;transform:translate(58px,74px) scale(1.3)}10%{opacity:1;transform:translate(58px,74px) scale(1)}12%{opacity:1;transform:translate(58px,74px) scale(1);animation-timing-function:cubic-bezier(0.65,0,0.35,1)}30%{opacity:1;transform:translate(228px,74px) scale(1)}33%,100%{opacity:0;transform:translate(228px,74px) scale(1.3)}}
+@keyframes ga-fill1{0%,12%{transform:scaleX(0);opacity:1;animation-timing-function:cubic-bezier(0.65,0,0.35,1)}30%{transform:scaleX(0.62);opacity:1}36%,100%{transform:scaleX(0.62);opacity:0}}
+@keyframes ga-tick1{0%,16.5%{opacity:0;transform:scale(0.6)}18%{opacity:1;transform:scale(1.14)}19.5%,47%{opacity:1;transform:scale(1)}49%,100%{opacity:0;transform:scale(1)}}
+@keyframes ga-pulse1{0%,16.5%{opacity:0;transform:scale(1)}17%{opacity:0.6;transform:scale(1)}22%,100%{opacity:0;transform:scale(2.4)}}
+@keyframes ga-drain1{0%,33%{opacity:0;stroke-dashoffset:0}33.2%{opacity:1;stroke-dashoffset:0}46.4%{opacity:1;stroke-dashoffset:106.8}47%,100%{opacity:0;stroke-dashoffset:106.8}}
+@keyframes ga-undo1{0%,33%{opacity:0}35%,45%{opacity:1}47%,100%{opacity:0}}
+@keyframes ga-linea{0%,47%{opacity:1;transform:translateY(0)}49%,95%{opacity:0;transform:translateY(-8px)}96%{opacity:0;transform:translateY(0)}99%,100%{opacity:1;transform:translateY(0)}}
+@keyframes ga-lineb{0%,47.5%{opacity:0;transform:translateY(10px);animation-timing-function:cubic-bezier(0.16,1,0.3,1)}50.5%,94%{opacity:1;transform:translateY(0)}96%,100%{opacity:0;transform:translateY(0)}}
+@keyframes ga-finger2{0%,56%{opacity:0;transform:translate(58px,138px) scale(1.3)}59%{opacity:1;transform:translate(58px,138px) scale(1)}60%{opacity:1;transform:translate(58px,138px) scale(1);animation-timing-function:cubic-bezier(0.65,0,0.35,1)}67%{opacity:1;transform:translate(90px,138px) scale(1)}70%,100%{opacity:0;transform:translate(90px,138px) scale(1.3)}}
+@keyframes ga-fill2{0%,60%{transform:scaleX(0);animation-timing-function:cubic-bezier(0.65,0,0.35,1)}67%{transform:scaleX(0.2);animation-timing-function:cubic-bezier(0.16,1,0.3,1)}72%,100%{transform:scaleX(0)}}
+@keyframes gb-finger{0%,4%{opacity:0;transform:translate(335px,224px) scale(1.3)}6%{opacity:1;transform:translate(335px,224px) scale(1)}16%{opacity:1;transform:translate(335px,224px) scale(1)}40%{opacity:1;transform:translate(335px,392px) scale(1)}42%{opacity:1;transform:translate(335px,392px) scale(1)}44%,100%{opacity:0;transform:translate(335px,392px) scale(1.3)}}
+@keyframes gb-hold{0%,6%{opacity:0;stroke-dashoffset:106.8}6.2%{opacity:1;stroke-dashoffset:106.8}15.8%{opacity:1;stroke-dashoffset:0}16.6%,100%{opacity:0;stroke-dashoffset:0}}
+@keyframes gb-on2{0%,15.6%{opacity:0;transform:scale(0.6)}17%{opacity:1;transform:scale(1.14)}18.5%,92%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(1)}}
+@keyframes gb-seg2{0%,15.6%{opacity:0}18%,92%{opacity:1}94%,100%{opacity:0}}
+@keyframes gb-dim2{0%,15.6%{opacity:1}18%,92%{opacity:0.6}94%,100%{opacity:1}}
+@keyframes gb-pulse2{0%,15.6%{opacity:0;transform:scale(1)}16.4%{opacity:0.6;transform:scale(1)}21%,100%{opacity:0;transform:scale(2.4)}}
+@keyframes gb-on3{0%,23.6%{opacity:0;transform:scale(0.6)}25%{opacity:1;transform:scale(1.14)}26.5%,92%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(1)}}
+@keyframes gb-seg3{0%,23.6%{opacity:0}26%,92%{opacity:1}94%,100%{opacity:0}}
+@keyframes gb-dim3{0%,23.6%{opacity:1}26%,92%{opacity:0.6}94%,100%{opacity:1}}
+@keyframes gb-pulse3{0%,23.6%{opacity:0;transform:scale(1)}24.4%{opacity:0.6;transform:scale(1)}29%,100%{opacity:0;transform:scale(2.4)}}
+@keyframes gb-on4{0%,31.6%{opacity:0;transform:scale(0.6)}33%{opacity:1;transform:scale(1.14)}34.5%,92%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(1)}}
+@keyframes gb-seg4{0%,31.6%{opacity:0}34%,92%{opacity:1}94%,100%{opacity:0}}
+@keyframes gb-dim4{0%,31.6%{opacity:1}34%,92%{opacity:0.6}94%,100%{opacity:1}}
+@keyframes gb-pulse4{0%,31.6%{opacity:0;transform:scale(1)}32.4%{opacity:0.6;transform:scale(1)}37%,100%{opacity:0;transform:scale(2.4)}}
+@keyframes gb-on5{0%,39.6%{opacity:0;transform:scale(0.6)}41%{opacity:1;transform:scale(1.14)}42.5%,92%{opacity:1;transform:scale(1)}94%,100%{opacity:0;transform:scale(1)}}
+@keyframes gb-seg5{0%,39.6%{opacity:0}42%,92%{opacity:1}94%,100%{opacity:0}}
+@keyframes gb-dim5{0%,39.6%{opacity:1}42%,92%{opacity:0.6}94%,100%{opacity:1}}
+@keyframes gb-pulse5{0%,39.6%{opacity:0;transform:scale(1)}40.4%{opacity:0.6;transform:scale(1)}45%,100%{opacity:0;transform:scale(2.4)}}
+@keyframes gb-count1{0%,15.5%{opacity:1}16.5%,93%{opacity:0}94%,100%{opacity:1}}
+@keyframes gb-count2{0%,15.5%{opacity:0}16.5%,23.5%{opacity:1}24.5%,100%{opacity:0}}
+@keyframes gb-count3{0%,23.5%{opacity:0}24.5%,31.5%{opacity:1}32.5%,100%{opacity:0}}
+@keyframes gb-count4{0%,31.5%{opacity:0}32.5%,39.5%{opacity:1}40.5%,100%{opacity:0}}
+@keyframes gb-count5{0%,39.5%{opacity:0}40.5%,92.5%{opacity:1}93.5%,100%{opacity:0}}
+@keyframes gb-track{0%,15.8%{height:26px;opacity:0}16%{height:26px;opacity:1}40%{height:194px;opacity:1}43%{height:194px;opacity:1}47%,100%{height:194px;opacity:0}}
+@keyframes gb-nextold{0%,15.5%{opacity:1}17%,93%{opacity:0}94.5%,100%{opacity:1}}
+@keyframes gb-nextnew{0%,57%{opacity:0;transform:translateY(6px);animation-timing-function:cubic-bezier(0.16,1,0.3,1)}60%,92%{opacity:1;transform:translateY(0)}94%,100%{opacity:0;transform:translateY(0)}}
+@keyframes gb-undo{0%,43%{opacity:0;transform:translateY(12px);animation-timing-function:cubic-bezier(0.16,1,0.3,1)}46%,57%{opacity:1;transform:translateY(0)}59%,100%{opacity:0;transform:translateY(12px)}}
+@keyframes gb-undodrain{0%,46%{stroke-dashoffset:0}58%{stroke-dashoffset:69.1}100%{stroke-dashoffset:69.1}}
+@media (prefers-reduced-motion: reduce){.ms-gestures *{animation:none!important}}
+</style>
+<div class="ms-gestures" style="width: 940px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px; padding: 48px; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<header style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 40px; line-height: 1">Gestures</h2>
+<p style="margin: 0; font-size: 15px; color: #bab5ac">These loop on their own. The translucent dot is a finger, and a ripple marks a haptic tick.</p>
+</header>
+
+<div style="display: flex; gap: 64px">
+
+<div style="width: 390px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 28px; line-height: 1.1">Swipe a row to mark</h3>
+
+<div style="position: relative; height: 276px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div style="display: flex; align-items: center; height: 64px; box-sizing: border-box; padding: 20px 20px 0">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 28px; line-height: 1.1">Also ready</span>
+</div>
+
+<div style="position: relative; display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px">
+<span aria-hidden="true" style="position: absolute; left: 8px; right: 8px; top: 4px; bottom: 4px; border-radius: 12px; background: rgba(243,240,234,0.12); transform-origin: left center; animation: ga-fill1 9s linear infinite"></span>
+<div aria-hidden="true" style="position: relative; width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #1f6b70"></div>
+<div style="position: relative; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Severance</span>
+<span style="position: relative; height: 18px; font-size: 13px; color: #bab5ac">
+<span style="position: absolute; left: 0; top: 0; white-space: nowrap; animation: ga-linea 9s linear infinite">S1 E2 · Half Loop</span>
+<span style="position: absolute; left: 0; top: 0; white-space: nowrap; animation: ga-lineb 9s linear infinite">S1 E3 · In Perpetuity</span>
+</span>
+</div>
+<span style="position: relative; font-size: 14px; font-weight: 600; animation: ga-undo1 9s linear infinite">Undo</span>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715; animation: ga-tick1 9s linear infinite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; box-sizing: border-box; border: 1.5px solid #f3f0ea; border-radius: 999px; animation: ga-pulse1 9s linear infinite"></span>
+<svg width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; transform: rotate(-90deg)"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation: ga-drain1 9s linear infinite"></circle></svg>
+</span>
+</div>
+
+<div style="position: relative; display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px; box-shadow: inset 0 1px 0 #383531, inset 0 -1px 0 #383531">
+<span aria-hidden="true" style="position: absolute; left: 8px; right: 8px; top: 4px; bottom: 4px; border-radius: 12px; background: rgba(243,240,234,0.12); transform-origin: left center; animation: ga-fill2 9s linear infinite"></span>
+<div aria-hidden="true" style="position: relative; width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #8a4a2a"></div>
+<div style="position: relative; display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Andor</span>
+<span style="font-size: 13px; color: #bab5ac">S1 E2 · That Would Be Me</span>
+</div>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</span>
+</div>
+
+<div style="position: relative; display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #8c2f3f"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Shōgun</span>
+<span style="font-size: 13px; color: #bab5ac">S1 E10 · A Dream of a Dream</span>
+</div>
+<span aria-hidden="true" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</span>
+</div>
+
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 44px; height: 44px; box-sizing: border-box; border: 1.5px solid rgba(243,240,234,0.75); border-radius: 999px; background: rgba(243,240,234,0.28); animation: ga-finger1 9s linear infinite"></span>
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 44px; height: 44px; box-sizing: border-box; border: 1.5px solid rgba(243,240,234,0.75); border-radius: 999px; background: rgba(243,240,234,0.28); animation: ga-finger2 9s linear infinite"></span>
+</div>
+
+<ol style="display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0 0 0 20px; font-size: 15px; line-height: 1.45">
+<li>Severance is dragged past 40 px. The tick fills mid-drag with a haptic tick, and letting go records it. Undo holds for 1.2 seconds, then the next episode rises in.</li>
+<li>Andor is let go short of 40 px. The row springs back and nothing is recorded.</li>
+</ol>
+<p style="margin: 0; font-size: 13px; line-height: 1.45; color: #bab5ac">40 px is the drag threshold already in gesture-rules.ts. Tapping the tick still works exactly as before.</p>
+</div>
+
+<div style="width: 390px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+<h3 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 28px; line-height: 1.1">Paint to mark</h3>
+
+<div style="position: relative; height: 600px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+
+<div style="display: flex; flex-direction: column; gap: 10px; height: 110px; box-sizing: border-box; padding: 20px 20px 0">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 40px; line-height: 1">The Bear</span>
+<div style="display: flex; align-items: center; gap: 12px">
+<div aria-hidden="true" style="flex: 1; display: flex; gap: 4px">
+<span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span>
+<span style="position: relative; flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"><span style="position: absolute; inset: 0; border-radius: 2px; background: #f3f0ea; animation: gb-seg2 10s linear infinite"></span></span>
+<span style="position: relative; flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"><span style="position: absolute; inset: 0; border-radius: 2px; background: #f3f0ea; animation: gb-seg3 10s linear infinite"></span></span>
+<span style="position: relative; flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"><span style="position: absolute; inset: 0; border-radius: 2px; background: #f3f0ea; animation: gb-seg4 10s linear infinite"></span></span>
+<span style="position: relative; flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"><span style="position: absolute; inset: 0; border-radius: 2px; background: #f3f0ea; animation: gb-seg5 10s linear infinite"></span></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22)"></span>
+</div>
+<span aria-hidden="true" style="position: relative; width: 48px; height: 18px; flex-shrink: 0; font-size: 13px; color: #bab5ac">
+<span style="position: absolute; right: 0; top: 0; white-space: nowrap; animation: gb-count1 10s linear infinite">1 of 8</span>
+<span style="position: absolute; right: 0; top: 0; white-space: nowrap; animation: gb-count2 10s linear infinite">2 of 8</span>
+<span style="position: absolute; right: 0; top: 0; white-space: nowrap; animation: gb-count3 10s linear infinite">3 of 8</span>
+<span style="position: absolute; right: 0; top: 0; white-space: nowrap; animation: gb-count4 10s linear infinite">4 of 8</span>
+<span style="position: absolute; right: 0; top: 0; white-space: nowrap; animation: gb-count5 10s linear infinite">5 of 8</span>
+</span>
+</div>
+</div>
+
+<div aria-hidden="true" style="display: flex; gap: 8px; height: 52px; box-sizing: border-box; padding: 8px 20px 0">
+<span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; box-shadow: inset 0 0 0 1.5px #f3f0ea; font-size: 14px; font-weight: 600">Season 1</span>
+<span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Season 2</span>
+<span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Season 3</span>
+</div>
+
+<span aria-hidden="true" style="position: absolute; left: 344px; top: 233px; width: 26px; height: 26px; border-radius: 999px; background: rgba(243,240,234,0.16); animation: gb-track 10s linear infinite"></span>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; box-shadow: inset 0 -1px 0 #383531">
+<span style="width: 24px; flex-shrink: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; color: #bab5ac">1</span>
+<span style="flex: 1; font-size: 16px; font-weight: 500; color: #bab5ac">System</span>
+<span aria-hidden="true" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px"><span style="width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; box-shadow: inset 0 -1px 0 #383531">
+<span style="width: 24px; flex-shrink: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; color: #bab5ac">2</span>
+<span style="position: relative; flex: 1; font-size: 16px; font-weight: 500"><span style="animation: gb-dim2 10s linear infinite">Hands</span><span style="position: absolute; left: 0; top: 21px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #bab5ac; animation: gb-nextold 10s linear infinite">Up next</span></span>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #f3f0ea; border-radius: 999px; color: #f3f0ea"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715; animation: gb-on2 10s linear infinite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; box-sizing: border-box; border: 1.5px solid #f3f0ea; border-radius: 999px; animation: gb-pulse2 10s linear infinite"></span>
+<svg width="38" height="38" viewBox="0 0 38 38" style="position: absolute; left: 3px; top: 3px; transform: rotate(-90deg)"><circle cx="19" cy="19" r="17" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 106.8; animation: gb-hold 10s linear infinite"></circle></svg>
+</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; box-shadow: inset 0 -1px 0 #383531">
+<span style="width: 24px; flex-shrink: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; color: #bab5ac">3</span>
+<span style="flex: 1; font-size: 16px; font-weight: 500"><span style="animation: gb-dim3 10s linear infinite">Brigade</span></span>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715; animation: gb-on3 10s linear infinite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; box-sizing: border-box; border: 1.5px solid #f3f0ea; border-radius: 999px; animation: gb-pulse3 10s linear infinite"></span>
+</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; box-shadow: inset 0 -1px 0 #383531">
+<span style="width: 24px; flex-shrink: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; color: #bab5ac">4</span>
+<span style="flex: 1; font-size: 16px; font-weight: 500"><span style="animation: gb-dim4 10s linear infinite">Dogs</span></span>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715; animation: gb-on4 10s linear infinite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; box-sizing: border-box; border: 1.5px solid #f3f0ea; border-radius: 999px; animation: gb-pulse4 10s linear infinite"></span>
+</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; box-shadow: inset 0 -1px 0 #383531">
+<span style="width: 24px; flex-shrink: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; color: #bab5ac">5</span>
+<span style="flex: 1; font-size: 16px; font-weight: 500"><span style="animation: gb-dim5 10s linear infinite">Sheridan</span></span>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715; animation: gb-on5 10s linear infinite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span style="position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; box-sizing: border-box; border: 1.5px solid #f3f0ea; border-radius: 999px; animation: gb-pulse5 10s linear infinite"></span>
+</span>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px">
+<span style="width: 24px; flex-shrink: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; color: #bab5ac">6</span>
+<span style="position: relative; flex: 1; font-size: 16px; font-weight: 500"><span>Ceres</span><span style="position: absolute; left: 0; top: 21px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #bab5ac; animation: gb-nextnew 10s linear infinite">Up next</span></span>
+<span aria-hidden="true" style="position: relative; width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: -9px">
+<span style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</span>
+</div>
+
+<div style="position: absolute; left: 12px; right: 12px; bottom: 16px; height: 56px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 6px 0 16px; border-radius: 14px; background: #23211f; box-shadow: inset 0 0 0 1px #383531; animation: gb-undo 10s linear infinite">
+<span style="display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 26 26" style="transform: rotate(-90deg)"><circle cx="13" cy="13" r="11" fill="none" stroke="#f3f0ea" stroke-width="2" style="stroke-dasharray: 69.1; animation: gb-undodrain 10s linear infinite"></circle></svg>
+<span>4 episodes marked</span>
+</span>
+<span style="height: 44px; display: flex; align-items: center; padding: 0 18px; border-radius: 10px; background: #383531; font-size: 15px; font-weight: 600">Undo</span>
+</div>
+
+<span aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 44px; height: 44px; box-sizing: border-box; border: 1.5px solid rgba(243,240,234,0.75); border-radius: 999px; background: rgba(243,240,234,0.28); animation: gb-finger 10s linear infinite"></span>
+</div>
+
+<p style="margin: 0; font-size: 15px; line-height: 1.45">Press and hold a tick until the ring closes, then drag down. Each tick fills as the finger passes, and one Undo covers the whole stroke.</p>
+</div>
+
+</div>
+</div>
+</body>
+</html>
