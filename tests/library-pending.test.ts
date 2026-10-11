@@ -224,9 +224,11 @@ describe("a pending library is not an empty one and not a failed one", () => {
    * will be**. Centring is named there as the specific thing that would make pending read
    * as the empty library, so it is the specific thing asserted against.
    */
-  it("is not centred, which is what would make it read as empty", () => {
-    expect(empty).toContain("text-center");
-    expect(pending).not.toContain("text-center");
+  it("is not framed, which is what would make it read as empty", () => {
+    // Charcoal (issue #397): the empty library is the outlined panel now, where it used to
+    // be centred. The panel is the thing a pending library must not wear.
+    expect(empty).toContain("hair-line");
+    expect(pending).not.toContain("hair-line");
   });
 
   /** The empty state's headline, prose and button are three things pending does not have. */

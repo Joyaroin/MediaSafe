@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { EMPTY_PANEL } from "@/app/buttons";
 
 /**
  * Nothing is watching — reachable two ways that read as one screen: a library with
@@ -25,15 +26,15 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function UpNextEmpty() {
   return (
-    <section className="px-gutter py-16 text-center">
+    <section className={EMPTY_PANEL}>
       <h2 className="bill-title text-bill-lg text-text">You&rsquo;re caught up</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+      <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
         Nothing in your library is watching right now. Search for a show to start
         something new — the moment it&rsquo;s watching, it shows up here.
       </p>
 
-      <Link href="/search" className={`mt-5 ${SOLID_RECOVERY}`}>
+      <Link href="/search" className={`mt-4 ${SOLID_RECOVERY}`}>
         Search films and shows
       </Link>
     </section>

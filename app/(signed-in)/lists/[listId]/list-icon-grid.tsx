@@ -93,11 +93,14 @@ function IconCell({
         type="button"
         onClick={onTakeOff}
         aria-label={`Take ${title.name} off this list`}
-        className="absolute top-1 right-1 z-10 flex h-9 w-9 items-center justify-center rounded-[var(--radius-full)] bg-ground/80 text-dim transition-colors duration-[var(--dur-fast)] hover:text-danger"
+        // `44px` to press, `36px` drawn — the corner of a poster has no room for more.
+        className="group/take-off absolute top-0 right-0 z-10 flex h-11 w-11 items-center justify-center"
       >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-          <path d="M6 6l12 12M18 6L6 18" />
-        </svg>
+        <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-full)] bg-ground/80 text-dim transition-colors duration-[var(--dur-fast)] group-hover/take-off:text-danger">
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </span>
       </button>
       {title.libraryEntryId === null ? (
         <Link

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { EMPTY_PANEL } from "@/app/buttons";
 
 /**
  * The landing screen with **nothing on it at all** — issue #250, and the handoff's own
@@ -50,14 +51,14 @@ export function UpNextNothing({
 }) {
   return (
     <>
-      <section className="px-gutter py-16 text-center">
+      <section className={EMPTY_PANEL}>
         <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
 
-        <p className="mx-auto mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+        <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
           Add a show and its next episode turns up here.
         </p>
 
-        <Link href="/search" className={`mt-5 ${SOLID_RECOVERY}`}>
+        <Link href="/search" className={`mt-4 ${SOLID_RECOVERY}`}>
           Search films and shows
         </Link>
       </section>

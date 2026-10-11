@@ -28,6 +28,7 @@ import { useWatchMark } from "./use-watch-mark";
 import { watchMarks } from "./watch-marks";
 import {
   RECORDING_GLYPH,
+  RECORDING_GLYPH_UP_NEXT,
   RECORDING_HIT_BOX,
   SETTLED_GLYPH,
   WATCHED_NAME,
@@ -585,6 +586,7 @@ function EpisodeLine({
         {!watched ? (
           <MarkWatchedButton
             label={`Mark ${fullName} watched`}
+            upNext={episode.upNext}
             onClick={attempt}
             disabled={pending}
           />
@@ -651,9 +653,12 @@ export function MarkWatchedButton({
   label,
   onClick,
   disabled,
+  upNext = false,
 }: {
   label: string;
   onClick: () => void;
+  /** The Up next episode's tick rings in `text` rather than `dim` — issue #397. */
+  upNext?: boolean;
   /** Absent on the film row, which has no second control a stray press could reach while
    *  this one is in flight. `EpisodeLine` passes the hook's `pending` (issue #89). */
   disabled?: boolean;
@@ -668,7 +673,7 @@ export function MarkWatchedButton({
     >
       {/* `block`, for the same reason `MarkUpToIcon` below takes it: an inline svg sits on
           a text baseline and adds descender space to a row whose height is measured. */}
-      <span className={RECORDING_GLYPH}>
+      <span className={upNext ? RECORDING_GLYPH_UP_NEXT : RECORDING_GLYPH}>
         <CheckmarkIcon className="block h-4 w-4" />
       </span>
     </button>

@@ -82,7 +82,10 @@ describe("the live edge of the record is what the Watching label paints", () => 
   });
 });
 
-describe("the live edge of the record is what the Watching chip paints, even unselected", () => {
+describe("the Watching chip looks like every other chip — Charcoal, issue #397", () => {
+  // The chip used to keep `LIVE_EDGE_OF_THE_RECORD.ink` even unselected. With no accent hue
+  // it would only have been `text`, and handoff §5.2 has it look like every other chip: the
+  // Up next episode is marked by its label and its row instead, not by a colour.
   const markup = (value: "all" | "watching" = "all") =>
     renderToStaticMarkup(createElement(LibraryChips, { value, onChange: () => {} }));
 
@@ -91,24 +94,22 @@ describe("the live edge of the record is what the Watching chip paints, even uns
       .map((match) => match[0])
       .find((button) => button.includes(`>${label}<`));
 
-  it("keeps the unselected Watching chip in the live-edge ink", () => {
-    const watchingButton = chipButton(markup("all"), "Watching");
+  it("draws the unselected Watching chip exactly as the unselected Finished chip", () => {
+    const html = markup("all");
+    const faceOf = (label: string) => chipButton(html, label)?.replace(`>${label}<`, "><");
 
-    expect(watchingButton).toContain(LIVE_EDGE_OF_THE_RECORD.ink);
+    expect(faceOf("Watching")).toBeDefined();
+    expect(faceOf("Watching")).toBe(faceOf("Finished"));
   });
 
-  it("stops painting it once Watching is the active chip — the ground takes over, not the ink", () => {
-    const watchingButton = chipButton(markup("watching"), "Watching");
-
-    // Selected chips invert onto `ChipGround` (ink-on-ground), so the live-edge class
-    // itself is only ever asserted for the unselected case above.
-    expect(watchingButton).toContain('aria-pressed="true"');
+  it("still marks Watching selected the way every chip is — pressed, not painted", () => {
+    expect(chipButton(markup("watching"), "Watching")).toContain('aria-pressed="true"');
   });
 
-  it("declares the meaning by importing it, rather than reaching for the colour directly", () => {
-    const code = source("app/(signed-in)/library/library-filter-bar.tsx");
-    expect(code).toMatch(/import\s*\{\s*LIVE_EDGE_OF_THE_RECORD\s*\}\s*from\s*"@\/app\/accent-meaning"/);
-    expect(code).toContain("LIVE_EDGE_OF_THE_RECORD.ink");
+  it("no longer imports the live edge at all", () => {
+    expect(source("app/(signed-in)/library/library-filter-bar.tsx")).not.toMatch(
+      /import[^;]*LIVE_EDGE_OF_THE_RECORD/,
+    );
   });
 });
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { EMPTY_PANEL } from "@/app/buttons";
 
 /**
  * An empty library, on the page whose whole subject is what a library adds up to — issue
@@ -31,16 +32,16 @@ import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
  */
 export function EmptyYou() {
   return (
-    <section className="px-gutter py-16 text-center">
+    <section className={EMPTY_PANEL}>
       <h2 className="bill-title text-bill-lg text-text">Nothing to show yet</h2>
 
-      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
+      <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
         Your numbers come from what you watch, and your library is empty so far. Bring your
         library in from an export file, or add a show and mark an episode — everything here
         fills in on its own.
       </p>
 
-      <Link href="/import" className={`mt-5 ${SOLID_RECOVERY}`}>
+      <Link href="/import" className={`mt-4 ${SOLID_RECOVERY}`}>
         Bring your library in
       </Link>
     </section>

@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { LIVE_EDGE_OF_THE_RECORD } from "@/app/accent-meaning";
 import { LIBRARY_STATES, type LibraryState } from "@/db/access";
 import {
   DEFAULT_LIBRARY_SORT,
@@ -10,7 +9,8 @@ import {
   type LibrarySort,
 } from "@/db/library-sort";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { CHIP_BASE, ChipGround, chipClassName as sharedChipClassName } from "./chip";
+import { ChipButton } from "./chip";
+import { EMPTY_PANEL } from "@/app/buttons";
 
 /**
  * The library heading bar's controls — the chips, the filter-by-typing field, the sort
@@ -47,31 +47,10 @@ const CHIPS: { value: Chip; label: string }[] = [
 ];
 
 /**
- * Chips: *selected inverts to a `text`-coloured ground with `ground`-coloured
- * text. Unselected is `ground` with dim `text` text, hovering to `raised` with full-strength
- * text. The Watching chip is the one exception: its text is accent-coloured even when
- * unselected, because the accent always means live.* The shape every chip shares —
- * selected or not — moved to `chip.tsx` for issue #224, which reuses it for the season
- * selector; only the one exception named above is local here, because it is a fact about
- * the Watching state and not about the register.
- *
- * Issue #310 names why this exception is sanctioned rather than a fourth, unstated reason
- * to reach for the accent: `app/accent-meaning.ts`'s `LIVE_EDGE_OF_THE_RECORD` — the same
- * meaning `library-state.ts`'s Watching label claims, because a chip naming a state and a
- * label naming the same state are the same claim twice.
+ * The chips — `chip.tsx`'s register, unchanged here. The Watching chip used to keep an
+ * accent label even unselected, as `LIVE_EDGE_OF_THE_RECORD`; Charcoal has no accent hue,
+ * and handoff §5.2 has it look like every other chip (issue #397).
  */
-/* The selected chip's ground is drawn by `<ChipGround />` (`chip.tsx`) rather than by a
-   `bg-text` class, so every chip here is transparent-grounded and the same size whether it
-   is selected or not. The fill is one element that slides between them. */
-function chipClassName(value: Chip, selected: boolean): string {
-  if (value === "watching" && !selected) {
-    // The one exception, and it survives the redesign intact: Watching keeps its accent
-    // label even unselected, because the accent always means live.
-    return `${CHIP_BASE} bg-raised ${LIVE_EDGE_OF_THE_RECORD.ink} transition-opacity duration-[var(--dur-fast)] hover:opacity-80`;
-  }
-  return sharedChipClassName(selected);
-}
-
 export function LibraryChips({
   value,
   onChange,
@@ -90,16 +69,14 @@ export function LibraryChips({
       aria-label="Filter by where a title stands"
     >
       {CHIPS.map((chip) => (
-        <button
+        <ChipButton
           key={chip.value}
-          type="button"
-          aria-pressed={chip.value === value}
+          selected={chip.value === value}
           onClick={() => onChange(chip.value)}
-          className={chipClassName(chip.value, chip.value === value)}
+          layoutId="library-chip-selected"
         >
-          {chip.value === value ? <ChipGround layoutId="library-chip-selected" /> : null}
-          <span className="relative z-10">{chip.label}</span>
-        </button>
+          {chip.label}
+        </ChipButton>
       ))}
     </div>
   );
@@ -124,7 +101,7 @@ export function FilterField({
     // `40px` here against the search field's `44px` — the handoff sets this one shorter
     // on purpose, because it sits in a row of controls rather than being the screen's
     // single field.
-    <label className="field-well flex h-10 flex-1 items-center gap-2.5 px-3.5">
+    <label className="field-well flex h-12 flex-1 items-center gap-2.5 px-3.5">
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
         <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
         <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
@@ -196,7 +173,7 @@ export function SortSelect({ value }: { value: LibrarySort }) {
         value={value}
         onChange={(event) => onChange(event.target.value as LibrarySort)}
         aria-label="Sort the library"
-        className="field-well h-10 appearance-none pr-8 pl-3 text-item text-dim focus:outline-none"
+        className="field-well h-12 appearance-none pr-8 pl-3 text-item text-dim focus:outline-none"
       >
         {LIBRARY_SORTS.map((sort) => (
           <option key={sort.value} value={sort.value}>
@@ -232,7 +209,7 @@ export function SortSelect({ value }: { value: LibrarySort }) {
  */
 export function ZeroMatches({ onClear }: { onClear: () => void }) {
   return (
-    <section className="px-gutter py-16 text-center">
+    <section className={EMPTY_PANEL}>
       {/* The type step is deliberately untouched. `text-bill-md` is the step this shares
           with the read-failure headline, and sharing it is the point — the two are told
           apart by colour and by the failure's accent rule, never by size
@@ -241,11 +218,11 @@ export function ZeroMatches({ onClear }: { onClear: () => void }) {
           colour moves to `--ink` and the size stays where the relationship needs it. */}
       <h2 className="bill-title text-bill-md text-text">Nothing under that filter</h2>
 
-      <p className="mx-auto mt-3 max-w-[60ch] text-item text-dim">
+      <p className="mt-2 max-w-[60ch] text-item text-dim">
         Your library still holds everything it did. Clear the filter to see it again.
       </p>
 
-      <button type="button" onClick={onClear} className={`mt-5 ${GHOST_RECOVERY}`}>
+      <button type="button" onClick={onClear} className={`mt-4 ${GHOST_RECOVERY}`}>
         Clear the filter
       </button>
     </section>

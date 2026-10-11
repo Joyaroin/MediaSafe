@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
-import { RECORDS_A_WATCH } from "@/app/accent-meaning";
+import { WATCHED_TICK } from "@/app/(signed-in)/library/watch-mark-motion";
+import { PILL_TARGET, SECONDARY_PILL } from "@/app/buttons";
 import { beginHoldOver } from "./hold-over";
 
 /**
@@ -61,7 +62,7 @@ export function finishPulse(): void {
  * The check is drawn, not offered — it is a `span`, not a disabled button. The next episode
  * is not on the card yet, so there is nothing a second press could knowingly record.
  *
- * Solid is `RECORDS_A_WATCH`'s own form, and that is exactly what it says here: a watch now
+ * Solid is `RECORDS_A_WATCH`'s own form, through `WATCHED_TICK`, and that is exactly what it says here: a watch now
  * exists because of a press on this card.
  */
 export function HeldControl({
@@ -78,14 +79,15 @@ export function HeldControl({
           type="button"
           onClick={onUndo}
           aria-label={undoLabel}
-          className="pressable [--press-register:1] label-line flex h-8 items-center rounded-[var(--radius-full)] bg-ground px-3 text-text transition-colors duration-[var(--dur-fast)] hover:bg-hair"
+          // The quiet pill — `32px` drawn inside a `44px` target (issue #397).
+          className={`pressable [--press-register:1] ${PILL_TARGET}`}
         >
-          Undo
+          <span className={SECONDARY_PILL}>Undo</span>
         </button>
       )}
       <span className="flex h-11 w-11 items-center justify-center" aria-hidden>
         <span
-          className={`flex items-center justify-center rounded-[var(--radius-full)] p-1 check-pop ${RECORDS_A_WATCH.solid}`}
+          className={`check-pop ${WATCHED_TICK}`}
         >
           <CheckmarkIcon className="h-4 w-4" />
         </span>

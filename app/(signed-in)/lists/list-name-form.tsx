@@ -133,11 +133,11 @@ export function ListNameForm({
         <label htmlFor={fieldId} className="sr-only">
           List name
         </label>
-        {/* Turn 9's field: `44px` tall at a `12px` radius, `--raised` filled with the
-            hairline inset as a shadow rather than drawn as a border — `search-surface.tsx`
-            has the reason, which is that a `2px` focus border would move the contents of a
-            fixed-height field by a pixel and an inset shadow costs no layout. */}
-        <div className="field-well flex h-11 items-center px-3.5">
+        {/* The field: `48px` (handoff §6), `field-well`'s inset ring rather than a border —
+            `search-surface.tsx` has the reason, which is that a `2px` focus border would
+            move the contents of a fixed-height field by a pixel and an inset shadow costs
+            no layout. `aria-invalid` turns that same ring `danger` (`app/globals.css`). */}
+        <div className="field-well flex h-12 items-center px-3.5">
           <input
             id={fieldId}
             type="text"
@@ -148,15 +148,18 @@ export function ListNameForm({
             }}
             maxLength={LIST_NAME_MAX_LENGTH}
             disabled={inFlight}
+            aria-invalid={duplicate}
+            aria-describedby={duplicate ? `${fieldId}-duplicate` : undefined}
             placeholder="Name a new list"
             autoComplete="off"
             className={`bg-transparent text-note text-text placeholder:text-dim focus:outline-none ${inputClassName}`}
           />
         </div>
 
-        {/* Stays `--accent` and stays under the field — unchanged by the redesign. */}
+        {/* Under the field, in `danger` at 14/500 — never the only cue: the ring and the
+            sentence say it too. */}
         {duplicate ? (
-          <p role="alert" className="mt-2 text-item text-danger">
+          <p id={`${fieldId}-duplicate`} role="alert" className="mt-2 text-item font-medium text-danger">
             You already have a list called &ldquo;{trimmed}&rdquo;.
           </p>
         ) : null}

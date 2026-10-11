@@ -142,11 +142,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason: "STATE_LABELS.watching — #310's migration",
   },
-  "app/(signed-in)/library/library-filter-bar.tsx": {
-    meaning: "LIVE_EDGE_OF_THE_RECORD",
-    tokens: 1,
-    reason: "the unselected Watching chip — #310's migration",
-  },
   "app/(signed-in)/library/episode-line.ts": {
     meaning: "LIVE_EDGE_OF_THE_RECORD",
     tokens: 1,
@@ -159,19 +154,11 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   },
   "app/(signed-in)/library/watch-mark-motion.tsx": {
     meaning: "RECORDS_A_WATCH",
-    tokens: 8,
-    reason:
-      "the recording checkmark and its watched-state siblings. Issue #313 migrated " +
-      "RECORDING_GLYPH onto RECORDS_A_WATCH.ink and dropped its group-hover fill — " +
-      "border-accent is the meaning's own literal companion, the way THE_BUTTON_REGISTER's " +
-      "ghost pair keeps its border literal in errors/recovery-buttons.ts. The three " +
-      "QUIET_RECORDING_CONTROL variants keep their own hover:border-accent/hover:text-accent " +
-      "literals — a different control (watched up to here), left untouched by this ticket.",
-  },
-  "app/(signed-in)/up-next/up-next-card.tsx": {
-    meaning: "RECORDS_A_WATCH",
     tokens: 1,
-    reason: "the filled check while an Up next card holds after a mark — the UI overhaul",
+    reason:
+      "WATCHED_TICK — the filled tick, the one face of the tick that says a watch exists " +
+      "(Charcoal, issue #397). The not-watched and Up next faces are rings in dim and " +
+      "text, and the quiet recording controls that kept accent hovers are gone.",
   },
   "app/(signed-in)/up-next/up-next-episode-row.tsx": {
     meaning: "RECORDS_A_WATCH",
@@ -201,20 +188,10 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 2,
     reason: "the root failure boundary's 2px rule and heading — the failure system",
   },
-  "errors/failure-treatment.ts": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason: "FAILURE_SECTION/FAILURE_HEADING — read-failure/sign-in/sign-out's shared treatment",
-  },
   "errors/offline-banner.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 2,
     reason: "the sticky offline banner — the failure system",
-  },
-  "errors/write-failure-toast.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason: "the lost-write toast's frame and heading — the failure system",
   },
 
   // ── Literal exceptions: the primary action on a surface ───────────────────────────
@@ -228,16 +205,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     meaning: "LITERAL_EXCEPTION",
     tokens: 2,
     reason: "'New list' submit — the one primary action on the Lists surface",
-  },
-  "app/(signed-in)/search/catalogue-result.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason: "the Add pill — the one primary action a search result offers",
-  },
-  "app/(signed-in)/up-next/suggestion-card.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason: "the same Add pill, on Up next's empty-state suggestions (#365)",
   },
 
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────

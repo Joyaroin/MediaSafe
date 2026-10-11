@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
-import { QUIET_RECORDING_CONTROL_LABELLED_COMPACT } from "@/app/(signed-in)/library/watch-mark-motion";
 import {
   addWatchedAccessibleLabel,
   addWatchedLabel,
 } from "@/app/(signed-in)/catalogue/add-watched";
+import { PILL_TARGET, PRIMARY_PILL, SECONDARY_PILL } from "@/app/buttons";
 import { Poster } from "@/app/poster";
 import type { MarkedResult } from "./actions";
 import { useCatalogueAdd } from "./use-catalogue-add";
@@ -157,8 +157,11 @@ export function CatalogueResultRow({
            * It also puts the two controls in the reading order the ticket asks for. The
            * pill is where the eye goes and where the thumb rests; this is a sentence
            * further down the row, in the quiet register, for the reader who came to it on
-           * purpose (`watch-mark-motion.tsx` carries why that register and not the
-           * accent).
+           * purpose.
+           *
+           * **Charcoal, issue #397:** it is the quiet pill now (`SECONDARY_PILL`), `32px`
+           * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
+           * face, so the row grows by the face and not by the target.
            *
            * ── It disappears with the pill, not separately ────────────────────────────
            *
@@ -171,9 +174,9 @@ export function CatalogueResultRow({
             type="button"
             onClick={() => void attempt(true)}
             aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
-            className={`mt-2 ${QUIET_RECORDING_CONTROL_LABELLED_COMPACT}`}
+            className={`-mb-1.5 mt-0.5 ${PILL_TARGET}`}
           >
-            {addWatchedLabel(result.kind)}
+            <span className={SECONDARY_PILL}>{addWatchedLabel(result.kind)}</span>
           </button>
         )}
       </div>
@@ -194,8 +197,10 @@ export function CatalogueResultRow({
         </Link>
       ) : (
         /**
-         * A vermilion pill — `34px` tall at a `17px` radius, `--accent` filled with an
-         * `--accent-ink` label.
+         * The filled pill (`app/buttons.ts`'s `PRIMARY_PILL`, issue #397): `32px` inside a
+         * `44px` target. Search's per-row *Add* is the one sanctioned exception to *one
+         * filled action per surface* — each is the main action of its own row. The history
+         * below is the accent era's, kept for its reasoning about the target.
          *
          * **This reverses what this file used to say**, which was that the treatment is
          * *not vermilion, because vermilion is reserved for recording a watch and adding
@@ -239,11 +244,9 @@ export function CatalogueResultRow({
            * accessible name carries the title the visible label leaves to the layout.
            */
           aria-label={`Add ${result.name} to your library`}
-          className="pressable [--press-register:1] flex h-11 shrink-0 items-center"
+          className={`pressable [--press-register:1] ${PILL_TARGET}`}
         >
-          <span className="flex h-[34px] items-center rounded-[var(--radius-full)] bg-accent px-4 text-item font-semibold text-accent-ink">
-            Add
-          </span>
+          <span className={PRIMARY_PILL}>Add</span>
         </button>
       )}
     </li>

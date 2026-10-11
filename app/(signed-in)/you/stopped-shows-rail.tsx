@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { resumeAction } from "@/app/(signed-in)/library/give-up-action";
-import { SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
+import { PILL_TARGET, SECONDARY_PILL } from "@/app/buttons";
 import type { LibraryStateGroupEntry } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
@@ -48,9 +48,10 @@ export function StoppedShowsRail({ entries }: { readonly entries: readonly Libra
             type="button"
             onClick={() => void startAgain(entry, deps)}
             aria-label={`Start ${entry.titleName} again`}
-            className={`${SECONDARY_BUTTON_COMPACT} w-full`}
+            // The quiet pill (handoff §6): `32px` drawn, `44px` to press.
+            className={`${PILL_TARGET} self-start`}
           >
-            Start again
+            <span className={SECONDARY_PILL}>Start again</span>
           </button>
         </div>
       )}

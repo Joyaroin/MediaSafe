@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { PRIMARY_BUTTON_COMPACT, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
+import { PRIMARY_BUTTON, SECONDARY_BUTTON, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
 import { renameListAction, type RenameListActionOutcome } from "@/app/(signed-in)/lists/actions";
 import { LIST_NAME_MAX_LENGTH } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
@@ -101,7 +101,7 @@ export function ListNameHeading({
         void save(draft);
       }}
     >
-      <label className="field-well flex h-10 min-w-0 flex-1 items-center px-3.5 sm:max-w-[360px]">
+      <label className="field-well flex h-12 min-w-0 flex-1 items-center px-3.5 sm:max-w-[360px]">
         <span className="sr-only">List name</span>
         <input
           type="text"
@@ -114,21 +114,21 @@ export function ListNameHeading({
           autoFocus
           aria-invalid={duplicate}
           aria-describedby={duplicate ? "rename-duplicate" : undefined}
-          className="w-full bg-transparent text-item text-text focus:outline-none"
+          className="w-full bg-transparent text-bill-xs text-text focus:outline-none"
         />
       </label>
-      <button type="submit" disabled={pending} className={PRIMARY_BUTTON_COMPACT}>
+      <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
         Save
       </button>
       <button
         type="button"
         onClick={() => setEditing(false)}
-        className={SECONDARY_BUTTON_COMPACT}
+        className={SECONDARY_BUTTON}
       >
         Cancel
       </button>
       {duplicate ? (
-        <p id="rename-duplicate" role="alert" className="w-full text-meta text-danger">
+        <p id="rename-duplicate" role="alert" className="w-full text-item font-medium text-danger">
           You already have a list with that name.
         </p>
       ) : null}

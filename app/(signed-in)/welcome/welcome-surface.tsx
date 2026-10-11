@@ -8,7 +8,8 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
-import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { PRIMARY_BUTTON_LARGE } from "@/app/buttons";
+import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
 import { ReferenceLine } from "@/errors/reference-line";
 import { answerImportOfferAction } from "./actions";
 
@@ -71,7 +72,7 @@ export function WelcomeSurface() {
           type="button"
           onClick={() => choose("/import", "import")}
           disabled={inFlight !== null}
-          className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
+          className={PRIMARY_BUTTON_LARGE}
         >
           {inFlight === "import" ? "Bringing your library in" : "Bring your library in"}
         </button>

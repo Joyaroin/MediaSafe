@@ -1,3 +1,5 @@
+import { EMPTY_PANEL } from "@/app/buttons";
+
 /**
  * No lists yet — issue #146's acceptance criterion that this says what a list is *for*
  * rather than showing a bare empty state. Reachable only because `listLists` succeeded
@@ -10,10 +12,10 @@
  */
 export function EmptyLists() {
   return (
-    <section className="px-gutter py-16 text-center">
+    <section className={EMPTY_PANEL}>
       <h2 className="bill-title text-bill-lg text-text">Group it your own way</h2>
 
-      <p className="mx-auto mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
+      <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
         The five states are derived — they are not yours to choose, and they cannot say
         &ldquo;comfort shows&rdquo;, &ldquo;watch with Dad&rdquo;, or &ldquo;the ones I
         keep meaning to start&rdquo;. A list can. Name one above to begin — adding titles

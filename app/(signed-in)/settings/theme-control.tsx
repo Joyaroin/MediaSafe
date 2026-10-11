@@ -9,6 +9,7 @@ import {
   subscribeToTheme,
   type ThemeChoice,
 } from "@/lib/theme";
+import { SegmentedControl } from "@/app/segmented";
 
 /**
  * The theme control — Settings' Profile section, beneath the timezone.
@@ -24,8 +25,8 @@ import {
  * A two-state toggle cannot express *system*, and *system* is the default and the state
  * almost every reader stays in. A switch would force everyone into an explicit answer on
  * first touch and quietly delete the "follow my device" behaviour that has been the only
- * behaviour until now. Three buttons, one pressed, is the same shape the library chips
- * already use (`library-filter-bar.tsx`) and it says what the states are without a legend.
+ * behaviour until now. Three buttons, one pressed — the one segmented control
+ * (`app/segmented.tsx`) since issue #397 — says what the states are without a legend.
  *
  * ── No toast, no rollback, no pending state ──────────────────────────────────────────
  *
@@ -83,27 +84,14 @@ export function ThemeControl() {
         again.
       </p>
 
-      <div
-        className="mt-4 flex flex-wrap items-center gap-2"
-        role="group"
-        aria-label="Appearance"
-      >
-        {CHOICES.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={value === choice}
-            onClick={() => choose(value)}
-            className={
-              value === choice
-                ? "flex h-9 items-center rounded-[var(--radius-6)] bg-text px-4 text-item font-medium text-ground"
-                : "flex h-9 items-center rounded-[var(--radius-6)] bg-raised px-4 text-item font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        label="Appearance"
+        options={CHOICES}
+        value={choice}
+        onChange={choose}
+        layoutId="theme-choice"
+        className="mt-4 max-w-[420px]"
+      />
     </div>
   );
 }
