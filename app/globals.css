@@ -74,76 +74,54 @@
    ═══════════════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Light — the desktop in daylight, and since the linen redesign the phone in daylight
-     too. The Catalogue Wall's bone/white/near-black light palette is replaced here by the
-     mobile brief's own token table.
+  /* Light — the desktop in daylight, and the phone in daylight too.
 
-     **These seven values are the brief's, not an approximation of them** — that was
-     issue #255's claim, and it still holds for six of the seven. They used to be turn 9 of
-     an *earlier exploration board*, which this file cited as `design_handoff_phone_linen`
-     against no path at all. That board was the direction; this table is the brief that
-     landed after it, and the two differed in all seven values. Issue #255 closed that gap.
-     Issue #327 reopened exactly one cell of it, deliberately: `--dim` no longer carries the
-     brief's own number, for the reason at its declaration below.
+     ── Charcoal — issue #395 ────────────────────────────────────────────────────────────
+     Warm charcoal greys with **no accent hue**: the posters carry the colour and the
+     interface stays neutral. The values are the Charcoal handoff's table (§5.1 of
+     `docs/redesign/handoff.md`), whose hex is the source of truth; each `oklch()` below
+     resolves to that hex exactly. They stay `oklch()` rather than hex for issue #327's
+     reason — lightness, chroma and hue drift are a glance here and colour math at a hex.
 
-     The tone relationship inverting is still the point — `--raised` sits *below*
-     `--ground` (they were `#eeede6` on `#f7f5ed` before this file restated them below;
-     the OKLCH lightness positions are unchanged), so a card reads as a well pressed into
-     the sheet rather than a panel floating above it, which is what lets the whole redesign
-     carry no shadows at all. The brief's Geometry table said so in as many words: *none
-     on cards — the `--raised` / `--ground` step is the only lift*.
+     **`--raised` now sits *above* `--ground` in light.** The linen palette inverted the
+     usual step — its `--raised` was a well pressed *below* the sheet (`#eeede6` on
+     `#f7f5ed`) — and that no longer holds: a card is white (`#ffffff`) on a warm
+     off-white page (`#f4f2ee`), the same direction dark has always had. What has not
+     changed is the rule the step served: **no shadows on cards**. The tone step from
+     `--ground` to `--raised`, plus `plate-line`, is the only lift.
 
-     ── Restated in OKLCH — issue #327 ──────────────────────────────────────────────────
-     Every value below used to be a hex triplet copied from the brief's table. It is now
-     `oklch()`, on one hue (95°, the linen's own), because a hex triplet hides exactly the
-     three things a palette lives or dies on: whether a hue has drifted, whether a divider
-     has picked up more chroma than the sheet it divides, and where a value actually sits on
-     the lightness axis relative to its neighbours. All three are a glance at an `oklch()`
-     value and an exercise in mental colour math at a hex one.
+     **`--accent` is `--text`, and `--accent-ink` is `--ground`** — the same strings,
+     declared again rather than pointed at with `var()`, because every suite that reads
+     the palette reads each token's single declaration as an `oklch()` literal. Every
+     `bg-accent text-accent-ink` and `text-accent` call site keeps working; a filled
+     control now draws in the text colour rather than in vermilion, and the three
+     meanings in `app/accent-meaning.ts` keep their names. */
+  --ground: oklch(96.2% 0.006 85);
+  --raised: oklch(100% 0 0);
+  --hair: oklch(88% 0.012 85);
+  --text: oklch(21.8% 0.006 92);
+  --dim: oklch(47.2% 0.014 85);
+  --accent: oklch(21.8% 0.006 92);
+  --accent-ink: oklch(96.2% 0.006 85);
+  /* The destructive action's colour — issue #357. Since Charcoal, the only hue in the
+     interface besides the artwork; never a fill at rest, so Remove cannot be mistaken for
+     the primary action. */
+  --danger: oklch(50.1% 0.178 28.7);
 
-     **Lightness is held at the shipped position for every token but one.** The light
-     values here render within a rounding error of the hex they replace — `#f7f5ed` and
-     `#eeede6` above are what a browser now computes from `--ground` and `--raised`, not a
-     second source of truth — so the page's tone is unchanged. Chroma falls as lightness
-     leaves the ground (`0.012` at the top of the ramp down to `0.006` at the bottom), so no
-     hairline is ever more chromatic than the sheet it divides. The full derivation and the
-     gamut check are in the research note committed on the `docs/visual-refinement-research`
-     branch (§2.2, not yet on the default branch as of this writing); the summary lives
-     here instead. */
-  --ground: oklch(96.9% 0.012 95);
-  --raised: oklch(94.5% 0.012 95);
-  --hair: oklch(86.9% 0.012 95);
-  --text: oklch(32.3% 0.008 95);
-  --dim: oklch(52.8% 0.010 95);
-  --accent: oklch(47.4% 0.166 35);
-  --accent-ink: oklch(96.9% 0.012 95);
-  /* The destructive action's colour — issue #357. A red a step cooler than the accent and
-     never a fill at rest, so Remove cannot be mistaken for the primary action. */
-  --danger: oklch(50% 0.19 22);
+  /* ── `--dim` clears its floor on the harder ground, in both schemes ─────────────────
+     `--dim` carries the metadata line (year, runtime, episode count) at 12–13px, which is
+     normal text by any reading, so it is held to the same floors as `--text`
+     (`tests/contrast.test.ts`): **4.5:1 on `--raised` in light** (6.8:1 here) and **the
+     APCA content-text floor, Lc 60, on `--dark-raised` in dark** (Lc 60 here, and 62 on
+     `--dark-ground`). WCAG 2 has nothing useful to say near black, which is why dark is
+     held to the perceptual floor instead. The first dark `--dim` the Charcoal boards drew,
+     `#aba69d`, measured Lc 52 on `--dark-raised` — it fails, and must not come back.
 
-  /* ── `--dim` is the one value whose lightness moves, and it moves on purpose ─────────
-     Every other token above is the shipped tone re-expressed; this one is a real repaint,
-     recorded here because it is a fix and the next person to look at a metadata line
-     deserves to find the number rather than re-measure it.
-
-     The hex it replaced, `#929086`, was **2.93:1** on `--ground` and **2.73:1** on
-     `--raised` — below WCAG 2.2's 4.5:1 floor for normal text on both, and `--dim` carries
-     the metadata line (year, runtime, episode count) at 12–13px, which is normal text by
-     any reading. It was adopted anyway in issue #255 because that ticket's whole claim was
-     fidelity to the handoff's table, and quietly darkening one value while claiming to have
-     adopted it unchanged would have made the file un-diffable against the document it
-     cited. That ticket named the fix out of scope and pointed at "a ticket that changes the
-     number on purpose and says so" — this is that ticket.
-
-     **Light is the lightest value on the hue that clears 4.5:1 on `--raised`**, the harder
-     of the two grounds a metadata line sits on. **Dark is the darkest value on the hue that
-     reaches the perceptual content-text floor** rather than the WCAG 2 floor: WCAG 2 has
-     nothing useful to say near black, and it passed the shipped dark value while that value
-     sat under the floor a human reader actually needs. Both land **20 L from `--text`** —
-     `52.8 − 32.3` in light, `96.3 − 76.5` in dark — derived independently from two different
-     standards, which is why that relationship and not either raw number is the rule to
-     carry forward: the next re-tint should hold the 20 L step, not this ticket's two
-     lightnesses.
+     Issue #327 found both `--dim` values landing **20 L from `--text`** and asked the next
+     re-tint to hold that step. Charcoal cannot: its dark ground is lighter, so the darkest
+     dark `--dim` that clears Lc 60 on `--dark-raised` is 18 L from `--dark-text`, and the
+     light one is 25 L from `--text`. The step was a coincidence of the linen palette, not
+     a rule; the floors are the rule.
 
      `--dim` is still never load-bearing on its own — every state it colours is also carried
      by the label register or a dimmed name (`library-state.ts`, `library-entry-cell.tsx`) —
@@ -181,21 +159,16 @@
   --tab-bar-height: 75px;
 
   /* ── The dark palette's values, declared here and applied below ───────────────────
-     Dark — the phone at 11pm. Values taken from `design/catalogue-wall.html`'s `:root`
-     until issue #327, unchanged because the linen redesign was a light-palette change and
-     said so. #327 is not that — it restates every neutral on the light palette's own hue
-     (95°, up from the blue-violet cast `catalogue-wall.html` inherited from an older
-     exploration board) and moves the accent, so night reads as the same product as day
-     rather than a cool-blue variant of it. The research note on the
-     `docs/visual-refinement-research` branch, §2.2, carries the derivation.
+     Dark — the phone at 11pm. The Charcoal handoff's dark column (issue #395), on the same
+     warm greys as light, so night reads as the same product as day. The ground is lighter
+     than the near-black it replaces (`#181715`), and `--dark-accent` / `--dark-accent-ink`
+     are `--dark-text` / `--dark-ground` declared again, for the reason the light pair is.
 
-     **The dark accent moves onto the vermilion family, off amber.** `#ffb020` read warm but
-     was a different hue from the light accent — a reader marking a watch at 6pm and again
-     at 11pm saw the app's one semantic colour change what colour it was. The value that
-     reaches the perceptual text floor on this ground has to drop chroma far enough to read
-     as coral rather than brick, so the slightly deeper, still-conformant value is taken
-     instead and the brick character is kept. The higher contrast amber offered was never the
-     reason it was chosen in the first place.
+     `--dark-danger` (`#ff7a6b`) measures about Lc 50–52 on the two dark grounds: above the
+     Lc 45 floor for large text, under the Lc 60 content floor `--text` and `--dim` are held
+     to, and where the previous dark danger already sat. The handoff leaves it open; until
+     answered, danger text is set at 14px or larger at weight 500 or more, and is never the
+     only cue.
 
      **Why the dark palette is a named set rather than a second `:root` block.** There are
      two ways to be in dark — the system asked, or the reader answered — and they are two
@@ -205,14 +178,14 @@
      site**. Declared once here and mapped twice below, each colour still appears exactly
      once; what repeats is the mapping, where a mistake is a visibly wrong colour rather
      than a silent drift between two copies. */
-  --dark-ground: oklch(13.9% 0.004 95);
-  --dark-raised: oklch(20.5% 0.005 95);
-  --dark-hair: oklch(26.5% 0.006 95);
-  --dark-text: oklch(96.3% 0.006 95);
-  --dark-dim: oklch(76.5% 0.008 95);
-  --dark-accent: oklch(75% 0.153 35);
-  --dark-accent-ink: oklch(13.9% 0.004 95);
-  --dark-danger: oklch(72% 0.15 22);
+  --dark-ground: oklch(20.5% 0.004 85);
+  --dark-raised: oklch(24.9% 0.005 68);
+  --dark-hair: oklch(33.1% 0.008 75);
+  --dark-text: oklch(95.6% 0.009 85);
+  --dark-dim: oklch(77.5% 0.014 82);
+  --dark-accent: oklch(95.6% 0.009 85);
+  --dark-accent-ink: oklch(20.5% 0.004 85);
+  --dark-danger: oklch(73.18% 0.165 28.3);
 }
 
 /* ── The three theme states ──────────────────────────────────────────────────────────

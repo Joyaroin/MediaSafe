@@ -3,9 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   APCA_CONTENT_TEXT_FLOOR,
   apcaLc,
-  declaredOnce,
   hexToSrgb,
-  parseOklch,
   resolvedSrgb,
   wcagContrast,
 } from "./support/contrast";
@@ -76,21 +74,15 @@ describe("the gap between the two standards is real, not asserted past", () => {
   });
 });
 
-describe("both --dim values sit 20 L from --text — the rule, not just the numbers", () => {
-  /**
-   * Derived independently from two different standards (WCAG 2 in light, the APCA
-   * content-text floor in dark) and landing on the same figure is the relationship the
-   * next re-tint has to preserve rather than re-derive — asserted here rather than left
-   * as two values that happen to agree today.
-   */
-  const lightnessOf = (name: string) => parseOklch(declaredOnce(name))[0];
-  const withinOneL = (delta: number) => Math.abs(delta - 20) <= 1;
-
-  it("light: --dim is 20 L above --text, toward the light ground", () => {
-    expect(withinOneL(lightnessOf("dim") - lightnessOf("text"))).toBe(true);
-  });
-
-  it("dark: --dark-dim is 20 L below --dark-text, toward the dark ground", () => {
-    expect(withinOneL(lightnessOf("dark-text") - lightnessOf("dark-dim"))).toBe(true);
-  });
-});
+/*
+ * There was a third block here: "both --dim values sit 20 L from --text". On the linen
+ * palette (#327) the two `--dim` values, derived independently from WCAG 2 in light and
+ * from the APCA content-text floor in dark, both landed 20 L from `--text`, and that step
+ * was asserted as the rule the next re-tint should carry forward.
+ *
+ * Charcoal (#395) is that re-tint, and the step cannot hold on it. Its dark ground is
+ * lighter than the linen one, so the darkest `--dark-dim` that clears Lc 60 on
+ * `--dark-raised` is 18 L from `--dark-text`; light `--dim` is 25 L from `--text`. The
+ * 20 L was a coincidence of one palette, not a property of the floors — the floors above
+ * are the rule, and they still hold in both schemes.
+ */
