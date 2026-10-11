@@ -315,7 +315,7 @@ describe("listLibraryEntries", () => {
 
       const [row] = await listLibraryEntries(reader, "title", tx);
 
-      expect(row.upNext).toEqual({ episodeName: "Hands" });
+      expect(row.upNext).toEqual({ episodeName: "Hands", seasonNo: 1, episodeNo: 2 });
     });
   });
 
@@ -331,8 +331,8 @@ describe("listLibraryEntries", () => {
       });
       await markWatched(tx, nothingNext, 0);
 
-      // Something is next and it has no name. The cell may not fall back to `S1 E2`
-      // alone (#4), so these two cases may never arrive as the same value.
+      // Something is next and it has no name. The cell's state line reads `S1 E2 up next`
+      // for it (issue #402), so these two cases may never arrive as the same value.
       const unnamedNext = await seedShow(tx, reader, {
         name: "B Unnamed next",
         episodes: [
@@ -345,7 +345,7 @@ describe("listLibraryEntries", () => {
       const rows = await listLibraryEntries(reader, "title", tx);
 
       expect(rows[0].upNext).toBeNull();
-      expect(rows[1].upNext).toEqual({ episodeName: null });
+      expect(rows[1].upNext).toEqual({ episodeName: null, seasonNo: 1, episodeNo: 2 });
     });
   });
 

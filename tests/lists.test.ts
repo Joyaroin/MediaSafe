@@ -47,7 +47,7 @@ async function seedUser(tx: Transaction, name: string): Promise<UserId> {
 }
 
 /** A show, global and owned by nobody — the same shape `delete-account.test.ts` seeds. */
-async function seedShow(tx: Transaction): Promise<string> {
+async function seedShow(tx: Transaction, posterPath: string | null = null): Promise<string> {
   const number = nextNumber();
   const [row] = await tx
     .insert(title)
@@ -57,6 +57,7 @@ async function seedShow(tx: Transaction): Promise<string> {
       name: `Show ${number}`,
       releaseYear: 2022,
       inProduction: true,
+      posterPath,
     })
     .returning({ id: title.id });
   return row.id;
@@ -164,6 +165,81 @@ describe("reading the lists back", () => {
 
       expect(rows.find((one) => one.id === full.id)?.titleCount).toBe(2);
       expect(rows.find((one) => one.id === empty.id)?.titleCount).toBe(0);
+    });
+  });
+
+  /**
+   * Charcoal's list cards draw a stack of a list's first three posters (handoff §8.5,
+   * issue #402). Seeded with positions out of insertion order, so an answer ordered by
+   * anything but `position` fails here.
+   */
+  it("carries at most three posters per list, in list order", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const shows = [];
+      for (const path of ["/a.jpg", "/b.jpg", "/c.jpg", "/d.jpg"]) {
+        shows.push(await seedShow(tx, path));
+      }
+
+      const { list: four } = unwrap(await createList(reader, "Four", tx));
+      await seedMembership(tx, four.id, reader, shows[0], 3);
+      await seedMembership(tx, four.id, reader, shows[1], 1);
+      await seedMembership(tx, four.id, reader, shows[2], 4);
+      await seedMembership(tx, four.id, reader, shows[3], 2);
+
+      const [row] = await listLists(reader, tx);
+
+      expect(row.posters.map((one) => one.posterPath)).toEqual(["/b.jpg", "/d.jpg", "/a.jpg"]);
+    });
+  });
+
+  it("carries one poster for a list of one, and none for an empty list", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, "/one.jpg");
+
+      const { list: one } = unwrap(await createList(reader, "One", tx));
+      const { list: empty } = unwrap(await createList(reader, "Empty", tx));
+      await seedMembership(tx, one.id, reader, show, 1);
+
+      const rows = await listLists(reader, tx);
+
+      expect(rows.find((row) => row.id === one.id)?.posters).toEqual([
+        { posterPath: "/one.jpg", name: expect.stringMatching(/^Show /) },
+      ]);
+      expect(rows.find((row) => row.id === empty.id)?.posters).toEqual([]);
+    });
+  });
+
+  it("keeps a title with no artwork in the stack, by name, so the count and the stack agree", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const show = await seedShow(tx, null);
+
+      const { list: bare } = unwrap(await createList(reader, "Bare", tx));
+      await seedMembership(tx, bare.id, reader, show, 1);
+
+      const [row] = await listLists(reader, tx);
+
+      expect(row.posters).toHaveLength(1);
+      expect(row.posters[0].posterPath).toBeNull();
+      expect(row.posters[0].name).toMatch(/^Show /);
+    });
+  });
+
+  it("never stacks another account's posters, even on a list of the same name", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "reader");
+      const other = await seedUser(tx, "other");
+      const show = await seedShow(tx, "/theirs.jpg");
+
+      await createList(reader, "Shared name", tx);
+      const { list: theirs } = unwrap(await createList(other, "Shared name", tx));
+      await seedMembership(tx, theirs.id, other, show, 1);
+
+      const [row] = await listLists(reader, tx);
+
+      expect(row.posters).toEqual([]);
     });
   });
 
