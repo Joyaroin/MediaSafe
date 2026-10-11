@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>Library</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+</style>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; justify-content: space-between; padding: 18px 12px 6px 20px">
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; line-height: 1">Library</h1>
+</header>
+
+<div role="group" aria-label="What to show" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 8px 20px 0; padding: 4px; border-radius: 14px; background: #23211f">
+<button type="button" aria-pressed="true" style="height: 44px; border: none; border-radius: 10px; background: none; box-shadow: inset 0 0 0 1.5px #f3f0ea; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Shows</button>
+<button type="button" aria-pressed="false" style="height: 44px; border: none; border-radius: 10px; background: none; color: #bab5ac; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Films</button>
+<button type="button" aria-pressed="false" style="height: 44px; border: none; border-radius: 10px; background: none; color: #bab5ac; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Lists</button>
+</div>
+
+<div style="display: flex; align-items: center; margin: 8px 0">
+<div role="group" aria-label="Filter by where a title stands" style="display: flex; gap: 8px; flex: 1; min-width: 0; padding-left: 20px; overflow: hidden">
+<button type="button" aria-pressed="true" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; box-shadow: inset 0 0 0 1.5px #f3f0ea; font-size: 14px; font-weight: 600; color: #f3f0ea">All</span></button>
+<button type="button" aria-pressed="false" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Watching</span></button>
+<button type="button" aria-pressed="false" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Caught up</span></button>
+<button type="button" aria-pressed="false" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Finished</span></button>
+<button type="button" aria-pressed="false" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Watchlist</span></button>
+<button type="button" aria-pressed="false" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 36px; display: flex; align-items: center; padding: 0 14px; border-radius: 999px; background: #23211f; font-size: 14px; font-weight: 500; color: #bab5ac">Dropped</span></button>
+</div>
+<button type="button" aria-label="Sort the library, currently recently watched" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin: 0 12px 0 8px; border: none; border-radius: 999px; background: #23211f; color: #f3f0ea; cursor: pointer">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16"></path><path d="M4 17l3 3 3-3"></path><path d="M17 20V4"></path><path d="M14 7l3-3 3 3"></path></svg>
+</button>
+</div>
+
+<ul style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; margin: 0; padding: 0 20px; list-style: none">
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<a href="title-show.dark.html" aria-label="The Bear, watching, season 1 episode 2 is up next" style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #2f5fd0; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); text-decoration: none">
+<span style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">The Bear</span>
+<span aria-hidden="true" style="position: absolute; left: 0; bottom: 0; width: 13%; height: 3px; background: #ffffff"></span>
+</a>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">The Bear</span>
+<span style="font-size: 12px; color: #bab5ac">S1 E2 up next</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #1f6b70; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Severance</span>
+<span aria-hidden="true" style="position: absolute; left: 0; bottom: 0; width: 11%; height: 3px; background: #ffffff"></span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">Severance</span>
+<span style="font-size: 12px; color: #bab5ac">S1 E2 up next</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #8a4a2a; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Andor</span>
+<span aria-hidden="true" style="position: absolute; left: 0; bottom: 0; width: 8%; height: 3px; background: #ffffff"></span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">Andor</span>
+<span style="font-size: 12px; color: #bab5ac">S1 E2 up next</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #8c2f3f; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Shōgun</span>
+<span aria-hidden="true" style="position: absolute; left: 0; bottom: 0; width: 10%; height: 3px; background: #ffffff"></span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">Shōgun</span>
+<span style="font-size: 12px; color: #bab5ac">S1 E2 up next</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #4a4f5c; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">The Wire</span>
+<span aria-hidden="true" style="position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">The Wire</span>
+<span style="font-size: 12px; color: #bab5ac">Finished</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #6b6030; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Chernobyl</span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">Chernobyl</span>
+<span style="font-size: 12px; color: #bab5ac">Watchlist</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #7a2f2f; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); opacity: 0.5">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Fargo</span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25; color: #bab5ac">Fargo</span>
+<span style="font-size: 12px; color: #bab5ac">Dropped</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #5a4a78; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Slow Horses</span>
+<span aria-hidden="true" style="position: absolute; left: 0; bottom: 0; width: 17%; height: 3px; background: #ffffff"></span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">Slow Horses</span>
+<span style="font-size: 12px; color: #bab5ac">S1 E2 up next</span>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 2px">
+<div style="position: relative; display: flex; align-items: flex-end; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: 10px; overflow: hidden; background: #2f3f6b; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14)">
+<span aria-hidden="true" style="padding: 0 8px 12px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1; color: #ffffff">Succession</span>
+<span aria-hidden="true" style="position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</div>
+<span style="font-size: 14px; font-weight: 500; line-height: 1.25">Succession</span>
+<span style="font-size: 12px; color: #bab5ac">Finished</span>
+</li>
+
+</ul>
+
+<nav aria-label="Primary" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 4px 0; background: rgba(24,23,21,0.94); border-top: 1px solid #383531">
+<a href="tonight.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+<span>Tonight</span>
+</a>
+<a href="coming-up.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path><path d="M9 3v4"></path><path d="M15 3v4"></path></svg>
+<span>Coming up</span>
+</a>
+<a href="search.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>
+<span>Search</span>
+</a>
+<a href="#library" aria-current="page" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; text-decoration: none; color: #f3f0ea">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="16" rx="1"></rect><path d="M18.5 6l2 13.5"></path></svg>
+<span>Library</span>
+</a>
+<a href="you.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+<span>You</span>
+</a>
+</nav>
+
+</div>
+</body>
+</html>

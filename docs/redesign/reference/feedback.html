@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>Feedback states</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+</style>
+<div style="width: 1792px; height: 1180px; box-sizing: border-box; display: flex; flex-direction: column; padding: 56px; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<header style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 32px">
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px; line-height: 1.1">Feedback</h2>
+<p style="margin: 0; font-size: 15px; color: #bab5ac">Every tap answers at once, every mark can be undone, and a lost write is never silent.</p>
+</header>
+
+<h3 style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #bab5ac">Marking a watch</h3>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 40px; margin-bottom: 40px">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 392px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div aria-hidden="true" style="position: absolute; inset: 0; background-color: #3461c9; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 2px, rgba(255,255,255,0) 2px 16px)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(24,23,21,0) 18%, rgba(24,23,21,0.86) 40%, #181715 76%)"></div>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; flex-direction: column">
+<p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Up next</p>
+<p style="margin: 0 0 8px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 80px; line-height: 0.9; letter-spacing: -0.01em">The Bear</p>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px"><span style="font-size: 17px; font-weight: 500">S1 E2 · Hands</span><span style="font-size: 13px; color: #bab5ac">1 of 8</span></div>
+<div aria-hidden="true" style="display: flex; gap: 4px; margin-bottom: 16px"><span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span></div>
+<button type="button" style="height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; border-radius: 14px; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 17px; font-weight: 600; cursor: pointer">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>Mark watched</span>
+</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">1 · Rest</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">One filled button. Nothing else on the screen is filled.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 392px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div aria-hidden="true" style="position: absolute; inset: 0; background-color: #3461c9; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 2px, rgba(255,255,255,0) 2px 16px)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(24,23,21,0) 18%, rgba(24,23,21,0.86) 40%, #181715 76%)"></div>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; flex-direction: column">
+<p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Up next</p>
+<p style="margin: 0 0 8px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 80px; line-height: 0.9; letter-spacing: -0.01em">The Bear</p>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px"><span style="font-size: 17px; font-weight: 500">S1 E2 · Hands</span><span style="font-size: 13px; color: #bab5ac">1 of 8</span></div>
+<div aria-hidden="true" style="display: flex; gap: 4px; margin-bottom: 16px"><span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span></div>
+<button type="button" style="height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; border-radius: 14px; background: #d6d3cd; color: #181715; font-family: inherit; font-size: 17px; font-weight: 600; transform: scale(0.96); cursor: pointer">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>Mark watched</span>
+</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">2 · Pressed</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">The button compresses and darkens within 100 milliseconds.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 392px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div aria-hidden="true" style="position: absolute; inset: 0; background-color: #3461c9; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 2px, rgba(255,255,255,0) 2px 16px)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(24,23,21,0) 18%, rgba(24,23,21,0.86) 40%, #181715 76%)"></div>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; flex-direction: column">
+<p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Up next</p>
+<p style="margin: 0 0 8px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 80px; line-height: 0.9; letter-spacing: -0.01em">The Bear</p>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px"><span style="font-size: 17px; font-weight: 500">S1 E2 · Hands</span><span style="font-size: 13px; color: #bab5ac">2 of 8</span></div>
+<div aria-hidden="true" style="display: flex; gap: 4px; margin-bottom: 16px"><span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span></div>
+<div style="height: 56px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 6px 0 16px; border-radius: 14px; background: #23211f">
+<span style="display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600"><span aria-hidden="true" style="width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: #f3f0ea; color: #181715"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span>Watched</span></span>
+<button type="button" aria-label="Undo marking Hands watched" style="height: 44px; padding: 0 18px; border: none; border-radius: 10px; background: #383531; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Undo</button>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">3 · Just marked</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">The tick pops, progress fills and Undo holds for 1.2 seconds. The write is sent straight away.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 392px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div aria-hidden="true" style="position: absolute; inset: 0; background-color: #3461c9; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 2px, rgba(255,255,255,0) 2px 16px)"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(24,23,21,0) 18%, rgba(24,23,21,0.86) 40%, #181715 76%)"></div>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; flex-direction: column">
+<p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Up next</p>
+<p style="margin: 0 0 8px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 80px; line-height: 0.9; letter-spacing: -0.01em">The Bear</p>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px"><span style="font-size: 17px; font-weight: 500">S1 E3 · Brigade</span><span style="font-size: 13px; color: #bab5ac">2 of 8</span></div>
+<div aria-hidden="true" style="display: flex; gap: 4px; margin-bottom: 16px"><span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: #f3f0ea"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span><span style="flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.24)"></span></div>
+<button type="button" style="height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; border-radius: 14px; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 17px; font-weight: 600; cursor: pointer">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>Mark watched</span>
+</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">4 · Next arrives</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">The following episode takes its place. Finishing a season adds the finish line and a short vibration.</span>
+</div>
+</div>
+
+</div>
+
+<h3 style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #bab5ac">System states</h3>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 40px">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div aria-hidden="true" style="position: relative; height: 300px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 96px; background: #23211f"></div>
+<div style="position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 10px">
+<div style="width: 64px; height: 12px; border-radius: 6px; background: #23211f"></div>
+<div style="width: 230px; height: 56px; border-radius: 10px; background: #23211f"></div>
+<div style="width: 170px; height: 16px; border-radius: 8px; background: #23211f"></div>
+<div style="height: 4px; border-radius: 2px; background: #23211f"></div>
+<div style="height: 56px; border-radius: 14px; background: #23211f"></div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">Loading</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">Skeletons sit in the final layout, so nothing jumps when the data lands.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 300px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; padding: 8px 20px 12px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div style="display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid #383531">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #1f6b70"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Severance</span>
+<span style="font-size: 13px; color: #bab5ac">S1 E2 · Half Loop</span>
+</div>
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</div>
+<div role="status" style="display: flex; flex-direction: column; gap: 6px; margin: 0 -8px; padding: 14px; border-radius: 14px; background: #23211f; box-shadow: inset 0 0 0 1px #ff7a6b">
+<span style="font-size: 16px; font-weight: 600">That did not save</span>
+<span style="font-size: 13px; line-height: 1.4; color: #bab5ac">Your change did not reach MediaSafe. Nothing else was affected.</span>
+<div style="display: flex; gap: 8px; margin-top: 6px">
+<button type="button" style="height: 44px; padding: 0 16px; border: none; border-radius: 10px; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Try again</button>
+<button type="button" style="height: 44px; padding: 0 16px; border: none; border-radius: 10px; background: none; color: #f3f0ea; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">Dismiss</button>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">Write lost</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">The toast stays until it is answered. Try again resends the same write.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 300px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<div role="status" style="padding: 12px 20px; background: #f3f0ea; color: #181715; font-size: 14px; font-weight: 500; line-height: 1.4">You are offline. Nothing will load or save until your connection is back.</div>
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 0; opacity: 0.55">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; line-height: 1">Library</span>
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: #23211f">
+<span style="height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #f3f0ea; color: #f3f0ea; font-size: 15px; font-weight: 600">Shows</span>
+<span style="height: 44px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; color: #bab5ac">Films</span>
+<span style="height: 44px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; color: #bab5ac">Lists</span>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">Offline</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">A sticky banner on every screen, in plain words.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 300px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 0 20px; border-radius: 20px; overflow: hidden; background: #181715; box-shadow: inset 0 0 0 1px #383531">
+<button type="button" style="height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; border-radius: 14px; background: #f3f0ea; color: #181715; font-family: inherit; font-size: 17px; font-weight: 600; outline: 2px solid #f3f0ea; outline-offset: 2px; cursor: pointer">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>Mark watched</span>
+</button>
+<div style="display: flex; align-items: center; gap: 12px; height: 64px">
+<div aria-hidden="true" style="width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; background: #8a4a2a"></div>
+<div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+<span style="font-size: 17px; font-weight: 600; line-height: 1.2">Andor</span>
+<span style="font-size: 13px; color: #bab5ac">S1 E2 · That Would Be Me</span>
+</div>
+<button type="button" aria-label="Mark Andor, season 1 episode 2, watched" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; border: none; border-radius: 999px; background: none; outline: 2px solid #f3f0ea; outline-offset: 2px; cursor: pointer">
+<span aria-hidden="true" style="width: 26px; height: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border: 1.5px solid #bab5ac; border-radius: 999px; color: #bab5ac"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">Keyboard focus</span>
+<span style="font-size: 14px; line-height: 1.4; color: #bab5ac">A text-colour outline on whatever has focus, shown here on a button and a row control.</span>
+</div>
+</div>
+
+</div>
+
+</div>
+</body>
+</html>

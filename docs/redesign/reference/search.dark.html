@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Design reference for the MediaSafe redesign. Static markup with inline styles: read it for exact sizes, spacing and colours. It is not production code. See ../handoff.md. -->
+<title>Search</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+body{margin:0}
+a{color:#bab5ac}a:hover{color:#f3f0ea}
+</style>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #181715; color: #f3f0ea; font-family: 'Instrument Sans', system-ui, sans-serif">
+
+<header style="padding: 18px 20px 6px">
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; line-height: 1">Search</h1>
+</header>
+
+<label style="display: flex; align-items: center; gap: 12px; height: 48px; margin: 8px 20px 0; padding: 0 2px 0 16px; border-radius: 14px; background: #23211f; box-shadow: inset 0 0 0 2px #f3f0ea">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bab5ac" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>
+<input type="search" aria-label="Search films and shows" placeholder="Search films and shows" value="dune" style="flex: 1; min-width: 0; height: 44px; padding: 0; border: none; outline: none; background: none; color: #f3f0ea; font-family: inherit; font-size: 17px">
+<button type="button" aria-label="Clear search" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: none; color: #bab5ac; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+</button>
+</label>
+
+<section style="display: flex; flex-direction: column; padding: 8px 20px 0">
+
+<h2 style="margin: 0; padding: 14px 0 2px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 28px; line-height: 1.1">Shows</h2>
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 0">
+<div aria-hidden="true" style="width: 44px; height: 66px; flex-shrink: 0; border-radius: 6px; background: #6b5a2f"></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1; min-width: 0">
+<a href="title-show.dark.html" style="font-size: 17px; font-weight: 600; line-height: 1.2; text-decoration: none; color: #f3f0ea">Dune: Prophecy</a>
+<span style="font-size: 13px; color: #bab5ac">2024 · Show</span>
+<button type="button" aria-label="Add Dune: Prophecy to your library, recording every released episode as watched" style="height: 44px; margin: -4px 0 -8px; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 28px; display: flex; align-items: center; padding: 0 12px; border-radius: 999px; background: #23211f; font-size: 13px; font-weight: 600; color: #f3f0ea">I've seen it all</span></button>
+</div>
+<button type="button" aria-label="Add Dune: Prophecy to your library" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 34px; display: flex; align-items: center; padding: 0 16px; border-radius: 999px; background: #f3f0ea; font-size: 14px; font-weight: 600; color: #181715">Add</span></button>
+</div>
+
+<h2 style="margin: 0; padding: 14px 0 2px; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 28px; line-height: 1.1">Films</h2>
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #383531">
+<div aria-hidden="true" style="width: 44px; height: 66px; flex-shrink: 0; border-radius: 6px; background: #8a5a2a"></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1; min-width: 0">
+<a href="title-show.dark.html" style="font-size: 17px; font-weight: 600; line-height: 1.2; text-decoration: none; color: #f3f0ea">Dune</a>
+<span style="font-size: 13px; color: #bab5ac">2021 · Film</span>
+<button type="button" aria-label="Add Dune to your library as watched" style="height: 44px; margin: -4px 0 -8px; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 28px; display: flex; align-items: center; padding: 0 12px; border-radius: 999px; background: #23211f; font-size: 13px; font-weight: 600; color: #f3f0ea">I've seen it</span></button>
+</div>
+<button type="button" aria-label="Add Dune to your library" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 34px; display: flex; align-items: center; padding: 0 16px; border-radius: 999px; background: #f3f0ea; font-size: 14px; font-weight: 600; color: #181715">Add</span></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #383531">
+<div aria-hidden="true" style="width: 44px; height: 66px; flex-shrink: 0; border-radius: 6px; background: #9a5a24"></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1; min-width: 0">
+<a href="title-show.dark.html" style="font-size: 17px; font-weight: 600; line-height: 1.2; text-decoration: none; color: #f3f0ea">Dune: Part Two</a>
+<span style="font-size: 13px; color: #bab5ac">2024 · Film</span>
+</div>
+<a href="title-show.dark.html" aria-label="Dune: Part Two is in your library. Open it" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>In your library</span>
+</a>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 10px 0">
+<div aria-hidden="true" style="width: 44px; height: 66px; flex-shrink: 0; border-radius: 6px; background: #6a3f2f"></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1; min-width: 0">
+<a href="title-show.dark.html" style="font-size: 17px; font-weight: 600; line-height: 1.2; text-decoration: none; color: #f3f0ea">Dune</a>
+<span style="font-size: 13px; color: #bab5ac">1984 · Film</span>
+<button type="button" aria-label="Add Dune, 1984, to your library as watched" style="height: 44px; margin: -4px 0 -8px; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 28px; display: flex; align-items: center; padding: 0 12px; border-radius: 999px; background: #23211f; font-size: 13px; font-weight: 600; color: #f3f0ea">I've seen it</span></button>
+</div>
+<button type="button" aria-label="Add Dune, 1984, to your library" style="height: 44px; flex-shrink: 0; display: flex; align-items: center; padding: 0; border: none; background: none; font-family: inherit; cursor: pointer"><span style="height: 34px; display: flex; align-items: center; padding: 0 16px; border-radius: 999px; background: #f3f0ea; font-size: 14px; font-weight: 600; color: #181715">Add</span></button>
+</div>
+
+</section>
+
+<nav aria-label="Primary" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 4px 0; background: rgba(24,23,21,0.94); border-top: 1px solid #383531">
+<a href="tonight.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+<span>Tonight</span>
+</a>
+<a href="coming-up.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path><path d="M9 3v4"></path><path d="M15 3v4"></path></svg>
+<span>Coming up</span>
+</a>
+<a href="#search" aria-current="page" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; text-decoration: none; color: #f3f0ea">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>
+<span>Search</span>
+</a>
+<a href="library.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="16" rx="1"></rect><path d="M18.5 6l2 13.5"></path></svg>
+<span>Library</span>
+</a>
+<a href="you.dark.html" style="height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c1-4 4-6 7-6s6 2 7 6"></path></svg>
+<span>You</span>
+</a>
+</nav>
+
+</div>
+</body>
+</html>
