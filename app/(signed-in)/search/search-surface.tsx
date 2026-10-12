@@ -171,7 +171,7 @@ export function SearchSurface({
     <>
       <SearchField value={query} onChange={onChange} />
 
-      <div className="mt-8">
+      <div className="mt-6">
         {phase.kind === "searching" ? <InFlight /> : null}
         {phase.kind === "done" && phase.answer.kind === "empty" ? (
           <NoResults query={phase.answer.query} />
@@ -223,11 +223,19 @@ function SearchField({
   }
 
   return (
-    <label className="field-well flex h-12 items-center gap-3 pl-4 pr-1">
-      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-dim" aria-hidden="true">
-        <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
-        <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
-        <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
+    <label className="field-well flex h-12 items-center gap-3 pl-4 pr-0.5">
+      {/* The magnifier the Search tab carries, at the field's `20px` (Charcoal §8.3). */}
+      <svg
+        viewBox="0 0 24 24"
+        className="h-5 w-5 shrink-0 text-dim"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="6" />
+        <path d="M20 20l-4.5-4.5" />
       </svg>
       {/* `type="search"` for the keyboard's own Search key and Escape-to-clear, with the
           browser's built-in clear glyph hidden — it differs per engine and is too small to
@@ -247,7 +255,7 @@ function SearchField({
         autoComplete="off"
         enterKeyHint="search"
         aria-label={label}
-        className="w-full min-w-0 bg-transparent text-bill-xs text-text placeholder:text-dim focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
+        className="w-full min-w-0 bg-transparent text-row text-text placeholder:text-dim focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value === "" ? null : (
         <button
@@ -256,16 +264,17 @@ function SearchField({
           aria-label="Clear search"
           className="pressable [--press-register:1] arrive flex h-11 w-11 shrink-0 items-center justify-center text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-hair">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden="true">
-              <path
-                d="M5 5l14 14M19 5L5 19"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
+          {/* A bare cross, no disc behind it: plain, in `dim` (§5.2). The `44px` box is
+              the target; the glyph is `18px` inside it. */}
+          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
+            <path
+              d="M6 6l12 12M18 6L6 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
         </button>
       )}
     </label>
@@ -294,10 +303,10 @@ function NoResults({ query }: { query: string }) {
 
 function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => void }) {
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4">
       {groups.map((group) => (
         <section key={group.kind} aria-labelledby={`search-${group.kind}-h`}>
-          <h2 id={`search-${group.kind}-h`} className="mb-3 bill-title text-bill-lg text-text">
+          <h2 id={`search-${group.kind}-h`} className="mb-1 bill-title text-bill-lg text-text">
             {group.label}
           </h2>
           {group.state.kind === "failed" ? (
@@ -313,10 +322,10 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
 
 function Results({ results }: { results: readonly MarkedResult[] }) {
   return (
-    // Cards with `8px` between them. `-mx-2` pulls the list out so a card's *edge* lands
-    // on the page's gutter rather than its padding box. `stagger-rise` (issue #336) is
-    // the rhythm `recommendation-rail.tsx`'s track already runs.
-    <ol className="stagger-rise -mx-2 flex flex-col gap-2">
+    // Rows on the page with a hairline between each, not cards (Charcoal §8.3): the
+    // poster lands on the gutter like every other row in the redesign. `stagger-rise`
+    // (issue #336) is the rhythm `recommendation-rail.tsx`'s track already runs.
+    <ol className="stagger-rise flex flex-col divide-y divide-hair">
       {results.map((result, index) => (
         <CatalogueResultRow
           key={catalogueKeyOf(result)}

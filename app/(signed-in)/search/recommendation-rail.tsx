@@ -42,7 +42,7 @@ export async function RecommendationRail({
 
   if (!outcome.ok) {
     return (
-      <section className="px-gutter pt-8">
+      <section className="pt-8">
         {/* A thin client wrapper, because this region is server-rendered and has no
             client-side read to run again — `rail-read-failure.tsx` has the argument for
             why that is a `router.refresh()` rather than a `ReadFailure` without a
@@ -54,34 +54,42 @@ export async function RecommendationRail({
 
   if (outcome.rail === null || outcome.rail.results.length === 0) return null;
 
-  return <Rail rail={outcome.rail} />;
+  return <Rail rail={outcome.rail} mode={mode} />;
 }
 
-function Rail({ rail }: { rail: Recommendations }) {
+function Rail({ rail, mode }: { rail: Recommendations; mode: KindMode }) {
+  // One rail per mode renders on this screen, so the heading's id carries the mode — a
+  // shared id would hand both tracks the first heading's name.
+  const headingId = `because-you-watched-${mode}`;
+
   return (
-    <section className="pt-8">
+    // `-mx-gutter` cancels `page.tsx`'s own gutter, so the track can bleed to the edges
+    // and the `px-gutter` below is the only one. Without it both applied: the head sat at
+    // twice the gutter and the track was clipped short of the screen's edge.
+    <section className="-mx-gutter pt-8">
       {/* The rail head keeps the page gutter while the track below bleeds to the edges —
           the settled pairing, at the same `22px` the four phone tabs use.
 
           The seed's name sits at the end of the row rather than inside the heading.
           *Because you watched Breaking Bad* as one string wraps to two lines on a narrow
-          phone for any title of normal length, and this heading register is a single
-          11px line. */}
+          phone for any title of normal length at the serif Heading size — the section head
+          every Rail carries (Charcoal §6), with its aside in Meta the way Coming up's day
+          groups set their date. */}
       <div className="flex items-baseline justify-between gap-3 px-gutter pb-3">
-        <h2 id="because-you-watched" className="label-line text-dim">
+        <h2 id={headingId} className="bill-title shrink-0 text-bill-lg text-text">
           Because you watched
         </h2>
         <span className="min-w-0 truncate text-meta text-dim">{rail.seed.name}</span>
       </div>
 
       <ol
-        aria-labelledby="because-you-watched"
+        aria-labelledby={headingId}
         className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-gutter px-gutter [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {rail.results.map((result, index) => (
           <li
             key={`${result.kind}:${result.tmdbId}`}
-            className="w-[124px] shrink-0 snap-start"
+            className="w-28 shrink-0 snap-start"
           >
             {/* Catalogue detail, not the library route: none of these is yours yet, so
                 there is no library entry to open. `/catalogue/[kind]/[tmdbId]` is the page
@@ -95,14 +103,15 @@ function Rail({ rail }: { rail: Recommendations }) {
               <Poster
                 posterPath={result.posterPath}
                 name={result.name}
-                width={124}
-                className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-5)]"
+                width={112}
+                className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-1)]"
                 // The first two are on screen without scrolling at every width this rail
                 // is drawn at; the rest arrive as the track is swiped.
                 aboveFold={index < 2}
               />
 
-              <p className="mt-2 truncate text-meta text-text">{result.name}</p>
+              {/* The Rail's caption (Charcoal §6): a `14/500` name over a `12px` dim line. */}
+              <p className="mt-1.5 truncate text-item font-medium text-text">{result.name}</p>
 
               {/* The **audience score**, which is not your rating — `CatalogueResult`'s
                   own note carries the argument, and the placement is half of it: this
@@ -110,7 +119,7 @@ function Rail({ rail }: { rail: Recommendations }) {
                   rather than left as a bare star, so the number is unmistakably somebody
                   else's opinion and not a control you have set. */}
               {result.audienceScore === null ? null : (
-                <p className="mt-0.5 truncate text-meta text-dim">
+                <p className="mt-0.5 truncate text-label text-dim">
                   Audience {result.audienceScore.toFixed(1)}
                 </p>
               )}
