@@ -3,6 +3,7 @@
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import Link from "next/link";
+import { useState } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { stillSrc } from "@/app/(signed-in)/library/episode-still";
@@ -180,6 +181,12 @@ export function TonightFeatured({ entry }: { entry: UpNextEntry }) {
  * The artwork, behind everything: the band (handoff §10), which also shows while the
  * picture loads or when there is none, and over it the picture `featuredPicture` chooses —
  * the episode's still, then the title's poster — cropped to the area.
+ *
+ * **A picture that fails to load is taken away**, so the band shows rather than the
+ * browser's broken-image box: TMDB does drop paths. `failed` remembers *which* source
+ * failed, so the next episode's still is tried afresh. The ref catches a failure that
+ * happened before hydration, which `onError` — attached by React only once it has
+ * hydrated — never hears about.
  */
 function FeaturedArtwork({ picture }: { picture: CardPicture }) {
   const src =
@@ -188,17 +195,22 @@ function FeaturedArtwork({ picture }: { picture: CardPicture }) {
       : picture.kind === "poster"
         ? posterSrc(picture.path, ARTWORK_WIDTH)
         : null;
+  const [failed, setFailed] = useState<string | null>(null);
 
   return (
     <div
       aria-hidden="true"
       className="absolute inset-0 -z-10 bg-[var(--band,var(--color-raised))]"
     >
-      {src === null ? null : (
+      {src === null || failed === src ? null : (
         // eslint-disable-next-line @next/next/no-img-element -- the TMDB CDN, read with a plain <img> for `poster.tsx`'s stated reasons; cropped to the area, which neither `Poster`'s 2/3 box nor `EpisodeStill`'s 16/9 one can do
         <img
           src={src}
           alt=""
+          onError={() => setFailed(src)}
+          ref={(image) => {
+            if (image !== null && image.complete && image.naturalWidth === 0) setFailed(src);
+          }}
           decoding="async"
           // The first thing on the landing screen: never lazy.
           fetchPriority="high"
