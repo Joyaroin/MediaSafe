@@ -154,7 +154,8 @@ export function AddToLibraryControl({
         onClick={() => void attempt(false)}
         disabled={pending}
         aria-label={`Add ${titleName} to your library`}
-        className={PRIMARY_BUTTON}
+        // The filled action takes the row's remaining width, as the held page's mark does.
+        className={`${PRIMARY_BUTTON} flex-1`}
       >
         Add
       </button>

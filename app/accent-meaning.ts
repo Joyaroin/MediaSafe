@@ -94,6 +94,11 @@ export const RECORDS_A_WATCH: AccentMeaning = meaning(
  * unselected (`library-filter-bar.tsx`), and the up-next episode's inverted code
  * (`episode-line.ts`'s `EPISODE_NUMBER_UP_NEXT`). All three migrate onto this constant in
  * this ticket, rendering exactly as before.
+ *
+ * Charcoal has since taken two of the three off it, because with the accent equal to `text`
+ * it no longer reads as a colour (handoff §5.2): the Watching chip (#397) and the up-next
+ * number (#403), which is marked by its raised row and *Up next* label now. The Watching
+ * label is the one call site left.
  */
 export const LIVE_EDGE_OF_THE_RECORD: AccentMeaning = meaning(
   "this is Watching, or this is up next — the record's current position, not an action just taken on it",

@@ -30,9 +30,9 @@ import { TitleDetailBody } from "./title-detail-body";
  *
  * ── The three live facts stream in behind this render, not after it mounts (issue #218) ──
  *
- * `<LiveTitleFactsStreamed>` (`live-title-facts-streamed.tsx`) is a Server Component built
- * right here and handed to `TitleDetailView` as an already-rendered node — this page never
- * awaits it, so the mirrored read above is all that gates this page's own shell. Each of
+ * The three streamed slots (`live-title-facts-streamed.tsx`) are Server Components built
+ * right here and handed to `TitleDetailView` as already-rendered nodes — this page never
+ * awaits them, so the mirrored read above is all that gates this page's own shell. Each of
  * the three live reads runs inside its own `Suspense`, streamed in independently once
  * `getTitleDetail` above has already resolved.
  */

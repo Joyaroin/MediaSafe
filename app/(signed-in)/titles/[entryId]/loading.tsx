@@ -12,8 +12,8 @@ import { PendingTitlePoster } from "./pending-poster";
  */
 export default function TitleDetailLoading() {
   return (
-    <main className="arrive-fast flex w-full flex-1 flex-col">
-      <BackBar />
+    <main className="arrive-fast relative -mt-3 flex w-full flex-1 flex-col lg:mt-0">
+      <BackBar overArtwork />
       <TitleHeroSkeleton poster={<PendingTitlePoster />} />
     </main>
   );

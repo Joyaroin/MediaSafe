@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { backOrigin, isCurrentRoute, type BackOrigin } from "@/app/nav-route";
 import { previousPathname } from "@/app/previous-pathname";
-import { ICON_BUTTON } from "@/app/buttons";
+import { ICON_BUTTON, ICON_BUTTON_OVER_ARTWORK } from "@/app/buttons";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 
 /**
@@ -62,7 +62,14 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 export function BackBar({
   origin,
   round = false,
-}: { readonly origin?: BackOrigin; readonly round?: boolean } = {}) {
+  overArtwork = false,
+}: {
+  readonly origin?: BackOrigin;
+  readonly round?: boolean;
+  /** Round, and laid over a title's band rather than above the page (Charcoal §8.6): it
+   *  takes no height of its own, and wears the over-artwork button. Implies `round`. */
+  readonly overArtwork?: boolean;
+} = {}) {
   const pathname = usePathname();
   const previous = previousPathname(pathname);
   /* A page reached from one place names that place (`origin`); a page reached from
@@ -81,14 +88,16 @@ export function BackBar({
     history.back();
   }
 
-  if (round) {
+  if (round || overArtwork) {
     return (
-      <div className="px-3 pt-3.5 lg:px-8">
+      <div
+        className={`px-3 pt-3.5 lg:px-8${overArtwork ? " absolute left-0 top-0 z-10" : ""}`}
+      >
         <Link
           href={destination}
           onClick={walkBack}
           aria-label={`Back to ${label}`}
-          className={ICON_BUTTON}
+          className={overArtwork ? ICON_BUTTON_OVER_ARTWORK : ICON_BUTTON}
         >
           <svg
             aria-hidden="true"

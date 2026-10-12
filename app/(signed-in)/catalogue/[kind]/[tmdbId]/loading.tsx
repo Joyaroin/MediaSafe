@@ -13,8 +13,8 @@ import { PosterBlock } from "@/app/skeleton";
  */
 export default function UnownedTitleLoading() {
   return (
-    <main className="arrive-fast flex w-full flex-1 flex-col">
-      <BackBar />
+    <main className="arrive-fast relative -mt-3 flex w-full flex-1 flex-col lg:mt-0">
+      <BackBar overArtwork />
 
       {/* The hero's own layout, as on an owned title's page — nothing was carried here, so
           the poster is a block in the hero's own measure rather than a picture. */}

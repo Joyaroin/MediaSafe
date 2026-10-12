@@ -352,8 +352,9 @@ describe("the routes below a title say which page is reading", () => {
     // The back bar, which since #292 names the surface the reader arrived from rather
     // than the library. This render has no previous pathname — nothing has navigated —
     // so what it draws is the stated fallback, and the property held here is unchanged:
-    // the pending render carries a way out and no heading of its own.
-    expect(detail).toContain("‹ Tonight");
+    // the pending render carries a way out and no heading of its own. Round and over the
+    // band since Charcoal (#403), so it is named for assistive technology.
+    expect(detail).toContain('aria-label="Back to Tonight"');
     expect(detail).toContain('role="status"');
   });
 
@@ -432,7 +433,7 @@ describe("what replaces a pending region arrives", () => {
   it("gives the panel and the episode list an entrance", () => {
     // On what is around the hero poster and under it, not on the whole panel: the poster
     // is the morph's landing and must not fade and drop after it lands (UI overhaul).
-    expect(PANEL).toContain("className={`arrive-panel mt-8 grid");
+    expect(PANEL).toContain("className={`arrive-panel mt-3 grid");
     expect(readFileSync("app/(signed-in)/library/title-hero.tsx", "utf8")).toContain(
       'className="arrive-panel flex min-w-0 flex-1 flex-col',
     );

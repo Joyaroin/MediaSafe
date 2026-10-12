@@ -161,14 +161,17 @@ describe("the episode row's trailing slot", () => {
   });
 
   /**
-   * The whole point of the ticket. The row's floor is `min-h-11`; it only *is* the row's
+   * The whole point of the ticket. The row's floor is its `min-h`; it only *is* the row's
    * height while nothing in the row is taller than the floor less the row's own padding.
-   * `GHOST_RECOVERY`'s `py-2` box is `34.2px` against this budget's `28px`, which is how
-   * a settled watched row reached `50.2px` while every other state sat on `44px`.
+   * `GHOST_RECOVERY`'s `py-2` box was `34.2px` against the `min-h-11` row's `28px`, which
+   * is how a settled watched row reached `50.2px` while every other state sat on `44px`.
+   *
+   * Charcoal (issue #403) re-cuts the row to `min-h-14 py-1.5` — `56px`, the board's row —
+   * so the budget is `44px`: the tick's whole target, which is what every state now is.
    */
   it.each(STATES)("leaves $name inside the row's own height", ({ items }) => {
     const budget = spacing(EPISODE_ROW, "min-h") - spacing(EPISODE_ROW, "py") * 2;
-    expect(budget).toBe(28);
+    expect(budget).toBe(44);
     for (const item of items) expect(round(item.height)).toBeLessThanOrEqual(budget);
   });
 

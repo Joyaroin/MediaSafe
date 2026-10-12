@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { posterSrc } from "@/app/poster";
 import { posterBandStyle, titleScrimGradient } from "@/app/poster-tint";
 import { HeroPoster } from "./hero-poster";
+import { seasonHeading } from "./season-grouping";
 
 /**
  * The head of a title's page — issue #357 — shared by a title you own and one you do not.
@@ -58,6 +59,7 @@ export function TitleHero({
   progress,
   actions,
   synopsis,
+  back,
 }: {
   name: string;
   posterPath: string | null;
@@ -70,13 +72,16 @@ export function TitleHero({
   /** Where the title stands, as a pill — owned titles only. */
   status?: {
     readonly label: string;
-    readonly className: string;
     /** A line under the pill, when the state needs one — *Dropped* says how it clears. */
     readonly note?: string;
   } | null;
   meta: string | null;
-  /** Episodes watched of episodes listed — shows only. */
-  progress?: { readonly watched: number; readonly total: number } | null;
+  /** Episodes watched of one season's episodes — shows only (`seasonWatchProgress`). */
+  progress?: {
+    readonly watched: number;
+    readonly total: number;
+    readonly seasonNo: number;
+  } | null;
   /** The main button, then the secondary ones. */
   actions: ReactNode;
   /**
@@ -84,11 +89,19 @@ export function TitleHero({
    * catalogue's facts on the other. `null` leaves the space out entirely.
    */
   synopsis?: ReactNode;
+  /** The round back button, laid over the band (`BackBar overArtwork`, Charcoal §8.6). */
+  back?: ReactNode;
 }) {
   return (
-    <section className="relative">
+    // `-mt-3` gives back the signed-in layout's phone padding, so the band runs to the top
+    // edge as the board draws it (Charcoal §8.6). Desktop has no such padding.
+    <section className="relative -mt-3 lg:mt-0">
+      {back}
+      {/* `--hero-text-top` is `124px` now (Charcoal §8.6's board): the back button sits over
+          the band instead of on a bar above it, so the head row clears it on its own. The
+          scrim still reads every stop from here, so nothing about §10's floors moves. */}
       <div
-        className="relative isolate flex items-end gap-5 px-gutter pt-[var(--hero-text-top)] [--hero-text-top:5rem] lg:gap-8 lg:px-10 lg:[--hero-text-top:9rem]"
+        className="relative isolate flex items-end gap-4 px-gutter pt-[var(--hero-text-top)] [--hero-text-top:7.75rem] lg:gap-8 lg:px-10 lg:[--hero-text-top:13.5rem]"
         style={posterBandStyle(posterColour)}
       >
         <HeroBand posterPath={posterPath} />
@@ -109,12 +122,15 @@ export function TitleHero({
             down took the poster with it — it faded and dropped right after it landed, the
             jerk at the end of every morph (UI overhaul). Everything around it still
             arrives. */}
-        <div className="arrive-panel flex min-w-0 flex-1 flex-col gap-2 pb-1">
+        <div className="arrive-panel flex min-w-0 flex-1 flex-col items-start gap-1.5 pb-0.5">
           {status === null || status === undefined ? null : (
             <p
               // `ground` at 85%: the tag sits at the very top of the text block, so it brings
               // its own backing — with the scrim under it, 90% (`TITLE_SCRIM.stateTagBacking`).
-              className={`self-start rounded-[var(--radius-full)] bg-ground/85 px-2.5 py-1 text-meta font-semibold ${status.className}`}
+              //
+              // The state tag (Charcoal §6): the Label register in `text`, never a colour —
+              // the word is the state, and the tag is not a chip, so nothing presses it.
+              className="label-line rounded-[var(--radius-full)] bg-ground/85 px-2.5 py-1 text-text"
             >
               {status.label}
             </p>
@@ -123,7 +139,13 @@ export function TitleHero({
             <p className="text-meta text-dim">{status.note}</p>
           )}
 
-          <h1 className="bill-title text-bill-lg text-text lg:text-bill-xl">{name}</h1>
+          {/* Title size on both widths (Charcoal §5.3), two lines at most and then the
+              ellipsis (§8.6). `hyphens-auto` and `break-words` because the column beside a
+              `108px` poster is about `222px`, and one long word at `56px` is wider than that.
+              The whole name stays in the DOM, so a screen reader hears all of it. */}
+          <h1 className="bill-title line-clamp-2 self-stretch break-words text-bill-xl text-text hyphens-auto">
+            {name}
+          </h1>
 
           {meta === null ? null : (
             <p className="text-meta text-dim" data-numeric>
@@ -132,13 +154,19 @@ export function TitleHero({
           )}
 
           {progress === null || progress === undefined ? null : (
-            <WatchedBar watched={progress.watched} total={progress.total} />
+            <WatchedBar
+              watched={progress.watched}
+              total={progress.total}
+              seasonNo={progress.seasonNo}
+            />
           )}
         </div>
       </div>
 
-      <div className="arrive-panel relative mt-5 flex flex-col gap-5 px-gutter lg:px-10 lg:pl-[272px]">
-        <div className="flex flex-wrap items-center gap-3">{actions}</div>
+      <div className="arrive-panel relative mt-4 flex flex-col gap-3.5 px-gutter lg:px-10 lg:pl-[272px]">
+        {/* One row: the filled action takes what is left, the square icon buttons sit at
+            its end (§8.6). `lg:max-w` so it does not stretch across a desktop column. */}
+        <div className="flex items-center gap-2 lg:max-w-[480px]">{actions}</div>
         {synopsis}
       </div>
     </section>
@@ -177,23 +205,36 @@ function HeroBand({ posterPath }: { posterPath: string | null }) {
 }
 
 /**
- * How far through a show you are, in episodes. The bar takes the accent because *how far
- * through you are right now* is the most literal reading of live on the page.
+ * How far through **this season** you are (Charcoal §8.6): one `4px` bar, then *1 of 8 ·
+ * Season 1*. The fill is the accent, which is `text` now; the track is `text` at 20%, one
+ * value that reads as §6's *24% white* in dark and *16% ink* in light closely enough to
+ * need no theme branch.
  */
-function WatchedBar({ watched, total }: { watched: number; total: number }) {
+function WatchedBar({
+  watched,
+  total,
+  seasonNo,
+}: {
+  watched: number;
+  total: number;
+  seasonNo: number;
+}) {
   const filled = total === 0 ? 0 : Math.round((watched / total) * 100);
 
   return (
-    <div className="mt-1 max-w-[420px]">
-      <div aria-hidden="true" className="h-1.5 w-full overflow-hidden rounded-[var(--radius-full)] bg-hair">
+    <div className="mt-1 w-full max-w-[420px]">
+      <div
+        aria-hidden="true"
+        className="h-1 w-full overflow-hidden rounded-[var(--radius-full)] bg-[color-mix(in_oklab,var(--color-text)_20%,transparent)]"
+      >
         <div
           className="progress-fill h-full rounded-[var(--radius-full)] bg-accent transition-[width] duration-[var(--dur-base)]"
           style={{ width: `${filled}%` }}
         />
       </div>
 
-      <p className="code-line mt-2 text-dim" data-numeric>
-        {watched} of {total} episodes watched
+      <p className="mt-1.5 text-meta text-dim" data-numeric>
+        {watched} of {total} · {seasonHeading(seasonNo)}
       </p>
     </div>
   );

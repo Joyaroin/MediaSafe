@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-serverless";
 
-import { bandFor, TITLE_SCRIM } from "@/app/poster-tint";
+import { bandFor, TITLE_SCRIM, titleScrimAlpha } from "@/app/poster-tint";
 import { createPool, requireDatabaseUrl } from "@/db/driver";
 import * as schema from "@/db/schema";
 
@@ -125,5 +125,38 @@ for (const { label, width, height } of [
     for (const offset of offsets) {
       expect(offset).toBeGreaterThanOrEqual(TITLE_SCRIM.smallTextFrom);
     }
+  });
+
+  /**
+   * Charcoal #403 sets the name at Title size (`56px`), so the fixture's *E2E Fixture Show
+   * …* wraps on a phone — the case the slice's acceptance names. The block grows from the
+   * row's content top, so wrapping moves nothing above it; this holds that, and checks the
+   * two floors the small-text test above does not: the name's own top edge is large text
+   * (§10: 60%), and the state tag is small text on its own 85% backing (90% with the scrim).
+   */
+  test(`a wrapped name and the state tag still clear §10's floors, ${label}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto(`/titles/${tinted.libraryEntryId}`);
+    const heading = page.getByRole("heading", { level: 1, name: tinted.titleName });
+    await expect(heading).toBeVisible();
+
+    const measured = await heading.evaluate((h1) => {
+      const column = h1.parentElement!;
+      const row = column.parentElement!;
+      const textTop = row.getBoundingClientRect().top + parseFloat(getComputedStyle(row).paddingTop);
+      const tag = column.children[0]!.classList.contains("bg-ground/85") ? column.children[0]! : null;
+      const box = h1.getBoundingClientRect();
+      return {
+        nameTop: box.top - textTop,
+        lines: Math.round(box.height / parseFloat(getComputedStyle(h1).lineHeight)),
+        tagTop: tag === null ? null : tag.getBoundingClientRect().top - textTop,
+      };
+    });
+
+    if (label === "phone") expect(measured.lines).toBe(2);
+    expect(titleScrimAlpha(measured.nameTop)).toBeGreaterThanOrEqual(0.6);
+    expect(measured.tagTop).not.toBeNull();
+    const tagCover = 1 - (1 - TITLE_SCRIM.stateTagBacking) * (1 - titleScrimAlpha(measured.tagTop!));
+    expect(tagCover).toBeGreaterThanOrEqual(0.9);
   });
 }
