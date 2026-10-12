@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 
-import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+import { DESTRUCTIVE_BUTTON_COMPACT } from "@/app/buttons";
 import { calendarFeedUrl, publicOrigin } from "@/lib/calendar-feed";
 import {
   requireCalendarFeedToken,
@@ -14,6 +14,7 @@ import { DisplayNameControl } from "./display-name-control";
 import { BackBar } from "../back-bar";
 import { NavTransition } from "../nav-transition";
 import { SettingsHeading, YOU } from "./settings-heading";
+import { SETTING, SETTING_HELP, SETTING_LABEL, SettingsGroup } from "./settings-group";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
 import { ThemeControl } from "./theme-control";
@@ -35,6 +36,12 @@ import { TimezoneControl } from "./timezone-control";
  * avatar menu and #28 kept rejected. A control invented to be replaced is a control that
  * has to be found and removed later, and this way the route it will live on for the rest
  * of the product's life exists from the first day there is anything to put on it.
+ *
+ * ── Charcoal: three groups, each a Heading over one card — issue #405 ─────────────────
+ *
+ * Handoff §8.9. `settings-group.tsx` holds the shape. **There is no filled button on this
+ * screen**: nothing here is the one main action a screen may have, so every control is
+ * quiet or plain, and *Delete account* wears the danger line.
  *
  * ── Data links to `/import` unconditionally ───────────────────────────────────────────
  *
@@ -110,105 +117,92 @@ export default async function SettingsPage() {
   return (
     <NavTransition>
       <main className="flex w-full flex-1 flex-col">
-        <BackBar origin={YOU} />
+        <BackBar origin={YOU} round />
         <SettingsHeading />
 
-        <div className="w-full max-w-3xl px-gutter pb-16 lg:px-10">
-
-        <section aria-labelledby="profile-h" className="mt-12 border-t border-hair pt-6">
-          <h2 id="profile-h" className="code-line text-dim">
-            Profile
-          </h2>
-
-          <div className="mt-6">
+        <div className="w-full max-w-2xl px-gutter pb-16 lg:px-10">
+          <SettingsGroup id="profile-h" title="Profile">
             <DisplayNameControl name={name} />
-          </div>
 
-          <TimezoneControl timezone={timezone} />
+            <TimezoneControl timezone={timezone} />
 
-          {/* Appearance sits in Profile rather than in a fourth section, because the
-              table gives Settings three and adding one would be a second spec change
-              on top of the picker itself. It is the least bad home rather than an obvious
-              one: unlike the display name and unlike the timezone, this is a **device**
-              preference and never touches `user` (`lib/theme.ts`). The timezone is the
-              neighbour that makes it bearable — that one is device-*detected* even though
-              it is account-stored, so the section already mixes the two ideas. */}
-          <ThemeControl />
-        </section>
+            {/* Appearance sits in Profile rather than in a fourth section, because the
+                table gives Settings three and adding one would be a second spec change
+                on top of the picker itself. It is the least bad home rather than an obvious
+                one: unlike the display name and unlike the timezone, this is a **device**
+                preference and never touches `user` (`lib/theme.ts`). The timezone is the
+                neighbour that makes it bearable — that one is device-*detected* even though
+                it is account-stored, so the section already mixes the two ideas. */}
+            <ThemeControl />
+          </SettingsGroup>
 
-        <section aria-labelledby="data-h" className="mt-12 border-t border-hair pt-6">
-          <h2 id="data-h" className="code-line text-dim">
-            Data
-          </h2>
+          <SettingsGroup id="data-h" title="Data">
+            <div className={SETTING}>
+              <span className={SETTING_LABEL}>Import</span>
 
-          <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-dim">
-            Bring in titles and watches from an export file. It only ever adds — running the
-            same file twice changes nothing the second time.
-          </p>
+              <p className={SETTING_HELP}>
+                Bring in titles and watches from an export file. It only ever adds — running
+                the same file twice changes nothing the second time.
+              </p>
 
-          <div className="mt-6">
-            <Link href="/import" className={GHOST_RECOVERY}>
-              Import a library ›
-            </Link>
-          </div>
+              {/* A row that navigates: the plain treatment, its chevron at the far end. */}
+              <Link
+                href="/import"
+                className="flex h-11 items-center justify-between text-note font-semibold text-text transition-colors duration-[var(--dur-fast)] hover:text-dim"
+              >
+                Import a library
+                <span aria-hidden="true">›</span>
+              </Link>
+            </div>
 
-          {/* Issue #366. In Data because the feed is the library leaving the app — read-only,
-              but the same kind of thing as the import above, the other way round. */}
-          <CalendarFeedControl url={feedUrl} />
-        </section>
+            {/* Issue #366. In Data because the feed is the library leaving the app — read-only,
+                but the same kind of thing as the import above, the other way round. */}
+            <CalendarFeedControl url={feedUrl} />
+          </SettingsGroup>
 
-        <section aria-labelledby="account-h" className="mt-12 border-t border-hair pt-6">
-          <h2 id="account-h" className="code-line text-dim">
-            Account
-          </h2>
+          <SettingsGroup id="account-h" title="Account">
+            <div className={SETTING}>
+              <p className={SETTING_HELP}>
+                Signing out ends this session on this device. Your library, your watches and
+                your ratings are kept, and signing back in with the same Google account returns
+                you to all of them.
+              </p>
 
-          <p className="mt-4 max-w-[60ch] text-note leading-relaxed text-dim">
-            Signing out ends this session on this device. Your library, your watches and
-            your ratings are kept, and signing back in with the same Google account returns
-            you to all of them.
-          </p>
+              <SignOutButton />
+            </div>
 
-          <div className="mt-6">
-            <SignOutButton />
-          </div>
+            <div className={SETTING}>
+              <p className={SETTING_HELP}>
+                Ends every other session signed in as you — a phone sold, lost or lent, or a
+                browser you signed into somewhere else. This device stays signed in.
+              </p>
 
-          <p className="mt-8 max-w-[60ch] text-note leading-relaxed text-dim">
-            Ends every other session signed in as you — a phone sold, lost or lent, or a
-            browser you signed into somewhere else. This device stays signed in.
-          </p>
+              <SignOutOtherDevicesButton />
+            </div>
 
-          <div className="mt-6">
-            <SignOutOtherDevicesButton />
-          </div>
+            {/*
+              The door out (issue #125). A link and not a control: account deletion belongs
+              on **its own page, not a dialog**, so the thing that belongs in this section is
+              the way to that page and nothing else. Nothing is destroyed by following it —
+              the page states what would be, in real numbers, and refuses to do anything
+              until the reader types the word.
 
-          {/*
-            The door out (issue #125). A link and not a control: account
-            deletion belongs on **its own page, not a dialog**, so the thing that belongs in this
-            section is the way to that page and nothing else. Nothing is destroyed by
-            following it — the page states what would be, in real numbers, and refuses to do
-            anything until the reader types the word.
+              The danger treatment (handoff §5.2): a `danger` line and `danger` words, never
+              a fill at rest. It takes something away, and the line and the words say so
+              without colour having to carry it alone.
+            */}
+            <div className={SETTING}>
+              <p className={SETTING_HELP}>
+                Deleting your account destroys your library, your watches and your ratings
+                permanently. The next page says how many of each, and nothing happens until you
+                confirm it there.
+              </p>
 
-            Set apart from the two sign-outs above by its own rule rather than by colour.
-            Vermilion here would be the section shouting before the reader has asked it
-            anything, and `accent` is kept for a live state or a recorded mark; the
-            page it leads to is where that accent belongs.
-          */}
-          <div className="mt-8 border-t border-hair pt-6">
-            <p className="max-w-[60ch] text-note leading-relaxed text-dim">
-              Deleting your account destroys your library, your watches and your ratings
-              permanently. The next page says how many of each, and nothing happens until you
-              confirm it there.
-            </p>
-
-            {/* Issue #195: matches `Import a library ›` above — `GHOST_RECOVERY`, keeping
-                its chevron, in a plain `div` rather than the old underlined-prose `p`. */}
-            <div className="mt-6">
-              <Link href="/settings/delete-account" className={GHOST_RECOVERY}>
+              <Link href="/settings/delete-account" className={`${DESTRUCTIVE_BUTTON_COMPACT} w-full`}>
                 Delete account ›
               </Link>
             </div>
-          </div>
-        </section>
+          </SettingsGroup>
         </div>
       </main>
     </NavTransition>

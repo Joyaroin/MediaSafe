@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { authClient } from "@/lib/auth-client";
@@ -99,13 +99,13 @@ export function SignOutOtherDevicesButton() {
         type="button"
         onClick={() => void revoke()}
         disabled={inFlight}
-        className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+        className={`${GHOST_RECOVERY_COMPACT} w-full`}
       >
         {inFlight ? "Signing out other devices" : "Sign out other devices"}
       </button>
 
       {succeeded ? (
-        <p className="mt-3 code-line text-dim">Other devices are signed out.</p>
+        <p className="mt-2 text-meta text-dim">Other devices are signed out.</p>
       ) : null}
     </div>
   );

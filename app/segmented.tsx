@@ -21,6 +21,10 @@ import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
  * `44px` track. A segment's hit area is stretched to the track's full height by a
  * `before:` box `4px` taller on each side, so the target stays `44px` where the segment
  * draws `36px` — the track is not a scroller, so nothing clips it.
+ *
+ * **On a card** (Settings' Appearance) the track is `ground` with a `1px` `hair` inset
+ * (`hair-line`) rather than `raised`, which would vanish into the card it sits on — the
+ * same swap `field-well` makes for a field.
  */
 export function SegmentedControl<Value extends string>({
   label,
@@ -29,6 +33,7 @@ export function SegmentedControl<Value extends string>({
   onChange,
   layoutId,
   compact = false,
+  onCard = false,
   className = "",
 }: {
   /** The group's accessible name — *What to show*, *View*, *Appearance*. */
@@ -38,6 +43,8 @@ export function SegmentedControl<Value extends string>({
   readonly onChange: (value: Value) => void;
   readonly layoutId: string;
   readonly compact?: boolean;
+  /** The track sits on a raised card or dialog. */
+  readonly onCard?: boolean;
   /** Width and placement only — `w-full`, a margin. The shape is this file's. */
   readonly className?: string;
 }) {
@@ -45,7 +52,7 @@ export function SegmentedControl<Value extends string>({
     <div
       role="group"
       aria-label={label}
-      className={`flex gap-1 rounded-[var(--radius-5)] bg-raised p-1 ${className}`}
+      className={`flex gap-1 rounded-[var(--radius-5)] p-1 ${onCard ? "hair-line bg-ground" : "bg-raised"} ${className}`}
     >
       {options.map((option) => {
         const selected = option.value === value;

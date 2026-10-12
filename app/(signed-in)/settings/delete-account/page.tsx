@@ -1,7 +1,11 @@
 import { DestroyedFigure } from "@/app/destroyed-figure";
 import { accountFootprint } from "@/db/access";
 import { requireUserId } from "@/lib/session";
-import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
+import {
+  BackToSettings,
+  DELETE_ACCOUNT_CARD,
+  DeleteAccountHeading,
+} from "./delete-account-frame";
 import { DeleteAccountForm } from "./delete-account-form";
 
 /**
@@ -58,78 +62,80 @@ export default async function DeleteAccountPage() {
   const footprint = await accountFootprint(userId);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
-      <DeleteAccountHeading />
+    <main className="mx-auto w-full max-w-2xl px-gutter py-8 lg:py-12">
+      <div className={DELETE_ACCOUNT_CARD}>
+        <DeleteAccountHeading />
 
-      <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-text">
-        This destroys everything MediaSafe holds about you. It happens immediately and it
-        cannot be undone — there is no grace period, nothing is kept, and there is nothing
-        to restore from.
-      </p>
-
-      <section aria-labelledby="destroyed-h" className="mt-12 border-t border-hair pt-6">
-        <h2 id="destroyed-h" className="code-line text-dim">
-          What this destroys
-        </h2>
-
-        {/*
-          A description list, laid out `flex-col-reverse` so each number reads above its
-          label while `dt` still precedes `dd` in the markup. `flex-wrap` with a row gap is
-          what makes three figures across a desktop become one or two per row on a phone
-          without a breakpoint deciding it.
-        */}
-        <dl className="mt-6 flex flex-wrap gap-x-16 gap-y-8">
-          <DestroyedFigure label="Titles" count={footprint.titles} />
-          <DestroyedFigure label="Watches" count={footprint.watches} />
-          <DestroyedFigure label="Ratings" count={footprint.ratings} />
-        </dl>
-
-        <p className="mt-8 max-w-[62ch] text-note leading-relaxed text-dim">
-          Titles counts what is in your library, not the catalogue MediaSafe shares between
-          accounts — what is destroyed is your shelf, every watch you have recorded and
-          every rating you have given. Signing in again with the same Google account makes
-          a new, empty account. It does not bring any of this back.
+        <p className="mt-3 max-w-[62ch] text-note leading-relaxed text-dim">
+          This destroys everything MediaSafe holds about you. It happens immediately and it
+          cannot be undone — there is no grace period, nothing is kept, and there is nothing
+          to restore from.
         </p>
-      </section>
 
-      <section aria-labelledby="google-h" className="mt-12 border-t border-hair pt-6">
-        <h2 id="google-h" className="code-line text-dim">
-          Google
-        </h2>
+        <section aria-labelledby="destroyed-h" className="mt-6 border-t border-hair pt-5">
+          <h2 id="destroyed-h" className="label-line text-dim">
+            What this destroys
+          </h2>
 
-        {/*
-          Stated because without it *delete account* over-promises: the reader believes
-          every trace is gone while their Google account still lists MediaSafe under
-          connected apps. Revoking the grant programmatically was rejected — an outbound
-          call that can fail in the middle of an irreversible operation, and a half-failed
-          deletion is worse than an honest sentence. Deleting the account makes no outbound
-          call at all; this link is the reader's own, taken in their own time.
-        */}
-        <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
-          Deleting your account here does not remove MediaSafe from your Google account. It
-          stays listed under your connected apps until you remove it there.{" "}
-          <a
-            href="https://myaccount.google.com/permissions"
-            target="_blank"
-            rel="noreferrer"
-            className="text-text underline decoration-hair underline-offset-4 transition-colors duration-[var(--dur-fast)] hover:decoration-accent"
-          >
-            Your Google connected apps ›
-          </a>
-        </p>
-      </section>
+          {/*
+            A description list, laid out `flex-col-reverse` so each number reads above its
+            label while `dt` still precedes `dd` in the markup. `flex-wrap` with a row gap is
+            what makes three figures across a desktop become one or two per row on a phone
+            without a breakpoint deciding it.
+          */}
+          <dl className="mt-4 flex flex-wrap gap-x-12 gap-y-6">
+            <DestroyedFigure label="Titles" count={footprint.titles} />
+            <DestroyedFigure label="Watches" count={footprint.watches} />
+            <DestroyedFigure label="Ratings" count={footprint.ratings} />
+          </dl>
 
-      <section aria-labelledby="confirm-h" className="mt-12 border-t border-hair pt-6">
-        <h2 id="confirm-h" className="code-line text-dim">
-          Confirm
-        </h2>
+          <p className="mt-5 max-w-[62ch] text-meta leading-snug text-dim">
+            Titles counts what is in your library, not the catalogue MediaSafe shares between
+            accounts — what is destroyed is your shelf, every watch you have recorded and
+            every rating you have given. Signing in again with the same Google account makes
+            a new, empty account. It does not bring any of this back.
+          </p>
+        </section>
 
-        <div className="mt-6">
-          <DeleteAccountForm />
-        </div>
+        <section aria-labelledby="google-h" className="mt-6 border-t border-hair pt-5">
+          <h2 id="google-h" className="label-line text-dim">
+            Google
+          </h2>
 
-        <BackToSettings />
-      </section>
+          {/*
+            Stated because without it *delete account* over-promises: the reader believes
+            every trace is gone while their Google account still lists MediaSafe under
+            connected apps. Revoking the grant programmatically was rejected — an outbound
+            call that can fail in the middle of an irreversible operation, and a half-failed
+            deletion is worse than an honest sentence. Deleting the account makes no outbound
+            call at all; this link is the reader's own, taken in their own time.
+          */}
+          <p className="mt-2 max-w-[62ch] text-meta leading-snug text-dim">
+            Deleting your account here does not remove MediaSafe from your Google account. It
+            stays listed under your connected apps until you remove it there.{" "}
+            <a
+              href="https://myaccount.google.com/permissions"
+              target="_blank"
+              rel="noreferrer"
+              className="text-text underline decoration-hair underline-offset-4 transition-colors duration-[var(--dur-fast)] hover:decoration-accent"
+            >
+              Your Google connected apps ›
+            </a>
+          </p>
+        </section>
+
+        <section aria-labelledby="confirm-h" className="mt-6 border-t border-hair pt-5">
+          <h2 id="confirm-h" className="label-line text-dim">
+            Confirm
+          </h2>
+
+          <div className="mt-3">
+            <DeleteAccountForm />
+          </div>
+
+          <BackToSettings />
+        </section>
+      </div>
     </main>
   );
 }

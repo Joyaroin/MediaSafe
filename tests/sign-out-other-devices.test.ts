@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
 
 import { SignOutOtherDevicesButton } from "@/app/(signed-in)/settings/sign-out-other-devices-button";
 
@@ -51,7 +51,8 @@ describe("the sign-out-other-devices control", () => {
     // The boolean attribute, not the `disabled:` Tailwind variant inside `class="..."`.
     expect(rendered).not.toMatch(/ disabled=""/);
     // Issue #357: a secondary button — neutral, never the accent the one primary action wears.
-    expect(rendered).toContain(GHOST_RECOVERY);
+    // Its compact measure since #405: `44px` is the button height inside a card (handoff §6).
+    expect(rendered).toContain(GHOST_RECOVERY_COMPACT);
     expect(rendered).not.toContain("bg-accent");
   });
 });

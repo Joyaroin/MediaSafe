@@ -286,7 +286,9 @@ describe("the desktop widens rather than centring a phone column", () => {
   const markup = render(figures());
 
   it("grows the column count into the shell instead of capping a measure", () => {
-    expect(markup).toContain("lg:grid-cols-4");
+    // Four counts across from the phone up since Charcoal (#405); the row takes the
+    // desktop's width rather than a phone's.
+    expect(markup).toContain("grid-cols-4");
     expect(markup).toContain("lg:px-10");
   });
 

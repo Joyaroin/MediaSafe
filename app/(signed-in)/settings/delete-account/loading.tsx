@@ -1,5 +1,9 @@
 import { PendingLine } from "@/app/pending-line";
-import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
+import {
+  BackToSettings,
+  DELETE_ACCOUNT_CARD,
+  DeleteAccountHeading,
+} from "./delete-account-frame";
 
 /**
  * The counts are still being read, so there is nothing here to confirm yet — the same
@@ -14,14 +18,16 @@ import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
  */
 export default function DeleteAccountLoading() {
   return (
-    <main className="arrive-fast mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
-      <DeleteAccountHeading />
+    <main className="arrive-fast mx-auto w-full max-w-2xl px-gutter py-8 lg:py-12">
+      <div className={DELETE_ACCOUNT_CARD}>
+        <DeleteAccountHeading />
 
-      <div className="mt-8">
-        <PendingLine shape="form" held />
+        <div className="mt-5">
+          <PendingLine shape="form" held />
+        </div>
+
+        <BackToSettings />
       </div>
-
-      <BackToSettings />
     </main>
   );
 }

@@ -1,42 +1,47 @@
 import { Block, PosterBlock, SkeletonRegion } from "@/app/skeleton";
-import { YouHeading } from "./you-heading";
+import { YOU_HEADING_ID, YouHeading } from "./you-heading";
 
 /**
- * You, reading — its heading at once, then the page it becomes: the avatar and name, the
- * two watch-time figures, the four counts, and a rail of title tiles at their own `132px`
- * (`app/skeleton.tsx` has the reasoning). The figures are the layout's — two and four,
- * because the page always draws two and four — never a guess at the data.
+ * You, reading — the page it becomes, in place (issue #405's layout): the avatar and the
+ * name with the settings button beside them, the watch-time card, the four counts, and a
+ * rail of title tiles at their own `132px` (`app/skeleton.tsx` has the reasoning). The
+ * figures are the layout's — one card of two rows, and four counts, because the page
+ * always draws those — never a guess at the data.
+ *
+ * The name has not been read, so the heading is *You*, for assistive technology only;
+ * what is drawn is the shape the name will arrive in.
  */
 export default function YouLoading() {
   return (
     <main className="arrive-fast flex w-full flex-1 flex-col">
-      <YouHeading />
+      <YouHeading>
+        <Block className="h-16 w-16 shrink-0 [--poster-radius:var(--radius-full)]" />
+        <h1 id={YOU_HEADING_ID} className="sr-only">
+          You
+        </h1>
+        <span className="min-w-0 flex-1">
+          <Block className="h-8 w-40 max-w-full" />
+        </span>
+      </YouHeading>
+
       <SkeletonRegion className="gap-0 pb-8">
-        <div className="flex items-center gap-4 px-gutter pt-5 pb-2 lg:px-10 lg:pt-7">
-          <Block className="h-[84px] w-[84px] shrink-0 [--poster-radius:var(--radius-full)]" />
-          <Block className="h-6 w-40" />
+        <div className="px-gutter pt-4 pb-2 lg:px-10">
+          <Block className="h-7 w-36" />
+          <Block className="mt-2 h-[106px] w-full [--poster-radius:var(--radius-5)]" />
         </div>
 
-        <div className="px-gutter py-4 lg:px-10">
-          <Block className="h-2.5 w-24" />
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Block className="h-[84px] w-full [--poster-radius:var(--radius-6)]" />
-            <Block className="h-[84px] w-full [--poster-radius:var(--radius-6)]" />
-          </div>
-        </div>
-
-        <div className="px-gutter py-4 lg:px-10">
-          <Block className="h-2.5 w-36" />
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="px-gutter pt-4 pb-2 lg:px-10">
+          <Block className="h-7 w-56" />
+          <div className="mt-2 grid grid-cols-4 gap-3">
             {["a", "b", "c", "d"].map((key) => (
-              <Block key={key} className="h-[84px] w-full [--poster-radius:var(--radius-6)]" />
+              <Block key={key} className="h-[68px] w-full" />
             ))}
           </div>
         </div>
 
-        <div className="pt-2">
-          <div className="px-gutter pb-3 lg:px-10">
-            <Block className="h-4 w-20" />
+        <div className="pt-4">
+          <div className="px-gutter pb-2.5 lg:px-10">
+            <Block className="h-7 w-28" />
           </div>
           <div className="flex gap-3 overflow-hidden px-gutter lg:px-10">
             {["a", "b", "c", "d", "e", "f"].map((key) => (

@@ -22,39 +22,25 @@ import { YouTitleRail } from "./you-title-rail";
  * state, and a reader seeing 12 and 5 is seeing two true sentences rather than one number
  * contradicting another.
  *
- * ── No accent anywhere ───────────────────────────────────────────────────────────────
+ * ── Charcoal: a card and a row of numerals — issue #405 ──────────────────────────────
  *
- * The amendment rations the accent to *what is live, and the one primary action
- * of a screen*. This screen has neither: nothing on it is live and there is nothing to
- * press. A page whose whole content is quantities is the easiest place in the application
- * to spend the accent by accident — one highlighted figure and the reservation is gone —
- * so `--ink` carries the emphasis, exactly as the screen title does.
+ * Handoff §8.8. Each section is a serif Heading. *Watch time* is one raised card (with
+ * `plate-line`, like every raised container) holding Television and Film as two rows
+ * divided by a hairline, the values in serif at Numeral size. *What you have watched* is
+ * four counts at Figure size on the page itself — no card each — with their two-line
+ * labels under them. No accent anywhere: nothing here is live and nothing is the screen's
+ * one action, so `text` carries the numbers.
  *
- * ── No shadow, and the tone step is the only lift ────────────────────────────────────
+ * ── Four across, from the narrowest phone ────────────────────────────────────────────
  *
- * The cards are `--raised` on `--ground`, which since turn 9 is a step *down* rather than
- * up. That inversion is why they need no border and no elevation to read as cards, and
- * the no-shadow rule is unchanged.
- *
- * ── The desktop widens rather than centres ───────────────────────────────────────────
- *
- * No `mx-auto max-w-*` anywhere below, which is the criterion said as a class list: the
- * sections take the width `(signed-in)/layout.tsx` leaves beside the sidebar, and the two
- * grids grow their column count into it — watch time 1→2, the counts 2→4. A phone column
- * centred in a desktop shell is the port this page is not allowed to look like.
+ * The board puts the four counts in one row at `390px`, and they stay one row at `360px`:
+ * a five-digit count at Figure size (`18,715`) is narrower than a quarter of the column
+ * there, which was measured rather than assumed. The grid widens to the desktop's width
+ * rather than centring in it, as it always did.
  */
 
-/**
- * One figure: a quiet label over the thing it is.
- *
- * `data-numeric` is `globals.css`'s hook for tabular figures, so the counts line up on
- * their digits down a column. It is on the watch times too — they are mostly digits, and
- * a column whose two halves used different figures would be visibly two columns.
- *
- * The value arrives through `figure-arrival.tsx` (issue #368): the counts count up, the
- * watch times fade in, and the server's markup is the final figure either way.
- */
-function Figure({
+/** A section: its Heading, and what sits under it. */
+function Section({
   label,
   children,
 }: {
@@ -62,31 +48,40 @@ function Figure({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--radius-6)] bg-raised px-4 py-4">
-      <dt className="label-line text-dim">{label}</dt>
-      <dd data-numeric className="mt-2 text-bill-md font-medium text-text">
-        {children}
+    <section className="px-gutter pt-4 pb-2 lg:px-10">
+      <h2 className="bill-title pb-2 text-bill-lg text-text">{label}</h2>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * One watch time: its name on the left, the value in serif at Numeral size on the right.
+ *
+ * `data-numeric` is `globals.css`'s hook for tabular figures. The value arrives through
+ * `figure-arrival.tsx` (issue #368) — faded in, and the server's markup is the final value.
+ */
+function WatchTime({ label, minutes }: { readonly label: string; readonly minutes: number }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-3">
+      <dt className="text-note text-dim">{label}</dt>
+      <dd data-numeric className="bill-title text-right text-bill-md text-text">
+        <FadedFigure value={watchTimeInWords(minutes)} />
       </dd>
     </div>
   );
 }
 
-/** A section: its label, and the figures under it. */
-function Section({
-  label,
-  columns,
-  children,
-}: {
-  readonly label: string;
-  /** The grid the figures sit on. Phone first, then the desktop widening. */
-  readonly columns: string;
-  readonly children: React.ReactNode;
-}) {
+/** One count: the number at Figure size, its label under it in Meta — `flex-col-reverse`
+ *  so `dt` still precedes `dd` in the markup. The count runs up on arrival (#368). */
+function Count({ label, value }: { readonly label: string; readonly value: number }) {
   return (
-    <section className="px-gutter py-4 lg:px-10">
-      <h2 className="label-line text-dim">{label}</h2>
-      <dl className={`mt-3 grid gap-3 ${columns}`}>{children}</dl>
-    </section>
+    <div className="flex min-w-0 flex-col-reverse gap-0.5">
+      <dt className="text-meta leading-tight text-dim">{label}</dt>
+      <dd data-numeric className="bill-title text-figure text-text">
+        <CountedFigure value={value} />
+      </dd>
+    </div>
   );
 }
 
@@ -122,28 +117,20 @@ export function YouSurface({
 
   return (
     <div className="w-full pb-8">
-      <Section label="Watch time" columns="sm:grid-cols-2">
-        <Figure label="Television">
-          <FadedFigure value={watchTimeInWords(figures.watchTime.televisionMinutes)} />
-        </Figure>
-        <Figure label="Film">
-          <FadedFigure value={watchTimeInWords(figures.watchTime.filmMinutes)} />
-        </Figure>
+      <Section label="Watch time">
+        <dl className="flex flex-col divide-y divide-hair rounded-[var(--radius-5)] bg-raised px-4 plate-line">
+          <WatchTime label="Television" minutes={figures.watchTime.televisionMinutes} />
+          <WatchTime label="Film" minutes={figures.watchTime.filmMinutes} />
+        </dl>
       </Section>
 
-      <Section label="What you have watched" columns="grid-cols-2 lg:grid-cols-4">
-        <Figure label="Episodes watched">
-          <CountedFigure value={figures.episodesWatched} />
-        </Figure>
-        <Figure label="Films watched">
-          <CountedFigure value={figures.filmsWatched} />
-        </Figure>
-        <Figure label="Shows watched">
-          <CountedFigure value={figures.showsWatched} />
-        </Figure>
-        <Figure label="Shows completed">
-          <CountedFigure value={figures.showsCompleted} />
-        </Figure>
+      <Section label="What you have watched">
+        <dl className="grid grid-cols-4 gap-3">
+          <Count label="Episodes watched" value={figures.episodesWatched} />
+          <Count label="Films watched" value={figures.filmsWatched} />
+          <Count label="Shows watched" value={figures.showsWatched} />
+          <Count label="Shows completed" value={figures.showsCompleted} />
+        </dl>
       </Section>
 
       {/*
@@ -154,7 +141,7 @@ export function YouSurface({
         one more is a page that has started drifting back towards the nine it replaced.
       */}
       {qualifies === null ? null : (
-        <p className="px-gutter pt-1 pb-2 text-item leading-relaxed text-dim lg:px-10">
+        <p className="px-gutter pt-2 pb-2 text-meta leading-snug text-dim lg:px-10">
           {qualifies}
         </p>
       )}

@@ -873,7 +873,8 @@ describe("Settings belongs to You", () => {
 
   it("leaves Settings by a bar that names You", () => {
     const settings = readFileSync("app/(signed-in)/settings/page.tsx", "utf8");
-    expect(settings).toContain("<BackBar origin={YOU} />");
+    // Round since Charcoal (#405, handoff §8.9) — still the same bar, still naming You.
+    expect(settings).toContain("<BackBar origin={YOU} round />");
     expect(readFileSync("app/(signed-in)/settings/settings-heading.tsx", "utf8")).toContain(
       'export const YOU = { label: "You", destination: "/you" } as const;',
     );

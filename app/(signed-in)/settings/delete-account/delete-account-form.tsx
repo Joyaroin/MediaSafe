@@ -9,7 +9,8 @@ import {
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
 import type { IrreversibleWriteFailure } from "@/errors/irreversible-failure";
-import { IN_FLIGHT, NOT_YET_ARMED, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { DESTRUCTIVE_BUTTON } from "@/app/buttons";
+import { IN_FLIGHT, NOT_YET_ARMED } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
 import { deleteAccountAction, type DeleteAccountOutcome } from "./actions";
@@ -36,19 +37,14 @@ import { confirmationMatches, CONFIRMATION_WORD } from "./confirmation";
  * `DISABLED_DIM`, so the dim stays a decision taken in one place; only the cursor differs,
  * because *busy* and *refusing* are not the same fact.
  *
- * ── Solid `accent` here is a stated extension, not a quotation ───────────────────────
+ * ── Danger, not filled — issue #405 ──────────────────────────────────────────────────
  *
- * The Buttons register scopes solid `accent` on `accent-ink` to two things: the phone's
- * recording control, and *the one primary recovery action*. This is neither, so using
- * `SOLID_RECOVERY` here widens the list and that is said out loud rather than left to be
- * discovered — the same courtesy `recovery-buttons.ts` extends for the disabled variant.
- *
- * The argument for widening it: the Motion register calls marking a watch *the one
- * authored moment of the whole product*, and gives it this exact ground. Deleting an account
- * is the other irreversible authored moment, and it is the only one that cannot be undone.
- * A quieter treatment would make the most consequential control in the application read as
- * less live than a rewatch. The button is also dead until the word is typed, so the full
- * accent arriving *is* a live state — which is the job it is given.
+ * This button was solid accent until Charcoal, on the argument that the most consequential
+ * control in the product should not read as less live than a rewatch. Charcoal has no
+ * accent hue left to spend, and handoff §5.2 gives *takes something away* its own
+ * treatment: the `danger` line and words, never a fill at rest — the same one *Delete list*
+ * wears in its dialog. Not yet armed it is the `hair` fill and `dim` words of §6, so arming
+ * it is visibly the line and the colour arriving.
  */
 /**
  * The distinction moved to `errors/irreversible-failure.ts` when issue #142's remove became
@@ -146,7 +142,7 @@ export function DeleteAccountForm() {
 
       <label
         htmlFor="delete-confirmation"
-        className="block max-w-[60ch] text-note leading-relaxed text-dim"
+        className="block max-w-[60ch] text-meta leading-snug text-dim"
       >
         {/* Not `code-line`, which uppercases: the word has to be readable in the case it
             has to be typed in, and a label reading DELETE above a field that refuses
@@ -169,18 +165,16 @@ export function DeleteAccountForm() {
         autoCorrect="off"
         autoCapitalize="none"
         spellCheck={false}
-        // Inputs: a `1px` `hair` border on a transparent ground at
-        // `text-item`, the border moving to `text` at `2px` on focus — issue #134 moves
-        // focus off the accent onto brightness and border weight — with the input's own
-        // outline suppressed in favour of it.
-        className="mt-4 block w-full max-w-[16rem] border border-hair bg-transparent px-3 py-2 text-item text-text focus:border-2 focus:border-text focus:outline-none"
+        // The field, in its on-card form (`field-well`): `ground` with a `hair` line, the
+        // line moving to `2px` of `text` on focus, the input's own outline suppressed.
+        className="field-well mt-2 block h-12 w-full max-w-[16rem] px-3.5 text-note text-text focus:outline-none"
       />
 
-      <div className="mt-8">
+      <div className="mt-6">
         <button
           type="submit"
           disabled={!armed || inFlight}
-          className={`${SOLID_RECOVERY} ${inFlight ? IN_FLIGHT : NOT_YET_ARMED}`}
+          className={`${DESTRUCTIVE_BUTTON} w-full ${inFlight ? IN_FLIGHT : NOT_YET_ARMED}`}
         >
           {inFlight ? "Deleting your account" : "Delete my account"}
         </button>

@@ -2,7 +2,11 @@
 
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceForBoundary } from "@/errors/reference";
-import { BackToSettings, DeleteAccountHeading } from "./delete-account-frame";
+import {
+  BackToSettings,
+  DELETE_ACCOUNT_CARD,
+  DeleteAccountHeading,
+} from "./delete-account-frame";
 
 /**
  * The counts did not load — and so there is nothing on this page to confirm.
@@ -40,14 +44,16 @@ export default function DeleteAccountReadFailure({
   const reference = referenceForBoundary(error);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-gutter py-12 lg:py-16">
-      <DeleteAccountHeading />
+    <main className="mx-auto w-full max-w-2xl px-gutter py-8 lg:py-12">
+      <div className={DELETE_ACCOUNT_CARD}>
+        <DeleteAccountHeading />
 
-      <div className="mt-8">
-        <ReadFailure reference={reference} retry={retry} />
+        <div className="mt-5">
+          <ReadFailure reference={reference} retry={retry} />
+        </div>
+
+        <BackToSettings />
       </div>
-
-      <BackToSettings />
     </main>
   );
 }

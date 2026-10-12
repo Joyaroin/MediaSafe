@@ -18,20 +18,28 @@ import type { TitleKind } from "@/tmdb/mirror";
  * than title detail already does for the identical film. `kind` comes from the caller
  * because the entry itself does not carry it — `listYouRails` (`db/access.ts`) already
  * spent that column deciding which of the two rails an entry belongs to.
+ *
+ * **`compact`** is *Shows you stopped*'s tile (issue #405, handoff §6): `96` by `144`, the
+ * name kept — it is the link's accessible name — and the meta line dropped, because the
+ * rail puts a *Start again* pill under each tile instead.
  */
 const TILE_WIDTH = 132;
 const TILE = "w-[132px]";
+const COMPACT_WIDTH = 96;
+const COMPACT_TILE = "w-[96px]";
 
 export function YouTitleTile({
   entry,
   kind,
   aboveFold = false,
+  compact = false,
 }: {
   readonly entry: LibraryStateGroupEntry;
   readonly kind: TitleKind;
   readonly aboveFold?: boolean;
+  readonly compact?: boolean;
 }) {
-  const meta = titleMetaLine({
+  const meta = compact ? null : titleMetaLine({
     kind,
     releaseYear: entry.releaseYear,
     runtimeMins: entry.runtimeMins,
@@ -41,7 +49,7 @@ export function YouTitleTile({
     <PosterLink
       libraryEntryId={entry.libraryEntryId}
       posterPath={entry.posterPath}
-      className={`pressable group block ${TILE} text-left`}
+      className={`pressable group block ${compact ? COMPACT_TILE : TILE} text-left`}
     >
       {/* The glow is the wrapper's, not the poster's: `.poster` already spends its
           `box-shadow` on the plate line (issue #363, `app/globals.css`). */}
@@ -52,13 +60,13 @@ export function YouTitleTile({
         <Poster
           posterPath={entry.posterPath}
           name={entry.titleName}
-          width={TILE_WIDTH}
+          width={compact ? COMPACT_WIDTH : TILE_WIDTH}
           className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110"
           aboveFold={aboveFold}
         />
       </div>
 
-      <p className="mt-2 line-clamp-2 text-item leading-snug text-text">{entry.titleName}</p>
+      <p className={`${compact ? "mt-1.5 truncate" : "mt-2 line-clamp-2"} text-item leading-snug text-text`}>{entry.titleName}</p>
 
       {meta === null ? null : (
         <p className="code-line mt-1 text-dim" data-numeric>

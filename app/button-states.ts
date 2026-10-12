@@ -49,6 +49,9 @@ export const IN_FLIGHT = `disabled:cursor-wait ${DISABLED_DIM}`;
  * The cursor and the brightness are `!`: every button's base already carries `IN_FLIGHT`
  * (`app/buttons.ts`), and two `disabled:` utilities on one property are settled by the
  * stylesheet's order rather than by which was written last — `cursor-wait` would win.
+ *
+ * `shadow-none` takes the danger line off too, so the delete button (issue #405) is the
+ * same not-armed face until the word is typed, and its line arriving is it arming.
  */
 export const NOT_YET_ARMED =
-  "disabled:cursor-not-allowed! disabled:bg-hair disabled:text-dim disabled:brightness-100!";
+  "disabled:cursor-not-allowed! disabled:bg-hair disabled:text-dim disabled:brightness-100! disabled:shadow-none";

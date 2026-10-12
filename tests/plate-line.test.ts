@@ -150,6 +150,9 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
   { file: "app/(signed-in)/library/programme-note-section.ts", count: 1 }, // a programme-note panel
   { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", count: 1 }, // a list's three-dot menu (#402)
   { file: "app/(signed-in)/import/import-surface.tsx", count: 1 }, // the running import's card (#406)
+  { file: "app/(signed-in)/you/you-surface.tsx", count: 1 }, // You's watch-time card (#405)
+  { file: "app/(signed-in)/settings/settings-group.tsx", count: 1 }, // Settings' group card (#405)
+  { file: "app/(signed-in)/settings/delete-account/delete-account-frame.tsx", count: 1 }, // the delete-account card (#405)
 ];
 
 /**
@@ -159,11 +162,8 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
  */
 const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number; readonly reason: string }[] = [
   { file: "app/(signed-in)/library/chip.tsx", count: 1, reason: "a filter chip" },
-  { file: "app/(signed-in)/you/year-heatmap.tsx", count: 1, reason: "the heatmap's empty-day shade, a cell rather than a container" },
   { file: "app/(signed-in)/lists/[listId]/list-title-row.tsx", count: 1, reason: "raised only on hover, not at rest" },
-  { file: "app/(signed-in)/you/you-surface.tsx", count: 1, reason: "a stat figure card outside this ticket's named categories" },
   { file: "app/(signed-in)/you/you-hero.tsx", count: 2, reason: "the account avatar well" },
-  { file: "app/(signed-in)/you/you-heading.tsx", count: 1, reason: "the Settings button, a control rather than a container" },
   { file: "app/segmented.tsx", count: 1, reason: "the segmented control track — Library's view, a list's view and Settings' appearance share it (#397)" },
   { file: "app/poster-frames.tsx", count: 1, reason: "the raised middle frame of the sign-in and first-run picture, edged by hair-line like the frames beside it (#406)" },
   { file: "app/buttons.ts", count: 1, reason: "DIALOG_FRAME, which keeps its border and its one shadow; plate-line is a box-shadow too, and two on one element fight (#397)" },

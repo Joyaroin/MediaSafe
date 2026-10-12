@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { backOrigin, isCurrentRoute, type BackOrigin } from "@/app/nav-route";
 import { previousPathname } from "@/app/previous-pathname";
+import { ICON_BUTTON } from "@/app/buttons";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 
 /**
@@ -51,8 +52,17 @@ import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
  * not arrived cannot be printed and a name that failed to load must not be. A route that
  * is slow to load and a route that failed to load are both routes a reader must be able
  * to leave, which is why this is drawn by all of their renders and not only the good one.
+ *
+ * ── `round` — Charcoal's round back button (handoff §6, §8.9) ─────────────────────────
+ *
+ * A `44px` quiet circle with a chevron, named *Back to You* for assistive technology, and
+ * no rule under it: the screen's own title follows directly. Settings draws it first
+ * (issue #405); the walk through history is the same either way.
  */
-export function BackBar({ origin }: { readonly origin?: BackOrigin } = {}) {
+export function BackBar({
+  origin,
+  round = false,
+}: { readonly origin?: BackOrigin; readonly round?: boolean } = {}) {
   const pathname = usePathname();
   const previous = previousPathname(pathname);
   /* A page reached from one place names that place (`origin`); a page reached from
@@ -63,20 +73,44 @@ export function BackBar({ origin }: { readonly origin?: BackOrigin } = {}) {
   const viaHistory =
     previous !== null && (origin === undefined || isCurrentRoute(previous, destination));
 
+  function walkBack(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (!viaHistory) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    event.preventDefault();
+    history.back();
+  }
+
+  if (round) {
+    return (
+      <div className="px-3 pt-3.5 lg:px-8">
+        <Link
+          href={destination}
+          onClick={walkBack}
+          aria-label={`Back to ${label}`}
+          className={ICON_BUTTON}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-[22px] w-[22px]"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="border-b border-hair px-gutter py-4">
       {/* Issue #195: GHOST_RECOVERY, the register the whole underline conversion reuses. */}
-      <Link
-        href={destination}
-        onClick={(event) => {
-          if (!viaHistory) return;
-          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-
-          event.preventDefault();
-          history.back();
-        }}
-        className={GHOST_RECOVERY}
-      >
+      <Link href={destination} onClick={walkBack} className={GHOST_RECOVERY}>
         ‹ {label}
       </Link>
     </div>

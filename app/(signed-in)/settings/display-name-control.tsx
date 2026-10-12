@@ -3,10 +3,12 @@
 import { useRef, useState } from "react";
 
 import { displayName } from "@/app/display-name";
-import { IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { SECONDARY_BUTTON } from "@/app/buttons";
+import { IN_FLIGHT, NOT_YET_ARMED } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { authClient } from "@/lib/auth-client";
+import { SETTING, SETTING_LABEL } from "./settings-group";
 
 /**
  * The display name — the whole of Settings' Profile section for now, issue #123.
@@ -116,36 +118,36 @@ export function DisplayNameControl({ name }: { readonly name: string }) {
   }
 
   return (
-    <div>
-      <label htmlFor="display-name" className="code-line text-dim">
+    <div className={SETTING}>
+      <label htmlFor="display-name" className={SETTING_LABEL}>
         Display name
       </label>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <div className="border border-hair px-3 py-2 focus-within:border-2 focus-within:border-text">
-          <input
-            id="display-name"
-            type="text"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            maxLength={DISPLAY_NAME_MAX_LENGTH}
-            disabled={inFlight}
-            autoComplete="off"
-            className="w-48 bg-transparent text-item text-text focus:outline-none"
-          />
-        </div>
+      <div className="flex items-center gap-2">
+        <input
+          id="display-name"
+          type="text"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          maxLength={DISPLAY_NAME_MAX_LENGTH}
+          disabled={inFlight}
+          autoComplete="off"
+          className="field-well h-12 min-w-0 flex-1 px-3.5 text-row text-text focus:outline-none"
+        />
 
+        {/* Quiet, never filled — Settings has no filled button (handoff §8.9) — and not
+            armed until the name differs from the saved one. */}
         <button
           type="button"
           onClick={save}
           disabled={disabled}
-          className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
+          className={`${SECONDARY_BUTTON} ${inFlight ? IN_FLIGHT : NOT_YET_ARMED}`}
         >
           {inFlight ? "Saving" : "Save"}
         </button>
       </div>
 
-      <p className="mt-2 code-line text-dim" data-numeric>
+      <p className="text-meta text-dim" data-numeric>
         {trimmed.length} / {DISPLAY_NAME_MAX_LENGTH}
       </p>
     </div>
