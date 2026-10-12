@@ -113,24 +113,19 @@ describe("the Watching chip looks like every other chip — Charcoal, issue #397
   });
 });
 
-describe("the live edge of the record is what the up-next episode's code paints", () => {
-  it("EPISODE_NUMBER_UP_NEXT carries the live-edge solid form", () => {
-    expect(EPISODE_NUMBER_UP_NEXT).toContain(LIVE_EDGE_OF_THE_RECORD.solid);
+describe("the up-next episode is marked by its row, not a colour — Charcoal, issue #403", () => {
+  // `EPISODE_NUMBER_UP_NEXT` used to be the live edge's solid chip. With the accent equal
+  // to `text` that chip is only a pale square, and handoff §5.2 marks the Up next episode
+  // by its label and a raised row instead (`EPISODE_ROW_UP_NEXT`). The number is the same
+  // serif numeral as every other, in `text` rather than `dim`. No meaning is added.
+  it("draws the up-next number as the plain numeral, in text, with no accent", () => {
+    expect(EPISODE_NUMBER_UP_NEXT).toContain("text-text");
+    expect(EPISODE_NUMBER_UP_NEXT).not.toMatch(/\b(?:bg|text)-accent/);
   });
 
-  it("renders identically to the solid accent chip it always did — same classes, order aside", () => {
-    // Tailwind applies a class list as a set, not a sequence, so the meaning constant is
-    // free to group `bg-accent`/`text-accent-ink` together without changing the paint —
-    // and this is the property #310's acceptance criteria actually asks for ("renders
-    // identically"), not byte-for-byte identity with the pre-migration literal.
-    expect(new Set(EPISODE_NUMBER_UP_NEXT.split(" "))).toEqual(
-      new Set("code-line w-9 shrink-0 bg-accent px-1 py-0.5 text-center text-accent-ink".split(" ")),
+  it("no longer imports the live edge at all", () => {
+    expect(source("app/(signed-in)/library/episode-line.ts")).not.toMatch(
+      /import[^;]*LIVE_EDGE_OF_THE_RECORD/,
     );
-  });
-
-  it("declares the meaning by importing it, rather than reaching for the colour directly", () => {
-    const code = source("app/(signed-in)/library/episode-line.ts");
-    expect(code).toMatch(/import\s*\{\s*LIVE_EDGE_OF_THE_RECORD\s*\}\s*from\s*"@\/app\/accent-meaning"/);
-    expect(code).toContain("LIVE_EDGE_OF_THE_RECORD.solid");
   });
 });

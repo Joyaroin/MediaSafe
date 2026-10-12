@@ -2,13 +2,14 @@
 
 import type { ReactNode } from "react";
 
+import { BackBar } from "@/app/(signed-in)/back-bar";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
 import { STATE_LABELS } from "./library-state";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
-import { watchProgress } from "./progress-remaining";
+import { seasonWatchProgress } from "./progress-remaining";
 import { TitleActions } from "./title-actions";
 import { TitleHero } from "./title-hero";
-import { titleMetaLine } from "./title-meta-line";
+import { titlePageMetaLine } from "./title-meta-line";
 import { nextToWatch } from "./title-page";
 import { useLiveEpisodes } from "./use-live-episodes";
 
@@ -62,8 +63,8 @@ export function ProgrammeNoteContent({
   const live = useLiveEpisodes(detail.libraryEntryId, detail.episodes);
   const isShow = detail.kind === "show";
 
-  const progress = isShow && live.length > 0 ? watchProgress(live) : null;
   const nextEpisode = isShow ? nextToWatch(live, today) : null;
+  const progress = isShow ? seasonWatchProgress(live, nextEpisode) : null;
 
   const facts = (
     <>
@@ -84,7 +85,8 @@ export function ProgrammeNoteContent({
           ...STATE_LABELS[detail.state],
           note: detail.state === "abandoned" ? "Watching it again clears this." : undefined,
         }}
-        meta={titleMetaLine(detail)}
+        meta={titlePageMetaLine(detail)}
+        back={<BackBar overArtwork />}
         progress={progress}
         synopsis={synopsis}
         actions={
@@ -101,13 +103,15 @@ export function ProgrammeNoteContent({
       />
 
       <div
-        className={`arrive-panel mt-8 grid gap-8 px-gutter lg:px-10 ${
+        className={`arrive-panel mt-3 grid gap-8 px-gutter lg:px-10 ${
           isShow ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""
         }`}
       >
         {isShow ? (
           <section aria-labelledby="episodes-h" className="min-w-0">
-            <h2 id="episodes-h" className="bill-title text-bill-lg text-text">
+            {/* Named for assistive technology only: the board goes straight from the
+                synopsis to the season chips (Charcoal §8.6), and the chips say what this is. */}
+            <h2 id="episodes-h" className="sr-only">
               Episodes
             </h2>
             <ProgrammeNoteEpisodes

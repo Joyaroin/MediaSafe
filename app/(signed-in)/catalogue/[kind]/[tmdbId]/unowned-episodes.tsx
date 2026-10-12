@@ -65,8 +65,11 @@ export function UnownedEpisodes({
   return (
     <>
       {groupBySeason(episodes).map(([seasonNo, inSeason]) => (
-        <div key={seasonNo} className={PROGRAMME_NOTE_SECTION}>
-          <p className="code-line text-dim">{seasonHeading(seasonNo)}</p>
+        // No chips here — every season is listed in turn — so each is headed in the serif
+        // at Heading size, `h3` under the page's hidden *Episodes* `h2` (Charcoal §12).
+        // `first:mt-1` because the first sits right under the synopsis.
+        <div key={seasonNo} className={`${PROGRAMME_NOTE_SECTION} first:mt-1`}>
+          <h3 className="bill-title text-bill-lg text-text">{seasonHeading(seasonNo)}</h3>
           <ol className={SEASON_LIST}>
             {inSeason.map((one) => (
               /* The row's measure is `episode-line.ts`'s, shared with the owned list
@@ -75,7 +78,7 @@ export function UnownedEpisodes({
                  a row nobody measured. */
               <li key={one.id} className={EPISODE_ROW}>
                 <span className={EPISODE_NUMBER} data-numeric>
-                  E{one.episodeNo}
+                  {one.episodeNo}
                 </span>
 
                 {/* The Named Episode Rule: an episode is always its name.

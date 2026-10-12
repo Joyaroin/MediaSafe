@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { AddToListControl } from "@/app/(signed-in)/library/add-to-list-control";
-import { LiveTitleFactsStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
-import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
+import {
+  CastStreamed,
+  SynopsisStreamed,
+  WatchProvidersStreamed,
+} from "@/app/(signed-in)/library/live-title-facts-streamed";
+import { titlePageMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { BackBar } from "@/app/(signed-in)/back-bar";
 import { TitleHero } from "@/app/(signed-in)/library/title-hero";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
@@ -71,16 +75,19 @@ export async function UnownedTitleBody({
 
   return (
     <>
-      {/* Back to wherever the reader came from — Search, Up next, a list — rather than a
-          hard-coded *Lists* that sent a reader who came from Search somewhere else. */}
-      <BackBar />
-
       <div className="pb-10">
+        {/* The held page's layout, with *Add* as the filled action (Charcoal §8.7). */}
         <TitleHero
           name={detail.name}
           posterPath={detail.posterPath}
           posterColour={detail.posterColour}
-          meta={titleMetaLine(detail)}
+          meta={titlePageMetaLine(detail)}
+          // Back to wherever the reader came from — Search, Tonight, a list — rather than a
+          // hard-coded *Lists* that sent a reader who came from Search somewhere else.
+          back={<BackBar overArtwork />}
+          synopsis={
+            <SynopsisStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
+          }
           actions={
             <>
               <AddToLibraryControl
@@ -100,17 +107,24 @@ export async function UnownedTitleBody({
           }
         />
 
-        <div className="arrive-panel mt-6 flex flex-col gap-8 px-gutter lg:px-10">
-          <LiveTitleFactsStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
-
+        <div
+          className={`arrive-panel mt-3 grid gap-8 px-gutter lg:px-10 ${
+            detail.kind === "show" ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""
+          }`}
+        >
           {detail.kind === "show" ? (
             <section aria-labelledby="episodes-h" className="min-w-0">
-              <h2 id="episodes-h" className="bill-title text-bill-lg text-text">
+              <h2 id="episodes-h" className="sr-only">
                 Episodes
               </h2>
               <UnownedEpisodes kind={detail.kind} episodes={detail.episodes} />
             </section>
           ) : null}
+
+          <div className="flex min-w-0 flex-col gap-2">
+            <WatchProvidersStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
+            <CastStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />
+          </div>
         </div>
       </div>
 

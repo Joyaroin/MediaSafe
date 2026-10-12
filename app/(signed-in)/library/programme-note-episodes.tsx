@@ -13,8 +13,10 @@ import {
   EPISODE_NUMBER,
   EPISODE_NUMBER_UP_NEXT,
   EPISODE_ROW,
+  EPISODE_ROW_UP_NEXT,
   SEASON_LIST,
 } from "./episode-line";
+import { airDateShort } from "./episode-facts";
 import { coveredUpTo, markUpToCount } from "./mark-up-to";
 import { MarkUpToDialog } from "./mark-up-to-dialog";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
@@ -236,7 +238,7 @@ function SeasonList({
         libraryEntryId={libraryEntryId}
       />
 
-      <div className={`arrive ${PROGRAMME_NOTE_SECTION}`}>
+      <div className="arrive mt-1">
         {/* No season label: the selected chip above already names the season, and the
             label under it said the same word twice (the UI overhaul). */}
         {seasonTarget === null ? null : (
@@ -259,6 +261,7 @@ function SeasonList({
               covered={coveredUpTo(live, one)}
               libraryEntryId={libraryEntryId}
               titleName={titleName}
+              today={today}
             />
           ))}
         </ol>
@@ -334,11 +337,11 @@ function SeasonList({
 const TRAILING = "flex w-20 shrink-0 items-center justify-end gap-2";
 
 /**
- * The Episode Line: `E1` as a dim, fixed-width, tabular code line; the episode
- * **name** at `text-item` as the actual content; a trailing state code line. The up-next
- * episode inverts its number into a solid accent chip and carries an accent *Up next*
- * label; a watched episode's name is dimmed, and nothing else marks it — issue #139
- * retired the strike-through this row used to draw over it.
+ * The Episode Line: the number as a dim serif numeral; the episode **name** at `16/500`
+ * as the actual content; the tick in the trailing slot, or an unaired episode's date.
+ * The up-next episode's row is raised, its numeral in `text`, with an *Up next* label under
+ * the name (Charcoal §8.6, #403); a watched episode's name is dimmed, and nothing else
+ * marks it — issue #139 retired the strike-through this row used to draw over it.
  *
  * ── The three phases of one row ───────────────────────────────────────────────────────
  *
@@ -498,6 +501,7 @@ function EpisodeLine({
   libraryEntryId,
   titleName,
   onOpenMenu,
+  today,
 }: {
   episode: EpisodeDetail;
   /** Everything unwatched up to and including this episode when there are earlier gaps,
@@ -508,6 +512,8 @@ function EpisodeLine({
   titleName: string;
   /** Opens the season's one `WatchMenu` on this episode. */
   onOpenMenu: (episode: EpisodeDetail) => void;
+  /** The reader's day — an episode after it has not aired, and shows its date instead. */
+  today: string;
 }) {
   const fullName = episodeFullName(episode);
   const earlier = covered?.filter((one) => one.id !== episode.id) ?? [];
@@ -548,9 +554,14 @@ function EpisodeLine({
     if (watched) onOpenMenu(episode);
   }
 
+  // Up next is the row's own state now, not a chip on its number (Charcoal §8.6): raised,
+  // labelled, its numeral and ring in `text`. It stops being up next the moment it is
+  // marked, so the row settles into an ordinary watched row.
+  const upNext = episode.upNext && !watched;
+
   return (
     <li
-      className={`relative ${EPISODE_ROW}${watched ? ` ${HOLDABLE}` : ""}`}
+      className={`relative ${EPISODE_ROW}${upNext ? ` ${EPISODE_ROW_UP_NEXT}` : ""}${watched ? ` ${HOLDABLE}` : ""}`}
       {...hold.handlers}
       onContextMenu={openMenu}
       data-holding={hold.holding ? "true" : undefined}
@@ -558,10 +569,10 @@ function EpisodeLine({
     >
       <span className="flex min-w-0 flex-1 items-center gap-3">
         <span
-          className={episode.upNext && !watched ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
+          className={upNext ? EPISODE_NUMBER_UP_NEXT : EPISODE_NUMBER}
           data-numeric
         >
-          E{episode.episodeNo}
+          {episode.episodeNo}
         </span>
 
         {/* The Named Episode Rule: an episode is always its name. `null` is TMDB not having
@@ -571,19 +582,28 @@ function EpisodeLine({
             className={`block line-clamp-2 ${
               watched && phase === "settled"
                 ? WATCHED_NAME
-                : episode.upNext && !watched
-                  ? "font-medium"
+                : upNext
+                  ? "font-semibold"
                   : ""
             }`}
           >
             {episode.name === null ? "Not yet named" : episode.name}
           </span>
+          {upNext ? <span className="label-line mt-0.5 block text-dim">Up next</span> : null}
         </span>
 
       </span>
 
       <span className={TRAILING}>
-        {!watched ? (
+        {!watched && episode.airDate !== null && episode.airDate > today ? (
+          // Not aired yet: its date stands where the tick would be (Charcoal §8.6), because
+          // there is nothing to have watched. Only a *known* future date does this. TMDB
+          // leaves `air_date` empty on some long-aired episodes and specials, and a row
+          // with no date keeps its tick rather than lose the only way to mark it.
+          <span className="text-meta text-dim" data-numeric>
+            {airDateShort(episode.airDate, today)}
+          </span>
+        ) : !watched ? (
           <MarkWatchedButton
             label={`Mark ${fullName} watched`}
             upNext={episode.upNext}

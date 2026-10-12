@@ -75,9 +75,10 @@ describe("An unowned title's detail", () => {
   it("offers the way back, and prints no name early", () => {
     const pending = markupOf(createElement(UnownedTitleLoading));
 
-    // The same back bar the loaded page draws — back to wherever the reader came from
-    // (issue #357), which a cold render with no history names as Tonight.
-    expect(pending).toContain("‹ Tonight");
+    // The same back button the loaded page draws — back to wherever the reader came from
+    // (issue #357), which a cold render with no history names as Tonight. Round and over
+    // the band since Charcoal (#403), so the name is its accessible one.
+    expect(pending).toContain('aria-label="Back to Tonight"');
     expect(pending).toContain('role="status"');
     expect(pending).not.toContain("<h1");
     // No poster either — unlike the desktop pane's `loading` frame, a cold route render

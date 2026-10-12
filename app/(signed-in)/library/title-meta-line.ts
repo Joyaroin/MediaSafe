@@ -29,3 +29,19 @@ export function titleMetaLine(facts: {
   }
   return parts.length > 0 ? parts.join(" · ") : null;
 }
+
+/**
+ * The title page's own meta line — *Series · 2022*, *Film · 2021 · 155 min* (Charcoal
+ * §8.6, §8.7). The kind leads here and nowhere else: a title page is the one place the
+ * line stands alone under a name with nothing else saying which kind it is, while Tonight's
+ * rail and You's tiles already sit under a heading that does.
+ */
+export function titlePageMetaLine(facts: {
+  readonly kind: TitleKind;
+  readonly releaseYear: number | null;
+  readonly runtimeMins: number | null;
+}): string {
+  const rest = titleMetaLine(facts);
+  const kind = facts.kind === "film" ? "Film" : "Series";
+  return rest === null ? kind : `${kind} · ${rest}`;
+}

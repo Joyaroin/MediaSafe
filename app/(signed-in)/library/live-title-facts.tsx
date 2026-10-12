@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
-import { Poster } from "@/app/poster";
+import { OUTLINED_PANEL } from "@/app/buttons";
 import { ReferenceLine } from "@/errors/reference-line";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import type { CastAndCrew } from "@/tmdb/catalogue";
@@ -10,13 +10,7 @@ import type { WatchProvider } from "@/tmdb/live-facts";
 import { WATCH_PROVIDER_REGION_NAME } from "@/tmdb/region";
 import type { TitleKind } from "@/tmdb/mirror";
 import { EPISODE_SYNOPSIS_ABSENT, LIVE_FACT_FAILURE } from "./live-fact-copy";
-import {
-  PROGRAMME_NOTE_CARD,
-  PROGRAMME_NOTE_CARD_PAD,
-  PROGRAMME_NOTE_EYEBROW,
-  PROGRAMME_NOTE_SECTION,
-  SYNOPSIS_PROSE,
-} from "./programme-note-section";
+import { PROGRAMME_NOTE_SECTION, SYNOPSIS_PROSE } from "./programme-note-section";
 import type { LiveFacts } from "./live-facts";
 import {
   episodeSynopsisAction,
@@ -48,9 +42,8 @@ import {
  * Component, so the closure is built on this side:
  *
  * - `live-title-facts-streamed.tsx`'s Server Components — used by the phone route and the
- *   unowned-title page, the two surfaces that are real page renders. The unowned page
- *   takes `LiveTitleFactsStreamed`, which draws synopsis and providers together; title
- *   detail takes `SynopsisStreamed`, `WatchProvidersStreamed` and `CastStreamed`
+ *   unowned-title page, the two surfaces that are real page renders. Both take
+ *   `SynopsisStreamed`, `WatchProvidersStreamed` and `CastStreamed`
  *   separately, because its three sections land in three different places on the screen.
  *   Either way each read gets its own `<Suspense>`, so the page
  *   shell (poster, title, episodes) ships the instant the mirrored read is done, and each
@@ -66,7 +59,7 @@ import {
  *   read stays untouched by this — `titleDetailAction` returns only the mirrored row, so
  *   the panel still appears the moment that fast, DB-only read lands, exactly as before;
  *   only the three live sections beneath it wait on TMDB, each showing the same quiet
- *   placeholder `LiveTitleFactsStreamed`'s `Suspense` fallbacks show elsewhere.
+ *   placeholder the streamed slots' `Suspense` fallbacks show elsewhere.
  *
  * Neither variant can make a page-navigating surface's read block a click-triggered one's,
  * or the reverse — they are two different mechanisms for the same constraint (*one failed,
@@ -159,7 +152,7 @@ export function LiveTitleFactsClientFetch({
     // The synopsis waits inside the hero's card, so its placeholder does too — `nested`,
     // for `LiveFactPlaceholder`'s own reason.
     if (slot === "synopsis") return <LiveFactPlaceholder heading="Synopsis" nested />;
-    if (slot === "providers") return <LiveFactPlaceholder heading="Watch providers" />;
+    if (slot === "providers") return <LiveFactPlaceholder heading="Where to watch" />;
     return <LiveFactPlaceholder heading="Cast & crew" />;
   }
 
@@ -207,6 +200,9 @@ export function SynopsisFactSection({
   return (
     <LiveFactSection
       heading="Synopsis"
+      // The board sets the synopsis straight under the actions with no heading (Charcoal
+      // §8.6); the heading stays for assistive technology.
+      headingHidden
       initial={initial}
       nested={nested}
       refetch={() => titleSynopsisAction(kind, tmdbId)}
@@ -297,10 +293,7 @@ export function WatchProvidersFactSection({
     <LiveFactSection
       // The glossary term is "Watch provider", and lists "where to watch" itself in
       // that entry's own `_Avoid_` line — this is the term, not a paraphrase of it.
-      heading="Watch providers"
-      // The region the list is actually for. Without it a Canadian set of services is
-      // silently offered to everyone as *where you can watch this* — see `tmdb/region.ts`.
-      eyebrow={WATCH_PROVIDER_REGION_NAME}
+      heading="Where to watch"
       initial={initial}
       refetch={() => titleWatchProvidersAction(kind, tmdbId)}
       render={(providers) => <WatchProviders providers={providers} />}
@@ -328,8 +321,8 @@ export function CastAndCrewFactSection({
 }
 
 /** The pending placeholder for one section — `LiveTitleFactsClientFetch`'s own wait for
- *  its one combined fetch, and `LiveTitleFactsStreamed`'s `Suspense` fallback for each of
- *  its three. Same markup either way, so a reader cannot tell which mechanism is behind a
+ *  its one combined fetch, and each streamed slot's `Suspense` fallback
+ *  (`live-title-facts-streamed.tsx`). Same markup either way, so a reader cannot tell which mechanism is behind a
  *  given title from the loading frame alone.
  *
  *  `nested` for `LiveFactSection`'s reason below, and it has to be here as well as there:
@@ -370,7 +363,9 @@ export function LiveFactPlaceholder({
  * its own blocks at that step (the poster row to the controls beneath it), and a `1.75rem`
  * gap inside a card reads as a gap *between* cards.
  */
-const SECTION_CARD = `${PROGRAMME_NOTE_SECTION} ${PROGRAMME_NOTE_CARD} ${PROGRAMME_NOTE_CARD_PAD}`;
+// Flat on the page under a serif Heading (Charcoal §8.7), not a raised card: the boards
+// draw Where to watch and Cast as sections of the page, like the episode list above them.
+const SECTION_CARD = PROGRAMME_NOTE_SECTION;
 const NESTED_SECTION = "mt-5";
 
 type Phase<T> =
@@ -403,11 +398,11 @@ function outcomeToPhase<T>(outcome: Outcome<T>): Phase<T> {
  * Exported: `live-title-facts-streamed.tsx`'s three async Server Components each render
  * one of these, seeded from their own `Suspense`-awaited outcome, so retry — and the
  * inline-failure markup below — is identical whichever of the two mechanisms this
- * component's `LiveTitleFactsClientFetch`/`LiveTitleFactsStreamed` docblock describes.
+ * component's `LiveTitleFactsClientFetch`/streamed-slot docblock describes.
  */
 export function LiveFactSection<T>({
   heading,
-  eyebrow,
+  headingHidden = false,
   initial,
   refetch,
   render,
@@ -420,15 +415,8 @@ export function LiveFactSection<T>({
    * only on title detail, where it sits in the hero's card under the poster row.
    */
   nested?: boolean;
-  /**
-   * The uppercase line above the heading — `Canada` over *Watch providers*, and nothing
-   * over the others.
-   *
-   * Optional, because only one section has a fact worth stating before its own name. A
-   * prop rather than something the provider section draws for itself, so the eyebrow, the
-   * heading and the card padding stay in one place and cannot come apart.
-   */
-  eyebrow?: string;
+  /** Keep the heading for assistive technology only — the title synopsis (Charcoal §8.6). */
+  headingHidden?: boolean;
   initial: Outcome<T>;
   /**
    * What *Try again* runs — a thunk, closed over whatever identifies this read.
@@ -471,18 +459,22 @@ export function LiveFactSection<T>({
   if (phase.kind === "failed") {
     return (
       <div className={nested ? NESTED_SECTION : SECTION_CARD}>
-        <SectionHead heading={heading} eyebrow={eyebrow} />
+        <SectionHead heading={heading} hidden={headingHidden} />
         {/* `live-fact-copy.ts`, not prose written here: this sentence and the episode
             page's *no synopsis yet* must never converge, and while both were inline that
             was a property nothing could check — this module's import graph is
             `server-only` and cannot be rendered under Vitest. Naming them together is
             what makes `tests/episode-synopsis-states.test.ts` possible. */}
-        <p className="mt-3 max-w-[62ch] text-note text-text">{LIVE_FACT_FAILURE}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-4">
-          <button type="button" onClick={retry} className={GHOST_RECOVERY}>
-            Try again
-          </button>
-          {phase.reference === null ? null : <ReferenceLine reference={phase.reference} />}
+        {/* A failure is the outlined panel (Charcoal §6, §9), so it never looks like the
+            section's own content, or like an empty one. */}
+        <div className={`${headingHidden ? "" : "mt-3 "}${OUTLINED_PANEL}`}>
+          <p className="max-w-[62ch] text-note text-text">{LIVE_FACT_FAILURE}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <button type="button" onClick={retry} className={GHOST_RECOVERY}>
+              Try again
+            </button>
+            {phase.reference === null ? null : <ReferenceLine reference={phase.reference} />}
+          </div>
         </div>
       </div>
     );
@@ -497,112 +489,79 @@ export function LiveFactSection<T>({
   // than as a region reporting what happened to it.
   return (
     <div className={`arrive ${nested ? NESTED_SECTION : SECTION_CARD}`}>
-      <SectionHead heading={heading} eyebrow={eyebrow} />
-      <div className="mt-3">{content}</div>
+      <SectionHead heading={heading} hidden={headingHidden} />
+      <div className={headingHidden ? undefined : "mt-3"}>{content}</div>
     </div>
   );
 }
 
 /**
- * A card's head — the optional eyebrow, then the heading.
- *
- * The heading steps up from `code-line` to a real one now that each section is a card
- * rather than a labelled run of text: inside a card the heading is the card's name, and a
- * dim monospace line reads as metadata about the content rather than as the thing it is
- * called. Heading size (`text-bill-lg`) sits well below the hero's title, which is what
- * keeps the page reading as one screen with sections rather than several stacked screens.
+ * A section Heading — `h2` under the page's one `h1` (Charcoal §12), in the serif at
+ * Heading size. `hidden` keeps it for assistive technology alone: the title synopsis,
+ * which the board sets with no heading at all.
  */
-function SectionHead({ heading, eyebrow }: { heading: string; eyebrow?: string }) {
+function SectionHead({ heading, hidden }: { heading: string; hidden: boolean }) {
   return (
-    <>
-      {eyebrow === undefined ? null : (
-        <p className={PROGRAMME_NOTE_EYEBROW}>{eyebrow}</p>
-      )}
-      <h3 className={`bill-title text-bill-lg text-text${eyebrow === undefined ? "" : " mt-1"}`}>
-        {heading}
-      </h3>
-    </>
+    <h2 className={hidden ? "sr-only" : "bill-title text-bill-lg text-text"}>{heading}</h2>
   );
 }
 
 /**
- * Issue #139 dropped the bordered chip this used to render each provider as — a card with
- * a border, on a surface whose new-world treatment has none. A plain line, joined by " · "
- * the same way `CastAndCrewLine` below already renders its own two rows, says the same
- * thing without drawing a box around each name.
- */
-/**
- * Where to watch: one card per service, on a track that scrolls.
- *
- * ── The logos were already here ─────────────────────────────────────────────────────
- *
- * `WatchProvider.logoPath` has been on the type since the section was built and nothing
- * ever drew it — the list was a line of names joined by separators. A service is a
- * *logo* to most people long before it is a word, and this is the one section on the page
- * where recognition beats reading.
+ * Where to watch, as a row of static chips with the service's name (Charcoal §8.7): not
+ * pressable, so a `span` in a list and nothing a reader could mistake for a filter. The
+ * logos the previous card drew are gone with the card — the board draws names.
  *
  * ── Streaming only, still ───────────────────────────────────────────────────────────
  *
- * The screen this follows shows *Buy* alongside *Stream*. `tmdb/live-facts.ts` reads
- * `flatrate`, `free` and `ads` and refuses `buy` and `rent` — *"a transaction MediaSafe
- * has no record of and no view onto"* — and drawing nicer cards changes nothing about
- * that. Every card here says **Stream** because every provider here is one.
+ * The board's sample row ends in *Rent or buy*. `tmdb/live-facts.ts` reads `flatrate`,
+ * `free` and `ads` and refuses `buy` and `rent` — *"a transaction MediaSafe has no record
+ * of and no view onto"* — so no such chip is drawn, because no such provider is here.
+ *
+ * ── The region, and JustWatch, stay ─────────────────────────────────────────────────
+ *
+ * The board drops the *Canada* eyebrow. The fact does not go: without it a Canadian set of
+ * services is silently offered to everyone as *where you can watch this* (`tmdb/region.ts`),
+ * so it moves into the line under the chips, beside the JustWatch credit TMDB's terms ask
+ * for wherever its provider data is shown.
  */
 function WatchProviders({ providers }: { providers: readonly WatchProvider[] }) {
+  const source = (
+    <p className="mt-3 text-meta text-dim">
+      In {WATCH_PROVIDER_REGION_NAME} · Data by JustWatch
+    </p>
+  );
+
   if (providers.length === 0) {
-    return <p className="text-item text-dim">Nothing listed for streaming.</p>;
+    return (
+      <>
+        <p className="text-item text-dim">Nothing listed for streaming.</p>
+        {source}
+      </>
+    );
   }
 
   return (
     <>
-      <ul className="-mx-4 flex gap-2.5 overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ul className="flex flex-wrap gap-2">
         {providers.map((provider) => (
           <li
             key={provider.id}
-            className="flex w-[168px] shrink-0 items-center gap-2.5 rounded-[var(--radius-6)] bg-ground px-2.5 py-2.5"
+            className="flex h-9 items-center rounded-[var(--radius-full)] quiet-fill px-3.5 text-item font-medium text-text"
           >
-            {provider.logoPath === null ? null : (
-              /* eslint-disable-next-line @next/next/no-img-element -- the artwork is
-                 served from TMDB's CDN, exactly as `app/poster.tsx` argues;
-                 `next/image` would route it through Vercel's metered optimiser. */
-              <img
-                src={`https://image.tmdb.org/t/p/w92${provider.logoPath}`}
-                alt=""
-                aria-hidden="true"
-                width={36}
-                height={36}
-                loading="lazy"
-                decoding="async"
-                className="h-9 w-9 shrink-0 rounded-[var(--radius-4)] object-cover"
-              />
-            )}
-
-            <div className="min-w-0">
-              <p className="truncate text-meta font-medium text-text">{provider.name}</p>
-              <p className="text-meta text-dim">Stream</p>
-            </div>
+            {provider.name}
           </li>
         ))}
       </ul>
-
-      {/* TMDB's provider data is JustWatch's, and their terms ask for the credit. It sits
-          beside the logos it is about rather than in the page-foot attribution, which
-          covers everything else borrowed and stays where it is. */}
-      <p className="mt-3 text-meta text-dim">Data by JustWatch</p>
+      {source}
     </>
   );
 }
 
 /**
- * Cast as faces, crew as a line.
- *
- * ── Why only the cast gets cards ────────────────────────────────────────────────────
- *
- * You recognise a performer by their face and you want to know which part they played;
- * `profilePath` and `character` were both in the `/credits` response this already fetches,
- * and the second was mapped and never printed. A director is a name — TMDB's photographs
- * of crew are sparse and a rail of grey rectangles with initials would be worse than the
- * line the crew has always been.
+ * Cast as rows — the name on the left, the role on the right in Meta, a hairline under
+ * each (Charcoal §8.7). The crew line stays above them in Meta: the board draws cast alone,
+ * but who directed or created a title is the same read, and dropping it would throw away a
+ * fact the page already has. That is why the heading still says *Cast & crew*.
  */
 function CastAndCrewLine({ credit }: { credit: CastAndCrew }) {
   if (credit.cast.length === 0 && credit.crew.length === 0) {
@@ -610,37 +569,28 @@ function CastAndCrewLine({ credit }: { credit: CastAndCrew }) {
   }
 
   return (
-    <div className="space-y-4">
+    <>
       {credit.crew.length === 0 ? null : (
-        <p className="text-item text-dim">
+        <p className="text-meta text-dim">
           {credit.crew.map((one) => `${one.name} (${one.job})`).join(" · ")}
         </p>
       )}
-
       {credit.cast.length === 0 ? null : (
-        <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="divide-y divide-hair">
           {credit.cast.map((one) => (
-            <li key={one.id} className="w-[104px] shrink-0">
-              {/* `Poster` rather than a bare `img`: it already owns the CDN bucket, the
-                  lazy/eager decision and — the reason it is right here — the initials
-                  fallback for a performer TMDB has no photograph of, which is a great
-                  many of them. Its `2/3` ratio suits a portrait as well as a poster. */}
-              <Poster
-                posterPath={one.profilePath}
-                name={one.name}
-                width={104}
-                className="w-full [--poster-radius:var(--radius-5)]"
-              />
-
-              <p className="mt-2 truncate text-meta font-medium text-text">{one.name}</p>
-
+            <li key={one.id} className="flex items-baseline justify-between gap-3 py-3.5">
+              <span className="min-w-0 truncate text-bill-xs font-medium text-text">
+                {one.name}
+              </span>
               {one.character === null ? null : (
-                <p className="truncate text-meta text-dim">{one.character}</p>
+                <span className="min-w-0 truncate text-right text-meta text-dim">
+                  {one.character}
+                </span>
               )}
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }

@@ -282,7 +282,10 @@ test("the poster morph pairs the row's picture and the title's poster at one rat
   await page.getByRole("link", { name: new RegExp(seeded.titleName) }).click();
   await expect(page.getByRole("heading", { name: seeded.titleName, level: 1 })).toBeVisible();
 
-  const destinationPicture = page.locator('img[src*="image.tmdb.org"]').first();
+  // The hero's poster, not the page's first TMDB image: the band behind the hero draws a
+  // blurred, cropped copy of the poster ahead of it in the DOM (`title-hero.tsx`), and that
+  // copy is the band's shape, not the poster's.
+  const destinationPicture = page.locator('.hero-recede-poster img[src*="image.tmdb.org"]').first();
   await expect(destinationPicture).toBeVisible();
   const destinationBox = await destinationPicture.boundingBox();
   expect(destinationBox, "the title's own page draws no TMDB image at all").not.toBeNull();

@@ -143,11 +143,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason: "STATE_LABELS.watching — #310's migration",
   },
-  "app/(signed-in)/library/episode-line.ts": {
-    meaning: "LIVE_EDGE_OF_THE_RECORD",
-    tokens: 1,
-    reason: "EPISODE_NUMBER_UP_NEXT — #310's migration",
-  },
   "app/buttons.ts": {
     meaning: "THE_BUTTON_REGISTER",
     tokens: 1,
