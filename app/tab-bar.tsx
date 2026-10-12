@@ -12,7 +12,8 @@ import { useUpNextRepress } from "./use-up-next-repress";
 
 /**
  * The phone tab bar — issue #102, closing a temporary-deviation bullet,
- * widened to four by issue #146, and redrawn by the linen redesign's turn 9.
+ * widened to four by issue #146, redrawn by the linen redesign's turn 9, and widened to
+ * five by Charcoal (issue #399): Tonight, Coming up, Search, Library, You.
  *
  * ── What turn 9 changed, and what it took away ────────────────────────────────────────
  *
@@ -84,9 +85,13 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * existing. A tab is a way to a page and lasts exactly as long as it is the way — the same
  * sentence that let Stats have this slot is what takes it back.
  *
- * The desktop sidebar makes the same substitution in its own column and keeps Lists as
- * well, because it has the room: `sidebar-nav.tsx` runs six destinations where this runs
- * four. That asymmetry is #227's and is untouched here.
+ * The desktop sidebar made the same substitution in its own column and kept Lists as
+ * well. That asymmetry was #227's; the UI overhaul ended it by driving both from
+ * `destinations.ts`.
+ *
+ * **Issue #399 adds the fifth, which #227 said was never added.** Coming up was the second
+ * page of a pager inside the first tab; Charcoal retired the pager and gave it a tab, so a
+ * screen reached by a swipe nobody could see is now one labelled cell on the bar.
  *
  * **The Lists routes are still untouched**, as they have been since #227. `/lists` and
  * `/lists/[listId]` exist, the rail leads to them, the sidebar links to them, and a deep
@@ -220,8 +225,8 @@ export function TabBar() {
       //
       // `PHONE_BAR` is the frosting, the hairline and the four numbers that add up to
       // `--tab-bar-height`, shared with the bar that replaces this one (`app/phone-bar.ts`).
-      // The four-column grid is this bar's own and stays here.
-      className={`phone-tab-bar ${PHONE_BAR} grid grid-cols-4`}
+      // The five-column grid is this bar's own and stays here.
+      className={`phone-tab-bar ${PHONE_BAR} grid grid-cols-5`}
     >
       {TABS.map(({ href, label, Icon }) => {
         const current = isCurrentRoute(pathname, href);
@@ -231,7 +236,7 @@ export function TabBar() {
             key={href}
             href={href}
             aria-current={current ? "page" : undefined}
-            // Only the Up next destination carries a handler at all — issue #323's one
+            // Only Tonight (`/up-next`) carries a handler at all — issue #323's one
             // gesture. Every other tab's `<Link>` is exactly what it was before this
             // ticket.
             onClick={href === "/up-next" ? onUpNextLinkClick : undefined}

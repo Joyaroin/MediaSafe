@@ -353,7 +353,7 @@ describe("the routes below a title say which page is reading", () => {
     // than the library. This render has no previous pathname — nothing has navigated —
     // so what it draws is the stated fallback, and the property held here is unchanged:
     // the pending render carries a way out and no heading of its own.
-    expect(detail).toContain("‹ Up next");
+    expect(detail).toContain("‹ Tonight");
     expect(detail).toContain('role="status"');
   });
 

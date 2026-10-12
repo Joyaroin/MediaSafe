@@ -8,24 +8,23 @@ import { seedWatchingShow, seedWatchlistFilms } from "./support/fixture-library"
 import { toStorageState } from "./support/storage-state";
 
 /**
- * Issue #323's browser property — the one thing about a re-press that only a real
- * scroll position, a real pager and a real horizontally-scrolled rail can prove:
+ * Issue #323's browser property — the one thing about a re-press that only a real scroll
+ * position and a real horizontally-scrolled rail can prove:
  *
- * - **Pressing Up next while already on Up next** returns the scroll position to the
- *   top, the landing pager to its first page, and the "Upcoming movies" rail to its
- *   start.
+ * - **Pressing Tonight while already on Tonight** returns the scroll position to the top.
  * - **Arriving back from a title** — the case issue #276's restoration was built for —
- *   still restores the pager's page and the rail's offset exactly as it does today.
+ *   still restores Coming up's "Upcoming movies" rail to the offset the reader left it at.
  *
- * Both halves are named explicitly, and one spec is asked for that
- * asserts them together, so a regression that fixed one by breaking the other could not
- * pass by accident.
+ * Until issue #399 both were one screen: Coming up was the second page of the landing
+ * pager on `/up-next`, and this spec also proved the re-press returned the pager to its
+ * first page and that coming back restored the page. The pager is gone, so the address
+ * says which screen the reader was on, and those two halves have nothing left to hold.
  *
  * ── Its own fixture account, not the shared one ───────────────────────────────────────
  *
- * `poster-morph.spec.ts`'s own reasoning applies unchanged: this needs a library that
- * genuinely has content on both pager pages, which the shared account
- * `pending-hold.spec.ts` depends on staying empty is not.
+ * `poster-morph.spec.ts`'s own reasoning applies unchanged: this needs a library with
+ * content on both screens, which the shared account `pending-hold.spec.ts` depends on
+ * staying empty is not.
  *
  * ── Why the viewport is shorter than `poster-morph.spec.ts`'s ─────────────────────────
  *
@@ -42,10 +41,8 @@ test.beforeAll(async () => {
   const session = await seedFixtureSession();
   userId = session.userId;
 
-  // Six shows, each queuing one unwatched episode, is enough rows on "Next episodes" to
-  // push the Up next panel past a 400px viewport — and both pager panels are mounted at
-  // once (`landing-pager.tsx` keeps the page not being read `inert` rather than absent),
-  // so the document is this tall regardless of which page is showing.
+  // Six shows, each queuing one unwatched episode, is enough cards on Continue watching to
+  // push Tonight past a 400px viewport.
   for (let i = 0; i < 6; i += 1) {
     await seedWatchingShow(userId);
   }
@@ -65,13 +62,12 @@ test.beforeAll(async () => {
 test.use({ storageState: path.join(__dirname, ".auth", "up-next-restart-session.json") });
 
 test.beforeEach(async ({ page }) => {
-  // Narrow enough for the phone tab bar and the landing pager, per `page.tsx`'s `lg:hidden`
-  // gate. Shorter than `poster-morph.spec.ts`'s own `721px` for the reason in the file
-  // docblock above.
+  // Narrow enough for the phone tab bar. Shorter than `poster-morph.spec.ts`'s own `721px`
+  // for the reason in the file docblock above.
   await page.setViewportSize({ width: 500, height: 400 });
 });
 
-const upNextTabBarLink = (page: Page) =>
+const tonightTabBarLink = (page: Page) =>
   page.locator('nav.phone-tab-bar a[href="/up-next"]');
 
 const upcomingMoviesRail = (page: Page) =>
@@ -79,13 +75,8 @@ const upcomingMoviesRail = (page: Page) =>
     .locator("section", { has: page.getByRole("heading", { name: "Upcoming movies" }) })
     .locator("ol");
 
-async function goToUpcomingPageAndScroll(page: Page): Promise<void> {
-  await page.goto("/up-next");
-  await page.getByRole("tab", { name: "Coming up" }).click();
-  await expect(page.getByRole("tab", { name: "Coming up" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+async function goToComingUpAndScrollTheRail(page: Page): Promise<void> {
+  await page.goto("/coming-up");
 
   await expect(upcomingMoviesRail(page)).toBeVisible();
   // `bubbles: true` is not this event's native behaviour — an element's own `scroll` does
@@ -98,52 +89,25 @@ async function goToUpcomingPageAndScroll(page: Page): Promise<void> {
     el.scrollLeft = 150;
     el.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
-  await page.evaluate(() => window.scrollTo(0, 200));
 }
 
-test("pressing Up next while already on Up next resets the scroll position, the pager and the rail", async ({
-  page,
-}) => {
-  await goToUpcomingPageAndScroll(page);
+test("pressing Tonight while already on Tonight returns to the top", async ({ page }) => {
+  await page.goto("/up-next");
+  await expect(tonightTabBarLink(page)).toHaveAttribute("aria-current", "page");
+  await page.evaluate(() => window.scrollTo(0, 200));
 
-  // The preconditions this test is actually about — proven scrolled before proving reset,
-  // so a rail too short to scroll or a document too short to page cannot pass by accident.
-  await expect
-    .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
-    .toBeGreaterThan(0);
+  // Proven scrolled before proving reset, so a document too short to scroll cannot pass by
+  // accident.
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
-  await upNextTabBarLink(page).click();
+  await tonightTabBarLink(page).click();
 
-  await expect(page.getByRole("tab", { name: "Up next" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await expect(page).toHaveURL(/\/up-next$/);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-
-  /**
-   * **The rail is checked by going back to it, because the reset takes it off screen.**
-   *
-   * A restart returns the pager to its first page, and `landing-pager.tsx` renders only
-   * the page being read once the router has refreshed — so the Upcoming panel, and the
-   * rail inside it, are gone from the document. Polling that rail's `scrollLeft` here
-   * asked an element that does not exist and timed out forever, which reads as *the rail
-   * did not reset* and is really *the rail is not there*.
-   *
-   * Asking for Upcoming again is also the truer question. What the reader is promised is
-   * that the rails are back at their starts when they next look, and this is them next
-   * looking.
-   */
-  await page.getByRole("tab", { name: "Coming up" }).click();
-  await expect
-    .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
-    .toBe(0);
 });
 
-test("returning from a title still restores the pager's page and the rail's offset", async ({
-  page,
-}) => {
-  await goToUpcomingPageAndScroll(page);
+test("returning from a title still restores Coming up's rail offset", async ({ page }) => {
+  await goToComingUpAndScrollTheRail(page);
 
   /**
    * **A film that is on screen at the offset above, and not the first one.**
@@ -183,10 +147,7 @@ test("returning from a title still restores the pager's page and the rail's offs
 
   await page.goBack();
 
-  await expect(page.getByRole("tab", { name: "Coming up" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
+  await expect(page).toHaveURL(/\/coming-up$/);
   await expect
     .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
     .toBe(leftAt);

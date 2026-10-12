@@ -617,6 +617,17 @@ describe("every dynamic surface has a loading boundary", () => {
   });
 
   /**
+   * `/coming-up` — issue #399, the second tab. It was the landing pager's second page and
+   * shared `/up-next`'s gate and boundary; a route of its own has to bring both, and this
+   * is the floor that says it did.
+   */
+  it("gates the Coming up destination and gives it a boundary", () => {
+    expect(built.routes).toContain("/coming-up");
+    expect(matcherRunsOn(built.matcher, "/coming-up")).toBe(true);
+    expect(hasBoundary("(signed-in)/coming-up")).toBe(true);
+  });
+
+  /**
    * And negatively, on a segment §9 decided genuinely has no pending state to draw.
    * `NO_PENDING_STATE` is where the reason for each of them lives.
    *

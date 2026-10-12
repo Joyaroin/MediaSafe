@@ -13,7 +13,6 @@ import {
   rememberUpNext,
   searchPlace,
   upNextPlace,
-  withPage,
   withRailOffset,
   type SearchPlace,
   type UpNextPlace,
@@ -46,7 +45,6 @@ const FARGO: StandInResult = { id: 275, name: "Fargo" };
 const SEVERANCE: StandInResult = { id: 95396, name: "Severance" };
 
 const WHERE_UP_NEXT_WAS: UpNextPlace = {
-  page: 1,
   rails: { Ongoing: 482, "Coming back": 0, "Old friends": 1140 },
 };
 
@@ -58,13 +56,12 @@ const WHERE_SEARCH_WAS: SearchPlace<StandInResult> = {
 describe("a surface never seen restores to its default", () => {
   /**
    * The half of this module a threshold has no counterpart for. A reader who has never
-   * opened Up next has no page and no offsets, and the honest answer to *where were they*
-   * is **the top of page one** rather than `undefined` — which the pager would then have
-   * to have a second opinion about.
+   * opened Up next has no offsets, and the honest answer to *where were they* is **every
+   * rail at its start** rather than `undefined` — which each rail would then have to have
+   * a second opinion about.
    */
-  it("puts Up next on its first page with every rail at the start", () => {
+  it("puts Up next back with every rail at the start", () => {
     expect(upNextPlace(NOTHING_REMEMBERED)).toEqual(UP_NEXT_START);
-    expect(upNextPlace(NOTHING_REMEMBERED).page).toBe(0);
     expect(railOffset(upNextPlace(NOTHING_REMEMBERED), "Ongoing")).toBe(0);
   });
 
@@ -95,13 +92,6 @@ describe("what is remembered round-trips", () => {
     expect(railOffset(place, "Old friends")).toBe(1140);
   });
 
-  /** The pager page is the ticket's *coming back from a title found on Upcoming does not
-   *  dump the reader on Up next*. */
-  it("hands the pager back the page the reader was on", () => {
-    const memory = rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS);
-    expect(upNextPlace(memory).page).toBe(1);
-  });
-
   it("hands search back its query and its results, unre-fetched", () => {
     const memory = rememberSearch(NOTHING_REMEMBERED, WHERE_SEARCH_WAS);
     expect(searchPlace(memory)).toEqual(WHERE_SEARCH_WAS);
@@ -111,9 +101,9 @@ describe("what is remembered round-trips", () => {
   it("remembers the last place rather than the first", () => {
     const memory = rememberUpNext(
       rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS),
-      { page: 0, rails: { Ongoing: 12 } },
+      { rails: { Ongoing: 12 } },
     );
-    expect(upNextPlace(memory)).toEqual({ page: 0, rails: { Ongoing: 12 } });
+    expect(upNextPlace(memory)).toEqual({ rails: { Ongoing: 12 } });
   });
 });
 
@@ -144,7 +134,7 @@ describe("a re-press clears Up next without touching search — issue #323", () 
     expect(upNextPlace(forgetUpNext(memory))).toEqual(UP_NEXT_START);
   });
 
-  it("puts every rail back at its start, not only the pager's page", () => {
+  it("puts every rail back at its start", () => {
     const memory = rememberUpNext(NOTHING_REMEMBERED, WHERE_UP_NEXT_WAS);
     const cleared = forgetUpNext(memory);
     expect(railOffset(upNextPlace(cleared), "Ongoing")).toBe(0);
@@ -170,7 +160,7 @@ describe("a re-press clears Up next without touching search — issue #323", () 
   });
 });
 
-describe("one rail, and one page, changed at a time", () => {
+describe("one rail changed at a time", () => {
   /**
    * A rail records its own offset as it is scrolled, and there are five of them across
    * two devices. A whole-place write from each would be four rails overwritten with
@@ -180,7 +170,6 @@ describe("one rail, and one page, changed at a time", () => {
     const place = withRailOffset(WHERE_UP_NEXT_WAS, "Ongoing", 900);
     expect(railOffset(place, "Ongoing")).toBe(900);
     expect(railOffset(place, "Old friends")).toBe(1140);
-    expect(place.page).toBe(1);
   });
 
   it("records a rail it has not seen before without losing the ones it has", () => {
@@ -188,17 +177,11 @@ describe("one rail, and one page, changed at a time", () => {
     expect(railOffset(place, "Films to watch")).toBe(64);
     expect(railOffset(place, "Ongoing")).toBe(482);
   });
-
-  it("changes the page and leaves every offset where it was", () => {
-    const place = withPage(WHERE_UP_NEXT_WAS, 0);
-    expect(place.page).toBe(0);
-    expect(place.rails).toEqual(WHERE_UP_NEXT_WAS.rails);
-  });
 });
 
 describe("nothing here is changed in place", () => {
   /**
-   * State in, state out. The memory is handed around between a pager, three rails and a
+   * State in, state out. The memory is handed around between several rails and a
    * search field; a function that edited its argument would let one of them change what
    * another was holding.
    */
@@ -211,9 +194,7 @@ describe("nothing here is changed in place", () => {
 
   it("leaves the place it was given untouched", () => {
     withRailOffset(WHERE_UP_NEXT_WAS, "Ongoing", 900);
-    withPage(WHERE_UP_NEXT_WAS, 0);
     expect(WHERE_UP_NEXT_WAS).toEqual({
-      page: 1,
       rails: { Ongoing: 482, "Coming back": 0, "Old friends": 1140 },
     });
   });

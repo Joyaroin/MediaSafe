@@ -65,18 +65,19 @@ export interface BackOrigin {
 /**
  * The surfaces a detail page can be arrived from, in the order they are asked about.
  *
- * Three, and they are the three that open a title or an episode: Up next's rails, the
- * Library grid, and a search result. Lists is not among them — its rows open a title too,
+ * Four, and they are the four that open a title or an episode: Tonight's rails, Coming
+ * up's rows (a tab of its own since issue #399), the Library grid, and a search result. Lists is not among them — its rows open a title too,
  * but a list is reached *from* the Library tab and a reader coming back out of a title
  * they opened from a list is not owed a fourth name here; the history walk takes them to
  * the list itself regardless of what the bar is labelled. Adding a name costs a label
  * that has to stay true.
  *
- * Up next is first because it is also the fallback, and the two facts being one line is
+ * Tonight is first because it is also the fallback, and the two facts being one line is
  * what stops them drifting apart.
  */
 const BACK_ORIGINS: readonly BackOrigin[] = [
-  { label: "Up next", destination: "/up-next" },
+  { label: "Tonight", destination: "/up-next" },
+  { label: "Coming up", destination: "/coming-up" },
   { label: "Library", destination: "/library" },
   { label: "Search", destination: "/search" },
 ];
@@ -97,11 +98,11 @@ const BACK_ORIGINS: readonly BackOrigin[] = [
  * **A reloaded detail page has no previous pathname.** The origin is derived from where
  * the app last rendered, which a reload empties — the reader typed, shared or refreshed
  * the address and there is genuinely no surface behind it. That was known when this was
- * chosen over history state and over a URL parameter, and the answer is Up next: the home
+ * chosen over history state and over a URL parameter, and the answer is Tonight: the home
  * tab, a less specific answer that works, rather than a bar that lies about where the
  * reader was or no bar at all on the one render they are most likely to need it.
  *
- * The same fallback answers a previous pathname that is not one of the three — a title
+ * The same fallback answers a previous pathname that is not one of the four — a title
  * opened from another title, a list, Settings. The rule never invents a destination out
  * of the address it is on, so every answer is either a surface the previous pathname was
  * itself on or this one.

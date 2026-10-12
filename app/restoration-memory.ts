@@ -8,7 +8,6 @@ import {
   rememberUpNext,
   searchPlace,
   upNextPlace,
-  withPage,
   withRailOffset,
   type Remembered,
   type SearchPlace,
@@ -50,23 +49,12 @@ import type { MarkedResult } from "@/app/(signed-in)/search/actions";
  */
 let memory: Remembered<MarkedResult> = NOTHING_REMEMBERED;
 
-/** Which page of the landing pager the reader was on — `0` for a reader who has not been
- *  there, which is the page the pager already opens on. */
-export function rememberedPage(): number {
-  return upNextPlace(memory).page;
-}
-
-/** Keep the page the reader is on, leaving every rail's offset where it was. */
-export function keepPage(page: number): void {
-  memory = rememberUpNext(memory, withPage(upNextPlace(memory), page));
-}
-
 /** How far one rail had been scrolled — `0` for a rail nobody has moved. */
 export function rememberedRailOffset(rail: string): number {
   return railOffset(upNextPlace(memory), rail);
 }
 
-/** Keep one rail's offset, leaving the other four and the pager's page where they were. */
+/** Keep one rail's offset, leaving every other rail's where it was. */
 export function keepRailOffset(rail: string, offset: number): void {
   memory = rememberUpNext(memory, withRailOffset(upNextPlace(memory), rail, offset));
 }
@@ -88,16 +76,14 @@ export function keepSearch(place: SearchPlace<MarkedResult>): void {
  * A plain `Set` of listeners rather than a version number read through
  * `useSyncExternalStore`: nothing here is ever rendered, so there is no snapshot to keep
  * stable between a client and a server render, and no `getServerSnapshot` to invent for a
- * value that only ever changes from a click. `landing-pager.tsx` and `remembered-rail.tsx`
- * each add one listener for as long as they are mounted and act on the callback directly —
- * the same shape `watch-marks.ts` already uses for a store nothing here needs to duplicate.
+ * value that only ever changes from a click. `remembered-rail.tsx` adds one listener per
+ * rail for as long as it is mounted and acts on the callback directly — the same shape `watch-marks.ts` already uses for a store nothing here needs to duplicate.
  */
 const upNextRestartListeners = new Set<() => void>();
 
 /**
- * Clear Up next's place and tell every mounted rail and the landing pager to reset
- * themselves. This is the whole of what a re-press means to this file: it does not know
- * a pager has a page or a rail has an offset, and it does not know which components are
+ * Clear Up next's place and tell every mounted rail to reset itself. This is the whole of
+ * what a re-press means to this file: it does not know a rail has an offset, and it does not know which components are
  * listening — `use-up-next-repress.ts` calls this and nothing else.
  */
 export function startUpNextOver(): void {

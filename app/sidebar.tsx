@@ -38,8 +38,8 @@ import { Wordmark } from "./press-mark";
  * of frosted chrome in the build — this rail, the phone masthead, the phone tab bar —
  * pays the same small cost by construction rather than by everyone remembering to.
  *
- * Hidden below `lg` — the phone reaches *Up next*, *Search*, *Library* and *Lists* through
- * `tab-bar.tsx`'s four tabs, and *Settings* through `masthead.tsx`'s icon instead.
+ * Hidden below `lg` — the phone reaches the same five destinations through `tab-bar.tsx`,
+ * from the one list in `destinations.ts`, and *Settings* through You.
  */
 export async function Sidebar() {
   const displayName = await currentDisplayName();

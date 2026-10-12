@@ -58,16 +58,12 @@
  */
 export type RailOffsets = Readonly<Record<string, number>>;
 
-/** Where the reader was on Up next: which page of the landing pager, and how far along
- *  each of its rails. */
+/**
+ * Where the reader was on Up next: how far along each of its rails. It also held the
+ * landing pager's page until Charcoal slice 5 (issue #399) retired the pager — Coming up
+ * is a route of its own now, and the address says which one the reader was on.
+ */
 export interface UpNextPlace {
-  /**
-   * The landing pager's page index — `0` is *Up next*, `1` is *Upcoming*. A plain number
-   * rather than the pager's own `PageIndex`, because this module is not the place that
-   * decides how many pages there are; the pager narrows it back on the way in, which is
-   * also what makes a remembered `1` safe if the pager ever loses its second page.
-   */
-  readonly page: number;
   readonly rails: RailOffsets;
 }
 
@@ -101,8 +97,8 @@ export interface Remembered<Result> {
  *  default. */
 export const NOTHING_REMEMBERED: Remembered<never> = {};
 
-/** Up next, unvisited: the pager's first page, every rail at its start. */
-export const UP_NEXT_START: UpNextPlace = { page: 0, rails: {} };
+/** Up next, unvisited: every rail at its start. */
+export const UP_NEXT_START: UpNextPlace = { rails: {} };
 
 /**
  * Search, unvisited: nothing typed, nothing found.
@@ -166,15 +162,10 @@ export function withRailOffset(
   return { ...place, rails: { ...place.rails, [rail]: offset } };
 }
 
-/** The same place on a different page of the pager, every rail where it was. */
-export function withPage(place: UpNextPlace, page: number): UpNextPlace {
-  return { ...place, page };
-}
-
 /**
  * Clear Up next's place — issue #323's *pressing Up next while already on Up next starts
  * the screen over*. The next read of it answers `UP_NEXT_START` exactly as it would for a
- * reader who has not been there this session: the pager's first page, every rail at its
+ * reader who has not been there this session: every rail at its
  * start. Search's place, if any, is untouched.
  *
  * Spelled as a write of `UP_NEXT_START` rather than an omitted key, unlike `NOTHING_REMEMBERED`'s

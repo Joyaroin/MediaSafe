@@ -45,9 +45,11 @@ import { ReadFailure } from "@/errors/read-failure";
  * Because it can. Everything below is a server component over plain props — no store, no
  * router, no `useSyncExternalStore` — so `renderToStaticMarkup` gives the real markup, the
  * way `tests/library-surface.test.ts` and `tests/you-surface.test.ts` already do. The
- * pager is the exception and is source-read at the foot of this file: it is a client
- * component over `ResizeObserver` and Motion, and what is worth asserting about it is
- * structural rather than visual.
+ * route that draws it is source-read below.
+ *
+ * **The landing pager is gone (issue #399).** This surface was its second page and is the
+ * `/coming-up` route now. The pager's pointer handling lives on in `use-claimed-drag.ts`,
+ * driven gesture by gesture in `tests/claimed-drag.test.ts`.
  */
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
@@ -56,8 +58,8 @@ function sourceAt(relativePath: string): string {
   return readFileSync(path.join(REPOSITORY_ROOT, relativePath), "utf8");
 }
 
-const PAGER = "app/(signed-in)/up-next/landing-pager.tsx";
-const PAGE = "app/(signed-in)/up-next/page.tsx";
+const PAGE = "app/(signed-in)/coming-up/page.tsx";
+const TONIGHT = "app/(signed-in)/up-next/page.tsx";
 
 /** Today, for every case below. The rows are dated against it by hand so nothing here
  *  depends on when the suite runs. */
@@ -435,180 +437,27 @@ describe("the two halves, and the one sentence", () => {
   });
 });
 
-describe("the pager", () => {
-  const pager = sourceAt(PAGER);
-
-  /** Real tab controls, which is what makes the gesture not the only way in. A `div` with
-   *  a click handler would pass every other assertion in this file. */
-  it("is a real tab set", () => {
-    expect(pager).toContain('role="tablist"');
-    expect(pager).toContain('role="tab"');
-    expect(pager).toContain('role="tabpanel"');
-    expect(pager).toContain("aria-selected");
-    expect(pager).toContain("aria-controls");
-  });
-
-  it("moves between the tabs with the arrow keys", () => {
-    expect(pager).toContain("ArrowLeft");
-    expect(pager).toContain("ArrowRight");
-  });
-
-  /**
-   * The rules are the shared module's and not this file's. That is the ticket's own seam:
-   * a threshold or an axis test written inline here would be a rule nothing without a
-   * browser could assert, which is the whole reason `app/gesture-rules.ts` exists.
-   */
-  it("takes its drag rules from the shared module rather than writing its own", () => {
-    expect(pager).toContain('from "@/app/gesture-rules"');
-    expect(pager).toContain("releaseDrag");
-    expect(pager).toContain("dragOffset");
-    // No second threshold, typed at a call site.
-    expect(pager).not.toMatch(/threshold:\s*\d/);
-  });
-
-  /**
-   * Reduced motion is `MotionConfig`'s, at the root, and not a branch here — the app has
-   * one answer to it (`app/motion-provider.tsx`) and a second would be a second answer.
-   * What this asserts is that both moving parts go through Motion at all, since a raw CSS
-   * transition would sail straight past the global setting.
-   *
-   * **The spelling changed and the property did not.** This read `motion/react` and
-   * `<motion.div>` until the runtime was put behind `LazyMotion`: every call site now
-   * imports the *mini* components from `motion/react-m`, so the animation engine is a
-   * chunk fetched alongside the page rather than part of every route's first load — which
-   * it was, on every route, including the several that animate nothing. The two elements
-   * here are still Motion's, `MotionConfig` still sits above them, and the setting still
-   * reaches them, which is the whole of what this case is about. `strict` on the provider
-   * is what makes the old spelling throw rather than quietly re-bundle the runtime.
-   */
-  it("animates through Motion, so the root's reduced-motion setting reaches it", () => {
-    expect(pager).toContain('from "motion/react-m"');
-    expect(pager).toContain("<m.div");
-    expect(pager).toContain("<m.span");
-    expect(pager).not.toContain("transition-transform");
-  });
-
-  /** Both pages are mounted, because a drag reveals the next one before it is selected. */
-  it("mounts both pages rather than the selected one", () => {
-    expect(pager).toContain("upNext: React.ReactNode");
-    expect(pager).toContain("upcoming: React.ReactNode");
-  });
-
-  /**
-   * **The rails inside page one keep their own swipes.** `up-next-phone-rail.tsx` scrolls
-   * horizontally, and `touch-action` is intersected down the whole ancestor chain — so a
-   * `touch-pan-y` on this track silently takes native horizontal scrolling away from both
-   * rails, which is #245's *both rails leave the next card peeking … so that it is obvious
-   * they scroll*, dead on touch. Nothing would throw and no other test would notice.
-   *
-   * Two halves, and each alone is insufficient: the track must not set `touch-action`, and
-   * the binding must refuse a gesture that began inside a horizontal scroller.
-   */
-  it("leaves the rails inside it their own horizontal scrolling", () => {
-    expect(pager).not.toContain("touch-pan-y");
-    expect(pager).not.toContain("touch-none");
-    expect(pager).toContain("overHorizontalScroller");
-    expect(pager).toContain("overflowX");
-  });
-
-  /**
-   * The claim is latched once per gesture, not re-derived per frame — a thumb on an arc
-   * would otherwise snap the page back to nothing mid-drag. The rules module takes it as
-   * an argument precisely so the latch is visible here.
-   */
-  it("latches whose gesture it is instead of re-asking every frame", () => {
-    expect(pager).toContain("claimed: boolean | null");
-    expect(pager).toContain("claimsDrag");
-  });
-
-  /** A pointer released off the track still has to reach `onPointerUp`, or the page parks
-   *  mid-drag until the next press. */
-  it("captures the pointer once the drag is real", () => {
-    expect(pager).toContain("setPointerCapture");
-  });
-
-  /**
-   * A drag that began on a row's `Link` must not also navigate on release — a gesture is
-   * never two things at once.
-   *
-   * **Issue #277 moved the decision into the rules module and this case with it.** It read
-   * `toContain("dragged")` — the name of a boolean ref this file kept — which passed for
-   * any use of that word anywhere in the file, including the one in a comment. The rule is
-   * now `deliversClick`, asserted against its three answers in
-   * `tests/gesture-rules.test.ts`, and what is left here is that the binding *asks* it.
-   */
-  it("swallows the click a claimed gesture would otherwise deliver to a child", () => {
-    expect(pager).toContain("onClickCapture");
-    expect(pager).toContain("deliversClick");
-    expect(pager).toMatch(/if \(deliversClick\(claimed\)\) return;/);
-    expect(pager).toContain("event.preventDefault()");
-    expect(pager).toContain("event.stopPropagation()");
-  });
-
-  /**
-   * ── The pointer audit — issue #277 ──────────────────────────────────────────────────
-   *
-   * The Android report behind #277 is second-hand and **unreproduced**, and the ticket
-   * ships two hardenings on that basis rather than claiming a fix. This is the pager's
-   * half: *a gesture the pager has claimed cannot also be delivered to a child.*
-   *
-   * What the audit found, and what these three cases pin, is that the binding never asked
-   * **whose** pointer an event was. Every handler read `event.clientX` and acted on it, so
-   * a second finger arriving mid-drag re-seated the origin the first one was measured
-   * from, and a release from any pointer at all ended the gesture. On a phone that is not
-   * an exotic input: it is a thumb and the hand holding the device.
-   *
-   * All three would fail silently. Nothing throws, the pager still pages, and the only
-   * symptom is a page that jumps or a press that lands somewhere nobody asked for — which
-   * is precisely the report.
-   */
-  it("drives the gesture from the pointer it began with and no other", () => {
-    expect(pager).toContain("ownsPointer");
-    expect(pager).toContain("pointerId: event.pointerId");
-
-    // Every handler that reads a delta or ends a gesture asks first.
-    const asks = pager.match(/ownsPointer\(from, event\.pointerId\)/g) ?? [];
-    expect(asks.length).toBe(3);
-  });
-
-  /**
-   * A second finger is not a second gesture, and must not re-seat the first one's origin.
-   * `isPrimary` is the platform's own answer for touch; the second guard covers a pen or a
-   * mouse arriving over a live one, since either is always primary for its own type.
-   *
-   * **And it is keyed to `claimed`, not to a bare `!== null`.** A claimed gesture has been
-   * captured, so its release is guaranteed to come back here and refusing cannot strand
-   * the pager; an unclaimed one is replaced instead, which is the only recovery there is
-   * from a `pointerdown` whose release never arrived. A pager left permanently inert by
-   * one lost event would be a worse bug than the one #277 is guessing at, and it is the
-   * bug the obvious spelling of this guard has.
-   */
-  it("refuses a second pointer rather than letting it take over", () => {
-    expect(pager).toContain("event.isPrimary");
-    expect(pager).toMatch(/if \(gesture\.current\?\.claimed === true\) return;/);
-  });
-
-  /** A cancelled pointer generates no click, so nothing may be left armed to swallow one.
-   *  The next press a reader makes is not the drag the browser took away. */
-  it("arms no click swallow for a gesture the browser cancelled", () => {
-    const cancel = pager.slice(pager.indexOf("const onPointerCancel"));
-    expect(cancel).toMatch(/released\.current = null/);
-  });
-});
-
-describe("the page hands the pager both surfaces and one day", () => {
+describe("Coming up is a route of its own, with both halves and one day", () => {
   const page = sourceAt(PAGE);
 
-  it("draws Watching and Coming up as the pager's two pages", () => {
-    expect(page).toMatch(/<LandingPager upNext=\{watching\} upcoming=\{comingUp\} \/>/);
-    expect(page).toMatch(/<UpNextWatching\s+rails=\{rails\}\s+films=\{films\}\s+suggestions=/);
+  /** What the pager's second page showed, and nothing else — slice 7 redraws it. */
+  it("draws the surface the pager's second page drew", () => {
     expect(page).toMatch(
-      /<UpcomingSurface\s+episodes=\{upcoming\}\s+films=\{upcomingFilms\}\s+today=\{today\}\s+suggestions=/,
+      /<UpcomingSurface\s+episodes=\{episodes\}\s+films=\{films\}\s+today=\{today\}\s+suggestions=/,
     );
+    expect(page).toContain('labelId="suggestions-coming-up"');
   });
 
-  /** Both of Upcoming's reads go through the cache under the pager's own tag, so a write
-   *  on page one cannot leave page two describing a watchlist that has moved. */
+  /** Tonight no longer pays for reads it does not draw, and no longer draws a pager. */
+  it("leaves Tonight with no pager and no upcoming reads", () => {
+    const tonight = sourceAt(TONIGHT);
+    expect(tonight).not.toContain("LandingPager");
+    expect(tonight).not.toContain("cachedUpcoming");
+    expect(tonight).not.toContain("<UpcomingSurface");
+  });
+
+  /** Both reads go through the cache under the `up-next` tag, so a write on Tonight cannot
+   *  leave Coming up describing a watchlist that has moved. */
   it("reads both halves of Upcoming through the cache", () => {
     expect(page).toContain("cachedUpcomingEpisodes(userId)");
     expect(page).toContain("cachedUpcomingFilms(userId)");
@@ -622,12 +471,11 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page.match(/new Date\(\)/g)).toHaveLength(1);
   });
 
-  /** One structure on every screen size, drawn once: the pager, on a phone and a
-   *  desktop alike. A second, CSS-hidden copy for the desktop mounted every card twice and
-   *  gave every poster two `ViewTransition`s sharing a name. */
-  it("draws the two halves once, paged on every screen size", () => {
-    expect(page.match(/<LandingPager\b/g)).toHaveLength(1);
-    expect(page).toContain("<LandingPager upNext={watching} upcoming={comingUp} />");
+  /** One structure on every screen size, drawn once. A second, CSS-hidden copy for the
+   *  desktop mounted every card twice and gave every poster two `ViewTransition`s sharing
+   *  a name. */
+  it("draws the surface once on every screen size", () => {
+    expect(page.match(/<UpcomingSurface\b/g)).toHaveLength(1);
     expect(page).not.toMatch(/className="[^"]*(lg:hidden|hidden lg:block)/);
   });
 
@@ -648,7 +496,7 @@ describe("the page hands the pager both surfaces and one day", () => {
     expect(page).not.toMatch(/\btry\s*\{/);
     expect(page).not.toMatch(/\bcatch\s*[({]/);
 
-    const boundary = sourceAt("app/(signed-in)/up-next/error.tsx");
+    const boundary = sourceAt("app/(signed-in)/coming-up/error.tsx");
     expect(boundary).toContain("<ReadFailure");
     expect(boundary).toContain("referenceForBoundary");
   });

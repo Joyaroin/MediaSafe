@@ -33,6 +33,11 @@ _Avoid_: Left, to go
 
 ### Up next
 
+**Tonight**:
+The destination that shows Continue watching and Films to watch — what the reader can watch
+right now. The first tab, and the screen the app opens on.
+_Avoid_: Up next (the episode, not the screen), home
+
 **Continue watching**:
 Titles whose Up next episode has aired — something the reader can watch right now.
 _Avoid_: Watching list, in progress

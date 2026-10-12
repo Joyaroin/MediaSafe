@@ -9,6 +9,7 @@ import DeleteAccountLoading from "@/app/(signed-in)/settings/delete-account/load
 import SettingsLoading from "@/app/(signed-in)/settings/loading";
 import UnownedTitleLoading from "@/app/(signed-in)/catalogue/[kind]/[tmdbId]/loading";
 import SearchLoading from "@/app/(signed-in)/search/loading";
+import ComingUpLoading from "@/app/(signed-in)/coming-up/loading";
 
 /**
  * The surfaces [#181](https://github.com/Joyaroin/MediaSafe/issues/181) converts — eleven
@@ -75,8 +76,8 @@ describe("An unowned title's detail", () => {
     const pending = markupOf(createElement(UnownedTitleLoading));
 
     // The same back bar the loaded page draws — back to wherever the reader came from
-    // (issue #357), which a cold render with no history names as Up next.
-    expect(pending).toContain("‹ Up next");
+    // (issue #357), which a cold render with no history names as Tonight.
+    expect(pending).toContain("‹ Tonight");
     expect(pending).toContain('role="status"');
     expect(pending).not.toContain("<h1");
     // No poster either — unlike the desktop pane's `loading` frame, a cold route render
@@ -139,5 +140,27 @@ describe("Up next — a region boundary, not a whole surface", () => {
     expect(source).toContain("<SkeletonRegion");
     expect(source.match(/<SkeletonRegion/g)).toHaveLength(1);
     expect(source).toContain("CARD_GRID");
+  });
+
+  /** The pager's two labels went with it (issue #399); a skeleton of them would promise a
+   *  control the page no longer draws. */
+  it("draws no pager labels", () => {
+    expect(source).not.toContain("gap-[26px]");
+  });
+});
+
+/**
+ * Coming up — a route of its own since issue #399, where it was the pager's second page
+ * and waited behind Up next's boundary. Rendered, because unlike Up next's it imports
+ * nothing behind `server-only`.
+ */
+describe("Coming up — its own heading, and rows in the shape they become", () => {
+  const markup = markupOf(createElement(ComingUpLoading));
+
+  it("paints Coming up's own heading in one live region", () => {
+    expect(markup).toContain(">Coming up</h1>");
+    expect(markup.match(/role="status"/g)).toHaveLength(1);
+    // Never another surface's heading — the failure this boundary exists to rule out.
+    expect(markup).not.toContain(">Tonight<");
   });
 });

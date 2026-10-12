@@ -1,5 +1,5 @@
 /**
- * The six glyphs the app's navigation draws with — one rectilinear vocabulary shared by
+ * The glyphs the app's navigation draws with — one rectilinear vocabulary shared by
  * every surface that lists a destination, rather than a set redrawn per surface.
  *
  * `tab-bar.tsx` minted the first three for the phone tab bar (issue #102); `sidebar.tsx`
@@ -15,24 +15,45 @@
 
 import type { DestinationHref } from "./destinations";
 
-/** A play mark — the same triangle vocabulary as the sort select's caret
- *  (`library-filter-bar.tsx`), the one other polygon in the build. Continuing a title is
- *  what this icon is for. */
-/** The icon each of the four destinations carries, in both navigations. */
+/** The icon each of the five destinations carries, in both navigations. */
 export const DESTINATION_ICONS: Record<
   DestinationHref,
   (props: { className?: string }) => React.ReactElement
 > = {
-  "/up-next": UpNextIcon,
-  "/library": LibraryIcon,
+  "/up-next": TonightIcon,
+  "/coming-up": ComingUpIcon,
   "/search": SearchIcon,
+  "/library": LibraryIcon,
   "/you": YouIcon,
 };
 
-export function UpNextIcon({ className }: { className?: string }) {
+/**
+ * A crescent moon — Charcoal's drawing for Tonight (issue #399), the boards' own path,
+ * filled to sit with the solid glyphs beside it. It replaces the play mark Up next carried.
+ *
+ * The boards redraw all five glyphs as outlines. Only the two new destinations are drawn
+ * here, so the bar stays one family; the other three keep their solid shapes.
+ */
+export function TonightIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <polygon points="6,3 21,12 6,21" fill="currentColor" />
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** A calendar page — Coming up's (issue #399): a filled header with two rings above it,
+ *  a frame, and one day marked. */
+export function ComingUpIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <rect x="7" y="2" width="2.5" height="5" fill="currentColor" />
+      <rect x="14.5" y="2" width="2.5" height="5" fill="currentColor" />
+      <rect x="3" y="5" width="18" height="5" fill="currentColor" />
+      <rect x="3" y="10" width="2.5" height="11" fill="currentColor" />
+      <rect x="18.5" y="10" width="2.5" height="11" fill="currentColor" />
+      <rect x="3" y="18.5" width="18" height="2.5" fill="currentColor" />
+      <rect x="8" y="12.5" width="4" height="4" fill="currentColor" />
     </svg>
   );
 }

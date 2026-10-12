@@ -131,8 +131,8 @@ interface AccentSite {
  *
  * **Literal exceptions** are every other role the table already names and nothing ever
  * contested — the brand mark, the failure system, a surface's primary action, and the two
- * screens' rail-heading register — plus the two amendments the table already records by number
- * (#251's pager rule, #252's countdown).
+ * screens' rail-heading register — plus #252's countdown, the amendment the table records by
+ * number. #251's pager rule was the other, and left with the pager (#399).
  */
 const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   // ── The three sanctioned meanings ──────────────────────────────────────────────────
@@ -197,13 +197,8 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────
 
 
-  // ── Literal exceptions: the two amendments §3 already records by number ──────────
+  // ── Literal exceptions: the amendment §3 records by number ──────────────────────
 
-  "app/(signed-in)/up-next/landing-pager.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "the 2px rule under the selected pager label — the #251 amendment",
-  },
   "app/(signed-in)/up-next/upcoming-films.tsx": {
     meaning: "LITERAL_EXCEPTION",
     tokens: 1,

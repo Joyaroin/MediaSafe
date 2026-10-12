@@ -12,7 +12,7 @@ import { isCurrentRoute } from "./nav-route";
 import { useUpNextRepress } from "./use-up-next-repress";
 
 /**
- * The sidebar's six destinations, and the one thing about them that needs the browser —
+ * The sidebar's destinations, and the one thing about them that needs the browser —
  * issue #136, merged against issue #146 rather than after it. `sidebar.tsx` renders the
  * wordmark and the display name around this; this is only the part that has to know which
  * route the reader is on.
@@ -67,6 +67,11 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * behind the fifth, so a reader who reaches for the fourth row of this column has been
  * reaching for it since #136 and still finds Lists there. The desktop keeps six
  * destinations, exactly as it did the day before.
+ *
+ * **None of that asymmetry survives.** The UI overhaul put both navigations on the one
+ * list in `destinations.ts`, Lists moved inside Library, and Charcoal (issue #399) made
+ * that list five: Tonight, Coming up, Search, Library, You — the same five, in the same
+ * order, here and on the phone.
  */
 const PRIMARY = DESTINATIONS.map(({ href, label }) => ({
   href,
@@ -110,7 +115,7 @@ export function SidebarNav() {
               key={href}
               href={href}
               aria-current={current ? "page" : undefined}
-              // Only the Up next destination carries a handler at all — issue #323's one
+              // Only Tonight (`/up-next`) carries a handler at all — issue #323's one
               // gesture. Every other tab's `<Link>` is exactly what it was before this
               // ticket.
               onClick={href === "/up-next" ? onUpNextLinkClick : undefined}

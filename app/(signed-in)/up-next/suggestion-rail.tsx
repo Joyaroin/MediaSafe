@@ -15,7 +15,7 @@ import { readSuggestions } from "./suggestions";
  * - **Nothing to offer**: no heading over an empty track — nothing at all.
  * - Otherwise *Because you watched* the seed, or *Trending this week* when there is none.
  *
- * `labelId` is the caller's, because both pages of the pager can draw this at once.
+ * `labelId` is the caller's: Tonight and Coming up each draw one, under their own id.
  */
 export async function SuggestionRail({
   userId,

@@ -1,15 +1,7 @@
 import { Suspense } from "react";
 
-import {
-  cachedUpcomingEpisodes,
-  cachedUpcomingFilms,
-  cachedUpNextRails,
-  cachedWatchlistFilms,
-} from "@/cache/tags";
-import { requireTimezone, requireUserId } from "@/lib/session";
-import { LandingPager } from "./landing-pager";
-import { UpcomingSurface } from "./upcoming-surface";
-import { readerDay } from "./upcoming-grouping";
+import { cachedUpNextRails, cachedWatchlistFilms } from "@/cache/tags";
+import { requireUserId } from "@/lib/session";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextWatching } from "./up-next-rails";
 import { HoldOver } from "./hold-over";
@@ -17,7 +9,9 @@ import { SuggestionRail } from "./suggestion-rail";
 import { NavTransition } from "../nav-transition";
 
 /**
- * Up next — the surface both devices land on, and the one this app is opened to look at.
+ * Tonight — the surface both devices land on, and the one this app is opened to look at.
+ * Called Up next until Charcoal slice 5 (issue #399), which renamed the destination, kept
+ * its address, and moved the second page of its pager to `/coming-up`.
  *
  * Built at its own route by #101, made the landing screen by #102, made a desktop
  * destination by #136, given a desktop form of its own by #137 — three rails beside the
@@ -27,25 +21,15 @@ import { NavTransition } from "../nav-transition";
  * other caller are gone with that change; watchlist and abandoned stay reachable through
  * the library's status filters, which already carry all five states.
  *
- * ── Four reads and two renders, and the cost of that, stated ──────────────────────────
+ * ── Two reads, and the cost of that, stated ──────────────────────────────────────────
  *
  * `listUpNextRails` answers both devices — the phone's single next-episodes rail is the
  * desktop's three concatenated, from the same read, in the same order — and
- * `listWatchlistFilms` answers only the phone's second rail. **#251 added a third**,
- * `listUpcomingEpisodes`, and **#252 a fourth**, `listUpcomingFilms`; both answer only the
- * phone's second *page* and are paid for on a desktop load that will never draw either —
- * the same trade, two reads wider.
- *
- * The fourth is the one to be honest about, because it is the closest this page comes to
- * asking one question twice: `listWatchlistFilms` and `listUpcomingFilms` are the same
- * watchlist at two widths, one undated and complete, one dated and ahead of today. They
- * are not folded into one read that both surfaces filter, because the two rails want
- * different columns (a runtime against a release date) and different orders (A–Z against
- * soonest-first), and a single read wide enough for both would carry every column and be
- * sorted for neither. One extra query on a page that already makes three, against two
- * surfaces that stay independently correct. All run on every load because
+ * `listWatchlistFilms` answers the films rail. #251 and #252 added two more reads here for
+ * the pager's second page; they left with it, to `coming-up/page.tsx`. Both reads run on
+ * every load because
  * **the server does not know the viewport** — #136 deleted the one `matchMedia` branch this
- * build ever had, deliberately. Since the UI overhaul both devices draw the same pager, so
+ * build ever had, deliberately. Since the UI overhaul both devices draw the same surface, so
  * no surface depends on the viewport at all.
  *
  * **Be precise about what that costs.** A desktop load pays for the films read without ever
@@ -96,67 +80,26 @@ export default async function UpNextPage() {
   const userId = await requireUserId();
 
   /**
-   * Concurrent, not sequential. None of these takes any part of another's result, so
-   * awaiting them one after another bought nothing and cost three extra round trips to
-   * Neon in front of the first byte of this page — on a driver where a round trip is a
-   * WebSocket message and not a local socket write.
-   *
-   * The last is not a read of this database at all: `requireTimezone()` takes the zone
-   * off the session, which #251 needs before it can say what *Today* means and #252 needs
-   * before it can say how many days away *the 26th* is. It joins the four here rather than
-   * being awaited beside them for the same reason they are together — it takes nothing
-   * from them, and nothing takes anything from it.
-   *
-   * `Promise.all` rejects on the first rejection, which is the behaviour this page's
-   * error discipline already asks for: any one of the five failing throws into
-   * `error.tsx` exactly as it did when they ran in series. Nothing here catches, and the
-   * unguarded reads above the `AGENTS.md` rule protects are still unguarded.
+   * Concurrent, not sequential: neither takes any part of the other's result, and awaiting
+   * them in turn would put an extra round trip to Neon in front of the first byte.
+   * `Promise.all` rejects on the first rejection, which is what this page's error
+   * discipline asks for — either failing throws into `error.tsx`. Nothing here catches.
    */
-  const [rails, films, upcoming, upcomingFilms, zone] = await Promise.all([
+  const [rails, films] = await Promise.all([
     cachedUpNextRails(userId),
     cachedWatchlistFilms(userId),
-    cachedUpcomingEpisodes(userId),
-    cachedUpcomingFilms(userId),
-    requireTimezone(),
   ]);
 
   /**
-   * **The one clock this route reads, read once.** `upcoming-grouping.ts` takes the
-   * reader's zone and an instant as arguments and reads no clock itself, which is what
-   * makes *Today means my today* something a test can state. Deliberately outside the
-   * cache: the rows are the same set at every hour, but *Tomorrow* turns over at the
-   * reader's midnight.
-   */
-  const today = readerDay(zone, new Date());
-
-  /**
-   * Issue #365's rail of titles to add, one per empty state. Constructed, not awaited —
+   * Issue #365's rail of titles to add, for the empty state. Constructed, not awaited —
    * the search screen's shape (`search/page.tsx`): an element only reads TMDB if the
    * empty state that holds it actually renders, and its own `Suspense` keeps that read off
    * the page's first byte. No fallback, for the search screen's reason.
    */
-  const suggestionsFor = (labelId: string) => (
+  const suggestions = (
     <Suspense fallback={null}>
-      <SuggestionRail userId={userId} labelId={labelId} />
+      <SuggestionRail userId={userId} labelId="suggestions-watching" />
     </Suspense>
-  );
-
-  const watching = (
-    <HoldOver>
-      <UpNextWatching
-        rails={rails}
-        films={films}
-        suggestions={suggestionsFor("suggestions-watching")}
-      />
-    </HoldOver>
-  );
-  const comingUp = (
-    <UpcomingSurface
-      episodes={upcoming}
-      films={upcomingFilms}
-      today={today}
-      suggestions={suggestionsFor("suggestions-coming-up")}
-    />
   );
 
   return (
@@ -164,14 +107,14 @@ export default async function UpNextPage() {
       <main className="flex w-full flex-1 flex-col">
         <UpNextHeading />
 
-        {/* One structure, drawn once, on every screen size: what you are watching, and
-            what is coming up, paged. It used to be drawn twice — the pager for phones and a
-            stacked copy for desktops, one hidden by CSS — which mounted every card twice:
-            two marks stores' worth of subscriptions, and two `ViewTransition`s per poster
-            sharing a name, which breaks the poster morph on both. Each half answers its own
-            empty case, and a failure in any read throws past both into `error.tsx`. */}
+        {/* One structure, drawn once, on every screen size. It used to be drawn twice — a
+            phone copy and a desktop copy, one hidden by CSS — which mounted every card
+            twice: two marks stores' worth of subscriptions, and two `ViewTransition`s per
+            poster sharing a name, which breaks the poster morph on both. */}
         <div className="w-full lg:max-w-6xl">
-          <LandingPager upNext={watching} upcoming={comingUp} />
+          <HoldOver>
+            <UpNextWatching rails={rails} films={films} suggestions={suggestions} />
+          </HoldOver>
         </div>
       </main>
     </NavTransition>

@@ -40,13 +40,15 @@ const rootBlock = (side: "old" | "new") =>
   GLOBALS.match(new RegExp(`::view-transition-${side}\\(root\\)\\s*\\{[^}]*\\}`))![0];
 
 /**
- * Every screen that participates — the four tabs, and Settings, which is a push out of
+ * Every screen that participates — the five tabs, and Settings, which is a push out of
  * them rather than a move along them. A screen that navigates but is not wrapped is a
  * screen that arrives with nothing while everything around it slides, and that reads as
  * the animation being broken rather than absent.
  */
 const NAV_PAGES = [
   "app/(signed-in)/up-next/page.tsx",
+  /** Issue #399: Coming up left the landing pager for a tab of its own. */
+  "app/(signed-in)/coming-up/page.tsx",
   "app/(signed-in)/search/page.tsx",
   "app/(signed-in)/library/page.tsx",
   /** `lists/page.tsx` left this list in the UI overhaul: it is a redirect, and draws no
@@ -395,6 +397,7 @@ describe("the poster morph, on one transition-name family", () => {
  */
 const ORIGIN_SAMPLES = [
   "/up-next",
+  "/coming-up",
   "/library",
   "/search",
   "/you",
@@ -413,7 +416,8 @@ const ORIGIN_SAMPLES = [
 
 describe("where the back bar says the reader came from", () => {
   it("names each origin surface it can have arrived from", () => {
-    expect(backOrigin("/up-next")).toEqual({ label: "Up next", destination: "/up-next" });
+    expect(backOrigin("/up-next")).toEqual({ label: "Tonight", destination: "/up-next" });
+    expect(backOrigin("/coming-up")).toEqual({ label: "Coming up", destination: "/coming-up" });
     expect(backOrigin("/library")).toEqual({ label: "Library", destination: "/library" });
     expect(backOrigin("/search")).toEqual({ label: "Search", destination: "/search" });
   });
@@ -422,25 +426,25 @@ describe("where the back bar says the reader came from", () => {
     // The same `startsWith` rule `isCurrentRoute` already applies for the tab bar: a
     // reader inside a section arrived from that section.
     expect(backOrigin("/up-next/anything")).toEqual({
-      label: "Up next",
+      label: "Tonight",
       destination: "/up-next",
     });
     // And not by bare prefix — `/librarian` is not the library.
     expect(backOrigin("/librarian").destination).toBe("/up-next");
   });
 
-  it("falls back to Up next when there is no previous pathname", () => {
+  it("falls back to Tonight when there is no previous pathname", () => {
     // The reloaded detail page: the previous pathname is tracked as the app renders, so a
     // cold load has none. The home tab is an answer that works, against a bar that lies
     // or a bar that is absent.
-    expect(backOrigin(null)).toEqual({ label: "Up next", destination: "/up-next" });
-    expect(backOrigin("")).toEqual({ label: "Up next", destination: "/up-next" });
+    expect(backOrigin(null)).toEqual({ label: "Tonight", destination: "/up-next" });
+    expect(backOrigin("")).toEqual({ label: "Tonight", destination: "/up-next" });
   });
 
-  it("falls back to Up next for a previous pathname that is not an origin", () => {
+  it("falls back to Tonight for a previous pathname that is not an origin", () => {
     for (const previous of ["/you", "/settings", "/titles/entry-1", "/episodes/episode-1"]) {
       expect(backOrigin(previous), previous).toEqual({
-        label: "Up next",
+        label: "Tonight",
         destination: "/up-next",
       });
     }
@@ -656,7 +660,7 @@ describe("whether a press is a re-press of the tab already showing", () => {
 
   it("agrees with isCurrentRoute for every sample the routing suite already covers", () => {
     for (const previous of ORIGIN_SAMPLES) {
-      for (const destination of ["/up-next", "/library", "/search"]) {
+      for (const destination of ["/up-next", "/coming-up", "/library", "/search"]) {
         expect(isTabRepress(previous, destination)).toBe(isCurrentRoute(previous, destination));
       }
     }
