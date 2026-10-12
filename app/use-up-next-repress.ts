@@ -23,9 +23,9 @@ import { startUpNextOver } from "@/app/restoration-memory";
  *
  * This hook does three things and knows the shape of none of them:
  *
- *  - `startUpNextOver()` clears Up next's remembered place and tells the landing pager and
- *    every mounted rail to reset themselves — `app/restoration-memory.ts` is where both of
- *    those actually happen; this file only calls the one function that starts it.
+ *  - `startUpNextOver()` clears Up next's remembered place and tells every mounted rail to
+ *    reset itself — `app/restoration-memory.ts` is where that happens; this file only
+ *    calls the one function that starts it.
  *  - `router.refresh()` re-runs the route's Server Components, which is what makes a watch
  *    recorded elsewhere land on screen: `cache/tags.ts`'s own write paths already bust the
  *    `up-next` tag, and a refresh is what asks for the tag's current answer rather than

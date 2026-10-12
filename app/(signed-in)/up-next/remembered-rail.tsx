@@ -18,7 +18,7 @@ import {
  * This file owns an element, a scroll event and a `scrollLeft`. Which offset a rail comes
  * back to, what a rail nobody has scrolled is worth, and how one rail's offset is recorded
  * without disturbing the other four are decided by the pure module and asserted in
- * `tests/restoration.test.ts` with no DOM at all. It is the same split `landing-pager.tsx`
+ * `tests/restoration.test.ts` with no DOM at all. It is the same split `use-claimed-drag.ts`
  * and `app/gesture-rules.ts` already make one surface over, for the reason that module
  * gives: a rule that only exists inside a scroll handler in a browser is a rule nothing can
  * assert.

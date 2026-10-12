@@ -13,7 +13,8 @@ import { UpcomingNothing } from "./upcoming-nothing";
 import { UpcomingRow } from "./upcoming-row";
 
 /**
- * Page two of the landing pager — issue #251.
+ * Coming up — issue #251. Page two of the landing pager until Charcoal slice 5 (#399) gave
+ * it a route of its own, `coming-up/page.tsx`.
  *
  * The future-dated episodes of the shows standing at **Watching or Caught up**, grouped by
  * Today, Tomorrow, a named weekday and Later, in the reader's own timezone.
@@ -90,8 +91,7 @@ export function UpcomingSurface({
     return <UpcomingNothing suggestions={suggestions} />;
   }
 
-  /* `pb-2` on the wrapper rather than a node of its own: the foot of a page that scrolls
-     under a pager, held here now that either section can be the last thing on it. */
+  /* `pb-2` on the wrapper rather than a node of its own: the foot of the page, held here now that either section can be the last thing on it. */
   return (
     <div className="pb-2">
       <UpcomingEpisodes groups={groups} today={today} />

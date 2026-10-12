@@ -13,7 +13,7 @@ import { toStorageState } from "./support/storage-state";
 
 /**
  * Issue #357 — one app on every screen. What a reader sees, driven the way a reader drives
- * it: the same four destinations on a phone and a desktop, Settings reached from You, and a
+ * it: the same five destinations on a phone and a desktop, Settings reached from You, and a
  * poster that opens its title's own page wherever it is clicked.
  *
  * Its own fixture account, for `poster-morph.spec.ts`'s reason: these need a library with
@@ -23,7 +23,7 @@ import { toStorageState } from "./support/storage-state";
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1280, height: 900 };
-const DESTINATIONS = ["Up next", "Library", "Search", "You"];
+const DESTINATIONS = ["Tonight", "Coming up", "Search", "Library", "You"];
 
 let seeded: SeededTitle;
 let userId: string;
@@ -49,7 +49,7 @@ async function destinations(page: Page): Promise<string[]> {
   return nav.getByRole("link").allInnerTexts().then((names) => names.map((name) => name.trim()));
 }
 
-test("a phone and a desktop carry the same four destinations, in the same order", async ({
+test("a phone and a desktop carry the same five destinations, in the same order", async ({
   page,
 }) => {
   await page.setViewportSize(PHONE);
@@ -68,15 +68,24 @@ test("Settings is reached from You", async ({ page }) => {
   await expect(page).toHaveURL(/\/settings$/);
 });
 
-test("Up next is called Up next, and the desktop shows what is coming up under it", async ({
+test("Tonight is called Tonight, and Coming up is a destination of its own", async ({
   page,
 }) => {
   await page.setViewportSize(DESKTOP);
   await page.goto("/up-next");
 
-  await expect(page.getByRole("heading", { name: "Up next", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tonight", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Continue watching" }).filter({ visible: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Coming up" }).filter({ visible: true })).toBeVisible();
+  // Issue #399: the landing pager is gone, so there is no second page to page to.
+  await expect(page.getByRole("tablist")).toHaveCount(0);
+
+  await page
+    .getByRole("navigation", { name: "Primary" })
+    .filter({ visible: true })
+    .getByRole("link", { name: "Coming up" })
+    .click();
+  await expect(page).toHaveURL(/\/coming-up$/);
+  await expect(page.getByRole("heading", { name: "Coming up", level: 1 })).toBeVisible();
 });
 
 test("clicking a library poster on a desktop opens the title's own page", async ({ page }) => {

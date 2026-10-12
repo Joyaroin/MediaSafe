@@ -819,8 +819,8 @@ function appSourceFiles(): string[] {
 }
 
 /** A source file with its comments blanked. The prose in this codebase names the very
- *  things these assertions look for — `landing-pager.tsx` discusses `pointermove` at
- *  length and must not read as one. */
+ *  things these assertions look for — `motion-provider.tsx` discusses `pointermove`
+ *  and must not read as one. */
 function codeOf(relativePath: string): string {
   return readFileSync(path.join(REPOSITORY_ROOT, relativePath), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -1301,7 +1301,7 @@ describe("the hold and the press are one hand on a library cell", () => {
  * above, the phone tab bar was not one: #279's press reached every tile, cell, row and
  * button except the bar that is on screen at all times and answered nothing under a thumb.
  *
- * It joins at the **control** register — it is four small hit boxes, the same kind of
+ * It joins at the **control** register — it is five small hit boxes (four until #399), the same kind of
  * thing as the search screen's add — rather than at the surface one a card gets, and no
  * fourth register is introduced. What is new is one class on the child that leads.
  */
@@ -1310,13 +1310,13 @@ const TAB_BAR = "app/tab-bar.tsx";
 /** The class that marks the element leading its parent's press. */
 const LEAD_CLASS = "press-lead";
 
-/** The one class string the four tabs share, as tokens. One string and not four is the
+/** The one class string the five tabs share, as tokens. One string and not five is the
  *  whole of *each tab carries it*: the bar renders `TABS` through a single `<Link>`, so a
  *  tab that did not press would have to be a second element rather than a missing token. */
 function tabPressTokens(): string[] {
   const strings = pressClassStrings(TAB_BAR);
 
-  expect(strings, "the four tabs must press through one shared class string").toHaveLength(1);
+  expect(strings, "the five tabs must press through one shared class string").toHaveLength(1);
   return strings[0].split(/\s+/);
 }
 
@@ -1330,11 +1330,11 @@ function tabConstant(name: string): string {
 }
 
 describe("the phone tab bar wears the press", () => {
-  it("presses every one of the four tabs", () => {
+  it("presses every one of the five tabs", () => {
     const source = codeOf(TAB_BAR);
 
-    // Four destinations, one `<Link>`, one class string.
-    expect([...codeOf("app/destinations.ts").matchAll(/\{\s*href:\s*"\//g)]).toHaveLength(4);
+    // Five destinations, one `<Link>`, one class string.
+    expect([...codeOf("app/destinations.ts").matchAll(/\{\s*href:\s*"\//g)]).toHaveLength(5);
     expect(source).toMatch(/DESTINATIONS\.map\(/);
     expect(source).toMatch(/TABS\.map\(/);
     expect(source).toMatch(/className=\{`\$\{TAB\}\s/);

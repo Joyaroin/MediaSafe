@@ -103,17 +103,18 @@ function pressableUnder(target: EventTarget | null): Element | null {
  * claimed anything*. A release that arrives anywhere else is `true`, and there are exactly
  * two ways for that to happen, both of which mean the same thing to a reader:
  *
- *  - a surface **captured** the pointer, which is what the landing pager does the moment
- *    `claimsDrag` says the swipe is its own (`landing-pager.tsx`). From that moment every
- *    event for that pointer is retargeted at the pager's track, which is an ancestor of
- *    the card and therefore not the card. This is #280's *a swipe across a pager card
- *    leaves no pop mark behind*, and it needs no agreement between the two files;
+ *  - a surface **captured** the pointer, which is what `use-claimed-drag.ts` does the
+ *    moment `claimsDrag` says the swipe is its own. From that moment every event for that
+ *    pointer is retargeted at the element the gesture is bound to, which is an ancestor of
+ *    the card and therefore not the card. This is #280's *a swipe across a card leaves no
+ *    pop mark behind* — written for the landing pager, retired in #399 — and it needs no
+ *    agreement between the two files;
  *  - or the finger simply slid off the control, which the browser already treats as *not
  *    a tap*: a `click` is only delivered to the common ancestor of the two targets, so the
  *    card never hears about it either.
  *
- * Asking the DOM rather than asking the pager is the point. The pager's latch is a ref
- * inside a component this listener cannot see and must not learn about — a listener that
+ * Asking the DOM rather than asking the gesture is the point. Its latch is state
+ * inside a hook this listener cannot see and must not learn about — a listener that
  * knew which surfaces might claim a gesture would be the global handler #277 spent a
  * ticket getting away from.
  */
@@ -144,8 +145,8 @@ function claimOver(pressed: Element, target: EventTarget | null): boolean | null
  *
  * `pointerdown` marks. `pointerup` unmarks and, when `releasePops` says so, pops.
  * `pointercancel` unmarks and **never** pops: the browser took the pointer away, so
- * nothing was tapped. That is the contract that keeps this listener and the landing
- * pager's hardened drag (#277) apart, and it is a tested property — `releasePops` is a
+ * nothing was tapped. That is the contract that keeps this listener and the hardened drag
+ * binding (#277, `use-claimed-drag.ts`) apart, and it is a tested property — `releasePops` is a
  * pure function with its own cases in `tests/gesture-rules.test.ts`.
  *
  * `ownsPointer` is #277's rule, reused rather than restated: a second finger's release
@@ -155,7 +156,7 @@ function claimOver(pressed: Element, target: EventTarget | null): boolean | null
  * All three are registered in the **capture** phase, so a surface that stops a pointer
  * event's propagation cannot strand a mark on an element the finger has left. Capture
  * runs before React's own handlers and this listener touches nothing they read, so the
- * order costs the pager nothing.
+ * order costs a drag binding nothing.
  */
 function usePressMarks(): void {
   useEffect(() => {

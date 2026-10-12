@@ -667,8 +667,8 @@
      on a list of posters — and gives up only double-tap-to-zoom, on controls where it was
      never meaningful. Elements that need to own a gesture outright still say so at the
      call site: `reorderable-title-list.tsx`'s drag handle sets `touch-none`, and it is a
-     class, so it wins over this. `landing-pager.tsx` deliberately sets nothing and is a
-     `div`, so this rule does not reach it either. (The example named here was
+     class, so it wins over this. `use-claimed-drag.ts` deliberately sets nothing, and
+     leaves `touch-action` to the element it is bound to. (The example named here was
      `route-modal.tsx`'s grabber until issue #273 deleted the route interceptions and the
      dialog with them.)
 

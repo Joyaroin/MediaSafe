@@ -3,7 +3,7 @@ import { CARD_GRID } from "./up-next-card-styles";
 import { UpNextHeading } from "./up-next-heading";
 
 /**
- * Up next, reading — the pager's two labels and one screen of cards in the card grid, so
+ * Tonight, reading — one screen of cards in the card grid, so
  * the wait is the page it becomes (`app/skeleton.tsx` has the reasoning). Six cards
  * whatever the library holds: the layout's count, never the data's.
  */
@@ -13,10 +13,6 @@ export default function UpNextLoading() {
       <UpNextHeading />
       <div className="w-full lg:max-w-6xl">
         <SkeletonRegion className="gap-0">
-          <div className="flex gap-[26px] px-gutter pt-[18px] pb-[11px]">
-            <Block className="h-3 w-16" />
-            <Block className="h-3 w-20" />
-          </div>
           <ul className={`${CARD_GRID} mt-4`}>
             {CARDS.map((width) => (
               <li key={width} className="pending-card flex items-center gap-3 p-2.5">
