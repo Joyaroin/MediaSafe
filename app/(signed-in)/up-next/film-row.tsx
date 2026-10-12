@@ -1,14 +1,15 @@
 "use client";
 
-import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import Link from "next/link";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
 import { useWatchMark } from "@/app/(signed-in)/library/use-watch-mark";
+import { watchMarks, type WatchMarkView } from "@/app/(signed-in)/library/watch-marks";
 import {
-  RECORDING_GLYPH_UP_NEXT,
+  RECORDING_GLYPH,
   RECORDING_HIT_BOX,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
@@ -18,43 +19,20 @@ import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
 import { holdOverWhile } from "./hold-over";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
-import { CARD, CARD_POSTER, CARD_POSTER_WIDTH } from "./up-next-card-styles";
-import { UpNextGroup } from "./up-next-group";
+import { ROW, ROW_POSTER, ROW_POSTER_WIDTH } from "./up-next-card-styles";
 
 /**
- * The phone's films-to-watch group — the watchlist films, in a list rather than a rail.
+ * A film on Tonight's *Also ready* — Charcoal, issue #400. Films come after every show in
+ * the list (`tonight-list.tsx`), which is the order the phone has always concatenated in.
  *
- * The name is kept while its callers and tests are; what it renders is `UpNextGroup`'s
- * vertical list, for the reason that file gives.
- *
- * A film row is a poster, a name, a meta line and the same one-tap check an episode row
+ * A film row is a poster, a name, a meta line and the same one-tap tick an episode row
  * carries, so a watchlist film can be logged without opening it first. Once the watch is
  * recorded the film is no longer on the watchlist, and the row leaves; the toast's Undo
- * takes the watch back.
+ * takes the watch back. Its watched state is in the shared `watchMarks` store, which is
+ * how the list can count the rows still standing without asking this one
+ * (`useFilmsStanding`).
  */
-export function UpNextFilmRail({
-  films,
-}: {
-  films: readonly LibraryStateGroupEntry[];
-}) {
-  if (films.length === 0) return null;
-
-  return (
-    <UpNextGroup label="Films to watch">
-      <AnimatePresence initial={false}>
-        {films.map((film, index) => (
-          <FilmRow key={film.libraryEntryId} film={film} aboveFold={index < FIRST_RUN} />
-        ))}
-      </AnimatePresence>
-    </UpNextGroup>
-  );
-}
-
-const FIRST_RUN = 3;
-
-/** A film card is an episode card's material and measure (`up-next-card-styles.ts`), so
- *  the two lists read as one. */
-function FilmRow({
+export function FilmRow({
   film,
   aboveFold,
 }: {
@@ -86,7 +64,7 @@ function FilmRow({
     <m.li
       layout
       exit={{ opacity: 0, scale: 0.96, transition: exit }}
-      className={held ? `${CARD} watch-hold` : CARD}
+      className={held ? `${ROW} watch-hold` : ROW}
     >
       <Link
         href={`/titles/${film.libraryEntryId}`}
@@ -95,13 +73,13 @@ function FilmRow({
         <Poster
           posterPath={film.posterPath}
           name={film.titleName}
-          width={CARD_POSTER_WIDTH}
-          className={`${CARD_POSTER} transition duration-[var(--dur-fast)] group-hover:brightness-110`}
+          width={ROW_POSTER_WIDTH}
+          className={`${ROW_POSTER} transition duration-[var(--dur-fast)] group-hover:brightness-110`}
           aboveFold={aboveFold}
         />
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-item leading-snug font-medium text-text">
+          <p className="truncate text-row font-semibold leading-tight text-text">
             {film.titleName}
           </p>
 
@@ -111,11 +89,11 @@ function FilmRow({
           {held ? (
             /* A film's finish moment (#367) keeps *Watched* — there is no season and no
                show to have finished — but enters and pulses as the episode cards' do. */
-            <p className={`finish-line mt-[3px] text-item font-medium ${RECORDS_A_WATCH.ink}`}>
+            <p className={`finish-line mt-0.5 text-meta font-medium ${RECORDS_A_WATCH.ink}`}>
               Watched
             </p>
           ) : meta === null ? null : (
-            <p className="code-line mt-[3px] text-dim" data-numeric>
+            <p className="mt-0.5 truncate text-meta text-dim" data-numeric>
               {meta}
             </p>
           )}
@@ -135,7 +113,7 @@ function FilmRow({
           aria-label={`Mark ${film.titleName} watched`}
           className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
         >
-          <span className={RECORDING_GLYPH_UP_NEXT}>
+          <span className={RECORDING_GLYPH}>
             <CheckmarkIcon className="h-4 w-4" />
           </span>
         </button>
@@ -143,3 +121,35 @@ function FilmRow({
     </m.li>
   );
 }
+
+/** The seed every film row starts from — `FilmRow`'s own `initialWatched: false`. */
+const UNWATCHED: WatchMarkView = { watched: false, watches: 0, phase: "unwatched", pending: false };
+
+/**
+ * How many of these films still have a row — every film not yet watched and settled, which
+ * is exactly when `FilmRow` returns `null`. Read from the shared `watchMarks` store, so the
+ * list's *See all N* counts what is on screen without the rows reporting upward.
+ */
+export function useFilmsStanding(films: readonly LibraryStateGroupEntry[]): number {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const offs = films.map((film) =>
+        watchMarks.subscribe({ libraryEntryId: film.libraryEntryId, episodeId: null }, UNWATCHED, onChange),
+      );
+      return () => {
+        for (const off of offs) off();
+      };
+    },
+    [films],
+  );
+  const read = useCallback(
+    () =>
+      films.filter((film) => {
+        const view = watchMarks.read({ libraryEntryId: film.libraryEntryId, episodeId: null });
+        return !(view !== null && view.watched && view.phase === "settled");
+      }).length,
+    [films],
+  );
+  return useSyncExternalStore(subscribe, read, () => films.length);
+}
+

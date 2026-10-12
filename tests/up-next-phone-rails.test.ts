@@ -51,8 +51,12 @@ function sourceAt(relativePath: string): string {
 const UP_NEXT = "app/(signed-in)/up-next";
 const PAGE = `${UP_NEXT}/page.tsx`;
 const SURFACE = `${UP_NEXT}/up-next-rails.tsx`;
-const EPISODE_RAIL = `${UP_NEXT}/up-next-episode-rail.tsx`;
-const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
+/** Charcoal, issue #400: the rail's concatenation and featured pick moved here, and the
+ *  list it fed is `tonight-list.tsx`. */
+const EPISODE_RAIL = `${UP_NEXT}/tonight-surface.tsx`;
+const LIST = `${UP_NEXT}/tonight-list.tsx`;
+const FEATURED = `${UP_NEXT}/tonight-featured.tsx`;
+const FILM_RAIL = `${UP_NEXT}/film-row.tsx`;
 const NOTHING = `${UP_NEXT}/up-next-nothing.tsx`;
 /** The Up next row. */
 const TILE = `${UP_NEXT}/up-next-episode-row.tsx`;
@@ -99,10 +103,11 @@ describe("the Up next row draws a poster and not a still", () => {
     // `ROW_POSTER_WIDTH`/`POSTER` rather than left beside the new box under a stale name.
     expect(code).not.toMatch(/\bSTILL\b/);
     expect(code).not.toMatch(/\bROW_STILL_WIDTH\b/);
-    // The card's poster box (`up-next-card-styles.ts`), shared with the film cards.
-    expect(code).toContain("const POSTER = CARD_POSTER;");
+    // The row's poster box (`up-next-card-styles.ts`), shared with the film rows: the
+    // handoff's `36` by `54` at `--radius-1` (Charcoal, issue #400).
+    expect(code).toMatch(/className=\{ROW_POSTER\}/);
     expect(sourceAt(`${UP_NEXT}/up-next-card-styles.ts`)).toMatch(
-      /\[--poster-radius:var\(--radius-4\)\]/,
+      /export const ROW_POSTER = "w-9 shrink-0 \[--poster-radius:var\(--radius-1\)\]";/,
     );
   });
 });
@@ -134,12 +139,10 @@ describe("the Up next row's meta line carries no air date and no runtime", () =>
   });
 
   it("still names the episode as real text beside the code, never the code alone", () => {
-    // The code is a separate dim label, the episode's own name is the line
-    // underneath it, and shortening the meta line must not collapse the two into one.
-    expect(code).toMatch(
-      /className="bill-title text-bill-xs text-text">\{code\}/,
-    );
-    expect(code).toMatch(/\{episodeName\}/);
+    // Charcoal (issue #400) sets the code and the episode's name on one Meta line, the
+    // handoff's *S1 E2 · Hands*. The name is still real text, and the code stands alone
+    // only where TMDB has not named the episode.
+    expect(code).toMatch(/\{episodeName === null \? code : `\$\{code\} · \$\{episodeName\}`\}/);
   });
 
   it("keeps the remaining count on the tabular-figures hook", () => {
@@ -180,12 +183,24 @@ describe("the next-episodes rail is the two orderings concatenated", () => {
    * a show scrolls past every cold title in their library to find it, with nothing anywhere
    * throwing.
    */
-  it("draws the pending cards ahead of every episode card", () => {
-    const pendingAt = source.indexOf("<UpNextPendingRow");
-    const episodeAt = source.indexOf("<UpNextEpisodeRow");
+  it("draws the pending rows ahead of every episode row, and the films after them all", () => {
+    const list = sourceAt(LIST);
+    const pendingAt = list.indexOf("<UpNextPendingRow");
+    const episodeAt = list.indexOf("<UpNextEpisodeRow");
+    const filmAt = list.indexOf("<FilmRow");
     expect(pendingAt).toBeGreaterThan(-1);
     expect(episodeAt).toBeGreaterThan(-1);
+    expect(filmAt).toBeGreaterThan(-1);
     expect(pendingAt).toBeLessThan(episodeAt);
+    expect(episodeAt).toBeLessThan(filmAt);
+  });
+
+  it("features the first Ongoing entry still standing, and lists the rest without it", () => {
+    // `featuredId`'s rule, moved from the rail whole: a position, not a sort, and never a
+    // pending title or an old friend.
+    expect(source).toMatch(/const head = showing\[0\];/);
+    expect(source).toMatch(/head !== undefined && ongoingIds\.has\(head\.libraryEntryId\) \? head : null/);
+    expect(source).toMatch(/const listed = featured === null \? showing : showing\.slice\(1\);/);
   });
 
   /**
@@ -232,7 +247,7 @@ describe("the next-episodes rail is the two orderings concatenated", () => {
 
 
 
-describe("the films rail", () => {
+describe("the film rows", () => {
   const source = sourceAt(FILM_RAIL);
 
   /** Both predicates live in the read, and both are predicates rather than slices. */
@@ -265,29 +280,27 @@ describe("the films rail", () => {
 });
 
 describe("empty and failed are never the same thing", () => {
-  it("renders an empty rail as absent, with no heading over nothing", () => {
-    // #272: the rail is empty when it holds neither a pending card nor an episode card.
-    // A reader whose only title is one still mirroring has a rail with one card on it, not
-    // an absent rail — the tab must not read as empty for a title just added to it.
-    expect(sourceAt(EPISODE_RAIL)).toMatch(
-      /if \(pending\.length === 0 && showing\.length === 0\) return null;/,
+  it("renders an empty list as absent, with no heading over nothing", () => {
+    // #272: the list counts pending rows as rows. A reader whose only title is one still
+    // mirroring has a list with one row on it — the tab must not read as empty for a title
+    // just added to it. Rows marked away leave the list absent, not a sentence.
+    expect(sourceAt(LIST)).toMatch(
+      /const count = pending\.length \+ entries\.length \+ filmsStanding;/,
     );
-    expect(sourceAt(FILM_RAIL)).toMatch(
-      /if \(films\.length === 0\) return null;/,
-    );
+    expect(sourceAt(LIST)).toMatch(/if \(count === 0\) return null;/);
   });
 
-  /** A screen with nothing at all is a *different* fact from either rail being empty, and
+  /** A screen with nothing at all is a *different* fact from the list being empty, and
    *  it gets the handoff's own sentence rather than a blank page. */
   it("gives a screen with nothing at all the handoff's sentence", () => {
-    expect(sourceAt(SURFACE)).toMatch(
-      /if \(noEpisodes && films\.length === 0\) return <UpNextNothing suggestions=\{suggestions\} \/>;/,
-    );
+    const surface = sourceAt(SURFACE);
+    expect(surface).toMatch(/if \(noEpisodes && films\.length === 0\) \{/);
+    expect(surface).toMatch(/<UpNextNothing suggestions=\{suggestions\} \/>/);
 
     const nothing = sourceAt(NOTHING);
     expect(nothing).toContain("Nothing queued for tonight");
     expect(nothing).toContain("Add a show and its next episode turns up here.");
-    expect(nothing).toContain("Search the catalogue");
+    expect(nothing).toContain("Search films and shows");
   });
 
   /**
@@ -318,7 +331,7 @@ describe("empty and failed are never the same thing", () => {
   });
 
   it("catches nothing anywhere on the read path", () => {
-    for (const file of [PAGE, SURFACE, EPISODE_RAIL, FILM_RAIL]) {
+    for (const file of [PAGE, SURFACE, EPISODE_RAIL, LIST, FEATURED, FILM_RAIL, `${UP_NEXT}/tonight-coming-up.tsx`]) {
       const relative = file;
       const catches = /\bcatch\b/.test(sourceAt(file));
       expect({ file: relative, catches }).toEqual({

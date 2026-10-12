@@ -684,25 +684,20 @@ describe("the press answers the gesture the product is built around", () => {
   it("moves the checkmark and not the up-next row around it", () => {
     const source = codeOf(EPISODE_ROW);
 
-    // The card element is not itself pressable. Its classes are `CARD`, shared with the
-    // film cards (`up-next-card-styles.ts`), and the hold adds a wash and nothing else.
-    const card = codeOf("app/(signed-in)/up-next/up-next-card-styles.ts").match(
-      /export const CARD =\s*"([^"]*)"/,
+    // The row element is not itself pressable. Its classes are `ROW`, shared with the
+    // film rows (`up-next-card-styles.ts`), and the hold adds a wash and nothing else.
+    const row = codeOf("app/(signed-in)/up-next/up-next-card-styles.ts").match(
+      /export const ROW =\s*"([^"]*)"/,
     );
-    expect(card, "the card must still declare its CARD classes").not.toBeNull();
-    expect(card![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
-    expect(source).toContain("const ROW = CARD;");
-    // The featured card (#362) is a wider box of the same material, and no more pressable.
-    const featured = codeOf("app/(signed-in)/up-next/up-next-card-styles.ts").match(
-      /export const FEATURED_CARD =\s*"([^"]*)"/,
-    );
-    expect(featured![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
-    expect(source).toContain("const card = featured ? FEATURED_CARD : ROW;");
-    expect(source).toContain("className={held ? `${card} watch-hold` :");
+    expect(row, "the row must still declare its ROW classes").not.toBeNull();
+    expect(row![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
+    expect(source).toContain("className={held ? `${ROW} watch-hold` : ROW}");
 
     // And the control slot is rendered after the pressable link closes, so the check is a
     // sibling of it rather than a descendant.
-    expect(source.indexOf("</RowLink>")).toBeGreaterThan(-1);
+    const linkCloses = source.indexOf("</Link>");
+    expect(linkCloses).toBeGreaterThan(-1);
+    expect(source.indexOf("{control}", linkCloses)).toBeGreaterThan(linkCloses);
     expect(source.indexOf("{control}")).toBeGreaterThan(source.indexOf("</RowLink>"));
 
     // The listener takes the nearest pressable ancestor, which is what makes that
@@ -926,7 +921,7 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
   /* A list's card on Lists — the whole card is the link since Charcoal (#402), a surface. */
   "app/(signed-in)/lists/list-row.tsx": ["surface"],
-  "app/(signed-in)/up-next/up-next-film-rail.tsx": ["surface"],
+  "app/(signed-in)/up-next/film-row.tsx": ["surface"],
   /* The Up next row, which replaced the rail's tile. **Two surface sites in one file**,
      which is new and is not a second register: an episode row and a pending row are the
      same surface at two states of the same title, and they are two elements because one
@@ -1059,10 +1054,10 @@ describe("every pressable call site declares a register or is deliberately left 
     expect(client).toEqual([
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
+      "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
-      "app/(signed-in)/up-next/up-next-film-rail.tsx",
       "app/tab-bar.tsx",
     ]);
   });

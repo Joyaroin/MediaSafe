@@ -44,8 +44,10 @@ function sourceAt(relativePath: string): string {
 
 const UP_NEXT = "app/(signed-in)/up-next";
 const ROW = `${UP_NEXT}/up-next-episode-row.tsx`;
-const EPISODE_RAIL = `${UP_NEXT}/up-next-episode-rail.tsx`;
-const FILM_RAIL = `${UP_NEXT}/up-next-film-rail.tsx`;
+/** Charcoal, issue #400: the rows are keyed where Tonight's list draws them, and the
+ *  featured block where the surface picks it. */
+const LIST = `${UP_NEXT}/tonight-list.tsx`;
+const SURFACE = `${UP_NEXT}/tonight-surface.tsx`;
 const MOTION_PROVIDER = "app/motion-provider.tsx";
 
 describe("the row travels instead of teleporting", () => {
@@ -76,13 +78,10 @@ describe("the row travels instead of teleporting", () => {
     }
   });
 
-  /** The card's own box is `ROW`'s class — or the featured card's (#362), with its tint —
-   *  not a second style; the hold adds its wash. */
+  /** The row's own box is `ROW`'s class, not a second style; the hold adds its wash.
+   *  The featured episode is not a row since Charcoal (#400) — `tonight-featured.tsx`. */
   it("keeps ROW as the row's only class, on both row kinds", () => {
-    expect(row).toContain("const card = featured ? FEATURED_CARD : ROW;");
-    expect(row).toContain(
-      "className={held ? `${card} watch-hold` : tinted ? `${card} poster-tint` : card}",
-    );
+    expect(row).toContain("className={held ? `${ROW} watch-hold` : ROW}");
     expect(row.match(/<m\.li layout className=\{ROW\}>/g)).toHaveLength(1);
   });
 
@@ -139,8 +138,8 @@ function auditKeyStability(source: string): { readonly positional: readonly stri
 
 describe("every Up next list render keys on the library entry's identity", () => {
   const surfaces = [
-    ["the continue-watching rail", EPISODE_RAIL],
-    ["the films rail", FILM_RAIL],
+    ["Tonight's list", LIST],
+    ["Tonight's featured block", SURFACE],
   ] as const;
 
   for (const [label, file] of surfaces) {

@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { TONIGHT_SCRIM } from "@/app/poster-tint";
+
 import { seedFixtureSession } from "./support/fixture-session";
 import { seedShowWithSeason, type SeededTitle } from "./support/fixture-library";
 import { toStorageState } from "./support/storage-state";
@@ -35,7 +37,8 @@ test.beforeAll(async () => {
 
 test.use({ storageState: path.join(__dirname, ".auth", "up-next-featured-session.json") });
 
-const featured = (page: Page) => page.locator("li[data-featured]");
+/** Tonight's featured block — a section of its own since Charcoal (issue #400), not a row. */
+const featured = (page: Page) => page.locator("[data-featured]");
 
 for (const [device, size] of [
   ["phone", { width: 500, height: 900 }],
@@ -57,17 +60,17 @@ test("the featured card marks, holds, takes an Undo, and advances like any card"
   await page.goto("/up-next");
   const card = featured(page);
 
-  await card.getByRole("button", { name: /^Mark Season 1, Episode 2 — / }).click();
+  await card.getByRole("button", { name: /^Mark .*, Season 1, Episode 2 — / }).click();
   await expect(card.getByText("Watched")).toBeVisible();
   await card.getByRole("button", { name: /^Undo marking/ }).click();
-  await expect(card.getByRole("button", { name: /^Mark Season 1, Episode 2 — / })).toBeVisible();
+  await expect(card.getByRole("button", { name: /^Mark .*, Season 1, Episode 2 — / })).toBeVisible();
   // Let the Undo's write and its render land first: an immediate re-mark is #390's race,
   // with its own spec (`up-next-undo-remark.spec.ts`).
   await page.waitForLoadState("networkidle");
 
-  await card.getByRole("button", { name: /^Mark Season 1, Episode 2 — / }).click();
+  await card.getByRole("button", { name: /^Mark .*, Season 1, Episode 2 — / }).click();
   // The hold ends and the next episode slides in, still on the featured card.
-  await expect(card.getByRole("button", { name: /^Mark Season 1, Episode 3 — / })).toBeVisible();
+  await expect(card.getByRole("button", { name: /^Mark .*, Season 1, Episode 3 — / })).toBeVisible();
   await expect(card).toContainText(latest.titleName);
 });
 
@@ -75,9 +78,51 @@ test("when the featured show leaves, the next show is featured", async ({ page }
   await page.goto("/up-next");
   const card = featured(page);
 
-  await card.getByRole("button", { name: /^Mark Season 1, Episode 3 — / }).click();
+  await card.getByRole("button", { name: /^Mark .*, Season 1, Episode 3 — / }).click();
   await expect(card.getByText("Season 1 done")).toBeVisible();
 
   await expect(featured(page)).toContainText(older.titleName, { timeout: 10_000 });
   await expect(page.getByText(latest.titleName)).toHaveCount(0);
 });
+
+/**
+ * The scrims are measured from the text — `tests/poster-tint.test.ts` composites them on
+ * that assumption, and only a browser can check the layout keeps it: the text block's own
+ * top padding is the `ground` scrim's fade, at each layout's measure, and that scrim never
+ * reaches up under the white *Tonight*, where in the light theme its pale `ground` would put
+ * white on white. By the time these run the older show is featured, which is all they
+ * need; at a phone width and at the `xl:` card.
+ */
+for (const [layout, size] of [
+  ["phone", { width: 390, height: 844 }],
+  ["desktop", { width: 1440, height: 900 }],
+] as const) {
+  test(`the ${layout} scrims are measured from the text and stay clear of the white title`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(size);
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/up-next");
+    await expect(featured(page)).toHaveCount(1);
+
+    const measured = await featured(page).evaluate((section) => {
+      const text = section.querySelector<HTMLElement>("[data-tonight-text]")!;
+      const title = section.querySelector("h1")!;
+      return {
+        fade: parseFloat(getComputedStyle(text).paddingTop),
+        textTop: text.getBoundingClientRect().top,
+        titleBottom: title.getBoundingClientRect().bottom,
+      };
+    });
+
+    expect(measured.fade).toBe(TONIGHT_SCRIM.ground[layout].fadeAbove);
+    expect(measured.textTop).toBeGreaterThanOrEqual(measured.titleBottom);
+  });
+}
+
+test("one h1 on the screen, and it is Tonight", async ({ page }) => {
+  await page.goto("/up-next");
+  await expect(page.locator("h1")).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tonight");
+});
+

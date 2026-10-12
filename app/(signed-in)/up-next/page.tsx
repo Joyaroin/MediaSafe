@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 
-import { cachedUpNextRails, cachedWatchlistFilms } from "@/cache/tags";
-import { requireUserId } from "@/lib/session";
-import { UpNextHeading } from "./up-next-heading";
+import { cachedUpcomingEpisodes, cachedUpNextRails, cachedWatchlistFilms } from "@/cache/tags";
+import { requireTimezone, requireUserId } from "@/lib/session";
+import { TonightComingUp } from "./tonight-coming-up";
+import { readerDay } from "./upcoming-grouping";
 import { UpNextWatching } from "./up-next-rails";
 import { HoldOver } from "./hold-over";
 import { SuggestionRail } from "./suggestion-rail";
@@ -60,6 +61,14 @@ import { NavTransition } from "../nav-transition";
  * *nothing queued for tonight* is a plausible lie and a rail that is absent because the
  * database is down would read as a life well managed.
  *
+ * ── A third read, for the desktop's Coming up preview — Charcoal, issue #400 ──────────
+ *
+ * From `xl:` Tonight's right column previews the next three rows of Coming up, so this
+ * page reads `cachedUpcomingEpisodes` too — the same cached read `/coming-up` makes, tagged
+ * and busted with it — and the reader's timezone, to know which day *today* is. The trade
+ * is the films read's, stated above: the server does not know the viewport, so a phone
+ * load pays one more cached query for a column it hides.
+ *
  * ── Two empty states, and they are not one ────────────────────────────────────────────
  *
  * An **empty rail** is absent — no heading over nothing. **Every rail on one device empty**
@@ -85,9 +94,11 @@ export default async function UpNextPage() {
    * `Promise.all` rejects on the first rejection, which is what this page's error
    * discipline asks for — either failing throws into `error.tsx`. Nothing here catches.
    */
-  const [rails, films] = await Promise.all([
+  const [rails, films, upcoming, zone] = await Promise.all([
     cachedUpNextRails(userId),
     cachedWatchlistFilms(userId),
+    cachedUpcomingEpisodes(userId),
+    requireTimezone(),
   ]);
 
   /**
@@ -105,15 +116,21 @@ export default async function UpNextPage() {
   return (
     <NavTransition>
       <main className="flex w-full flex-1 flex-col">
-        <UpNextHeading />
-
         {/* One structure, drawn once, on every screen size. It used to be drawn twice — a
             phone copy and a desktop copy, one hidden by CSS — which mounted every card
             twice: two marks stores' worth of subscriptions, and two `ViewTransition`s per
-            poster sharing a name, which breaks the poster morph on both. */}
+            poster sharing a name, which breaks the poster morph on both. The `h1` is drawn
+            inside it, over the featured artwork or as a Screen heading. */}
         <div className="w-full lg:max-w-6xl">
           <HoldOver>
-            <UpNextWatching rails={rails} films={films} suggestions={suggestions} />
+            <UpNextWatching
+              rails={rails}
+              films={films}
+              comingUp={
+                <TonightComingUp episodes={upcoming} today={readerDay(zone, new Date())} />
+              }
+              suggestions={suggestions}
+            />
           </HoldOver>
         </div>
       </main>

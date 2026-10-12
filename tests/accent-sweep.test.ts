@@ -161,10 +161,17 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 1,
     reason: "'Watched' in place of the episode name while the card holds — the UI overhaul",
   },
-  "app/(signed-in)/up-next/up-next-film-rail.tsx": {
+  "app/(signed-in)/up-next/film-row.tsx": {
     meaning: "RECORDS_A_WATCH",
     tokens: 1,
     reason: "'Watched' on a film card while it holds — the UI overhaul",
+  },
+  "app/(signed-in)/up-next/tonight-featured.tsx": {
+    meaning: "RECORDS_A_WATCH",
+    tokens: 1,
+    reason:
+      "'Watched' in place of the episode line while Tonight's featured episode holds — " +
+      "the same confirmation the row prints (Charcoal, issue #400)",
   },
 
   // ── Literal exceptions: the brand mark ─────────────────────────────────────────────

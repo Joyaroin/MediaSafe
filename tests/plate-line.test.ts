@@ -147,7 +147,6 @@ function bgRaisedLines(file: string): string[] {
  */
 const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: number }[] = [
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
-  { file: "app/(signed-in)/up-next/up-next-card-styles.ts", count: 2 }, // a list row: Up next's cards, and the featured card (#362)
   { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", count: 1 }, // a list's three-dot menu (#402)
   { file: "app/(signed-in)/library/title-actions.tsx", count: 1 }, // a title's three-dot menu (#403)
   { file: "app/(signed-in)/library/episode-line.ts", count: 1 }, // the Up next episode's raised row (#403)

@@ -136,11 +136,15 @@ describe("Up next — a region boundary, not a whole surface", () => {
     "utf8",
   );
 
-  it("paints the Up next heading and the card grid it becomes, in one live region", () => {
+  /** Charcoal, issue #400: the page it becomes is the featured area at its `344px` floor and
+   *  a list of rows, so that is what the skeleton draws — in the rows' own classes. */
+  it("paints Tonight's heading, the featured area and the rows it becomes, in one live region", () => {
     expect(source).toContain("UpNextHeading");
     expect(source).toContain("<SkeletonRegion");
     expect(source.match(/<SkeletonRegion/g)).toHaveLength(1);
-    expect(source).toContain("CARD_GRID");
+    expect(source).toContain("min-h-[344px]");
+    expect(source).toContain("ROW_LIST");
+    expect(source).toContain("className={ROW}");
   });
 
   /** The pager's two labels went with it (issue #399); a skeleton of them would promise a

@@ -44,6 +44,15 @@ function bucketFor(width: number): string {
   return fit === undefined ? "original" : `w${fit}`;
 }
 
+/**
+ * TMDB's CDN URL for a still at the smallest bucket that covers `width` — `poster.tsx`'s
+ * `posterSrc`, for stills. Tonight's featured artwork is the first caller that needs the
+ * URL rather than this component's `16/9` box: it crops the still to its own area.
+ */
+export function stillSrc(stillPath: string, width: number): string {
+  return `https://image.tmdb.org/t/p/${bucketFor(width)}${stillPath}`;
+}
+
 export function EpisodeStill({
   stillPath,
   width,
@@ -89,7 +98,7 @@ export function EpisodeStill({
         // eslint-disable-next-line @next/next/no-img-element -- See the note above.
         <img
           className="block h-full w-full object-cover"
-          src={`https://image.tmdb.org/t/p/${bucketFor(width)}${stillPath}`}
+          src={stillSrc(stillPath, width)}
           alt=""
           aria-hidden="true"
           loading={aboveFold ? "eager" : "lazy"}

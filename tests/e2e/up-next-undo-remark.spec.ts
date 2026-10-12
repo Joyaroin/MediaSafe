@@ -35,8 +35,12 @@ test.beforeAll(async () => {
 
 test.use({ storageState: path.join(__dirname, ".auth", "up-next-undo-remark-session.json") });
 
+/** The show's row on Tonight, or — when it is the show watched most recently — the featured
+ *  block (Charcoal, issue #400), which carries the same title link and the same controls. */
 const card = (page: Page) =>
-  page.locator("li", { has: page.getByRole("link", { name: new RegExp(latest.titleName) }) });
+  page.locator("li, [data-featured]", {
+    has: page.getByRole("link", { name: new RegExp(latest.titleName) }),
+  });
 
 test("marking again straight after an Undo records the episode the check names", async ({
   page,
@@ -48,7 +52,7 @@ test("marking again straight after an Undo records the episode the check names",
   });
 
   await page.goto("/up-next");
-  const episode2 = card(page).getByRole("button", { name: /^Mark Season 1, Episode 2 — / });
+  const episode2 = card(page).getByRole("button", { name: /^Mark .*, Season 1, Episode 2 — / });
 
   await episode2.click();
   await card(page).getByRole("button", { name: /^Undo marking/ }).click();
@@ -60,5 +64,5 @@ test("marking again straight after an Undo records the episode the check names",
   await expect.poll(() => marked.length).toBe(2);
   await page.waitForTimeout(2_000);
   await page.reload();
-  await expect(card(page).getByRole("button", { name: /^Mark Season 1, Episode 3 — / })).toBeVisible();
+  await expect(card(page).getByRole("button", { name: /^Mark .*, Season 1, Episode 3 — / })).toBeVisible();
 });

@@ -31,7 +31,9 @@ test.use({
 
 test("an empty Up next offers trending titles, and one tap adds one", async ({ page }) => {
   await page.goto("/up-next");
-  const watching = page.getByRole("tabpanel", { name: "Watching" });
+  // The page itself: the pager and its *Watching* tab panel went with Charcoal slice 5
+  // (issue #399), and Tonight is one screen.
+  const watching = page.getByRole("main");
 
   await expect(watching.getByRole("heading", { name: "Nothing queued for tonight" })).toBeVisible();
   const rail = watching.getByRole("list", { name: "Trending this week" });

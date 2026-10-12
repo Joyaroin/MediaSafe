@@ -3,67 +3,26 @@ import type { CSSProperties } from "react";
 import { hexToOklch, inSrgbGamut } from "@/lib/oklab";
 
 /**
- * A title's poster colour, made safe to put text on — issue #361.
+ * A title's poster colour, in the two roles it plays — the glow (issue #363) and the band
+ * (Charcoal, issue #398) — plus the scrims that keep text legible over artwork.
  *
  * `title.poster_colour` is the poster's dominant colour as it is, and as it is it can be
- * anything: a near-black, a neon green. Painted straight behind a title it would fail the
- * contrast floor on half the library. So it is never painted as stored. This keeps its
- * **hue** and replaces its lightness, and caps its chroma, separately for each theme.
+ * anything: a near-black, a neon green. So it is never painted as stored: each role keeps
+ * its **hue** and replaces its lightness, and caps its chroma.
  *
  * ── The tint is not the accent ───────────────────────────────────────────────────────
  *
- * A separate token family (`--tint-light`, `--tint-dark`, and `--tint` resolved from
- * them in `app/globals.css`), and it is never on a control or on watch state.
- * `app/accent-meaning.ts` is unchanged by it: the accent says *this is live* or *this
- * is the way through*, and a tint says only *this is that title*.
+ * Never on a control and never on watch state. `app/accent-meaning.ts` is unchanged by
+ * it: the accent says what a control does, and a poster's colour says only *this is that
+ * title*.
  *
- * ── Where the two numbers come from ──────────────────────────────────────────────────
+ * ── The wash is gone — Charcoal, issue #400 ───────────────────────────────────────────
  *
- * Text over the wash is `--text` and `--dim`, and `--dim` is the one already sitting at
- * the floor — it is *the lightest value on the hue that clears 4.5:1 on `--raised`*
- * (`app/globals.css`). So the wash has to be at least as far from `--dim` as `--raised`
- * is, at every hue a poster can have. `tests/poster-tint.test.ts` sweeps every hue
- * against the floors `tests/contrast.test.ts` enforces: WCAG 4.5:1 in light, APCA Lc 60
- * in dark.
- *
- *  - **Light**: 96% lightness, chroma at most 0.04. Paler than it sounds — the ground is
- *    96.9% at 0.012 — and it is the most colour the light `--dim` leaves room for.
- *  - **Dark**: 18% lightness, chroma at most 0.06. Night has more room: the dark ground
- *    is 13.9% and the dark `--dim` is far above it.
- *
- * A poster less saturated than the cap keeps its own chroma, so a grey poster is a grey
- * wash rather than a colour invented for it.
+ * Issue #361's per-theme wash (`WASH`, `--tint-light`, `--tint-dark`, `--tint`) painted the
+ * title hero and then Up next's featured card. The band replaced it on the hero (#398) and
+ * Tonight's featured block replaced the card, so nothing read it, and it went with its
+ * assertions, as #398 said it should once nothing did.
  */
-export const WASH = {
-  light: { l: 0.96, maxChroma: 0.04 },
-  dark: { l: 0.18, maxChroma: 0.06 },
-} as const;
-
-export type Theme = keyof typeof WASH;
-
-/** The wash for one theme, as the `oklch()` a stylesheet reads. */
-export function washFor(colour: string, theme: Theme): string {
-  const { c, h } = hexToOklch(colour);
-  const { l, maxChroma } = WASH[theme];
-  return `oklch(${round(l * 100, 1)}% ${round(Math.min(c, maxChroma), 4)} ${round(h, 1)})`;
-}
-
-/**
- * The two custom properties a tinted surface carries, or nothing for a title with no
- * colour — which then draws exactly what it drew before the tint existed.
- *
- * Both themes travel together because the server does not know which one the reader is
- * in: the theme is the system's, or a `data-theme` the browser set before first paint
- * (`lib/theme.ts`). `app/globals.css` picks one of the two as `--tint` under the same
- * three selectors every other token resolves through.
- */
-export function posterTintStyle(colour: string | null): CSSProperties | undefined {
-  if (colour === null) return undefined;
-  return {
-    "--tint-light": washFor(colour, "light"),
-    "--tint-dark": washFor(colour, "dark"),
-  } as CSSProperties;
-}
 
 /**
  * The hover glow's colour — issue #363 — the other role a poster's colour plays.
@@ -202,6 +161,90 @@ export function titleScrimGradient(textTop: string): string {
       `color-mix(in oklab, var(--color-ground) ${round(alpha * 100, 1)}%, transparent) calc(${textTop} ${at < 0 ? "-" : "+"} ${Math.abs(at)}px)`,
   );
   return `linear-gradient(to bottom, transparent 0, ${stops.join(", ")}, var(--color-ground) 100%)`;
+}
+
+/**
+ * Tonight's two scrims — Charcoal, issue #400 (handoff §8.1, §10). The featured episode's
+ * text sits over its artwork, so it gets the title page's treatment at Tonight's own
+ * measures, and the white *Tonight* over the top of the artwork gets a scrim of its own.
+ *
+ * - **The `ground` scrim** is measured from the top of the *Up next* label — the first
+ *   line of the text block, which is anchored to the artwork's foot and grows downward.
+ *   It is `atLabel` there, clear `fadeAbove` px above, and solid `solidBelow` px below.
+ *   Every line under the label sits on more of it, so a title that wraps to two lines
+ *   only ever moves text into more scrim.
+ * - **The black scrim** is measured from the screen title: `top` at the artwork's top
+ *   edge, `atTitleBottom` at the title's foot, gone `goneBelow` px further down. White
+ *   is large text here, so its floor is 3:1.
+ *
+ * `phone` is everything below `xl:`; `desktop` is the two-column card from `xl:`. The
+ * `ground` scrim never reaches up under the white title — `tests/e2e/up-next-featured.spec.ts`
+ * measures that — because in the light theme `ground` is pale and white on it would fail.
+ */
+export const TONIGHT_SCRIM = {
+  ground: {
+    atLabel: 0.9,
+    phone: { fadeAbove: 60, solidBelow: 110 },
+    desktop: { fadeAbove: 215, solidBelow: 150 },
+  },
+  black: {
+    top: 0.5,
+    atTitleBottom: 0.45,
+    phone: { goneBelow: 40 },
+    desktop: { goneBelow: 75 },
+  },
+} as const;
+
+export type TonightLayout = "phone" | "desktop";
+
+/** The `ground` scrim's alpha at a px offset from the *Up next* label's top. */
+export function tonightScrimAlpha(offset: number, layout: TonightLayout): number {
+  const { atLabel } = TONIGHT_SCRIM.ground;
+  const { fadeAbove, solidBelow } = TONIGHT_SCRIM.ground[layout];
+  if (offset <= -fadeAbove) return 0;
+  if (offset <= 0) return (atLabel * (offset + fadeAbove)) / fadeAbove;
+  if (offset >= solidBelow) return 1;
+  return atLabel + ((1 - atLabel) * offset) / solidBelow;
+}
+
+/**
+ * The measures both scrims are drawn at, as custom properties for each layout. The
+ * featured block carries these inline, and picks one layout's set per breakpoint with
+ * `TONIGHT_SCRIM_LAYOUT` — so the px in the stylesheet are these numbers, not a copy.
+ */
+export function tonightScrimVars(): CSSProperties {
+  const vars: Record<string, string> = {};
+  for (const layout of ["phone", "desktop"] as const) {
+    const { fadeAbove, solidBelow } = TONIGHT_SCRIM.ground[layout];
+    vars[`--tonight-fade-${layout}`] = `${fadeAbove}px`;
+    vars[`--tonight-solid-${layout}`] = `${fadeAbove + solidBelow}px`;
+    vars[`--tonight-gone-${layout}`] = `${TONIGHT_SCRIM.black[layout].goneBelow}px`;
+  }
+  return vars as CSSProperties;
+}
+
+/** The phone set below `xl:`, the desktop set from it — the switch `tonightScrimVars` feeds. */
+export const TONIGHT_SCRIM_LAYOUT =
+  "[--tonight-fade:var(--tonight-fade-phone)] [--tonight-solid:var(--tonight-solid-phone)] [--tonight-gone:var(--tonight-gone-phone)] xl:[--tonight-fade:var(--tonight-fade-desktop)] xl:[--tonight-solid:var(--tonight-solid-desktop)] xl:[--tonight-gone:var(--tonight-gone-desktop)]";
+
+/**
+ * The `ground` scrim as the background of the text block's own wrapper, whose top padding
+ * is `--tonight-fade`: clear at the wrapper's top, `atLabel` where the label starts, solid
+ * at `--tonight-solid` — so it is measured from the text however tall the block is.
+ */
+export function tonightScrimGradient(): string {
+  const { atLabel } = TONIGHT_SCRIM.ground;
+  return `linear-gradient(to bottom, transparent 0, color-mix(in oklab, var(--color-ground) ${round(atLabel * 100, 1)}%, transparent) var(--tonight-fade), var(--color-ground) var(--tonight-solid))`;
+}
+
+/**
+ * The black scrim as the background of the screen title's own wrapper, whose bottom
+ * padding is `--tonight-gone`: `top` at the wrapper's top (the artwork's top edge),
+ * `atTitleBottom` where the title ends, clear at the wrapper's foot.
+ */
+export function tonightTitleScrimGradient(): string {
+  const { top, atTitleBottom } = TONIGHT_SCRIM.black;
+  return `linear-gradient(to bottom, rgb(0 0 0 / ${round(top * 100, 1)}%) 0, rgb(0 0 0 / ${round(atTitleBottom * 100, 1)}%) calc(100% - var(--tonight-gone)), transparent 100%)`;
 }
 
 function round(value: number, places: number): number {

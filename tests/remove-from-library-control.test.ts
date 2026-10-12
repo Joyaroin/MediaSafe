@@ -72,7 +72,9 @@ describe("where the remove entry appears", () => {
       "app/(signed-in)/library/library-grid.tsx",
       "app/(signed-in)/library/selectable-entry.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
-      "app/(signed-in)/up-next/up-next-film-rail.tsx",
+      "app/(signed-in)/up-next/film-row.tsx",
+      "app/(signed-in)/up-next/tonight-featured.tsx",
+      "app/(signed-in)/up-next/tonight-list.tsx",
     ];
 
     for (const file of browsing) {

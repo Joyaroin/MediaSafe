@@ -1,17 +1,16 @@
 /**
- * The landing heading. It says *Tonight* — the name of the tab that brought you here —
- * on every screen size and at every hour, so the tab and the page it opens have one name.
+ * Tonight's title as a normal Screen heading — the form it takes wherever there is no
+ * featured episode to paint it over (Charcoal, issue #400): a library with no Ongoing
+ * show, the empty state, and a read that failed. With a featured episode the `h1` is the
+ * white *Tonight* over its artwork instead (`tonight-featured.tsx`), and this is not drawn,
+ * so the screen has one `h1` either way.
+ *
  * It said *Up next* until Charcoal slice 5 (issue #399) renamed the destination; *Up next*
  * is still the label on the episode a show is waiting on (`CONTEXT.md`).
  *
- * **Not painted** since the UI overhaul: the tab bar and the sidebar already say it, and a
- * heading repeating it took a band of the phone's first screen. It stays a real `h1`, so
- * the page's outline is unchanged for a screen reader. Slice 6 paints it over the
- * featured artwork.
- *
- * Shared by the populated, pending and failed states, so a failed read still reads as
- * *Tonight, which did not load* rather than a bare error on a blank page.
+ * Shared with the failed state, so a failed read still reads as *Tonight, which did not
+ * load* rather than a bare error on a blank page. Spacing is the caller's.
  */
 export function UpNextHeading() {
-  return <h1 className="sr-only">Tonight</h1>;
+  return <h1 className="screen-title text-screen text-text">Tonight</h1>;
 }

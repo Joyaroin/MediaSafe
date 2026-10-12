@@ -62,7 +62,9 @@ export function UpNextNothing({
           Search films and shows
         </Link>
       </section>
-      {suggestions}
+      {/* Room between the panel and the rail under it — the rail carries no top space of
+          its own, because Coming up's empty state draws it under a panel too. */}
+      <div className="mt-6">{suggestions}</div>
     </>
   );
 }
