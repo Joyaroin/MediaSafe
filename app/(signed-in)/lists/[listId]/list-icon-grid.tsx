@@ -55,7 +55,7 @@ export function ListIconGrid({
        gains a breakpoint the other should have it. The `14px` gutter is that file's own
        reasoning — the cell's padding is inside the card, so a `14px` list gutter is what
        puts a poster's *edge* on the page's `22px`. */
-    <ol className="stagger-rise grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+    <ol className="stagger-rise grid grid-cols-3 gap-x-3.5 gap-y-5 px-gutter pb-6 lg:px-10 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {titles.map((title, index) => (
         <IconCell
           key={title.titleId}

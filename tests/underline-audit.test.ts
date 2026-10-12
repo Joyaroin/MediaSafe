@@ -206,7 +206,9 @@ const NAVIGATING_CONTROLS = [
     file: "app/(signed-in)/settings/delete-account/delete-account-frame.tsx",
     label: "‹ Back to Settings",
   },
-  { file: "app/(signed-in)/lists/back-to-lists-bar.tsx", label: "‹ Lists" },
+  /* *‹ Lists* sat here until Charcoal made it a round back button (issue #402): an arrow in
+     a `<Link>` with an `aria-label`, with no text for this audit to find. It is still an
+     anchor. */
   {
     file: "app/(signed-in)/titles/[entryId]/remove/remove-frame.tsx",
     label: "‹ Back to your library",
@@ -230,7 +232,10 @@ const ACTING_CONTROLS = [
      `SETTLED_GLYPH`), and an icon in a `<button>` with an `aria-label` has no text for
      this audit to find. Nothing about the rule they were here to hold has changed; there
      is simply no longer a labelled control at that call site to hold it over. */
-  { file: "app/(signed-in)/lists/list-row.tsx", label: "Delete" },
+  /* Delete left the Lists row for the list page's three-dot menu with Charcoal (#402). */
+  { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", label: "Rename" },
+  { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", label: "Delete list" },
+  { file: "app/(signed-in)/lists/delete-list-dialog.tsx", label: "Delete list" },
   { file: "app/(signed-in)/library/add-to-list-control.tsx", label: "Add to list" },
   // The bulk bar's two, and the ternary-labelled case `rendersAs` above is written for.
   { file: "app/(signed-in)/library/selection-action-bar.tsx", label: "Add to list" },

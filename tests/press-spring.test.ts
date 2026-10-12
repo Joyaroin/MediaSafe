@@ -924,6 +924,8 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   /* A custom list's icon view (`list-icon-grid.tsx`). A poster with a name under it is the
      same surface the library grid and the Up next groups draw, at the same register. */
   "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
+  /* A list's card on Lists — the whole card is the link since Charcoal (#402), a surface. */
+  "app/(signed-in)/lists/list-row.tsx": ["surface"],
   "app/(signed-in)/up-next/up-next-film-rail.tsx": ["surface"],
   /* The Up next row, which replaced the rail's tile. **Two surface sites in one file**,
      which is new and is not a second register: an episode row and a pending row are the

@@ -84,9 +84,13 @@ export const SECONDARY_PILL = `${PILL} quiet-fill text-text`;
  * (`.bg-raised` in `app/globals.css`). It keeps its `border` and its one shadow rather
  * than taking `plate-line`: both are box-shadows, and two on one element is a fight over
  * which Tailwind emits last.
+ *
+ * `m-auto` puts back the browser's own centring: Tailwind's preflight zeroes every
+ * element's margin, `<dialog>`'s `margin: auto` included, and without it a modal opened
+ * pinned to the top-left corner (found on Lists' delete dialog, issue #402).
  */
 export const DIALOG_FRAME =
-  "dialog-transition rounded-[var(--radius-7)] border border-hair bg-raised p-6 text-text shadow-[0_24px_64px_rgb(0_0_0/0.3)] backdrop:bg-ground/80";
+  "dialog-transition m-auto rounded-[var(--radius-7)] border border-hair bg-raised p-6 text-text shadow-[0_24px_64px_rgb(0_0_0/0.3)] backdrop:bg-ground/80";
 
 /**
  * The outlined panel — handoff §6. No fill, a `1px` `hair` line, `--radius-6`, `20px` in.

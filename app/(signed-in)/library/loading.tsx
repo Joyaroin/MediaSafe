@@ -11,21 +11,31 @@ import { LIBRARY_GRID } from "./library-grid";
 export default function LibraryLoading() {
   return (
     <main className="arrive-fast flex w-full flex-1 flex-col">
-      <LibraryHeading />
+      <LibraryHeading
+        control={
+          // The pending shimmer without a second `role="status"`: the region below is
+          // the one that announces *Reading*.
+          <div className="pending route-pending-hold mt-4 lg:mt-0">
+            <Block className="h-[52px] w-full [--poster-radius:var(--radius-5)] lg:w-[340px]" />
+          </div>
+        }
+      />
       <SkeletonRegion className="gap-0">
-        <div className="px-gutter lg:px-10">
-          <Block className="mt-4 h-[42px] w-full [--poster-radius:var(--radius-full)] lg:max-w-[420px]" />
-          <div className="mt-4 flex gap-2">
+        {/* The chips, then the round sort button pinned at the row's right end. */}
+        <div className="mt-2 flex items-center gap-2 px-gutter py-1 lg:mt-4 lg:px-10">
+          <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
             {CHIPS.map((width) => (
-              <Block key={width} className={`h-9 ${width} [--poster-radius:var(--radius-full)]`} />
+              <Block key={width} className={`h-9 shrink-0 ${width} [--poster-radius:var(--radius-full)]`} />
             ))}
           </div>
+          <Block className="h-11 w-11 shrink-0 [--poster-radius:var(--radius-full)] lg:w-40" />
         </div>
         <ul className={`mt-5 ${LIBRARY_GRID}`}>
           {CELLS.map((width) => (
             <li key={width} className="flex flex-col gap-2">
               <PosterBlock className="w-full" radius="var(--radius-4)" />
               <Block className={`h-2.5 ${width}`} />
+              <Block className="h-2 w-[46%]" />
             </li>
           ))}
         </ul>

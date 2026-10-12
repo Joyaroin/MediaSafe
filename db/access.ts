@@ -2636,12 +2636,15 @@ export type LibraryState = (typeof LIBRARY_STATES)[number];
  * would make *nothing to watch* and *the next episode has no name yet* the same line on
  * the cell, and they are not the same fact.
  *
- * There is no season or episode number here on purpose. *Episodes are named, never
- * numbered alone* is a hard rule with no degrading surface,
- * so a surface that had the numbers to hand would be one keystroke from breaking it.
+ * The season and episode numbers came back with Charcoal (handoff §8.4): the library
+ * cell's state line reads *S1 E2 up next*, as the boards draw it. The owner chose that
+ * over the old *never numbered alone* rule for this one line (issue #402); every other
+ * surface still names an episode.
  */
 export interface UpNext {
   readonly episodeName: string | null;
+  readonly seasonNo: number;
+  readonly episodeNo: number;
 }
 
 /** One cell of the library grid, and everything it prints. */
@@ -2859,6 +2862,8 @@ export async function listLibraryEntries(
       state: libraryEntryState.state,
       upNextEpisodeId: libraryEntryUpNext.episodeId,
       upNextEpisodeName: episode.name,
+      upNextSeasonNo: episode.seasonNo,
+      upNextEpisodeNo: episode.episodeNo,
       // Issue #324: the library card's progress bar. Joined here, beside `remaining`,
       // for the reason this function's own docblock gives — 472 cells asking for
       // themselves is the request storm this query exists to avoid, and a bar is one
@@ -2901,7 +2906,13 @@ export async function listLibraryEntries(
      * nullable and an unnamed next episode is still a next episode.
      */
     upNext:
-      row.upNextEpisodeId === null ? null : { episodeName: row.upNextEpisodeName },
+      row.upNextEpisodeId === null || row.upNextSeasonNo === null || row.upNextEpisodeNo === null
+        ? null
+        : {
+            episodeName: row.upNextEpisodeName,
+            seasonNo: row.upNextSeasonNo,
+            episodeNo: row.upNextEpisodeNo,
+          },
     // `released`/`watched` are null exactly when the left join found no row, which —
     // like `libraryEntryRemaining` above — only happens for a film. A show always has a
     // row, even at `released: 0`, so that case reaches `library-progress-fraction.ts` as
@@ -5031,6 +5042,25 @@ export interface ListSummary {
   readonly titleCount: number;
 }
 
+/** One poster in a list card's stack. The name is there for a title TMDB has no artwork
+ *  for, which `app/poster.tsx` draws as its initials. */
+export interface ListPoster {
+  readonly posterPath: string | null;
+  readonly name: string;
+}
+
+/**
+ * A list as Lists draws it — the summary, plus the first three of its titles' posters in
+ * list order for the card's stack (Charcoal, handoff §8.5). Only `listLists` reads these;
+ * the pickers and the writes answer the plain `ListSummary`.
+ */
+export interface ListOverview extends ListSummary {
+  /** At most `LIST_STACK_SIZE`, by `list_membership.position`; empty for an empty list. */
+  readonly posters: readonly ListPoster[];
+}
+
+export const LIST_STACK_SIZE = 3;
+
 /**
  * This account's lists, alphabetically — issue #146.
  *
@@ -5042,12 +5072,20 @@ export interface ListSummary {
  * `left join`, not inner: a list with no memberships yet — every list, until the ticket
  * that lets you add to one ships — must still appear, with `titleCount` at zero rather
  * than the list vanishing from its own destination.
+ *
+ * ── The stack is a second statement, over every list at once ─────────────────────────
+ *
+ * The first three posters of each list (Charcoal, handoff §8.5), ranked by `row_number()`
+ * per list the way `upNextQueues` ranks its episodes: one scan for all lists, never a
+ * query per card. Scoped by `ownedBy(userId, listMembership)` on its own, so it cannot
+ * reach another account's memberships even before the merge below throws away any list
+ * id the first statement did not return.
  */
 export async function listLists(
   userId: UserId,
   executor: Executor = getDb(),
-): Promise<ListSummary[]> {
-  return executor
+): Promise<ListOverview[]> {
+  const lists = await executor
     .select({
       id: list.id,
       name: list.name,
@@ -5058,6 +5096,40 @@ export async function listLists(
     .where(ownedBy(userId, list))
     .groupBy(list.id)
     .orderBy(asc(sql`lower(${list.name})`));
+
+  if (lists.length === 0) return [];
+
+  const ranked = executor
+    .select({
+      listId: listMembership.listId,
+      posterPath: title.posterPath,
+      name: title.name,
+      rank: sql<number>`row_number() over (
+          partition by ${listMembership.listId}
+          order by ${listMembership.position}
+        )`
+        .mapWith(Number)
+        .as("rank"),
+    })
+    .from(listMembership)
+    .innerJoin(title, eq(title.id, listMembership.titleId))
+    .where(ownedBy(userId, listMembership))
+    .as("ranked");
+
+  const posterRows = await executor
+    .select({ listId: ranked.listId, posterPath: ranked.posterPath, name: ranked.name })
+    .from(ranked)
+    .where(lte(ranked.rank, LIST_STACK_SIZE))
+    .orderBy(asc(ranked.listId), asc(ranked.rank));
+
+  const posters = new Map<string, ListPoster[]>();
+  for (const { listId, ...poster } of posterRows) {
+    const stack = posters.get(listId) ?? [];
+    stack.push(poster);
+    posters.set(listId, stack);
+  }
+
+  return lists.map((one) => ({ ...one, posters: posters.get(one.id) ?? [] }));
 }
 
 /**

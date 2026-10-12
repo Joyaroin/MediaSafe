@@ -32,7 +32,7 @@ import type { TitleKind } from "@/tmdb/mirror";
 // after it. `tests/nav-transitions.test.ts` owns asserting that class exists and is wired
 // to a ramp token; this only needs the fill to still carry it.
 const FILL =
-  /<div class="progress-fill h-full bg-accent transition-\[width\] duration-\[var\(--dur-base\)\]" style="width:(\d+(?:\.\d+)?)%"><\/div>/;
+  /<div class="progress-fill h-full bg-\[var\(--poster-ink,white\)\] transition-\[width\] duration-\[var\(--dur-base\)\]" style="width:(\d+(?:\.\d+)?)%"><\/div>/;
 
 describe("the bar itself", () => {
   const bar = (progress: { watched: number; released: number } | null) =>
@@ -63,10 +63,11 @@ describe("the bar itself", () => {
     expect(bar({ watched: 1, released: 2 })).not.toContain('role="progressbar"');
   });
 
-  it("takes a translucent ground as its track, not the hairline it had under the name", () => {
-    // `bg-hair` is a tone against a known ground and disappears over pale artwork.
-    expect(bar({ watched: 1, released: 2 })).toContain("bg-ground/70");
-    expect(bar({ watched: 1, released: 2 })).not.toContain("bg-hair");
+  it("is 3px of white with no track — Charcoal, handoff §6", () => {
+    const markup = bar({ watched: 1, released: 2 });
+
+    expect(markup).toContain('class="absolute inset-x-0 bottom-0 h-[3px]"');
+    expect(markup).not.toMatch(/bg-ground|bg-hair|bg-accent/);
   });
 });
 
@@ -115,12 +116,12 @@ describe("where it sits on the library bill", () => {
     const markup = cell();
 
     expect(barIsInsideThePoster(markup)).toBe(true);
-    // The name is the last thing in the cell now — nothing follows it.
-    expect(markup).toMatch(/Severance<\/p><\/button>/);
+    // Under the poster: the name, then the state line, and nothing else (handoff §8.4).
+    expect(markup).toMatch(/Severance<\/p><p[^>]*>Watching<\/p><\/button>/);
   });
 
   it("still draws no bar for a film", () => {
-    expect(cell({ kind: "film" as TitleKind, progress: null })).not.toContain("bg-ground/70");
+    expect(cell({ kind: "film" as TitleKind, progress: null })).not.toContain("progress-fill");
   });
 });
 
@@ -171,8 +172,8 @@ describe("where it sits on a list", () => {
   it("draws nothing for a title this account does not own", () => {
     const unowned = { libraryEntryId: null, progress: null };
 
-    expect(iconGrid(unowned)).not.toContain("bg-ground/70");
-    expect(row(unowned)).not.toContain("bg-ground/70");
+    expect(iconGrid(unowned)).not.toContain("progress-fill");
+    expect(row(unowned)).not.toContain("progress-fill");
   });
 
   it("leaves the hand-order numeral alone — it is not part of the bar", () => {

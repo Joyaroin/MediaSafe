@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore, type Dispatch, type SetStateAction } from "react";
 
 import type { ListDetailTitleRow } from "@/db/access";
+import { formatTitleCount } from "../title-count";
 import { ListIconGrid } from "./list-icon-grid";
 import { ListViewControl } from "./list-view-control";
 import {
@@ -38,11 +39,15 @@ import { useTakeOff } from "./take-off";
 export function ListDetailBody({
   listId,
   listName,
-  titles,
+  order,
+  setOrder,
 }: {
   readonly listId: string;
   readonly listName: string;
-  readonly titles: readonly ListDetailTitleRow[];
+  /** One order for both views, so a title taken off in one is gone from the other. Owned
+   *  by `list-detail-surface.tsx`, whose delete dialog says how many titles are left. */
+  readonly order: readonly ListDetailTitleRow[];
+  readonly setOrder: Dispatch<SetStateAction<readonly ListDetailTitleRow[]>>;
 }) {
   /* Read out of `localStorage` rather than held in state: the value lives outside React,
      and `useSyncExternalStore`'s server snapshot is the one form that lets the server and
@@ -53,8 +58,6 @@ export function ListDetailBody({
     defaultListViewMode,
   );
 
-  // One order for both views, so a title taken off in one is gone from the other.
-  const [order, setOrder] = useState<readonly ListDetailTitleRow[]>(titles);
   const takeOff = useTakeOff({ listId, listName, order, setOrder });
 
   function choose(mode: ListViewMode): void {
@@ -63,11 +66,12 @@ export function ListDetailBody({
 
   return (
     <>
-      {/* The toggle sits over the titles rather than in `BackToListsBar` with the list's
-          name: the bar is chrome that every list route shares, and this control belongs to
-          the one thing below it. `px-6` is the rows' own gutter, which is what the bar
-          above and the attribution below both use. */}
-      <div className="flex items-center justify-end px-gutter pb-3">
+      {/* The count on the left, the compact Icons / List control on the right (handoff
+          §8.5). The count follows `order`, so it drops as titles are taken off. */}
+      <div className="flex items-center justify-between gap-3 px-gutter pt-2 pb-3 lg:px-10">
+        <p className="text-meta text-dim" data-numeric>
+          {formatTitleCount(order.length)}
+        </p>
         <ListViewControl value={view} onChange={choose} />
       </div>
 

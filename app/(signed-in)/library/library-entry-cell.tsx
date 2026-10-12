@@ -3,6 +3,7 @@ import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import { posterGlowStyle } from "@/app/poster-tint";
 import { CheckmarkIcon } from "./checkmark-icon";
+import { STATE_LABELS } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
 
@@ -37,13 +38,12 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  *
  * ── Abandoned is the only modified poster ────────────────────────────────────────────
  *
- * An abandoned title's poster drops to `opacity: .55` and its name drops to `--dim`; that
+ * An abandoned title's poster drops to `opacity: .5` and its name drops to `--dim`; that
  * pairing is the only place the poster is modified. Both halves are here and nowhere else
  * — one without the other reads as a rendering fault rather than as a state.
  *
- * `.55` since turn 9, up from `.45`, and the same number the phone's deleted group tile used on the
- * Up next Abandoned group — the handoff names this cell as the surface that already dims
- * a poster and asks that the two not be left different by accident.
+ * `.5` since Charcoal (handoff §6: *Dropped draws the poster at 50%*), down from turn 9's
+ * `.55`.
  *
  * ── The bar, since issue #324, and on the artwork since ─────────────────────────────
  *
@@ -57,25 +57,16 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  * row of height to every one of 472 cells to say a thing about the poster above it; inside
  * the poster it is free, and the name sits back against the artwork it names.
  *
- * **The bar takes the accent, and the state word is gone** — the same trade
- * `title-hero.tsx` made on the title's own page, settled here the other way round. That
- * file kept the word in `--dim` and gave the bar the accent because the two sat in one
- * block saying the same thing; on the bill the word said it 472 times over, once per
- * card, and a reader scanning the grid is reading the *filter* they are inside, not each
- * cell's repetition of it. So the word goes entirely and the bar keeps the accent: *how
- * far through you are right now* is the most literal reading of live, and it is the same
- * `LIVE_EDGE_OF_THE_RECORD` role the filter bar's unselected *Watching* chip already
- * spends on this screen — one role, not two.
+ * **The state line is back** — Charcoal, handoff §8.4 and issue #402. Under the name, at
+ * `12px` in `--dim`: *S1 E2 up next* for a show being watched, otherwise the state's own
+ * word from `STATE_LABELS`. Turn 9 took the word off the card because it repeated the
+ * filter a reader was inside; the boards put it back, and the owner chose the numbered
+ * form for the watching line over the old *never numbered alone* rule (issue #402).
  *
  * **Two overlays, and only two** — issue #357. A title being watched carries the bar; a
- * finished one carries a check in the corner; every other state carries nothing. The bar
- * used to be drawn for every state with progress, which put a full bar on every finished
- * show and a stub on every watchlist one, and made the grid a wall of bars that said
- * nothing a reader scanning for *what am I in the middle of* could use.
- *
- * **No numeral anywhere near it** — the remaining rule, amended by this
- * ticket rather than reopened: a count may not stand as chrome on a surface reached to do
- * something else, and this bar is chrome by construction.
+ * finished one carries a filled tick in the top-left corner (handoff §6); every other
+ * state carries nothing. The bar used to be drawn for every state with progress, which
+ * put a full bar on every finished show and a stub on every watchlist one.
  *
  * ── The poster leaves as its own prop, since issue #303 ──────────────────────────────
  *
@@ -134,9 +125,6 @@ export function LibraryEntryCell({
         // beside the rail row, the desktop pane and the title's own page.
         poster={
           <>
-            {/* `.55` for an abandoned title, on both surfaces that dim one. The linen
-                ground is lighter than the bone one this number was chosen against, so the
-                same title reads as further gone at the same opacity. */}
             {/* The glow's wrapper (issue #363) — on a plain element of this server
                 component, so the cell gains no client boundary; `.poster` already spends
                 its own `box-shadow` on the plate line. It carries the poster's radius so
@@ -153,7 +141,7 @@ export function LibraryEntryCell({
                 posterPath={entry.posterPath}
                 name={entry.name}
                 width={BILL_POSTER_WIDTH}
-                className={abandoned ? `${BILL_POSTER} opacity-55` : BILL_POSTER}
+                className={abandoned ? `${BILL_POSTER} opacity-50` : BILL_POSTER}
                 aboveFold={aboveFold}
               >
                 {/* On the artwork, not under the name — `poster-progress-bar.tsx` has the
@@ -166,7 +154,7 @@ export function LibraryEntryCell({
                   <span
                     aria-label="Finished"
                     role="img"
-                    className="absolute bottom-1.5 left-1.5 flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-text text-ground"
+                    className="absolute top-1.5 left-1.5 flex h-6 w-6 items-center justify-center rounded-[var(--radius-full)] bg-text text-ground"
                   >
                     <CheckmarkIcon className="h-3 w-3" />
                   </span>
@@ -192,11 +180,22 @@ export function LibraryEntryCell({
           ragged row rather than one long name.
         */}
         <p
-          className={`mt-2 line-clamp-2 break-words text-item leading-snug font-medium ${abandoned ? "text-dim" : "text-text"}`}
+          className={`mt-1.5 line-clamp-2 break-words text-item leading-tight font-medium ${abandoned ? "text-dim" : "text-text"}`}
         >
           {entry.name}
+        </p>
+        <p className="mt-0.5 truncate text-label text-dim" data-numeric>
+          {stateLine(entry)}
         </p>
       </SelectableEntry>
     </li>
   );
+}
+
+/** The line under the name — *S1 E2 up next* while watching, else the state's own word. */
+export function stateLine(entry: Pick<LibraryEntryRow, "state" | "upNext">): string {
+  if (entry.state === "watching" && entry.upNext !== null) {
+    return `S${entry.upNext.seasonNo} E${entry.upNext.episodeNo} up next`;
+  }
+  return STATE_LABELS[entry.state].label;
 }

@@ -17,15 +17,19 @@ export default function ListDetailLoading() {
     <main className="arrive-fast flex w-full flex-1 flex-col">
       <BackToListsBar />
 
-      {/* The list's name, then one screen of its rows — a position, a `56px` poster and a
+      {/* The list's name, then one screen of its rows — a position, a `40px` poster and a
           name and meta line — the row view it opens in (`app/skeleton.tsx`). */}
-      <SkeletonRegion className="gap-0 px-gutter py-5">
-        <Block className="h-6 w-48" />
+      <SkeletonRegion className="gap-0 px-gutter pt-3 pb-5 lg:px-10">
+        <Block className="h-12 w-56" />
+        <div className="mt-3 flex items-center justify-between">
+          <Block className="h-3 w-16" />
+          <Block className="h-11 w-36 [--poster-radius:var(--radius-5)]" />
+        </div>
         <ul className="mt-5 flex flex-col">
           {ROWS.map((width) => (
-            <li key={width} className="flex items-center gap-4 border-b border-hair py-3">
-              <Block className="h-3 w-5 shrink-0" />
-              <PosterBlock className="w-14 shrink-0" />
+            <li key={width} className="flex min-h-[76px] items-center gap-3 border-b border-hair py-2">
+              <Block className="h-4 w-6 shrink-0" />
+              <PosterBlock className="w-10 shrink-0" />
               <span className="flex min-w-0 flex-1 flex-col gap-2">
                 <Block className={`h-4 ${width}`} />
                 <Block className="h-2.5 w-24" />
