@@ -3,14 +3,20 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  BAND,
+  bandFor,
   GLOW,
   glowFor,
+  posterBandStyle,
   posterGlowStyle,
   posterTintStyle,
+  TITLE_SCRIM,
+  titleScrimAlpha,
+  titleScrimGradient,
   WASH,
   washFor,
 } from "@/app/poster-tint";
-import { hexToOklch, oklabToHex } from "@/lib/oklab";
+import { hexToOklch, inSrgbGamut, oklabToHex } from "@/lib/oklab";
 
 import {
   APCA_CONTENT_TEXT_FLOOR,
@@ -146,5 +152,132 @@ describe("the tint is its own token family", () => {
     for (const value of declarations) {
       expect(["var(--tint-light)", "var(--tint-dark)"]).toContain(value);
     }
+  });
+});
+
+describe("the band (Charcoal, issue #398) — white on it clears 4.5:1 at every hue", () => {
+  /**
+   * Handoff §10: the stored hue, 52% lightness, chroma capped at 0.17 and then reduced
+   * until the colour is inside sRGB. The sweep is the wash's: every hue, from the darkest
+   * poster to the palest and the dullest to the most vivid.
+   */
+  const colours = posterColours();
+  const WHITE: [number, number, number] = [1, 1, 1];
+
+  it("is inside sRGB as written, so no browser ever clips it", () => {
+    for (const colour of colours) {
+      const [L, C, H] = parseOklch(bandFor(colour));
+      expect(inSrgbGamut({ l: L / 100, c: C, h: H }), `${colour} → ${bandFor(colour)}`).toBe(true);
+    }
+  });
+
+  it("is always at 52% lightness, with chroma at most 0.17", () => {
+    for (const colour of colours) {
+      const [L, C] = parseOklch(bandFor(colour));
+      expect(L).toBeCloseTo(BAND.l * 100, 5);
+      expect(C).toBeLessThanOrEqual(BAND.maxChroma);
+    }
+  });
+
+  it("puts white at 4.5:1 or better on every band — and at the 5.1:1 the handoff measured", () => {
+    const worst = Math.min(...colours.map((c) => wcagContrast(WHITE, painted(bandFor(c)))));
+    expect(worst).toBeGreaterThanOrEqual(4.5);
+    expect(worst).toBeGreaterThanOrEqual(5.1);
+  });
+
+  it("keeps the stored hue, and takes the cap only when the gamut allows it", () => {
+    const red = "#e01b24";
+    const [, C, H] = parseOklch(bandFor(red));
+    expect(H).toBeCloseTo(hexToOklch(red).h, 0);
+    expect(C).toBe(BAND.maxChroma);
+  });
+
+  it("reduces chroma rather than clipping where 0.17 is outside sRGB", () => {
+    // Yellow at 52% cannot hold 0.17; handoff §10's table gives #f2c200 a muddy gold.
+    const [, C] = parseOklch(bandFor("#f2c200"));
+    expect(C).toBeLessThan(BAND.maxChroma);
+    expect(C).toBeGreaterThan(0.1);
+  });
+
+  it("leaves a grey poster grey", () => {
+    expect(parseOklch(bandFor("#8a8a8a"))[1]).toBeLessThan(0.001);
+  });
+
+  it("is one value for both themes, and nothing at all for a title with no colour", () => {
+    expect(posterBandStyle("#e01b24")).toEqual({ "--band": bandFor("#e01b24") });
+    expect(posterBandStyle(null)).toBeUndefined();
+  });
+});
+
+describe("text over a title's artwork keeps §10's floors (Charcoal, issue #398)", () => {
+  /**
+   * The hero's scrim, composited the way a browser composites a translucent layer — in
+   * gamma-encoded sRGB — over the worst artwork there is: pure white and pure black. In
+   * both themes, at each kind of text's weakest edge.
+   */
+  const ARTWORK: Record<string, [number, number, number]> = {
+    white: [1, 1, 1],
+    black: [0, 0, 0],
+  };
+  const THEMES = [
+    { theme: "light", ground: "ground", text: "text", dim: "dim" },
+    { theme: "dark", ground: "dark-ground", text: "dark-text", dim: "dark-dim" },
+  ] as const;
+
+  function over(
+    top: [number, number, number],
+    alpha: number,
+    under: [number, number, number],
+  ): [number, number, number] {
+    return top.map((c, i) => alpha * c + (1 - alpha) * under[i]) as [number, number, number];
+  }
+
+  const cases = THEMES.flatMap((t) =>
+    Object.entries(ARTWORK).map(([artwork, rgb]) => ({ ...t, artwork, rgb })),
+  );
+
+  it.each(cases)("large text: --$text on the scrim over $artwork artwork, $theme, is 3:1 or better", (c) => {
+    const backdrop = over(resolvedSrgb(c.ground), titleScrimAlpha(0), c.rgb);
+    expect(wcagContrast(resolvedSrgb(c.text), backdrop)).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(cases)("small text: --$text and --$dim over $artwork artwork, $theme, are 4.5:1 or better", (c) => {
+    const backdrop = over(resolvedSrgb(c.ground), titleScrimAlpha(TITLE_SCRIM.smallTextFrom), c.rgb);
+    expect(wcagContrast(resolvedSrgb(c.text), backdrop)).toBeGreaterThanOrEqual(4.5);
+    expect(wcagContrast(resolvedSrgb(c.dim), backdrop)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(cases)("the state tag: its backing over the scrim over $artwork artwork, $theme, is 4.5:1 or better", (c) => {
+    const ground = resolvedSrgb(c.ground);
+    const scrimmed = over(ground, titleScrimAlpha(0), c.rgb);
+    const backdrop = over(ground, TITLE_SCRIM.stateTagBacking, scrimmed);
+    expect(wcagContrast(resolvedSrgb(c.text), backdrop)).toBeGreaterThanOrEqual(4.5);
+    expect(wcagContrast(resolvedSrgb(c.dim), backdrop)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("meets §10's minimum scrims: 60% at large text, 90% at small, tag and scrim together 90%", () => {
+    expect(titleScrimAlpha(0)).toBeGreaterThanOrEqual(0.6);
+    expect(titleScrimAlpha(TITLE_SCRIM.smallTextFrom)).toBeGreaterThanOrEqual(0.9);
+    const tagged = 1 - (1 - TITLE_SCRIM.stateTagBacking) * (1 - titleScrimAlpha(0));
+    expect(tagged).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("only rises downward, so text pushed lower by a wrapped name sits on more scrim, not less", () => {
+    let previous = 0;
+    for (let offset = -120; offset <= 200; offset += 1) {
+      const alpha = titleScrimAlpha(offset);
+      expect(alpha).toBeGreaterThanOrEqual(previous);
+      previous = alpha;
+    }
+  });
+
+  it("paints the same stops it is tested with", () => {
+    const gradient = titleScrimGradient("var(--hero-text-top)");
+    for (const { at, alpha } of TITLE_SCRIM.stops) {
+      expect(gradient).toContain(
+        `var(--color-ground) ${alpha * 100}%, transparent) calc(var(--hero-text-top) ${at < 0 ? "-" : "+"} ${Math.abs(at)}px)`,
+      );
+    }
+    expect(gradient).toMatch(/var\(--color-ground\) 100%\)$/);
   });
 });
