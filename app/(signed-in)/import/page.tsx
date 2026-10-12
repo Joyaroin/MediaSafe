@@ -37,7 +37,7 @@ export default async function ImportPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-text">Import</h1>
+      <h1 className="screen-title text-screen text-text">Import</h1>
 
       <div className="mt-8 flex-1">
         <ImportSurface />

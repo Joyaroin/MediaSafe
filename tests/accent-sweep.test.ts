@@ -194,14 +194,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     reason: "the sticky offline banner — the failure system",
   },
 
-  // ── Literal exceptions: the primary action on a surface ───────────────────────────
-
-  "app/(signed-in)/import/import-surface.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason: "'Choose your file' — the one primary action on the import surface",
-  },
-
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────
 
 
