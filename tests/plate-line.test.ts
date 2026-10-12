@@ -17,9 +17,9 @@ import { describe, expect, it } from "vitest";
  * Three things this file holds:
  *
  *  1. **The expression itself** — declared once as the reusable `plate-line` utility, and
- *     read (not re-declared) by `.poster` and `.still` for their light-scheme default.
+ *     read (not re-declared) by `.poster` for its light-scheme default.
  *  2. **The dark poster ring** — both dark selectors (`prefers-color-scheme` and the
- *     explicit `data-theme="dark"`) override `.poster`/`.still` to the hairline token
+ *     explicit `data-theme="dark"`) override `.poster` to the hairline token
  *     instead, so artwork carries exactly one ring, never both.
  *  3. **Every raised container**, swept the way `tests/accent-sweep.test.ts` sweeps the
  *     accent: a manifest of every `bg-raised` site under `app/`, each one either a
@@ -66,9 +66,10 @@ describe("the plate line is a call-site expression, not a token", () => {
     expect(utilityBody("plate-line").replace(/\s+/g, " ").trim()).toBe(PLATE_LINE_DECLARATION);
   });
 
-  it("appears exactly three times in the stylesheet: the utility, and .poster/.still's own default", () => {
+  it("appears exactly twice in the stylesheet: the utility, and .poster's own default", () => {
     const hits = [...CSS_CODE.matchAll(/box-shadow:\s*inset 0 0 0 1px color-mix\(in oklab, var\(--color-text\) 9%, transparent\);/g)];
-    expect(hits).toHaveLength(3);
+    // Three until #409 removed `.still`, which the retired episode page was its last user of.
+    expect(hits).toHaveLength(2);
   });
 
   it("field-well does not carry it — the field's own inset ring is the focus indicator", () => {
@@ -81,30 +82,22 @@ describe("artwork: the plate line in light, the hairline-token ring in dark, nev
     expect(utilityBody("poster")).toContain(PLATE_LINE_DECLARATION);
   });
 
-  it("still's own box-shadow is the plate line by default", () => {
-    expect(utilityBody("still")).toContain(PLATE_LINE_DECLARATION);
-  });
-
-  it("the system-dark override replaces both with the hairline-token ring", () => {
+  it("the system-dark override replaces it with the hairline-token ring", () => {
     const match = CSS_CODE.match(
-      /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \.poster,\s*:root:not\(\[data-theme="light"\]\) \.still \{([^}]*)\}/,
+      /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \.poster \{([^}]*)\}/,
     );
-    expect(match, "a system-dark override for .poster and .still must exist").not.toBeNull();
+    expect(match, "a system-dark override for .poster must exist").not.toBeNull();
     expect(match![1]).toContain(POSTER_RING_DECLARATION);
   });
 
-  it("the explicit data-theme=\"dark\" override replaces both with the hairline-token ring", () => {
-    const match = CSS_CODE.match(
-      /:root\[data-theme="dark"\] \.poster,\s*:root\[data-theme="dark"\] \.still \{([^}]*)\}/,
-    );
-    expect(match, 'an explicit dark override for .poster and .still must exist').not.toBeNull();
+  it("the explicit data-theme=\"dark\" override replaces it with the hairline-token ring", () => {
+    const match = CSS_CODE.match(/:root\[data-theme="dark"\] \.poster \{([^}]*)\}/);
+    expect(match, 'an explicit dark override for .poster must exist').not.toBeNull();
     expect(match![1]).toContain(POSTER_RING_DECLARATION);
   });
 
   it("the ring reads the hairline token, not a second color-mix", () => {
-    const match = CSS_CODE.match(
-      /:root\[data-theme="dark"\] \.poster,\s*:root\[data-theme="dark"\] \.still \{([^}]*)\}/,
-    );
+    const match = CSS_CODE.match(/:root\[data-theme="dark"\] \.poster \{([^}]*)\}/);
     expect(match![1]).not.toContain("color-mix");
   });
 });

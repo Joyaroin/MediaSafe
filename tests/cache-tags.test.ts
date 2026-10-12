@@ -78,13 +78,11 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     listYouRails: vi.fn(),
     getUnownedTitleDetail: vi.fn(),
   },
-  /** The borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. Four
-   *  since issue #253 put an episode's own synopsis behind the same cache. */
+  /** The borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. */
   tmdb: {
     titleSynopsis: vi.fn(),
     titleCastAndCrew: vi.fn(),
     titleWatchProviders: vi.fn(),
-    episodeSynopsis: vi.fn(),
   },
 }));
 
@@ -217,7 +215,6 @@ const {
   serverDay,
 } = await import("@/cache/tags");
 const {
-  cachedEpisodeSynopsis,
   cachedTitleCastAndCrew,
   cachedTitleSynopsis,
   cachedTitleWatchProviders,
@@ -300,16 +297,10 @@ function borrowedFrom(prefix: string) {
 }
 
 /**
- * Which episode `readEveryBorrowedFact` asks for the synopsis of. Any would do; naming it
- * once is what makes the numbers in the assertions below traceable to something.
- */
-const EPISODE = { seasonNo: 2, episodeNo: 4 } as const;
-
-/**
- * The five borrowed reads of one title, all of them, in one call.
+ * The four borrowed reads of one title, all of them, in one call.
  *
  * Not folded into `CACHED` above, and that is the point rather than an oversight: every
- * entry in that table is keyed and tagged by account, and these five are tagged by title.
+ * entry in that table is keyed and tagged by account, and these four are tagged by title.
  * A table that held both would have to carry the difference as a flag, and the difference
  * is the whole subject of `cache/borrowed-facts.ts`.
  */
@@ -321,9 +312,6 @@ async function readEveryBorrowedFact(
   await cachedTitleCastAndCrew(userId, title.kind, title.tmdbId);
   await cachedTitleWatchProviders(userId, title.kind, title.tmdbId);
   await cachedUnownedTitleDetail(userId, title.kind, title.tmdbId);
-  // The fifth, #253's. It takes no `kind` — an episode belongs to a show, and TMDB has no
-  // film endpoint to fork to — so it takes the id and the two numbers instead.
-  await cachedEpisodeSynopsis(userId, title.tmdbId, EPISODE.seasonNo, EPISODE.episodeNo);
 }
 
 beforeEach(() => {
@@ -351,16 +339,6 @@ beforeEach(() => {
     mock.mockReset();
     mock.mockImplementation(borrowedFrom(prefix));
   }
-
-  // The episode synopsis has a different signature from the four above — `(tmdbId,
-  // seasonNo, episodeNo)` rather than `(kind, tmdbId)` — so its answer is built here
-  // rather than by `borrowedFrom`, and it names the episode so that the value alone says
-  // which entry came back.
-  tmdb.episodeSynopsis.mockReset();
-  tmdb.episodeSynopsis.mockImplementation(
-    async (tmdbId: number, seasonNo: number, episodeNo: number) =>
-      `the synopsis of ${tmdbId} s${seasonNo}e${episodeNo}`,
-  );
 });
 
 describe("every key carries an account", () => {
@@ -1145,16 +1123,6 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
         tags: ["borrowed-facts:film:1972"],
         revalidate: WINDOW_SECONDS,
       },
-      {
-        // Issue #253. The tag says `show` where every entry above says `film`, and that
-        // is an assertion rather than an inconsistency in the fixture: an episode belongs
-        // to a show, so `cachedEpisodeSynopsis` builds its tag with that literal and has
-        // no `kind` parameter to be handed the wrong one through. `SOLARIS` being a film
-        // is what makes the difference visible here.
-        keyParts: ["episodeSynopsis", mine],
-        tags: ["borrowed-facts:show:1972"],
-        revalidate: WINDOW_SECONDS,
-      },
     ]);
   });
 
@@ -1179,57 +1147,13 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
    * source text — which is a coincidence of the implementation rather than a property
    * anybody chose. The prefix is the property anybody chose.
    */
-  it("gives each of the five its own entry rather than one shared one", async () => {
+  it("gives each of the four its own entry rather than one shared one", async () => {
     await readEveryBorrowedFact(mine, SOLARIS);
 
     expect(tmdb.titleSynopsis).toHaveBeenCalledTimes(1);
     expect(tmdb.titleCastAndCrew).toHaveBeenCalledTimes(1);
     expect(tmdb.titleWatchProviders).toHaveBeenCalledTimes(1);
     expect(reads.getUnownedTitleDetail).toHaveBeenCalledTimes(1);
-    expect(tmdb.episodeSynopsis).toHaveBeenCalledTimes(1);
-  });
-
-  /**
-   * **Two episodes of one show are two entries** — issue #253, and the property the whole
-   * feature rests on. `cachedEpisodeSynopsis` passes the season and episode numbers as
-   * *arguments*, and `unstable_cache` folds a call's arguments into its key alongside the
-   * key parts. Without that, a long-running show would have one synopsis entry answering
-   * whichever episode was opened first — a failure that would read on the glass as TMDB
-   * being wrong about every episode but one.
-   *
-   * Asserted on the values and not only on the call count, so that a key derivation which
-   * separated the entries but crossed their answers would fail here too.
-   */
-  it("keeps two episodes of one show apart", async () => {
-    expect(await cachedEpisodeSynopsis(mine, 2001, 1, 1)).toBe("the synopsis of 2001 s1e1");
-    expect(await cachedEpisodeSynopsis(mine, 2001, 1, 2)).toBe("the synopsis of 2001 s1e2");
-    expect(tmdb.episodeSynopsis).toHaveBeenCalledTimes(2);
-  });
-
-  /** And one episode read twice is one entry — the *is a cache, not two functions* check
-   *  the four above get, aimed at the read whose key has the most parts to get wrong. */
-  it("reads one episode's synopsis once", async () => {
-    await cachedEpisodeSynopsis(mine, 2001, 1, 1);
-    await cachedEpisodeSynopsis(mine, 2001, 1, 1);
-
-    expect(tmdb.episodeSynopsis).toHaveBeenCalledTimes(1);
-  });
-
-  /**
-   * The coarse tag, asserted as the deliberate choice `cache/borrowed-facts.ts` argues it
-   * to be: an episode's synopsis carries the **show's** tag, so a mirror refresh expires
-   * it alongside the show's own three facts through `invalidateBorrowedFactsFor` and its
-   * existing callers — the sweep, the two add paths, the import chunk — with no call site
-   * changed. This is the test that fails if a later edit gives episodes a tag of their
-   * own and leaves those callers busting the old one.
-   */
-  it("expires an episode's synopsis when its show's borrowed facts are busted", async () => {
-    expect(await cachedEpisodeSynopsis(mine, 2001, 1, 1)).toBe("the synopsis of 2001 s1e1");
-
-    invalidateBorrowedFactsFor([{ kind: "show", tmdbId: 2001 }]);
-    await cachedEpisodeSynopsis(mine, 2001, 1, 1);
-
-    expect(tmdb.episodeSynopsis).toHaveBeenCalledTimes(2);
   });
 
   it("is a cache, and not merely four functions that read twice", async () => {
@@ -1481,14 +1405,11 @@ describe("the reads that are cached, and the one that must never be", () => {
       // #247's. #249 retired `accountStats`, which used to sit above it.
       "accountFigures",
       "listYouRails",
-      // `borrowed-facts.ts` — the six, in file order. `episodeSynopsis` is #253's, and
-      // it sits second because it is written directly beneath the title-level synopsis
-      // whose docblock covers everything the two share. `recommendationsFor` is the
+      // `borrowed-facts.ts` — in file order. `recommendationsFor` is the
       // *Because you watched* rail's, and it is the first entry here that is not a fact
       // about a title you own — it is a fact about a title you watched, tagged under that
       // seed so it expires when the rest of the borrowed facts about it do.
       "titleSynopsis",
-      "episodeSynopsis",
       // The mirror, read twice: throwing for a list row, where a missing row is a broken
       // invariant, and nullable for catalogue detail, where a title nobody has ever added
       // is the ordinary case. Same fact, same tag, two contracts — and the pair is what

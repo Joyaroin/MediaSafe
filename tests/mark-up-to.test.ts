@@ -4,7 +4,6 @@ import type { EpisodeDetail } from "@/db/access";
 import {
   coveredUpTo,
   markUpToCount,
-  markUpToLabel,
   withLiveWatched,
 } from "@/app/(signed-in)/library/mark-up-to";
 
@@ -262,31 +261,5 @@ describe("markUpToCount", () => {
     // The special is not written and the already-watched episode is not re-written, so
     // the number is 2 — not the 4 rows above and including this one.
     expect(markUpToCount(coveredUpTo(episodes, episodes[3]) ?? [])).toBe("2 episodes");
-  });
-});
-
-describe("markUpToLabel", () => {
-  it("names the episode it would mark up to, in full", () => {
-    const label = markUpToLabel(
-      episode({ seasonNo: 2, episodeNo: 4, name: "Woe's Hollow" }),
-    );
-
-    // An episode is never referred to by number alone, and a control whose
-    // only text is a glyph is the surface that most needs that rule kept.
-    expect(label).toContain("Season 2, Episode 4");
-    expect(label).toContain("Woe's Hollow");
-  });
-
-  it("says Specials rather than Season 0, as every other surface does", () => {
-    const label = markUpToLabel(episode({ seasonNo: 0, episodeNo: 1, name: "Making Of" }));
-
-    expect(label).toContain("Specials");
-    expect(label).not.toContain("Season 0");
-  });
-
-  it("says an unnamed episode is not yet named rather than printing its number twice", () => {
-    const label = markUpToLabel(episode({ seasonNo: 1, episodeNo: 3, name: null }));
-
-    expect(label).toContain("Not yet named");
   });
 });

@@ -172,12 +172,11 @@ export function SortSelect({ value }: { value: LibrarySort }) {
 export function ZeroMatches({ onClear }: { onClear: () => void }) {
   return (
     <section className={EMPTY_PANEL}>
-      {/* The type step is deliberately untouched. `text-bill-md` is the step this shares
-          with the read-failure headline, and sharing it is the point — the two are told
-          apart by colour and by the failure's accent rule, never by size
-          (`errors/failure-treatment.ts`, and `tests/library-surface.test.ts` asserts it).
-          The handoff asks these states to be restyled *to the token set only*, so the
-          colour moves to `--ink` and the size stays where the relationship needs it. */}
+      {/* `text-bill-md`, one step under the empty library's `text-bill-lg` — the same
+          panel a step down, because this is a filter coming up short rather than a library
+          with nothing in it. Told apart from a failed read by the serif against the
+          failure's Row-size sans (`errors/failure-treatment.ts`); `tests/library-surface.
+          test.ts` asserts both. The colour is `text`. */}
       <h2 className="bill-title text-bill-md text-text">Nothing under that filter</h2>
 
       <p className="mt-2 max-w-[60ch] text-item text-dim">

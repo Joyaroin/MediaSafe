@@ -11,9 +11,8 @@ import { UpNextHeading } from "./up-next-heading";
  * telling them it was the deck.
  *
  * This is the surface `AGENTS.md`'s rule bites hardest on: a failed read here must never
- * be mistaken for `UpNextEmpty`'s *you're caught up* — the exact failure `tvtracker`
- * shipped for its whole life, on the one screen this app opens on.
-
+ * be mistaken for `up-next-nothing.tsx`'s *nothing queued for tonight* — the exact failure
+ * `tvtracker` shipped for its whole life, on the one screen this app opens on.
  */
 export default function UpNextReadFailure({
   error,

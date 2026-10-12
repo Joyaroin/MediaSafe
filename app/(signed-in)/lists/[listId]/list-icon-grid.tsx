@@ -128,10 +128,9 @@ function IconCell({
             <PosterProgressBar progress={title.progress} />
           </Poster>
 
-          {/* `--ink` on the poster, not the accent: this is the order the reader set, and
-              `app/globals.css` gives the accent three roles, none of which is *a fact
-              about where something sits in a list*. `tab-bar.tsx` made the same call for
-              the same reason. */}
+          {/* `text` on the poster, and not under an accent meaning: this is the order the
+              reader set, and none of `app/accent-meaning.ts`'s three meanings is *a fact
+              about where something sits in a list*. */}
           <span
             className="code-line absolute top-1.5 left-1.5 min-w-5 rounded-[var(--radius-full)] bg-text px-1.5 py-0.5 text-center text-ground"
             data-numeric

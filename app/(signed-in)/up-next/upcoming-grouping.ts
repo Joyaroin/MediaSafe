@@ -74,7 +74,7 @@ const NAMED_WEEKDAY_HORIZON = 6;
  * Built in UTC and read in UTC, so the arithmetic is over calendar days and never over
  * an elapsed duration — there is no hour in either operand, so no daylight-saving
  * transition can make two adjacent days 23 or 25 hours apart and round the subtraction
- * to the wrong integer. `episode-facts.ts`'s `airDateInWords` constructs its instant the
+ * to the wrong integer. `episode-facts.ts`'s `airDateShort` constructs its instant the
  * same way, for the same mechanical reason.
  */
 function calendarDay(day: string): number {

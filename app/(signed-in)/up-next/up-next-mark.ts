@@ -288,8 +288,7 @@ export function readUpNextMark(
  * (amended in the same pull request), not a box fixed here and a source
  * fixed separately.
  *
- * The mirrored `still_path` (#246) is untouched in the data and still drawn by the episode
- * page that owns it (`episode-still.tsx`). The compact row never reads it. `"still"` is
+ * The mirrored `still_path` (#246) is untouched in the data. The compact row never reads it. `"still"` is
  * `featuredPicture`'s below — issue #362's featured card is wide, so a still fits its frame
  * rather than being squeezed into a poster's.
  *

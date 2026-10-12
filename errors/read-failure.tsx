@@ -9,24 +9,24 @@ import { GHOST_RECOVERY } from "./recovery-buttons";
 import { ReferenceLine } from "./reference-line";
 
 /**
- * The read-failure treatment, per the States register: inline, left-aligned, a
- * `2px` `accent` top border, the heading at `text-bill-md` in `accent`, a ghost *Try
- * again*, and a dim tabular reference id.
+ * The read-failure treatment — Charcoal (issue #397, handoff §9): inline, left-aligned, in
+ * the outlined panel (`failure-treatment.ts`), a Row-size sans heading in `text`, the
+ * sentence that says nothing else was affected, a quiet *Try again*, and a dim tabular
+ * reference id.
  *
- * ── Why it looks nothing like an empty state ──────────────────────────────────────
+ * ── Why it must never read as an empty state ──────────────────────────────────────
  *
- * This is the whole point of the component, and it is why every one of those choices is
- * the opposite of the empty and zero-match treatments rather than merely different from
- * them. Those two are **centred**, with the heading in **`text`** and no border at all.
- * This one is **left-aligned**, with the heading in **`accent`** under a **`2px` `accent`
- * rule** — the only place in the application where vermilion appears without a watch
- * having been recorded.
+ * Since Charcoal both sit in an outlined panel, so the difference is carried by what is
+ * in it, and every piece of it is the opposite of the empty treatment: an empty state's
+ * heading is the serif at Heading size and says the place is *empty*; this one's is the
+ * sans at Row size and says the place *did not load*, and it carries the two things no
+ * empty state ever has — a way to try again and the reference id.
  *
  * `tvtracker` is the reason. A failed read there returned `[]` and rendered the empty
  * library, so a database that was down and a library that was empty were the same screen.
  * The rule makes them structurally separate in the data path; this component is what
- * makes them separate on the glass. Do not centre it, do not soften the border, and do not
- * reuse the empty state's heading colour here.
+ * makes them separate on the glass. Do not drop *Try again* or the reference, and do not
+ * give it the empty state's serif heading.
  */
 export function ReadFailure({
   reference,

@@ -1,70 +1,50 @@
 /**
- * The accent's three sanctioned meanings — issue #310, the expand half of the pair #300 §12
- * asks for (issue #312 is the contract half: the sweep that fails an accent use claiming
- * none of these three).
+ * The accent's two sanctioned meanings — issue #310, held by issue #312's sweep
+ * (`tests/accent-sweep.test.ts`), which fails any accent use that claims neither.
  *
- * Seven surfaces were found painting `--accent` for a reason `app/globals.css`'s
- * own rule never named, and traced them to three coherent answers rather than one: the
- * accent has never meant only *recording a watch* — it has also meant *this is where the
- * record currently stands* and *this is the main action on the surface* (the primary
- * button, since issue #357) — and nothing before this file said either of those out loud. **A call site
- * that reaches for `text-accent` or `bg-accent` directly is not wrong about the colour; it
- * is silent about which of the three reasons it is allowed to.** That silence is what let a
- * select caret and two dialog frames spend the same token on a fourth, unstated reason
- * (the *selection* and *chrome* cases) — a mistake a call site that names its
- * meaning cannot make quietly, because there would be a fourth export to add.
+ * ── Charcoal: the accent is the text colour (handoff §5.2) ──────────────────────────
  *
- * **One token, three reasons — never three colours.** `ink` and `solid` below are declared
- * once, from the same `--accent`/`--accent-ink` custom properties `app/globals.css` alone
- * declares, and every meaning shares them. Nothing here mints a second amber: the point of
- * naming the meanings apart is that a reader can ask "which of the three is this call site
- * claiming", never "which of the accents is this".
+ * There is no accent hue any more. `--accent` equals `--text` and `--accent-ink` equals
+ * `--ground` (`app/globals.css`), so `ink` (`text-accent`) is text in the text colour and
+ * `solid` (`bg-accent text-accent-ink`) is **the filled face** — the one treatment the
+ * interface rations. A filled face means one of two things: the one main action on a
+ * surface (`THE_BUTTON_REGISTER`) or a recorded watch (`RECORDS_A_WATCH`, the filled tick).
+ * At most one filled button per surface; Search's per-row *Add* is the one exception.
  *
- * ── Why an object per meaning, and not just a string ─────────────────────────────────
+ * The meanings are kept, under their names, because the rationing was always about
+ * **why** a call site may draw the emphasis, not about which colour it draws. **A call site
+ * that reaches for `text-accent` or `bg-accent` directly is silent about which reason it is
+ * allowed to**, and that silence is what once let a select caret and two dialog frames
+ * spend the emphasis on an unstated reason. Naming the meaning makes a new reason
+ * impossible to add quietly — it would be a new export here.
  *
- * `ink` (`text-accent`) is what a label or a caret uses; `solid` (`bg-accent text-accent-ink`)
- * is what a filled chip or a pressed control uses. Both renderings already exist under more
- * than one of the three meanings — the Watching label and the sort caret are both `ink`,
- * the up-next chip and the recording checkmark's settled hover are both `solid` — so the
- * meaning and its rendering are different axes, and collapsing them into one string per
- * meaning would have made one of the three call sites this ticket migrates wrong.
+ * **One token, two reasons — never two renderings.** `ink` and `solid` are declared once
+ * and both meanings share them; `claims` is the only thing that tells them apart.
  *
- * ── What this ticket wires up, and what it deliberately does not ─────────────────────
+ * ── Where each meaning is spent today ───────────────────────────────────────────────
  *
- * Only `LIVE_EDGE_OF_THE_RECORD` gets call sites in this ticket — `library-state.ts`'s
- * `STATE_LABELS.watching`, `library-filter-bar.tsx`'s unselected Watching chip, and
- * `episode-line.ts`'s `EPISODE_NUMBER_UP_NEXT` — because those three are what was
- * already named *the strongest case for a second meaning* and the acceptance
- * criteria name by surface. `RECORDS_A_WATCH` and `THE_BUTTON_REGISTER` are declared and
- * tested here so a fourth meaning cannot be added without this file changing, but their own
- * call sites — `watch-mark-motion.tsx`'s recording controls, `errors/recovery-buttons.ts`'s
- * fourteen-control register — keep their own direct literals for now. Rewiring them is
- * strictly a rename with no visible effect, since the strings resolve identically either
- * way, and is left to whichever ticket next touches those files rather than done here as a
- * drive-by across modules this ticket has no other reason to open.
+ * - `THE_BUTTON_REGISTER.solid` — `app/buttons.ts`'s filled buttons (`PRIMARY_*`,
+ *   `PRIMARY_PILL`).
+ * - `RECORDS_A_WATCH.solid` — `watch-mark-motion.tsx`'s `WATCHED_TICK`, the filled tick; its
+ *   `ink` — the finish line Tonight holds on after a season's last episode is marked.
  *
- * **Issue #311 is that ticket for `errors/recovery-buttons.ts`.** `GHOST_RECOVERY`,
- * `GHOST_RECOVERY_COMPACT`, `SOLID_RECOVERY` and `SOLID_RECOVERY_COMPACT` now build their
- * accent tokens from `THE_BUTTON_REGISTER.ink`/`.solid` rather than typing them — see that
- * file's own docblock.
+ * ── The third meaning, retired ───────────────────────────────────────────────────────
  *
- * **Issue #313 is that ticket for `watch-mark-motion.tsx`'s recording checkmark.** It
- * opened the file for an unrelated reason — the hover fill that was claiming a write before
- * one happened — and migrated `RECORDING_GLYPH` onto `RECORDS_A_WATCH.ink` while it was
- * there, rather than leaving a rename for a fourth ticket. The three
- * `QUIET_RECORDING_CONTROL` variants in that file are a different control (*watched up to
- * here*) and keep their own direct literals still — #313 names the recording checkmark
- * alone, and rewiring those three is left to whichever ticket next opens them for their own
- * reason.
+ * `LIVE_EDGE_OF_THE_RECORD` — *where the record currently stands* — named the Watching
+ * label, the Watching chip and the Up next episode's number (#300, #310). Charcoal took the
+ * chip (#397) and the number (#403) off it, because with the accent equal to `text` it no
+ * longer read as a colour (handoff §5.2), and the label's `className` it was left on had no
+ * renderer. The sweep (#409) retired it; the Up next episode is marked by its raised row
+ * and *Up next* label.
  */
 
 /** What a class list built from a meaning claims to a reader, and how it is built. */
 export interface AccentMeaning {
   /** The sentence a reader should be able to finish after seeing the accent painted. */
   readonly claims: string;
-  /** Accent text alone, or an accent border around it — the ghost/label form. */
+  /** Text in the accent, which is the text colour — the label form. */
   readonly ink: "text-accent";
-  /** A solid accent ground with `accent-ink` text — the filled/pressed form. */
+  /** The filled face: a `text` ground with `ground` ink. */
   readonly solid: "bg-accent text-accent-ink";
 }
 
@@ -74,41 +54,20 @@ function meaning(claims: string): AccentMeaning {
 }
 
 /**
- * The original rationing, unchanged by #300: the accent means a watch was
- * recorded. `watch-mark-motion.tsx`'s `RECORDING_GLYPH`/`RECORDING_HIT_BOX` are this
- * meaning's `ink`/`solid` today, and `programme-note-episodes.tsx`'s *Rewatch* control is
- * its `ink` again, by way of `errors/recovery-buttons.ts`'s `GHOST_RECOVERY`. This is the
- * one meaning that predates this ticket; it is declared here so the other two are named
- * against it rather than in a vacuum.
+ * A watch was recorded because of a press here. Drawn as the filled tick
+ * (`watch-mark-motion.tsx`'s `WATCHED_TICK`) — the one filled face that is not a button —
+ * and as the finish line's ink on Tonight. The oldest of the three: the accent meant this
+ * before it meant anything else.
  */
 export const RECORDS_A_WATCH: AccentMeaning = meaning(
   "this was written — a watch exists in the database because of a press here",
 );
 
 /**
- * The second meaning #300 settles: not an action just taken, but where the record
- * currently stands. This was named *the strongest case for a second
- * meaning* — *up next is the live edge of the record, and this is the one place it is
- * marked* — and traced it to three surfaces already painting it before anything declared
- * it: the **Watching** state label (`library-state.ts`), the **Watching** filter chip even
- * unselected (`library-filter-bar.tsx`), and the up-next episode's inverted code
- * (`episode-line.ts`'s `EPISODE_NUMBER_UP_NEXT`). All three migrate onto this constant in
- * this ticket, rendering exactly as before.
- *
- * Charcoal has since taken two of the three off it, because with the accent equal to `text`
- * it no longer reads as a colour (handoff §5.2): the Watching chip (#397) and the up-next
- * number (#403), which is marked by its raised row and *Up next* label now. The Watching
- * label is the one call site left.
- */
-export const LIVE_EDGE_OF_THE_RECORD: AccentMeaning = meaning(
-  "this is Watching, or this is up next — the record's current position, not an action just taken on it",
-);
-
-/**
- * The third meaning: the primary button. Issue #195 once put fourteen controls on the
- * accent as a shared register; issue #357 narrowed it to the one main action on a surface
- * (`app/buttons.ts`'s `PRIMARY_BUTTON`), so the accent says *this is the thing to do* and
- * every other button is neutral.
+ * The one main action on a surface — `app/buttons.ts`'s filled buttons. Issue #195 once put
+ * fourteen controls on the accent as a shared register; issue #357 narrowed it to the
+ * primary button, and Charcoal (handoff §5.2) holds a surface to at most one, Search's
+ * per-row *Add* excepted. Every other button is quiet, plain or danger.
  */
 export const THE_BUTTON_REGISTER: AccentMeaning = meaning(
   "this is the primary button — the one main action on a surface (issue #357), not a state and not a fresh write",

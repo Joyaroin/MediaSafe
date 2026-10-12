@@ -1,5 +1,4 @@
 import type { EpisodeDetail } from "@/db/access";
-import { episodeFullName } from "./season-grouping";
 
 /**
  * Where *watched up to here* is drawn, and what one press of it would record — issue
@@ -131,20 +130,6 @@ function atOrBefore(one: EpisodeDetail, through: EpisodeDetail): boolean {
     one.seasonNo < through.seasonNo ||
     (one.seasonNo === through.seasonNo && one.episodeNo <= through.episodeNo)
   );
-}
-
-/**
- * What a screen reader is told the control does.
- *
- * The control carries a glyph and no text — the row is a fixed-height line whose episode
- * name already truncates, and a written label would take characters off the name to pay
- * for itself (`programme-note-episodes.tsx`'s `TRAILING`). So this label is the whole of
- * what the control says, which is why it names the episode **in full** rather than by
- * number: the rule that an episode is never referred to by number alone bites
- * hardest exactly where the number is all a sighted reader can see.
- */
-export function markUpToLabel(through: EpisodeDetail): string {
-  return `Mark everything up to and including ${episodeFullName(through)} watched`;
 }
 
 /**

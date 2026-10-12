@@ -3,12 +3,12 @@
  * `listLibraryEntries` now joins (`db/access.ts`'s `LibraryEntryRow.progress`,
  * `db/views.ts`'s `library_entry_release_progress`).
  *
- * **Not `watchProgress` in `progress-remaining.ts`.** That function's denominator is every
- * mirrored episode, released or not — right for the title page's own bar, which is asking
- * *how much of this show exists that you have not seen*. The library card asks a narrower
- * question, *of what has aired, how much have you seen*, because a bar that counted
- * unaired episodes would read a show with three episodes announced as behind before any of
- * them could be watched. Two questions, two denominators, two functions.
+ * **Released episodes only.** The title hero's season fraction (`progress-remaining.ts`)
+ * counts every mirrored episode of its season, released or not, because it asks *how much
+ * of this season exists*. The library card asks a narrower question, *of what has aired,
+ * how much have you seen*, because a bar that counted unaired episodes would read a show
+ * with three episodes announced as behind before any of them could be watched. Two
+ * questions, two denominators, two functions.
  *
  * **`null` is not zero.** A show with nothing released yet has `released === 0`, and the
  * honest answer is *no bar*, not a bar sitting empty for a reason that has nothing to do

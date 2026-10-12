@@ -1,76 +1,49 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════════════
-   The visual world. **This stylesheet is the single declaration site for every token**,
-   and there is no second copy of any value anywhere. Until issue #255 this file named the
-   palette's source as `design_handoff_phone_linen`, which was not a path to anything and
-   could not be opened by anyone reading the comment. Citing a prototype that was never
-   committed is the failure `tvtracker` carries a dozen times over, and it had started here.
+   The visual world — Charcoal (issue #394, `docs/redesign/handoff.md`). **This stylesheet
+   is the single declaration site for every token**, and there is no second copy of any
+   value anywhere.
 
-   The dark values arrived in issue #134 from the Catalogue Wall palette and are unchanged.
-   The light values are the mobile brief that landed after it, which #255 closed the gap to
-   and #327 restated in OKLCH. The bone/ink/vermilion letterpress world #134 replaced is
-   gone from the type ramp and the utilities as well.
+   Warm charcoal greys in both schemes, and **no accent hue**: the posters carry the
+   colour and the interface stays neutral. The one hue the interface has of its own is
+   `--danger`, for what takes something away. The history is in `git log`: the
+   letterpress world of #134, the Catalogue Wall dark palette, the linen light palette of
+   #255 and #327 — none of their values survives here.
 
    The colour tokens are declared once — `--ground`, `--raised`, `--hair`, `--text`,
-   `--dim`, `--accent`, `--accent-ink` — as plain custom properties on `:root`,
-   with a single `prefers-color-scheme: dark` override. `@theme` then points Tailwind's
-   generated colour utilities at those properties rather than at fixed hex, which is
-   what makes one declared token resolve differently per system setting with no theme
-   picker, no `.dark` class, and no second copy of the palette.
+   `--dim`, `--accent`, `--accent-ink`, `--danger` — as plain custom properties on `:root`,
+   with one dark set (`--dark-*`) mapped in for the system's dark scheme and for a reader
+   who chose *Dark* (the three theme states, below). `@theme` points Tailwind's generated
+   colour utilities at those properties rather than at fixed values, which is what makes
+   one declared token resolve per scheme with no `.dark` class and no second copy of the
+   palette.
 
    Neither theme is "the" theme — the phone at 11pm and the desktop in daylight are both
-   real scenes, so `color-scheme` follows the system instead of being pinned to dark, and
-   the browser's own surfaces (selection, scrollbars, caret, focus ring) are painted from
-   the same tokens in both.
+   real scenes, so the system decides unless the reader has said otherwise, and the
+   browser's own surfaces (selection, scrollbars, caret, focus ring) are painted from the
+   same tokens in both.
 
-   ── What the accent is for, restated by the linen redesign ─────────────────────────
+   ── Emphasis without colour — handoff §5.2 ──────────────────────────────────────────
 
-   This block used to say *the accent is reserved for recording a watch*, full stop. That
-   was already narrower than the code: `library-state.ts` paints the **Watching** label in
-   it, `library-filter-bar.tsx` paints the Watching chip and the sort caret in it,
-   `list-name-form.tsx` paints the duplicate-name message in it, and `press-mark.tsx`
-   strikes the mark with it. The rule as written had five standing exceptions and no
-   sentence covering them.
+   With no accent hue, emphasis is a treatment, not a colour:
 
-   The redesign settles it as one rule that describes what is actually drawn. It is stated
-   as **roles**, not as a count of elements, because a count is what the old rule got
-   wrong — and what the first draft of this one got wrong too, by saying *"one primary
-   action per screen, never two"* directly above an Up next that draws five group labels
-   and five `More` links in it.
+   - **Filled** — `text` ground, `ground` ink. The one main action on a surface (a screen,
+     a dialog, a sheet or a toast), or a recorded watch (the filled tick). At most one
+     filled button per surface; Search's per-row *Add* is the one exception, each the main
+     action of its own row.
+   - **Outlined** — a 1.5px inset `text` line (`selected-line`): what is currently
+     selected, and nothing else.
+   - **Quiet** — a `raised` fill on the page, a `hair` fill on a card: every other action.
+   - **Plain** — text alone, in `text` or `dim`.
+   - **Danger** — a 1px inset line and text in `danger`, never a fill at rest.
 
-     **The accent carries exactly three roles, and a screen may show only one of them:**
-
-     1. **Live** — recording a watch, and the **Watching** state wherever it is named
-        (`library-state.ts`, and the Watching chip even unselected).
-     2. **The way through this screen** — its primary action or its section heads,
-        whichever the screen has. **Add** on a search row, **New list** on Lists, the
-        group label and its **More** on Up next. A screen has one such role, and it may
-        repeat as often as the structure does: five group heads are five instances of one
-        role, not five spends. Two *different* accent roles on one screen is the failure
-        this rule exists to prevent.
-     3. **A named exception**, of which there are exactly two, both older than the
-        redesign and both kept: the sort caret (`library-filter-bar.tsx`) — the one place
-        the accent marks an affordance rather than a state — and the duplicate-name
-        message (`list-name-form.tsx`), which is the one error rendered inline rather
-        than through `errors/`.
-
-   The exceptions are listed because the rule this replaces was written as an absolute
-   with five undocumented exceptions standing against it, and an absolute that everyone
-   knows is not one has stopped being a rule.
-
-   Two things it is still not, and both were decided against on purpose:
-
-   - **Not the selected tab.** The handoff draws the active tab in the accent and then
-     names the alternative itself — *if that reservation must hold, use the full-strength neutral
-     instead* — and `--text` is what `tab-bar.tsx` uses. The tab
-     bar is the only chrome on all four screens, so an accent there is the one spend that
-     is never off-screen, and a Watching label two centimetres above a permanently
-     vermilion tab is a signal competing with wallpaper. Turn 9's own closing note
-     ("vermilion only for Watching, not the tabs") is the same conclusion.
-   - **Not focus, selection or the caret.** Unchanged from #134: they use brightness and
-     border weight off `--text`, so a colour spent on focus state is not a colour that
-     also means "this was marked".
+   `--accent` survives as a name, equal to `--text` (and `--accent-ink` to `--ground`), so
+   every `bg-accent text-accent-ink` call site draws the filled face. What may be filled is
+   rationed by **meaning**, not by colour: `app/accent-meaning.ts` names the two —
+   `RECORDS_A_WATCH` (the filled tick) and `THE_BUTTON_REGISTER` (the filled button) — and
+   every call site declares one. Focus, selection and the caret use the brightest neutral
+   too; none of them is a meaning.
    ═══════════════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -94,8 +67,8 @@
      declared again rather than pointed at with `var()`, because every suite that reads
      the palette reads each token's single declaration as an `oklch()` literal. Every
      `bg-accent text-accent-ink` and `text-accent` call site keeps working; a filled
-     control now draws in the text colour rather than in vermilion, and the three
-     meanings in `app/accent-meaning.ts` keep their names. */
+     control now draws in the text colour rather than in vermilion, and the meanings in
+     `app/accent-meaning.ts` keep their names. */
   --ground: oklch(96.2% 0.006 85);
   --raised: oklch(100% 0 0);
   --hair: oklch(88% 0.012 85);
@@ -459,8 +432,7 @@
      sweep, on the same terms `--press-register`'s custom property already sets: two
      utilities setting one property lose to Tailwind's emit order, so a variable the
      call site sets is the one form with no ordering question in it, and it is why
-     `--poster-radius` and `--still-radius` keep their names below rather than being
-     replaced by a class. */
+     `--poster-radius` keeps its name below rather than being replaced by a class. */
   --radius-none: 0px;
   /* One small corner, not three: 8, 9 and 10px could not be told apart on screen, so
      the 9px and 10px steps folded into this one (issue #357). */
@@ -663,9 +635,9 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Browser surfaces carry the design too. Selection, the caret and the focus ring used
-     to be painted in the accent; they now use brightness — the brightest neutral against
-     the ground — so the accent stays reserved for recording a watch. */
+  /* Browser surfaces carry the design too. Selection, the caret and the focus ring are the
+     brightest neutral against the ground — `text` — as every emphasis in Charcoal is
+     (handoff §5.2). None of them is one of `app/accent-meaning.ts`'s meanings. */
   ::selection {
     background: var(--color-text);
     color: var(--color-ground);
@@ -720,7 +692,7 @@
   text-wrap: balance;
 }
 
-/* ── The linen redesign's two bundles ───────────────────────────────────────────────
+/* ── Two more bundles: the screen title and the label ───────────────────────────────
    Same argument as `bill-title` above: a screen title that arrives without its leading
    is not a smaller title, and a label that arrives without its caps and its tracking is
    not a quieter label — it is a 12px sentence nobody can read.
@@ -847,7 +819,7 @@
    mechanism. `tests/plate-line.test.ts` sweeps every `bg-raised` site in `app/` and holds
    the two apart.
 
-   **Artwork does not read this class.** `.poster` and `.still` below carry the identical
+   **Artwork does not read this class.** `.poster` below carries the identical
    expression as their own light-scheme default, and swap it for the hairline-token ring in
    dark — see the note beside them for why a poster needs the stronger value and a card does
    not. */
@@ -1295,81 +1267,37 @@
   }
 }
 
-/* The still (#253) — the frame at the top of an episode's page, over the `still_path`
-   column #246 put in the mirror. `app/(signed-in)/library/episode-still.tsx` is its
-   component and holds the argument; this is the poster's rule at the other ratio.
-
-   `16 / 9` rather than `2 / 3`: a still is a frame from the episode, so its ratio is the
-   broadcast one and not the printed one. Everything else is deliberately identical to
-   `poster` above — the same `raised` ground, the same `overflow: hidden`, the same
-   `relative` — because these are two crops of one treatment and not two treatments.
-
-   `background: var(--color-raised)` is the whole of the missing-artwork state, which #245
-   asks for as *a deliberate placeholder, so that a missing still does not collapse the
-   row*: the ratio holds the space and the ground fills it. No glyph goes in here, for the
-   reason `poster.tsx` refuses one.
-
-   **The variable this said it would grow, grown (#250).** It read *one radius, no custom
-   property … the day a second surface wants a different one is the day this grows the
-   variable*, and that day is the phone's next-episodes card: the still is flush with the
-   top of the card that already clips it, so its own default would draw a notch inside the
-   card's corner. It wants `--radius-none` — issue #318's scale names the same `0` this
-   used to spell as a literal.
-
-   Read through a custom property rather than overridden at the call site, which is
-   `--poster-radius`'s reason restated and is not a style preference: `still` and a
-   `[--still-radius:var(--radius-none)]` beside it are two utilities setting one property,
-   and which one wins is decided by the order Tailwind **emits** them in, not by the order
-   they appear in the `class` attribute. A variable the call site sets has no ordering
-   question in it.
-
-   The default reads `--radius-1`, the same scale step `poster` falls back to, so the
-   episode page's hero is untouched and still agrees with `poster` by default rather than
-   by coincidence. */
-@utility still {
-  position: relative;
-  overflow: hidden;
-  background: var(--color-raised);
-  aspect-ratio: 16 / 9;
-  border-radius: var(--still-radius, var(--radius-1));
-  /* The plate line's light-scheme default, `.poster`'s own note above and the reason
-     restated rather than repeated: two crops of one treatment, not two treatments. */
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 9%, transparent);
-}
-
 /* ── The dark poster ring — issue #330 ───────────────────────────────────────────────
    In dark, 9% text mixed against near-black is invisible — `--text` is `--dark-text` there,
    the brightest neutral on the sheet, so the plate line above would need to seat a poster
    by drawing 9% of *light* into a *dark* corner, which the eye reads as nothing at all.
    What actually seats a white-background poster into a dark sheet is the stronger value:
    `--hair`, full strength, not mixed. So dark does not darken the plate line — it replaces
-   it outright, on exactly the two artwork utilities above and nothing else. A raised
+   it outright, on the poster utility above and nothing else. A raised
    container's plate line is untouched by this block, because `--text` flips to the bright
    neutral automatically and 9% of it reads correctly on a dark card without any override —
    the ring is artwork's own exception, not a second dark palette rule.
 
-   **One ring per element, always.** Both selectors below repaint the whole `box-shadow`
+   **One ring per element, always.** The rules below repaint the whole `box-shadow`
    rather than layering a second one, so a poster in dark carries the ring and never the
    plate line beneath it. Two selectors, and both are needed, for the identical reason the
    palette's own dark values are mapped twice a few hundred lines up: *the system asked, or
    the reader answered* are two rules that cannot share one declaration block, because one
    of them lives inside a media query the other cannot enter. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .poster,
-  :root:not([data-theme="light"]) .still {
+  :root:not([data-theme="light"]) .poster {
     box-shadow: inset 0 0 0 1px var(--color-hair);
   }
 }
 
-:root[data-theme="dark"] .poster,
-:root[data-theme="dark"] .still {
+:root[data-theme="dark"] .poster {
   box-shadow: inset 0 0 0 1px var(--color-hair);
 }
 
 /* ── The sweep — issue #139, title detail's episode row ──────────────────────────────
-   A wash of the accent across the row it marks, scaling in from the left and fading out
-   over the same run, so nothing accent-coloured is left once it settles — the row itself,
-   dimmed, is what says *watched* from here. `position: absolute; inset: 0` inside the
+   A wash of the accent — the text colour, since Charcoal — across the row it marks,
+   scaling in from the left and fading out over the same run, so nothing of it is left once
+   it settles — the row itself, dimmed, is what says *watched* from here. `position: absolute; inset: 0` inside the
    row's own `relative` `<li>` (`programme-note-episodes.tsx`) is what keeps it out of
    flow.
 
@@ -1410,10 +1338,11 @@
 }
 
 /* The hold — the UI overhaul's replacement for the sweep on Up next's cards. The card
-   washes in the accent the moment a watch is recorded and stays washed for `HOLD_MS`
-   (`up-next-card.tsx`), so the confirmation is a state the reader can see rather than a
-   flash they have to catch. `RECORDS_A_WATCH` is the meaning: a watch exists because of a
-   press here. A tint and not the solid accent, so the card's text keeps its contrast.
+   washes in the accent — the text colour, since Charcoal — the moment a watch is recorded
+   and stays washed for `HOLD_MS` (`up-next-card.tsx`), so the confirmation is a state the
+   reader can see rather than a flash they have to catch. `RECORDS_A_WATCH` is the meaning:
+   a watch exists because of a press here. A tint and not the filled face, so the row's
+   text keeps its contrast.
 
    The wash comes in from the check's side and fades up together, so it reads as spreading
    from the press rather than switching on. */
@@ -1648,9 +1577,9 @@
 
 /* ── Press ──────────────────────────────────────────────────────────────────────────
    The acknowledgement every tappable surface owes a finger. Scale only, and only
-   downward on the way in: colour is not available for this, because in this world colour
-   means *this was marked*, and a control that tints under the thumb is claiming to have
-   recorded something it has not.
+   downward on the way in: a fill is not available for this, because in this world a
+   filled face means *this was marked* or *the one main action*, and a control that fills
+   under the thumb is claiming something it has not done.
 
    ── It moves now, and it is two mechanisms rather than one — issue #281 ────────────
    This read *`--spring-press` … over `--dur-press`, which is that spring's own settle*,
@@ -1722,10 +1651,10 @@
      ── The third register, and why it is a step rather than a multiplier — issue #283 ──
      The recording checkmark presses harder than anything else in the application. It is
      the act the product is built around and the most repeated gesture in it, and the
-     paragraph at the top of this file rations the accent to exactly that act — so the
-     loudest press and the only sanctioned use of colour mark the same thing rather than
-     two different things. It is scale and the pop and nothing else: no tint, because a
-     press is not what the accent means, and no shadow, because this world has none.
+     filled tick is one of the two things the top of this file allows to be filled — so the
+     loudest press and the filled face mark the same thing rather than two different
+     things. It is scale and the pop and nothing else: no tint, because a press is not what
+     filling means, and no shadow, because this world has none.
 
      `#282` read `calc(0.96 + var(--press-register, 0) * (0.92 - 0.96))`, one linear term,
      and **a third register cannot be reached that way** — the three pairs are not on a
@@ -1812,10 +1741,10 @@
      floating, which is what a surface under a thumb should do.
 
      **No shadow and no accent**, and neither is an omission. There are no drop shadows
-     anywhere in this application — the tone step is what replaced them — and colour here
-     means *this was recorded*, so a control that tints under a thumb is claiming to have
-     written something it has not. The paragraph at the top of this file spends five
-     hundred words rationing the accent to that one act; a press is not it.
+     anywhere in this application — the tone step is what replaced them — and a filled
+     face means *this was recorded* or *the one main action*, so a control that fills
+     under a thumb is claiming something it has not done. The top of this file rations the
+     filled face by meaning; a press is not one.
 
      **It does not overshoot.** `--ease-out-quart` and not the pop's curve: a colour has
      no mass, so there is nothing for it to carry past `--ground` and come back from. The

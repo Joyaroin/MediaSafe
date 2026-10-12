@@ -5,14 +5,12 @@ import { EMPTY_PANEL } from "@/app/buttons";
  * Upcoming with nothing on it — issue #251, and the handoff's own named state rather than
  * a blank second page.
  *
- * ── Why this is a third sentence and not one of the two already here ────────────────
+ * ── Why this is not `UpNextNothing`'s sentence ──────────────────────────────────────
  *
- * There are now three empty states on this one route and they answer three different
- * questions. `UpNextEmpty`'s *you're caught up* is the desktop's — nothing watching and
- * nothing dated to come back. `UpNextNothing`'s *nothing queued for tonight* is the
- * phone's first page — no next episode and no film on the watchlist. This is the phone's
- * second page: **nothing you are watching has a future date announced**, which a reader can
- * be in while both rails on page one are full.
+ * The two answer different questions. `UpNextNothing`'s *nothing queued for tonight* is
+ * Tonight's — no next episode and no film on the watchlist. This is Coming up's: **nothing
+ * you are watching has a future date announced**, which a reader can be in while Tonight
+ * is full.
  *
  * These read differently and must not share copy, and
  * the copy below is the prototype's states column verbatim — *No release dates yet* /
@@ -22,8 +20,8 @@ import { EMPTY_PANEL } from "@/app/buttons";
  *
  * A failure throws past this into the route's `error.tsx`, which draws the read-failure
  * treatment with a reference id over the same heading. This is the surface `AGENTS.md`'s
- * rule bites hardest on, and *no release dates yet* is exactly as plausible a lie as
- * *you're caught up* was: every row absent, nothing on screen saying the database is down.
+ * rule bites hardest on, and *no release dates yet* is exactly the plausible lie it
+ * forbids: every row absent, nothing on screen saying the database is down.
  *
  * ── No recovery control ─────────────────────────────────────────────────────────────
  *

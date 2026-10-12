@@ -4717,11 +4717,9 @@ export interface TitleDetailRow {
  *
  * ── There is no `try` here ────────────────────────────────────────────────────────────
  *
- * Called directly from the phone route (`app/(signed-in)/titles/[entryId]/page.tsx`),
- * a throw here is what reaches that route's own `error.tsx`. The desktop pane cannot
- * lean on a route boundary — it never navigates — so it calls this through
- * `titleDetailAction`, which is what does the catching, for the reason
- * `app/(signed-in)/search/actions.ts` already gives for the search screen.
+ * Called (through `cache/tags.ts`) by the title route
+ * (`app/(signed-in)/titles/[entryId]/title-detail-body.tsx`), so a throw here is what
+ * reaches that route's own `error.tsx`.
  */
 export async function getTitleDetail(
   userId: UserId,

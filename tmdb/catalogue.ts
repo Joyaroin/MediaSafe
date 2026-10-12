@@ -438,52 +438,6 @@ export async function titleSynopsis(
   return synopsisFrom(await get<TmdbOverviewPayload>(titlePath(kind, tmdbId)));
 }
 
-/**
- * One **episode's** own synopsis — the fourth live-only call, and the only one of the
- * four that is about an instalment rather than a title (issue #253).
- *
- * ── Why this is a live read and not a fifth mirrored column ─────────────────────────
- *
- * Synopsis and overview are on the borrowed side and issue #245 says in as many
- * words that nothing in that batch moves them. The test applied is *what a
- * 472-row library render needs* — issue #246 moved stills and release dates across
- * because a rail of cards would otherwise cost one catalogue call each. An episode's
- * synopsis fails that test in the other direction: it is read on a surface a reader
- * reaches one episode at a time, so it costs one call when one episode is opened, and a
- * column for it would be one row of prose per episode across every show in the mirror to
- * save a request nothing makes in bulk.
- *
- * ── Shows only, and the type is what says so ────────────────────────────────────────
- *
- * No `kind` parameter, unlike the three above. A film has no episodes, and this endpoint
- * has no film counterpart to fork to — `titlePath`'s `film`/`show` branch has nothing to
- * answer here. So the signature takes a show's `tmdbId` and the two numbers, and a caller
- * holding a film cannot reach this by passing the wrong literal.
- *
- * ── The numbers, and not the episode's own TMDB id ──────────────────────────────────
- *
- * TMDB addresses an episode by `(series, season number, episode number)` and publishes no
- * endpoint keyed on the episode id it hands back in a season payload. `episode.tmdb_episode_id`
- * is the mirror's identity for exactly the reason `db/tables.ts` gives — numbers get
- * renumbered — and this is the one place that identity cannot be used, because TMDB's own
- * API does not accept it. The caller reads the numbers off the mirrored row it is already
- * rendering, so a renumbering upstream is reflected in the request as soon as the sweep
- * has rewritten the row.
- *
- * Untested here, like every other call in this file: the request is the untestable half
- * and `synopsisFrom` — the same mapping `titleSynopsis` uses, over the same `overview`
- * field — is the half `tests/tmdb-live-facts.test.ts` covers.
- */
-export async function episodeSynopsis(
-  tmdbId: number,
-  seasonNo: number,
-  episodeNo: number,
-): Promise<string | null> {
-  return synopsisFrom(
-    await get<TmdbOverviewPayload>(`/tv/${tmdbId}/season/${seasonNo}/episode/${episodeNo}`),
-  );
-}
-
 export interface CastAndCrew {
   readonly cast: readonly CastMember[];
   readonly crew: readonly CrewMember[];

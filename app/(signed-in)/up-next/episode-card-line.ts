@@ -14,9 +14,7 @@ import { seasonHeading } from "@/app/(signed-in)/library/season-grouping";
  * this pair, the remaining count, and a last line joining an air date and a runtime. The
  * date and the runtime are noise on a surface reached to decide what to watch next; the
  * remaining count is not, and is untouched (`remainingInWords` below, and its own docblock
- * says why). `episodeMetaLine` and this module's own `airDateInWords` are deleted with
- * their one caller — `library/episode-facts.ts` has its own `airDateInWords`, in a longer
- * register for a different surface, and is untouched.
+ * says why).
  */
 
 /**
