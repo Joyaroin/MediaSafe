@@ -133,6 +133,9 @@ function harness() {
       recordUpTo(): Promise<MarkWatchedUpToActionOutcome> {
         throw new Error("A tile never presses *watched up to here*.");
       },
+      undoUpTo(): Promise<UnwatchActionOutcome> {
+        throw new Error("A tile never paints a stroke to take back.");
+      },
     },
     failures,
     mintKey: () => `key-${(minted += 1)}`,

@@ -69,7 +69,8 @@ describe("motion changes what is drawn, never when a write is sent", () => {
 
   it("drains the Undo ring for the hold itself, not a second copy of it", () => {
     // Undo is on screen for the hold, so the ring is `HOLD_MS`, handed down — never typed.
-    expect(CARD).toMatch(/"--undo-shown": `\$\{HOLD_MS\}ms`/);
+    expect(CARD).toMatch(/shownMs = HOLD_MS/);
+    expect(CARD).toMatch(/"--undo-shown": `\$\{shownMs\}ms`/);
     expect(block("@utility undo-ring")).toContain("var(--undo-shown)");
     expect(block("@utility undo-ring")).toContain("linear");
   });
@@ -130,8 +131,8 @@ describe("the moments (handoff §11.2)", () => {
   it("pops the row's tick, rings it while Undo is offered, and rewinds it on a lost write", () => {
     expect(CARD).toMatch(/check-pop \$\{WATCHED_TICK\}/);
     expect(CARD).toMatch(/onUndo === null \? null : <UndoRing/);
-    expect(ROW).toMatch(/lost \? `\$\{RECORDING_GLYPH\} tick-rewind`/);
-    expect(FILM).toMatch(/lost \? `\$\{RECORDING_GLYPH\} tick-rewind`/);
+    expect(ROW).toMatch(/lost\s*\?\s*`\$\{RECORDING_GLYPH\} tick-rewind`/);
+    expect(FILM).toMatch(/lost\s*\?\s*`\$\{RECORDING_GLYPH\} tick-rewind`/);
   });
 
   it("closes a leaving row by layout, the rows below taking its place", () => {

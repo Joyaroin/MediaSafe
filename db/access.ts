@@ -2001,6 +2001,71 @@ export async function markWatchedUpTo(
 }
 
 /**
+ * **Undo a *watched up to here* press — the stroke's one Undo, issue #408** (handoff
+ * §11.3, open question 3).
+ *
+ * The exact inverse of one `markWatchedUpTo` call, as `undoWatch` is of `recordWatch`.
+ * That write keys every row it inserts `${sourceKey}:${episodeId}`, so the rows one press
+ * wrote are exactly the app watches on this entry whose key starts `${sourceKey}:` — and
+ * this deletes those and nothing else:
+ *
+ * - **never an imported watch** — `source` is `app`, and an import's keys are its own;
+ * - **never an earlier app watch** of the same episodes — a different press, a different key;
+ * - **never an episode the press skipped** because it was already watched — the press wrote
+ *   no row for it, so there is no row with this key to find.
+ *
+ * Unlike `unwatch` it is not *I have not seen these*; it is *I did not mean to paint that*,
+ * and an episode watched before the stroke stays watched after its Undo.
+ *
+ * One transaction, the entry checked first and a miss thrown, and `ownedBy` on the delete
+ * as well — `undoWatch`'s treatment, for its reasons. `starts_with` rather than `LIKE`, so
+ * a key is matched as text and never as a pattern.
+ */
+export interface UndoMarkWatchedUpToParams {
+  readonly libraryEntryId: string;
+  /** The key the press was sent with — the stroke's, minted in the browser. */
+  readonly sourceKey: string;
+}
+
+export interface UndoMarkWatchedUpToOutcome {
+  /** How many rows the press had written and this took back. */
+  readonly removed: number;
+}
+
+export async function undoMarkWatchedUpTo(
+  userId: UserId,
+  params: UndoMarkWatchedUpToParams,
+  executor: Executor = getDb(),
+): Promise<UndoMarkWatchedUpToOutcome> {
+  return executor.transaction(async (tx) => {
+    const [entry] = await tx
+      .select({ id: libraryEntry.id })
+      .from(libraryEntry)
+      .where(and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, params.libraryEntryId)));
+
+    if (!entry) {
+      throw new Error(
+        `Library entry ${params.libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    const removed = await tx
+      .delete(watch)
+      .where(
+        and(
+          ownedBy(userId, watch),
+          eq(watch.libraryEntryId, params.libraryEntryId),
+          eq(watch.source, APP_WATCH_SOURCE),
+          sql`starts_with(${watch.sourceKey}, ${`${params.sourceKey}:`})`,
+        ),
+      )
+      .returning({ id: watch.id });
+
+    return { removed: removed.length };
+  });
+}
+
+/**
  * Give up on a title — issue #87, and the only hand-set state in the model
  * (*Abandoned*).
  *

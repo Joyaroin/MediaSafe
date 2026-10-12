@@ -834,6 +834,8 @@ export const INVALIDATES = {
      (`db/access.ts`'s `undoWatch`); nothing about what a reader sees afterwards differs. */
   undoWatch: ["library", "up-next", "title-detail", "you"],
   markWatchedUpTo: ["library", "up-next", "title-detail", "you"],
+  /* The inverse of the one above, so the same four (issue #408). */
+  undoMarkWatchedUpTo: ["library", "up-next", "title-detail", "you"],
   abandonTitle: ["library", "up-next", "title-detail", "you"],
   abandonTitles: ["library", "up-next", "title-detail", "you"],
   unabandonTitle: ["library", "up-next", "title-detail", "you"],

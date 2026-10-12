@@ -81,7 +81,8 @@ describe("the row travels instead of teleporting", () => {
   /** The row's own box is `ROW`'s class, not a second style; the hold adds its wash.
    *  The featured episode is not a row since Charcoal (#400) — `tonight-featured.tsx`. */
   it("keeps ROW as the row's only class, on both row kinds", () => {
-    expect(row).toContain("className={held ? `${ROW} watch-hold` : ROW}");
+    // Plus `SWIPEABLE` — where swipe to mark is read (#408), not a second style.
+    expect(row).toContain("className={`${held ? `${ROW} watch-hold` : ROW} ${SWIPEABLE}`}");
     expect(row.match(/<m\.li layout className=\{ROW\}>/g)).toHaveLength(1);
   });
 

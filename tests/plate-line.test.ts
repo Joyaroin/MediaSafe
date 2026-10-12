@@ -154,6 +154,7 @@ const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: numbe
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1 }, // You's watch-time card (#405)
   { file: "app/(signed-in)/settings/settings-group.tsx", count: 1 }, // Settings' group card (#405)
   { file: "app/(signed-in)/settings/delete-account/delete-account-frame.tsx", count: 1 }, // the delete-account card (#405)
+  { file: "app/(signed-in)/library/paint-stroke-bar.tsx", count: 1 }, // a painted stroke's Undo bar (#408)
 ];
 
 /**

@@ -11,6 +11,7 @@ import { watchMarks, type WatchMarkView } from "@/app/(signed-in)/library/watch-
 import {
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
+  WATCHED_TICK,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { exit, smooth } from "@/app/motion";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
@@ -19,7 +20,8 @@ import type { LibraryStateGroupEntry } from "@/db/access";
 import { holdOverWhile } from "./hold-over";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { ROW, ROW_POSTER, ROW_POSTER_WIDTH } from "./up-next-card-styles";
-import { useFlightOnLeave } from "./up-next-episode-row";
+import { SWIPEABLE, SwipeWash, useFlightOnLeave } from "./up-next-episode-row";
+import { useSwipeToMark } from "./use-swipe-to-mark";
 
 /**
  * A film on Tonight's *Also ready* — Charcoal, issue #400. Films come after every show in
@@ -77,14 +79,25 @@ export function FilmRow({
   const link = useRef<HTMLAnchorElement>(null);
   useFlightOnLeave(link, leaving ? "/library" : null);
 
+  function press(): void {
+    finishPulse();
+    setPressed(true);
+    void holdOverWhile(attempt());
+  }
+
+  /* Swipe to mark (issue #408): the tick's press by another route, live when the tick is. */
+  const swipe = useSwipeToMark({ enabled: !watched && !pending, onCommit: press });
+
   return (
     <m.li
       ref={ref}
       layout="position"
       transition={smooth}
       exit={{ opacity: 0, transition: exit }}
-      className={held ? `${ROW} watch-hold` : ROW}
+      className={`${held ? `${ROW} watch-hold` : ROW} ${SWIPEABLE}`}
+      {...swipe.handlers}
     >
+      <SwipeWash wash={swipe.wash} />
       <Link
         ref={link}
         href={`/titles/${film.libraryEntryId}`}
@@ -131,16 +144,20 @@ export function FilmRow({
       ) : (
         <button
           type="button"
-          onClick={() => {
-            finishPulse();
-            setPressed(true);
-            void holdOverWhile(attempt());
-          }}
+          onClick={press}
           disabled={pending || watched}
           aria-label={`Mark ${film.titleName} watched`}
           className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
         >
-          <span className={lost ? `${RECORDING_GLYPH} tick-rewind` : RECORDING_GLYPH}>
+          <span
+            className={
+              swipe.armed
+                ? WATCHED_TICK
+                : lost
+                  ? `${RECORDING_GLYPH} tick-rewind`
+                  : RECORDING_GLYPH
+            }
+          >
             <CheckmarkIcon className="h-4 w-4" />
           </span>
         </button>

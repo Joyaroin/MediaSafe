@@ -10,6 +10,7 @@ import { carryPoster } from "@/app/poster-handoff-memory";
 import {
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
+  WATCHED_TICK,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
 import type { DestinationHref } from "@/app/destinations";
@@ -36,6 +37,7 @@ import {
 } from "./finish-line";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { ROW, ROW_POSTER, ROW_POSTER_WIDTH } from "./up-next-card-styles";
+import { useSwipeToMark } from "./use-swipe-to-mark";
 import {
   cardPicture,
   queuedEpisodeFullName,
@@ -191,6 +193,14 @@ function MarkableRow({
   const leaving = mark.finished && mark.held === null;
   const recorded = mark.held ?? (leaving ? showing : null);
   const line = recorded === null ? WATCHED : finishLine(finishFactsFor(entry, recorded));
+  const press = pressWithPulse(entry, mark);
+
+  /* Swipe to mark (issue #408) is the tick's press by another route, so it is live exactly
+     when the tick is. */
+  const swipe = useSwipeToMark({
+    enabled: recorded === null && press.episode !== null && !press.pending,
+    onCommit: press.mark,
+  });
 
   return (
     <RowBody
@@ -204,6 +214,7 @@ function MarkableRow({
       remainingAfter={remainingAfter}
       aboveFold={aboveFold}
       leavesFor={leaving ? leavesFor(entry, showing) : null}
+      swipe={swipe}
       control={
         mark.held !== null || leaving ? (
           <HeldControl
@@ -213,7 +224,7 @@ function MarkableRow({
             }
           />
         ) : (
-          <MarkControl titleName={entry.titleName} mark={pressWithPulse(entry, mark)} />
+          <MarkControl titleName={entry.titleName} mark={press} armed={swipe.armed} />
         )
       }
     />
@@ -252,6 +263,7 @@ function RowBody({
   remainingAfter,
   aboveFold,
   leavesFor,
+  swipe = null,
   control,
   ref,
 }: {
@@ -269,6 +281,8 @@ function RowBody({
   /** The tab this row's poster travels to as it leaves, or `null` when it is not leaving
    *  for one. */
   leavesFor: DestinationHref | null;
+  /** Swipe to mark's binding, on a row that can be marked (`useSwipeToMark`). */
+  swipe?: SwipeBinding | null;
   control: React.ReactNode;
   ref?: Ref<HTMLLIElement>;
 }) {
@@ -285,8 +299,10 @@ function RowBody({
       layout="position"
       transition={smooth}
       exit={{ opacity: 0, transition: exit }}
-      className={held ? `${ROW} watch-hold` : ROW}
+      className={`${held ? `${ROW} watch-hold` : ROW} ${SWIPEABLE}`}
+      {...swipe?.handlers}
     >
+      {swipe === null ? null : <SwipeWash wash={swipe.wash} />}
       <Link
         ref={link}
         href={`/titles/${entry.libraryEntryId}`}
@@ -348,6 +364,31 @@ function RowBody({
   );
 }
 
+type SwipeBinding = ReturnType<typeof useSwipeToMark>;
+
+/**
+ * Where a row's swipe is read: horizontal movement is the row's, vertical movement still
+ * scrolls the list natively, and a pinch still zooms. `isolate`, so the wash can sit under
+ * everything the row draws without leaving it.
+ */
+export const SWIPEABLE = "isolate [touch-action:pan-y_pinch-zoom]";
+
+/**
+ * Swipe to mark's wash — `text` at 12%, growing from the row's left edge under the finger
+ * (handoff §11.3). A full-width layer scaled on `x`, so the row never moves and no size is
+ * animated.
+ */
+export function SwipeWash({ wash }: { readonly wash: SwipeBinding["wash"] }) {
+  return (
+    <m.span
+      aria-hidden="true"
+      data-swipe-wash=""
+      className="pointer-events-none absolute inset-0 -z-10 origin-left bg-[color-mix(in_oklab,var(--color-text)_12%,transparent)]"
+      style={{ scaleX: wash }}
+    />
+  );
+}
+
 /**
  * Sends the row's poster to `leavesFor` the moment the row starts to leave the list —
  * `AnimatePresence` has let it go and is playing its exit. Once: an exit does not come
@@ -373,7 +414,16 @@ export function useFlightOnLeave(
  */
 const CHECK_HIT_BOX = `${RECORDING_HIT_BOX} ${IN_FLIGHT}`;
 
-function MarkControl({ titleName, mark }: { titleName: string; mark: UpNextMark }) {
+function MarkControl({
+  titleName,
+  mark,
+  armed = false,
+}: {
+  titleName: string;
+  mark: UpNextMark;
+  /** A swipe has crossed its threshold: the tick shows filled, as letting go would record. */
+  armed?: boolean;
+}) {
   const { episode, pending, lost } = mark;
 
   /* A capped run that went dry — `UpNextQueue`'s own table has the case. The slot offers
@@ -389,7 +439,11 @@ function MarkControl({ titleName, mark }: { titleName: string; mark: UpNextMark 
       className={CHECK_HIT_BOX}
     >
       {/* A lost write empties the tick slowly, the reverse of its filling (issue #407). */}
-      <span className={lost ? `${RECORDING_GLYPH} tick-rewind` : RECORDING_GLYPH}>
+      <span
+        className={
+          armed ? WATCHED_TICK : lost ? `${RECORDING_GLYPH} tick-rewind` : RECORDING_GLYPH
+        }
+      >
         <CheckmarkIcon className="h-4 w-4" />
       </span>
     </button>
