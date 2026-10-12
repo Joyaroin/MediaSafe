@@ -25,7 +25,7 @@ import { readLaunchMode, serverLaunchMode, subscribeToLaunchMode } from "./launc
  * *Idle* is the button. *In flight* is the button, disabled, saying what is happening —
  * the round trip to Google is a full page navigation and can take seconds on a phone, and
  * a button that looks pressable while it is already working is a button that gets pressed
- * again. *Failed* is the region above it.
+ * again. *Failed* is the outlined panel above it.
  *
  * The in-flight state is never cleared on success, and that is deliberate rather than an
  * oversight: success **is** the navigation away. Clearing it would make the button look
@@ -109,27 +109,34 @@ export function SignInSurface({
   // component renders. See the docblock above for what a standalone launch renders
   // instead of everything below.
   if (signInTreatment(launchMode, false) === "openInBrowser") {
-    return <StandaloneSignInInstruction />;
+    return (
+      <div className="mt-6">
+        <StandaloneSignInInstruction />
+      </div>
+    );
   }
 
   return (
     <>
-      {/* The designated place. It is above the control, not instead of it, because the
-          recovery action and the only action on this surface are the same button. */}
-      {failed ? <SignInFailure reference={reference} /> : null}
+      {/* The designated place. Between the paragraph and the control, not instead of it,
+          because the recovery action and the only action on this surface are the same
+          button (handoff §8.10). */}
+      {failed ? (
+        <div className="mt-6">
+          <SignInFailure reference={reference} />
+        </div>
+      ) : null}
 
-      <div className="mt-10">
-        <button
-          type="button"
-          onClick={continueWithGoogle}
-          disabled={inFlight}
-          // Buttons: the one primary action on a surface is filled, `56px`
-          // at sign-in (handoff §6). There is exactly one action here, so this is it.
-          className={PRIMARY_BUTTON_LARGE}
-        >
-          {inFlight ? "Taking you to Google" : "Continue with Google"}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={continueWithGoogle}
+        disabled={inFlight}
+        // The one filled action on this surface, at the `56px` sign-in height (handoff
+        // §6), across the column the way the board draws it.
+        className={`${PRIMARY_BUTTON_LARGE} mt-6 w-full`}
+      >
+        {inFlight ? "Taking you to Google" : "Continue with Google"}
+      </button>
     </>
   );
 }

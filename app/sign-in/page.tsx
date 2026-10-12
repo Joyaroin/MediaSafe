@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { isSignedIn } from "@/lib/session";
+import { PosterFrames } from "../poster-frames";
 import { Wordmark } from "../press-mark";
 import { SignInSurface } from "./sign-in-surface";
 
@@ -52,16 +53,21 @@ export default async function SignInPage({
   const arrivedFailed = typeof error === "string" && error.length > 0;
 
   return (
-    // Centred on every screen size (issue #357): it used to be a left-aligned block adrift
-    // in a wide empty page, with the one action on it a small pill.
-    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-gutter py-16 text-center">
-      <Wordmark markClassName="h-6 w-6" />
+    // Charcoal (handoff §8.10): the wordmark at the head, the frames picture in whatever
+    // height is left, and the words and the one control anchored to the foot, where a
+    // thumb is. Left-aligned like every other screen, in a phone-width column at any width.
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-gutter pb-9 pt-6">
+      <Wordmark markClassName="h-6 w-6" nameClassName="text-row font-semibold leading-none" />
 
-      <h1 className="bill-title mt-8 text-bill-lg text-text lg:text-bill-xl">
+      <div className="flex flex-1 items-center py-8">
+        <PosterFrames glyph="tick" />
+      </div>
+
+      <h1 className="screen-title text-screen text-text">
         A personal tracker for the films and shows you watch
       </h1>
 
-      <p className="mt-5 max-w-[48ch] text-note leading-relaxed text-dim">
+      <p className="mt-3.5 text-note leading-relaxed text-dim">
         Sign in with Google to reach your library. MediaSafe has no password to remember
         and asks for nothing else — everything it knows about you comes from the account
         you choose.

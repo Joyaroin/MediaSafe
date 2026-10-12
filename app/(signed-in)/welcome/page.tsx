@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { PosterFrames } from "@/app/poster-frames";
+import { Wordmark } from "@/app/press-mark";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
 import { WelcomeSurface } from "./welcome-surface";
 
@@ -39,16 +41,27 @@ export default async function WelcomePage() {
   if (await requireImportOfferAnswered()) redirect("/library");
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-gutter py-12 lg:py-16">
-      <h1 className="bill-title text-bill-lg text-text">Bring your library in</h1>
+    // Sign-in's composition (handoff §8.11), inside the signed-in layout: the tab bar
+    // shows below with no tab current, and from `lg:` the sidebar carries the wordmark,
+    // so this one is the phone's alone.
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-gutter pb-9 pt-3 lg:pt-12">
+      <div className="lg:hidden">
+        <Wordmark markClassName="h-6 w-6" nameClassName="text-row font-semibold leading-none" />
+      </div>
 
-      <p className="mt-5 max-w-[62ch] text-note leading-relaxed text-dim">
+      <div className="flex flex-1 items-center py-8">
+        <PosterFrames glyph="import" />
+      </div>
+
+      <h1 className="screen-title text-screen text-text">Bring your library in</h1>
+
+      <p className="mt-3.5 text-note leading-relaxed text-dim">
         MediaSafe can bring in your whole library from an export file in one pass — every
         title and every watch — instead of adding titles one at a time. You can also start
         with an empty library and add titles as you go, from Search.
       </p>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <WelcomeSurface />
       </div>
     </main>

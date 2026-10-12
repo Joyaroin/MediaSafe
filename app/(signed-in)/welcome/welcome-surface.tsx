@@ -8,19 +8,16 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
-import { PRIMARY_BUTTON_LARGE } from "@/app/buttons";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON } from "@/app/buttons";
 import { ReferenceLine } from "@/errors/reference-line";
 import { answerImportOfferAction } from "./actions";
 
 /**
  * The two answers to the first-run offer, and the one write behind both of them.
- * 
  *
- * Buttons: *the one primary recovery action (`Bring your library in`) is
- * solid `accent` with `accent-ink` text* — named there before this screen existed to hold it, and
- * the decline sits beside it at the ghost treatment the same register gives every lesser
- * action.
+ * Buttons: `Bring your library in` is the one filled action, at the `56px` first-run
+ * height, and the decline sits under it as a `48px` quiet button — the treatment every
+ * lesser action gets (handoff §5.2, §8.11).
  *
  * ── Why this is a client component and not two forms ─────────────────────────────────
  *
@@ -67,12 +64,12 @@ export function WelcomeSurface() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-col gap-2.5">
         <button
           type="button"
           onClick={() => choose("/import", "import")}
           disabled={inFlight !== null}
-          className={PRIMARY_BUTTON_LARGE}
+          className={`${PRIMARY_BUTTON_LARGE} w-full`}
         >
           {inFlight === "import" ? "Bringing your library in" : "Bring your library in"}
         </button>
@@ -81,17 +78,18 @@ export function WelcomeSurface() {
           type="button"
           onClick={() => choose("/library", "decline")}
           disabled={inFlight !== null}
-          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+          className={`${SECONDARY_BUTTON} w-full`}
         >
           {inFlight === "decline" ? "Setting up your library" : "Start with an empty library"}
         </button>
       </div>
 
+      {/* Under the two buttons, which stay where they are (handoff §8.11). */}
       {failed ? (
         <section role="alert" className={`mt-6 ${FAILURE_SECTION}`}>
           <h2 className={FAILURE_HEADING}>That did not go through</h2>
           <p className={FAILURE_PROSE}>
-            MediaSafe could not record your answer. Nothing has changed — try again.
+            MediaSafe could not record your answer. Nothing has changed. Try again.
           </p>
           {reference === null ? null : (
             <div className="mt-6">

@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 
+import { PRIMARY_BUTTON } from "@/app/buttons";
 import {
   FAILURE_HEADING,
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
-import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
 import { chunkImportFile } from "@/import/chunking";
@@ -44,7 +46,7 @@ const ZERO_COUNTERS: Counters = { titlesAdded: 0, watchesAdded: 0, abandonedAdde
 /** The three counters, plus the denominator only the file itself knows. One name, so `running`, `halted` and `done` — the three phases that have a run to report on — do not each spell the same intersection out by hand. */
 type Progress = Counters & { readonly totalTitles: number };
 
-type Phase =
+export type Phase =
   | { kind: "choose" }
   /** The file the reader picked is not one MediaSafe will write. */
   | { kind: "invalid"; message: string; reference: string | null }
@@ -131,14 +133,35 @@ export function ImportSurface() {
   }
 
   return (
+    <ImportPhase
+      phase={phase}
+      onChoose={onFileChosen}
+      chooseAgain={() => setPhase({ kind: "choose" })}
+      retry={retry}
+    />
+  );
+}
+
+/**
+ * What each phase draws, apart from the machine that moves between them — so
+ * `tests/import-phases.test.ts` can render every phase's wording without driving a run.
+ */
+export function ImportPhase({
+  phase,
+  onChoose,
+  chooseAgain,
+  retry,
+}: {
+  phase: Phase;
+  onChoose: (files: FileList | null) => void;
+  chooseAgain: () => void;
+  retry: () => void;
+}) {
+  return (
     <div>
-      {phase.kind === "choose" ? <FilePicker onChoose={onFileChosen} /> : null}
+      {phase.kind === "choose" ? <FilePicker onChoose={onChoose} /> : null}
       {phase.kind === "invalid" ? (
-        <InvalidFile
-          message={phase.message}
-          reference={phase.reference}
-          chooseAgain={() => setPhase({ kind: "choose" })}
-        />
+        <InvalidFile message={phase.message} reference={phase.reference} chooseAgain={chooseAgain} />
       ) : null}
       {phase.kind === "running" ? <Running {...phase} /> : null}
       {phase.kind === "halted" ? <Halted {...phase} retry={retry} /> : null}
@@ -148,22 +171,22 @@ export function ImportSurface() {
 }
 
 /**
- * The Buttons register names one solid, primary action per surface — here it is
- * the only control this screen has before a run starts. The native input is visually
- * hidden and the label carries the treatment, which is what makes it stylable at all: a
- * file input cannot be restyled directly in any browser.
+ * The one filled action this screen has before a run starts (handoff §8.12). The native
+ * input is visually hidden and the label carries the treatment, which is what makes it
+ * stylable at all: a file input cannot be restyled directly in any browser. Focus lands on
+ * that hidden input, so the label draws the focus ring for it.
  */
 function FilePicker({ onChoose }: { onChoose: (files: FileList | null) => void }) {
   return (
     <div>
       <p className="max-w-[62ch] text-note leading-relaxed text-dim">
-        Pick the file below. MediaSafe writes it in chunks of about 25 titles at a time,
-        right here on this screen — keep this tab open until it says the import is done.
-        Closing it stops the import where it is; reopening this page and picking the file
-        again finishes it, because nothing already written is touched twice.
+        Pick your export file. MediaSafe writes it about 25 titles at a time, right on this
+        screen. Keep it open until it says the import is done.
       </p>
 
-      <label className="code-line mt-8 inline-block cursor-pointer bg-accent px-4 py-2 text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-90">
+      <label
+        className={`${PRIMARY_BUTTON} mt-6 w-full cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-text sm:w-auto`}
+      >
         Choose your file
         <input
           type="file"
@@ -200,39 +223,78 @@ function InvalidFile({
   );
 }
 
-/** The three counters, exactly as specified: `318 of 462 titles · 11,204 watches · 155 marked abandoned`. */
+/** Thousands grouped the way every other count in the app is (`you/figures.ts`). */
+function count(value: number): string {
+  return value.toLocaleString("en-GB");
+}
+
+/**
+ * The three counters on one line: `318 of 462 titles · 11,204 watches · 155 marked dropped`.
+ * The count is of titles that arrived abandoned; the reader's word for that, on the Library
+ * filter and here, is *dropped* (handoff §3).
+ */
 function CounterLine({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
   return (
-    <p role="status" className="code-line text-text" data-numeric>
-      {titlesAdded} of {totalTitles} titles · {watchesAdded} watches · {abandonedAdded} marked
-      abandoned
+    <p role="status" className="text-note font-semibold text-text" data-numeric>
+      {count(titlesAdded)} of {count(totalTitles)} titles · {count(watchesAdded)} watches ·{" "}
+      {count(abandonedAdded)} marked dropped
     </p>
   );
 }
 
+/**
+ * The run, drawn as one card (handoff §8.12): titles written so far at Display size over
+ * the total, a `4px` bar of written over total, and the other two counters as figures.
+ * `role="status"` stays on the card, so each chunk's answer is announced as it lands; the
+ * bar says nothing the numbers do not, so it is hidden from that announcement.
+ */
 function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Progress) {
+  const written = totalTitles === 0 ? 0 : Math.min(1, titlesAdded / totalTitles);
+
   return (
     <div>
-      <h2 className="bill-title text-bill-md text-text">Importing your library</h2>
-      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
+      <h2 className="bill-title text-bill-lg text-text">Importing your library</h2>
+      <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
         Keep this tab open. Nothing here is a queue — the import runs only while this
         screen is watching it, and closing the tab leaves it exactly where it stands.
       </p>
-      <div className="mt-6">
-        <CounterLine
-          totalTitles={totalTitles}
-          titlesAdded={titlesAdded}
-          watchesAdded={watchesAdded}
-          abandonedAdded={abandonedAdded}
-        />
-      </div>
+
+      <section role="status" className="mt-5 rounded-[var(--radius-5)] bg-raised p-5 plate-line">
+        <p className="flex flex-wrap items-baseline gap-x-2.5" data-numeric>
+          <span className="bill-title text-display leading-[0.9] text-text">{count(titlesAdded)}</span>
+          <span className="text-note text-dim">of {count(totalTitles)} titles</span>
+        </p>
+
+        <div aria-hidden="true" className="my-4 h-1 rounded-[var(--radius-full)] bg-hair">
+          <div
+            className="h-1 rounded-[var(--radius-full)] bg-text"
+            style={{ width: `${written * 100}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3" data-numeric>
+          <p className="flex flex-col gap-0.5">
+            <span className="text-row font-semibold text-text">{count(watchesAdded)}</span>
+            <span className="text-meta text-dim">watches</span>
+          </p>
+          <p className="flex flex-col gap-0.5">
+            <span className="text-row font-semibold text-text">{count(abandonedAdded)}</span>
+            <span className="text-meta text-dim">marked dropped</span>
+          </p>
+        </div>
+      </section>
+
+      <p className="mt-3.5 text-meta leading-relaxed text-dim">
+        Written about 25 titles at a time. Nothing already written is touched twice, so
+        picking the same file again is always safe.
+      </p>
     </div>
   );
 }
 
 /**
  * The *halt* failure mode, rendered with `errors/failure-treatment.ts`'s
- * inline block — the same one `ReadFailure` uses — rather than the write-failure toast.
+ * outlined panel — the same one `ReadFailure` uses — rather than the write-failure toast.
  *
  * That is a deliberate departure from `AGENTS.md`'s blast-radius table, which files "one
  * write was lost" under the toast. The ticket itself overrides it: *"Import's failures are
@@ -243,6 +305,8 @@ function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Pro
  * with nothing else on it to carry on. Of the three treatments left once the toast is
  * ruled out, inline is the one that fits — full-page belongs to a signed-out reader, and
  * the offline banner belongs to the whole app being unreachable, not one chunk.
+ *
+ * *Try again* is filled: once the run has stopped it is the one way on (handoff §8.12).
  */
 function Halted({
   totalTitles,
@@ -261,12 +325,11 @@ function Halted({
     <section className={FAILURE_SECTION}>
       <h2 className={FAILURE_HEADING}>The import stopped</h2>
       <p className={FAILURE_PROSE}>
-        Something went wrong partway through your file. What had already been written stays
-        written — nothing here is undone — and the rest of the file has not been touched yet.
-        Running it again is safe: everything already landed is a no-op the second time.
+        Something went wrong partway through your file. What was already written stays
+        written, and the rest has not been touched. Running it again is safe.
       </p>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <CounterLine
           totalTitles={totalTitles}
           titlesAdded={titlesAdded}
@@ -276,7 +339,7 @@ function Halted({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
-        <button type="button" onClick={retry} className={GHOST_RECOVERY}>
+        <button type="button" onClick={retry} className={SOLID_RECOVERY}>
           Try again
         </button>
         {reference === null ? null : <ReferenceLine reference={reference} />}
@@ -296,12 +359,12 @@ function Done({
 }: Progress & { skipped: readonly SkippedTitle[] }) {
   return (
     <div>
-      <h2 className="bill-title text-bill-md text-text">Import done</h2>
-      <p className="mt-4 max-w-[62ch] text-note leading-relaxed text-dim">
-        Your file has been written in full. Running it again — from this file or a newer
-        export of the same library — changes nothing that is already here.
+      <h2 className="bill-title text-bill-lg text-text">Import done</h2>
+      <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
+        Your file has been written in full. Running it again changes nothing that is
+        already here.
       </p>
-      <div className="mt-6">
+      <div className="mt-4">
         <CounterLine
           totalTitles={totalTitles}
           titlesAdded={titlesAdded}
@@ -310,6 +373,11 @@ function Done({
         />
       </div>
       <SkippedTitleList skipped={skipped} />
+
+      {/* A way onward. The screen used to end at the count (handoff §3). */}
+      <Link href="/library" className={`${PRIMARY_BUTTON} mt-6 w-full sm:w-auto`}>
+        Open your library
+      </Link>
     </div>
   );
 }
@@ -324,13 +392,14 @@ function SkippedTitleList({ skipped }: { skipped: readonly SkippedTitle[] }) {
   if (skipped.length === 0) return null;
 
   return (
-    <div className="mt-8 border-t border-hair pt-6">
-      <h3 className="code-line text-dim">
-        {skipped.length} {skipped.length === 1 ? "title" : "titles"} TMDB could not find, skipped
+    <div className="mt-5 border-t border-hair pt-5">
+      <h3 className="text-item font-semibold text-text" data-numeric>
+        {count(skipped.length)} {skipped.length === 1 ? "title" : "titles"} TMDB could not
+        find, skipped
       </h3>
-      <ul className="mt-3 space-y-1">
+      <ul className="mt-2 space-y-1">
         {skipped.map((one) => (
-          <li key={`${one.kind}:${one.tmdbId}`} className="text-item text-dim" data-numeric>
+          <li key={`${one.kind}:${one.tmdbId}`} className="text-meta text-dim" data-numeric>
             {one.kind === "film" ? "Film" : "Show"} · TMDB {one.tmdbId}
           </li>
         ))}
