@@ -50,6 +50,12 @@ export interface UpcomingGroup<T> {
   /** Stable across renders and across days for the same bucket, so React keys and
    *  `aria-labelledby` have something to hold that is not the visible words. */
   readonly key: string;
+  /**
+   * The date set on the right of the heading, in Meta (Charcoal §8.2): `Mon 12 Oct` under
+   * *Today* and *Tomorrow*, `14 Oct` under a weekday — whose name is already the heading —
+   * and `null` under *Later*, which holds many days and sets each row's date on the row.
+   */
+  readonly date: string | null;
   readonly episodes: readonly T[];
 }
 
@@ -85,11 +91,25 @@ function calendarDay(day: string): number {
  * UTC, which here would print the wrong weekday under the right rows.
  */
 function weekdayName(day: string): string {
+  return inUtc(day, { weekday: "long" });
+}
+
+/** A calendar day in `en-GB` words, formatted in UTC for `weekdayName`'s reason. */
+function inUtc(day: string, format: Intl.DateTimeFormatOptions): string {
   const [year, month, date] = day.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
-    weekday: "long",
+    ...format,
     timeZone: "UTC",
   });
+}
+
+/**
+ * `6 Nov` — a day and a month, no year. What a *Later* row prints in its Meta line, and the
+ * date beside a weekday heading. The countdown beside it says how far off it is, so a date
+ * in January cannot be misread as last January.
+ */
+export function dayMonthInWords(day: string): string {
+  return inUtc(day, { day: "numeric", month: "short" });
 }
 
 /**
@@ -159,7 +179,7 @@ export function groupUpcoming<T extends { readonly airDate: string }>(
    * `readonly episodes` — which worked, and was a lie the type could not catch. The two
    * passes cost one `map` over a list this page has already read from Postgres.
    */
-  const order: { label: string; key: string }[] = [];
+  const order: { label: string; key: string; date: string | null }[] = [];
   const byKey = new Map<string, T[]>();
 
   for (const one of episodes) {
@@ -176,7 +196,7 @@ export function groupUpcoming<T extends { readonly airDate: string }>(
     }
   }
 
-  return order.map(({ label, key }) => ({ label, key, episodes: byKey.get(key) ?? [] }));
+  return order.map((bucket) => ({ ...bucket, episodes: byKey.get(bucket.key) ?? [] }));
 }
 
 /**
@@ -188,13 +208,22 @@ export function groupUpcoming<T extends { readonly airDate: string }>(
  * the six-day horizon but a key that was only `weekday-monday` would be one edit away from
  * merging them if it ever were.
  */
-function bucketFor(ahead: number, airDate: string): { label: string; key: string } {
-  if (ahead === 0) return { label: "Today", key: "today" };
-  if (ahead === 1) return { label: "Tomorrow", key: "tomorrow" };
+function bucketFor(
+  ahead: number,
+  airDate: string,
+): { label: string; key: string; date: string | null } {
+  const dated = inUtc(airDate, { weekday: "short", day: "numeric", month: "short" });
+
+  if (ahead === 0) return { label: "Today", key: "today", date: dated };
+  if (ahead === 1) return { label: "Tomorrow", key: "tomorrow", date: dated };
   if (ahead <= NAMED_WEEKDAY_HORIZON) {
-    return { label: weekdayName(airDate), key: `weekday-${airDate}` };
+    return {
+      label: weekdayName(airDate),
+      key: `weekday-${airDate}`,
+      date: dayMonthInWords(airDate),
+    };
   }
-  return { label: "Later", key: "later" };
+  return { label: "Later", key: "later", date: null };
 }
 
 /** A film still to come, with the words that go under it — issue #252. */

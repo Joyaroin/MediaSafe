@@ -34,7 +34,7 @@ import { UpcomingRow } from "./upcoming-row";
  *
  * ── The films arrived in #252, and this component is what adds the halves up ────────
  *
- * The handoff draws *Upcoming movies* under these rows — the watchlist films whose release
+ * The handoff draws *Upcoming films* under these rows — the watchlist films whose release
  * date is still ahead, with a countdown. #252 built them over their own read
  * (`listUpcomingFilms`) and their own section (`upcoming-films.tsx`), and what lands here
  * is the one thing neither half can decide alone: **whether the page is empty**.
@@ -91,9 +91,10 @@ export function UpcomingSurface({
     return <UpcomingNothing suggestions={suggestions} />;
   }
 
-  /* `pb-2` on the wrapper rather than a node of its own: the foot of the page, held here now that either section can be the last thing on it. */
+  /* `pb-6` on the wrapper rather than a node of its own: the foot of the page, held here
+     because either section can be the last thing on it. */
   return (
-    <div className="pb-2">
+    <div className="pb-6">
       <UpcomingEpisodes groups={groups} today={today} />
       <UpcomingFilms films={awaited} />
     </div>
@@ -101,11 +102,16 @@ export function UpcomingSurface({
 }
 
 /**
- * The episodes half, lifted out of the surface unchanged when #252 gave it a sibling.
+ * The episodes, under their days — Charcoal §8.2. A serif Heading per day (*Today*,
+ * *Tomorrow*, a weekday, *Later*) with its date on the right in Meta, and the rows beneath.
  *
- * Absent on nothing rather than empty-headed, which is what lets the films below stand
- * alone for a reader who keeps a watchlist and is between series. The sentence for *both*
- * halves empty is the surface's, above.
+ * The day headings were removed once, when each row printed its own *In 3 days* and a
+ * heading saying it again was noise. The redesign moves the distance back up into the
+ * heading and takes it off the row, so it is said once either way — except under *Later*,
+ * which spans many days and so leaves each row its date and its countdown.
+ *
+ * The groups are `groupUpcoming`'s, unchanged: which day a row sits under and what the
+ * heading says are that module's answers, asserted in `tests/upcoming-grouping.test.ts`.
  */
 function UpcomingEpisodes({
   groups,
@@ -116,22 +122,38 @@ function UpcomingEpisodes({
 }) {
   if (groups.length === 0) return null;
 
-  // One list in air-date order, each row saying how far away it is. The day headings this
-  // used to draw (Today, Tomorrow, a weekday, Later) said the same thing a second time and
-  // left *Later* saying nothing at all.
-  const episodes = groups.flatMap((group) => group.episodes);
-
   return (
-    <section className="pt-[26px]">
-      <div className="px-gutter pb-1">
-        <h2 className="label-line text-dim">Upcoming episodes</h2>
-      </div>
+    <div className="flex flex-col px-gutter lg:max-w-3xl">
+      {groups.map((group) => {
+        const headingId = `coming-up-${group.key}`;
+        const later = group.date === null;
 
-      <ul className="stagger-rise mt-2.5 flex flex-col gap-2 px-gutter">
-        {episodes.map((episode) => (
-          <UpcomingRow key={episode.episodeId} episode={episode} today={today} />
-        ))}
-      </ul>
-    </section>
+        return (
+          <section key={group.key} aria-labelledby={headingId}>
+            <div className="flex items-baseline justify-between gap-3 pt-3.5 pb-1.5">
+              <h2 id={headingId} className="bill-title text-bill-lg text-text">
+                {group.label}
+              </h2>
+              {later ? null : (
+                <span className="shrink-0 text-meta text-dim" data-numeric>
+                  {group.date}
+                </span>
+              )}
+            </div>
+
+            <ul className="stagger-rise">
+              {group.episodes.map((episode) => (
+                <UpcomingRow
+                  key={episode.episodeId}
+                  episode={episode}
+                  today={today}
+                  dated={later}
+                />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
   );
 }
