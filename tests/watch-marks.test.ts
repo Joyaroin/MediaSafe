@@ -77,6 +77,9 @@ function harness() {
     (outcome: MarkWatchedUpToActionOutcome) => void
   > = [];
   const answerUndo: Array<(outcome: UnwatchActionOutcome) => void> = [];
+  /** Every stroke Undo the writer was handed — issue #408. */
+  const undoneUpTo: Array<{ readonly libraryEntryId: string; readonly sourceKey: string }> = [];
+  const answerUndoUpTo: Array<(outcome: UnwatchActionOutcome) => void> = [];
   let minted = 0;
 
   const failures = createWriteFailureStore();
@@ -98,6 +101,10 @@ function harness() {
       recordUpTo(params) {
         upTo.push(params);
         return new Promise((resolve) => answerUpTo.push(resolve));
+      },
+      undoUpTo(params) {
+        undoneUpTo.push(params);
+        return new Promise((resolve) => answerUndoUpTo.push(resolve));
       },
     },
     failures,
@@ -130,6 +137,8 @@ function harness() {
     answerRemove,
     upTo,
     answerUpTo,
+    undoneUpTo,
+    answerUndoUpTo,
     surface,
   };
 }
@@ -656,5 +665,75 @@ describe("marking watched up to an episode", () => {
     // that row was already watched, by a write of its own that landed. Rolling it to
     // unwatched would be a landed write reading as a lost one.
     expect(row.view()).toMatchObject({ watched: true });
+  });
+});
+
+/**
+ * A painted stroke's one Undo — issue #408. One press through several episodes, taken back
+ * by one write keyed by that press.
+ */
+describe("taking back a press through several episodes", () => {
+  async function landedPress() {
+    const h = harness();
+    const rows = COVERED.map((subject) => h.surface(subject));
+    const pressing = h.marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    h.answerUpTo[0]({ ok: true });
+    const press = await pressing;
+    return { ...h, rows, press };
+  }
+
+  it("hands back the landed press with its key, and nothing for a lost one", async () => {
+    const { press } = await landedPress();
+    expect(press).toMatchObject({ libraryEntryId: "entry-1", sourceKey: "key-1" });
+    expect(press?.covered.map((one) => one.subject)).toEqual(COVERED);
+
+    const { marks, answerUpTo } = harness();
+    const lost = marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    answerUpTo[0]({ ok: false, reference: "ref-1" });
+    expect(await lost).toBeNull();
+  });
+
+  it("sends one write, keyed by the press, and empties every row before it answers", async () => {
+    const { marks, rows, press, undoneUpTo, answerUndoUpTo, failures } = await landedPress();
+
+    const undoing = marks.undoUpTo(press!, THROUGH_NAMING);
+    expect(undoneUpTo).toEqual([{ libraryEntryId: "entry-1", sourceKey: "key-1" }]);
+    for (const row of rows) expect(row.view()).toMatchObject({ watched: false, pending: true });
+
+    answerUndoUpTo[0]({ ok: true });
+    await undoing;
+
+    for (const row of rows) expect(row.view()).toEqual(UNWATCHED);
+    expect(failures.get()).toHaveLength(0);
+  });
+
+  it("puts a row watched before the press back to watched, not to unwatched", async () => {
+    const h = harness();
+    const already = h.surface(COVERED[0], WATCHED);
+    COVERED.slice(1).forEach((subject) => h.surface(subject));
+    const pressing = h.marks.markUpTo(THROUGH, COVERED, THROUGH_NAMING);
+    h.answerUpTo[0]({ ok: true });
+    const press = await pressing;
+
+    const undoing = h.marks.undoUpTo(press!, THROUGH_NAMING);
+    h.answerUndoUpTo[0]({ ok: true });
+    await undoing;
+
+    expect(already.view()).toEqual(WATCHED);
+  });
+
+  it("puts every row back to watched and raises one toast, with no Try again, if it is lost", async () => {
+    const { marks, rows, press, answerUndoUpTo, failures } = await landedPress();
+
+    const undoing = marks.undoUpTo(press!, THROUGH_NAMING);
+    answerUndoUpTo[0]({ ok: false, reference: "ref-2" });
+    await undoing;
+
+    for (const row of rows) {
+      expect(row.view()).toEqual({ watched: true, watches: 1, phase: "settled", pending: false });
+    }
+    expect(failures.get()).toHaveLength(1);
+    expect(onlyToast(failures)).toMatchObject({ title: "Better Call Saul" });
+    expect(onlyToast(failures)?.retry).toBeUndefined();
   });
 });

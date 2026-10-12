@@ -6,6 +6,7 @@ import {
   markWatchedUpTo,
   ownedBy,
   recordWatch,
+  undoMarkWatchedUpTo,
   type UserId,
 } from "@/db/access";
 import type { Transaction } from "@/db/client";
@@ -545,5 +546,126 @@ describe("markWatchedUpTo", () => {
           tx,
         ),
       ).rejects.toThrow(/not an episode of/);
+    }));
+});
+
+/**
+ * The stroke's one Undo — issue #408 (handoff §11.3, open question 3). The exact inverse of
+ * one press: what that press wrote goes, and nothing else does.
+ */
+describe("undoMarkWatchedUpTo", () => {
+  async function press(tx: Transaction, userId: UserId, entryId: string, upTo: string) {
+    const sourceKey = nextKey();
+    await markWatchedUpTo(userId, { libraryEntryId: entryId, upToEpisodeId: upTo, sourceKey }, tx);
+    return sourceKey;
+  }
+
+  it("takes back every episode one press recorded, in one call", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
+
+      const sourceKey = await press(tx, userId, entryId, episodeIds["2-1"]);
+      const outcome = await undoMarkWatchedUpTo(userId, { libraryEntryId: entryId, sourceKey }, tx);
+
+      expect(outcome.removed).toBe(4);
+      expect(await watchedEpisodes(tx, userId, entryId)).toEqual([]);
+    }));
+
+  it("leaves what was watched before the press — app or imported — exactly as it was", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, titleId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
+
+      // One episode marked by hand, one imported, both before the stroke.
+      await recordWatch(
+        userId,
+        { libraryEntryId: entryId, episodeId: episodeIds["1-1"], sourceKey: nextKey() },
+        tx,
+      );
+      const sourceKey = nextKey();
+      await tx.insert(watch).values({
+        userId,
+        libraryEntryId: entryId,
+        titleId,
+        episodeId: episodeIds["1-2"],
+        watchedAt: new Date("2020-01-01"),
+        source: "tvtracker",
+        // Even a key that happens to share the press's prefix is not the press's row.
+        sourceKey: `${sourceKey}:${episodeIds["1-2"]}`,
+      });
+
+      await markWatchedUpTo(
+        userId,
+        { libraryEntryId: entryId, upToEpisodeId: episodeIds["2-1"], sourceKey },
+        tx,
+      );
+      const outcome = await undoMarkWatchedUpTo(userId, { libraryEntryId: entryId, sourceKey }, tx);
+
+      expect(outcome.removed).toBe(2);
+      expect(await watchedEpisodes(tx, userId, entryId)).toEqual(["1-1", "1-2"]);
+    }));
+
+  it("takes back one press and not another press over the same show", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
+
+      await press(tx, userId, entryId, episodeIds["1-2"]);
+      const second = await press(tx, userId, entryId, episodeIds["2-2"]);
+      await undoMarkWatchedUpTo(userId, { libraryEntryId: entryId, sourceKey: second }, tx);
+
+      expect(await watchedEpisodes(tx, userId, entryId)).toEqual(["1-1", "1-2"]);
+    }));
+
+  it("matches the key as text, never as a pattern", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const { entryId, episodeIds } = await seedShow(tx, userId, TWO_SEASONS);
+
+      await press(tx, userId, entryId, episodeIds["1-3"]);
+      // `%` would match every key under `LIKE`.
+      const outcome = await undoMarkWatchedUpTo(
+        userId,
+        { libraryEntryId: entryId, sourceKey: "%" },
+        tx,
+      );
+
+      expect(outcome.removed).toBe(0);
+      expect(await watchedEpisodes(tx, userId, entryId)).toEqual(["1-1", "1-2", "1-3"]);
+    }));
+
+  it("reaches neither another of this account's titles nor another account", () =>
+    inTransaction(async (tx) => {
+      const adham = await seedUser(tx, "adham");
+      const other = await seedUser(tx, "other");
+      const mine = await seedShow(tx, adham, TWO_SEASONS);
+      const alsoMine = await seedShow(tx, adham, TWO_SEASONS);
+      const theirs = await seedShow(tx, other, TWO_SEASONS);
+
+      // The same key pressed on all three, which a browser never does and a request can.
+      const sourceKey = nextKey();
+      for (const [userId, show] of [
+        [adham, mine],
+        [adham, alsoMine],
+        [other, theirs],
+      ] as const) {
+        await markWatchedUpTo(
+          userId,
+          { libraryEntryId: show.entryId, upToEpisodeId: show.episodeIds["1-2"], sourceKey },
+          tx,
+        );
+      }
+
+      await undoMarkWatchedUpTo(adham, { libraryEntryId: mine.entryId, sourceKey }, tx);
+
+      expect(await watchedEpisodes(tx, adham, mine.entryId)).toEqual([]);
+      expect(await watchedEpisodes(tx, adham, alsoMine.entryId)).toEqual(["1-1", "1-2"]);
+      expect(await watchedEpisodes(tx, other, theirs.entryId)).toEqual(["1-1", "1-2"]);
+
+      // And another account's entry is refused outright, as every write here refuses it.
+      await expect(
+        undoMarkWatchedUpTo(adham, { libraryEntryId: theirs.entryId, sourceKey }, tx),
+      ).rejects.toThrow(/not found in this account's library/);
     }));
 });

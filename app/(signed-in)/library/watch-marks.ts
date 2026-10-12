@@ -9,6 +9,7 @@ import {
 } from "@/errors/write-failure";
 import {
   markWatchedUpToAction,
+  undoMarkWatchedUpToAction,
   recordWatchAction,
   undoWatchAction,
   unwatchAction,
@@ -190,6 +191,12 @@ export interface WatchWriter {
     readonly upToEpisodeId: string;
     readonly sourceKey: string;
   }): Promise<MarkWatchedUpToActionOutcome>;
+  /** Takes back exactly the rows one `recordUpTo` wrote — a painted stroke's one Undo,
+   *  issue #408. `db/access.ts`'s `undoMarkWatchedUpTo` has why it is keyed by the press. */
+  undoUpTo(params: {
+    readonly libraryEntryId: string;
+    readonly sourceKey: string;
+  }): Promise<UnwatchActionOutcome>;
 }
 
 export interface WatchMarks {
@@ -233,9 +240,29 @@ export interface WatchMarks {
     through: WatchSubject,
     covered: readonly WatchSubject[],
     naming: WatchNaming,
-  ): Promise<void>;
+  ): Promise<UpToPress | null>;
+  /**
+   * Take one landed `markUpTo` press back, whole — a painted stroke's one Undo, issue
+   * #408. Every covered row goes back to what it looked like before the press, at once and
+   * before the server answers; a lost delete puts them all back to watched and raises one
+   * toast, with no *Try again*, as `undo` does.
+   */
+  undoUpTo(press: UpToPress, naming: WatchNaming): Promise<void>;
   /** The strike animation ended, on whichever surface got there first. */
   settle(subject: WatchSubject): void;
+}
+
+/**
+ * A `markUpTo` press that landed — what its Undo needs: the key the rows were written
+ * under, and the rows it covered with what each looked like before it.
+ */
+export interface UpToPress {
+  readonly libraryEntryId: string;
+  readonly sourceKey: string;
+  readonly covered: readonly {
+    readonly subject: WatchSubject;
+    readonly before: WatchAppearance;
+  }[];
 }
 
 /** What a mark starts as when a write reaches an episode no surface is showing. */
@@ -634,7 +661,7 @@ export function createWatchMarks({
     through: WatchSubject,
     covered: readonly WatchSubject[],
     naming: WatchNaming,
-  ): Promise<void> {
+  ): Promise<UpToPress | null> {
     // Before anything is marked, not after. A film has no episode list and so no control
     // (`programme-note-episodes.tsx`), which makes this a caller bug rather than a lost
     // write — but a throw raised *after* the optimistic marks were applied would leave a
@@ -656,6 +683,8 @@ export function createWatchMarks({
     // Every covered row, optimistically watched and settled, and held so a failure can
     // put each one back exactly as it was at the moment of this press.
     const marked = covered.map((subject) => ensure(subject, UNSEEN));
+    // What an Undo of this press puts back, taken before the press changes anything.
+    const before = marked.map((one) => appearanceOf(one.view));
     for (const one of marked) {
       one.written = true;
       holdRestore(one);
@@ -682,7 +711,7 @@ export function createWatchMarks({
 
     // The same guard `mark` states at length: an attempt only ever speaks for the write
     // it named, so an answer arriving after the key has moved on is not news.
-    if (write.key !== sourceKey) return;
+    if (write.key !== sourceKey) return null;
 
     if (outcome.ok) {
       write.key = null;
@@ -698,7 +727,11 @@ export function createWatchMarks({
         write.raised.resolve();
         write.raised = null;
       }
-      return;
+      return {
+        libraryEntryId: through.libraryEntryId,
+        sourceKey,
+        covered: covered.map((subject, index) => ({ subject, before: before[index] })),
+      };
     }
 
     for (const one of marked) {
@@ -706,7 +739,7 @@ export function createWatchMarks({
     }
 
     // One toast per lost write, not one per attempt — and here, not one per episode.
-    if (write.raised) return;
+    if (write.raised) return null;
 
     write.raised = failures.raise({
       title: naming.title,
@@ -714,6 +747,51 @@ export function createWatchMarks({
       reference: outcome.reference,
       // The same key, so *Try again* is a retry of this press rather than a second one.
       retry: () => void markUpTo(through, covered, naming),
+    });
+    return null;
+  }
+
+  /**
+   * Undo one landed `markUpTo` press — issue #408, a painted stroke's one Undo.
+   *
+   * One write, as the press was one write: `undoMarkWatchedUpTo` deletes exactly the rows
+   * that press's key wrote, in one transaction, so the stroke comes back whole or not at
+   * all. Optimistic like every write here — each covered row is put back to how it looked
+   * before the press — and a lost delete puts every one back to watched and raises **one**
+   * toast, without *Try again*, which is `undo`'s treatment and for its reason: retrying a
+   * reversal the reader may already have moved on from is not this store's call.
+   */
+  async function undoUpTo(press: UpToPress, naming: WatchNaming): Promise<void> {
+    const rows = press.covered.map(({ subject, before }) => ({
+      one: ensure(subject, UNSEEN),
+      before,
+    }));
+    const after = rows.map(({ one }) => appearanceOf(one.view));
+
+    for (const { one, before } of rows) {
+      one.written = true;
+      one.inFlight += 1;
+      apply(one, { ...before, pending: true });
+    }
+
+    const outcome = await undoUpToWrite(press);
+
+    for (const { one } of rows) one.inFlight -= 1;
+
+    if (outcome.ok) {
+      for (const { one, before } of rows) {
+        apply(one, { ...before, pending: stillPending(one) });
+      }
+      return;
+    }
+
+    rows.forEach(({ one }, index) => {
+      apply(one, { ...after[index], pending: stillPending(one) });
+    });
+    failures.raise({
+      title: naming.title,
+      episode: naming.episode,
+      reference: outcome.reference,
     });
   }
 
@@ -761,6 +839,18 @@ export function createWatchMarks({
       return await writer.undo(subject);
     } catch (error) {
       return { ok: false, reference: referenceFor(error, { surface: "undo" }) };
+    }
+  }
+
+  /** The same wrapper, around a stroke's Undo. */
+  async function undoUpToWrite(press: UpToPress): Promise<UnwatchActionOutcome> {
+    try {
+      return await writer.undoUpTo({
+        libraryEntryId: press.libraryEntryId,
+        sourceKey: press.sourceKey,
+      });
+    } catch (error) {
+      return { ok: false, reference: referenceFor(error, { surface: "undo-mark-watched-up-to" }) };
     }
   }
 
@@ -813,6 +903,7 @@ export function createWatchMarks({
     unwatch,
     undo,
     markUpTo,
+    undoUpTo,
 
     settle(subject) {
       const one = marks.get(idOf(subject));
@@ -840,5 +931,6 @@ export const watchMarks = createWatchMarks({
     remove: (params) => unwatchAction(params),
     undo: (params) => undoWatchAction(params),
     recordUpTo: (params) => markWatchedUpToAction(params),
+    undoUpTo: (params) => undoMarkWatchedUpToAction(params),
   },
 });

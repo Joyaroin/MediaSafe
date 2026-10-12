@@ -5,6 +5,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { WATCHED_TICK } from "@/app/(signed-in)/library/watch-mark-motion";
 import { PILL_TARGET, SECONDARY_PILL } from "@/app/buttons";
+import { pulse } from "@/app/haptics";
 import { beginHoldOver } from "./hold-over";
 
 /**
@@ -43,16 +44,9 @@ export function useHold(holding: string | null, onDone: () => void): void {
   }, [holding]);
 }
 
-/**
- * The finish moment's haptic — issue #367. A short pulse where the browser has
- * `navigator.vibrate` (Android's Chrome and Firefox; Safari has none, and gets the line
- * alone). Not motion, so it fires under reduced motion too.
- */
-const FINISH_PULSE_MS = 30;
-
+/** The finish moment's haptic — issue #367, now `app/haptics.ts`'s one pulse. */
 export function finishPulse(): void {
-  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
-  navigator.vibrate(FINISH_PULSE_MS);
+  pulse();
 }
 
 /**
@@ -109,13 +103,21 @@ export function HeldControl({
  * `outset` is how far outside the tick the ring is drawn. Under reduced motion there is no
  * ring; *Undo* stays for the same time.
  */
-export function UndoRing({ outset }: { readonly outset: number }) {
+export function UndoRing({
+  outset,
+  shownMs = HOLD_MS,
+}: {
+  readonly outset: number;
+  /** How long *Undo* is on screen beside this ring — the mark hold, unless the caller
+   *  offers it for longer (a painted stroke's bar offers it for the Undo window). */
+  readonly shownMs?: number;
+}) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 100 100"
       className="undo-ring absolute overflow-visible text-text"
-      style={{ inset: -outset, "--undo-shown": `${HOLD_MS}ms` } as CSSProperties}
+      style={{ inset: -outset, "--undo-shown": `${shownMs}ms` } as CSSProperties}
     >
       <circle
         cx="50"

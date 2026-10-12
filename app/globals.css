@@ -1533,6 +1533,28 @@
   }
 }
 
+/* ── The paint hold's ring — issue #408 ──────────────────────────────────────────────
+   Closes around the Up next tick over the long-press time while the finger stays down
+   (`use-paint-to-mark.ts`), so the wait reads as a wait. The time is `HOLD_MS` from
+   `use-hold-to-select.ts`, handed down as `--hold-shown` rather than restated. Linear, as
+   the Undo ring is: a timer made visible. It stays under reduced motion, because it is
+   the only thing that says how long to hold — it moves nothing across the screen. */
+@utility hold-ring {
+  pointer-events: none;
+  transform: rotate(-90deg);
+  & circle {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: hold-close var(--hold-shown) linear forwards;
+  }
+}
+
+@keyframes hold-close {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* ── A lost write rewinds — issue #407 ───────────────────────────────────────────────
    The tick empties slowly, the reverse of filling, on `--dur-travel` while the toast
    arrives on `--dur-slow`. The keyframe holds only the filled face; the ring face is

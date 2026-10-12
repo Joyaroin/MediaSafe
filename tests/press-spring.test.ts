@@ -691,7 +691,9 @@ describe("the press answers the gesture the product is built around", () => {
     );
     expect(row, "the row must still declare its ROW classes").not.toBeNull();
     expect(row![1]).not.toMatch(/(^|\s)pressable(\s|$)/);
-    expect(source).toContain("className={held ? `${ROW} watch-hold` : ROW}");
+    expect(source).toContain("className={`${held ? `${ROW} watch-hold` : ROW} ${SWIPEABLE}`}");
+    // `SWIPEABLE` is swipe to mark's (#408) and adds no press either.
+    expect(source).toMatch(/export const SWIPEABLE = "(?![^"]*\bpressable\b)[^"]*"/);
 
     // And the control slot is rendered after the pressable link closes, so the check is a
     // sibling of it rather than a descendant.

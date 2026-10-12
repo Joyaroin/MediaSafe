@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState, type CSSProperties } from "react";
 
 import { SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
 import { PendingLine } from "@/app/pending-line";
@@ -19,21 +19,25 @@ import {
 import { airDateShort } from "./episode-facts";
 import { coveredUpTo, markUpToCount } from "./mark-up-to";
 import { MarkUpToDialog } from "./mark-up-to-dialog";
+import { upNextAfterStroke } from "./paint-to-mark";
+import { PaintStrokeBar } from "./paint-stroke-bar";
+import { usePaintToMark } from "./use-paint-to-mark";
 import { PROGRAMME_NOTE_SECTION } from "./programme-note-section";
-import { HOLDABLE, useHoldGesture } from "./use-hold-to-select";
+import { HOLD_MS, HOLDABLE, useHoldGesture } from "./use-hold-to-select";
 import { WatchMenu } from "./watch-menu";
 import { SeasonChips } from "./season-chips";
 import { defaultSeason, episodeFullName, groupBySeason } from "./season-grouping";
 import { useLiveEpisodes } from "./use-live-episodes";
 import { finishedSeasons, seasonMarkTarget } from "./title-page";
 import { useWatchMark } from "./use-watch-mark";
-import { watchMarks } from "./watch-marks";
+import { watchMarks, type UpToPress, type WatchNaming, type WatchSubject } from "./watch-marks";
 import {
   RECORDING_GLYPH,
   RECORDING_GLYPH_UP_NEXT,
   RECORDING_HIT_BOX,
   SETTLED_GLYPH,
   WATCHED_NAME,
+  WATCHED_TICK,
   WatchSweep,
 } from "./watch-mark-motion";
 
@@ -221,10 +225,82 @@ function SeasonList({
   const [selectedSeason, setSelectedSeason] = useState(() => defaultSeason(episodes));
 
   const live = useLiveEpisodes(libraryEntryId, episodes);
-  const seasons = groupBySeason(live);
+
+  /* Paint to mark (issue #408): where a recorded stroke moved *Up next* to, until the next
+     server read says the same — for these `episodes` only, so a newer read always wins. */
+  const [moved, setMoved] = useState<{
+    readonly for: readonly EpisodeDetail[];
+    readonly upNext: string | null;
+  } | null>(null);
+  const shown =
+    moved !== null && moved.for === episodes
+      ? live.map((one) =>
+          one.upNext === (one.id === moved.upNext) ? one : { ...one, upNext: one.id === moved.upNext },
+        )
+      : live;
+
+  const seasons = groupBySeason(shown);
 
   const [currentSeason, currentEpisodes] =
     seasons.find(([seasonNo]) => seasonNo === selectedSeason) ?? seasons[0];
+
+  /* The stroke just recorded, while its one Undo is on offer. `key` restarts the bar's
+     window when a second stroke lands inside the first one's. */
+  const [stroke, setStroke] = useState<{
+    readonly key: number;
+    readonly count: number;
+    readonly pressing: Promise<UpToPress | null>;
+    readonly naming: WatchNaming;
+    readonly startId: string;
+  } | null>(null);
+  const dismissStroke = useCallback(() => setStroke(null), []);
+
+  const list = useRef<HTMLOListElement>(null);
+  const paint = usePaintToMark({
+    episodes: currentEpisodes,
+    today,
+    list,
+    onStroke(start, through) {
+      const from = currentEpisodes[start];
+      const to = currentEpisodes[through];
+      // The existing write, exactly: *watched up to* the last filled episode — which also
+      // takes any unwatched gap before Up next, as that write always has, and the count
+      // says so.
+      const covered = coveredUpTo(live, to) ?? [to];
+      const subject = (one: EpisodeDetail): WatchSubject => ({ libraryEntryId, episodeId: one.id });
+      const naming = {
+        title: titleName,
+        episode: `${markUpToCount(covered)}, through ${episodeFullName(to)}`,
+      };
+      const pressing = watchMarks.markUpTo(subject(to), covered.map(subject), naming);
+
+      setMoved({ for: episodes, upNext: upNextAfterStroke(live.map((one) => one.id), to.id) });
+      setStroke((last) => ({
+        key: (last?.key ?? 0) + 1,
+        count: covered.length,
+        pressing,
+        naming,
+        startId: from.id,
+      }));
+      // A lost stroke has nothing to undo: the toast says so, and Up next goes back.
+      void pressing.then((press) => {
+        if (press !== null) return;
+        setStroke((now) => (now?.pressing === pressing ? null : now));
+        setMoved({ for: episodes, upNext: from.id });
+      });
+    },
+  });
+
+  function undoStroke(): void {
+    if (stroke === null) return;
+    const { pressing, naming, startId } = stroke;
+    setStroke(null);
+    setMoved({ for: episodes, upNext: startId });
+    // The Undo waits for the stroke's own write to land, so it reverses exactly that.
+    void pressing.then((press) =>
+      press === null ? undefined : watchMarks.undoUpTo(press, naming),
+    );
+  }
 
   const seasonTarget = seasonMarkTarget(live, currentSeason, today);
 
@@ -252,12 +328,19 @@ function SeasonList({
             </button>
           </div>
         )}
-        <ol className={SEASON_LIST}>
-          {currentEpisodes.map((one) => (
+        <ol ref={list} className={SEASON_LIST}>
+          {currentEpisodes.map((one, index) => (
             <EpisodeLine
               onOpenMenu={setMenuFor}
               key={one.id}
               episode={one}
+              painted={
+                paint.through !== null &&
+                paint.start !== null &&
+                index >= paint.start &&
+                index <= paint.through
+              }
+              paint={index === paint.start ? paint : null}
               covered={coveredUpTo(live, one)}
               libraryEntryId={libraryEntryId}
               titleName={titleName}
@@ -275,6 +358,15 @@ function SeasonList({
           episodeName={episodeFullName(menuFor)}
           initialWatches={menuFor.watches}
           onClosed={() => setMenuFor(null)}
+        />
+      )}
+
+      {stroke === null ? null : (
+        <PaintStrokeBar
+          key={stroke.key}
+          count={stroke.count}
+          onUndo={undoStroke}
+          onDone={dismissStroke}
         />
       )}
 
@@ -502,8 +594,14 @@ function EpisodeLine({
   titleName,
   onOpenMenu,
   today,
+  painted = false,
+  paint = null,
 }: {
   episode: EpisodeDetail;
+  /** A paint stroke in progress has reached this row: its tick shows filled (issue #408). */
+  painted?: boolean;
+  /** The stroke's binding — on the Up next row only, where a stroke starts. */
+  paint?: ReturnType<typeof usePaintToMark> | null;
   /** Everything unwatched up to and including this episode when there are earlier gaps,
    *  `null` otherwise — `mark-up-to.ts` owns that rule. Marking this episode then offers
    *  to mark the earlier ones on its toast. */
@@ -561,7 +659,7 @@ function EpisodeLine({
 
   return (
     <li
-      className={`relative ${EPISODE_ROW}${upNext ? ` ${EPISODE_ROW_UP_NEXT}` : ""}${watched ? ` ${HOLDABLE}` : ""}`}
+      className={`relative ${EPISODE_ROW}${upNext ? ` ${EPISODE_ROW_UP_NEXT}` : ""}${watched || paint !== null ? ` ${HOLDABLE}` : ""}`}
       {...hold.handlers}
       onContextMenu={openMenu}
       data-holding={hold.holding ? "true" : undefined}
@@ -607,7 +705,13 @@ function EpisodeLine({
           <MarkWatchedButton
             label={`Mark ${fullName} watched`}
             upNext={episode.upNext}
-            onClick={attempt}
+            filled={painted}
+            paint={paint}
+            onClick={() => {
+              // A landed hold is a stroke, and its release's click is not also a tap.
+              if (paint?.hold.consumeSwallowedClick()) return;
+              attempt();
+            }}
             disabled={pending}
           />
         ) : phase === "marking" ? (
@@ -674,11 +778,17 @@ export function MarkWatchedButton({
   onClick,
   disabled,
   upNext = false,
+  filled = false,
+  paint = null,
 }: {
   label: string;
   onClick: () => void;
   /** The Up next episode's tick rings in `text` rather than `dim` — issue #397. */
   upNext?: boolean;
+  /** A paint stroke has reached this tick: drawn filled, as letting go will record. */
+  filled?: boolean;
+  /** Paint to mark's hold, on the tick a stroke starts from (issue #408). */
+  paint?: ReturnType<typeof usePaintToMark> | null;
   /** Absent on the film row, which has no second control a stray press could reach while
    *  this one is in flight. `EpisodeLine` passes the hook's `pending` (issue #89). */
   disabled?: boolean;
@@ -690,13 +800,48 @@ export function MarkWatchedButton({
       disabled={disabled}
       aria-label={label}
       className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
+      {...paint?.handlers}
+      data-painting={paint?.through != null ? "" : undefined}
     >
       {/* `block`, for the same reason `MarkUpToIcon` below takes it: an inline svg sits on
           a text baseline and adds descender space to a row whose height is measured. */}
-      <span className={upNext ? RECORDING_GLYPH_UP_NEXT : RECORDING_GLYPH}>
+      <span
+        className={`relative ${
+          filled ? WATCHED_TICK : upNext ? RECORDING_GLYPH_UP_NEXT : RECORDING_GLYPH
+        }`}
+      >
         <CheckmarkIcon className="block h-4 w-4" />
+        {paint?.hold.holding ? <HoldRing /> : null}
       </span>
     </button>
   );
 }
 
+
+/**
+ * The ring that closes around the Up next tick while it is held — paint to mark's
+ * long-press, issue #408. Its time is `HOLD_MS` itself (`use-hold-to-select.ts`), handed to
+ * `globals.css`'s `hold-ring` as `--hold-shown`, so the ring closes exactly as the hold lands.
+ */
+function HoldRing() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 100 100"
+      data-hold-ring=""
+      className="hold-ring absolute -inset-1.5 overflow-visible text-text"
+      style={{ "--hold-shown": `${HOLD_MS}ms` } as CSSProperties}
+    >
+      <circle
+        cx="50"
+        cy="50"
+        r="49"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+        pathLength={1}
+      />
+    </svg>
+  );
+}

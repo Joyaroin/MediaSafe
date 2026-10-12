@@ -4,10 +4,12 @@ import { invalidateFor } from "@/cache/tags";
 import {
   markWatchedUpTo,
   recordWatch,
+  undoMarkWatchedUpTo,
   undoWatch,
   unwatch,
   type MarkWatchedUpToParams,
   type RecordWatchParams,
+  type UndoMarkWatchedUpToParams,
   type UnwatchParams,
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
@@ -173,5 +175,31 @@ export async function markWatchedUpToAction(
   }
 
   invalidateFor("markWatchedUpTo", userId);
+  return { ok: true };
+}
+
+/**
+ * *Undo* a painted stroke — issue #408, over `db/access.ts`'s `undoMarkWatchedUpTo`, and
+ * the inverse of `markWatchedUpToAction` above as `undoWatchAction` is of
+ * `recordWatchAction`. The same thin wrapper: `requireUserId` is the check, and the catch is
+ * what turns a lost delete into a reference id for the toast. `{ surface }` is its own, so a
+ * reference says which delete failed. The count stays off the wire, for the reason the
+ * mark's does.
+ */
+export async function undoMarkWatchedUpToAction(
+  params: UndoMarkWatchedUpToParams,
+): Promise<UnwatchActionOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    await undoMarkWatchedUpTo(userId, params);
+  } catch (error) {
+    return {
+      ok: false,
+      reference: referenceFor(error, { surface: "undo-mark-watched-up-to" }),
+    };
+  }
+
+  invalidateFor("undoMarkWatchedUpTo", userId);
   return { ok: true };
 }
