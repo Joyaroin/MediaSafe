@@ -76,15 +76,15 @@ export function CatalogueResultRow({
   const { inLibrary, attempt } = useCatalogueAdd(result);
 
   return (
-    <li className="flex items-center gap-3.5 rounded-[var(--radius-6)] bg-raised plate-line px-3.5 py-3">
-      {/* `52` is what this row now renders at, down from `78` — `Poster`'s contract is
-          the real CSS width, and both land in the same `w92` bucket, so the honest number
-          costs nothing on the wire. */}
+    <li className="flex items-center gap-3 py-2.5">
+      {/* `44` by `66`, the board's thumbnail (Charcoal §8.3, issue #404). A row on the
+          page now, not a raised card: the list's hairlines are what separate one result
+          from the next, the way every other row in the redesign is drawn. */}
       <Poster
         posterPath={result.posterPath}
         name={result.name}
-        width={52}
-        className="w-[52px] shrink-0 [--poster-radius:var(--radius-1)]"
+        width={44}
+        className="w-11 shrink-0 [--poster-radius:var(--radius-1)]"
         aboveFold={aboveFold}
       />
 
@@ -103,15 +103,15 @@ export function CatalogueResultRow({
             The **name** rather than the whole row: the row also carries *Add*, and a link
             wrapping a button is neither a valid nesting nor an honest target — a press
             near the edge would have to guess which of the two was meant. */}
-        <h2 className="text-bill-xs font-semibold leading-tight tracking-[-0.012em] text-text">
+        <h3 className="text-row font-semibold leading-[1.2] text-text">
           <Link
             href={`/catalogue/${result.kind}/${result.tmdbId}`}
             className="transition-opacity duration-[var(--dur-fast)] hover:opacity-80"
           >
             {result.name}
           </Link>
-        </h2>
-        <p className="mt-1 text-meta leading-[1.3] text-dim" data-numeric>
+        </h3>
+        <p className="mt-0.5 text-meta leading-[1.3] text-dim" data-numeric>
           {/* The year and the kind, and nothing else. A synopsis here would be both the
               dense row the rules forbid and a field the schema forbids storing. */}
           {result.releaseYear === null ? "Year unknown" : result.releaseYear}
@@ -125,34 +125,13 @@ export function CatalogueResultRow({
            *
            * ── Why it is under the name and not in the trailing slot ─────────────────
            *
-           * Measured the way every other measurement in this codebase was —
-           * `getBoundingClientRect` in a real Chromium tab against the compiled CSS with
-           * Archivo loaded (`programme-note-episodes.tsx` records the same method for the
-           * episode row) — at `375px`, and again at `340px` and `430px`:
-           *
-           * | | Row | Name |
-           * |---|---|---|
-           * | Before, `375px` | `102px` | `180.5px` |
-           * | After, `375px` | `102px` | `180.5px` |
-           * | After, `340px` | `102px` | `145.5px` |
-           * | After, `430px` | `102px` | `235.5px` |
-           *
-           * **The row does not grow and the name does not narrow**, at any of the three.
-           * The poster is what sets the height — `52px` wide at the `poster` utility's
-           * `2/3` is `78px`, plus `py-3` — and the text column carrying a name, a meta
-           * line and this control comes to `75.1px`, which still fits inside it. The
-           * trailing slot is untouched, which is why the name keeps its measure exactly.
-           *
-           * The trailing slot is where that would not have held. This control is
-           * `124.5px` wide on a show and `109.2px` on a film, and putting it there —
-           * beside the pill or stacked under it — spends that plus a `14px` gap out of
-           * the name, which has `145.5px` at `340px` to begin with. A `21px` name is not
-           * a name.
-           *
-           * The headroom, so the next change to this row knows the budget: `2.9px`
-           * vertically before the text column starts setting the height instead of the
-           * poster, and `21px` horizontally at `340px` before the show's label starts
-           * squeezing the name.
+           * The trailing slot already holds *Add*, and this control is wider than it —
+           * putting it there, beside the pill or stacked under it, spends its width plus a
+           * gap out of the name, which on a `340px` phone is the one thing the row cannot
+           * spare. Under the name it costs height instead, and the `66px` poster has room
+           * for a name, a meta line and a `32px` pill face. The #222 measurements that
+           * used to sit here were taken against the `52px` Archivo row and no longer
+           * describe this one.
            *
            * It also puts the two controls in the reading order the ticket asks for. The
            * pill is where the eye goes and where the thumb rests; this is a sentence
