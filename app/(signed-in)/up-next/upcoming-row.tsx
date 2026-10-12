@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Poster } from "@/app/poster";
 import type { UpcomingEpisode } from "@/db/access";
 import { episodeCode, remainingInWords } from "./episode-card-line";
-import { daysUntilInWords, type UpcomingTitle } from "./upcoming-grouping";
+import { dayMonthInWords, daysUntilInWords, type UpcomingTitle } from "./upcoming-grouping";
 
 /**
  * One thing you are waiting for.
@@ -46,58 +46,79 @@ import { daysUntilInWords, type UpcomingTitle } from "./upcoming-grouping";
 export function UpcomingRow({
   episode,
   today,
+  dated,
 }: {
   episode: UpcomingTitle<UpcomingEpisode>;
   /** The reader's calendar day, so the row can say how far away the episode is. */
   today: string;
+  /** Under *Later*, where the heading names no single day: the row sets its own date in
+   *  the Meta line and its countdown on the right, in the chevron's place. */
+  dated: boolean;
 }) {
   const code = episodeCode(episode.seasonNo, episode.episodeNo);
+  const remaining = remainingInWords(episode.more);
+  const countdown = daysUntilInWords(episode.airDate, today);
+
+  // The Meta line (Charcoal §8.2): the code, the date when the heading does not give it,
+  // and how much else is announced. The episode's name is not on it — most of these are
+  // unnamed slots — but it stays in what a screen reader hears.
+  const meta = [code, dated ? dayMonthInWords(episode.airDate) : null, remaining]
+    .filter((part) => part !== null)
+    .join(" · ");
 
   return (
-    <li>
+    <li className="not-last:border-b not-last:border-hair">
       <Link
         href={`/titles/${episode.libraryEntryId}`}
-        className="pressable flex items-center gap-3 rounded-[var(--radius-6)] bg-raised plate-line p-2.5"
+        className="pressable flex h-16 items-center gap-3 lg:h-[68px]"
         /* The poster is `aria-hidden` and the code is three tokens, so this is what a
-           screen reader hears. The series first, because that is what a reader scanning a
-           day is choosing between — and now what the row says first visually too. */
-        aria-label={`${episode.titleName} — ${code}${
-          episode.episodeName === null ? "" : `, ${episode.episodeName}`
-        }${episode.more === 0 ? "" : `, ${remainingInWords(episode.more)}`}`}
+           screen reader hears: the series, the episode, what else is announced, and when —
+           the day heading above says when to a sighted reader. */
+        aria-label={[
+          episode.titleName,
+          episode.episodeName === null ? code : `${code}, ${episode.episodeName}`,
+          remaining,
+          countdown,
+        ]
+          .filter((part) => part !== null)
+          .join(" — ")}
       >
-        {/* `2/3` against the still's `16/9`, so the row is taller than it was for the same
-            width of artwork. `56px` keeps it close to the height it had. */}
+        {/* The Row's thumbnail: 36 by 54 on the poster corner (§4 maps the boards' 6px to
+            `--radius-1`). */}
         <Poster
           posterPath={episode.posterPath}
           name={episode.titleName}
-          width={56}
-          className="w-14 shrink-0 [--poster-radius:var(--radius-4)]"
+          width={36}
+          className="w-9 shrink-0 [--poster-radius:var(--radius-1)]"
         />
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-item text-text">{episode.titleName}</p>
-
-          {/* The code and the name on one line. Where TMDB has announced the episode
-              without naming it the code stands alone rather than being followed by the
-              number a second time — *an episode is never referred to by
-              number alone*, which the code has already satisfied. */}
-          <p className="mt-[3px] truncate text-meta text-dim">
-            {episode.episodeName === null ? code : `${code} · ${episode.episodeName}`}
-          </p>
-
-          {/* The date, and how much else of this show is already announced.
-
-              `data-numeric` is the build's tabular-figures hook, so a column of dates does
-              not ripple sideways between the 4th and the 14th.
-
-              `remainingInWords` is `up-next-episode-card.tsx`'s own phrasing — `+7
-              remaining` — taken rather than reworded, so the two surfaces that count what
-              is left of a show count it the same way. */}
-          <p className="mt-1 flex items-baseline gap-2 code-line text-dim" data-numeric>
-            <span className="text-accent">{daysUntilInWords(episode.airDate, today)}</span>
-            {episode.more === 0 ? null : <span>{remainingInWords(episode.more)}</span>}
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="truncate text-row font-semibold text-text">{episode.titleName}</p>
+          {/* `data-numeric` is the build's tabular-figures hook, so a column of codes and
+              dates does not ripple sideways between the 4th and the 14th. */}
+          <p className="truncate text-meta text-dim" data-numeric>
+            {meta}
           </p>
         </div>
+
+        {dated ? (
+          <span className="shrink-0 text-meta text-dim" data-numeric>
+            {countdown}
+          </span>
+        ) : (
+          <svg
+            viewBox="0 0 24 24"
+            className="h-[18px] w-[18px] shrink-0 text-dim"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        )}
       </Link>
     </li>
   );

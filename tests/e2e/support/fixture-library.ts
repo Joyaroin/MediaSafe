@@ -104,7 +104,7 @@ export async function seedWatchingShow(userId: string): Promise<SeededTitle> {
 
 /**
  * Seeds `count` films on the watchlist, each dated a day further into the future than the
- * last — the "Upcoming movies" rail's own membership (`db/access.ts`'s `listUpcomingFilms`:
+ * last — the "Upcoming films" rail's own membership (`db/access.ts`'s `listUpcomingFilms`:
  * *standing at Watchlist, a film, and a release date not before yesterday*). A library
  * entry with no `watch` row is watchlist by construction (`db/views.ts`'s
  * `library_entry_state`), so this writes no fourth table — a title, and a library entry,

@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { nextPerTitle } from "@/app/(signed-in)/up-next/upcoming-grouping";
+import { groupUpcoming, nextPerTitle } from "@/app/(signed-in)/up-next/upcoming-grouping";
 import { UpcomingNothing } from "@/app/(signed-in)/up-next/upcoming-nothing";
 import { UpcomingSurface } from "@/app/(signed-in)/up-next/upcoming-surface";
 import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
@@ -129,29 +129,69 @@ describe("no row shows a time of day", () => {
     expect(markup.toLowerCase()).not.toContain("unknown");
   });
 
-  /** What it prints instead: how far away the episode is, from the reader's today. */
-  it("prints how many days away it is", () => {
-    expect(render([episodeOn("2026-08-27")])).toContain("In 3 days");
-    expect(render([episodeOn("2026-08-25")])).toContain("Tomorrow");
+  /** What it prints instead: which day, from the reader's today — in the heading, or on
+   *  the row under *Later*. */
+  it("prints how far away it is instead", () => {
+    expect(render([episodeOn("2026-08-25")])).toContain(">Tomorrow</h2>");
+    expect(render([episodeOn("2026-12-01")])).toContain(">In 99 days</span>");
   });
 });
 
-describe("one list, in air-date order", () => {
-  /** The day headings are gone: each row says how far away it is, so a heading saying the
-   *  same thing again was noise, and *Later* said nothing at all. */
-  it("orders the rows by air date, each carrying its own distance", () => {
+describe("rows under their days — Charcoal §8.2", () => {
+  const days = [
+    episodeOn(TODAY),
+    episodeOn("2026-08-25"),
+    episodeOn("2026-08-27"),
+    episodeOn("2026-12-01"),
+  ];
+
+  /**
+   * The acceptance criterion, stated as one: the headings on screen are exactly
+   * `groupUpcoming`'s labels, in its order. Which day a row sits under is that module's
+   * answer, and the surface prints it rather than deciding again.
+   */
+  it("heads each day with the grouping module's own label, in its order", () => {
+    const markup = render(days);
+    const headings = [...markup.matchAll(/<h2 id="coming-up-[^"]+"[^>]*>([^<]+)<\/h2>/g)].map(
+      (match) => match[1],
+    );
+
+    expect(headings).toEqual(groupUpcoming(nextPerTitle(days), TODAY).map((group) => group.label));
+    expect(headings).toEqual(["Today", "Tomorrow", "Thursday", "Later"]);
+  });
+
+  /** The date sits beside the heading in Meta: weekday and date beside *Today* and
+   *  *Tomorrow*, the date alone beside a weekday that already names itself, and nothing
+   *  beside *Later*, which holds many days. */
+  it("sets each single day's date beside its heading, and none beside Later", () => {
+    const markup = render(days);
+
+    expect(markup).toMatch(/>Today<\/h2><span[^>]*>Mon 24 Aug<\/span>/);
+    expect(markup).toMatch(/>Tomorrow<\/h2><span[^>]*>Tue 25 Aug<\/span>/);
+    expect(markup).toMatch(/>Thursday<\/h2><span[^>]*>27 Aug<\/span>/);
+    expect(markup).toMatch(/>Later<\/h2><\/div>/);
+  });
+
+  /** A row under a single day leaves the distance to its heading and ends in a chevron. A
+   *  row under *Later* carries its own date and, in the chevron's place, its countdown. */
+  it("dates and counts down only the rows under Later", () => {
+    const soon = render([episodeOn("2026-08-27")]);
+    expect(soon).not.toContain("In 3 days</span>");
+    expect(soon).toContain('d="M9 6l6 6-6 6"');
+
+    const later = render([episodeOn("2026-12-01", { episodeName: null })]);
+    expect(later).toContain(">S02 · E04 · 1 Dec</p>");
+    expect(later).toMatch(/>In 99 days<\/span>/);
+    expect(later).not.toContain('d="M9 6l6 6-6 6"');
+  });
+
+  it("keeps the read's order inside a day", () => {
     const markup = render([
-      episodeOn(TODAY),
-      episodeOn("2026-08-25"),
-      episodeOn("2026-12-01"),
+      episodeOn(TODAY, { titleName: "First" }),
+      episodeOn(TODAY, { titleName: "Second" }),
     ]);
 
-    const at = (label: string) => markup.indexOf(label);
-
-    expect(at("Today")).toBeGreaterThan(-1);
-    expect(at("Tomorrow")).toBeGreaterThan(at("Today"));
-    expect(at("In 99 days")).toBeGreaterThan(at("Tomorrow"));
-    expect(markup).not.toContain(">Later<");
+    expect(markup.indexOf("First")).toBeLessThan(markup.indexOf("Second"));
   });
 });
 
@@ -213,7 +253,7 @@ describe("a row that is missing something", () => {
     expect(markup).toContain("/severance.jpg");
     // The still's own frame is gone from this row entirely — it never had anything in it.
     expect(markup).not.toContain('class="still');
-    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:var(--radius-4)]"');
+    expect(markup).toContain('class="poster w-9 shrink-0 [--poster-radius:var(--radius-1)]"');
   });
 
   /**
@@ -225,7 +265,7 @@ describe("a row that is missing something", () => {
     const markup = render([episodeOn(TODAY, { posterPath: null })]);
 
     expect(markup).not.toContain("<img");
-    expect(markup).toContain('class="poster w-14 shrink-0 [--poster-radius:var(--radius-4)]"');
+    expect(markup).toContain('class="poster w-9 shrink-0 [--poster-radius:var(--radius-1)]"');
     // `Severance` — one word, one initial.
     expect(markup).toContain(">S<");
   });
@@ -239,12 +279,29 @@ describe("a row that is missing something", () => {
     // The visible line is the code and nothing after it — no `S02 · E04 · Episode 4`, and
     // no bare `4` standing in for a name TMDB has not published.
     expect(markup).toContain(">S02 · E04</p>");
-    // And what a screen reader hears stops in the same place.
-    expect(markup).toContain('aria-label="Severance — S02 · E04"');
+    // And what a screen reader hears says the code once, then when.
+    expect(markup).toContain('aria-label="Severance — S02 · E04 — Today"');
   });
 
-  it("names the episode beside its code when there is a name", () => {
-    expect(render([episodeOn(TODAY)])).toContain("S02 · E04 · Woe&#x27;s Hollow");
+  /** The name is off the Meta line, which the boards set as code and count alone — most of
+   *  these episodes are unnamed slots — but a screen reader still hears it. */
+  it("names the episode to a screen reader, and not on the Meta line", () => {
+    const markup = render([episodeOn(TODAY)]);
+
+    expect(markup).toContain('aria-label="Severance — S02 · E04, Woe&#x27;s Hollow — Today"');
+    expect(markup).toContain(">S02 · E04</p>");
+  });
+
+  it("counts what else of the show is announced", () => {
+    const markup = render([episodeOn(TODAY), episodeOn("2026-08-31"), episodeOn("2026-09-07")]);
+
+    expect(markup).not.toContain("+2 remaining");
+    const show = render([
+      episodeOn(TODAY, { libraryEntryId: "one-show" }),
+      episodeOn("2026-08-31", { libraryEntryId: "one-show" }),
+      episodeOn("2026-09-07", { libraryEntryId: "one-show" }),
+    ]);
+    expect(show).toContain(">S02 · E04 · +2 remaining</p>");
   });
 });
 
@@ -268,10 +325,9 @@ describe("the films you are waiting for", () => {
   it("draws a dated film with its date and its countdown", () => {
     const markup = renderFilms([filmOn("2026-09-05")]);
 
-    expect(markup).toContain("Upcoming movies");
+    expect(markup).toContain(">Upcoming films</h2>");
     expect(markup).toContain("One Battle After Another");
-    expect(markup).toContain("5 Sept 2026");
-    expect(markup).toContain("In 12 days");
+    expect(markup).toContain(">5 Sept 2026 · In 12 days<");
   });
 
   /**
@@ -280,8 +336,8 @@ describe("the films you are waiting for", () => {
    * reader has been waiting for.
    */
   it("reads correctly at one day, several days and the day of release", () => {
-    expect(renderFilms([filmOn(TODAY)])).toContain(">Today<");
-    expect(renderFilms([filmOn("2026-08-25")])).toContain(">Tomorrow<");
+    expect(renderFilms([filmOn(TODAY)])).toContain(" · Today<");
+    expect(renderFilms([filmOn("2026-08-25")])).toContain(" · Tomorrow<");
     expect(renderFilms([filmOn("2026-09-27")])).toContain("In 34 days");
   });
 
@@ -318,8 +374,8 @@ describe("the films you are waiting for", () => {
   it("counts down against the day it is handed rather than any clock", () => {
     const film = filmOn("2026-08-25");
 
-    expect(render([], [film], "2026-08-25")).toContain(">Today<");
-    expect(render([], [film], "2026-08-24")).toContain(">Tomorrow<");
+    expect(render([], [film], "2026-08-25")).toContain(" · Today<");
+    expect(render([], [film], "2026-08-24")).toContain(" · Tomorrow<");
   });
 
   /**
@@ -361,23 +417,22 @@ describe("the films you are waiting for", () => {
     for (const word of ["Theatrical", "Digital", "Physical", "Limited", "Premiere"]) {
       expect(markup).not.toContain(word);
     }
-    // The date stands alone on its line: no `· Canada` and no region code after it.
-    expect(markup).toContain(">5 Sept 2026<");
-    expect(markup).not.toMatch(/\d{4}\s*·/);
+    // The line is the date and the countdown and nothing else: no `· Canada` after it.
+    expect(markup).toContain(">5 Sept 2026 · In 12 days<");
+    expect(markup).not.toMatch(/days\s*·/);
   });
 
   /**
-   * **The accent, and only on the countdown.** The accent is rationed, and narrowed
-   * for exactly this line; the amendment's second condition is that the date it
-   * counts to is *not* accented, so the two lines must not drift into matching. Nothing
-   * else about the card is chromatic — no chip, no badge, no check.
+   * **One dim line, and no accent.** The countdown was accented under its own amendment
+   * (#252) to tell it from the date above it. Charcoal resolves the accent to the text
+   * colour, so that no longer worked; the Rail joins the two on one dim line (§8.2) and
+   * the `·` does the telling apart. Nothing about the card is chromatic.
    */
-  it("accents the countdown and leaves the date dim", () => {
+  it("sets the date and the countdown on one dim line, with no accent", () => {
     const markup = renderFilms([filmOn("2026-09-05")]);
 
-    expect(markup).toMatch(/text-accent[^>]*>In 12 days</);
-    expect(markup).toMatch(/text-dim[^>]*>5 Sept 2026</);
-    expect(markup).not.toMatch(/text-accent[^>]*>5 Sept 2026</);
+    expect(markup).toMatch(/text-dim[^>]*>5 Sept 2026 · In 12 days</);
+    expect(markup).not.toContain("text-accent");
   });
 
   /** Soonest first, which is the read's order and is passed through rather than re-sorted
@@ -414,8 +469,8 @@ describe("the two halves, and the one sentence", () => {
 
   /** And each half is absent rather than empty-headed, per section. */
   it("draws no head over a half that has nothing", () => {
-    expect(renderFilms([filmOn("2026-09-05")])).not.toContain("Upcoming episodes");
-    expect(render([episodeOn(TODAY)])).not.toContain("Upcoming movies");
+    expect(renderFilms([filmOn("2026-09-05")])).not.toContain('id="coming-up-');
+    expect(render([episodeOn(TODAY)])).not.toContain("Upcoming films");
   });
 
   /** Both empty is the one case the sentence is for. */
@@ -423,17 +478,16 @@ describe("the two halves, and the one sentence", () => {
     const markup = render([], []);
 
     expect(markup).toContain("No release dates yet");
-    expect(markup).not.toContain("Upcoming episodes");
-    expect(markup).not.toContain("Upcoming movies");
+    expect(markup).not.toContain('id="coming-up-');
+    expect(markup).not.toContain("Upcoming films");
   });
 
   /** Episodes above, films under them — the handoff's order. */
   it("draws the episodes above the films", () => {
     const markup = render([episodeOn(TODAY)], [filmOn("2026-09-05")]);
 
-    expect(markup.indexOf("Upcoming episodes")).toBeLessThan(
-      markup.indexOf("Upcoming movies"),
-    );
+    expect(markup.indexOf(">Today</h2>")).toBeGreaterThan(-1);
+    expect(markup.indexOf(">Today</h2>")).toBeLessThan(markup.indexOf("Upcoming films"));
   });
 });
 

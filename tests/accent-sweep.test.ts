@@ -131,8 +131,9 @@ interface AccentSite {
  *
  * **Literal exceptions** are every other role the table already names and nothing ever
  * contested — the brand mark, the failure system, a surface's primary action, and the two
- * screens' rail-heading register — plus #252's countdown, the amendment the table records by
- * number. #251's pager rule was the other, and left with the pager (#399).
+ * screens' rail-heading register. The two amendments the table recorded by number are both
+ * gone: #251's pager rule left with the pager (#399), and #252's countdown went dim when
+ * Charcoal redrew Coming up (#401).
  */
 const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
   // ── The three sanctioned meanings ──────────────────────────────────────────────────
@@ -196,19 +197,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
 
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────
 
-
-  // ── Literal exceptions: the amendment §3 records by number ──────────────────────
-
-  "app/(signed-in)/up-next/upcoming-films.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "the 'In N days' countdown — the #252 amendment",
-  },
-  "app/(signed-in)/up-next/upcoming-row.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason: "the 'Tomorrow' / 'In N days' on a coming-up episode — the same countdown the films carry",
-  },
 
   // ── Literal exceptions: everything else, one call site apiece ─────────────────────
 

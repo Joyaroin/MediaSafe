@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dayMonthInWords,
   daysUntilInWords,
   awaitedFilms,
   groupUpcoming,
@@ -106,6 +107,26 @@ describe("the four buckets", () => {
       "Sunday",
       "Later",
     ]);
+  });
+
+  /**
+   * The date beside each heading (Charcoal §8.2): weekday and date beside *Today* and
+   * *Tomorrow*, the date alone beside a weekday that already names itself, and nothing
+   * beside *Later*, which holds many days. Read off the air date in UTC, like the weekday.
+   */
+  it("dates each single-day heading, and leaves Later undated", () => {
+    expect(groups.map((group) => group.date)).toEqual([
+      "Mon 24 Aug",
+      "Tue 25 Aug",
+      "26 Aug",
+      "30 Aug",
+      null,
+    ]);
+  });
+
+  it("writes a Later row's date as a day and a month", () => {
+    expect(dayMonthInWords("2026-12-01")).toBe("1 Dec");
+    expect(dayMonthInWords("2026-09-05")).toBe("5 Sept");
   });
 
   /** The horizon: the sixth day ahead still gets its own name, the seventh is Later. A
