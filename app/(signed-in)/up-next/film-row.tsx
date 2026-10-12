@@ -2,7 +2,7 @@
 
 import * as m from "motion/react-m";
 import Link from "next/link";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type Ref } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { titleMetaLine } from "@/app/(signed-in)/library/title-meta-line";
@@ -12,14 +12,14 @@ import {
   RECORDING_GLYPH,
   RECORDING_HIT_BOX,
 } from "@/app/(signed-in)/library/watch-mark-motion";
-import { RECORDS_A_WATCH } from "@/app/accent-meaning";
-import { exit } from "@/app/motion";
+import { exit, smooth } from "@/app/motion";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import { Poster } from "@/app/poster";
 import type { LibraryStateGroupEntry } from "@/db/access";
 import { holdOverWhile } from "./hold-over";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { ROW, ROW_POSTER, ROW_POSTER_WIDTH } from "./up-next-card-styles";
+import { useFlightOnLeave } from "./up-next-episode-row";
 
 /**
  * A film on Tonight's *Also ready* — Charcoal, issue #400. Films come after every show in
@@ -29,15 +29,22 @@ import { ROW, ROW_POSTER, ROW_POSTER_WIDTH } from "./up-next-card-styles";
  * carries, so a watchlist film can be logged without opening it first. Once the watch is
  * recorded the film is no longer on the watchlist, and the row leaves; the toast's Undo
  * takes the watch back. Its watched state is in the shared `watchMarks` store, which is
- * how the list can count the rows still standing without asking this one
+ * how the list knows which rows are still standing without asking this one
  * (`useFilmsStanding`).
+ *
+ * The motion is the episode row's (issue #407): the tick fills and pops with the ring
+ * draining round it while *Undo* is offered, a lost write empties it slowly, and when the
+ * hold ends the row closes as its poster travels to Library.
  */
 export function FilmRow({
   film,
   aboveFold,
+  ref,
 }: {
   film: LibraryStateGroupEntry;
   aboveFold: boolean;
+  /** `AnimatePresence`'s, so the row can be lifted out of the flow as it closes. */
+  ref?: Ref<HTMLLIElement>;
 }) {
   const meta = titleMetaLine({
     kind: "film",
@@ -58,15 +65,28 @@ export function FilmRow({
   const held = watched && phase === "marking";
   useHold(held ? film.libraryEntryId : null, settle);
 
-  if (watched && phase === "settled") return null;
+  /* Watched and settled: the list has let this row go (`useFilmsStanding`), and this is it
+     closing — tick filled, poster on its way to Library. */
+  const leaving = watched && phase === "settled";
+
+  /* Whether this row pressed — so a press that comes back unwatched was lost, and the tick
+     rewinds rather than snapping empty. */
+  const [pressed, setPressed] = useState(false);
+  const lost = pressed && !watched && !pending;
+
+  const link = useRef<HTMLAnchorElement>(null);
+  useFlightOnLeave(link, leaving ? "/library" : null);
 
   return (
     <m.li
-      layout
-      exit={{ opacity: 0, scale: 0.96, transition: exit }}
+      ref={ref}
+      layout="position"
+      transition={smooth}
+      exit={{ opacity: 0, transition: exit }}
       className={held ? `${ROW} watch-hold` : ROW}
     >
       <Link
+        ref={link}
         href={`/titles/${film.libraryEntryId}`}
         className="pressable group flex min-w-0 flex-1 items-center gap-3"
       >
@@ -86,13 +106,9 @@ export function FilmRow({
           {/* No line at all for a film TMDB has neither dated nor timed, rather than a
               placeholder — `library-entry-cell.tsx` makes the same choice for the identical
               fact, and `app/poster.tsx` makes it for artwork it does not have. */}
-          {held ? (
-            /* A film's finish moment (#367) keeps *Watched* — there is no season and no
-               show to have finished — but enters and pulses as the episode cards' do. */
-            <p className={`finish-line mt-0.5 text-meta font-medium ${RECORDS_A_WATCH.ink}`}>
-              Watched
-            </p>
-          ) : meta === null ? null : (
+          {/* The meta line stays through the hold: the filled tick and its ring are the
+              confirmation, as on an episode row (issue #407). */}
+          {meta === null ? null : (
             <p className="mt-0.5 truncate text-meta text-dim" data-numeric>
               {meta}
             </p>
@@ -100,20 +116,31 @@ export function FilmRow({
         </div>
       </Link>
 
-      {held ? (
-        <HeldControl onUndo={() => void holdOverWhile(undo())} undoLabel={`Undo marking ${film.titleName} watched`} />
+      {held || leaving ? (
+        <HeldControl
+          onUndo={
+            leaving
+              ? null
+              : () => {
+                  setPressed(false);
+                  void holdOverWhile(undo());
+                }
+          }
+          undoLabel={`Undo marking ${film.titleName} watched`}
+        />
       ) : (
         <button
           type="button"
           onClick={() => {
             finishPulse();
+            setPressed(true);
             void holdOverWhile(attempt());
           }}
           disabled={pending || watched}
           aria-label={`Mark ${film.titleName} watched`}
           className={`${RECORDING_HIT_BOX} ${IN_FLIGHT}`}
         >
-          <span className={RECORDING_GLYPH}>
+          <span className={lost ? `${RECORDING_GLYPH} tick-rewind` : RECORDING_GLYPH}>
             <CheckmarkIcon className="h-4 w-4" />
           </span>
         </button>
@@ -126,11 +153,14 @@ export function FilmRow({
 const UNWATCHED: WatchMarkView = { watched: false, watches: 0, phase: "unwatched", pending: false };
 
 /**
- * How many of these films still have a row — every film not yet watched and settled, which
- * is exactly when `FilmRow` returns `null`. Read from the shared `watchMarks` store, so the
- * list's *See all N* counts what is on screen without the rows reporting upward.
+ * The films that still have a row — every film not yet watched and settled. Read from the
+ * shared `watchMarks` store, so the list drops a film the moment its hold ends — which is
+ * what lets `AnimatePresence` play the row closing (issue #407) — and its *See all N*
+ * counts what is on screen, without the rows reporting upward.
  */
-export function useFilmsStanding(films: readonly LibraryStateGroupEntry[]): number {
+export function useFilmsStanding(
+  films: readonly LibraryStateGroupEntry[],
+): readonly LibraryStateGroupEntry[] {
   const subscribe = useCallback(
     (onChange: () => void) => {
       const offs = films.map((film) =>
@@ -142,14 +172,24 @@ export function useFilmsStanding(films: readonly LibraryStateGroupEntry[]): numb
     },
     [films],
   );
+  /* A string, for `useSyncExternalStore`'s reason: the standing *set* is what changes, and
+     a fresh array per call would re-render for ever. */
   const read = useCallback(
     () =>
-      films.filter((film) => {
-        const view = watchMarks.read({ libraryEntryId: film.libraryEntryId, episodeId: null });
-        return !(view !== null && view.watched && view.phase === "settled");
-      }).length,
+      films
+        .filter((film) => {
+          const view = watchMarks.read({ libraryEntryId: film.libraryEntryId, episodeId: null });
+          return !(view !== null && view.watched && view.phase === "settled");
+        })
+        .map((film) => film.libraryEntryId)
+        .join(","),
     [films],
   );
-  return useSyncExternalStore(subscribe, read, () => films.length);
+  const standing = useSyncExternalStore(subscribe, read, () =>
+    films.map((film) => film.libraryEntryId).join(","),
+  );
+  return useMemo(() => {
+    const live = new Set(standing === "" ? [] : standing.split(","));
+    return films.filter((film) => live.has(film.libraryEntryId));
+  }, [films, standing]);
 }
-

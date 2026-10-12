@@ -1,13 +1,12 @@
 "use client";
 
-import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import Link from "next/link";
 import { useState } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { stillSrc } from "@/app/(signed-in)/library/episode-still";
-import { PRIMARY_BUTTON_LARGE } from "@/app/buttons";
+import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON } from "@/app/buttons";
 import { posterSrc } from "@/app/poster";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
@@ -18,11 +17,12 @@ import {
   tonightTitleScrimGradient,
 } from "@/app/poster-tint";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
-import { exit, snappy } from "@/app/motion";
+import { smooth } from "@/app/motion";
+import { Roll } from "@/app/roll";
 import type { UpNextEntry } from "@/db/access";
 import { episodeCode } from "./episode-card-line";
 import { finishFactsFor, finishLine, WATCHED } from "./finish-line";
-import { HeldControl, useHold } from "./up-next-card";
+import { UndoRing, useHold } from "./up-next-card";
 import { markLabel, pressWithPulse, shownFor } from "./up-next-episode-row";
 import {
   featuredPicture,
@@ -31,6 +31,7 @@ import {
   useUpNextMark,
   type CardPicture,
   type SeasonProgress,
+  type UpNextMark,
 } from "./up-next-mark";
 
 /**
@@ -61,6 +62,21 @@ import {
  * The section's own top padding keeps the `ground` scrim from ever reaching up under the
  * white *Tonight* — in the light theme `ground` is pale, and white on it would fail.
  * `tests/e2e/up-next-featured.spec.ts` measures that.
+ *
+ * ── Nothing teleports — issue #407 (handoff §11.2) ───────────────────────────────────
+ *
+ * A mark narrows *Mark watched* into a `56px` filled tick at its left edge, with *Watched*
+ * beside it and a quiet *Undo* at the right end, and the ring draining round the tick for
+ * as long as *Undo* is offered (`FeaturedMark`). In the same beat the season's segment fills
+ * and the count rolls. When the hold ends the tick widens back into the button, for the next
+ * episode, and only the episode line rolls; the title and the artwork stay still. A press
+ * that finishes a season rolls the line into the finish line, in italic serif, and the
+ * segments close their gaps into one bar for the hold.
+ *
+ * The narrowing and the joining are Motion's layout animation on `smooth` — a size changing
+ * is never animated as a `width` or a `gap` — and the rolls are CSS on `--dur-roll`. Under
+ * reduced motion `MotionConfig` drops the layout animation and the rolls run for `1ms`:
+ * everything changes at once.
  */
 export function TonightFeatured({ entry }: { entry: UpNextEntry }) {
   const mark = useUpNextMark(entry);
@@ -78,7 +94,11 @@ export function TonightFeatured({ entry }: { entry: UpNextEntry }) {
   const episodeName = showing === null ? entry.episodeName : showing.episodeName;
   const progress = seasonProgress(entry, showing, shown?.marked ?? 0);
   const held = mark.held === null ? null : finishLine(finishFactsFor(entry, mark.held));
+  /* The finish line replaces the episode line for the hold; a plain mark leaves the line on
+     the episode just recorded, and *Watched* is said beside the tick instead. */
+  const finish = held === null || held === WATCHED ? null : held;
   const press = pressWithPulse(entry, mark);
+  const episodeLine = episodeName === null ? code : `${code} · ${episodeName}`;
 
   return (
     <section
@@ -120,62 +140,124 @@ export function TonightFeatured({ entry }: { entry: UpNextEntry }) {
           </Link>
         </h2>
 
-        <div className="mt-2 flex items-baseline justify-between gap-3">
-          {/* Keyed on the code, as the row's episode line is: an advance is the old episode
-              lifting out and the next one rising in, and the hold's line enters and leaves
-              the same way — the motion this had as a wide row, kept rather than added. */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <m.div
-              key={held !== null ? `${code}-held` : code}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8, transition: exit }}
-              transition={snappy}
-              className="min-w-0"
+        {/* One fixed line box, so the finish line's larger italic never moves what is
+            under it. */}
+        <div className="mt-2 flex h-6 items-baseline justify-between gap-3">
+          {/* Only this line rolls when the hold ends: the episode just recorded lifts out and
+              the next one rises in. A season's finish rolls in the same way, in its place. */}
+          <Roll rollKey={finish ?? episodeLine} className="min-w-0">
+            <p
+              className={`truncate leading-6 font-medium ${
+                finish === null
+                  ? "text-row text-text"
+                  : `finish-line text-bill-md ${RECORDS_A_WATCH.ink}`
+              }`}
             >
-              {/* The travel is the wrapper's, never the line's own, so under reduced motion
-                  the finish line itself does not move — its entrance is opacity alone. */}
-              <p
-                className={`truncate text-row font-medium ${
-                  held === null
-                    ? "text-text"
-                    : `${RECORDS_A_WATCH.ink}${held === WATCHED ? "" : " finish-line"}`
-                }`}
-              >
-                {held !== null ? held : episodeName === null ? code : `${code} · ${episodeName}`}
-              </p>
-            </m.div>
-          </AnimatePresence>
-          <p className="shrink-0 text-meta text-dim" data-numeric>
-            {progress.watched} of {progress.released}
-          </p>
+              {finish ?? episodeLine}
+            </p>
+          </Roll>
+          <Roll rollKey={`${progress.watched}/${progress.released}`} className="shrink-0">
+            <p className="text-meta text-dim" data-numeric>
+              {progress.watched} of {progress.released}
+            </p>
+          </Roll>
         </div>
 
-        <SeasonSegments progress={progress} />
+        <SeasonSegments progress={progress} joined={finish !== null} />
 
         <div className="mt-4">
-          {mark.held !== null ? (
-            <HeldControl
-              onUndo={mark.undoable === null ? null : mark.undo}
-              undoLabel={`Undo marking ${queuedEpisodeFullName(mark.held)} watched`}
-            />
-          ) : press.episode === null ? null : (
-            <button
-              type="button"
-              onClick={press.mark}
-              disabled={press.pending}
-              aria-label={markLabel(entry.titleName, press.episode)}
-              className={`${PRIMARY_BUTTON_LARGE} w-full sm:w-auto sm:min-w-[280px]`}
-            >
-              <CheckmarkIcon className="h-5 w-5" />
-              Mark watched
-            </button>
-          )}
+          <FeaturedMark
+            entry={entry}
+            mark={mark}
+            press={press}
+          />
         </div>
       </div>
     </section>
   );
 }
+
+/**
+ * *Mark watched*, and the held control it narrows into — `HeldControl`, redrawn for the
+ * featured episode (handoff §11.2, issue #407).
+ *
+ * The button and the held tick are one shape to Motion (`layoutId`), so a mark is the
+ * button narrowing from its full width to a `56px` circle at its left edge, and the end of
+ * the hold is the circle widening back. The tick is drawn, not offered, as on a row: a
+ * `span`, since the next episode is not on show yet. *Watched* (Row size) and *Undo* fade in
+ * beside it on a token; the ring drains round it while *Undo* is offered.
+ *
+ * `borderRadius` is in `style` so Motion keeps the corners round through the scale, and the
+ * content is `layout` too, so the check and the label are never stretched.
+ */
+function FeaturedMark({
+  entry,
+  mark,
+  press,
+}: {
+  entry: UpNextEntry;
+  mark: UpNextMark;
+  press: UpNextMark;
+}) {
+  const shape = `featured-mark-${entry.libraryEntryId}`;
+
+  if (mark.held !== null) {
+    return (
+      <div className="flex h-14 items-center gap-4">
+        <m.span
+          layoutId={shape}
+          transition={smooth}
+          aria-hidden="true"
+          data-held-tick=""
+          className="relative flex size-14 shrink-0 items-center justify-center bg-text text-ground"
+          style={{ borderRadius: FEATURED_TICK_RADIUS }}
+        >
+          <m.span layout transition={smooth} className="flex">
+            <CheckmarkIcon className="h-6 w-6" />
+          </m.span>
+          {mark.undoable === null ? null : <UndoRing outset={5} />}
+        </m.span>
+        <p className="held-reveal text-row font-semibold text-text">Watched</p>
+        {mark.undoable === null ? null : (
+          <button
+            type="button"
+            onClick={mark.undo}
+            aria-label={`Undo marking ${queuedEpisodeFullName(mark.held)} watched`}
+            className={`held-reveal ml-auto ${SECONDARY_BUTTON}`}
+          >
+            Undo
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (press.episode === null) return null;
+
+  return (
+    <m.button
+      layoutId={shape}
+      transition={smooth}
+      type="button"
+      onClick={press.mark}
+      disabled={press.pending}
+      aria-label={markLabel(entry.titleName, press.episode)}
+      className={`${PRIMARY_BUTTON_LARGE} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
+      style={{ borderRadius: FEATURED_BUTTON_RADIUS }}
+    >
+      <m.span layout transition={smooth} className="flex items-center gap-2 whitespace-nowrap">
+        <CheckmarkIcon className="h-5 w-5" />
+        Mark watched
+      </m.span>
+    </m.button>
+  );
+}
+
+/** `PRIMARY_BUTTON_LARGE`'s own corner, `--radius-5`, as Motion needs it: a number. */
+const FEATURED_BUTTON_RADIUS = 16;
+
+/** Half the `56px` circle. */
+const FEATURED_TICK_RADIUS = 28;
 
 /**
  * The artwork, behind everything: the band (handoff §10), which also shows while the
@@ -227,24 +309,42 @@ const ARTWORK_WIDTH = 780;
 /**
  * The season's progress — handoff §6: one `4px` segment per aired episode, `4px` apart,
  * watched in `text` and the rest in `segment-rest`. It moves as the mark lands, because
- * `progress` is derived from the episode on show.
+ * `progress` is derived from the episode on show; the fill is a colour transition on
+ * `--dur-roll`, the count's beat.
+ *
+ * `joined` is a season's finish (issue #407): the gaps close and the segments become one
+ * bar for the hold. Each segment is a Motion `layout` element, so closing the gap is their
+ * positions and sizes animating on `smooth` — the `gap` itself is never animated.
  */
-function SeasonSegments({ progress }: { progress: SeasonProgress }) {
+function SeasonSegments({
+  progress,
+  joined,
+}: {
+  progress: SeasonProgress;
+  joined: boolean;
+}) {
   return (
     <div
       role="img"
       aria-label={`${progress.watched} of ${progress.released} episodes this season watched`}
-      className="mt-2.5 flex gap-1"
+      data-joined={joined ? "" : undefined}
+      className={`mt-2.5 flex ${joined ? "gap-0" : "gap-1"}`}
     >
       {Array.from({ length: progress.released }, (_, index) => (
-        <span
+        <m.span
           key={index}
+          layout
+          transition={smooth}
           data-watched={index < progress.watched ? "" : undefined}
-          className={`h-1 flex-1 rounded-[var(--radius-full)] ${
+          className={`h-1 flex-1 transition-colors duration-[var(--dur-roll)] ${
             index < progress.watched ? "bg-text" : "segment-rest"
           }`}
+          style={{ borderRadius: joined ? 0 : SEGMENT_RADIUS }}
         />
       ))}
     </div>
   );
 }
+
+/** Half the segment's `4px` height — a pill until the segments join. */
+const SEGMENT_RADIUS = 2;

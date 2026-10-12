@@ -28,6 +28,13 @@ import { UpNextEpisodeRow, UpNextPendingRow } from "./up-next-episode-row";
  *
  * `N` is the rows standing right now — pending rows, episode rows still on the list, and
  * films not yet watched (`useFilmsStanding`) — so it is never a count of rows already gone.
+ *
+ * ── A row leaving closes the list over it — issue #407 ───────────────────────────────
+ *
+ * Both kinds of row leave through `AnimatePresence` in `popLayout`: the leaving row is lifted
+ * out of the flow where it stands and fades while the rows below take its place by their
+ * own layout animation, on `smooth` — the row closing, without animating a height. Only
+ * rows whose position changed move; the rest do not animate at all.
  */
 export function TonightList({
   title,
@@ -43,7 +50,7 @@ export function TonightList({
 }) {
   const [expanded, setExpanded] = useState(false);
   const filmsStanding = useFilmsStanding(films);
-  const count = pending.length + entries.length + filmsStanding;
+  const count = pending.length + entries.length + filmsStanding.length;
 
   if (count === 0) return null;
 
@@ -80,15 +87,15 @@ export function TonightList({
 
       <ul
         id="tonight-list"
-        className={`${ROW_LIST} ${expanded ? "" : "[&>li:nth-child(n+6)]:hidden"}`}
+        className={`relative ${ROW_LIST} ${expanded ? "" : "[&>li:nth-child(n+6)]:hidden"}`}
       >
         {pending.map((entry, index) => (
           <UpNextPendingRow key={entry.libraryEntryId} entry={entry} aboveFold={index < FIRST_SHOWN} />
         ))}
         {/* `initial={false}`: rows on the first paint arrive with the list's own stagger,
             not a second entrance. What this is for is the leaving — a row whose last aired
-            episode was just marked fades out after its hold, and `layout` closes the gap. */}
-        <AnimatePresence initial={false}>
+            episode was just marked closes after its hold, the rows below taking its place. */}
+        <AnimatePresence initial={false} mode="popLayout">
           {entries.map((entry, index) => (
             <UpNextEpisodeRow
               key={entry.libraryEntryId}
@@ -97,8 +104,8 @@ export function TonightList({
             />
           ))}
         </AnimatePresence>
-        <AnimatePresence initial={false}>
-          {films.map((film, index) => (
+        <AnimatePresence initial={false} mode="popLayout">
+          {filmsStanding.map((film, index) => (
             <FilmRow
               key={film.libraryEntryId}
               film={film}

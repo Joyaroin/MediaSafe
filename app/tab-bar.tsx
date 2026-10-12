@@ -242,7 +242,12 @@ export function TabBar() {
             onClick={href === "/up-next" ? onUpNextLinkClick : undefined}
             className={`${TAB} ${current ? "text-text" : "text-dim hover:text-text"}`}
           >
-            <Icon className={TAB_ICON} />
+            {/* `data-nav-icon` is where a finished row's poster lands, and what nods as it
+                does (`poster-flight.ts`, issue #407) — a wrapper, so the nod's scale never
+                meets the press's on the icon itself. */}
+            <span data-nav-icon={href} className="flex">
+              <Icon className={TAB_ICON} />
+            </span>
             <span className={TAB_LABEL}>{label}</span>
           </Link>
         );

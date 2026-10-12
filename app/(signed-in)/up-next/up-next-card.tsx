@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { WATCHED_TICK } from "@/app/(signed-in)/library/watch-mark-motion";
@@ -12,10 +12,9 @@ import { beginHoldOver } from "./hold-over";
  *
  * The mark used to be a `200ms` sweep, after which the card had already moved on to the
  * next episode: the confirmation was over before the thumb had left the glass. The hold
- * keeps the card on the episode just recorded, washed in the accent (`.watch-hold`), with
- * *Watched* where the episode's name was and *Undo* beside the check, and then the next
- * episode slides in. Long enough to read, short enough that catching up on five shows is
- * not a wait.
+ * keeps the card on the episode just recorded, its check filled and *Undo* beside it with
+ * a ring draining for the length of the hold (issue #407), and then the next episode rolls
+ * in. Long enough to read, short enough that catching up on five shows is not a wait.
  *
  * It is a timer and not an animation's end: the hold is where *Undo* lives, and a reader
  * who has asked for reduced motion still needs the time to press it.
@@ -62,8 +61,11 @@ export function finishPulse(): void {
  * The check is drawn, not offered — it is a `span`, not a disabled button. The next episode
  * is not on the card yet, so there is nothing a second press could knowingly record.
  *
- * Solid is `RECORDS_A_WATCH`'s own form, through `WATCHED_TICK`, and that is exactly what it says here: a watch now
- * exists because of a press on this card.
+ * Solid is `RECORDS_A_WATCH`'s own form, through `WATCHED_TICK`, and that is exactly what it
+ * says here: a watch now exists because of a press on this card. It pops once as it fills
+ * (`check-pop`), and while *Undo* is on offer the ring drains around it (`UndoRing`) —
+ * handoff §11.2's *Mark from a row*, issue #407. With no *Undo* (a row leaving the list) it
+ * is the filled tick alone.
  */
 export function HeldControl({
   onUndo,
@@ -86,12 +88,45 @@ export function HeldControl({
         </button>
       )}
       <span className="flex h-11 w-11 items-center justify-center" aria-hidden>
-        <span
-          className={`check-pop ${WATCHED_TICK}`}
-        >
-          <CheckmarkIcon className="h-4 w-4" />
+        <span className="relative">
+          <span className={`check-pop ${WATCHED_TICK}`}>
+            <CheckmarkIcon className="h-4 w-4" />
+          </span>
+          {onUndo === null ? null : <UndoRing outset={6} />}
         </span>
       </span>
     </div>
+  );
+}
+
+/**
+ * The ring that drains around a filled tick for exactly as long as *Undo* is on screen —
+ * handoff §11.2, issue #407. *Undo* is on screen for the mark hold, so the ring's time is
+ * `HOLD_MS` itself, handed to `globals.css`'s `undo-ring` as `--undo-shown` rather than
+ * restated: the ring and the hold are one number. It mounts with the hold, so it starts
+ * when the hold's timer does.
+ *
+ * `outset` is how far outside the tick the ring is drawn. Under reduced motion there is no
+ * ring; *Undo* stays for the same time.
+ */
+export function UndoRing({ outset }: { readonly outset: number }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 100 100"
+      className="undo-ring absolute overflow-visible text-text"
+      style={{ inset: -outset, "--undo-shown": `${HOLD_MS}ms` } as CSSProperties}
+    >
+      <circle
+        cx="50"
+        cy="50"
+        r="49"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+        pathLength={1}
+      />
+    </svg>
   );
 }

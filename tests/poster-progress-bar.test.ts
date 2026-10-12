@@ -27,12 +27,12 @@ import type { TitleKind } from "@/tmdb/mirror";
  * bill's four cases are `tests/library-grid.test.ts`'s. Neither is restated here.
  */
 
-// `progress-fill transition-[width] duration-[var(--dur-base)]` since #335 — the width
-// transition timed off the ramp that makes the bar follow the mark instead of jumping
-// after it. `tests/nav-transitions.test.ts` owns asserting that class exists and is wired
+// `progress-fill transition-transform duration-[var(--dur-base)]` — #335's transition
+// timed off the ramp that makes the bar follow the mark instead of jumping after it, moved
+// from `width` to a slide by #407 (handoff §11.4 never animates a size). `tests/nav-transitions.test.ts` owns asserting that class exists and is wired
 // to a ramp token; this only needs the fill to still carry it.
 const FILL =
-  /<div class="progress-fill h-full bg-\[var\(--poster-ink,white\)\] transition-\[width\] duration-\[var\(--dur-base\)\]" style="width:(\d+(?:\.\d+)?)%"><\/div>/;
+  /<div class="progress-fill h-full w-full bg-\[var\(--poster-ink,white\)\] transition-transform duration-\[var\(--dur-base\)\]" style="transform:translateX\((-?\d+(?:\.\d+)?)%\)"><\/div>/;
 
 describe("the bar itself", () => {
   const bar = (progress: { watched: number; released: number } | null) =>
@@ -40,7 +40,7 @@ describe("the bar itself", () => {
 
   it("fills watched against released", () => {
     expect(bar({ watched: 2, released: 4 })).toMatch(FILL);
-    expect(bar({ watched: 2, released: 4 })).toContain('style="width:50%"');
+    expect(bar({ watched: 2, released: 4 })).toContain('style="transform:translateX(-50%)"');
   });
 
   it("draws nothing at all when there is no progress to draw", () => {
@@ -55,7 +55,7 @@ describe("the bar itself", () => {
   });
 
   it("draws an empty bar once something is released and nothing is watched", () => {
-    expect(bar({ watched: 0, released: 4 })).toContain('style="width:0%"');
+    expect(bar({ watched: 0, released: 4 })).toContain('style="transform:translateX(-100%)"');
   });
 
   it("is hidden from assistive technology, like every other layer of a poster", () => {
@@ -66,7 +66,7 @@ describe("the bar itself", () => {
   it("is 3px of white with no track — Charcoal, handoff §6", () => {
     const markup = bar({ watched: 1, released: 2 });
 
-    expect(markup).toContain('class="absolute inset-x-0 bottom-0 h-[3px]"');
+    expect(markup).toContain('class="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden"');
     expect(markup).not.toMatch(/bg-ground|bg-hair|bg-accent/);
   });
 });
@@ -155,12 +155,12 @@ describe("where it sits on a list", () => {
 
   it("draws it on the icon view's poster", () => {
     expect(barIsInsideThePoster(iconGrid())).toBe(true);
-    expect(iconGrid()).toContain('style="width:50%"');
+    expect(iconGrid()).toContain('style="transform:translateX(-50%)"');
   });
 
   it("draws it on the row view's poster too, so the two views agree", () => {
     expect(barIsInsideThePoster(row())).toBe(true);
-    expect(row()).toContain('style="width:50%"');
+    expect(row()).toContain('style="transform:translateX(-50%)"');
   });
 
   /**

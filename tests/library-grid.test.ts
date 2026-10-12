@@ -703,7 +703,7 @@ describe("LibraryEntryCell's progress bar", () => {
     const markup = cell({ progress: { watched: 2, released: 4 } });
 
     expect(markup).toContain("progress-fill");
-    expect(markup).toContain('style="width:50%"');
+    expect(markup).toContain('style="transform:translateX(-50%)"');
   });
 
   it("draws no bar at all for a film", () => {
@@ -723,7 +723,7 @@ describe("LibraryEntryCell's progress bar", () => {
 
     // The bar is present — not the same absence as nothing released — sitting at 0%.
     expect(markup).toContain("progress-fill");
-    expect(markup).toContain('style="width:0%"');
+    expect(markup).toContain('style="transform:translateX(-100%)"');
   });
 
   it("never prints a numeral on or beside the bar, whichever case draws it", () => {

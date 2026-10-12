@@ -56,18 +56,20 @@ export function PosterProgressBar({
      * page, and a `progressbar` role would announce a percentage nobody wrote — the same
      * decision `title-hero.tsx` records for the bar that *does* have a sentence under it.
      */
-    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px]">
+    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden">
       {/**
-       * `transition-[width]`, never a transform — a scale would flatten the poster's own
-       * rounded corner along with the fill's end.
+       * The fill is the bar's full width, slid left by what is not watched, and the box
+       * above clips it — a `transform`, because handoff §11.4 never animates `width`
+       * (issue #407), and a slide rather than a `scaleX`, which would flatten the poster's
+       * own rounded corner along with the fill's end.
        * `--dur-base` because a watch landing is a routine state change, the same ramp
        * position `WatchedBar` below ties itself to. `progress-fill` carries no rule of its
        * own; it is only what `globals.css`'s reduced-motion block targets to collapse the
        * duration — issue #335's *the event survives, the animation does not*.
        */}
       <div
-        className="progress-fill h-full bg-[var(--poster-ink,white)] transition-[width] duration-[var(--dur-base)]"
-        style={{ width: `${fraction * 100}%` }}
+        className="progress-fill h-full w-full bg-[var(--poster-ink,white)] transition-transform duration-[var(--dur-base)]"
+        style={{ transform: `translateX(${fraction * 100 - 100}%)` }}
       />
     </div>
   );
