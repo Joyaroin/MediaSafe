@@ -8,9 +8,9 @@ import { FIRST_RUN, RailSection } from "./up-next-phone-rail";
 /**
  * Upcoming's second half — **the films you are waiting for** (issue #252).
  *
- * *Upcoming movies*: a horizontal rail of
- * poster cards under the episodes, each with the day it comes out and, in the accent, how
- * long that is — *In 12 days*.
+ * *Upcoming films*: a horizontal rail of poster cards under the episodes, each with the day
+ * it comes out and how long that is — *18 Dec 2026 · In 68 days*. It was *Upcoming movies*
+ * until Charcoal §8.2 named it.
  *
  * ── The rail is `RailSection`, and that is the point ────────────────────────────────
  *
@@ -42,7 +42,7 @@ export function UpcomingFilms({ films }: { films: readonly AwaitedFilm<UpcomingF
   if (films.length === 0) return null;
 
   return (
-    <RailSection label="Upcoming movies">
+    <RailSection label="Upcoming films">
       {films.map(({ film, countdown }, index) => (
         <FilmCard
           key={film.libraryEntryId}
@@ -56,48 +56,18 @@ export function UpcomingFilms({ films }: { films: readonly AwaitedFilm<UpcomingF
 }
 
 /**
- * The prototype's upcoming-film card: a `2/3` poster at `138px`, the name, the release date
- * and the countdown.
- *
- * `138px` is the handoff's own number for this card and is six wider than the films rail's
- * `132px` one page over. The two are not required to agree — that card carries two lines
- * under its poster and this one carries three, and both numbers are drawn — but the
- * difference is small enough to be mistaken for drift, so it is written down here.
+ * One film on the Rail (Charcoal §6, §8.2): a `112px` poster, the name at `14/500`, and one
+ * `12px` dim line, *18 Dec 2026 · In 68 days* — the date and the countdown joined, where
+ * they were two lines with the countdown in the accent. The accent now resolves to the
+ * text colour, so it no longer told the two apart; the `·` does.
  *
  * Height is not fixed: the `poster` utility's `2/3` derives it, so a real poster is never
  * cropped (#135), and `items-start` on the track keeps a two-line name from dragging its
  * neighbours' posters down.
  *
  * **A missing poster is the missing-artwork treatment, not a gap.** `Poster` holds the
- * `2/3` measure and draws the `raised` ground with no glyph and no apology inside it —
- * `app/poster.tsx` argues that at length, and a film TMDB has not illustrated is otherwise
- * exactly as much *coming out on the 26th* as one it has.
- *
- * **No chip and no region.** The handoff draws `Theatrical` and `· Canada`; `db/access.ts`'s
- * `UpcomingFilm` records why neither is here, and the absence is deliberate rather than
- * unfinished — a later edit "restoring" the chip would be a catalogue request per card.
- *
- * ── The whole card is a link, which the drawing does not say and the build does ─────
- *
- * The prototype's film cards carry no open handler where its episode rows carry one, so
- * this is the one place the card does something the handoff does not draw. It navigates
- * anyway, for *a destination is a destination*: `up-next-film-rail.tsx`'s card
- * is the same poster of the same film on the page next door and it is a link, and a poster
- * that is tappable on one page and inert on the next teaches a reader nothing except not
- * to try. The destination is the same one — the film's own page under its library entry.
- *
- * **No check, and no other control.** #250 refused a watched check on its film card
- * because a second marking path is a second optimism and a second rollback; that refusal
- * binds here twice over, since a film you cannot see yet is the last thing that should
- * offer to record a watch.
+ * `2/3` measure and draws its initials tile — `app/poster.tsx` argues that at length.
  */
-const FILM_WIDTH = 138;
-/** The card's own box. Paired with `FILM_WIDTH` above, which is the same number for the
- *  CDN: Tailwind cannot read a constant, so the measure is stated twice and the two are
- *  kept adjacent so they are edited together. `up-next-film-rail.tsx` carries the identical
- *  pairing at `132px`, and this is its vocabulary rather than a second invention. */
-const FILM_CARD = "w-[138px] shrink-0 snap-start";
-
 function FilmCard({
   film,
   countdown,
@@ -108,83 +78,30 @@ function FilmCard({
   aboveFold: boolean;
 }) {
   return (
-    <li className={FILM_CARD}>
-      <Link
-        href={`/titles/${film.libraryEntryId}`}
-        className="pressable group block"
-      >
+    <li className="w-28 shrink-0 snap-start">
+      <Link href={`/titles/${film.libraryEntryId}`} className="pressable group block">
         <Poster
           posterPath={film.posterPath}
           name={film.titleName}
-          width={FILM_WIDTH}
-          className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-5)]"
+          width={112}
+          className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-1)]"
           aboveFold={aboveFold}
         />
 
-        <p className="mt-[9px] line-clamp-2 text-item leading-snug font-medium text-text">
+        <p className="mt-1.5 line-clamp-2 text-item leading-snug font-medium text-text">
           {film.titleName}
         </p>
 
-        {/* The date, then the countdown. Two lines rather than one joined by a `·`, because
-            they are two different kinds of fact — one is the catalogue's and fixed, the
-            other is the reader's and decrements every midnight — and the accent is doing
-            the work of telling them apart.
-
-            `data-numeric` on both: a column of dates and a column of *In 9* / *In 12 days*
-            must not ripple sideways as the numbers change width. */}
-        <p className="code-line mt-[4px] text-dim" data-numeric>
-          {releaseDateInWords(film.releaseDate)}
-        </p>
-
-        {/* The accent, which is forbidden by default and **narrowed for exactly
-            this shape** — the narrowing was recorded in the same change as this line,
-            rather than argued only here. Its
-            three conditions are what this card is: no state label on it, the date itself
-            left `dim` above, and a quantity that moves on its own every midnight. */}
-        <p className="code-line mt-[6px] text-accent" data-numeric>
-          {countdown}
+        {/* `data-numeric`: a column of *In 9* / *In 12 days* must not ripple sideways as
+            the numbers change width. */}
+        <p className="mt-0.5 text-label text-dim" data-numeric>
+          {`${releaseDateInWords(film.releaseDate)} · ${countdown}`}
         </p>
       </Link>
     </li>
   );
 }
 
-/**
- * `"2026-09-26"` → `"26 Sept 2026"`.
- *
- * A **third sibling of the same three lines**, and deliberately not a caller of either of
- * the others. The reason is the one `episode-facts.ts` already records about the Stats
- * page's own day formatter, which #249 deleted with the page — a vocabulary refusal, not a
- * signature one: **a film's
- * release date is not a special case of an episode's air date.** Importing
- * `episode-card-line.ts`'s would make it one, and the next edit to that function — made for
- * a rail card, by somebody who has never opened this file — would silently move a date on
- * this one. (Its `string | null` is the smaller half of the same point: this column cannot
- * be null by the time it reaches here, so the wrapper would exist only to discard a branch.)
- *
- * **The short register, for `episode-card-line.ts`'s measure reason**: this line sits on a
- * 138px card with a countdown under it, and `1 March 2026`'s long month is what makes a
- * card that narrow wrap. `episode-facts.ts` writes the long one for an episode's own page,
- * which has a line to itself.
- *
- * ── The year is printed, and the handoff draws no year ───────────────────────────────
- *
- * The prototype's card reads `Sep 26 · Canada`; strip the region this ticket refuses and
- * the drawn date is `Sep 26`. This prints the year anyway, which is a deviation and so is
- * argued rather than left to look like a slip. **A watchlist is where dates live longest.**
- * The prototype's three films are all within four months of its *today*, but the rail this
- * builds is bounded only by what a reader has kept — a film announced for 2028 is an
- * ordinary row on it, and `Sep 26` above *In 738 days* is a card disagreeing with itself.
- * Every other date in the build carries its year for this reason (`27 August 2026` on the
- * row directly above, `12 Mar 2026` on the rail card one page over), and a rail of years is
- * exactly what a countdown implies.
- *
- * Built in UTC and formatted in UTC, and **both halves are load-bearing**. A release date is
- * a `date` column with no instant in it and the same day for every reader on earth;
- * building the instant in UTC and formatting it in the *server's* zone prints the 26th as
- * the 25th on any machine west of UTC. `episode-facts.ts` carries this exact line with the
- * story of the draft that had only the first half.
- */
 function releaseDateInWords(releaseDate: string): string {
   const [year, month, day] = releaseDate.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {

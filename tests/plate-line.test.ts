@@ -139,13 +139,12 @@ function bgRaisedLines(file: string): string[] {
  * Every raised container the plate line reaches, named by the ticket's own four
  * categories: result rows, list rows, rail cards, programme-note panels. Search's result
  * rows left it in Charcoal (issue #404): they are rows on the page with hairlines between
- * them, not cards. `you-list-card.tsx`
+ * them, not cards. Coming up's rows left it for the same reason (#401). `you-list-card.tsx`
  * carries two — the missing-artwork frame and the populated collage are both cards on
  * You's lists rail.
  */
 const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: number }[] = [
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
-  { file: "app/(signed-in)/up-next/upcoming-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/library/programme-note-section.ts", count: 1 }, // a programme-note panel
   { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", count: 1 }, // a list's three-dot menu (#402)
   { file: "app/(signed-in)/import/import-surface.tsx", count: 1 }, // the running import's card (#406)

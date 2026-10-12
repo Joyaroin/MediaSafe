@@ -42,9 +42,11 @@ export function TonightComingUp({
           See all
         </Link>
       </div>
-      <ul className="mt-2 flex flex-col gap-2">
+      {/* `dated`: there is no day heading over these three, so each row sets its own date
+          and countdown — the form Coming up's *Later* rows take (#419). */}
+      <ul className="stagger-rise mt-1">
         {next.map((episode) => (
-          <UpcomingRow key={episode.episodeId} episode={episode} today={today} />
+          <UpcomingRow key={episode.episodeId} episode={episode} today={today} dated />
         ))}
       </ul>
     </section>

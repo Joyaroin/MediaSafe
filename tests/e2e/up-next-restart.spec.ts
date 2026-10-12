@@ -13,7 +13,7 @@ import { toStorageState } from "./support/storage-state";
  *
  * - **Pressing Tonight while already on Tonight** returns the scroll position to the top.
  * - **Arriving back from a title** — the case issue #276's restoration was built for —
- *   still restores Coming up's "Upcoming movies" rail to the offset the reader left it at.
+ *   still restores Coming up's "Upcoming films" rail to the offset the reader left it at.
  *
  * Until issue #399 both were one screen: Coming up was the second page of the landing
  * pager on `/up-next`, and this spec also proved the re-press returned the pager to its
@@ -47,7 +47,7 @@ test.beforeAll(async () => {
     await seedWatchingShow(userId);
   }
 
-  // Six films, wide enough to overflow the "Upcoming movies" rail horizontally —
+  // Six films, wide enough to overflow the "Upcoming films" rail horizontally —
   // `seedWatchlistFilms`'s own docblock has the arithmetic.
   filmNames = await seedWatchlistFilms(userId, 6);
 
@@ -70,22 +70,22 @@ test.beforeEach(async ({ page }) => {
 const tonightTabBarLink = (page: Page) =>
   page.locator('nav.phone-tab-bar a[href="/up-next"]');
 
-const upcomingMoviesRail = (page: Page) =>
+const upcomingFilmsRail = (page: Page) =>
   page
-    .locator("section", { has: page.getByRole("heading", { name: "Upcoming movies" }) })
+    .locator("section", { has: page.getByRole("heading", { name: "Upcoming films" }) })
     .locator("ol");
 
 async function goToComingUpAndScrollTheRail(page: Page): Promise<void> {
   await page.goto("/coming-up");
 
-  await expect(upcomingMoviesRail(page)).toBeVisible();
+  await expect(upcomingFilmsRail(page)).toBeVisible();
   // `bubbles: true` is not this event's native behaviour — an element's own `scroll` does
   // not bubble — but it is what makes the dispatch reach React's handler synchronously,
   // inside this one `evaluate`, rather than racing the real (asynchronous) browser event
   // against the click that navigates away next. `recordScroll` (`remembered-rail.tsx`)
   // reads `el.scrollLeft` itself, so the manufactured event only has to arrive, not carry
   // real coordinates.
-  await upcomingMoviesRail(page).evaluate((el) => {
+  await upcomingFilmsRail(page).evaluate((el) => {
     el.scrollLeft = 150;
     el.dispatchEvent(new Event("scroll", { bubbles: true }));
   });
@@ -138,9 +138,9 @@ test("returning from a title still restores Coming up's rail offset", async ({ p
    */
   await film.scrollIntoViewIfNeeded();
   await expect
-    .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
+    .poll(() => upcomingFilmsRail(page).evaluate((el) => el.scrollLeft))
     .toBeGreaterThan(0);
-  const leftAt = await upcomingMoviesRail(page).evaluate((el) => el.scrollLeft);
+  const leftAt = await upcomingFilmsRail(page).evaluate((el) => el.scrollLeft);
 
   await film.click();
   await expect(page.getByRole("heading", { name: filmNames[3], level: 1 })).toBeVisible();
@@ -149,6 +149,6 @@ test("returning from a title still restores Coming up's rail offset", async ({ p
 
   await expect(page).toHaveURL(/\/coming-up$/);
   await expect
-    .poll(() => upcomingMoviesRail(page).evaluate((el) => el.scrollLeft))
+    .poll(() => upcomingFilmsRail(page).evaluate((el) => el.scrollLeft))
     .toBe(leftAt);
 });

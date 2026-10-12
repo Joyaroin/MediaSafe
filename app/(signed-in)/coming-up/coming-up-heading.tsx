@@ -1,11 +1,15 @@
 /**
- * Coming up's heading — the name of the tab that brought the reader here, as a real `h1`
- * that is not painted: the tab bar and the sidebar already say it, the same reasoning as
- * `up-next-heading.tsx`. Slice 7 of the Charcoal redesign draws a visible Screen heading.
+ * Coming up's screen heading — the serif at Screen size (Charcoal §8.2), painted as the
+ * boards draw it. It was an unpainted `h1` while this screen was still the pager's second
+ * page redrawn as a route (slice 5).
  *
  * Shared by the page, its loading boundary and its failure, so a failed read still reads
  * as *Coming up, which did not load*.
  */
 export function ComingUpHeading() {
-  return <h1 className="sr-only">Coming up</h1>;
+  return (
+    <header className="px-gutter pt-5 pb-1 lg:pt-7">
+      <h1 className="screen-title text-screen text-text">Coming up</h1>
+    </header>
+  );
 }

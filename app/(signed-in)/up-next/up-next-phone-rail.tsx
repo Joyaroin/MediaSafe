@@ -13,8 +13,8 @@ import { RememberedTrack } from "./remembered-rail";
  *
  * ── The gutter is the page's, which is what *snap to the page gutter* means ──────────
  *
- * `22px`, matching `up-next-heading.tsx`'s `px-gutter`, so a card's leading edge sits
- * directly under the *Tonight* the reader is reading. The track carries the gutter rather
+ * `22px`, the page gutter, so a card's leading edge sits directly under the screen
+ * heading the reader is reading. The track carries the gutter rather
  * than the `<section>` precisely so it can bleed to the viewport edges — which is what
  * lets the trailing card be cut by the edge, and that overhang is the whole of *leave the
  * next card peeking*. `snap-x snap-mandatory` here and `snap-start` on each card
@@ -31,7 +31,7 @@ import { RememberedTrack } from "./remembered-rail";
  * `up-next-group.tsx`'s arrows exist because a mouse without a horizontal wheel cannot
  * reach a track at all; that reason has no phone equivalent, and an arrow under a thumb
  * that can already swipe is decoration. The desktop rail's dim rule beside its head goes
- * for the handoff's reason: it draws the phone head as a label alone.
+ * for the handoff's reason: it draws the head alone.
  *
  * ── No `More`, and that is a deletion rather than an omission ────────────────────────
  *
@@ -58,21 +58,15 @@ export function RailSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="pt-[26px]">
+    <section className="pt-3.5">
       {/* The head keeps the page's gutter; the track below carries its own, so that it can
           bleed to the viewport edges.
 
-          The label register in the accent, which is turn 9's treatment for *the way
-          through this screen* and what `GroupSection` printed before it. Two instances of
-          one role on this surface rather than five, now that there are two rails.
-
-          The accent is reserved for **recording a watch**, and this surface
-          carries that meaning too — the check on every episode card. The two stay legible
-          apart because they sit in different places: a heading above a track, a control in
-          a card's last row. What would violate the rule is a third — an accent badge, tile
-          or state label alongside either. */}
-      <div className="px-gutter pb-3">
-        <h2 className="label-line text-dim">{label}</h2>
+          The Rail's head is the serif Heading (Charcoal §6, §8.2), the same voice as the
+          day headings above it on Coming up. It was the dim label register, from when a
+          rail head was *the way through this screen* and not a section of it. */}
+      <div className="px-gutter pb-2.5">
+        <h2 className="bill-title text-bill-lg text-text">{label}</h2>
       </div>
 
       {/* The track is a client component and the rest of this file is not — it carries the
