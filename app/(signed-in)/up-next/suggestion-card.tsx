@@ -28,16 +28,16 @@ export function SuggestionCard({
   const href = `/catalogue/${result.kind}/${result.tmdbId}`;
 
   return (
-    <li className="w-[124px] shrink-0 snap-start">
+    <li className="w-28 shrink-0 snap-start">
       <Link href={href} className="group block">
         <Poster
           posterPath={result.posterPath}
           name={result.name}
-          width={124}
+          width={112}
           className="w-full transition duration-[var(--dur-fast)] group-hover:brightness-110 [--poster-radius:var(--radius-5)]"
           aboveFold={aboveFold}
         />
-        <p className="mt-2 truncate text-meta text-text">{result.name}</p>
+        <p className="mt-2 truncate text-item font-medium text-text">{result.name}</p>
       </Link>
 
       {inLibrary ? (

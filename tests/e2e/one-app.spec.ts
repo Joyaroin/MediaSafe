@@ -75,7 +75,10 @@ test("Tonight is called Tonight, and Coming up is a destination of its own", asy
   await page.goto("/up-next");
 
   await expect(page.getByRole("heading", { name: "Tonight", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Continue watching" }).filter({ visible: true })).toBeVisible();
+  // Charcoal, issue #400: the show watched most recently leads, over its artwork, and the
+  // rest of Continue watching is *Also ready* under it — there is no *Continue watching*
+  // heading any more.
+  await expect(page.locator("[data-featured]")).toBeVisible();
   // Issue #399: the landing pager is gone, so there is no second page to page to.
   await expect(page.getByRole("tablist")).toHaveCount(0);
 

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,18 +7,18 @@ import {
   glowFor,
   posterBandStyle,
   posterGlowStyle,
-  posterTintStyle,
   TITLE_SCRIM,
   titleScrimAlpha,
   titleScrimGradient,
-  WASH,
-  washFor,
+  TONIGHT_SCRIM,
+  tonightScrimAlpha,
+  tonightScrimGradient,
+  tonightScrimVars,
+  tonightTitleScrimGradient,
 } from "@/app/poster-tint";
 import { hexToOklch, inSrgbGamut, oklabToHex } from "@/lib/oklab";
 
 import {
-  APCA_CONTENT_TEXT_FLOOR,
-  apcaLc,
   gammaEncode,
   oklchToLinearSrgb,
   parseOklch,
@@ -29,13 +27,14 @@ import {
 } from "./support/contrast";
 
 /**
- * Issue #361's clamp: a poster's colour, made safe to put text on, in both themes.
+ * A poster's colour in the roles it plays — the glow, the band — and the scrims that keep
+ * text legible over artwork (handoff §10). Contrast is computed by `tests/contrast.test.ts`'s
+ * own functions (`tests/support/contrast.ts`) against the same declarations. A poster can be
+ * any colour, so each sweep is every hue at full and at low chroma, and every lightness a
+ * poster's dominant colour could have.
  *
- * The floor is `tests/contrast.test.ts`'s, computed by the same functions
- * (`tests/support/contrast.ts`) against the same declarations: WCAG 4.5:1 in light, APCA
- * Lc 60 in dark, for `--text` and `--dim` — the two registers the hero sets its title and
- * meta line in. A poster can be any colour, so the sweep is every hue at full and at low
- * chroma, and every lightness a poster's dominant colour could have.
+ * Issue #361's wash and its assertions went with it (Charcoal, issue #400): the band and
+ * Tonight's featured block replaced the only two surfaces that painted it.
  */
 
 /** A poster colour at every hue, from the darkest to the lightest and the dullest to the most vivid. */
@@ -58,69 +57,6 @@ function painted(wash: string): [number, number, number] {
   return gammaEncode(oklchToLinearSrgb(L / 100, C, H));
 }
 
-describe("the text over the wash keeps the contrast floor", () => {
-  const colours = posterColours();
-
-  it.each(["text", "dim"] as const)("--%s clears 4.5:1 on every light wash", (token) => {
-    const text = resolvedSrgb(token);
-    const worst = Math.min(...colours.map((c) => wcagContrast(text, painted(washFor(c, "light")))));
-    expect(worst).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it.each(["text", "dim"] as const)(
-    "--dark-%s clears the APCA content-text floor on every dark wash",
-    (token) => {
-      const text = resolvedSrgb(`dark-${token}`);
-      const worst = Math.min(
-        ...colours.map((c) => Math.abs(apcaLc(text, painted(washFor(c, "dark"))))),
-      );
-      expect(worst).toBeGreaterThanOrEqual(APCA_CONTENT_TEXT_FLOOR);
-    },
-  );
-});
-
-describe("washFor", () => {
-  it("keeps the poster's hue and replaces its lightness, per theme", () => {
-    const red = "#c0392b";
-    const { h } = hexToOklch(red);
-
-    for (const theme of ["light", "dark"] as const) {
-      const [L, , H] = parseOklch(washFor(red, theme));
-      expect(L).toBeCloseTo(WASH[theme].l * 100, 1);
-      expect(H).toBeCloseTo(h, 0);
-    }
-  });
-
-  it("caps a vivid poster's chroma, separately for each theme", () => {
-    const vivid = "#00ff00";
-    expect(parseOklch(washFor(vivid, "light"))[1]).toBe(WASH.light.maxChroma);
-    expect(parseOklch(washFor(vivid, "dark"))[1]).toBe(WASH.dark.maxChroma);
-  });
-
-  it("leaves a dull poster dull rather than inventing colour for it", () => {
-    const grey = "#808080";
-    expect(parseOklch(washFor(grey, "light"))[1]).toBeLessThan(0.001);
-    expect(parseOklch(washFor(grey, "dark"))[1]).toBeLessThan(0.001);
-  });
-
-  it("refuses a value that is not #rrggbb", () => {
-    expect(() => washFor("red", "light")).toThrow();
-  });
-});
-
-describe("posterTintStyle", () => {
-  it("is nothing at all for a title with no colour", () => {
-    expect(posterTintStyle(null)).toBeUndefined();
-  });
-
-  it("carries both themes' washes, for the stylesheet to choose between", () => {
-    expect(posterTintStyle("#c0392b")).toEqual({
-      "--tint-light": washFor("#c0392b", "light"),
-      "--tint-dark": washFor("#c0392b", "dark"),
-    });
-  });
-});
-
 describe("the hover glow (issue #363)", () => {
   it("keeps the poster's hue at a lightness both grounds can see", () => {
     const blue = "#1e3cdc";
@@ -133,25 +69,6 @@ describe("the hover glow (issue #363)", () => {
   it("is nothing at all for a title with no colour", () => {
     expect(posterGlowStyle(null)).toBeUndefined();
     expect(posterGlowStyle("#1e3cdc")).toEqual({ "--glow": glowFor("#1e3cdc") });
-  });
-});
-
-describe("the tint is its own token family", () => {
-  /**
-   * The accent rule is untouched by this — `tests/accent-sweep.test.ts` is what holds it,
-   * and it must pass unchanged. What this adds is the converse: the tint never borrows an
-   * accent token, so the two families cannot come to mean one another.
-   */
-  it("`--tint` is resolved from `--tint-light` and `--tint-dark` only", () => {
-    const css = readFileSync(join(__dirname, "../app/globals.css"), "utf8").replace(
-      /\/\*[\s\S]*?\*\//g,
-      "",
-    );
-    const declarations = [...css.matchAll(/--tint:\s*([^;]+);/g)].map((m) => m[1].trim());
-    expect(declarations.length).toBeGreaterThan(0);
-    for (const value of declarations) {
-      expect(["var(--tint-light)", "var(--tint-dark)"]).toContain(value);
-    }
   });
 });
 
@@ -281,3 +198,106 @@ describe("text over a title's artwork keeps §10's floors (Charcoal, issue #398)
     expect(gradient).toMatch(/var\(--color-ground\) 100%\)$/);
   });
 });
+
+describe("Tonight's two scrims keep §10's floors (Charcoal, issue #400)", () => {
+  /**
+   * The featured episode's text over its artwork, on the phone (everything below `xl:`) and
+   * the desktop card, composited over pure white and pure black artwork in both themes.
+   * The `ground` scrim is measured from the *Up next* label's top; every line of the block
+   * sits at or below it, so a title wrapping to two lines only moves the lines under it
+   * further into the scrim — which is what the two layouts below check, line by line.
+   */
+  const ARTWORK: Record<string, [number, number, number]> = {
+    white: [1, 1, 1],
+    black: [0, 0, 0],
+  };
+  const THEMES = [
+    { theme: "light", ground: "ground", text: "text", dim: "dim" },
+    { theme: "dark", ground: "dark-ground", text: "dark-text", dim: "dark-dim" },
+  ] as const;
+  const LAYOUTS = ["phone", "desktop"] as const;
+
+  function over(
+    top: [number, number, number],
+    alpha: number,
+    under: [number, number, number],
+  ): [number, number, number] {
+    return top.map((c, i) => alpha * c + (1 - alpha) * under[i]) as [number, number, number];
+  }
+
+  /**
+   * Where each line of the text block starts, in px from the label's top, for a title of
+   * one line and of two — the Display size's line box (`80px` at `0.9` on a phone, `128px`
+   * from `xl:`), the block's own gaps, and `kind` for which floor applies. The label is
+   * small text at the very top; the title is large; the episode line and the count are
+   * small, under the title.
+   */
+  function linesOf(layout: (typeof LAYOUTS)[number], titleLines: 1 | 2) {
+    const display = layout === "phone" ? 80 * 0.9 : 128 * 0.9;
+    const title = 16 + 6;
+    const episode = title + display * titleLines + 8;
+    return [
+      { name: "the Up next label", at: 0, kind: "small" },
+      { name: "the title", at: title, kind: "large" },
+      { name: "the episode line and count", at: episode, kind: "small" },
+    ] as const;
+  }
+
+  const cases = LAYOUTS.flatMap((layout) =>
+    THEMES.flatMap((t) =>
+      Object.entries(ARTWORK).flatMap(([artwork, rgb]) =>
+        ([1, 2] as const).map((titleLines) => ({ layout, ...t, artwork, rgb, titleLines })),
+      ),
+    ),
+  );
+
+  it.each(cases)(
+    "$layout, $theme, over $artwork artwork, a $titleLines-line title: every line clears its floor",
+    (c) => {
+      const ground = resolvedSrgb(c.ground);
+      for (const line of linesOf(c.layout, c.titleLines)) {
+        const backdrop = over(ground, tonightScrimAlpha(line.at, c.layout), c.rgb);
+        const floor = line.kind === "large" ? 3 : 4.5;
+        expect(wcagContrast(resolvedSrgb(c.text), backdrop), `${line.name}, text`).toBeGreaterThanOrEqual(floor);
+        if (line.kind === "small") {
+          expect(wcagContrast(resolvedSrgb(c.dim), backdrop), `${line.name}, dim`).toBeGreaterThanOrEqual(floor);
+        }
+      }
+    },
+  );
+
+  it.each(LAYOUTS)("%s: the white screen title clears 3:1 on its black scrim over white artwork", (layout) => {
+    // The title's weakest edge is its foot, where the scrim is lightest; white artwork is
+    // the worst case under white text. The theme does not enter: the scrim is black.
+    const backdrop = over([0, 0, 0], TONIGHT_SCRIM.black.atTitleBottom, ARTWORK.white);
+    expect(wcagContrast([1, 1, 1], backdrop)).toBeGreaterThanOrEqual(3);
+    expect(TONIGHT_SCRIM.black[layout].goneBelow).toBeGreaterThan(0);
+  });
+
+  it.each(LAYOUTS)("%s: the ground scrim is 90%% at the label and only rises below it", (layout) => {
+    expect(tonightScrimAlpha(0, layout)).toBeCloseTo(0.9, 10);
+    let previous = 0;
+    for (let offset = -300; offset <= 400; offset += 1) {
+      const alpha = tonightScrimAlpha(offset, layout);
+      expect(alpha).toBeGreaterThanOrEqual(previous);
+      previous = alpha;
+    }
+    expect(tonightScrimAlpha(TONIGHT_SCRIM.ground[layout].solidBelow, layout)).toBe(1);
+    expect(tonightScrimAlpha(-TONIGHT_SCRIM.ground[layout].fadeAbove, layout)).toBe(0);
+  });
+
+  it("paints the measures it is tested with, for both layouts", () => {
+    const vars = tonightScrimVars() as Record<string, string>;
+    for (const layout of LAYOUTS) {
+      const { fadeAbove, solidBelow } = TONIGHT_SCRIM.ground[layout];
+      expect(vars[`--tonight-fade-${layout}`]).toBe(`${fadeAbove}px`);
+      expect(vars[`--tonight-solid-${layout}`]).toBe(`${fadeAbove + solidBelow}px`);
+      expect(vars[`--tonight-gone-${layout}`]).toBe(`${TONIGHT_SCRIM.black[layout].goneBelow}px`);
+    }
+    expect(tonightScrimGradient()).toContain("var(--color-ground) 90%, transparent) var(--tonight-fade)");
+    expect(tonightScrimGradient()).toContain("var(--color-ground) var(--tonight-solid)");
+    expect(tonightTitleScrimGradient()).toContain("rgb(0 0 0 / 50%) 0");
+    expect(tonightTitleScrimGradient()).toContain("rgb(0 0 0 / 45%) calc(100% - var(--tonight-gone))");
+  });
+});
+

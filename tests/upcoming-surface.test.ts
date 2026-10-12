@@ -449,11 +449,16 @@ describe("Coming up is a route of its own, with both halves and one day", () => 
   });
 
   /** Tonight no longer pays for reads it does not draw, and no longer draws a pager. */
-  it("leaves Tonight with no pager and no upcoming reads", () => {
+  it("leaves Tonight with no pager and no Coming up screen, only its preview's read", () => {
+    // Charcoal, issue #400 (handoff §8.1): from `xl:`, Tonight's right column previews the
+    // next three dated rows. That is the one upcoming read it makes — episodes, the same
+    // cached read Coming up makes — and it draws no part of Coming up's own surface.
     const tonight = sourceAt(TONIGHT);
     expect(tonight).not.toContain("LandingPager");
-    expect(tonight).not.toContain("cachedUpcoming");
     expect(tonight).not.toContain("<UpcomingSurface");
+    expect(tonight).not.toContain("cachedUpcomingFilms");
+    expect(tonight.match(/cachedUpcomingEpisodes\(userId\)/g)).toHaveLength(1);
+    expect(tonight).toContain("<TonightComingUp");
   });
 
   /** Both reads go through the cache under the `up-next` tag, so a write on Tonight cannot

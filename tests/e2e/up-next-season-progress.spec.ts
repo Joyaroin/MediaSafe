@@ -35,14 +35,23 @@ test.use({
   storageState: path.join(__dirname, ".auth", "up-next-season-progress-session.json"),
 });
 
+/** The show's row on Tonight, or — when it is the show watched most recently — the featured
+ *  block (Charcoal, issue #400), which carries the same title link and the same controls. */
 const card = (page: Page) =>
-  page.locator("li", { has: page.getByRole("link", { name: new RegExp(show.titleName) }) });
+  page.locator("li, [data-featured]", {
+    has: page.getByRole("link", { name: new RegExp(show.titleName) }),
+  });
 
-/** The fill's share of its track, as a whole percentage. */
+/** The watched segments' share of the season, as a whole percentage — the featured
+ *  block's one segment per aired episode (handoff §6, Charcoal issue #400). */
 async function filled(page: Page): Promise<number> {
   return card(page)
-    .locator(".progress-fill")
-    .evaluate((fill) => Math.round(parseFloat((fill as HTMLElement).style.width)));
+    .locator('[role="img"][aria-label$="episodes this season watched"]')
+    .evaluate((segments) => {
+      const all = segments.children.length;
+      const watched = segments.querySelectorAll("[data-watched]").length;
+      return Math.round((watched / all) * 100);
+    });
 }
 
 test("the season bar advances on a mark and returns on Undo", async ({ page }) => {

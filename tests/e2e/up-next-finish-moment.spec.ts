@@ -35,15 +35,20 @@ test.use({
   storageState: path.join(__dirname, ".auth", "up-next-finish-moment-session.json"),
 });
 
+/** The show's row on Tonight, or — when it is the show watched most recently — the featured
+ *  block (Charcoal, issue #400), which carries the same title link and the same controls. */
 const card = (page: Page) =>
-  page.locator("li", { has: page.getByRole("link", { name: new RegExp(show.titleName) }) });
+  page.locator("li, [data-featured]", {
+    has: page.getByRole("link", { name: new RegExp(show.titleName) }),
+  });
 
 test("marking a season's last episode says so, and Undo takes back the line and the mark", async ({
   page,
 }) => {
   await page.goto("/up-next");
   const markButton = card(page).getByRole("button", {
-    name: "Mark Season 1, Episode 2 — Fixture Episode 2 watched",
+    // The title as well as the episode — handoff §8.1's accessible name (issue #400).
+    name: `Mark ${show.titleName}, Season 1, Episode 2 — Fixture Episode 2, watched`,
   });
   await expect(markButton).toBeVisible();
 
@@ -54,7 +59,11 @@ test("marking a season's last episode says so, and Undo takes back the line and 
   await expect(card(page).getByText("Season 1 done")).toHaveCount(0);
   await expect(markButton).toBeVisible();
 
-  // The mark is gone from the server too: a fresh load still offers the episode.
+  // The mark is gone from the server too: a fresh load still offers the episode. Let the
+  // Undo's write land first — the store sends it only once the mark's own write has
+  // answered, and a reload a few milliseconds after the press would cancel it in the
+  // browser. This used to wait by accident, on the old card's exit animation (#400).
+  await page.waitForLoadState("networkidle");
   await page.reload();
   await expect(markButton).toBeVisible();
 });
