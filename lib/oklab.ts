@@ -45,19 +45,40 @@ export function srgbToOklab(r: number, g: number, b: number): Oklab {
   };
 }
 
-/** OKLab to `#rrggbb`, clipped into sRGB channel by channel. */
-export function oklabToHex({ l, a, b }: Oklab): string {
+/** OKLab to linear-light sRGB, unclipped — a channel outside 0–1 is out of gamut. */
+export function oklabToLinearSrgb({ l, a, b }: Oklab): [number, number, number] {
   const l_ = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m_ = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
   const s_ = (l - 0.0894841775 * a - 1.291485548 * b) ** 3;
 
-  const linear = [
+  return [
     4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
     -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
     -0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_,
   ];
+}
 
-  return `#${linear
+/** OKLCH to OKLab. */
+export function oklchToOklab({ l, c, h }: Oklch): Oklab {
+  const rad = (h * Math.PI) / 180;
+  return { l, a: c * Math.cos(rad), b: c * Math.sin(rad) };
+}
+
+/**
+ * Whether an OKLCH colour is inside sRGB as it stands — every linear channel in 0–1, with
+ * a hair of tolerance for the matrices' own rounding. `app/poster-tint.ts`'s band reduces
+ * chroma until this holds, rather than leaving a browser to clip, which shifts lightness.
+ */
+export function inSrgbGamut(colour: Oklch): boolean {
+  const EPSILON = 1e-6;
+  return oklabToLinearSrgb(oklchToOklab(colour)).every(
+    (channel) => channel >= -EPSILON && channel <= 1 + EPSILON,
+  );
+}
+
+/** OKLab to `#rrggbb`, clipped into sRGB channel by channel. */
+export function oklabToHex(colour: Oklab): string {
+  return `#${oklabToLinearSrgb(colour)
     .map((c) => Math.round(clamp01(toGamma(clamp01(c))) * 255).toString(16).padStart(2, "0"))
     .join("")}`;
 }

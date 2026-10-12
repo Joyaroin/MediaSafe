@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { posterSrc } from "@/app/poster";
-import { posterTintStyle } from "@/app/poster-tint";
+import { posterBandStyle, titleScrimGradient } from "@/app/poster-tint";
 import { HeroPoster } from "./hero-poster";
 
 /**
@@ -21,12 +21,18 @@ import { HeroPoster } from "./hero-poster";
  * so the band behind the head is the poster itself, enlarged, blurred and faded into the
  * ground. It is decoration: `aria-hidden`, lazy, and absent when there is no poster.
  *
- * ── And washed in the poster's own colour — issue #361 ────────────────────────────────
+ * ── On a band of the poster's own colour — Charcoal, issue #398 ──────────────────────
  *
- * When the title has a stored colour, the band takes it: a gradient from the colour,
- * clamped for the reader's theme so text over it keeps the contrast floor
- * (`app/poster-tint.ts`), down into `--ground`. A title with no colour draws the band
- * exactly as it did before — the softened poster and the neutral fade, nothing guessed.
+ * Under the softened poster is the band (`app/poster-tint.ts`'s `BAND`): the stored hue
+ * at 52% lightness, one value for both themes. It replaced issue #361's pale wash. A
+ * title with no stored colour has no band; the area shows `raised`, nothing guessed.
+ *
+ * Over both is a `ground` scrim, and it is **measured from the text, not the artwork**:
+ * the head row is the band's own box, so the band ends where the text block ends, and the
+ * scrim's stops sit at fixed distances from `--hero-text-top`, the row's top padding —
+ * where the text block (or the poster beside it, if that is taller) begins. A name that
+ * wraps grows the block downward into more scrim. `tests/poster-tint.test.ts` composites
+ * the same stops over white and black artwork against handoff §10's floors.
  *
  * ── It recedes as you scroll — issue #369 ────────────────────────────────────────────
  *
@@ -80,13 +86,13 @@ export function TitleHero({
   synopsis?: ReactNode;
 }) {
   return (
-    <section
-      className={posterColour === null ? "relative" : "poster-tint relative"}
-      style={posterTintStyle(posterColour)}
-    >
-      <HeroBackdrop posterPath={posterPath} tinted={posterColour !== null} />
+    <section className="relative">
+      <div
+        className="relative isolate flex items-end gap-5 px-gutter pt-[var(--hero-text-top)] [--hero-text-top:5rem] lg:gap-8 lg:px-10 lg:[--hero-text-top:9rem]"
+        style={posterBandStyle(posterColour)}
+      >
+        <HeroBand posterPath={posterPath} />
 
-      <div className="relative flex items-end gap-5 px-gutter pt-20 lg:gap-8 lg:px-10 lg:pt-36">
         <div
           className="hero-recede-poster shrink-0"
           style={
@@ -106,7 +112,9 @@ export function TitleHero({
         <div className="arrive-panel flex min-w-0 flex-1 flex-col gap-2 pb-1">
           {status === null || status === undefined ? null : (
             <p
-              className={`self-start rounded-[var(--radius-full)] bg-ground/70 px-2.5 py-1 text-meta font-semibold ${status.className}`}
+              // `ground` at 85%: the tag sits at the very top of the text block, so it brings
+              // its own backing — with the scrim under it, 90% (`TITLE_SCRIM.stateTagBacking`).
+              className={`self-start rounded-[var(--radius-full)] bg-ground/85 px-2.5 py-1 text-meta font-semibold ${status.className}`}
             >
               {status.label}
             </p>
@@ -137,18 +145,18 @@ export function TitleHero({
   );
 }
 
-function HeroBackdrop({
-  posterPath,
-  tinted,
-}: {
-  posterPath: string | null;
-  /** The section carries `--tint` (`poster-tint` in `app/globals.css`). */
-  tinted: boolean;
-}) {
+/**
+ * The band, the softened poster, and the scrim — the head row's own background, behind
+ * the poster and the text (`-z-10` inside the row's `isolate`). The band reads `--band`
+ * from the row, or `raised` when the title has none. `hero-recede-band` fades and folds
+ * all three together as the page scrolls, which only ever leaves more `ground` behind
+ * the text, never less.
+ */
+function HeroBand({ posterPath }: { posterPath: string | null }) {
   return (
     <div
       aria-hidden="true"
-      className="hero-recede-band absolute inset-x-0 top-0 h-[240px] overflow-hidden lg:h-[340px]"
+      className="hero-recede-band absolute inset-0 -z-10 overflow-hidden bg-[var(--band,var(--color-raised))]"
     >
       {posterPath === null ? null : (
         // eslint-disable-next-line @next/next/no-img-element -- decoration behind the head, from the same TMDB CDN `poster.tsx` reads with a plain <img> for its own stated reasons
@@ -162,15 +170,7 @@ function HeroBackdrop({
       )}
       <div
         className="absolute inset-0"
-        style={{
-          background: tinted
-            ? // The wash: the tint over the softened poster, fully opaque from a third
-              // of the way down — above where the head's text starts — and fading into
-              // the ground. So the text sits on the tint, the ground, or a mix of the
-              // two, and `tests/poster-tint.test.ts` checks the floor on the tint.
-              "linear-gradient(to bottom, color-mix(in oklab, var(--tint) 85%, transparent), var(--tint) 35%, var(--color-ground))"
-            : "linear-gradient(to bottom, color-mix(in oklab, var(--color-ground) 25%, transparent), var(--color-ground))",
-        }}
+        style={{ backgroundImage: titleScrimGradient("var(--hero-text-top)") }}
       />
     </div>
   );
