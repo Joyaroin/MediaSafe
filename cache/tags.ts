@@ -17,7 +17,7 @@ import {
   type LibraryEntryRow,
   type LibraryStateGroupEntry,
   type ListDetailRow,
-  type ListSummary,
+  type ListOverview,
   type TitleDetailRow,
   type UpcomingEpisode,
   type UpcomingFilm,
@@ -585,7 +585,7 @@ export function cachedUpcomingFilms(userId: UserId): Promise<readonly UpcomingFi
  * ticket names as *every surface reading that fact*, and it holds here because there is
  * one read behind all three rather than because three call sites remember to agree.
  */
-export function cachedLists(userId: UserId): Promise<ListSummary[]> {
+export function cachedLists(userId: UserId): Promise<ListOverview[]> {
   const read = unstable_cache(listLists, ["listLists", userId], {
     tags: [tagFor("lists", userId)],
   });

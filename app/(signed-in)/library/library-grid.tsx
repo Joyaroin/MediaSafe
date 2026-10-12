@@ -6,7 +6,7 @@ import { LIBRARY_HEADING_ID } from "./library-heading";
 /** The grid's columns, gaps and gutters — shared with its loading state (`loading.tsx`), so
  *  the wait is the grid it becomes. The reasoning for each value is beside the `<ol>`. */
 export const LIBRARY_GRID =
-  "grid grid-cols-3 gap-x-3.5 gap-y-5 px-[14px] pb-6 sm:grid-cols-4 lg:px-[34px] xl:grid-cols-5 2xl:grid-cols-6";
+  "grid grid-cols-3 gap-x-3.5 gap-y-5 px-gutter pb-6 sm:grid-cols-4 lg:px-10 xl:grid-cols-5 2xl:grid-cols-6";
 
 /**
  * The bill: every library entry, in one grid.
@@ -136,15 +136,11 @@ export function LibraryGrid({
     >
       <ol
         aria-labelledby={labelledBy}
-        // `px-[14px]` and not the page's `22px`: the cell's own `14px` padding is inside
-        // the card, so a `14px` list gutter is what puts the card's *edge* on 22px. Turn
-        // 9's rule for every list that carries cards, and the reason the search results
-        // and the list rows carry the same number.
-        // `lg:px-[34px]` is the one other thing that differs between devices: You, the
-        // title page and Settings sit on `lg:px-10`, and a Library whose edge alone sat
-        // 18px further left read as a different app when switching tabs on a desktop (UI
-        // overhaul). `34px` for the reason `14px` is `22px` above — it puts the card edge
-        // on `40px`. `tests/library-surface.test.ts` allows this and nothing else.
+        // `px-gutter`, `lg:px-10`: the page's own edges, so the first poster lines up
+        // under the heading and the chips. It was `14px`/`34px` while the cell was a card
+        // with `14px` of its own padding; a poster has none, so the grid takes the gutter
+        // itself (Charcoal, issue #402). `tests/library-surface.test.ts` allows this and
+        // nothing else.
         // **Columns, not rows.** The cell is a poster with a name under it now
         // (`library-entry-cell.tsx`), so the grid counts in artwork rather than in
         // full-width cards: three across on a phone, up to six on a wide desktop, which is

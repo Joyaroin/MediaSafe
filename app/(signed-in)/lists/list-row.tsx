@@ -1,84 +1,80 @@
-"use client";
-
 import Link from "next/link";
-import { useRef } from "react";
 
-import type { ListSummary } from "@/db/access";
-import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
-import { DeleteListDialog } from "./delete-list-dialog";
+import { Poster } from "@/app/poster";
+import type { ListOverview } from "@/db/access";
 import { formatTitleCount } from "./title-count";
 
 /**
- * One list, as a `--raised` card — a `16px` radius on a `64px` minimum height, with an
- * `8px` gap to the next (`lists-surface.tsx`). It was a hairline-divided row until the
- * linen redesign, the same device `programme-note-episodes.tsx` still uses; turn 9 makes
- * it a card for the reason `library-grid.tsx` sets out at length — `--raised` sits below
- * the ground in this palette, so a card is a well in the sheet and needs no line to be
- * one.
+ * One list on Lists, as a `--raised` card (handoff §8.5): the name at Row size, the count
+ * in Meta under it, a stack of the list's first three posters, and a chevron.
  *
- * ── The count moved to its own line ──────────────────────────────────────────────────
+ * ── The whole card is the link ───────────────────────────────────────────────────────
  *
- * It used to sit beside the name on the same baseline. Turn 9 puts it under, which is
- * what lets the name have the row's width before it truncates: a list called *Films to
- * watch with Mum at Christmas* and a count of *14 titles* were previously competing for
- * one line, and the name lost. `formatTitleCount` is untouched — where the string is
- * drawn changed, not what it says.
+ * Until Charcoal only the name and the count were the link, because the row also held a
+ * *Delete* button and HTML forbids a `<button>` inside an `<a>`. Delete moved behind the
+ * three-dot menu on the list's own page (issue #402), so nothing else on the card is a
+ * control and the card is one target, as the boards draw it.
  *
- * ── The name and count are the link, the delete control is not ────────────────────────
+ * ── The stack ────────────────────────────────────────────────────────────────────────
  *
- * Issue #146 built this row with *"nothing here to click into yet"*; issue #147 is that
- * destination — `lists/[listId]`, the ordered rows a list actually holds. The `Link` wraps
- * only the name and the count rather than the whole `<li>`, because HTML forbids nesting a
- * `<button>` (the delete control) inside an `<a>`, and the two are not the same gesture
- * anyway: one opens the list, the other destroys it.
+ * Up to three posters in list order — `listLists` reads at most three (`LIST_STACK_SIZE`),
+ * so this draws what it is given. A list with no titles draws no stack at all rather than
+ * an empty frame. Each poster after the first tucks `10px` under the one before, and a
+ * `2px` ring in the card's own `--raised` cuts the overlap so three posters do not read
+ * as one shape. The stack is `aria-hidden`: the count beside it is what it says in words.
  *
- * Issue #195 moved the delete control off the old quiet vocabulary — a dim underlined text
- * button, never the accent, the register `abandon-control.tsx` shared before it was retired
- * — onto `GHOST_RECOVERY`, the register the whole underline conversion reuses knowingly. It no longer avoids the accent; nothing here reads
- * as louder than the recording control for it, because `GHOST_RECOVERY` is an outline until
- * pressed, not a fill.
+ * The count moved to its own line in turn 9 so a long name has the row's width before it
+ * truncates; it stays there.
  */
-export function ListRow({
-  list,
-  onDeleted,
-}: {
-  readonly list: ListSummary;
-  readonly onDeleted: (listId: string) => void;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
+export function ListRow({ list }: { readonly list: ListOverview }) {
   return (
-    <li className="flex min-h-16 items-center justify-between gap-3.5 rounded-[var(--radius-6)] bg-raised plate-line px-4 py-3">
-      <Link href={`/lists/${list.id}`} className="min-w-0 flex-1">
-        <span className="block truncate text-bill-xs font-medium leading-[1.25] tracking-[-0.01em] text-text">
-          {list.name}
+    <li>
+      <Link
+        href={`/lists/${list.id}`}
+        className="pressable flex min-h-18 items-center gap-3 rounded-[var(--radius-5)] bg-raised plate-line py-2.5 pr-2 pl-4"
+      >
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="line-clamp-2 text-row font-semibold break-words text-text">
+            {list.name}
+          </span>
+          <span className="text-meta text-dim" data-numeric>
+            {formatTitleCount(list.titleCount)}
+          </span>
         </span>
-        <span className="mt-0.5 block text-meta leading-[1.3] text-dim" data-numeric>
-          {formatTitleCount(list.titleCount)}
-        </span>
-      </Link>
 
-      <div className="flex items-center">
-        {/* Issue #195: now a pill, on the same GHOST_RECOVERY register every other control
-            in this batch takes. `h-11` keeps the 44px tap target the old hit-area hack
-            gave it; the box itself is the target now, so the hack is gone with it. */}
-        <button
-          type="button"
-          onClick={() => dialogRef.current?.showModal()}
-          aria-label={`Delete ${list.name}`}
-          className={`flex h-11 shrink-0 items-center ${GHOST_RECOVERY}`}
+        {list.posters.length === 0 ? null : (
+          <span aria-hidden="true" className="flex shrink-0">
+            {list.posters.map((poster, index) => (
+              <span
+                // A list holds a title once, but two titles can share artwork (and two
+                // with none share `null`), so the position is the key.
+                key={index}
+                className="rounded-[var(--radius-1)] ring-2 ring-raised not-first:-ml-2.5"
+              >
+                <Poster
+                  posterPath={poster.posterPath}
+                  name={poster.name}
+                  width={30}
+                  className="w-[30px]"
+                />
+              </span>
+            ))}
+          </span>
+        )}
+
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5 shrink-0 text-dim"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          Delete
-        </button>
-
-        <DeleteListDialog
-          ref={dialogRef}
-          listId={list.id}
-          listName={list.name}
-          titleCount={list.titleCount}
-          onDeleted={onDeleted}
-        />
-      </div>
+          <path d="M9 5l7 7-7 7" />
+        </svg>
+      </Link>
     </li>
   );
 }

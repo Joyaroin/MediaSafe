@@ -41,5 +41,14 @@ export const IN_FLIGHT = `disabled:cursor-wait ${DISABLED_DIM}`;
  * only once `delete` has been typed exactly — and `cursor-wait` on a control that is waiting
  * for the reader rather than for the server would be a small lie on the one screen that
  * cannot afford one.
+ *
+ * Charcoal draws it as its own face rather than a dimmed one (handoff §6: *`hair` fill,
+ * `dim` text, not-allowed cursor*), so a filled button that is not armed yet reads as not
+ * a filled button at all — Lists' *New list* until a name is typed (issue #402).
+ *
+ * The cursor and the brightness are `!`: every button's base already carries `IN_FLIGHT`
+ * (`app/buttons.ts`), and two `disabled:` utilities on one property are settled by the
+ * stylesheet's order rather than by which was written last — `cursor-wait` would win.
  */
-export const NOT_YET_ARMED = `disabled:cursor-not-allowed ${DISABLED_DIM}`;
+export const NOT_YET_ARMED =
+  "disabled:cursor-not-allowed! disabled:bg-hair disabled:text-dim disabled:brightness-100!";

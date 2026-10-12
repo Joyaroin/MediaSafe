@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { PRIMARY_BUTTON, SECONDARY_BUTTON, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
+import { PLAIN_BUTTON, PRIMARY_BUTTON } from "@/app/buttons";
 import { renameListAction, type RenameListActionOutcome } from "@/app/(signed-in)/lists/actions";
 import { LIST_NAME_MAX_LENGTH } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
@@ -12,26 +12,34 @@ import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
  * A list's name, and the way to change it — issue #357; a typo in a list name used to be
  * permanent.
  *
- * *Rename* turns the heading into a field in place. A name another of this account's lists
+ * *Rename*, from the page's three-dot menu (Charcoal, handoff §8.5), turns the heading into
+ * a field in place. The name and whether it is being edited belong to
+ * `list-detail-surface.tsx`, because the menu that starts a rename and the take-off toast
+ * that names the list both sit outside this component. A name another of this account's lists
  * already has is the reader's to fix, so it is said beside the field and nothing is sent
  * again; a lost write raises the write-failure toast and puts the old name back. The new
  * name shows as soon as it is saved, and the lists read's cache is busted by the action.
  */
 export function ListNameHeading({
   listId,
-  initialName,
+  name,
+  onNameChange: setName,
+  editing,
+  onEditingChange: setEditing,
 }: {
   readonly listId: string;
-  readonly initialName: string;
+  readonly name: string;
+  readonly onNameChange: (name: string) => void;
+  readonly editing: boolean;
+  readonly onEditingChange: (editing: boolean) => void;
 }) {
-  const [name, setName] = useState(initialName);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(initialName);
+  // Seeded each time editing starts: the surface mounts this form afresh per rename.
+  const [draft, setDraft] = useState(name);
   const [duplicate, setDuplicate] = useState(false);
   const [pending, setPending] = useState(false);
   const raised = useRef<WriteFailureHandle | null>(null);
   // The name as it stands, for a retry that runs after later renders have moved on.
-  const current = useRef(initialName);
+  const current = useRef(name);
   current.current = name;
 
   async function save(next: string): Promise<void> {
@@ -74,28 +82,12 @@ export function ListNameHeading({
   }
 
   if (!editing) {
-    return (
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <h1 className="screen-title text-screen text-text">{name}</h1>
-        <button
-          type="button"
-          onClick={() => {
-            setDraft(name);
-            setDuplicate(false);
-            setEditing(true);
-          }}
-          aria-label={`Rename ${name}`}
-          className={SECONDARY_BUTTON_COMPACT}
-        >
-          Rename
-        </button>
-      </div>
-    );
+    return <h1 className="screen-title text-screen break-words text-text">{name}</h1>;
   }
 
   return (
     <form
-      className="mt-3 flex flex-wrap items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
       onSubmit={(event) => {
         event.preventDefault();
         void save(draft);
@@ -120,11 +112,7 @@ export function ListNameHeading({
       <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
         Save
       </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        className={SECONDARY_BUTTON}
-      >
+      <button type="button" onClick={() => setEditing(false)} className={PLAIN_BUTTON}>
         Cancel
       </button>
       {duplicate ? (

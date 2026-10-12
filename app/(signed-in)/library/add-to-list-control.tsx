@@ -11,12 +11,17 @@ import {
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
 import { ListNameForm } from "@/app/(signed-in)/lists/list-name-form";
-import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
-import { DIALOG_FRAME, PRIMARY_BUTTON_COMPACT, SECONDARY_BUTTON } from "@/app/buttons";
+import { DIALOG_FRAME, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
 import type { ListSummary } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
+import { CheckmarkIcon } from "./checkmark-icon";
+
+/** On a phone, pinned to the bottom edge and full width with its lower corners square;
+ *  from `lg:` the centred dialog `DIALOG_FRAME` already is. */
+const SHEET =
+  "w-full max-w-[420px] max-lg:mt-auto max-lg:mb-0 max-lg:max-w-none max-lg:rounded-b-[var(--radius-none)] max-lg:pb-[max(1.5rem,env(safe-area-inset-bottom))]";
 
 /**
  * *Add to list*, whole — the trigger and the picker in one component, issue #147.
@@ -52,9 +57,17 @@ import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
  *
  * A row's own membership before this dialog opened is not read back — `listsForPickerAction`
  * answers `ListSummary`, the same shape the Lists page itself reads, with no per-title
- * join. Pressing *Add* on a list this title is already in is exactly issue #147's *not an
- * error and not a duplicate*: the write lands, the row still reads *Added*, and nothing
- * about the list changes twice.
+ * join. Pressing a list this title is already in is exactly issue #147's *not an error and
+ * not a duplicate*: the write lands, the row's tick fills, and nothing about the list
+ * changes twice.
+ *
+ * ── A sheet, with a tick per list — Charcoal, handoff §8.5 ───────────────────────────
+ *
+ * On a phone the dialog rises from the bottom edge as a sheet; from `lg:` it is the same
+ * centred dialog every other one is. Each list is one row and the row is the button: a
+ * ring at its end that fills (`text` fill, `ground` glyph — the tick's watched form, §6)
+ * once the title is on that list. The behaviour is unchanged: a press adds, a filled row
+ * has nothing left to do and says so with `aria-pressed`, and *Done* closes.
  *
  * ── Remounted per title ────────────────────────────────────────────────────────────────
  *
@@ -159,7 +172,7 @@ export function AddToListControl({
       <dialog
         ref={dialogRef}
         aria-labelledby={`add-to-list-${titleId}-h`}
-        className={`${DIALOG_FRAME} w-full max-w-[420px]`}
+        className={`${DIALOG_FRAME} ${SHEET}`}
       >
         <h2 id={`add-to-list-${titleId}-h`} className="bill-title text-bill-lg text-text">
           Add &ldquo;{titleName}&rdquo; to a list
@@ -170,6 +183,7 @@ export function AddToListControl({
           fieldClassName="flex-1"
           inputClassName="w-full"
           formClassName="mt-4"
+          submitClassName={PRIMARY_BUTTON}
           pendingLabel="Adding"
           toastTitle={() => titleName}
           submit={(name) => createAndAdd(name, titleId)}
@@ -186,9 +200,9 @@ export function AddToListControl({
           }}
         />
 
-        <div className="mt-5 border-t border-hair pt-5">
+        <div className="mt-3">
           {phase === null || phase.kind === "loading" ? (
-            <p role="status" className="code-line text-dim">
+            <p role="status" className="py-3 text-note text-dim">
               Reading your lists
             </p>
           ) : null}
@@ -203,7 +217,7 @@ export function AddToListControl({
                 Name a list above to put &ldquo;{titleName}&rdquo; in it.
               </p>
             ) : (
-              <ul>
+              <ul className="divide-y divide-hair">
                 {phase.lists.map((list) => (
                   <ListPickerRow
                     key={list.id}
@@ -218,7 +232,7 @@ export function AddToListControl({
           ) : null}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-4">
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
@@ -244,27 +258,27 @@ function ListPickerRow({
   readonly onAdd: () => void;
 }) {
   return (
-    <li className="flex items-center justify-between gap-4 border-b border-hair py-3">
-      <div className="min-w-0">
-        <p className="text-item text-text">{list.name}</p>
-        <p className="code-line text-dim" data-numeric>
-          {formatTitleCount(list.titleCount)}
-        </p>
-      </div>
-
-      {added ? (
-        <p className="code-line shrink-0 text-dim">Added</p>
-      ) : (
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={pending}
-          aria-label={`Add to ${list.name}`}
-          className={PRIMARY_BUTTON_COMPACT}
+    <li>
+      {/* Pressed once the title is on the list, and then inert: there is no take-off
+          here, as there was none before (`add-to-list-control.tsx`'s behaviour). */}
+      <button
+        type="button"
+        onClick={added ? undefined : onAdd}
+        disabled={pending}
+        aria-pressed={added}
+        aria-label={added ? `${list.name}, added` : `Add to ${list.name}`}
+        className="flex min-h-[52px] w-full items-center justify-between gap-4 text-left disabled:cursor-wait"
+      >
+        <span className="min-w-0 truncate text-bill-xs font-medium text-text">{list.name}</span>
+        <span
+          aria-hidden="true"
+          className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[var(--radius-full)] transition-colors duration-[var(--dur-fast)] ${
+            added ? "bg-text text-ground" : "text-dim ring-[1.5px] ring-dim ring-inset"
+          }`}
         >
-          Add
-        </button>
-      )}
+          <CheckmarkIcon className="h-3.5 w-3.5" />
+        </span>
+      </button>
     </li>
   );
 }

@@ -28,7 +28,15 @@
 /** The heading's id, so the grid can point `aria-labelledby` at it. */
 export const LIBRARY_HEADING_ID = "library-heading";
 
-export function LibraryHeading({ children }: { children?: React.ReactNode }) {
+export function LibraryHeading({
+  control,
+  children,
+}: {
+  /** The Shows / Films / Lists control: under the heading on a phone, level with it on a
+   *  desktop (handoff §8.4). */
+  control?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
   return (
     // A column, not a wrapping row. The controls used to sit *beside* the heading and
     // wrap under it on a narrow screen; turn 9 stacks them deliberately — the title, then
@@ -37,9 +45,13 @@ export function LibraryHeading({ children }: { children?: React.ReactNode }) {
     // uniform between them (Up next's rail heads have the same shape), so the children space
     // themselves rather than being spaced from here.
     <div className="flex flex-col px-gutter pt-5 lg:px-10">
-      <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-text">
-        Library
-      </h1>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-text">
+          Library
+        </h1>
+
+        {control}
+      </div>
 
       {children}
     </div>

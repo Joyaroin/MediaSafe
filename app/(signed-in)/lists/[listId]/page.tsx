@@ -1,10 +1,7 @@
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedListDetail } from "@/cache/tags";
 import { requireUserId } from "@/lib/session";
-import { BackToListsBar } from "../back-to-lists-bar";
-import { EmptyListDetail } from "./empty-list-detail";
-import { ListDetailBody } from "./list-detail-body";
-import { ListNameHeading } from "./list-name-heading";
+import { ListDetailSurface } from "./list-detail-surface";
 
 /**
  * One list's contents, in order — issue #147. `lists/page.tsx`'s own row said *"nothing
@@ -42,15 +39,9 @@ export default async function ListDetailPage({
 
   return (
     <main className="flex w-full flex-1 flex-col">
-      <BackToListsBar>
-        <ListNameHeading key={detail.id} listId={detail.id} initialName={detail.name} />
-      </BackToListsBar>
-
-      {detail.titles.length === 0 ? (
-        <EmptyListDetail />
-      ) : (
-        <ListDetailBody listId={detail.id} listName={detail.name} titles={detail.titles} />
-      )}
+      {/* Keyed on the list, so moving from one list to another starts from its own name
+          and order rather than the last one's client state. */}
+      <ListDetailSurface key={detail.id} detail={detail} />
 
       {detail.titles.length === 0 ? null : (
         <TmdbAttribution className="mt-4 px-gutter py-3" />
