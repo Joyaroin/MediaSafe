@@ -673,15 +673,9 @@ describe("listLibraryEntries sort orders", () => {
  * covers everything else about `LibraryEntryCell`'s markup; this covers only what that
  * suite does not, on the same `entry()`-and-`renderToStaticMarkup` pattern it established.
  *
- * `bg-ground/70` is the track and only appears when a bar is drawn at all — asserted on
- * directly, the way `up-next-row.test.ts` asserts on `bg-accent`'s presence — so "no bar"
- * and "an empty bar" stay two different, checkable outcomes rather than one absence a
- * missing `style` attribute could also explain.
- *
- * The track was `bg-hair` while the bar sat under the name. It is a translucent `--ground`
- * now that the bar is on the artwork, where a hairline tone disappears against a pale
- * poster — `app/poster-progress-bar.tsx` has the argument and `app/globals.css`'s rail
- * arrows are the precedent.
+ * `progress-fill` is the fill and only appears when a bar is drawn at all — asserted on
+ * directly, so "no bar" and "an empty bar" stay two different, checkable outcomes rather
+ * than one absence a missing `style` attribute could also explain.
  */
 describe("LibraryEntryCell's progress bar", () => {
   function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
@@ -708,27 +702,27 @@ describe("LibraryEntryCell's progress bar", () => {
   it("draws a thin bar for a show, filled watched against released", () => {
     const markup = cell({ progress: { watched: 2, released: 4 } });
 
-    expect(markup).toContain("bg-ground/70");
+    expect(markup).toContain("progress-fill");
     expect(markup).toContain('style="width:50%"');
   });
 
   it("draws no bar at all for a film", () => {
     const markup = cell({ kind: "film" as TitleKind, progress: null });
 
-    expect(markup).not.toContain("bg-ground/70");
+    expect(markup).not.toContain("progress-fill");
   });
 
   it("draws no bar at all for a show with nothing released — not an empty one", () => {
     const markup = cell({ progress: { watched: 0, released: 0 } });
 
-    expect(markup).not.toContain("bg-ground/70");
+    expect(markup).not.toContain("progress-fill");
   });
 
   it("draws an empty bar for a show with something released and nothing watched", () => {
     const markup = cell({ progress: { watched: 0, released: 4 } });
 
     // The bar is present — not the same absence as nothing released — sitting at 0%.
-    expect(markup).toContain("bg-ground/70");
+    expect(markup).toContain("progress-fill");
     expect(markup).toContain('style="width:0%"');
   });
 
@@ -737,6 +731,9 @@ describe("LibraryEntryCell's progress bar", () => {
       { watched: 2, released: 4 },
       { watched: 0, released: 4 },
     ] as const) {
+      // `upNext: null`, so the state line reads *Watching* — the numbers *S1 E2 up next*
+      // carries belong to the line, not to the bar, and are covered in
+      // `tests/library-surface.test.ts`.
       const markup = cell({ progress });
       // A digit rendered as text sits between a `>` and a `<`; the width percentage
       // lives inside a `style="…"` attribute instead, which this does not match.

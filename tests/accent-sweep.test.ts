@@ -201,11 +201,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     tokens: 2,
     reason: "'Choose your file' — the one primary action on the import surface",
   },
-  "app/(signed-in)/lists/create-list-form.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 2,
-    reason: "'New list' submit — the one primary action on the Lists surface",
-  },
 
   // ── Literal exceptions: the rail-heading register ──────────────────────────────────
 
@@ -236,18 +231,6 @@ const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
     reason:
       "the watched-progress bar fill — its own docblock: 'how far through you are right " +
       "now is the most literal reading of live on this page'",
-  },
-  "app/poster-progress-bar.tsx": {
-    meaning: "LITERAL_EXCEPTION",
-    tokens: 1,
-    reason:
-      "the watched-progress bar drawn on a poster's bottom edge — one component, three " +
-      "call sites (the library bill and both of a list's views), which is why the token " +
-      "is here and not in any of them. The same role title-hero.tsx's bar spends: the " +
-      "bill's Watching state word left the card entirely so this bar could take the " +
-      "accent, leaving one accent role on that screen rather than two. Its own docblock " +
-      "answers 'across a poster it would be the accent painting artwork', " +
-      "which is a rule about the press sweep and not about a 5px rule at the foot.",
   },
   "app/(signed-in)/settings/delete-account/page.tsx": {
     meaning: "LITERAL_EXCEPTION",

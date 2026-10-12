@@ -10,11 +10,13 @@ import {
 } from "@/db/library-sort";
 import { GHOST_RECOVERY } from "@/errors/recovery-buttons";
 import { ChipButton } from "./chip";
-import { EMPTY_PANEL } from "@/app/buttons";
+import { EMPTY_PANEL, ICON_BUTTON } from "@/app/buttons";
 
 /**
- * The library heading bar's controls — the chips, the filter-by-typing field, the sort
- * select, and the zero-match state they can produce (#57). Split out of
+ * The library heading bar's controls — the chips, the sort control, and the zero-match
+ * state the chips can produce (#57). The filter-by-typing field left with Charcoal (issue
+ * #402): the boards draw the chips and a round sort button and nothing else, and the owner
+ * chose to follow them. Split out of
  * `library-surface.tsx` rather than left inline there, for a reason that is not
  * stylistic: `library-surface.tsx` also renders `ProgrammeNotePane` (#58), which reaches
  * `tmdb/catalogue.ts` — marked `server-only` — through `title-detail-actions.ts`. That
@@ -59,12 +61,12 @@ export function LibraryChips({
   onChange: (chip: Chip) => void;
 }) {
   return (
-    // Scrolls rather than wraps. Six chips do not fit a 390px screen and turn 9 does not
-    // ask them to: the row runs off the edge and is swiped, the same device the Up next
-    // tracks use. `-mx-gutter px-gutter` lets it bleed to the viewport edges while the
-    // first chip still starts on the page gutter.
+    // Scrolls rather than wraps. Six chips do not fit a 390px screen and the boards do not
+    // ask them to: the row runs under the sort button pinned at its right end and is
+    // swiped. `pl-gutter` puts the first chip on the page gutter once the caller has bled
+    // the row to the viewport's left edge (`library-surface.tsx`).
     <div
-      className="-mx-gutter flex items-center gap-2 overflow-x-auto px-gutter lg:mx-0 lg:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex items-center gap-2 overflow-x-auto pr-2 pl-gutter lg:pl-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="group"
       aria-label="Filter by where a title stands"
     >
@@ -83,64 +85,23 @@ export function LibraryChips({
 }
 
 /**
- * Inputs: *a `1px` `hair` bordered row with a bar icon, `13rem` wide,
- * transparent ground, bone text at `text-item`, dim bone placeholder reading "Filter your
- * library".* The same treatment as the search screen's field, and never its copy: this one narrows the library you already have, and the
- * word for that is *filter*, never *search*.
- */
-export function FilterField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    // `flex-1`, not `ml-auto`: turn 9 gives this field the width of the row and puts the
-    // sort control beside it, where it used to be pushed to the right of a wrapping bar.
-    // `40px` here against the search field's `44px` — the handoff sets this one shorter
-    // on purpose, because it sits in a row of controls rather than being the screen's
-    // single field.
-    <label className="field-well flex h-12 flex-1 items-center gap-2.5 px-3.5">
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-dim" aria-hidden="true">
-        <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
-        <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
-        <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
-      </svg>
-      <input
-        // `text`, not `search` — the same reason the search screen's field gives: WebKit
-        // draws its own clear control inside `type="search"`, and that circle is not one
-        // this world has.
-        type="text"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Filter your library"
-        autoComplete="off"
-        aria-label="Filter your library"
-        className="w-full min-w-0 bg-transparent text-item text-text placeholder:text-dim focus:outline-none"
-      />
-    </label>
-  );
-}
-
-/**
- * Inputs: *the same bordered treatment at `text-item`, with the native arrow
- * removed and replaced by a solid vermilion triangle — the one place vermilion marks an
- * affordance rather than a state.*
+ * The sort control — a round button with the up-and-down arrows on a phone, and the same
+ * button with the current order written beside the arrows on a desktop (handoff §8.4).
  *
- * **Reversed by issue #311.** This caret, and `timezone-control.tsx`'s, were named
- * as painting a *selection* — a fourth, unstated reason to reach for the accent, never one
- * of the three `app/accent-meaning.ts` settles. The triangle survives; it takes `text-dim`
- * now, the same ink `SortSelect`'s own value text already carries, so the caret still reads
- * as a control by its shape rather than by borrowing a colour reserved for something else.
+ * ── A native `<select>` under the face ───────────────────────────────────────────────
+ *
+ * The face is drawing only. A transparent `<select>` covers it, so a press opens the
+ * platform's own picker — the wheel on a phone — and the control keeps the keyboard and
+ * screen-reader behaviour it had as a visible select. The focus ring moves to the face
+ * (`has-[select:focus-visible]`), because the element that holds focus cannot be seen.
  *
  * ── Why a selection here is a navigation and not a `setState` ────────────────────────
  *
  * Sort state lives in the URL, so choosing an order calls `router.push` rather
  * than updating local state. That re-renders `page.tsx`, which reads the library again at
- * the new `ORDER BY` and hands correctly-ordered `entries` back down — the chip and the
- * filter text are untouched, because they live in `LibrarySurface`, one level below the
- * re-render this causes.
+ * the new `ORDER BY` and hands correctly-ordered `entries` back down — the chip is
+ * untouched, because it lives in `LibrarySurface`, one level below the re-render this
+ * causes.
  *
  * Since issue #219 that read may not reach Postgres at all: `sort` is part of the cache
  * key (`cache/tags.ts`), so each order is its own entry and switching back to one you have
@@ -149,9 +110,8 @@ export function FilterField({
  * same tag, so a write busts all four together.
  *
  * The default carries no query string at all: a reader who never touches this control
- * keeps a clean `/library`, and picking *Title A–Z* again — the only selection that can
- * follow a non-default one back to the default — removes `?sort=` rather than writing it
- * out.
+ * keeps a clean `/library`, and picking the default again removes `?sort=` rather than
+ * writing it out.
  */
 export function SortSelect({ value }: { value: LibrarySort }) {
   const router = useRouter();
@@ -162,18 +122,32 @@ export function SortSelect({ value }: { value: LibrarySort }) {
     router.push(`${pathname}${query}`);
   }
 
+  const current = LIBRARY_SORTS.find((one) => one.value === value)?.label ?? "";
+
   return (
-    // The visible `Sort` word is gone: turn 9 draws this as the *value* plus the caret,
-    // which is what a native platform control looks like and what the mock shows. The
-    // word survives where it was doing the real work — `aria-label` on the `select`,
-    // which is what a screen reader announces and which never carried the visible text
-    // anyway.
-    <span className="relative inline-flex shrink-0 items-center">
+    <span
+      className={`${ICON_BUTTON} relative lg:w-auto lg:px-4 lg:text-item has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-text`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-5 w-5 shrink-0"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M7 4v16M4 17l3 3 3-3M17 20V4M14 7l3-3 3 3" />
+      </svg>
+      <span aria-hidden="true" className="hidden lg:inline">
+        {current}
+      </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as LibrarySort)}
         aria-label="Sort the library"
-        className="field-well h-12 appearance-none pr-8 pl-3 text-item text-dim focus:outline-none"
+        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
       >
         {LIBRARY_SORTS.map((sort) => (
           <option key={sort.value} value={sort.value}>
@@ -181,18 +155,6 @@ export function SortSelect({ value }: { value: LibrarySort }) {
           </option>
         ))}
       </select>
-      {/* The solid triangle survives the redesign — turn 9 keeps it — but not in the
-          accent any more. Issue #311 re-narrows it: this caret was named as
-          one of two places the accent marked a selection rather than one of the three
-          sanctioned meanings, so it takes the same dim ink `SortSelect`'s own value
-          text does, and still reads unambiguously as a control by its shape alone. */}
-      <svg
-        viewBox="0 0 12 8"
-        className="pointer-events-none absolute right-3 h-1.5 w-[9px] text-dim"
-        aria-hidden="true"
-      >
-        <polygon points="0,0 12,0 6,8" fill="currentColor" />
-      </svg>
     </span>
   );
 }

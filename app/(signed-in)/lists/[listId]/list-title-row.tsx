@@ -91,18 +91,18 @@ export function ListTitleRow({
 
   const content = (
     <>
-      <span className="code-line w-8 shrink-0 text-dim" data-numeric>
+      {/* The position as a serif Numeral (handoff §8.5), centred in its own column so one
+          and two digits line up on the same axis. */}
+      <span className="bill-title w-6 shrink-0 text-center text-bill-md text-dim" data-numeric>
         {title.position}
       </span>
 
-      <div
-        className="w-14 shrink-0"
-      >
+      <div className="w-10 shrink-0">
         <Poster
           posterPath={title.posterPath}
           name={title.name}
-          width={56}
-          className="w-14"
+          width={40}
+          className="w-10"
           aboveFold={aboveFold}
         >
           {/* The icon view's bar, on the row view's smaller poster. Both views of one list
@@ -113,15 +113,11 @@ export function ListTitleRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        {/* `text-text`, not `text-text` (#255). `bill-title text-bill-md` is a heading
-            register, and `search-surface.tsx` and `library-filter-bar.tsx` both ink it.
-            This row and the phone title sheet's — the two that drew the register as a
-            *title over a meta line* — both carried the body colour instead. Two peers
-            disagreeing was an oversight rather than a distinction, so both were inked;
-            #250 has since deleted the sheet, leaving this row as the only one of the pair. */}
-        <h2 className="bill-title text-bill-md text-text">{title.name}</h2>
+        {/* The name in the sans at Row size, over a Meta line (handoff §8.5) — the
+            serif is the position's, to the left. */}
+        <h2 className="truncate text-row font-semibold text-text">{title.name}</h2>
         {meta === null ? null : (
-          <p className="code-line mt-1 text-dim" data-numeric>
+          <p className="mt-0.5 text-meta text-dim" data-numeric>
             {meta}
           </p>
         )}
@@ -130,7 +126,7 @@ export function ListTitleRow({
   );
 
   const rowClass =
-    "flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors duration-[var(--dur-fast)] hover:bg-raised";
+    "flex min-h-[76px] min-w-0 flex-1 items-center gap-3 py-2 transition-colors duration-[var(--dur-fast)] hover:bg-raised";
 
   const inner =
     title.libraryEntryId === null ? (

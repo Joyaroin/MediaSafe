@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
-import { EMPTY_PANEL } from "@/app/buttons";
+import { EMPTY_PANEL, PLAIN_BUTTON } from "@/app/buttons";
 
 /**
  * A library with nothing in it — and the state this whole screen's error discipline
@@ -57,9 +57,16 @@ export function EmptyLibrary() {
         and add them one at a time.
       </p>
 
-      <Link href="/import" className={`mt-4 ${SOLID_RECOVERY}`}>
-        Bring your library in
-      </Link>
+      {/* Stacked and full width, the filled one first (handoff §8.4): the one main action,
+          then a plain way to add a title at a time. */}
+      <div className="mt-5 flex flex-col gap-1">
+        <Link href="/import" className={`w-full ${SOLID_RECOVERY}`}>
+          Bring your library in
+        </Link>
+        <Link href="/search" className={`w-full ${PLAIN_BUTTON}`}>
+          Search films and shows
+        </Link>
+      </div>
     </section>
   );
 }

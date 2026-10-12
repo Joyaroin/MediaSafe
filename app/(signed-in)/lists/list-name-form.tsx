@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { LIST_NAME_MAX_LENGTH, type ListSummary } from "@/db/access";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY, IN_FLIGHT, NOT_YET_ARMED } from "@/errors/recovery-buttons";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 
 /**
@@ -165,10 +165,15 @@ export function ListNameForm({
         ) : null}
       </div>
 
-      {/* `IN_FLIGHT` here and not in `submitClassName`'s default — the dim and the
-          wait-cursor are behaviour every treatment needs, so no caller gets the chance
-          to leave them out. */}
-      <button type="submit" disabled={disabled} className={`${submitClassName} ${IN_FLIGHT}`}>
+      {/* The disabled state here and not in `submitClassName` — every treatment needs it,
+          so no caller gets the chance to leave it out. Two of them, because the button is
+          disabled for two reasons: a write on the wire (`IN_FLIGHT`), or no name typed yet
+          (`NOT_YET_ARMED`, handoff §8.5: *not armed until something is typed*). */}
+      <button
+        type="submit"
+        disabled={disabled}
+        className={`${submitClassName} ${inFlight ? IN_FLIGHT : NOT_YET_ARMED}`}
+      >
         {inFlight ? pendingLabel : "New list"}
       </button>
     </form>

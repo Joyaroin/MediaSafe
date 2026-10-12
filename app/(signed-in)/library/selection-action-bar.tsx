@@ -1,6 +1,6 @@
 "use client";
 
-import { DIALOG_FRAME } from "@/app/buttons";
+import { DIALOG_FRAME, PILL_TARGET, SECONDARY_PILL } from "@/app/buttons";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -19,7 +19,6 @@ import type { ListSummary } from "@/db/access";
 import {
   GHOST_RECOVERY,
   GHOST_RECOVERY_COMPACT,
-  IN_FLIGHT,
   SOLID_RECOVERY_COMPACT,
 } from "@/errors/recovery-buttons";
 import { ReadFailure } from "@/errors/read-failure";
@@ -217,7 +216,7 @@ export function SelectionActionBar() {
       >
         {/* Polite, not assertive: the count changes on every tap and this is the
             reader's own running total, not news about something that went wrong. */}
-        <p role="status" className="code-line min-w-0 flex-1 truncate text-dim" data-numeric>
+        <p role="status" className="min-w-0 flex-1 truncate text-note font-semibold text-text" data-numeric>
           {view.selected.length.toLocaleString("en-GB")} selected
         </p>
 
@@ -225,7 +224,7 @@ export function SelectionActionBar() {
           type="button"
           onClick={openPicker}
           disabled={busy}
-          className={`${SOLID_RECOVERY_COMPACT} h-11 ${IN_FLIGHT}`}
+          className={SOLID_RECOVERY_COMPACT}
         >
           {view.adding ? "Adding" : "Add to list"}
         </button>
@@ -233,7 +232,7 @@ export function SelectionActionBar() {
         <button
           type="button"
           onClick={() => selection.end()}
-          className={`${GHOST_RECOVERY_COMPACT} h-11`}
+          className={GHOST_RECOVERY_COMPACT}
         >
           Done
         </button>
@@ -257,7 +256,7 @@ export function SelectionActionBar() {
 
         <div className="mt-5">
           {phase === null || phase.kind === "loading" ? (
-            <p role="status" className="code-line text-dim">
+            <p role="status" className="text-note text-dim">
               Reading your lists
             </p>
           ) : null}
@@ -279,11 +278,11 @@ export function SelectionActionBar() {
                 {phase.lists.map((list) => (
                   <li
                     key={list.id}
-                    className="flex items-center justify-between gap-4 border-b border-hair py-3"
+                    className="flex min-h-14 items-center justify-between gap-4 border-b border-hair py-1.5 last:border-b-0"
                   >
                     <div className="min-w-0">
-                      <p className="text-item text-text">{list.name}</p>
-                      <p className="code-line text-dim" data-numeric>
+                      <p className="truncate text-bill-xs font-medium text-text">{list.name}</p>
+                      <p className="text-meta text-dim" data-numeric>
                         {formatTitleCount(list.titleCount)}
                       </p>
                     </div>
@@ -293,9 +292,9 @@ export function SelectionActionBar() {
                       onClick={() => addTo(list.id)}
                       disabled={busy}
                       aria-label={`Add to ${list.name}`}
-                      className={`code-line shrink-0 border border-hair px-4 py-2 text-text transition-colors duration-[var(--dur-fast)] hover:bg-text hover:text-ground ${IN_FLIGHT}`}
+                      className={PILL_TARGET}
                     >
-                      Add
+                      <span className={SECONDARY_PILL}>Add</span>
                     </button>
                   </li>
                 ))}

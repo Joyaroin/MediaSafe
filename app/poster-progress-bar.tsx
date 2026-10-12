@@ -17,33 +17,19 @@ import { libraryProgressFraction } from "@/app/(signed-in)/library/library-progr
  * poster, and the fix for that would be restating the radius — the exact thing the utility
  * exists to stop a call site doing.
  *
- * ── The accent on artwork, which §6 refuses for the press sweep ──────────────────────
+ * ── Charcoal: `3px` of white, and no track (handoff §6) ────────────────────────────
  *
- * The press sweep is ruled off a poster in as many words: *across a poster it
- * would be the accent painting artwork*. This is the accent on artwork, so the difference
- * has to be said rather than assumed. The sweep is a **wash over the whole tile** for
- * 380ms — at that size and that speed it is the artwork that changes colour. This is a
- * `5px` rule at the bottom edge, permanent, reading as a measure on the frame rather than
- * as a colour applied to the picture, and it is the same `LIVE_EDGE_OF_THE_RECORD` role
- * the bar already claimed under the name. §6's rule is about the wash and is untouched.
+ * The poster cell's bar is *a `3px` white bar along the poster's bottom edge*, the same on
+ * phone and desktop. White rather than the accent, because the accent is the text colour
+ * now and would be near-black on a light theme, over artwork it does not know; and no
+ * track, because the boards draw none. The `5px` rule on a `--ground` track it replaces
+ * was the accent's answer to the same question.
  *
- * ── `5px`, which is thicker than it was under the name ───────────────────────────────
+ * White over artwork only: a title with no artwork is the `raised` initials tile, white
+ * in light, so `Poster` sets `--poster-ink` to `text` there and the bar reads it.
  *
- * `4px` under the card's name, then `3px` when it moved onto the artwork — a rule on a
- * poster looked like it wanted to be finer than one on the ground, and at the sizes this
- * actually draws it read as a hairline instead. `5px` is the measured answer: on the bill's
- * `132px` poster it is 2.5% of the height, and on a list row's `56px` one it is the
- * smallest rule that still reads as a bar rather than as an edge of the artwork.
- *
- * ── The track is `--ground` at `70%`, not `--hair` ───────────────────────────────────
- *
- * Under the name the track was `bg-hair`, which works over a known ground and disappears
- * over artwork — a hairline tone against a poster that might be white, black or anything
- * between. A translucent `--ground` reads as the same unfilled track over all of them.
- * `app/globals.css` sanctions exactly this: *the rail arrows keep `bg-ground/80` … they sit
- * over moving artwork rather than over type, which is the one place §5 sanctions a second
- * opacity*. This is that case, at `70%` — dark enough to sit under the fill on pale
- * artwork, light enough to read as empty rather than as a second fill.
+ * What the track used to say — *started, none watched* — is still in the markup as a bar
+ * at `0%`; the cell's state line says it in words.
  *
  * ── `null` draws nothing, and the absences it stands for ─────────────────────────────
  *
@@ -70,17 +56,17 @@ export function PosterProgressBar({
      * page, and a `progressbar` role would announce a percentage nobody wrote — the same
      * decision `title-hero.tsx` records for the bar that *does* have a sentence under it.
      */
-    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[5px] bg-ground/70">
+    <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[3px]">
       {/**
-       * `transition-[width]`, never a transform — this is the only child of the clipped
-       * track above, and a scale would flatten its rounded end along with the track's.
+       * `transition-[width]`, never a transform — a scale would flatten the poster's own
+       * rounded corner along with the fill's end.
        * `--dur-base` because a watch landing is a routine state change, the same ramp
        * position `WatchedBar` below ties itself to. `progress-fill` carries no rule of its
        * own; it is only what `globals.css`'s reduced-motion block targets to collapse the
        * duration — issue #335's *the event survives, the animation does not*.
        */}
       <div
-        className="progress-fill h-full bg-accent transition-[width] duration-[var(--dur-base)]"
+        className="progress-fill h-full bg-[var(--poster-ink,white)] transition-[width] duration-[var(--dur-base)]"
         style={{ width: `${fraction * 100}%` }}
       />
     </div>

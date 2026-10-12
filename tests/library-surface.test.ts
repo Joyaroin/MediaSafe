@@ -5,11 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
 import { LibraryGrid } from "@/app/(signed-in)/library/library-grid";
-import {
-  FilterField,
-  LibraryChips,
-  ZeroMatches,
-} from "@/app/(signed-in)/library/library-filter-bar";
+import { LibraryChips, ZeroMatches } from "@/app/(signed-in)/library/library-filter-bar";
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
 import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
@@ -70,7 +66,7 @@ function entry(overrides: Partial<LibraryEntryRow> = {}): LibraryEntryRow {
     // these fixtures were written for is the Shows mode. A film fixture overrides it.
     kind: "show" as TitleKind,
     state: "watching" as LibraryState,
-    upNext: { episodeName: "Hands" },
+    upNext: { episodeName: "Hands", seasonNo: 1, episodeNo: 2 },
     // `null` by default — no bar — so the fixtures this suite already had keep
     // rendering exactly as before. `tests/library-grid.test.ts` is where issue #324's
     // bar itself is covered, case by case.
@@ -172,78 +168,68 @@ describe("the library entry cell", () => {
   it("dims an abandoned entry's poster and its name together", () => {
     const abandoned = cell({ state: "abandoned" });
 
-    // `.55` since the linen redesign, up from `.45`. The handoff dims the Up next
-    // groups' abandoned tiles at `.55` and names this cell as the other surface that
-    // already dims a poster, with the instruction not to leave the two different by
-    // accident — `group-tile.tsx` carries the same number.
-    expect(abandoned).toContain("opacity-55");
-    expect(abandoned).toContain("text-dim");
+    // `.5` since Charcoal — handoff §6: *Dropped draws the poster at 50%, the name in
+    // `dim`*.
+    expect(abandoned).toContain("opacity-50");
+    expect(abandoned).toMatch(/<p class="[^"]*text-dim[^"]*">Severance<\/p>/);
 
-    // The dimming is the whole of it now: the state word left the card, so an abandoned
-    // title is marked by the poster/name pair and nothing else on this surface.
+    // The domain word is *Dropped*, never the stored *abandoned*.
     expect(abandoned).not.toContain("Abandoned");
 
     // And leaves both alone otherwise — the poster is modified in exactly one place.
-    expect(cell()).not.toContain("opacity-55");
+    expect(cell()).not.toContain("opacity-50");
   });
 
   /**
-   * The reverse of what this asserted before the state word left the card, and
-   * deliberately so. `STATE_LABELS` is still the one table naming the five states in
-   * the domain's own words — `title-hero.tsx` prints it on the title's own page — but the
-   * bill does not repeat it 472 times. The library is the surface organised *by* state,
-   * and the filter chips above the grid are where the reader reads it; a word under every
-   * card was the same fact restated once per cell.
+   * ── The state line came back with Charcoal ───────────────────────────────────────────
+   *
+   * Turn 9 took the state word off the card, and these assertions used to hold its
+   * absence. Handoff §8.4 puts a line back under the name — *S1 E2 up next*, *Finished*,
+   * *Watchlist*, *Dropped*, *Caught up* — and the owner chose the numbered form for the
+   * watching line over the old *never numbered alone* rule (issue #402). They are rewritten
+   * to hold the new line instead, deliberately.
    */
-  it("names no state on the card at all — the chips above the grid carry that", () => {
-    for (const state of ["watching", "caught_up", "finished", "watchlist", "abandoned"] as const) {
-      // Visible text only: a finished title's check badge names itself to a screen reader
-      // (issue #357), which is the badge's job, not a state word printed on the card.
-      const visible = cell({ state, upNext: null }).replace(/<[^>]+>/g, " ");
-      for (const word of ["Watching", "Caught up", "Finished", "Watchlist", "Abandoned", "Dropped"]) {
-        expect(visible).not.toContain(word);
-      }
-    }
+  const visible = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+  it("prints where each title stands under its name, in the chips' own words", () => {
+    expect(visible(cell({ state: "caught_up", upNext: null }))).toBe("Severance Caught up");
+    expect(visible(cell({ state: "watchlist", upNext: null }))).toBe("Severance Watchlist");
+    expect(visible(cell({ state: "abandoned", upNext: null }))).toBe("Severance Dropped");
+    // A finished title's badge names itself to a screen reader; the line says it in words.
+    expect(visible(cell({ state: "finished", upNext: null }))).toBe("Severance Finished");
   });
 
-  /**
-   * ── Four lines became none, and the bar is what is left ──────────────────────────────
-   *
-   * The cell was a row: a `66px` poster beside a name, a year, the state, and a sentence
-   * about what is next (*Nothing to watch now*, *Next — Hands*). Becoming a column cut
-   * that to the state alone; this turn cuts the state too, leaving the name and — for a
-   * show with something released — the progress bar, which says how far through you are
-   * without spending a word on it.
-   *
-   * The assertions this replaces are deleted rather than rewritten because the strings
-   * they checked no longer exist anywhere. `NEXT_LINES` is gone from
-   * `library-entry-cell.tsx`, and the fact it carried is on Up next, which since the rails
-   * became lists prints the episode's actual name in a full-width row rather than one
-   * truncated clause. The two surfaces had been saying the same thing, one of them badly.
-   *
-   * The year went with them: the poster identifies the title, and the title's own page
-   * carries the year. A list's icon cell keeps its year precisely because a list has no
-   * state to print there.
-   */
-  it("prints the name and nothing else under the poster", () => {
+  it("says which episode is up next on a show being watched, by season and number", () => {
+    expect(visible(cell())).toBe("Severance S1 E2 up next");
+    // Unnamed by TMDB is the same line: the numbers are what it prints.
+    expect(visible(cell({ upNext: { episodeName: null, seasonNo: 3, episodeNo: 10 } }))).toBe(
+      "Severance S3 E10 up next",
+    );
+    // Watching with nothing next mirrored yet falls back to the state's word.
+    expect(visible(cell({ upNext: null }))).toBe("Severance Watching");
+  });
+
+  it("prints no year and none of the old next-episode sentences", () => {
     const one = cell();
 
-    expect(one).toContain("Severance");
-
-    // The lines that left. Asserted as absences so that re-adding one is a decision
-    // somebody has to make against this test rather than a line that quietly reappears.
-    expect(one).not.toContain("Watching");
-    expect(one).not.toContain("Next — Hands");
     expect(one).not.toContain("2022");
+    expect(one).not.toContain("Next — Hands");
     expect(cell({ state: "caught_up", upNext: null })).not.toContain("Nothing to watch now");
     expect(cell({ state: "finished", upNext: null })).not.toContain("Nothing left to watch");
   });
 
-  it("never numbers an episode anywhere, which is the rule that outlived the line", () => {
-    // An episode is never referred to by number alone. The next-episode line
-    // was where that could go wrong on this surface and it is gone, so this now holds the
-    // weaker-but-still-real claim that nothing reintroduced a code.
-    expect(cell({ upNext: { episodeName: null } })).not.toMatch(/S\d+\s*E\d+/);
+  it("sets the line at the Label size in dim, under a 14px name at 500", () => {
+    const one = cell();
+
+    expect(one).toMatch(/<p class="[^"]*text-item[^"]*font-medium[^"]*">Severance<\/p>/);
+    expect(one).toMatch(/<p class="[^"]*text-label text-dim[^"]*"[^>]*>S1 E2 up next<\/p>/);
+  });
+
+  it("badges a finished title with a filled tick in the poster's top-left corner", () => {
+    const finished = cell({ state: "finished", upNext: null });
+
+    expect(finished).toMatch(/aria-label="Finished" role="img" class="absolute top-1\.5 left-1\.5[^"]*bg-text text-ground/);
+    expect(cell()).not.toContain('aria-label="Finished"');
   });
 
   it("is a poster column with the name under it, and still casts no shadow", () => {
@@ -302,11 +288,12 @@ describe("the grid", () => {
     expect(grid).toContain("xl:grid-cols-5");
     expect(grid).toContain("2xl:grid-cols-6");
 
-    // Nothing else is allowed to differ between devices but the desktop gutter, which
-    // lines the grid up with every other page's `lg:px-10` (UI overhaul) — so no other
+    // Nothing else is allowed to differ between devices but the desktop gutter, the same
+    // `lg:px-10` every other page sits on (UI overhaul; the page's own since #402) — so no other
     // breakpoint prefix may appear anywhere in the grid or its cells.
-    expect(grid).toContain("lg:px-[34px]");
-    expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols|px-\[34px\])/);
+    expect(grid).toContain("px-gutter");
+    expect(grid).toContain("lg:px-10");
+    expect(grid).not.toMatch(/(sm|md|lg|xl|2xl):(?!grid-cols|px-10\b)/);
   });
 
   it("spaces its cells as cards rather than dividing them with hairlines", () => {
@@ -395,22 +382,6 @@ describe("the filter chips", () => {
   });
 });
 
-describe("the filter field", () => {
-  const field = renderToStaticMarkup(
-    createElement(FilterField, { value: "", onChange: () => {} }),
-  );
-
-  it("says filter, and never search — the two words belong to different screens", () => {
-    expect(field).toContain("Filter your library");
-    expect(field.toLowerCase()).not.toContain("search");
-  });
-
-  it("is a text field, not a search field, so no browser clear control appears uninvited", () => {
-    expect(field).toContain('type="text"');
-    expect(field).not.toContain('type="search"');
-  });
-});
-
 /**
  * Issue #197's *phone only*, from the one side a node harness can see.
  *
@@ -439,16 +410,13 @@ describe("a library cell with no selection provider above it", () => {
     expect(plain).not.toContain("outline-ink");
   });
 
-  it("spends its one accent on the progress bar and nothing else", () => {
-    // The accent's role here is still the live edge of the record — it just moved off the
-    // *Watching* word, which left the card, and onto the bar that says the same thing
-    // without a word. A screen may show only one role, and #197 draws selection in `--ink`
-    // precisely so this stays the only accent in the cell (`selectable-entry.tsx`'s
-    // `SELECTED`).
-    // `plain` has no progress and so draws no bar — the cell carries no accent at all,
-    // which is the point: the accent is the bar's and only the bar's.
+  it("spends no accent at all — the bar is white over the artwork since Charcoal", () => {
+    // Handoff §6: *a `3px` white bar along the poster's bottom edge*. The accent is the
+    // text colour now, so the bar no longer spends it.
     expect(plain).not.toContain("accent");
-    expect(cell({ progress: { watched: 2, released: 4 } })).toContain("bg-accent");
+    const withBar = cell({ progress: { watched: 2, released: 4 } });
+    expect(withBar).toContain("bg-[var(--poster-ink,white)]");
+    expect(withBar).not.toContain("accent");
   });
 
   it("still lets a reader select the title's text and long-press its poster", () => {

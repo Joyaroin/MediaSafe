@@ -103,16 +103,20 @@ describe("the select carets are re-narrowed — they no longer paint the accent"
     expect(code(source(TIMEZONE_CONTROL))).not.toMatch(/\btext-accent\b/);
   });
 
-  it("the sort caret still renders as a filled triangle, unambiguously a control", () => {
+  /**
+   * Charcoal (issue #402) redrew the sort control as a round quiet button with the up-and-
+   * down arrows on it (handoff §8.4), so the filled triangle this held is gone. What it
+   * held it *for* is kept: the control's ink is neutral, never the accent.
+   */
+  it("the sort control is a quiet round button in neutral ink, never the accent", () => {
     const markup = renderToStaticMarkup(createElement(SortSelect, { value: "title" }));
-    const svg = markup.match(/<svg[^>]*>[\s\S]*?<\/svg>/)?.[0] ?? "";
 
-    expect(svg).toContain("text-dim");
-    expect(svg).toContain("<polygon");
-    expect(svg).not.toContain("text-accent");
+    expect(markup).toContain("quiet-fill");
+    expect(markup).toContain("rounded-[var(--radius-full)]");
+    expect(markup).not.toContain("accent");
   });
 
-  it("the timezone caret takes the same neutral ink the sort caret takes", () => {
+  it("the timezone caret takes neutral ink, as the sort caret did", () => {
     const svg = source(TIMEZONE_CONTROL).match(/<svg[\s\S]*?<\/svg>/)?.[0] ?? "";
 
     expect(svg).toContain("text-dim");
@@ -163,6 +167,8 @@ describe("the dialogs that borrowed the failure frame are re-narrowed", () => {
     expect(frame).toMatch(/\bbg-raised\b/);
     expect(frame).not.toMatch(/(^|\s)bg-ground(\s|$)/);
     expect(frame).toMatch(/backdrop:bg-ground\/80/);
+    // Centred: preflight zeroes a `<dialog>`'s own `margin: auto` (issue #402).
+    expect(frame).toMatch(/\bm-auto\b/);
   });
 
   it("finds the five dialogs it means to check", () => {

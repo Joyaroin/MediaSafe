@@ -1,9 +1,8 @@
 "use client";
 
-import { DIALOG_FRAME } from "@/app/buttons";
 import { useRef, useState } from "react";
 
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { DESTRUCTIVE_BUTTON_COMPACT, DIALOG_FRAME, PLAIN_BUTTON } from "@/app/buttons";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { deleteListAction } from "./actions";
 import { formatTitleCount } from "./title-count";
@@ -28,13 +27,13 @@ import { formatTitleCount } from "./title-count";
  * the ref this component takes directly — React 19 passes `ref` as an ordinary prop, so
  * there is no `forwardRef` wrapper to write for one element.
  *
- * ── The confirm button is `GHOST_RECOVERY`, not `SOLID_RECOVERY` ───────────────────────
+ * ── Opened from the list's own page, since Charcoal ──────────────────────────────────
  *
- * `errors/recovery-buttons.ts` reserves solid `accent` for *the one primary recovery
- * action*, and `delete-account-form.tsx` widens that once, by name, to the one other
- * irreversible authored moment in the product. Deleting a list is neither: nothing here is
- * destroyed that cannot be remade by naming a new list, so the confirm stays at the ghost
- * treatment every other secondary action in the app uses.
+ * It used to open from a *Delete* button on every row of Lists; that button moved behind
+ * the three-dot menu on the list's page (handoff §8.5, issue #402), and `ListDetailSurface`
+ * is the one caller. The confirm is the danger treatment — a `danger` line and `danger`
+ * text, never a fill — because it takes something away, and *Cancel* is plain. Neither is
+ * filled: nothing here is the one main action.
  */
 export function DeleteListDialog({
   ref,
@@ -94,28 +93,25 @@ export function DeleteListDialog({
       </h2>
 
       <p className="mt-3 max-w-[46ch] text-note leading-relaxed text-dim">
-        It holds {formatTitleCount(titleCount)}. Nothing about those shows changes — this
+        It holds {formatTitleCount(titleCount)}. Nothing about those shows changes. This
         only removes the list itself.
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void confirm()}
           disabled={inFlight}
-          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+          className={DESTRUCTIVE_BUTTON_COMPACT}
         >
           {inFlight ? "Deleting" : "Delete list"}
         </button>
 
-        {/* Issue #195: was dim underlined text, now the same GHOST_RECOVERY the confirm
-            button above already wears — the underline was the only thing marking this as
-            a control at all, and dropping it without a border would drop the control. */}
         <button
           type="button"
           onClick={() => ref.current?.close()}
           disabled={inFlight}
-          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+          className={PLAIN_BUTTON}
         >
           Cancel
         </button>

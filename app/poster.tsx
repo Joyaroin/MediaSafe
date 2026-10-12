@@ -24,7 +24,7 @@
  * CSS pixel width this call site actually renders the poster at, and `bucketFor` below
  * picks the smallest TMDB size that covers it without upscaling past the source.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 const POSTER_BUCKETS = [92, 154, 185, 342, 500, 780] as const;
 
@@ -109,7 +109,12 @@ export function Poster({
       style={
         placeholderSrc
           ? { backgroundImage: `url("${placeholderSrc}")`, backgroundSize: "cover" }
-          : undefined
+          : posterPath === null
+            ? // With no artwork the box is the `raised` initials tile, which is white in
+              // light, so an overlay drawn in white (`poster-progress-bar.tsx`) takes
+              // `text` instead.
+              ({ "--poster-ink": "var(--color-text)" } as CSSProperties)
+            : undefined
       }
     >
       {posterPath === null ? null : (

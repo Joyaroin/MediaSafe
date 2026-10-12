@@ -37,7 +37,8 @@ describe("a list's own route", () => {
   it("says which page is reading rather than inheriting Lists' own heading", () => {
     const pending = markupOf(createElement(ListDetailLoading));
 
-    expect(pending).toContain("‹ Lists");
+    // The round back button since Charcoal (#402): an arrow, named for a screen reader.
+    expect(pending).toContain('aria-label="Back to Lists"');
     expect(pending).toContain('role="status"');
     expect(pending).not.toContain("<h1");
   });
