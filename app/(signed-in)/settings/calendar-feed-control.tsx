@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 
-import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { PLAIN_BUTTON, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { renewCalendarFeedAction } from "./calendar-feed-actions";
+import { SETTING, SETTING_HELP, SETTING_LABEL } from "./settings-group";
 
 /**
  * The calendar feed's link — issue #366, in Settings' Data section.
@@ -17,6 +18,13 @@ import { renewCalendarFeedAction } from "./calendar-feed-actions";
  * A failed make raises the persistent toast with this control's name in the title slot,
  * the shape every Settings write uses (`sign-out-other-devices-button.tsx` argues it). The
  * old link is untouched when that happens, so the printed URL stays as it was.
+ *
+ * Charcoal (issue #405): *Copy link* is quiet and *Make a new link* plain — not the
+ * hairline-outlined button the board drew, which is not one of the five treatments
+ * (handoff §4). *Make a calendar link* is quiet too: Settings has no filled button.
+ *
+ * **The link is a private token.** Never print a real one in a screenshot, a fixture or a
+ * log — the tests render this with a placeholder.
  */
 export function CalendarFeedControl({ url: initialUrl }: { readonly url: string | null }) {
   const [url, setUrl] = useState(initialUrl);
@@ -64,40 +72,38 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
   }
 
   return (
-    <div className="mt-10">
-      <span className="code-line text-dim">Calendar</span>
+    <div className={SETTING}>
+      <span className={SETTING_LABEL}>Calendar</span>
 
-      <p className="mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+      <p className={SETTING_HELP}>
         Subscribe to this link in your calendar app to see upcoming episodes and film release
         days from your library. Anyone with the link can see them, so keep it to yourself.
       </p>
 
       {url === null ? (
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => void renew()}
-            disabled={inFlight}
-            className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
-          >
-            {inFlight ? "Making a link" : "Make a calendar link"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => void renew()}
+          disabled={inFlight}
+          className={`${SECONDARY_BUTTON_COMPACT} mt-1 w-full`}
+        >
+          {inFlight ? "Making a link" : "Make a calendar link"}
+        </button>
       ) : (
         <>
           <p
-            className="mt-4 max-w-full break-all border border-hair bg-ground px-3 py-2 text-note text-text select-all"
+            className="mt-1 max-w-full break-all rounded-[var(--radius-5)] bg-ground px-3.5 py-3 text-meta leading-snug text-text select-all hair-line"
             data-testid="calendar-feed-url"
           >
             {url}
           </p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => void copyLink(url)}
               disabled={inFlight}
-              className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
+              className={`${SECONDARY_BUTTON_COMPACT} flex-1`}
             >
               {copy === "copied" ? "Copied" : "Copy link"}
             </button>
@@ -106,13 +112,13 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
               type="button"
               onClick={() => void renew()}
               disabled={inFlight}
-              className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+              className={`${PLAIN_BUTTON} flex-1`}
             >
               {inFlight ? "Making a new link" : "Make a new link"}
             </button>
           </div>
 
-          <p aria-live="polite" className="mt-3 code-line text-dim">
+          <p aria-live="polite" className="text-meta text-dim">
             {copy === "refused"
               ? "This browser wouldn't copy it. Select the link and copy it yourself."
               : renewed
@@ -120,11 +126,11 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
                 : null}
           </p>
 
-          <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
+          <p className={SETTING_HELP}>
             Making a new link stops the old one working everywhere it was added.
           </p>
 
-          <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
+          <p className={SETTING_HELP}>
             On Android, add the link once in Google Calendar on the web: Other calendars, then
             From URL. It then shows on your phone. The Android app can&apos;t add a link itself.
           </p>

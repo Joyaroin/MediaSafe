@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 
-import { GHOST_RECOVERY, IN_FLIGHT, SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { PLAIN_BUTTON, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { authClient } from "@/lib/auth-client";
 import { readDeviceTimezone } from "@/lib/timezone";
+import { SETTING, SETTING_HELP, SETTING_LABEL } from "./settings-group";
 
 /**
  * The timezone control — Settings' Profile section, beneath the display name, issue
@@ -133,52 +134,59 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
   }
 
   return (
-    <div className="mt-10">
-      <span className="code-line text-dim">Timezone</span>
+    <div className={SETTING}>
+      <span className={SETTING_LABEL}>Timezone</span>
 
-      <p className="mt-3 text-item text-text" data-numeric>
+      <p className="text-row text-text" data-numeric>
         {displayed}
       </p>
 
-      <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
+      <p className={SETTING_HELP}>
         Changing your timezone re-buckets your whole history, not just what you watch
         from now on.
       </p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={useDeviceZone}
-          disabled={inFlight}
-          className={`${SOLID_RECOVERY} ${IN_FLIGHT}`}
-        >
-          {inFlight ? "Saving" : "Use this device's timezone"}
-        </button>
+      {/* Quiet, full width, and the plain disclosure under it — Settings has no filled
+          button (handoff §8.9). */}
+      <button
+        type="button"
+        onClick={useDeviceZone}
+        disabled={inFlight}
+        className={`${SECONDARY_BUTTON_COMPACT} mt-1 w-full`}
+      >
+        {inFlight ? "Saving" : "Use this device's timezone"}
+      </button>
 
-        <button
-          type="button"
-          onClick={() => setShowList((open) => !open)}
-          disabled={inFlight}
-          className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
-          aria-expanded={showList}
-          aria-controls="timezone-list"
+      <button
+        type="button"
+        onClick={() => setShowList((open) => !open)}
+        disabled={inFlight}
+        className={`${PLAIN_BUTTON} w-full`}
+        aria-expanded={showList}
+        aria-controls="timezone-list"
+      >
+        {showList ? "Hide the full list" : "Choose from the full list"}
+        <svg
+          viewBox="0 0 12 8"
+          aria-hidden="true"
+          className={`h-2 w-3 text-dim transition-transform duration-[var(--dur-fast)] ${showList ? "rotate-180" : ""}`}
         >
-          {showList ? "Hide the full list" : "Choose from the full list"}
-        </button>
-      </div>
+          <path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      </button>
 
       {showList && (
-        <div className="mt-4">
+        <div>
           <label htmlFor="timezone-list" className="sr-only">
             Choose a timezone from the full list
           </label>
-          <span className="relative inline-flex items-center">
+          <span className="relative flex items-center">
             <select
               id="timezone-list"
               value={displayed}
               onChange={(event) => pickFromList(event.target.value)}
               disabled={inFlight}
-              className="appearance-none border border-hair bg-ground py-1.5 pl-3 pr-9 text-item text-text focus:border-2 focus:border-text focus:outline-none"
+              className="field-well h-12 w-full appearance-none pl-3.5 pr-9 text-note text-text focus:outline-none"
             >
               {zoneOptions(displayed).map((zone) => (
                 <option key={zone} value={zone}>
@@ -192,7 +200,7 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
                 ink that caret takes; the triangle's shape is what marks it as a control. */}
             <svg
               viewBox="0 0 12 8"
-              className="pointer-events-none absolute right-3 h-2 w-3 text-dim"
+              className="pointer-events-none absolute right-3.5 h-2 w-3 text-dim"
               aria-hidden="true"
             >
               <polygon points="0,0 12,0 6,8" fill="currentColor" />

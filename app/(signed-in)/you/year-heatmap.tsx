@@ -9,11 +9,14 @@ import { dayInWords, watchesInWords, type Heatmap } from "./heatmap";
  * The year grid — issue #372. One cell per day, Monday-to-Sunday columns, shaded by how
  * many watches the day had; selecting a day lists them beneath.
  *
- * ── Neutral only ─────────────────────────────────────────────────────────────────────
+ * ── Neutral only: five steps from `hair` to `text` ───────────────────────────────────
  *
- * The shades are the linen tokens and nothing else — `raised`, `hair`, `dim` at half,
- * `dim`, `text` — never the accent (nothing here is live or the screen's one action) and
- * never a poster tint. `tests/accent-sweep.test.ts` holds the first half.
+ * Handoff §5.1's ramp, and no new token for it (issue #405): level 0 is `hair`, level 4 is
+ * `text`, and the three between are `text` mixed into `hair` at 25, 50 and 75% — mixed
+ * `in oklab`, as `plate-line` and `frosted` mix, so the steps stay one even grey ramp in
+ * both themes rather than drifting warm partway. Never the accent (nothing here is live
+ * or the screen's one action) and never a poster tint; `tests/accent-sweep.test.ts` and
+ * `tests/you-and-settings.test.ts` hold it.
  *
  * ── One tab stop, arrows inside ──────────────────────────────────────────────────────
  *
@@ -28,7 +31,13 @@ import { dayInWords, watchesInWords, type Heatmap } from "./heatmap";
  * grid scrolls inside its own box and opens scrolled to today.
  */
 
-const SHADES = ["bg-raised", "bg-hair", "bg-dim/50", "bg-dim", "bg-text"] as const;
+export const SHADES = [
+  "bg-hair",
+  "bg-[color-mix(in_oklab,var(--color-text)_25%,var(--color-hair))]",
+  "bg-[color-mix(in_oklab,var(--color-text)_50%,var(--color-hair))]",
+  "bg-[color-mix(in_oklab,var(--color-text)_75%,var(--color-hair))]",
+  "bg-text",
+] as const;
 
 /** One column of cells and one gap, which is also the month labels' pitch. */
 const CELL = "size-3.5";
@@ -63,8 +72,8 @@ export function YearHeatmap({ heatmap }: { readonly heatmap: Heatmap }) {
   const chosen = days[selected];
 
   return (
-    <section aria-labelledby="year-of-watching" className="px-gutter pt-4 pb-6 lg:px-10">
-      <h2 id="year-of-watching" className="bill-title text-bill-xs text-text">
+    <section aria-labelledby="year-of-watching" className="px-gutter pt-4 pb-4 lg:px-10">
+      <h2 id="year-of-watching" className="bill-title text-bill-lg text-text">
         A year of watching
       </h2>
       <p className="mt-1 text-meta text-dim" data-numeric>
@@ -110,7 +119,7 @@ export function YearHeatmap({ heatmap }: { readonly heatmap: Heatmap }) {
         </div>
       </div>
 
-      <div aria-hidden="true" className="mt-2 flex items-center gap-[3px] text-label text-dim">
+      <div aria-hidden="true" className="mt-2 flex items-center justify-end gap-[3px] text-label text-dim">
         <span className="mr-1">Less</span>
         {SHADES.map((shade) => (
           <span key={shade} className={`${CELL} ${shade}`} />

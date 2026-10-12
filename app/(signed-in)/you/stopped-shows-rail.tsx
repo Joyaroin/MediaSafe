@@ -42,8 +42,9 @@ export function StoppedShowsRail({ entries }: { readonly entries: readonly Libra
       entries={entries.filter((entry) => !gone.has(entry.libraryEntryId))}
       keyFor={(entry) => entry.libraryEntryId}
       renderItem={(entry, aboveFold) => (
-        <div className="flex w-[132px] flex-col gap-2">
-          <YouTitleTile entry={entry} kind="show" aboveFold={aboveFold} />
+        // `96` by `144` with the pill under it — handoff §6's rail, You's stopped form.
+        <div className="flex w-[96px] flex-col">
+          <YouTitleTile entry={entry} kind="show" aboveFold={aboveFold} compact />
           <button
             type="button"
             onClick={() => void startAgain(entry, deps)}
@@ -51,7 +52,10 @@ export function StoppedShowsRail({ entries }: { readonly entries: readonly Libra
             // The quiet pill (handoff §6): `32px` drawn, `44px` to press.
             className={`${PILL_TARGET} self-start`}
           >
-            <span className={SECONDARY_PILL}>Start again</span>
+            {/* One line, always: at the pill's one size (`14px`, weight 600) *Start again*
+                is a few pixels wider than the `96px` tile, and runs into the gap rather than
+                wrapping under itself. */}
+            <span className={`${SECONDARY_PILL} whitespace-nowrap`}>Start again</span>
           </button>
         </div>
       )}

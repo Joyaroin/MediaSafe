@@ -107,8 +107,8 @@ export function YouRail<T>({
 
   return (
     <section className="group/rail relative pb-6">
-      <div className="px-gutter pb-3 lg:px-10">
-        <h2 id={railId} className="bill-title text-bill-xs text-text">
+      <div className="px-gutter pt-4 pb-2.5 lg:px-10">
+        <h2 id={railId} className="bill-title text-bill-lg text-text">
           {label}
         </h2>
       </div>

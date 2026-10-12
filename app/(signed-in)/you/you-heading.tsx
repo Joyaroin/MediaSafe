@@ -1,48 +1,47 @@
 import Link from "next/link";
 
+import { ICON_BUTTON } from "@/app/buttons";
 import { SettingsIcon } from "@/app/nav-icons";
 
 /**
- * The You destination's own head — issue #247, and the same three-caller shape
- * `lists-heading.tsx` and `library-heading.tsx` have — and the retired Stats page's own
- * heading had before #249 deleted it: the populated
- * screen, the empty one, and the failure boundary all render it, so a read that fails is
- * visibly *You, which did not load* rather than a bare error on a blank page.
+ * The You destination's own head — issue #247, redrawn for Charcoal in issue #405
+ * (handoff §8.8): one row, the reader on the left and a round settings button on the right.
  *
- * Turn 9's `screen-title` at 34px in `--ink`, on the 22px gutter, with no hairline under
- * it — level with the four phone tabs, the fourth of which this destination became when
- * #249 retired Stats and pointed the bar here.
+ * ── The reader is the heading, when there is a reader to name ────────────────────────
  *
- * ── Why the page is titled at all, when the hero already names the reader ────────────
+ * The board drops the *You* screen title: the avatar and the display name **are** the
+ * head, and the name is the page's `h1`. So the page hands its hero in as `children`
+ * (`you-hero.tsx`), and this row supplies the settings button beside it.
  *
- * The hero below carries the avatar and the display name, so *You* over *Adham Sedik* is
- * one more line than the handoff's reference profile draws. It stays for a reason the
- * reference did not have to answer: this is a **boundary-shared** head. `error.tsx` is a
- * client component that has no session and cannot render a name, and `loading.tsx` has no
- * read yet — so if the destination's identity lived only in the hero, both of those
- * screens would be a failure or a pending line under nothing at all. Radius 1
- * asks the pending screen to render what the failed one renders, less the
- * failure; this is the piece all three can render.
+ * It is still the **boundary-shared** head, for the reason it always was: `error.tsx` is a
+ * client component with no session and cannot render a name, and `loading.tsx` has no read
+ * yet. With no `children` this row titles itself *You* — so a read that fails is visibly
+ * *You, which did not load* rather than a bare error on a blank page, and the way to
+ * Settings is on all three renders.
+ *
+ * ── The name never pushes the button off ─────────────────────────────────────────────
+ *
+ * The button is `shrink-0` and the name `min-w-0 flex-1`, truncated inside (`you-hero.tsx`), so a
+ * 24-character name at Figure size ends in an ellipsis rather than in a button half off
+ * a phone's edge.
  */
 
 /** The heading's id, so the page's sections can be labelled by it. */
 export const YOU_HEADING_ID = "you-heading";
 
-export function YouHeading() {
+export function YouHeading({ children }: { readonly children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-gutter pt-5 lg:px-10">
-      <h1 id={YOU_HEADING_ID} className="screen-title text-screen text-text">
-        You
-      </h1>
-      {/* Settings lives here now, not in the masthead or the sidebar: the navigation
-          carries only the four destinations, and everything about your account is You. */}
-      <Link
-        href="/settings"
-        className="flex h-11 items-center gap-2 rounded-[var(--radius-full)] bg-raised px-4 text-item font-medium text-text transition-colors duration-[var(--dur-fast)] hover:text-text"
-      >
-        <SettingsIcon className="h-4 w-4" />
-        Settings
+    <header className="flex items-center gap-3.5 pt-5 pr-3 pb-2 pl-gutter lg:px-10 lg:pt-7">
+      {children ?? (
+        <h1 id={YOU_HEADING_ID} className="min-w-0 flex-1 screen-title text-screen text-text">
+          <span className="block truncate py-1">You</span>
+        </h1>
+      )}
+
+      {/* Settings lives here, not in the navigation: everything about your account is You. */}
+      <Link href="/settings" aria-label="Settings" className={ICON_BUTTON}>
+        <SettingsIcon className="h-[22px] w-[22px]" />
       </Link>
-    </div>
+    </header>
   );
 }

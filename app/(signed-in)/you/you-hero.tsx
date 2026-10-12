@@ -1,20 +1,27 @@
 import { initialsFrom } from "./figures";
+import { YOU_HEADING_ID } from "./you-heading";
 
 /**
- * The hero at the top of You — the account, as a picture and a name (issue #247).
+ * The hero at the top of You — the account, as a picture and a name (issue #247), drawn
+ * inside `YouHeading`'s row since Charcoal (issue #405, handoff §8.8).
  *
  * ── On the page ground, with no backdrop ─────────────────────────────────────────────
  *
- * The handoff's reference profile puts a backdrop image behind this, with a readability
- * overlay over it and the avatar overlapping its lower edge. There is no such image:
- * MediaSafe stores no account artwork, borrows none, and #245 rules the column out — *the
- * You hero is flat, so nothing in this ticket needs one, and the column is not added ahead
- * of a caller*. So the hero sits on `--ground` and the overlap has nothing to overlap.
+ * MediaSafe stores no account artwork, borrows none, and #245 rules the column out, so the
+ * hero sits on `--ground`: a `64px` circle and the name beside it.
  *
- * What is taken from the reference is its **proportion**: an 84px circle, the name beside
- * it, and air above and below. What is dropped with the backdrop is its furniture — the
- * notification bell, the overflow menu and `Edit profile`, none of which this product has
- * and the last of which lives in Settings.
+ * ── The name is the page's `h1`, at Figure size, on one line ─────────────────────────
+ *
+ * Serif at `--text-figure`, the token You's name shares with its four counts (handoff §4).
+ * `truncate` with `min-w-0 flex-1` keeps it to one line however long it is — the cap is 24
+ * characters, and 24 at `34px` is wider than a phone — so it gives way and the settings
+ * button beside it never does.
+ *
+ * `truncate` is on a span inside the `h1`, not on the `h1`: `screen-title` sets
+ * `text-wrap: balance`, which resets the wrap mode `truncate`'s `white-space: nowrap`
+ * sets, and on one element the name wrapped to two lines instead (measured in a browser).
+ * `py-1` because `truncate` clips to the box, and at the serif's line height of `1` the box
+ * would clip a *g* or a *y*.
  *
  * ── The avatar is a plain `<img>` ────────────────────────────────────────────────────
  *
@@ -34,12 +41,10 @@ export function YouHero({
   const initials = initialsFrom(displayName);
 
   return (
-    <section className="flex items-center gap-4 px-gutter pt-5 pb-2 lg:px-10 lg:pt-7">
+    <>
       {avatarUrl === null ? (
         /**
-         * The fallback, and the reason `--raised` is the right ground for it: turn 9 puts
-         * the raised step *below* the page ground, so a circle of it reads as a well the
-         * picture has not filled rather than as a card floating in front of the page.
+         * The fallback: the initials in serif at Heading size on a `raised` circle.
          *
          * `aria-hidden`, because the name is real text immediately beside it. Initials
          * announced as *A S* before the name they abbreviate is the same title read twice,
@@ -47,7 +52,7 @@ export function YouHero({
          */
         <div
           aria-hidden="true"
-          className="flex h-[84px] w-[84px] shrink-0 items-center justify-center rounded-[var(--radius-full)] bg-raised text-bill-md font-medium text-dim"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--radius-full)] bg-raised font-display text-bill-lg text-dim"
         >
           {initials}
         </div>
@@ -62,18 +67,20 @@ export function YouHero({
          */
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          className="h-[84px] w-[84px] shrink-0 rounded-[var(--radius-full)] bg-raised object-cover"
+          className="h-16 w-16 shrink-0 rounded-[var(--radius-full)] bg-raised object-cover"
           src={avatarUrl}
           alt=""
           aria-hidden="true"
-          width={84}
-          height={84}
+          width={64}
+          height={64}
           decoding="async"
           referrerPolicy="no-referrer"
         />
       )}
 
-      <p className="min-w-0 truncate text-bill-md font-medium text-text">{displayName}</p>
-    </section>
+      <h1 id={YOU_HEADING_ID} className="min-w-0 flex-1 screen-title text-figure text-text">
+        <span className="block truncate py-1">{displayName}</span>
+      </h1>
+    </>
   );
 }

@@ -91,8 +91,9 @@ export default async function YouPage() {
   return (
     <NavTransition>
       <main className="flex w-full flex-1 flex-col">
-        <YouHeading />
-        <YouHero displayName={displayName} avatarUrl={avatarUrl} />
+        <YouHeading>
+          <YouHero displayName={displayName} avatarUrl={avatarUrl} />
+        </YouHeading>
 
         {figures.titles === 0 ? (
           <EmptyYou />

@@ -10,7 +10,7 @@
  */
 export function SettingsHeading() {
   return (
-    <div className="px-gutter pt-5 lg:px-10">
+    <div className="px-gutter pt-2 lg:px-10">
       <h1 className="screen-title text-screen text-text">Settings</h1>
     </div>
   );

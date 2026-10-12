@@ -10,6 +10,7 @@ import {
   type ThemeChoice,
 } from "@/lib/theme";
 import { SegmentedControl } from "@/app/segmented";
+import { SETTING, SETTING_HELP, SETTING_LABEL } from "./settings-group";
 
 /**
  * The theme control — Settings' Profile section, beneath the timezone.
@@ -75,10 +76,10 @@ export function ThemeControl() {
   }
 
   return (
-    <div className="mt-10">
-      <span className="code-line text-dim">Appearance</span>
+    <div className={SETTING}>
+      <span className={SETTING_LABEL}>Appearance</span>
 
-      <p className="mt-3 max-w-[60ch] text-note leading-relaxed text-dim">
+      <p className={SETTING_HELP}>
         MediaSafe follows your device unless you tell it otherwise. This is remembered on
         this device only — signing in somewhere else starts from your system setting
         again.
@@ -90,7 +91,8 @@ export function ThemeControl() {
         value={choice}
         onChange={choose}
         layoutId="theme-choice"
-        className="mt-4 max-w-[420px]"
+        onCard
+        className="mt-1 w-full"
       />
     </div>
   );

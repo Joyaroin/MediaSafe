@@ -13,10 +13,10 @@ import { SettingsHeading, YOU } from "./settings-heading";
 export default function SettingsLoading() {
   return (
     <main className="arrive-fast flex w-full flex-1 flex-col">
-      <BackBar origin={YOU} />
+      <BackBar origin={YOU} round />
       <SettingsHeading />
 
-      <div className="mt-12 w-full max-w-3xl px-gutter lg:px-10">
+      <div className="mt-6 w-full max-w-2xl px-gutter lg:px-10">
         <PendingLine shape="form" held />
       </div>
     </main>

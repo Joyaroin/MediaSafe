@@ -8,7 +8,7 @@ import {
   FAILURE_PROSE,
   FAILURE_SECTION,
 } from "@/errors/failure-treatment";
-import { GHOST_RECOVERY, IN_FLIGHT } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY_COMPACT } from "@/errors/recovery-buttons";
 import { referenceFor } from "@/errors/reference";
 import { ReferenceLine } from "@/errors/reference-line";
 import { authClient } from "@/lib/auth-client";
@@ -108,7 +108,7 @@ export function SignOutButton() {
         type="button"
         onClick={signOut}
         disabled={inFlight}
-        className={`${GHOST_RECOVERY} ${IN_FLIGHT}`}
+        className={`${GHOST_RECOVERY_COMPACT} w-full`}
       >
         {inFlight ? "Signing you out" : "Sign out"}
       </button>
