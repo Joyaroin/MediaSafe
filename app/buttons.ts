@@ -55,6 +55,15 @@ export const PLAIN_BUTTON = `${BASE} ${COMPACT} ${PLAIN}`;
 /** A quiet button that is only an icon — a `44px` circle, so no padding to override. */
 export const ICON_BUTTON = `${BASE} h-11 w-11 rounded-[var(--radius-full)] ${SECONDARY}`;
 
+/** The same, square and `48px`, beside a `48px` filled button — the title page's add-to-list
+ *  and more (Charcoal §8.6). Square so the row reads as one bar of controls, not a button
+ *  with two coins beside it. */
+export const ICON_BUTTON_SQUARE = `${BASE} h-12 w-12 ${SECONDARY}`;
+
+/** A round icon button over artwork (Charcoal §6): its own black at 50% under a white icon,
+ *  because the artwork can be anything and §10 puts that pair at 4:1 over the worst of it. */
+export const ICON_BUTTON_OVER_ARTWORK = `${BASE} h-11 w-11 rounded-[var(--radius-full)] bg-black/50 text-white hover:bg-black/60`;
+
 /** One row of a menu — the title page's *…* menu. Colour is the caller's: text, or danger.
  *  Its hover is the quiet fill, so it still shows inside the raised dialog it opens in. */
 export const MENU_ITEM =

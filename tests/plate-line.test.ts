@@ -139,14 +139,17 @@ function bgRaisedLines(file: string): string[] {
  * Every raised container the plate line reaches, named by the ticket's own four
  * categories: result rows, list rows, rail cards, programme-note panels. Search's result
  * rows left it in Charcoal (issue #404): they are rows on the page with hairlines between
- * them, not cards. Coming up's rows left it for the same reason (#401). `you-list-card.tsx`
+ * them, not cards. Coming up's rows left it for the same reason (#401), and so did title
+ * detail's programme-note panels (#403), which are flat sections of the page now.
+ * `you-list-card.tsx`
  * carries two — the missing-artwork frame and the populated collage are both cards on
  * You's lists rail.
  */
 const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: number }[] = [
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
-  { file: "app/(signed-in)/library/programme-note-section.ts", count: 1 }, // a programme-note panel
   { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", count: 1 }, // a list's three-dot menu (#402)
+  { file: "app/(signed-in)/library/title-actions.tsx", count: 1 }, // a title's three-dot menu (#403)
+  { file: "app/(signed-in)/library/episode-line.ts", count: 1 }, // the Up next episode's raised row (#403)
   { file: "app/(signed-in)/import/import-surface.tsx", count: 1 }, // the running import's card (#406)
   { file: "app/(signed-in)/you/you-surface.tsx", count: 1 }, // You's watch-time card (#405)
   { file: "app/(signed-in)/settings/settings-group.tsx", count: 1 }, // Settings' group card (#405)
@@ -165,7 +168,6 @@ const EXEMPT_BG_RAISED: readonly { readonly file: string; readonly count: number
   { file: "app/segmented.tsx", count: 1, reason: "the segmented control track — Library's view, a list's view and Settings' appearance share it (#397)" },
   { file: "app/poster-frames.tsx", count: 1, reason: "the raised middle frame of the sign-in and first-run picture, edged by hair-line like the frames beside it (#406)" },
   { file: "app/buttons.ts", count: 1, reason: "DIALOG_FRAME, which keeps its border and its one shadow; plate-line is a box-shadow too, and two on one element fight (#397)" },
-  { file: "app/(signed-in)/library/watch-menu.tsx", count: 1, reason: "a menu item, raised only on hover" },
 ];
 
 /** `you-list-card.tsx` carries both a must-carry and an exempt site, so a file's

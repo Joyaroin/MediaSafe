@@ -88,3 +88,29 @@ export function watchProgress(episodes: readonly EpisodeDetail[]): WatchProgress
     total: counted.length,
   };
 }
+
+/**
+ * How far through **one season** you are — the title hero's *1 of 8 · Season 1* (Charcoal
+ * §8.6). The season is the one the next episode is in; with nothing next (caught up or
+ * finished), the last regular season. Every episode of that season counts, aired or not,
+ * the same way `watchProgress` counts the whole show. `null` for a show with no regular
+ * episodes, where there is no season to be part way through.
+ */
+export function seasonWatchProgress(
+  episodes: readonly EpisodeDetail[],
+  next: EpisodeDetail | null,
+): (WatchProgress & { readonly seasonNo: number }) | null {
+  const regular = episodes.filter((one) => one.seasonNo > 0);
+  if (regular.length === 0) return null;
+  const seasonNo =
+    next !== null && next.seasonNo > 0
+      ? next.seasonNo
+      : Math.max(...regular.map((one) => one.seasonNo));
+
+  const season = regular.filter((one) => one.seasonNo === seasonNo);
+  return {
+    seasonNo,
+    watched: season.filter((one) => one.watched).length,
+    total: season.length,
+  };
+}

@@ -57,6 +57,22 @@ export function airDateInWords(airDate: string): string {
 }
 
 /**
+ * An unaired episode's date in the row's trailing slot — *12 Nov*, or *3 Mar 2027* when it
+ * is not this year (Charcoal §8.6: the date stands where the tick would be). Built and
+ * formatted in UTC for `airDateInWords`'s reason; `today` is the reader's day, as a
+ * `YYYY-MM-DD` string, and only its year is read.
+ */
+export function airDateShort(airDate: string, today: string): string {
+  const [year, month, day] = airDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(airDate.slice(0, 4) === today.slice(0, 4) ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+  });
+}
+
+/**
  * The date and the runtime, joined — or `null` when the mirror has neither, so the caller
  * renders no line at all rather than an empty one holding a real line's space.
  *

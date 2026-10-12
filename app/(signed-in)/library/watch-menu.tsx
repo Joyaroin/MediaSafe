@@ -247,7 +247,7 @@ function MenuItem({
       <button
         type="button"
         onClick={onClick}
-        className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-1)] px-3 py-2.5 text-left transition-colors duration-[var(--dur-fast)] hover:bg-raised"
+        className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-4)] px-3 py-2.5 text-left transition-colors duration-[var(--dur-fast)] hover:quiet-fill"
       >
         <span
           className={`flex items-center gap-1.5 text-item font-semibold ${

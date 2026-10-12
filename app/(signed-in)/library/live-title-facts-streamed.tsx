@@ -11,15 +11,16 @@ import {
 } from "./live-title-facts";
 
 /**
- * The unowned-title page's title facts — a **Server Component**, issue #218's answer for
- * the surfaces that are real page renders. `live-title-facts.tsx`'s own top docblock is the
+ * The title pages' live facts — **Server Components**, issue #218's answer for the
+ * surfaces that are real page renders. `live-title-facts.tsx`'s own top docblock is the
  * fuller account; this file is the half of it that streams.
  *
- * This component draws the synopsis and the watch providers as a pair, which is what that
- * page wants and what title detail no longer does: title detail takes `SynopsisStreamed`,
- * `WatchProvidersStreamed` and `CastStreamed` one at a time, because its three sections
- * land in three different places. All four exports share the same boundary components at
- * the foot of this file.
+ * Both title pages, held and unheld, take `SynopsisStreamed`, `WatchProvidersStreamed` and
+ * `CastStreamed` one at a time, because the three sections land in three different places
+ * (Charcoal §8.6, §8.7: the synopsis under the actions, the other two after the episodes).
+ * The unheld page drew synopsis and providers as one pair until Charcoal gave both pages
+ * one layout. All three exports share the same boundary components at the foot of this
+ * file.
  *
  * Each read gets its own `<Suspense>`, wrapping a tiny async Server Component that awaits
  * exactly one field and hands the resolved `Outcome<T>` to the matching `*FactSection`
@@ -46,36 +47,8 @@ import {
  * component and takes no account, because a *Try again* is a Server Action and resolves
  * its own.
  */
-export function LiveTitleFactsStreamed({
-  userId,
-  kind,
-  tmdbId,
-}: {
-  userId: UserId;
-  kind: TitleKind;
-  tmdbId: number;
-}) {
-  const forTitle = `${kind}:${tmdbId}`;
-
-  return (
-    <>
-      <Suspense key={`synopsis:${forTitle}`} fallback={<LiveFactPlaceholder heading="Synopsis" />}>
-        <SynopsisBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
-      </Suspense>
-
-      <Suspense
-        key={`providers:${forTitle}`}
-        fallback={<LiveFactPlaceholder heading="Watch providers" />}
-      >
-        <WatchProvidersBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
-      </Suspense>
-    </>
-  );
-}
-
 /**
- * The synopsis alone, streamed **into the hero's card** — title detail's half of what the
- * component above still does whole for the unowned-title page.
+ * The synopsis alone, streamed **into the hero**, under the actions.
  *
  * ── Why the pair came apart ─────────────────────────────────────────────────────────
  *
@@ -89,9 +62,6 @@ export function LiveTitleFactsStreamed({
  * `nested` reaches `SynopsisFactSection` as a plain boolean, which is all that may cross
  * this boundary — the section builds its own `refetch` closure on the client side, for
  * `live-title-facts.tsx`'s stated reason.
- *
- * The unowned-title page keeps `LiveTitleFactsStreamed` above and both cards: that screen
- * has no hero card for a synopsis to sit inside.
  */
 export function SynopsisStreamed({
   userId,
@@ -126,7 +96,7 @@ export function WatchProvidersStreamed({
   return (
     <Suspense
       key={`providers:${kind}:${tmdbId}`}
-      fallback={<LiveFactPlaceholder heading="Watch providers" />}
+      fallback={<LiveFactPlaceholder heading="Where to watch" />}
     >
       <WatchProvidersBoundary userId={userId} kind={kind} tmdbId={tmdbId} />
     </Suspense>

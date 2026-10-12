@@ -63,7 +63,7 @@ describe("the main button", () => {
 
     expect(
       titlePrimaryAction({ owned: true, kind: "show", state: "watching", nextEpisode: next }),
-    ).toEqual({ kind: "mark-episode", label: "Mark S04 · E01 watched", episode: next });
+    ).toEqual({ kind: "mark-episode", label: "Mark S4 E1 watched", episode: next });
   });
 
   it("still offers the next episode for a show that was given up on", () => {
@@ -71,7 +71,7 @@ describe("the main button", () => {
 
     expect(
       titlePrimaryAction({ owned: true, kind: "show", state: "abandoned", nextEpisode: next }),
-    ).toEqual({ kind: "mark-episode", label: "Mark S02 · E03 watched", episode: next });
+    ).toEqual({ kind: "mark-episode", label: "Mark S2 E3 watched", episode: next });
   });
 
   it("offers nothing for a show with no episode left to watch", () => {

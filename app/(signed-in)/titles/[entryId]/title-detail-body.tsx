@@ -1,4 +1,3 @@
-import { BackBar } from "@/app/(signed-in)/back-bar";
 import { CastStreamed, SynopsisStreamed, WatchProvidersStreamed } from "@/app/(signed-in)/library/live-title-facts-streamed";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { cachedTitleDetail } from "@/cache/tags";
@@ -25,7 +24,9 @@ import { TitleDetailView } from "./title-detail-view";
  * The flag this file carried changed the **back bar** and nothing else — it was suppressed
  * inside the dialog, where the bar would have been a third way out beside Close,
  * Escape and the swipe, and a lying one, since the library was still on screen underneath.
- * There is no dialog, so the bar is unconditional and is again the way back.
+ * There is no dialog, so the bar is unconditional and is again the way back. Since
+ * Charcoal (#403) it is a round button over the hero's band, drawn by
+ * `programme-note-content.tsx` rather than here.
  *
  * The file itself stays rather than folding into `page.tsx`: the route file reads nothing
  * and this is the surface, which is the arrangement `episode-detail-body.tsx` keeps for
@@ -45,10 +46,8 @@ export async function TitleDetailBody({
 
   return (
     <>
-      <BackBar />
-
-      {/* Three streamed sections, three nodes: the synopsis renders inside the hero's card,
-          the providers in a card below the episodes, the cast last. They were two nodes
+      {/* Three streamed sections, three nodes: the synopsis renders in the hero under the
+          actions, Where to watch below the episodes, the cast last. They were two nodes
           until the synopsis moved — `programme-note-content.tsx` has the argument, and
           nothing about the streaming itself changed. */}
       <TitleDetailView

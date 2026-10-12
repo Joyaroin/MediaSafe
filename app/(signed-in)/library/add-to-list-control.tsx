@@ -11,7 +11,7 @@ import {
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
 import { ListNameForm } from "@/app/(signed-in)/lists/list-name-form";
-import { DIALOG_FRAME, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
+import { DIALOG_FRAME, ICON_BUTTON_SQUARE, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
 import type { ListSummary } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
@@ -152,18 +152,26 @@ export function AddToListControl({
 
   return (
     <div>
-      {/* A secondary button: it opens a dialog, nothing more, and it sits beside the
-          title's one main action rather than competing with it. */}
+      {/* A quiet square with the list-and-plus glyph (Charcoal §8.6): it opens a dialog,
+          nothing more, and it sits at the end of the title's action row beside the one
+          filled action. Icon-only, so the accessible name carries the words. */}
       <button
         type="button"
         onClick={openDialog}
         aria-label={`Add ${titleName} to a list`}
-        className={SECONDARY_BUTTON}
+        className={ICON_BUTTON_SQUARE}
       >
-        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-          <path d="M12 5v14M5 12h14" />
+        <svg
+          viewBox="0 0 24 24"
+          className="h-[22px] w-[22px]"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        >
+          <path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6" />
         </svg>
-        Add to list
       </button>
 
       {/* Issue #311 re-narrows the frame: this was named one of the two

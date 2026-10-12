@@ -5,6 +5,7 @@ import {
   progressLine,
   remainingCount,
   remainingLine,
+  seasonWatchProgress,
 } from "@/app/(signed-in)/library/progress-remaining";
 import type { EpisodeDetail } from "@/db/access";
 
@@ -83,5 +84,44 @@ describe("progressLine and remainingLine", () => {
     const episodes = [ep(1, 1, true), ep(1, 2, false)];
     expect(progressLine(episodes)).toBe("Season 1, Episode 1 — Episode 1");
     expect(remainingLine(episodes)).toBe("1 episode");
+  });
+});
+
+/**
+ * The title hero's *1 of 8 · Season 1* (Charcoal §8.6, issue #403): one season's count, and
+ * which season is the one the reader is in.
+ */
+describe("seasonWatchProgress", () => {
+  const show = [
+    ep(0, 1, false),
+    ep(1, 1, true),
+    ep(1, 2, true),
+    ep(2, 1, true),
+    ep(2, 2, false),
+    ep(2, 3, false),
+  ];
+
+  it("counts the season the next episode is in, and only that season", () => {
+    expect(seasonWatchProgress(show, show[4])).toEqual({ seasonNo: 2, watched: 1, total: 3 });
+  });
+
+  it("falls back to the last regular season when nothing is next", () => {
+    // Caught up or finished: no next episode, so the last season stands for the show.
+    expect(seasonWatchProgress(show, null)).toEqual({ seasonNo: 2, watched: 1, total: 3 });
+  });
+
+  it("does not take the order of the list on trust", () => {
+    expect(seasonWatchProgress([...show].reverse(), null)?.seasonNo).toBe(2);
+  });
+
+  it("never reports the specials as the season you are in", () => {
+    // A next episode in the specials still reads the last regular season, the way
+    // `watchProgress` leaves the specials out of the whole-show count.
+    expect(seasonWatchProgress(show, show[0])?.seasonNo).toBe(2);
+  });
+
+  it("has no season to report for a show with only specials, or none at all", () => {
+    expect(seasonWatchProgress([ep(0, 1, true)], null)).toBeNull();
+    expect(seasonWatchProgress([], null)).toBeNull();
   });
 });

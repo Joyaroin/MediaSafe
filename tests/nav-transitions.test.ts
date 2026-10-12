@@ -482,14 +482,16 @@ const BACK_BAR = readFileSync("app/(signed-in)/back-bar.tsx", "utf8");
 
 describe("both detail routes leave by that bar", () => {
   for (const file of [
-    "app/(signed-in)/titles/[entryId]/title-detail-body.tsx",
+    // The loaded page draws it inside the hero, over the band (Charcoal, #403), so it is
+    // `programme-note-content.tsx` that renders it, not the route's body.
+    "app/(signed-in)/library/programme-note-content.tsx",
     "app/(signed-in)/titles/[entryId]/loading.tsx",
     "app/(signed-in)/titles/[entryId]/error.tsx",
     // The episode route draws its bar once, in the layout that wraps its page and both
     // of its boundaries.
     ]) {
     it(`${file} renders the shared bar`, () => {
-      expect(readFileSync(file, "utf8")).toContain("<BackBar />");
+      expect(readFileSync(file, "utf8")).toMatch(/<BackBar(?: overArtwork)? \/>/);
     });
   }
 

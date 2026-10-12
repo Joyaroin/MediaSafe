@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { ICON_BUTTON, MENU_ITEM, PRIMARY_BUTTON } from "@/app/buttons";
+import { ICON_BUTTON_SQUARE, MENU_ITEM, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
 import type { EpisodeDetail, LibraryState } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
@@ -114,7 +114,7 @@ function MarkEpisodeButton({
       onClick={attempt}
       disabled={pending || watched}
       aria-label={`Mark ${fullName} watched`}
-      className={PRIMARY_BUTTON}
+      className={`${PRIMARY_BUTTON} flex-1`}
     >
       <CheckmarkIcon className="h-4 w-4" />
       {label}
@@ -149,7 +149,9 @@ function MarkFilmButton({
       onClick={attempt}
       disabled={pending}
       aria-label={watched ? `Record another watch of ${titleName}` : `Mark ${titleName} watched`}
-      className={PRIMARY_BUTTON}
+      // Filled only while it is a mark. Once the film is watched the action is *Watch
+      // again*, and that is not the one main action of the page any more (Charcoal §8.7).
+      className={`${watched ? SECONDARY_BUTTON : PRIMARY_BUTTON} flex-1`}
     >
       <CheckmarkIcon className="h-4 w-4" />
       {label}
@@ -217,7 +219,7 @@ function MoreMenu({
     <details ref={detailsRef} className="relative">
       <summary
         aria-label="More actions"
-        className={`${ICON_BUTTON} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+        className={`${ICON_BUTTON_SQUARE} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="currentColor">
           <circle cx="5.5" cy="12" r="1.8" />
@@ -226,7 +228,9 @@ function MoreMenu({
         </svg>
       </summary>
 
-      <div className="absolute left-0 z-20 mt-2 flex w-60 flex-col rounded-[var(--radius-4)] border border-hair bg-ground p-1.5 shadow-[0_16px_40px_rgb(0_0_0/0.25)] lg:left-auto lg:right-0">
+      {/* The list page's menu, the same panel (Charcoal §8: menus are `raised` with `44px`
+          rows). It opens to the left now because the button is the row's last. */}
+      <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col rounded-[var(--radius-4)] bg-raised plate-line p-1.5">
         {kind === "film" && state === "finished" ? (
           <FilmUnwatchItem
             libraryEntryId={libraryEntryId}

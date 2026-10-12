@@ -88,25 +88,25 @@ describe("the episode list", () => {
     expect(markup).not.toContain(">Watched<");
   });
 
-  it("marks exactly the up-next episode, inverted, and nothing else", () => {
+  it("marks exactly the up-next episode — raised, labelled — and nothing else", () => {
     const markup = episodes([
       episode({ id: "e1", episodeNo: 1, watched: true }),
       episode({ id: "e2", episodeNo: 2, upNext: true }),
     ]);
 
     /**
-     * **The words *Up next* are gone from the row, and the inverted chip is the whole
-     * signal.** They used to open the trailing slot, saying in the accent what
-     * `EPISODE_NUMBER_UP_NEXT` was already saying in the accent two cells to the left on
-     * the same row — and being the only thing in that slot that carried text, they were
-     * the only reason it had to be wide enough for prose. `TRAILING`'s own docblock has
-     * the arithmetic.
+     * **Charcoal (issue #403) reverses the chip.** With the accent equal to `text`, an
+     * inverted number reads as nothing, so §8.6 marks up next with the row itself — raised
+     * and rounded — and an *Up next* label under the name, which sits under the name and
+     * not in the trailing slot, so `TRAILING`'s arithmetic is untouched.
      *
-     * So this asserts the chip rather than the label: the inverted number is present, and
-     * the redundant sentence is not.
+     * Exactly one row is raised and exactly one label says so: the watched row is neither.
      */
-    expect(markup).toContain("bg-accent");
-    expect(markup).not.toContain("Up next");
+    const rows = markup.match(/<li [^>]*>/g) ?? [];
+    expect(rows).toHaveLength(2);
+    expect(rows.filter((row) => /\bbg-raised\b/.test(row))).toHaveLength(1);
+    expect(rows[1]).toMatch(/\bbg-raised\b/);
+    expect(markup.match(/>Up next</g)).toHaveLength(1);
   });
 
   it("groups specials under their own heading, not 'Season 0'", () => {
@@ -213,7 +213,8 @@ describe("the episode list", () => {
      * slot for a count to hide among.
      */
     // The chip's tick carries a screen-reader word — ", watched" — for a finished season.
-    expect(visible).toEqual(["Season 1", ", watched", "E1", "Winter Is Coming"]);
+    // The number is a bare serif numeral since Charcoal (§8.6), not *E1*.
+    expect(visible).toEqual(["Season 1", ", watched", "1", "Winter Is Coming"]);
   });
 
   it("says a show has no episode data, rather than rendering an empty season", () => {

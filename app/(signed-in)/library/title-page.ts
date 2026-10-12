@@ -1,6 +1,6 @@
 import type { EpisodeDetail, LibraryState } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
-import { episodeCode } from "@/app/(signed-in)/up-next/episode-card-line";
+import { seasonHeading } from "./season-grouping";
 
 /**
  * The title page's rules — issue #357 — as functions of what the page already holds.
@@ -46,9 +46,19 @@ export function titlePrimaryAction(title: {
 
   return {
     kind: "mark-episode",
-    label: `Mark ${episodeCode(title.nextEpisode.seasonNo, title.nextEpisode.episodeNo)} watched`,
+    label: `Mark ${shortEpisodeCode(title.nextEpisode.seasonNo, title.nextEpisode.episodeNo)} watched`,
     episode: title.nextEpisode,
   };
+}
+
+/**
+ * *S1 E2* — the title page's button names its episode the way Charcoal §8.6 writes it,
+ * unpadded and without the dot, because the button shares a `390px` row with two `48px`
+ * squares and *Mark S01 · E02 watched* broke onto two lines there. The specials keep their
+ * word (`seasonHeading`): *Specials E3*. Tonight's cards still read `episodeCode`.
+ */
+function shortEpisodeCode(seasonNo: number, episodeNo: number): string {
+  return seasonNo === 0 ? `${seasonHeading(0)} E${episodeNo}` : `S${seasonNo} E${episodeNo}`;
 }
 
 /** Season, then episode — the order a show is watched in. */
