@@ -137,12 +137,13 @@ function bgRaisedLines(file: string): string[] {
 
 /**
  * Every raised container the plate line reaches, named by the ticket's own four
- * categories: result rows, list rows, rail cards, programme-note panels. `you-list-card.tsx`
+ * categories: result rows, list rows, rail cards, programme-note panels. Search's result
+ * rows left it in Charcoal (issue #404): they are rows on the page with hairlines between
+ * them, not cards. `you-list-card.tsx`
  * carries two — the missing-artwork frame and the populated collage are both cards on
  * You's lists rail.
  */
 const RAISED_CONTAINERS: readonly { readonly file: string; readonly count: number }[] = [
-  { file: "app/(signed-in)/search/catalogue-result.tsx", count: 1 }, // a result row
   { file: "app/(signed-in)/lists/list-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/up-next/upcoming-row.tsx", count: 1 }, // a list row
   { file: "app/(signed-in)/up-next/up-next-card-styles.ts", count: 2 }, // a list row: Up next's cards, and the featured card (#362)
