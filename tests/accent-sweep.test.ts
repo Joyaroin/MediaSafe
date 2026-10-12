@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * The contract step — issue #312, the sweep #310 and #311 promised. `app/accent-meaning.ts`
- * names the accent's three sanctioned meanings and #310/#311 migrated the disputed call
+ * names the accent's sanctioned meanings (three then, two since #409) and #310/#311 migrated the disputed call
  * sites onto them; this file is what makes a fourth meaning impossible to add silently,
  * the way `tests/press-spring.test.ts`'s `PRESS_CALL_SITES` sweep already does for the
  * press register and `tests/accent-migrate.test.ts`'s `DIALOG_FILES` already does for the
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  * Every `text-accent`, `bg-accent`, `border-accent` or `decoration-accent` token (with or
  * without a variant prefix — `hover:`, `group-hover:`…), every `text-accent-ink`, every
  * `var(--color-accent)` (the one form a Tailwind class cannot reach — `press-mark.tsx`'s
- * SVG `fill`), and every `.ink`/`.solid` read off one of `app/accent-meaning.ts`'s three
+ * SVG `fill`), and every `.ink`/`.solid` read off one of `app/accent-meaning.ts`'s two
  * constants. Read from source with comments blanked first, for `tests/palette.test.ts`'s
  * own reason: this codebase discusses the accent at length in prose, and a raw scan finds
  * the discussion and reports it as a use. `errors/recovery-buttons.ts`'s own docblock
@@ -25,7 +25,7 @@ import { describe, expect, it } from "vitest";
  *
  * ── Two ways to pass, and nothing else ───────────────────────────────────────────────
  *
- * A call site either **declares** one of the three meanings — imports the constant from
+ * A call site either **declares** one of the two meanings — imports the constant from
  * `app/accent-meaning.ts` and reads `.ink`/`.solid` off it, the way #310 and #311 already
  * migrated seven of them — or it is a **documented literal exception**: named in
  * `ACCENT_CALL_SITES` below with a reason, the way the role table already carries the
@@ -61,7 +61,7 @@ function relative(path: string): string {
  *  progress rather than this tree. */
 const SHIPPING_DIRECTORIES = ["app", "errors", "lib"];
 
-/** `app/accent-meaning.ts` is excluded: it is the declaration site the other three
+/** `app/accent-meaning.ts` is excluded: it is the declaration site the
  *  meanings' `ink`/`solid` literals live in, and a sweep that swept its own source would
  *  be checking the manifest against itself. */
 const DECLARATION_FILE = join("app", "accent-meaning.ts");
@@ -88,25 +88,21 @@ function sourceFiles(): string[] {
  * optional variant prefix (`hover:`, `group-hover:`…) folded into the match rather than
  * dropped, so `hover:bg-accent` and `bg-accent` are counted as the distinct occurrences
  * they are — two tokens in one template literal is two chances to drift, not one.
- * `(?:RECORDS_A_WATCH|LIVE_EDGE_OF_THE_RECORD|THE_BUTTON_REGISTER)\.(?:ink|solid)` is a
+ * `(?:RECORDS_A_WATCH|THE_BUTTON_REGISTER)\.(?:ink|solid)` is a
  * *declared* use — the call site imported the meaning rather than typing the token — and
  * `var\(--color-accent\)` is the one form a Tailwind class cannot reach at all.
  */
 const ACCENT_TOKEN =
-  /(?:[\w-]+:)*(?:text|bg|border|decoration)-accent(?:-ink)?\b|(?:RECORDS_A_WATCH|LIVE_EDGE_OF_THE_RECORD|THE_BUTTON_REGISTER)\.(?:ink|solid)|var\(--color-accent\)/g;
+  /(?:[\w-]+:)*(?:text|bg|border|decoration)-accent(?:-ink)?\b|(?:RECORDS_A_WATCH|THE_BUTTON_REGISTER)\.(?:ink|solid)|var\(--color-accent\)/g;
 
 function accentTokens(path: string): string[] {
   return [...code(source(relative(path))).matchAll(ACCENT_TOKEN)].map((match) => match[0]);
 }
 
-type Meaning =
-  | "RECORDS_A_WATCH"
-  | "LIVE_EDGE_OF_THE_RECORD"
-  | "THE_BUTTON_REGISTER"
-  | "LITERAL_EXCEPTION";
+type Meaning = "RECORDS_A_WATCH" | "THE_BUTTON_REGISTER" | "LITERAL_EXCEPTION";
 
 interface AccentSite {
-  /** One of the three sanctioned meanings, or a documented literal exception. */
+  /** One of the two sanctioned meanings, or a documented literal exception. */
   readonly meaning: Meaning;
   /** How many accent tokens `accentTokens()` finds in this file. Not merely "has some" —
    *  a call site gaining or losing one is the failure #312's acceptance criteria name by
@@ -122,7 +118,8 @@ interface AccentSite {
  * in — never from the older hand-kept list, which #310's docblock already found stale
  * (it cites `rating-control.tsx` and `up-next-tile.tsx`, and neither exists in this tree).
  *
- * **Declared meanings** (`RECORDS_A_WATCH`, `LIVE_EDGE_OF_THE_RECORD`, `THE_BUTTON_REGISTER`)
+ * **Declared meanings** (`RECORDS_A_WATCH`, `THE_BUTTON_REGISTER`; the live edge was retired
+ * by #409)
  * cover a call site that imports the constant, and — where `AccentMeaning` has no form to
  * reach for, such as a hover state — that constant's own literal companion in the same
  * string. `errors/recovery-buttons.ts`'s ghost outline is the worked example: the border
@@ -136,13 +133,8 @@ interface AccentSite {
  * Charcoal redrew Coming up (#401).
  */
 const ACCENT_CALL_SITES: Readonly<Record<string, AccentSite>> = {
-  // ── The three sanctioned meanings ──────────────────────────────────────────────────
+  // ── The two sanctioned meanings ────────────────────────────────────────────────────
 
-  "app/(signed-in)/library/library-state.ts": {
-    meaning: "LIVE_EDGE_OF_THE_RECORD",
-    tokens: 1,
-    reason: "STATE_LABELS.watching — #310's migration",
-  },
   "app/buttons.ts": {
     meaning: "THE_BUTTON_REGISTER",
     tokens: 1,
@@ -261,10 +253,9 @@ describe("every accent use in the shipping tree is classified, and no others", (
     }
   });
 
-  it("classifies every declared site as one of the three sanctioned meanings, never a fourth", () => {
+  it("classifies every declared site as one of the two sanctioned meanings, never a third", () => {
     const SANCTIONED: readonly Meaning[] = [
       "RECORDS_A_WATCH",
-      "LIVE_EDGE_OF_THE_RECORD",
       "THE_BUTTON_REGISTER",
       "LITERAL_EXCEPTION",
     ];
@@ -296,11 +287,11 @@ describe("comments are blanked before matching, so prose about the accent cannot
   });
 });
 
-describe("app/accent-meaning.ts declares the three meanings the sweep enforces", () => {
-  it("is excluded from the sweep as the declaration site, and still declares all three", () => {
+describe("app/accent-meaning.ts declares the two meanings the sweep enforces", () => {
+  it("is excluded from the sweep as the declaration site, and declares both, and no live edge", () => {
     const declared = source(DECLARATION_FILE);
     expect(declared).toContain("export const RECORDS_A_WATCH");
-    expect(declared).toContain("export const LIVE_EDGE_OF_THE_RECORD");
+    expect(declared).not.toContain("export const LIVE_EDGE_OF_THE_RECORD");
     expect(declared).toContain("export const THE_BUTTON_REGISTER");
   });
 });

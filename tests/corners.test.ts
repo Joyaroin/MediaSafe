@@ -82,13 +82,13 @@ describe("a named radius scale exists in exactly one declaration site", () => {
   }
 });
 
-describe("--poster-radius and --still-radius keep their names and read the scale", () => {
+describe("--poster-radius keeps its name and reads the scale", () => {
   it("poster's default reads --radius-1, not a literal", () => {
     expect(CSS_CODE).toMatch(/@utility poster \{[\s\S]*?border-radius:\s*var\(--poster-radius,\s*var\(--radius-1\)\);/);
   });
 
-  it("still's default reads --radius-1, not a literal", () => {
-    expect(CSS_CODE).toMatch(/@utility still \{[\s\S]*?border-radius:\s*var\(--still-radius,\s*var\(--radius-1\)\);/);
+  it("has no --still-radius left — `.still` went with the episode page (#409)", () => {
+    expect(CSS_CODE).not.toMatch(/@utility still\b|--still-radius/);
   });
 
   it("no call site sets a raw pixel value into either custom property", () => {

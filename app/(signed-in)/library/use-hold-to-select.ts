@@ -82,8 +82,10 @@ export const HOLD_SLOP_PX = 10;
 export const HOLDABLE = "select-none [-webkit-touch-callout:none]";
 
 /**
- * The ring on a selected cell or tile — **`--ink`, and not the accent issue #197 asked
- * for.**
+ * The ring on a selected cell or tile — **`text`, and not the accent issue #197 asked
+ * for** (since Charcoal the two are one colour, but selection is still not one of
+ * `app/accent-meaning.ts`'s meanings; `globals.css`'s outlined treatment is what selection
+ * draws now).
  *
  * `app/globals.css`'s accent block refuses it in as many words — *"Not focus, selection or
  * the caret … they use brightness and border weight off `--text`, so a colour spent on

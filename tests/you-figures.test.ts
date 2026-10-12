@@ -16,9 +16,7 @@ import {
  * `tests/you-surface.test.ts`.
  *
  * `plural` is asserted here since issue #249, which retired `/stats` and with it the module
- * holding the copy that used to carry these cases. It is not You's alone
- * any more: `library/progress-remaining.ts` imports it from this file now that the other
- * copy is gone, so the irregular noun below is a shared contract rather than a local one.
+ * holding the copy that used to carry these cases.
  *
  * ── What is worth asserting on a page made of figures ────────────────────────────────
  *

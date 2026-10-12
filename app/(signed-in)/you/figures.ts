@@ -12,8 +12,7 @@
  * sibling ticket would delete would have made that deletion a rewrite of this page. The note
  * said the copy goes when Stats does. **Issue #249 is that day**, and it went the other way
  * round: the page and its module are gone, and this is now the only `plural` in the
- * application. `library/progress-remaining.ts` imports it from here — the one caller the
- * deleted module had that was not Stats itself.
+ * application.
  *
  * ── One rule runs through all of it ──────────────────────────────────────────────────
  *

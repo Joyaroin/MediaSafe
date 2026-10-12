@@ -672,7 +672,7 @@ describe("whether a press is a re-press of the tab already showing", () => {
 /**
  * ── Both progress bars follow the mark — issue #335 ──────────────────────────────────
  *
- * The state already updates at the sweep's settle (`WatchProgress` recomputes on the
+ * The state already updates at the sweep's settle (`seasonWatchProgress` recomputes on the
  * watched count), so the only thing missing was a transition on the fill. #335 put it on
  * `width`; issue #407 moved it to a slide, because handoff §11.4 never animates a size.
  * A slide, never a scale: the fill is the clipped track's full width moved left, so its

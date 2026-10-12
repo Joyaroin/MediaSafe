@@ -32,7 +32,7 @@ import { dayMonthInWords, daysUntilInWords, type UpcomingTitle } from "./upcomin
  *
  * ── And it draws the poster, because the still does not exist ───────────────────────
  *
- * The row drew `EpisodeStill`, which is the episode's own frame. Every episode on this
+ * The row drew the episode's still, its own frame. Every episode on this
  * screen is **unaired** — that is the whole membership — and a still is a screenshot of
  * something nobody has seen, so TMDB nearly always has none. The result was an empty box
  * on every row of this list while Up next, made of aired episodes, drew a frame on each of

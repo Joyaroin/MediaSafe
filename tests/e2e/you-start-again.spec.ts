@@ -55,12 +55,19 @@ test("Start again takes a stopped show off You and back onto Continue watching",
   });
   await expect(rail.getByText(show.titleName)).toBeVisible();
 
+  // Waited on by its response, not by `networkidle`: on a page already loaded that returns
+  // at once, and the reload would then cancel the write it was meant to wait for — the rail
+  // leaves optimistically, before the write lands.
+  const written = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
   await rail.getByRole("button", { name: `Start ${show.titleName} again` }).click();
   await expect(page.getByRole("heading", { name: "Shows you stopped" })).toHaveCount(0);
 
-  // The write has landed once the action's response re-renders You without the rail; a
-  // fresh load proves it is the database saying so, not the optimistic state.
-  await page.waitForLoadState("networkidle");
+  // A fresh load proves it is the database saying so, not the optimistic state.
+  await written;
   await page.reload();
   await expect(page.getByRole("heading", { name: "Shows you stopped" })).toHaveCount(0);
 

@@ -51,5 +51,3 @@ export const KIND_MODES: readonly { value: KindMode; label: string }[] = [
   { value: "show", label: "Shows" },
   { value: "film", label: "Films" },
 ];
-
-export const DEFAULT_KIND_MODE: KindMode = "show";

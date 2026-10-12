@@ -183,6 +183,9 @@ let seeded: SeededTitle;
 test.beforeAll(async () => {
   const session = await seedFixtureSession();
   seeded = await seedWatchingShow(session.userId);
+  // Watched after `seeded`, so it is Tonight's featured show and `seeded` is a row under
+  // it (Charcoal, issue #400) — the row is the morph's Up next end.
+  await seedWatchingShow(session.userId);
 
   const authDir = path.join(__dirname, ".auth");
   mkdirSync(authDir, { recursive: true });
@@ -274,7 +277,12 @@ test("the poster morph pairs the row's picture and the title's poster at one rat
 }) => {
   await page.goto("/up-next");
 
-  const rowPicture = page.locator('img[src*="image.tmdb.org"]').first();
+  // The row's own poster — not the page's first TMDB image, which is the featured show's
+  // artwork, cropped to its area (Charcoal, issue #400).
+  const rowPicture = page
+    .locator("li", { has: page.getByRole("link", { name: new RegExp(seeded.titleName) }) })
+    .locator('img[src*="image.tmdb.org"]')
+    .first();
   await expect(rowPicture).toBeVisible();
   const rowBox = await rowPicture.boundingBox();
   expect(rowBox, "the Up next row draws no TMDB image at all").not.toBeNull();

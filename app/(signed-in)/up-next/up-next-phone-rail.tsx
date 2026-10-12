@@ -91,7 +91,7 @@ export function RailSection({
  * covers one of those and a third of the next. **Two**, so that the card peeking at the
  * edge — the one the whole rail's affordance rests on — is fetched eagerly rather than
  * arriving grey as a thumb reaches it. The rest of a 199-entry rail stays
- * `library/episode-still.tsx`'s and `app/poster.tsx`'s default lazy.
+ * `app/poster.tsx`'s default lazy.
  *
  * The film rail is narrower and so shows more than two, which means its third card is
  * lazy. That is the right way round to be wrong: an eager fetch for a card nobody scrolls

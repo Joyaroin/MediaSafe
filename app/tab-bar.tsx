@@ -25,7 +25,7 @@ import { useUpNextRepress } from "./use-up-next-repress";
  *   bar. Turn 9 draws none: four labelled cells in a row do not need ruling apart, and on
  *   a ground this warm the lines were the loudest thing in the chrome.
  * - **No inverted active cell**, and with it no travelling `layoutId` block. The active
- *   tab is now its icon and label in `--ink` against inactive `--dim` — a weight
+ *   tab is now its icon and label in `text` against inactive `dim` — a weight
  *   difference rather than a filled rectangle. Motion's shared-layout element went with
  *   the inversion because there is no longer a ground for it to move: it animated the
  *   *block*, and the block is what turn 9 removed. The library chips keep theirs, where
@@ -37,19 +37,12 @@ import { useUpNextRepress } from "./use-up-next-repress";
  * The masthead carries the same pair now, so they still read as one family; what changed
  * is that the family is genuinely translucent rather than nearly opaque.
  *
- * ── `--ink` for the active tab, and not the accent ───────────────────────────────────
+ * ── `text` for the active tab ───────────────────────────────────────────────────────
  *
- * The handoff draws this cell in vermilion and then names the alternative in the same
- * breath — *this spends the accent on selection, which `globals.css` currently reserves
- * for recording a watch. If that reservation must hold, use `--ink` for the active tab
- * instead — the design still reads correctly.* It must, and this does.
- *
- * The tab bar is the only chrome on all four screens, so an accent here is the single
- * spend that is never off-screen — and the thing it would compete with is two centimetres
- * above it, because the library cell paints its **Watching** label in the same vermilion.
- * A signal that is always present is wallpaper, and wallpaper cannot also be a signal.
- * Turn 9's own closing note reaches the same place: *"vermilion only for Watching, not
- * the tabs"*. `globals.css` states the resulting rule in full.
+ * The linen handoff drew this cell in vermilion and named the alternative in the same
+ * breath — the full-strength neutral — because an accent on the one piece of chrome that is
+ * on every screen is wallpaper, and wallpaper cannot also be a signal. Charcoal settles it
+ * for good: there is no accent hue, and the active tab is `text` against `dim` siblings.
  *
  * ── Why this is a client component ───────────────────────────────────────────────────
  *

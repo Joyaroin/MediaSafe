@@ -285,7 +285,7 @@ function FeaturedArtwork({ picture }: { picture: CardPicture }) {
       className="absolute inset-0 -z-10 bg-[var(--band,var(--color-raised))]"
     >
       {src === null || failed === src ? null : (
-        // eslint-disable-next-line @next/next/no-img-element -- the TMDB CDN, read with a plain <img> for `poster.tsx`'s stated reasons; cropped to the area, which neither `Poster`'s 2/3 box nor `EpisodeStill`'s 16/9 one can do
+        // eslint-disable-next-line @next/next/no-img-element -- the TMDB CDN, read with a plain <img> for `poster.tsx`'s stated reasons; cropped to the area, which `Poster`'s 2/3 box cannot do
         <img
           src={src}
           alt=""

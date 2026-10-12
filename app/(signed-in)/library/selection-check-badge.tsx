@@ -49,16 +49,14 @@ export function SelectionCheckBadge({ libraryEntryId }: { libraryEntryId: string
       // Sits on the poster's top-right corner, half over the artwork and half over the
       // card — the ticket's *a check badge on the poster*.
       //
-      // `bg-text`, not `bg-accent`. The ticket asks for the accent and `app/globals.css`
-      // refuses it for selection; `selectable-entry.tsx`'s `SELECTED` has the argument in
-      // full, and the short version is that this cell already paints **Watching** in the
-      // accent a couple of centimetres below. Ink against a poster is if anything the
-      // louder mark — it is the darkest value in the palette, and it lands on artwork
-      // rather than on the linen everything else here sits on.
+      // `bg-text`, not `bg-accent`: selection is not one of `app/accent-meaning.ts`'s
+      // meanings, so it does not claim the filled face's reason even though, since
+      // Charcoal, the two draw the same colour. `text` against a poster is the strongest
+      // contrast the palette has, and it lands on artwork rather than on the page.
       className="badge-arrive pointer-events-none absolute -top-1.5 -right-1.5 flex h-[22px] w-[22px] items-center justify-center rounded-[var(--radius-full)] bg-text text-ground"
     >
       {/* Drawn rather than typed: a `✓` is a font's opinion and this one has to read at
-          12px against vermilion at every weight the variable face resolves to. */}
+          12px on the `text` disc whatever the face does. */}
       <svg
         viewBox="0 0 12 12"
         aria-hidden="true"

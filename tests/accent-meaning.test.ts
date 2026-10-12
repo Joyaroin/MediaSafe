@@ -5,8 +5,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import * as declared from "@/app/accent-meaning";
 import {
-  LIVE_EDGE_OF_THE_RECORD,
   RECORDS_A_WATCH,
   THE_BUTTON_REGISTER,
   type AccentMeaning,
@@ -16,8 +16,8 @@ import { LibraryChips } from "@/app/(signed-in)/library/library-filter-bar";
 import { STATE_LABELS } from "@/app/(signed-in)/library/library-state";
 
 /**
- * Issue #310 — the accent's three meanings, named as constants, and the live-edge one
- * wired to the three surfaces that were already painting it before anything said so.
+ * Issue #310 — the accent's meanings, named as constants. Two since Charcoal's sweep (#409)
+ * retired the live edge, whose last call site had no renderer.
  *
  * The older worked examples (`rating-control.tsx`, `up-next-tile.tsx`) are
  * stale — neither file exists in this tree — so this suite is written against the current
@@ -36,11 +36,10 @@ function source(path: string): string {
 
 const MEANINGS: Record<string, AccentMeaning> = {
   RECORDS_A_WATCH,
-  LIVE_EDGE_OF_THE_RECORD,
   THE_BUTTON_REGISTER,
 };
 
-describe("the three meanings all resolve to the one declared accent token", () => {
+describe("the meanings all resolve to the one declared accent token", () => {
   it.each(Object.keys(MEANINGS))("%s's ink is the accent text token", (name) => {
     expect(MEANINGS[name].ink).toBe("text-accent");
   });
@@ -49,11 +48,11 @@ describe("the three meanings all resolve to the one declared accent token", () =
     expect(MEANINGS[name].solid).toBe("bg-accent text-accent-ink");
   });
 
-  it("names three meanings, not one repeated three times", () => {
+  it("names two meanings, not one repeated twice", () => {
     // Distinguished by what each one claims, not by rendering — the whole point of #300's
     // ruling is that the token never changes, only the reason a call site may reach for it.
     const claims = new Set(Object.values(MEANINGS).map((m) => m.claims));
-    expect(claims.size).toBe(3);
+    expect(claims.size).toBe(2);
   });
 
   it("documents what each meaning claims, in a full sentence", () => {
@@ -63,22 +62,14 @@ describe("the three meanings all resolve to the one declared accent token", () =
   });
 });
 
-describe("the live edge of the record is what the Watching label paints", () => {
-  const LIBRARY_STATE = "app/(signed-in)/library/library-state.ts";
-
-  it("STATE_LABELS.watching carries the live-edge ink and nothing else", () => {
-    expect(STATE_LABELS.watching.className).toBe(LIVE_EDGE_OF_THE_RECORD.ink);
+describe("the live edge is retired — Charcoal's sweep, issue #409", () => {
+  it("is no longer declared", () => {
+    expect(Object.keys(declared)).not.toContain("LIVE_EDGE_OF_THE_RECORD");
   });
 
-  it("renders identically to the accent text it always did", () => {
-    // #310's acceptance criteria: a declaration change, not a visual one.
-    expect(STATE_LABELS.watching.className).toBe("text-accent");
-  });
-
-  it("declares the meaning by importing it, rather than reaching for the colour directly", () => {
-    const code = source(LIBRARY_STATE);
-    expect(code).toMatch(/import\s*\{\s*LIVE_EDGE_OF_THE_RECORD\s*\}\s*from\s*"@\/app\/accent-meaning"/);
-    expect(code).toContain("LIVE_EDGE_OF_THE_RECORD.ink");
+  it("leaves the Watching label as words alone, painted by the surface that prints it", () => {
+    expect(STATE_LABELS.watching).toEqual({ label: "Watching" });
+    expect(source("app/(signed-in)/library/library-state.ts")).not.toContain("accent-meaning");
   });
 });
 

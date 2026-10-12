@@ -2,27 +2,19 @@ import { NavTransition } from "../../nav-transition";
 import { TitleDetailBody } from "./title-detail-body";
 
 /**
- * Title detail, on the phone — a route you push and pop (issue #58, and the third of the
- * three genuine desktop/phone divergences). The desktop
- * pane (`programme-note.tsx`) shows the identical content without ever navigating here;
- * this file exists because the phone's whole reason for choosing a route over a pane is
- * that back should do what back does, and only a real route gives it a history entry to
- * pop.
+ * Title detail — a route you push and pop (issue #58). A route rather than a pane because
+ * back should do what back does, and only a real route gives it a history entry to pop.
  *
  * ── A page read, not a Server Action ──────────────────────────────────────────────────
  *
- * Unlike the desktop pane, this is a page render: `cachedTitleDetail` is called directly
- * and unguarded, so a failure throws into `error.tsx` below — the same shape
- * `app/(signed-in)/library/page.tsx` uses for the grid. `title-detail-actions.ts`'s own
- * docblock is why the pane cannot do the same: it never navigates, so it has no route
- * boundary to throw into.
+ * `title-detail-body.tsx` calls `cachedTitleDetail` directly and unguarded, so a failure
+ * throws into `error.tsx` below — the same shape `app/(signed-in)/library/page.tsx` uses for the grid.
  *
- * ── Cached since #226, and this route and the pane share the entry ──────────────────
+ * ── Cached since #226 ─────────────────────────────────────────────────────────────────
  *
- * `cache/tags.ts` wraps the mirrored read, keyed by this account and tagged `title-detail`
- * — the same wrapper `titleDetailAction` calls for the desktop pane, so the two surfaces
- * are one cache entry and cannot disagree about a title's state, rating or watched
- * episodes. Every write that changes any of those busts the tag inside its own action.
+ * `cache/tags.ts` wraps the mirrored read, keyed by this account and tagged `title-detail`.
+ * Every write that changes a title's state, rating or watched episodes busts the tag inside
+ * its own action.
  *
  * The **day is in the key**, unlike the lists: an episode's `released` flag is read off
  * `air_date <= current_date`, so the season grid grows at midnight with no write behind it

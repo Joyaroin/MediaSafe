@@ -395,8 +395,7 @@ describe("listLibraryEntries", () => {
       const [row] = await listLibraryEntries(reader, "title", tx);
 
       // Three released episodes, not four: the unreleased fourth counts toward neither
-      // number, which is `libraryProgressFraction`'s whole reason for existing rather
-      // than reusing `watchProgress`'s every-mirrored-episode denominator.
+      // number, which is `libraryProgressFraction`'s whole reason for existing.
       expect(row.progress).toEqual({ watched: 2, released: 3 });
     });
   });

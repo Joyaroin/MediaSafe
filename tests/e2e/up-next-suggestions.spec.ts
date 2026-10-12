@@ -39,7 +39,12 @@ test("an empty Up next offers trending titles, and one tap adds one", async ({ p
   const rail = watching.getByRole("list", { name: "Trending this week" });
   await expect(rail).toBeVisible({ timeout: 15_000 });
 
-  const add = rail.getByRole("button", { name: /^Add .* to your library$/ }).first();
+  // A film: Tonight lists films to watch, while a show added with nothing watched waits on
+  // the watchlist — so adding a trending *show* would rightly leave Tonight empty, and the
+  // test would depend on what is trending this week.
+  const filmCard = rail.locator("li", { has: page.locator('a[href^="/catalogue/film/"]') }).first();
+  test.skip((await filmCard.count()) === 0, "nothing trending this week is a film");
+  const add = filmCard.getByRole("button", { name: /^Add .* to your library$/ });
   const label = (await add.getAttribute("aria-label")) ?? "";
   const name = label.replace(/^Add /, "").replace(/ to your library$/, "");
   await add.click();

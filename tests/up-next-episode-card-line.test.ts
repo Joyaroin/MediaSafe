@@ -12,11 +12,6 @@ import {
  * exist: `vitest.config.mts` runs in `node` with no DOM, which is the same split
  * `up-next-mark.ts` and `tests/up-next-tile-mark.test.ts` already draw. A rule that only
  * exists inside a component is a rule nothing here can assert.
- *
- * `airDateInWords` and `episodeMetaLine` were here too, and are deleted with #321: the air
- * date and the runtime come off the meta line, and `episodeMetaLine` was the whole of what
- * read either of them. `library/episode-facts.ts` keeps its own `airDateInWords`, in a
- * longer register for a different surface, and its suite is untouched.
  */
 describe("episodeCode", () => {
   it("pads both numbers to two digits", () => {

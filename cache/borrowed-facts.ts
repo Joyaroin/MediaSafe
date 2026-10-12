@@ -7,7 +7,6 @@ import {
   type UserId,
 } from "@/db/access";
 import {
-  episodeSynopsis,
   recommendationsFor,
   titleCastAndCrew,
   trendingTitles,
@@ -218,52 +217,6 @@ export function cachedTitleSynopsis(
   });
 
   return read(kind, tmdbId);
-}
-
-/**
- * One **episode's** synopsis — issue #253, and the fifth entry in this file.
- *
- * `cachedTitleSynopsis`'s docblock above covers everything this shares with the three
- * title-level reads: the account in the key, the `try` that stays outside the cache, and
- * why four near-identical wrappers cannot become one helper. Two things are its own.
- *
- * ── The tag is the title's, not the episode's ───────────────────────────────────────
- *
- * `borrowedTagFor("show", tmdbId)` — the same tag the show's own three facts carry, so a
- * mirror refresh of that show expires this with them, through `invalidateBorrowedFactsFor`
- * and its existing callers, with no call site changed. That is the argument this file
- * already makes for one tag rather than four, applied to a fifth fact: nothing busts an
- * episode's synopsis without busting the show's, because the only event that busts either
- * is *TMDB has something new to say about this title*. A per-episode tag would be a
- * vocabulary a forty-season show would need eight hundred of, and no caller to use one.
- *
- * The cost of the coarse tag is what it always was: a sweep re-earns a synopsis that had
- * not changed. That is one request per episode a reader afterwards opens — not one per
- * mirrored episode, because nothing warms these entries.
- *
- * ── The two numbers are arguments, so they are part of the key ──────────────────────
- *
- * `unstable_cache` hashes the wrapped function's arguments into the entry's key alongside
- * the key parts, which is what already keeps `titleSynopsis("film", 1)` and
- * `titleSynopsis("show", 1)` apart. Passing the season and episode numbers the same way
- * is what keeps eight hundred episodes of one show in eight hundred entries under one
- * tag, rather than in one entry that answers whichever was read first.
- *
- * Shows only — `episodeSynopsis` takes no `kind` and its docblock says why, so there is
- * no film that could reach this with a season number.
- */
-export function cachedEpisodeSynopsis(
-  userId: UserId,
-  tmdbId: number,
-  seasonNo: number,
-  episodeNo: number,
-): Promise<string | null> {
-  const read = unstable_cache(episodeSynopsis, ["episodeSynopsis", userId], {
-    tags: [borrowedTagFor("show", tmdbId)],
-    revalidate: BORROWED_FACT_WINDOW_SECONDS,
-  });
-
-  return read(tmdbId, seasonNo, episodeNo);
 }
 
 /** `cachedTitleSynopsis`'s docblock covers all three of these; this is the credits one. */

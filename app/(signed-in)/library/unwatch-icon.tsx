@@ -22,8 +22,7 @@
  *
  * It carries no title and no label of its own — the button that holds it already carries
  * the word *Unwatch*, so a screen reader is told the same thing twice at most, never
- * instead of once, the same rule `mark-up-to.ts`'s `markUpToLabel` states for its own
- * glyph.
+ * instead of once.
  */
 export function UnwatchIcon({ className }: { className?: string }) {
   return (

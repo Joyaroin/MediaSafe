@@ -69,19 +69,12 @@ import { NavTransition } from "../nav-transition";
  * is the films read's, stated above: the server does not know the viewport, so a phone
  * load pays one more cached query for a column it hides.
  *
- * ── Two empty states, and they are not one ────────────────────────────────────────────
+ * ── One empty state, and an empty rail is not it ──────────────────────────────────────
  *
- * An **empty rail** is absent — no heading over nothing. **Every rail on one device empty**
- * is a different fact, answered by `up-next-rails.tsx` and `up-next-rails-surface.tsx`
- * respectively rather than here, since each of those is the component holding every rail
- * its own device shows. Both are reachable only from reads that succeeded.
- *
- * The two devices can honestly disagree here, and #250 gives them a new way to: the phone
- * asks *no next episode and no watchlist film*, the desktop asks *nothing watching and
- * nothing dated to come back*. A library whose only content is three unwatched films
- * answers the desktop's question yes — *you're caught up* — while the phone draws a films
- * rail. Both are true; they are not the same question. `up-next-nothing.tsx` is where the
- * two sentences are kept apart on purpose.
+ * An **empty rail** is absent — no heading over nothing. **No episode and no film at all**
+ * is a different fact, answered by `up-next-rails.tsx` rather than here, since that is the
+ * component holding both reads; `up-next-nothing.tsx` is the sentence. It is reachable
+ * only from reads that succeeded.
  */
 export const dynamic = "force-dynamic";
 

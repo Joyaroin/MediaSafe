@@ -304,16 +304,12 @@ describe("empty and failed are never the same thing", () => {
   });
 
   /**
-   * The two sentences answer two questions and must not be collapsed into one. The phone
-   * asks *no next episode and no watchlist film*; the desktop asks *nothing watching and
-   * nothing dated to come back*. These read differently
-   * and must not share copy.
+   * *Nothing queued for tonight* answers its own question — no next episode and no
+   * watchlist film — and must not borrow the retired *you're caught up*, which answered a
+   * different one.
    */
-  it("keeps the phone's sentence and the desktop's distinct", () => {
+  it("does not say the retired caught-up sentence", () => {
     expect(sourceAt(NOTHING)).not.toContain("You&rsquo;re caught up");
-    expect(sourceAt(`${UP_NEXT}/up-next-empty.tsx`)).not.toContain(
-      "Nothing queued for tonight",
-    );
   });
 
   /**

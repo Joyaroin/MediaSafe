@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import type { MarkedResult } from "@/app/(signed-in)/search/actions";
 import { useCatalogueAdd } from "@/app/(signed-in)/search/use-catalogue-add";
-import { PILL_TARGET, PRIMARY_PILL } from "@/app/buttons";
+import { PILL_TARGET, SECONDARY_PILL } from "@/app/buttons";
 import { Poster } from "@/app/poster";
 
 /**
@@ -16,6 +16,12 @@ import { Poster } from "@/app/poster";
  * The poster and name open catalogue detail, as on the search rail; the *Add* is a
  * sibling rather than inside the link, because a link wrapping a button is neither valid
  * nor an honest target (`catalogue-result.tsx` makes the same split).
+ *
+ * **The *Add* is quiet here, not filled** (Charcoal's sweep, issue #409). The rail sits
+ * under an empty state whose one filled action is *Search films and shows* (handoff §8.1),
+ * and a surface has at most one filled button (§5.2). Search's per-row *Add* is the one
+ * exception to that limit, and it is Search's: on Search each row is the screen's whole
+ * reason, while here the rail is a suggestion beside the main action.
  */
 export function SuggestionCard({
   result,
@@ -52,7 +58,7 @@ export function SuggestionCard({
           aria-label={`Add ${result.name} to your library`}
           className={`pressable [--press-register:1] mt-1 ${PILL_TARGET}`}
         >
-          <span className={PRIMARY_PILL}>Add</span>
+          <span className={SECONDARY_PILL}>Add</span>
         </button>
       )}
     </li>

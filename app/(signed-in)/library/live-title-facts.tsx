@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { OUTLINED_PANEL } from "@/app/buttons";
 import { ReferenceLine } from "@/errors/reference-line";
@@ -9,13 +9,10 @@ import type { CastAndCrew } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
 import { WATCH_PROVIDER_REGION_NAME } from "@/tmdb/region";
 import type { TitleKind } from "@/tmdb/mirror";
-import { EPISODE_SYNOPSIS_ABSENT, LIVE_FACT_FAILURE } from "./live-fact-copy";
+import { LIVE_FACT_FAILURE } from "./live-fact-copy";
 import { PROGRAMME_NOTE_SECTION, SYNOPSIS_PROSE } from "./programme-note-section";
-import type { LiveFacts } from "./live-facts";
 import {
-  episodeSynopsisAction,
   titleCastAndCrewAction,
-  titleLiveFactsAction,
   titleSynopsisAction,
   titleWatchProvidersAction,
   type Outcome,
@@ -23,162 +20,32 @@ import {
 
 /**
  * The three live-only sections of title detail — synopsis, watch providers, cast and
- * crew. *"One failed fetch must never take the screen,
- * and the mirrored half of the page works even when TMDB is down."* The mirrored half is
- * `ProgrammeNoteContent`, already on screen by the time either variant below renders;
- * their job is narrower — three independent outcomes, three independent failures, none of
- * which may touch the other two or the page around them.
+ * crew. *"One failed fetch must never take the screen, and the mirrored half of the page
+ * works even when TMDB is down."* The mirrored half is `ProgrammeNoteContent`, already on
+ * screen by the time any section here renders; their job is narrower — three independent
+ * outcomes, three independent failures, none of which may touch the other two or the page
+ * around them.
  *
- * ── Two ways to arrive, one shared rendering (issue #218) ─────────────────────────────
+ * ── Read on the server, retried from here (issue #218) ───────────────────────────────
  *
- * `LiveFactSection` below no longer fetches on its own account — it renders whatever
- * `initial: Outcome<T>` it is handed, and only makes a request of its own when a reader
- * clicks *Try again* on a section that failed. Two components feed it, through the fixed
- * `*FactSection` wrappers further down — three title-level ones, plus
- * `EpisodeSynopsisFactSection`, which issue #253 added for the episode page and which is
- * fed by that route rather than by either component below. They are fixed rather than
- * generic at that boundary because what crosses it is `initial` and the read's identity
- * only, never a `render` or `refetch` function — a function cannot cross from a Server
- * Component, so the closure is built on this side:
+ * The first read is not made here. `live-title-facts-streamed.tsx`'s async Server
+ * Components — used by title detail and the unowned-title page — each await one read
+ * behind its own `<Suspense>` and hand the outcome to one of the `*FactSection` wrappers
+ * below as `initial`, so the page shell ships the moment the mirrored read is done and
+ * each section streams in as its own TMDB call resolves. `LiveFactSection` makes a request
+ * of its own only when a reader clicks *Try again* on a section that failed.
  *
- * - `live-title-facts-streamed.tsx`'s Server Components — used by the phone route and the
- *   unowned-title page, the two surfaces that are real page renders. Both take
- *   `SynopsisStreamed`, `WatchProvidersStreamed` and `CastStreamed`
- *   separately, because its three sections land in three different places on the screen.
- *   Either way each read gets its own `<Suspense>`, so the page
- *   shell (poster, title, episodes) ships the instant the mirrored read is done, and each
- *   live section streams in independently as its own TMDB call resolves — the property
- *   the Suspense register reserves for exactly this shape: *"the mechanism
- *   to reach for if a future surface grows a region with its own async boundary."*
- *
- * - `LiveTitleFactsClientFetch` below — used by the desktop pane, which does not navigate
- *   and so has no page render to stream behind. It fetches
- *   once, on mount, through `titleLiveFactsAction` — one combined round trip for all
- *   three fields (concurrent on the server, `readLiveFacts` in `live-facts.ts`), not the
- *   three separate ones this used to fire before issue #218. The pane/sheet's own detail
- *   read stays untouched by this — `titleDetailAction` returns only the mirrored row, so
- *   the panel still appears the moment that fast, DB-only read lands, exactly as before;
- *   only the three live sections beneath it wait on TMDB, each showing the same quiet
- *   placeholder the streamed slots' `Suspense` fallbacks show elsewhere.
- *
- * Neither variant can make a page-navigating surface's read block a click-triggered one's,
- * or the reverse — they are two different mechanisms for the same constraint (*one failed,
- * or one slow, fetch must never cost the reader the rest of the page*), chosen per surface
- * because only one of the two surfaces has a page render to hang streaming off of.
- *
- * ── Three actions, not one ────────────────────────────────────────────────────────────
- *
- * `title-detail-actions.ts` explains why *retry* stays three separate actions even though
- * the first read above is now one call: a combined call either has everything or is one
- * failure covering all three, and *fails inline within its own section* only holds if a
- * failed credits fetch cannot take the synopsis down with it.
+ * `title-detail-actions.ts` explains why that retry is three separate actions rather than
+ * one: *fails inline within its own section* only holds if a failed credits fetch cannot
+ * take the synopsis down with it.
  */
-/**
- * One fetch of a title's three live facts, shared by the slots that draw them.
- *
- * The pane renders `LiveTitleFactsClientFetch` three times — the synopsis inside the hero's
- * card, the providers below the episode list, the cast at the foot — and without this each
- * instance would run its own `titleLiveFactsAction`. Every fact behind that action is
- * cached per account and title, so a second call is cheap rather than wrong; it is still a
- * second round trip for a fact set already in hand, and a context is the smaller price.
- *
- * `null` while the fetch is in flight, which is what the slots draw placeholders for.
- */
-const LiveTitleFactsContext = createContext<LiveFacts | null | undefined>(undefined);
-
-export function LiveTitleFactsProvider({
-  kind,
-  tmdbId,
-  children,
-}: {
-  kind: TitleKind;
-  tmdbId: number;
-  children: React.ReactNode;
-}) {
-  const [liveFacts, setLiveFacts] = useState<LiveFacts | null>(null);
-  // The newest request's sequence number — the guard `search-surface.tsx` and
-  // `programme-note.tsx` use, for the same reason: a slower answer to a title the reader
-  // has moved on from must not land after a newer one.
-  const newestRequest = useRef(0);
-
-  useEffect(() => {
-    const request = ++newestRequest.current;
-    titleLiveFactsAction(kind, tmdbId).then((facts) => {
-      if (request !== newestRequest.current) return;
-      setLiveFacts(facts);
-    });
-  }, [kind, tmdbId]);
-
-  return (
-    <LiveTitleFactsContext.Provider value={liveFacts}>{children}</LiveTitleFactsContext.Provider>
-  );
-}
-
-export function LiveTitleFactsClientFetch({
-  kind,
-  tmdbId,
-  slot,
-}: {
-  kind: TitleKind;
-  tmdbId: number;
-  /**
-   * Which of the three sections this instance draws.
-   *
-   * Three slots rather than the two this had, because the synopsis no longer travels with
-   * the watch providers: it renders **inside the hero's card**, directly under the
-   * poster row, and the providers keep a card of their own below it. A slot that drew
-   * both could only put them in the same place, which is the same argument `cast` was
-   * split out on — one node can only be placed once.
-   *
-   * ── Three times, and still one request ──────────────────────────────────────────────
-   *
-   * `LiveTitleFactsProvider` above does the fetch and every instance reads it, so the
-   * second and third slots cost nothing. Rendering this three times without the provider
-   * would be three round trips for one fact set — cheap, since every fact behind
-   * `titleLiveFactsAction` is cached per account and title, and still three.
-   */
-  slot: "synopsis" | "providers" | "cast";
-}) {
-  // `undefined` means there is no provider above this — see `LiveTitleFactsProvider`.
-  const liveFacts = useContext(LiveTitleFactsContext);
-
-  if (liveFacts === undefined) {
-    throw new Error(
-      "LiveTitleFactsClientFetch renders inside LiveTitleFactsProvider, which owns the fetch every slot reads.",
-    );
-  }
-
-  if (liveFacts === null) {
-    // The synopsis waits inside the hero's card, so its placeholder does too — `nested`,
-    // for `LiveFactPlaceholder`'s own reason.
-    if (slot === "synopsis") return <LiveFactPlaceholder heading="Synopsis" nested />;
-    if (slot === "providers") return <LiveFactPlaceholder heading="Where to watch" />;
-    return <LiveFactPlaceholder heading="Cast & crew" />;
-  }
-
-  if (slot === "synopsis") {
-    return <SynopsisFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.synopsis} nested />;
-  }
-
-  if (slot === "providers") {
-    return (
-      <WatchProvidersFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.watchProviders} />
-    );
-  }
-
-  return <CastAndCrewFactSection kind={kind} tmdbId={tmdbId} initial={liveFacts.castAndCrew} />;
-}
-
 /**
  * The sections, each a fixed (non-generic) instantiation of `LiveFactSection` below —
- * `heading`, `refetch` and `render` hard-coded rather than threaded in. Exported so the
- * async Server Components in `live-title-facts-streamed.tsx` and (for the episode page,
- * issue #253) `episode-synopsis-streamed.tsx` can each render one directly, handing it
- * nothing but `initial` (a plain `Outcome<T>`, already resolved) and the numbers that
- * identify the read — all serialisable across the server/client boundary. A `render` or
- * `refetch` function is not: passing one as a prop from a Server Component would need it
- * to cross the network, which is why the closure is built inside this client module
- * instead of being threaded in from outside it.
+ * `heading`, `refetch` and `render` hard-coded rather than threaded in. The Server
+ * Components in `live-title-facts-streamed.tsx` hand each one nothing but `initial` (a
+ * plain, already-resolved `Outcome<T>`) and the numbers that identify the read, all
+ * serialisable. A `render` or `refetch` function is not — it cannot cross from a Server
+ * Component — which is why the closure is built inside this client module.
  */
 export function SynopsisFactSection({
   kind,
@@ -208,71 +75,6 @@ export function SynopsisFactSection({
       refetch={() => titleSynopsisAction(kind, tmdbId)}
       render={(overview) =>
         overview === null ? null : (
-          <p className={SYNOPSIS_PROSE}>{overview}</p>
-        )
-      }
-    />
-  );
-}
-
-/**
- * One **episode's** own synopsis — issue #253, and the fourth section this file draws.
- *
- * It is here rather than in the episode route's own directory because it is the same
- * treatment: the same heading register, the same inline failure with the same sentence and
- * the same reference id, the same *Try again*. `LiveFactSection`'s whole reason for
- * existing is that a live-only region fails one way in this application, and a second copy
- * of that markup next to the first is how a surface ends up failing a fifth way.
- *
- * ── The one thing it does that its three siblings do not: it renders the empty state ──
- *
- * `SynopsisFactSection` above returns `null` for a title TMDB has written no overview for,
- * and `LiveFactSection` then draws no section at all. That is the right answer there — the
- * synopsis is one of three sections on a page whose subject is elsewhere, and a heading
- * over nothing is worse than a heading absent.
- *
- * It is the wrong answer here, and #253 says so in as many words: *when the catalogue has
- * none, the page says so in a sentence*. The synopsis is the reason this page exists. An
- * unexplained blank where it should be is exactly the empty region `AGENTS.md` opens on —
- * a reader cannot tell it apart from a page that half-loaded, which is the same confusion
- * *empty is not failed* exists to prevent, arriving from the other direction.
- *
- * So the two states are two sentences and they are never the same one:
- *
- *   - **No synopsis yet** — *TMDB has not written one for this episode yet.* A statement
- *     about the catalogue, in `dim`, with no border, no accent and no control. Nothing
- *     failed and there is nothing to retry.
- *   - **The fetch failed** — `LiveFactSection`'s inline failure: *This did not load*, a
- *     *Try again*, and the reference id. Something failed and it can be retried.
- *
- * Neither sentence contains a word of the other, which is the criterion. The reader can
- * tell which happened without being told which happened.
- */
-export function EpisodeSynopsisFactSection({
-  tmdbId,
-  seasonNo,
-  episodeNo,
-  initial,
-}: {
-  tmdbId: number;
-  seasonNo: number;
-  episodeNo: number;
-  initial: Outcome<string | null>;
-}) {
-  return (
-    <LiveFactSection
-      heading="Synopsis"
-      initial={initial}
-      refetch={() => episodeSynopsisAction(tmdbId, seasonNo, episodeNo)}
-      render={(overview) =>
-        overview === null ? (
-          // Plainly worded and plainly attributed: it is TMDB that has not written one,
-          // not MediaSafe that has lost it. Every user-facing
-          // string is a plain sentence, on a state that is not an error at all.
-          <p className={SYNOPSIS_PROSE}>
-            {EPISODE_SYNOPSIS_ABSENT}
-          </p>
-        ) : (
           <p className={SYNOPSIS_PROSE}>{overview}</p>
         )
       }
@@ -320,10 +122,9 @@ export function CastAndCrewFactSection({
   );
 }
 
-/** The pending placeholder for one section — `LiveTitleFactsClientFetch`'s own wait for
- *  its one combined fetch, and each streamed slot's `Suspense` fallback
- *  (`live-title-facts-streamed.tsx`). Same markup either way, so a reader cannot tell which mechanism is behind a
- *  given title from the loading frame alone.
+/** The pending placeholder for one section — each streamed slot's `Suspense` fallback
+ *  (`live-title-facts-streamed.tsx`), and `LiveFactSection`'s own while a retry is in
+ *  flight, so the first wait and a retried one look the same.
  *
  *  `nested` for `LiveFactSection`'s reason below, and it has to be here as well as there:
  *  the synopsis inside the hero waits in the hero's own card, and a placeholder that drew
@@ -394,13 +195,8 @@ function outcomeToPhase<T>(outcome: Outcome<T>): Phase<T> {
  * `initial`, not a prop change an existing instance would have to reconcile. `loading` is
  * reached only from `retry`, a reader's own action; there is no `useEffect` here at all,
  * because there is no longer a fetch this component makes on its own account.
- *
- * Exported: `live-title-facts-streamed.tsx`'s three async Server Components each render
- * one of these, seeded from their own `Suspense`-awaited outcome, so retry — and the
- * inline-failure markup below — is identical whichever of the two mechanisms this
- * component's `LiveTitleFactsClientFetch`/streamed-slot docblock describes.
  */
-export function LiveFactSection<T>({
+function LiveFactSection<T>({
   heading,
   headingHidden = false,
   initial,
@@ -419,20 +215,9 @@ export function LiveFactSection<T>({
   headingHidden?: boolean;
   initial: Outcome<T>;
   /**
-   * What *Try again* runs — a thunk, closed over whatever identifies this read.
-   *
-   * It was `fetcher: (kind, tmdbId) => …` plus the two props to feed it, until issue #253
-   * added a section identified by three numbers rather than a kind and an id: an episode's
-   * own synopsis, addressed by `(tmdbId, seasonNo, episodeNo)`, because that is the only
-   * way TMDB addresses an episode. Widening the pair to a union, or adding a third prop
-   * two of the four sections ignore, would have made this component know the shape of
-   * every read that will ever use it.
-   *
-   * A thunk knows none of them. Every caller is inside this `"use client"` module and
-   * builds its own — which is the same constraint the `*FactSection` wrappers were already
-   * fixed rather than generic for: a function cannot cross from a Server Component, so the
-   * closure has to be made on this side. Nothing about the boundary changed; one prop
-   * absorbed two.
+   * What *Try again* runs — a thunk, closed over whatever identifies this read, so this
+   * component knows the shape of none of them. Every caller is a wrapper inside this
+   * `"use client"` module, which is where the closure has to be built.
    */
   refetch: () => Promise<Outcome<T>>;
   render: (value: T) => React.ReactNode;
@@ -460,11 +245,9 @@ export function LiveFactSection<T>({
     return (
       <div className={nested ? NESTED_SECTION : SECTION_CARD}>
         <SectionHead heading={heading} hidden={headingHidden} />
-        {/* `live-fact-copy.ts`, not prose written here: this sentence and the episode
-            page's *no synopsis yet* must never converge, and while both were inline that
-            was a property nothing could check — this module's import graph is
-            `server-only` and cannot be rendered under Vitest. Naming them together is
-            what makes `tests/episode-synopsis-states.test.ts` possible. */}
+        {/* `live-fact-copy.ts`, not prose written here: this module's import graph is
+            `server-only` and cannot be rendered under Vitest, and naming the sentence
+            there is what lets `tests/live-fact-failure.test.ts` check it. */}
         {/* A failure is the outlined panel (Charcoal §6, §9), so it never looks like the
             section's own content, or like an empty one. */}
         <div className={`${headingHidden ? "" : "mt-3 "}${OUTLINED_PANEL}`}>

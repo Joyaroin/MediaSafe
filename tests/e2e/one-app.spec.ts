@@ -108,13 +108,24 @@ test("Mark season watched records the season, and its chip takes a tick", async 
   await page.goto(`/titles/${show.libraryEntryId}`);
 
   await page.getByRole("button", { name: "Mark season watched" }).click();
+  // Waited on by its response, not by `networkidle`, which returns at once on a loaded page
+  // and would let the reload below cancel the write.
+  const recorded = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
   await page.getByRole("dialog").getByRole("button", { name: "Record 3 episodes" }).click();
 
-  await expect(page.getByRole("button", { name: "Season 1, watched" })).toBeVisible();
+  // The chip's name is its words and the tick's sr-only ", watched" — the icon between them
+  // puts a space before the comma, which is what a screen reader says anyway.
+  const finished = page.getByRole("button", { name: /^Season 1\s*, watched$/ });
+  await expect(finished).toBeVisible();
 
   // And it is written, not only drawn: a reload reads it back.
+  await recorded;
   await page.reload();
-  await expect(page.getByRole("button", { name: "Season 1, watched" })).toBeVisible();
+  await expect(finished).toBeVisible();
 });
 
 test("a watched episode can be un-watched with the keyboard alone", async ({ page }) => {
@@ -127,14 +138,17 @@ test("a watched episode can be un-watched with the keyboard alone", async ({ pag
   await watchedMark.focus();
   await page.keyboard.press("Enter");
 
+  // One watch, so Unwatch asks nothing first — it confirms only when there is history to
+  // lose (`watch-menu.tsx`'s `unwatchNeedsConfirm`).
   const menu = page.getByRole("dialog");
-  await menu.getByRole("button", { name: "Unwatch" }).focus();
-  await page.keyboard.press("Enter");
-  await menu.getByRole("button", { name: "Unwatch it" }).focus();
+  await menu.getByRole("button", { name: /^Unwatch/ }).focus();
   await page.keyboard.press("Enter");
 
+  // The episode list's tick — the hero's *Mark S1 E1 watched* carries the same name.
   await expect(
-    page.getByRole("button", { name: /Mark Season 1, Episode 1 — Fixture Episode 1 watched/ }),
+    page
+      .getByRole("region", { name: "Episodes" })
+      .getByRole("button", { name: /Mark Season 1, Episode 1 — Fixture Episode 1 watched/ }),
   ).toBeVisible();
 });
 
@@ -144,16 +158,18 @@ test("marking an episode with gaps before it offers to mark those too", async ({
   await page.setViewportSize(DESKTOP);
   await page.goto(`/titles/${show.libraryEntryId}`);
 
-  await page.getByRole("button", { name: /Mark Season 1, Episode 3 — Fixture Episode 3 watched/ }).click();
+  // The episode list's own ticks — the hero's *Mark S1 E4 watched* carries the same name.
+  const episodes = page.getByRole("region", { name: "Episodes" });
+  await episodes.getByRole("button", { name: /Mark Season 1, Episode 3 — Fixture Episode 3 watched/ }).click();
   await page.getByRole("status").getByRole("button", { name: "Also mark 2 earlier" }).click();
 
   for (const number of [1, 2, 3]) {
     await expect(
-      page.getByRole("button", { name: new RegExp(`Episode ${number} — Fixture Episode ${number}, watched`) }),
+      episodes.getByRole("button", { name: new RegExp(`Episode ${number} — Fixture Episode ${number}, watched`) }),
     ).toBeVisible();
   }
   await expect(
-    page.getByRole("button", { name: /Mark Season 1, Episode 4 — Fixture Episode 4 watched/ }),
+    episodes.getByRole("button", { name: /Mark Season 1, Episode 4 — Fixture Episode 4 watched/ }),
   ).toBeVisible();
 });
 
@@ -168,7 +184,7 @@ test("giving up moves a show into Dropped, and resuming takes it back out", asyn
   await expect(page.getByText("Dropped", { exact: true })).toBeVisible();
 
   await page.goto("/library");
-  await page.getByRole("button", { name: "Dropped" }).click();
+  await page.getByRole("button", { name: "Dropped", exact: true }).click();
   await expect(page.getByRole("button", { name: new RegExp(show.titleName) })).toBeVisible();
 
   await page.goto(`/titles/${show.libraryEntryId}`);
@@ -231,9 +247,18 @@ test("a title taken off a list, and a renamed list, both survive a reload", asyn
   await page.getByRole("button", { name: `Take ${dropped.titleName} off this list` }).click();
   await expect(page.getByRole("status")).toContainText("Taken off E2E Shelf.");
 
-  await page.getByRole("button", { name: "Rename E2E Shelf" }).click();
+  // Rename is behind the list's three-dot menu (Charcoal, handoff §8.5).
+  await page.getByLabel("More for E2E Shelf").click();
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
   await page.getByRole("textbox", { name: "List name" }).fill("E2E Shelf Renamed");
+  // Waited on by its response: a reload straight after would cancel the rename in flight.
+  const renamed = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
   await page.getByRole("button", { name: "Save" }).click();
+  await renamed;
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "E2E Shelf Renamed", level: 1 })).toBeVisible();
