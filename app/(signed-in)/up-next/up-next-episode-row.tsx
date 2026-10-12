@@ -1,8 +1,9 @@
 "use client";
 
-import { AnimatePresence } from "motion/react";
+import { useIsPresent } from "motion/react";
 import * as m from "motion/react-m";
 import Link from "next/link";
+import { useEffect, useRef, type Ref } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { carryPoster } from "@/app/poster-handoff-memory";
@@ -11,9 +12,12 @@ import {
   RECORDING_HIT_BOX,
 } from "@/app/(signed-in)/library/watch-mark-motion";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
-import { exit, snappy } from "@/app/motion";
+import type { DestinationHref } from "@/app/destinations";
+import { exit, smooth } from "@/app/motion";
 import { PendingLine } from "@/app/pending-line";
 import { Poster } from "@/app/poster";
+import { flyPosterToTab } from "@/app/poster-flight";
+import { Roll } from "@/app/roll";
 import { IN_FLIGHT } from "@/errors/recovery-buttons";
 import {
   isPendingEntry,
@@ -23,7 +27,13 @@ import {
   type UpNextRailEntry,
 } from "@/db/access";
 import { episodeCode, remainingInWords } from "./episode-card-line";
-import { finishesSomething, finishFactsFor, finishLine, WATCHED } from "./finish-line";
+import {
+  finishesSomething,
+  finishFactsFor,
+  finishLine,
+  leavesFor,
+  WATCHED,
+} from "./finish-line";
 import { finishPulse, HeldControl, useHold } from "./up-next-card";
 import { ROW, ROW_POSTER, ROW_POSTER_WIDTH } from "./up-next-card-styles";
 import {
@@ -52,11 +62,23 @@ import {
  * ── The mark holds, then advances ────────────────────────────────────────────────────
  *
  * A press records the episode at once (`watch-marks.ts`, optimistic as ever), and the row
- * then **holds** on the episode it just recorded for `HOLD_MS`: washed, *Watched* where
- * the name was, the tick filled, *Undo* beside it. When the hold ends the next episode
- * slides in, or — if that was the last aired episode — the row leaves and the rows below
- * close the gap. `useUpNextMark`'s `held` is the episode being held, and the store's own
+ * then **holds** on the episode it just recorded for `HOLD_MS`: washed, the tick filled and
+ * popped, *Undo* beside it with the ring draining round the tick. When the hold ends only
+ * the episode line rolls to the next episode, or — if that was the last aired episode — the
+ * row leaves. `useUpNextMark`'s `held` is the episode being held, and the store's own
  * `marking` phase is the hold: nothing new is stored.
+ *
+ * ── Nothing teleports — issue #407 (handoff §11.2) ───────────────────────────────────
+ *
+ * - **The line rolls** (`Roll`), on `--dur-roll`: at the end of the hold, and into the
+ *   finish line — italic serif — when the press finished a season. A plain mark leaves the
+ *   line as it is through the hold; the tick and the ring are the confirmation.
+ * - **A lost write rewinds**: the tick empties on `--dur-travel` while the toast arrives
+ *   (`lost`, `tick-rewind`).
+ * - **A finished row leaves for its tab**: it closes (the rows below take its place by
+ *   layout, on `smooth`) and a copy of its poster travels to Coming up or Library, whose
+ *   icon nods (`poster-flight.ts`). A row that leaves only because it became the featured
+ *   episode just closes.
  *
  * ── The featured episode is not a row any more ───────────────────────────────────────
  *
@@ -67,26 +89,32 @@ import {
 export function UpNextEpisodeRow({
   entry,
   aboveFold = false,
+  ref,
 }: {
   entry: UpNextEntry;
   aboveFold?: boolean;
+  /** `AnimatePresence`'s, so a leaving row can be lifted out of the flow as it closes. */
+  ref?: Ref<HTMLLIElement>;
 }) {
   if (entry.queue.episodes.length === 0) {
     return (
       <RowBody
+        ref={ref}
         entry={entry}
         code={episodeCode(entry.seasonNo, entry.episodeNo)}
         episodeName={entry.episodeName}
-        held={null}
+        finish={null}
+        held={false}
         picture={cardPicture(entry)}
         remainingAfter={countAfterShown(entry.remaining, 0, false)}
         aboveFold={aboveFold}
+        leavesFor={null}
         control={null}
       />
     );
   }
 
-  return <MarkableRow entry={entry} aboveFold={aboveFold} />;
+  return <MarkableRow ref={ref} entry={entry} aboveFold={aboveFold} />;
 }
 
 /**
@@ -142,29 +170,47 @@ export function pressWithPulse(entry: UpNextEntry, mark: UpNextMark): UpNextMark
   };
 }
 
-function MarkableRow({ entry, aboveFold }: { entry: UpNextEntry; aboveFold: boolean }) {
+function MarkableRow({
+  entry,
+  aboveFold,
+  ref,
+}: {
+  entry: UpNextEntry;
+  aboveFold: boolean;
+  ref?: Ref<HTMLLIElement>;
+}) {
   const mark = useUpNextMark(entry);
 
   useHold(mark.held?.episodeId ?? null, mark.settle);
 
-  if (mark.finished && mark.held === null) return null;
-
   const { showing, remainingAfter } = shownFor(entry, mark);
+
+  /* Spent and no longer holding: the list has already let this row go
+     (`useEntriesOnRail`), and this is the row as it closes — on its finish line, its tick
+     filled, on its way to the tab it now belongs to. */
+  const leaving = mark.finished && mark.held === null;
+  const recorded = mark.held ?? (leaving ? showing : null);
+  const line = recorded === null ? WATCHED : finishLine(finishFactsFor(entry, recorded));
 
   return (
     <RowBody
+      ref={ref}
       entry={entry}
       code={episodeCode(showing.seasonNo, showing.episodeNo)}
       episodeName={showing.episodeName}
-      held={mark.held === null ? null : finishLine(finishFactsFor(entry, mark.held))}
+      finish={line === WATCHED ? null : line}
+      held={mark.held !== null}
       picture={mark.picture}
       remainingAfter={remainingAfter}
       aboveFold={aboveFold}
+      leavesFor={leaving ? leavesFor(entry, showing) : null}
       control={
-        mark.held !== null ? (
+        mark.held !== null || leaving ? (
           <HeldControl
-            onUndo={mark.undoable === null ? null : mark.undo}
-            undoLabel={`Undo marking ${queuedEpisodeFullName(mark.held)} watched`}
+            onUndo={mark.undoable === null || leaving ? null : mark.undo}
+            undoLabel={
+              recorded === null ? "" : `Undo marking ${queuedEpisodeFullName(recorded)} watched`
+            }
           />
         ) : (
           <MarkControl titleName={entry.titleName} mark={pressWithPulse(entry, mark)} />
@@ -200,34 +246,49 @@ function RowBody({
   entry,
   code,
   episodeName,
+  finish,
   held,
   picture,
   remainingAfter,
   aboveFold,
+  leavesFor,
   control,
+  ref,
 }: {
   entry: UpNextEntry;
   code: string;
   episodeName: string | null;
-  /** The line the row holds on after a mark — *Watched*, or a finish (#367) — or `null`
-   *  while it is not holding. */
-  held: string | null;
+  /** The finish line (#367) the row says in place of the episode while it holds on a
+   *  season's last episode, or `null`. */
+  finish: string | null;
+  /** The row is holding after a mark — washed. */
+  held: boolean;
   picture: CardPicture;
   remainingAfter: number;
   aboveFold: boolean;
+  /** The tab this row's poster travels to as it leaves, or `null` when it is not leaving
+   *  for one. */
+  leavesFor: DestinationHref | null;
   control: React.ReactNode;
+  ref?: Ref<HTMLLIElement>;
 }) {
   const label = `${entry.titleName} — ${code}${episodeName === null ? "" : `, ${episodeName}`}`;
+  const link = useRef<HTMLAnchorElement>(null);
+  useFlightOnLeave(link, leavesFor);
 
   return (
-    /* `layout`, so the rows below glide up when one leaves; `exit`, so the one leaving
-       fades rather than vanishing (`tonight-list.tsx`'s `AnimatePresence`). */
+    /* `layout`, so the rows below take a leaving row's place on `smooth`; `exit`, so the
+       one leaving fades as they close over it (`tonight-list.tsx`'s `AnimatePresence`
+       lifts it out of the flow). */
     <m.li
-      layout
-      exit={{ opacity: 0, scale: 0.96, transition: exit }}
+      ref={ref}
+      layout="position"
+      transition={smooth}
+      exit={{ opacity: 0, transition: exit }}
       className={held ? `${ROW} watch-hold` : ROW}
     >
       <Link
+        ref={link}
         href={`/titles/${entry.libraryEntryId}`}
         onClick={(event) => carryPoster(entry.libraryEntryId, entry.posterPath, event.currentTarget)}
         aria-label={label}
@@ -250,52 +311,59 @@ function RowBody({
             {entry.titleName}
           </p>
 
-          {/* The episode line is keyed on the code, so an advance is the old episode lifting
-              out and the next one rising in — `popLayout`, so the two never stack and the
-              row keeps its height. */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <m.p
-              key={held !== null ? `${code}-held` : code}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8, transition: exit }}
-              transition={snappy}
-              className="mt-0.5 flex min-w-0 items-baseline gap-x-2 text-meta"
-            >
-              {held !== null ? (
-                /* *Watched* while the row holds — the confirmation, in the records-a-watch
-                   ink. A finish line (#367) pulses as it enters. */
-                <span
-                  className={`truncate font-medium ${RECORDS_A_WATCH.ink}${
-                    held === WATCHED ? "" : " finish-line"
-                  }`}
-                >
-                  {held}
+          {/* The episode line rolls when it changes — the next episode after the hold, or the
+              finish line in its place — so the row keeps its height and nothing else moves. */}
+          <Roll
+            rollKey={finish ?? `${code}|${episodeName ?? ""}|${remainingAfter}`}
+            className="mt-0.5 h-5"
+          >
+            {/* `h-5` and `leading-5` on both lines: the finish line is a size larger, and the
+                title above must not shift when it rolls in. */}
+            {finish !== null ? (
+              <span className={`finish-line block truncate text-row leading-5 ${RECORDS_A_WATCH.ink}`}>
+                {finish}
+              </span>
+            ) : (
+              <span className="flex min-w-0 items-baseline gap-x-2 text-meta leading-5">
+                {/* The code, then the episode's name where TMDB has one: an episode is
+                    never referred to by number alone, and the code has said it once. */}
+                <span className="truncate text-dim">
+                  {episodeName === null ? code : `${code} · ${episodeName}`}
                 </span>
-              ) : (
-                <>
-                  {/* The code, then the episode's name where TMDB has one: an episode is
-                      never referred to by number alone, and the code has said it once. */}
-                  <span className="truncate text-dim">
-                    {episodeName === null ? code : `${code} · ${episodeName}`}
+                {/* `data-numeric` is the tabular-figures hook. Absent at zero
+                    (`remainingInWords`). */}
+                {remainingAfter > 0 ? (
+                  <span className="shrink-0 text-dim" data-numeric>
+                    {remainingInWords(remainingAfter)}
                   </span>
-                  {/* `data-numeric` is the tabular-figures hook. Absent at zero
-                      (`remainingInWords`). */}
-                  {remainingAfter > 0 ? (
-                    <span className="shrink-0 text-dim" data-numeric>
-                      {remainingInWords(remainingAfter)}
-                    </span>
-                  ) : null}
-                </>
-              )}
-            </m.p>
-          </AnimatePresence>
+                ) : null}
+              </span>
+            )}
+          </Roll>
         </div>
       </Link>
 
       {control}
     </m.li>
   );
+}
+
+/**
+ * Sends the row's poster to `leavesFor` the moment the row starts to leave the list —
+ * `AnimatePresence` has let it go and is playing its exit. Once: an exit does not come
+ * back. A row that leaves for no tab (`null`) — it became the featured episode — sends
+ * nothing.
+ */
+export function useFlightOnLeave(
+  within: React.RefObject<HTMLElement | null>,
+  leavesFor: DestinationHref | null,
+): void {
+  const present = useIsPresent();
+  useEffect(() => {
+    if (present || leavesFor === null) return;
+    const poster = within.current?.querySelector(".poster");
+    if (poster) flyPosterToTab(poster, leavesFor);
+  }, [present, leavesFor, within]);
 }
 
 /**
@@ -306,7 +374,7 @@ function RowBody({
 const CHECK_HIT_BOX = `${RECORDING_HIT_BOX} ${IN_FLIGHT}`;
 
 function MarkControl({ titleName, mark }: { titleName: string; mark: UpNextMark }) {
-  const { episode, pending } = mark;
+  const { episode, pending, lost } = mark;
 
   /* A capped run that went dry — `UpNextQueue`'s own table has the case. The slot offers
      nothing and the row keeps its height from the poster. */
@@ -320,7 +388,8 @@ function MarkControl({ titleName, mark }: { titleName: string; mark: UpNextMark 
       aria-label={markLabel(titleName, episode)}
       className={CHECK_HIT_BOX}
     >
-      <span className={RECORDING_GLYPH}>
+      {/* A lost write empties the tick slowly, the reverse of its filling (issue #407). */}
+      <span className={lost ? `${RECORDING_GLYPH} tick-rewind` : RECORDING_GLYPH}>
         <CheckmarkIcon className="h-4 w-4" />
       </span>
     </button>

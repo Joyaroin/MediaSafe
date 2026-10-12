@@ -113,6 +113,15 @@ export interface UpNextMark {
    * until the hold ends (`up-next-card.tsx`'s `HOLD_MS`), and `settle()` is what ends it.
    */
   readonly held: QueuedEpisode | null;
+  /**
+   * This card's own press was rolled back — its write was lost, and the store put the
+   * episode back to unwatched and raised the toast. Derived, like `undoable`, from the
+   * press this card made and where the store now stands: the episode it pressed is the one
+   * on offer again. The card draws the tick emptying slowly (issue #407's *Write lost*);
+   * nothing about the write reads it. Over when the reader presses again, takes it back,
+   * or the Undo window closes.
+   */
+  readonly lost: boolean;
   /** What goes in the card's frame — `cardPicture`'s answer. The card renders it and does
    *  not choose it (#269), and does not choose the frame's own ratio either — `2/3` on the
    *  row since #320, `16/9` on the retired next-episodes card. */
@@ -512,6 +521,7 @@ export function useUpNextMark(
    * press two episodes ago.
    */
   const undoable = marked !== null && marked.episodeId === pressed ? marked : null;
+  const lost = !pending && episode !== null && episode.episodeId === pressed;
 
   return {
     episode,
@@ -520,6 +530,7 @@ export function useUpNextMark(
     undoable,
     phase,
     held: phase === "marking" ? marked : null,
+    lost,
     /** The entry's own poster, since #320 — no longer a function of the position, because
      *  there is no still left in this rule for the position to choose between. */
     picture: cardPicture(entry),

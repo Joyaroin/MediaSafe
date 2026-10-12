@@ -4,6 +4,7 @@ import {
   finishesSomething,
   finishFactsFor,
   finishLine,
+  leavesFor,
 } from "@/app/(signed-in)/up-next/finish-line";
 import {
   beginHoldOver,
@@ -74,6 +75,31 @@ describe("the facts a queued episode gives the line", () => {
         queued({ lastAiredInSeason: true, seasonAiring: true }),
       ),
     ).toBe(true);
+  });
+});
+
+/** Handoff §11.2, issue #407: where a finished show's poster travels as its row leaves. */
+describe("the tab a finished show leaves Tonight for", () => {
+  it("is Library when the show has nothing left — the line says *That's the show*", () => {
+    const last = queued({ lastAiredInSeason: true, lastOfShow: true });
+
+    expect(leavesFor({ inProduction: false }, last)).toBe("/library");
+  });
+
+  it("is Coming up when more may yet air — a season done, or all caught up", () => {
+    expect(leavesFor({ inProduction: true }, queued({ lastAiredInSeason: true, lastOfShow: true }))).toBe(
+      "/coming-up",
+    );
+    expect(leavesFor({ inProduction: null }, queued({ lastAiredInSeason: true, lastOfShow: true }))).toBe(
+      "/coming-up",
+    );
+    expect(
+      leavesFor({ inProduction: true }, queued({ lastAiredInSeason: true, seasonAiring: true })),
+    ).toBe("/coming-up");
+    // An ended show's mid-run finale still has a season to come.
+    expect(leavesFor({ inProduction: false }, queued({ lastAiredInSeason: true }))).toBe(
+      "/coming-up",
+    );
   });
 });
 

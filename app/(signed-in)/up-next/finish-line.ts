@@ -50,3 +50,17 @@ export function finishesSomething(
 ): boolean {
   return finishLine(finishFactsFor(entry, episode)) !== WATCHED;
 }
+
+/**
+ * Where a show goes when marking `episode` takes it off Tonight — handoff §11.2, issue
+ * #407: a show whose next episode has not aired goes to Coming up, and a show with nothing
+ * left goes to Library. *Nothing left* is the same fact `That's the show` is drawn from —
+ * the series has ended and this was its last episode — so the line and the destination
+ * cannot disagree. A watched film always goes to Library, and is not asked here.
+ */
+export function leavesFor(
+  entry: Pick<UpNextEntry, "inProduction">,
+  episode: QueuedEpisode,
+): "/coming-up" | "/library" {
+  return finishFactsFor(entry, episode).seriesEnded ? "/library" : "/coming-up";
+}

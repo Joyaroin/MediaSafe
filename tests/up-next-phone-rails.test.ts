@@ -263,7 +263,7 @@ describe("the film rows", () => {
     // `\s+` rather than one space: #293 gave the link a `transitionTypes` of its own, so
     // the attributes wrapped. What this asserts is the destination, not the formatting.
     expect(source).toMatch(
-      /<Link\s+href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/,
+      /<Link\s+(?:ref=\{link\}\s+)?href=\{`\/titles\/\$\{film\.libraryEntryId\}`\}/,
     );
   });
 
@@ -285,7 +285,7 @@ describe("empty and failed are never the same thing", () => {
     // mirroring has a list with one row on it — the tab must not read as empty for a title
     // just added to it. Rows marked away leave the list absent, not a sentence.
     expect(sourceAt(LIST)).toMatch(
-      /const count = pending\.length \+ entries\.length \+ filmsStanding;/,
+      /const count = pending\.length \+ entries\.length \+ filmsStanding\.length;/,
     );
     expect(sourceAt(LIST)).toMatch(/if \(count === 0\) return null;/);
   });

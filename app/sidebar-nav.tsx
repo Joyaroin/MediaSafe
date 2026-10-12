@@ -122,7 +122,10 @@ export function SidebarNav() {
               className={current ? CURRENT : NOT_CURRENT}
             >
               {current ? <CurrentMarker /> : null}
-              <Icon className="h-5 w-5 shrink-0" />
+              {/* Where a finished row's poster lands (`poster-flight.ts`, issue #407). */}
+              <span data-nav-icon={href} className="flex shrink-0">
+                <Icon className="h-5 w-5" />
+              </span>
               <span>{label}</span>
             </Link>
           );

@@ -227,9 +227,10 @@ function WatchedBar({
         aria-hidden="true"
         className="h-1 w-full overflow-hidden rounded-[var(--radius-full)] bg-[color-mix(in_oklab,var(--color-text)_20%,transparent)]"
       >
+        {/* Slid, not sized: handoff §11.4 never animates `width` (issue #407). */}
         <div
-          className="progress-fill h-full rounded-[var(--radius-full)] bg-accent transition-[width] duration-[var(--dur-base)]"
-          style={{ width: `${filled}%` }}
+          className="progress-fill h-full w-full rounded-[var(--radius-full)] bg-accent transition-transform duration-[var(--dur-base)]"
+          style={{ transform: `translateX(${filled - 100}%)` }}
         />
       </div>
 

@@ -592,6 +592,9 @@
   --dur-slow: 380ms; /* layout, overlay, cross-surface continuity   */
   --dur-press: 100ms; /* the compression, shorter than a tap        */
   --dur-pop: 260ms; /* the release, past rest and back              */
+  /* Charcoal, issue #407 (handoff §11.1). */
+  --dur-roll: 280ms; /* a line of text replaced in place          */
+  --dur-travel: 420ms; /* something moving to another place, and a failure rewinding */
   /* Issue #301. Not a motion — nothing here travels or eases — but named and kept on
      this ramp for the same reason the ramp exists at all: a delay a reader can feel is
      a decision, not a literal buried at a call site. Up next renders in 175–235ms and
@@ -1465,46 +1468,155 @@
   }
 }
 
-/* ── The finish moment's line — issue #367 ───────────────────────────────────────────
-   *All caught up*, *Season N done*, *That's the show* — and a film's *Watched* — rise into
-   the hold once, from `@starting-style`. The ink is the hold's own records-a-watch role;
-   this adds only the entrance. Under reduced motion the line still arrives, by opacity
-   alone. */
+/* ── The finish moment's line — issue #367, set in italic serif by #407 ──────────────
+   *All caught up*, *Season N done*, *That's the show*: the episode line is replaced by
+   this one for the mark hold (handoff §11.2, *Finish a season*). The italic serif is the
+   whole of the change to the line; it arrives by the roll below, like any other line,
+   so under reduced motion it simply shows. */
 .finish-line {
-  transform-origin: left center;
-  transition:
-    opacity var(--dur-slow) var(--ease-press),
-    transform var(--dur-slow) var(--ease-press);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ── The roll — issue #407 (handoff §11.2) ───────────────────────────────────────────
+   A line of text replaced in place: the old one lifts out, the new one rises in, in the
+   same cell (`app/roll.tsx`), so the line keeps its height and nothing beside it moves.
+   `--dur-roll` both ways; the arrival on the arrive curve, the leaving on the leave curve.
+   The distance is a fraction of the line, so a Display-size line and a Meta line roll by
+   the same proportion. */
+@utility roll-in {
+  animation: roll-in var(--dur-roll) var(--ease-press) backwards;
+}
+
+@utility roll-out {
+  animation: roll-out var(--dur-roll) var(--ease-out-quart) forwards;
+  pointer-events: none;
+}
+
+@keyframes roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.6em);
+  }
+}
+
+@keyframes roll-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.6em);
+  }
+}
+
+/* ── The Undo ring — issue #407 ──────────────────────────────────────────────────────
+   Drains around the filled tick for exactly as long as *Undo* is on screen. The time is
+   not a token: it is the mark hold itself, `HOLD_MS`, handed down as `--undo-shown` by
+   `undo-ring.tsx`, so the ring and the hold cannot disagree. Linear, because it is a
+   timer made visible and not a movement. `pathLength="1"` makes the stroke one unit long
+   whatever the ring's size. Under reduced motion there is no ring at all — *Undo* stays
+   for the same time. */
+@utility undo-ring {
+  pointer-events: none;
+  transform: rotate(-90deg);
+  & circle {
+    stroke-dasharray: 1;
+    animation: undo-drain var(--undo-shown) linear forwards;
+  }
+}
+
+@keyframes undo-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 1;
+  }
+}
+
+/* ── A lost write rewinds — issue #407 ───────────────────────────────────────────────
+   The tick empties slowly, the reverse of filling, on `--dur-travel` while the toast
+   arrives on `--dur-slow`. The keyframe holds only the filled face; the ring face is
+   the element's own, so the animation ends on whatever the tick is at rest. */
+@utility tick-rewind {
+  animation: tick-rewind var(--dur-travel) var(--ease-in-out-soft) backwards;
+}
+
+@keyframes tick-rewind {
+  from {
+    border-color: var(--color-text);
+    background-color: var(--color-text);
+    color: var(--color-ground);
+  }
+}
+
+/* ── Arriving beside the tick — issue #407 ───────────────────────────────────────────
+   *Watched* and *Undo* in the featured episode's held control fade in as the button
+   narrows; a fill or a fade is a token's job, the narrowing is Motion's. */
+.held-reveal {
+  transition: opacity var(--dur-base) var(--ease-press);
 }
 
 @starting-style {
-  .finish-line {
+  .held-reveal {
     opacity: 0;
-    transform: translateY(6px) scale(0.96);
+  }
+}
+
+/* ── A row leaving for another tab — issue #407 ──────────────────────────────────────
+   A copy of the row's poster travels to the tab it now belongs to and fades as it lands
+   (`app/poster-flight.ts`), and that tab's icon nods, scale only. The poster's time is
+   `--dur-travel` on the travel curve; the nod is the tick's pop, `--dur-pop`. Under
+   reduced motion neither runs — `poster-flight.ts` does not start them. */
+@utility poster-flight {
+  position: fixed;
+  z-index: 60;
+  margin: 0;
+  pointer-events: none;
+  transform-origin: top left;
+  transition:
+    transform var(--dur-travel) var(--ease-in-out-soft),
+    opacity var(--dur-travel) var(--ease-in-out-soft);
+}
+
+@utility tab-nod {
+  animation: tab-nod var(--dur-pop) var(--ease-press);
+}
+
+@keyframes tab-nod {
+  40% {
+    transform: scale(1.28);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .finish-line {
-    transform: none;
+  .roll-in,
+  .roll-out,
+  .tick-rewind,
+  .tab-nod {
+    animation-duration: 1ms;
   }
 
-  @starting-style {
-    .finish-line {
-      transform: none;
-    }
+  .undo-ring {
+    display: none;
+  }
+
+  .held-reveal {
+    transition-duration: 1ms;
   }
 }
 
 /* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
-   The state that drives each bar's `width` already updates at the sweep's settle
-   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), so the only thing
-   missing was a transition on that `width` — declared at each call site, on the ramp,
-   as `transition-[width] duration-[var(--dur-base)]`. `progress-fill` carries no rule
-   of its own; it exists only so this block has one selector to reach both bars.
+   The state that drives each bar's fill already updates at the sweep's settle
+   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), and each fill carries a
+   transition on the ramp, declared at its call site. Issue #407 moved that transition off
+   `width` — handoff §11.4 never animates a size — and onto `transform`: the fill is the
+   track's full width, slid left by what is not yet watched, and the track clips it, so
+   the fill's own rounded end stays round where a `scaleX` would flatten it.
+   `progress-fill` carries no rule of its own; it exists only so this block has one
+   selector to reach both bars.
 
    Same shape as the sweep just above: the same unconditional-event, no-lingering-
-   animation rule. The width still lands on the mark's new value — it just stops
+   animation rule. The fill still lands on the mark's new value — it just stops
    travelling to get there. */
 @media (prefers-reduced-motion: reduce) {
   .progress-fill {
