@@ -2,6 +2,8 @@
   "verify": [
     "rm -rf .next",
     "npm run typecheck",
+    "npm run lint",
+    "npm run lint:sql",
     "npm run build",
     "npm test",
     "npm run test:e2e"
