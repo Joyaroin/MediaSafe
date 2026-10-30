@@ -179,7 +179,13 @@ test("giving up moves a show into Dropped, and resuming takes it back out", asyn
   await page.setViewportSize(DESKTOP);
   await page.goto(`/titles/${show.libraryEntryId}`);
 
-  await page.getByLabel("More actions").click();
+  // Through `main` by role, not `getByLabel` on the page: for a moment after a load React's
+  // streamed copy of the page waits in a `hidden` `#S:0` div before it is swapped in, and a
+  // label lookup counts that copy too — two *More actions*, and strict mode refuses. A role
+  // lookup skips hidden elements, so it only ever finds the one a reader can press.
+  const moreActions = page.getByRole("main").getByLabel("More actions");
+
+  await moreActions.click();
   await page.getByRole("button", { name: "Give up on this show" }).click();
   await expect(page.getByText("Dropped", { exact: true })).toBeVisible();
 
@@ -188,7 +194,7 @@ test("giving up moves a show into Dropped, and resuming takes it back out", asyn
   await expect(page.getByRole("button", { name: new RegExp(show.titleName) })).toBeVisible();
 
   await page.goto(`/titles/${show.libraryEntryId}`);
-  await page.getByLabel("More actions").click();
+  await moreActions.click();
   await page.getByRole("button", { name: "Resume watching" }).click();
   await expect(page.getByText("Dropped", { exact: true })).toHaveCount(0);
 });
@@ -262,6 +268,9 @@ test("a title taken off a list, and a renamed list, both survive a reload", asyn
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "E2E Shelf Renamed", level: 1 })).toBeVisible();
-  await expect(page.getByText(kept.titleName)).toBeVisible();
-  await expect(page.getByText(dropped.titleName)).toHaveCount(0);
+  // Through `main` for the same reason as *More actions* above: straight after the reload,
+  // the streamed copy waiting in `#S:0` would make the kept title's name match twice.
+  const list = page.getByRole("main");
+  await expect(list.getByText(kept.titleName)).toBeVisible();
+  await expect(list.getByText(dropped.titleName)).toHaveCount(0);
 });
