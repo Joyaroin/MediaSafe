@@ -65,7 +65,10 @@ async function heroBand(
 ): Promise<{ band: string | null; paintsRaised: boolean }> {
   await page.goto(`/titles/${entry.libraryEntryId}`);
   await expect(page.getByRole("heading", { level: 1, name: entry.titleName })).toBeVisible();
-  return page.locator(".hero-recede-band").evaluate((el) => {
+  // Through `main` by role: for a moment after a load React's streamed copy of the page waits in
+  // a hidden `#S:0` div, and a bare class lookup finds that copy's band too — two elements, and
+  // strict mode refuses. A role lookup skips hidden elements, so this is the band a reader sees.
+  return page.getByRole("main").locator(".hero-recede-band").evaluate((el) => {
     const band = getComputedStyle(el).getPropertyValue("--band").trim();
     // `raised` resolved the way the browser resolves it, on a probe beside the band.
     const probe = document.createElement("div");
