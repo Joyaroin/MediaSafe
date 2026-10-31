@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { stillSrc } from "@/app/(signed-in)/library/episode-still";
-import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON } from "@/app/buttons";
+import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON, withoutPress } from "@/app/buttons";
 import { posterSrc } from "@/app/poster";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
@@ -242,7 +242,9 @@ function FeaturedMark({
       onClick={press.mark}
       disabled={press.pending}
       aria-label={markLabel(entry.titleName, press.episode)}
-      className={`${PRIMARY_BUTTON_LARGE} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
+      // CSS must not set this element's transform — the layoutId morph above already does,
+      // and `withoutPress` is the base's own escape for that fight (issue #431).
+      className={`${withoutPress(PRIMARY_BUTTON_LARGE)} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
       style={{ borderRadius: FEATURED_BUTTON_RADIUS }}
     >
       <m.span layout transition={smooth} className="flex items-center gap-2 whitespace-nowrap">

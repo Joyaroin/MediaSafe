@@ -1710,9 +1710,15 @@
      exceeds the label's and falls short of the recording one. */
   --press-lead: 0.98;
 
+  /* `color` and `filter` are here for the button variants' own hover states (issue #431):
+     the base they press through carries no `transition-*` of its own any more, exactly the
+     reasoning `app/tab-bar.tsx`'s docblock already states for why a second `transition`
+     utility cannot share an element with this one. `background-color` was already here for
+     the depth step below. */
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     background-color var(--dur-press) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
   &:active,
