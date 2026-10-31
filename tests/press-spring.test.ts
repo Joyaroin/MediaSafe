@@ -919,8 +919,12 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
   "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
   /* A custom list's icon view (`list-icon-grid.tsx`). A poster with a name under it is the
-     same surface the library grid and the Up next groups draw, at the same register. */
-  "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
+     same surface the library grid and the Up next groups draw, at the same register —
+     `CELL_LINK`, declared once at module scope, so the sweep finds one call site for every
+     cell despite two render branches (owned / unowned). The take-off ✕ is this file's
+     second call site, a sibling of the link and not a descendant of it, at the control
+     register — issue #465. */
+  "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface", "control"],
   /* A list's card on Lists — the whole card is the link since Charcoal (#402), a surface. */
   "app/(signed-in)/lists/list-row.tsx": ["surface"],
   "app/(signed-in)/up-next/film-row.tsx": ["surface"],
@@ -933,6 +937,12 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/up-next-episode-row.tsx": ["surface", "surface"],
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
+  // *See all N*, collapsing Tonight's own list — a bare control, no surface of its own —
+  // issue #465.
+  "app/(signed-in)/up-next/tonight-list.tsx": ["control"],
+  // *See all*, the link to `/coming-up` beside the preview's heading — issue #465, the
+  // same control as Tonight's own, this time a `Link` rather than a `button`.
+  "app/(signed-in)/up-next/tonight-coming-up.tsx": ["control"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
   /* The search screen's own recommendation card ("Because you watched") — issue #466. No
      pill of its own, so the press sits on the whole-card `<Link>` directly. */
@@ -951,11 +961,26 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
-  "app/(signed-in)/search/catalogue-result.tsx": ["control"],
+  /* Search's two pills in one row — issue #465: the filled *Add* (unchanged since #357)
+     and, beside it, the second add's own pill (*I've seen it* / *I've seen it all*), which
+     did not wear the press at all until this ticket. Order is the JSX's: the watched pill
+     sits under the name, above the trailing *Add*. */
+  "app/(signed-in)/search/catalogue-result.tsx": ["control", "control"],
   // The search field's ✕ — clears the query and keeps the focus in the field.
   "app/(signed-in)/search/search-surface.tsx": ["control"],
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
   "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
+  /* The library filter chips and the season chips (`season-chips.tsx` renders no
+     `pressable` of its own — both share this one component) — issue #465. The `44px`
+     target is the call site; the `36px` face a reader sees is the `<span>` inside it,
+     which carries no `transition-*` of its own, so there is nothing for the press to
+     fight for either chip row. */
+  "app/(signed-in)/library/chip.tsx": ["control"],
+  /* The one segmented control — Library's Shows/Films/Lists, a list's Icons/List, and
+     Settings' Appearance — issue #465. Unlike the chip, the selection colours
+     (`UNSELECTED_PRESSABLE`) live on the same `<button>` the press does, so `selection.ts`'s
+     pressable-safe export replaces the plain `UNSELECTED` here. */
+  "app/segmented.tsx": ["control"],
   /* The empty-state suggestions' card (#365) — issue #466 adds the first entry: the whole
      card (the `<li>`, no pill of its own on the element itself) at the surface register,
      holding the second — the search result's *Add* pill, under the poster, unchanged at
@@ -1080,13 +1105,16 @@ describe("every pressable call site declares a register or is deliberately left 
       .sort();
 
     expect(client).toEqual([
+      "app/(signed-in)/library/chip.tsx",
       "app/(signed-in)/library/watch-menu.tsx",
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
       "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
+      "app/(signed-in)/up-next/tonight-list.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
+      "app/segmented.tsx",
       "app/sidebar-nav.tsx",
       "app/tab-bar.tsx",
     ]);
@@ -1099,9 +1127,9 @@ describe("every pressable call site declares a register or is deliberately left 
    * Tailwind emits last wins `transition-property` outright — the tab bar's own history,
    * and `#463`'s fix to the shared button base, are both this same trap. Over this
    * ticket's own six files rather than the whole tree: `app/(signed-in)/search
-   * /search-surface.tsx`'s clear button already carries `transition-colors` beside
-   * `pressable` from before this ticket, and fixing a call site this ticket does not own
-   * is the next ticket's business, not this sweep's.
+   * /search-surface.tsx`'s clear button already carried `transition-colors` beside
+   * `pressable` before this ticket — fixing it was a different ticket's business, #465's,
+   * which does exactly that below.
    */
   it("wears no second transition-* utility beside the press, at every surface this ticket presses", () => {
     const TICKET_OWN_FILES = [
@@ -1112,6 +1140,35 @@ describe("every pressable call site declares a register or is deliberately left 
       "app/(signed-in)/settings/settings-group.tsx",
       "app/sidebar-nav.tsx",
       "app/buttons.ts",
+    ];
+
+    for (const { file, strings } of found.filter((site) => TICKET_OWN_FILES.includes(site.file))) {
+      for (const classes of strings) {
+        const tokens = classes.split(/\s+/);
+        const second = tokens.filter((token) => /^transition(-|$)/.test(token));
+
+        expect(second, `${file} carries ${second.join(", ")} beside pressable`).toEqual([]);
+      }
+    }
+  });
+
+  /**
+   * **The same acceptance criterion, issue #465's own small controls.** The chips, the
+   * segmented control, search's two pills, the take-off ✕ and *See all* all either gain
+   * the press here for the first time or — `search-surface.tsx`'s clear button — finally
+   * lose the second `transition-*` utility that has sat beside `pressable` since before
+   * this ticket existed (the note above names it). Swept the same way #466's own files
+   * are, over this ticket's files rather than the whole tree.
+   */
+  it("wears no second transition-* utility beside the press, at every small control this ticket presses", () => {
+    const TICKET_OWN_FILES = [
+      "app/(signed-in)/library/chip.tsx",
+      "app/segmented.tsx",
+      "app/(signed-in)/search/catalogue-result.tsx",
+      "app/(signed-in)/search/search-surface.tsx",
+      "app/(signed-in)/lists/[listId]/list-icon-grid.tsx",
+      "app/(signed-in)/up-next/tonight-list.tsx",
+      "app/(signed-in)/up-next/tonight-coming-up.tsx",
     ];
 
     for (const { file, strings } of found.filter((site) => TICKET_OWN_FILES.includes(site.file))) {

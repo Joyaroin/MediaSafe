@@ -26,8 +26,11 @@ export const UNSELECTED =
  * `transform` entirely. `pressable`'s own transition list already carries `color` at the
  * same `--dur-fast`, so the hover still animates — only the second declaration goes.
  *
- * A second export rather than folding `pressable` into `UNSELECTED` itself: the chips and
- * the segmented control still read the plain `UNSELECTED` and do not wear the press yet.
+ * A second export rather than folding `pressable` into `UNSELECTED` itself: the chip
+ * (`library/chip.tsx`) puts the press on its `44px` target and `SELECTED`/`UNSELECTED` on
+ * the `36px` face inside it — two different elements, so the plain `UNSELECTED` costs it
+ * nothing. The segmented control (`app/segmented.tsx`, issue #465) has no such split and
+ * takes this export instead.
  */
 export const UNSELECTED_PRESSABLE = "font-medium text-dim hover:text-text";
 

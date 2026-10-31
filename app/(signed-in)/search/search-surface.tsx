@@ -258,11 +258,17 @@ function SearchField({
         className="w-full min-w-0 bg-transparent text-row text-text placeholder:text-dim focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value === "" ? null : (
+        /* `arrive` is gone — issue #465: that class is for a region arriving whole, and
+           this is a control that already carries its own press. `transition-colors
+           duration-[var(--dur-fast)]` is gone too: a second `transition-*` utility beside
+           `pressable` is the tab bar's own trap (`app/globals.css`'s `pressable` docblock) —
+           `pressable`'s own transition list already carries `color` at the same
+           `--dur-fast`, so `hover:text-text` keeps animating with nothing declared twice. */
         <button
           type="button"
           onClick={clear}
           aria-label="Clear search"
-          className="pressable [--press-register:1] arrive flex h-11 w-11 shrink-0 items-center justify-center text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
+          className="pressable [--press-register:1] flex h-11 w-11 shrink-0 items-center justify-center text-dim hover:text-text"
         >
           {/* A bare cross, no disc behind it: plain, in `dim` (§5.2). The `44px` box is
               the target; the glyph is `18px` inside it. */}

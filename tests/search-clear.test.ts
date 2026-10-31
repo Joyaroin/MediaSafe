@@ -25,4 +25,36 @@ describe("the search field clears in one press", () => {
     expect(code).toContain('type="search"');
     expect(code).toContain("[&::-webkit-search-cancel-button]:appearance-none");
   });
+
+  /**
+   * Issue #465. `arrive` is for a region arriving whole — the recommendation rails fading
+   * back up when the field empties (this same file's `idle` branch) — and this button is a
+   * control that already carries its own press, not a region. Pinned to the button's own
+   * `className`, not merely absent from the file, because `arrive` legitimately appears
+   * elsewhere on this screen (the rails, the empty state) and a bare `not.toContain` would
+   * pass by accident the day either of those loses it.
+   */
+  it("keeps the press the clear button already had, and drops the region entrance", () => {
+    const match = code.match(/aria-label="Clear search"[\s\S]*?className="([^"]*)"/);
+    expect(match, "the clear button must still be findable by its label").not.toBeNull();
+    const classes = match![1].split(/\s+/);
+
+    expect(classes).toContain("pressable");
+    expect(classes).toContain("[--press-register:1]");
+    expect(classes).not.toContain("arrive");
+  });
+
+  /**
+   * No second `transition-*` utility beside `pressable` — the tab bar's own trap
+   * (`app/globals.css`'s `pressable` docblock): two `transition` shorthands in the same
+   * cascade layer are resolved by emission order, and the clear button carried
+   * `transition-colors` beside the press until this ticket.
+   */
+  it("wears no second transition-* utility beside the press", () => {
+    const match = code.match(/aria-label="Clear search"[\s\S]*?className="([^"]*)"/);
+    expect(match, "the clear button must still be findable by its label").not.toBeNull();
+    const classes = match![1].split(/\s+/);
+
+    expect(classes.filter((token) => /^transition(-|$)/.test(token))).toEqual([]);
+  });
 });

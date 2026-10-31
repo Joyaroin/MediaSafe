@@ -77,7 +77,8 @@ export function TonightList({
               onClick={() => setExpanded(true)}
               aria-expanded={false}
               aria-controls="tonight-list"
-              className="flex min-h-11 items-center px-3 text-item font-medium text-text hover:text-dim"
+              // `pressable [--press-register:1]`, the small-control register — issue #465.
+              className="pressable [--press-register:1] flex min-h-11 items-center px-3 text-item font-medium text-text hover:text-dim"
             >
               See all {count}
             </button>

@@ -109,13 +109,16 @@ function IconCell({
   return (
     <m.li ref={ref} layout="position" exit={{ opacity: 0, transition: exit }} transition={smooth} className="relative min-w-0">
       {/* A sibling of the link, not inside it, so the press takes the title off rather than
-          opening it. */}
+          opening it — which also means it needs no guard against compressing the link
+          around it: `:active` matches only an element's own ancestors, and the link is a
+          sibling, never one. `pressable [--press-register:1]` is the small-control
+          register, issue #465's own. */}
       <button
         type="button"
         onClick={onTakeOff}
         aria-label={`Take ${title.name} off this list`}
         // `44px` to press, `36px` drawn — the corner of a poster has no room for more.
-        className="group/take-off absolute top-0 right-0 z-10 flex h-11 w-11 items-center justify-center"
+        className="pressable [--press-register:1] group/take-off absolute top-0 right-0 z-10 flex h-11 w-11 items-center justify-center"
       >
         <span className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-full)] bg-ground/80 text-dim transition-colors duration-[var(--dur-fast)] group-hover/take-off:text-danger">
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
