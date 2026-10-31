@@ -505,6 +505,7 @@ Reference: `motion-spec`, `motion-gestures.html` (open it; it plays by itself), 
 | `--dur-roll` | 280ms | A line of text replaced in place | **new** |
 | `--dur-slow` | 380ms | Arrivals, the toast | exists |
 | `--dur-travel` | 420ms | Something moving to another place, and a failure rewinding | **new** |
+| `--stagger-step` | 20ms | The staggered entrance's per-child beat — the ninth of the capped nine lands at `8 * 20ms + --dur-base = 380ms` | **new** |
 
 - The names of the two new tokens are proposals; keep them unless they collide.
 - `mediasafe/duration-on-the-ramp` and `tests/press-spring.test.ts` ("reads every duration it declares") mean a new token must be added in the same change as its first use.

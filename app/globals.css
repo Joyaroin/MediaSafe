@@ -474,6 +474,13 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Issue #429. Tailwind's own default for a bare `transition-*` utility with no easing
+     class is `cubic-bezier(0.4, 0, 0.2, 1)` — a curve nobody on this project chose. Pointed
+     at `--ease-out-quart` instead, so a `transition-colors` with no `ease-` class reads the
+     app's own leave curve rather than falling back to Tailwind's. `--default-transition-duration`
+     is left at Tailwind's 150ms; nothing here asks for it to move. */
+  --default-transition-timing-function: var(--ease-out-quart);
+
   /* ── The poster morph's spring — issue #338 ──────────────────────
      `app/motion.ts`'s `smooth` — the module's one *non-bouncing*
      spring, `duration: 0.3, bounce: 0` — transcribed into a `linear()`
@@ -574,6 +581,13 @@
      room for jitter, so a wifi navigation never shows the pending state it is held in
      front of. */
   --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
+
+  /* Issue #429. The staggered entrance's own beat — each child a fifth of `--dur-base`
+     behind the last, so the ninth of the capped nine lands at `8 * 20ms + 220ms = 380ms`
+     rather than at the hand-typed 30ms step that used to put it at 620ms. Named rather
+     than typed at each `nth-child`, the same reason every other beat on this ramp has a
+     name instead of a literal. */
+  --stagger-step: 20ms; /* the stagger's per-child beat */
 }
 
 @layer base {
@@ -905,42 +919,51 @@
    the length of its own delay and then snaps back to 0 to start animating, which reads
    as a flash rather than a stagger.
 
+   **Issue #429: the run moved onto `--dur-base`.** It ran on `--dur-slow` (380ms) with a
+   hand-typed 30ms step, so the ninth and last running child did not finish rising until
+   240ms + 380ms = 620ms after arrival — longer than a reader waits for anything else on
+   this screen. `--dur-base` is the ramp's own *routine state change*, and `--stagger-step`
+   (20ms, declared on the ramp above) is the per-child beat, so the ninth child now
+   finishes at `8 * 20ms + 220ms = 380ms`, and every delay below is that token's `calc()`
+   multiple rather than a number typed at each `nth-child`.
+
    The run stops at the tenth child, and everything past it is simply already there. A
-   library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
-   arriving; the cap keeps the whole run under 300ms at any length, which is the point
-   where stagger still reads as rhythm instead of as the page being slow — and it now
-   costs ten animations rather than 472, which is the same rule applied to the count as
-   well as to the clock. See the `nth-child(n + 10)` rule at the foot of this utility. */
+   library of 472 titles at `--stagger-step`'s 20ms a row would otherwise take about nine
+   seconds to finish arriving; the cap keeps the whole run's delays under 200ms at any
+   length, which is the point where stagger still reads as rhythm instead of as the page
+   being slow — and it now costs ten animations rather than 472, which is the same rule
+   applied to the count as well as to the clock. See the `nth-child(n + 10)` rule at the
+   foot of this utility. */
 @utility stagger-rise {
   & > * {
-    animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+    animation: rise-in var(--dur-base) var(--ease-press) backwards;
   }
   & > *:nth-child(1) {
-    animation-delay: 0ms;
+    animation-delay: calc(var(--stagger-step) * 0);
   }
   & > *:nth-child(2) {
-    animation-delay: 30ms;
+    animation-delay: calc(var(--stagger-step) * 1);
   }
   & > *:nth-child(3) {
-    animation-delay: 60ms;
+    animation-delay: calc(var(--stagger-step) * 2);
   }
   & > *:nth-child(4) {
-    animation-delay: 90ms;
+    animation-delay: calc(var(--stagger-step) * 3);
   }
   & > *:nth-child(5) {
-    animation-delay: 120ms;
+    animation-delay: calc(var(--stagger-step) * 4);
   }
   & > *:nth-child(6) {
-    animation-delay: 150ms;
+    animation-delay: calc(var(--stagger-step) * 5);
   }
   & > *:nth-child(7) {
-    animation-delay: 180ms;
+    animation-delay: calc(var(--stagger-step) * 6);
   }
   & > *:nth-child(8) {
-    animation-delay: 210ms;
+    animation-delay: calc(var(--stagger-step) * 7);
   }
   & > *:nth-child(9) {
-    animation-delay: 240ms;
+    animation-delay: calc(var(--stagger-step) * 8);
   }
   /* **The tenth child is where the animation stops, not merely where the delay does.**
 
@@ -950,10 +973,10 @@
      the fold, none of them ever watched, all of them composited against the 220ms tab
      slide that is running at the same moment.
 
-     The cap the docblock above describes — *the whole run under 300ms at any list length*
-     — is unchanged, and so is what a reader sees: the rows they are looking at rise, the
-     rest are already there. `animation: none` rather than a `0s` duration, so no animation
-     instance is created at all. */
+     The cap the docblock above describes — *the whole run's delays under 200ms at any
+     list length* — is unchanged, and so is what a reader sees: the rows they are looking
+     at rise, the rest are already there. `animation: none` rather than a `0s` duration,
+     so no animation instance is created at all. */
   & > *:nth-child(n + 10) {
     animation: none;
   }
@@ -997,10 +1020,17 @@
 
 /* The same rule the sweep and the poster morph already follow: the content still
    arrives, it just stops travelling to get here. Opacity is kept — it is what makes the
-   arrival legible at all — and only the movement is dropped. */
+   arrival legible at all — and only the movement is dropped.
+
+   **Issue #429: the duration stays real.** This read `animation-duration: 1ms` — fast
+   enough to be indistinguishable from a collapse to nothing, which is the opposite of
+   what reduced motion asks for here: movement is what the reader turned off, not
+   content showing up at all. `--dur-base` keeps the fade itself visible — a gentle
+   arrival rather than a cut — while the delay is still zeroed below, so nothing about
+   the stagger's *rhythm* survives, only its presence. */
 @media (prefers-reduced-motion: reduce) {
   .stagger-rise > * {
-    animation-duration: 1ms;
+    animation-duration: var(--dur-base);
     animation-delay: 0ms !important;
   }
   @keyframes rise-in {
