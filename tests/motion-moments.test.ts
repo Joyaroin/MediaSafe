@@ -61,6 +61,29 @@ describe("the two new tokens (handoff §11.1)", () => {
   });
 });
 
+/**
+ * Issue #429. A `transition-*` utility written with no easing class used to fall back to
+ * Tailwind's own default, `cubic-bezier(0.4, 0, 0.2, 1)` — a curve nobody on this project
+ * chose, and a fourth easing curve beside the three the handoff names by role. Pointing
+ * Tailwind's `--default-transition-timing-function` at this app's own `--ease-out-quart`
+ * means an unstyled `transition-*` now reads the app's own leave curve instead.
+ */
+describe("the default transition curve is the app's own, not Tailwind's", () => {
+  it("sets --default-transition-timing-function to --ease-out-quart in the @theme block", () => {
+    const theme = block("@theme");
+    expect(theme).toMatch(
+      /--default-transition-timing-function:\s*var\(--ease-out-quart\);/,
+    );
+  });
+
+  it("declares it exactly once", () => {
+    const declarations = [
+      ...CSS_CODE.matchAll(/--default-transition-timing-function:\s*[^;]+;/g),
+    ];
+    expect(declarations).toHaveLength(1);
+  });
+});
+
 describe("motion changes what is drawn, never when a write is sent", () => {
   it("leaves the mark hold at 1200ms and the Undo window at 6000ms", () => {
     expect(HOLD_MS).toBe(1_200);

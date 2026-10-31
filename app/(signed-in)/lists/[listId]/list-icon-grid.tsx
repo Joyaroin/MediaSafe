@@ -1,6 +1,10 @@
+import { AnimatePresence } from "motion/react";
+import * as m from "motion/react-m";
 import Link from "next/link";
+import type { Ref } from "react";
 
 import { PosterLink } from "@/app/(signed-in)/library/poster-link";
+import { exit, smooth } from "@/app/motion";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
@@ -40,6 +44,18 @@ const CELL_LINK = "pressable group block";
  * this view is view-only and the **List** tab is where a list is reordered, which is the
  * bargain Finder strikes too: you cannot drag a file into place in a sorted list view
  * there either. The numerals are what keep the order legible without switching.
+ *
+ * ── A tile leaving closes the grid over it — issue #442 ───────────────────────────────
+ *
+ * Take-off (`take-off.ts`) used to be a jump: the tile was gone the instant `onTakeOff`
+ * ran. It leaves through `AnimatePresence` in `popLayout` mode now, the same mechanism
+ * `tonight-list.tsx` already uses for Tonight's own rows — the leaving tile is lifted out
+ * of the grid's flow while it fades, and every tile after it closes the gap by its own
+ * `layout` animation, on `app/motion.ts`'s existing `smooth` spring rather than a new one.
+ * A tile whose position does not change does not animate at all, the same property
+ * Tonight's rows have. The optimistic removal, the write-failure toast on loss, and a lost
+ * write's re-append are all `take-off.ts`'s own and none of that changed — what changed is
+ * only that the removal (and a re-append undoing it) is now seen rather than instant.
  */
 export function ListIconGrid({
   titles,
@@ -56,14 +72,19 @@ export function ListIconGrid({
        reasoning — the cell's padding is inside the card, so a `14px` list gutter is what
        puts a poster's *edge* on the page's `22px`. */
     <ol className="stagger-rise grid grid-cols-3 gap-x-3.5 gap-y-5 px-gutter pb-6 lg:px-10 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-      {titles.map((title, index) => (
-        <IconCell
-          key={title.titleId}
-          title={title}
-          aboveFold={index < FIRST_ROW}
-          onTakeOff={() => onTakeOff(title)}
-        />
-      ))}
+      {/* `initial={false}`: a tile on the first paint arrives with the grid's own stagger,
+          not a second entrance — only the leaving matters here, the same split
+          `tonight-list.tsx` draws for its own rows. */}
+      <AnimatePresence initial={false} mode="popLayout">
+        {titles.map((title, index) => (
+          <IconCell
+            key={title.titleId}
+            title={title}
+            aboveFold={index < FIRST_ROW}
+            onTakeOff={() => onTakeOff(title)}
+          />
+        ))}
+      </AnimatePresence>
     </ol>
   );
 }
@@ -80,13 +101,26 @@ function IconCell({
   title,
   aboveFold,
   onTakeOff,
+  ref,
 }: {
   readonly title: ListDetailTitleRow;
   readonly aboveFold: boolean;
   readonly onTakeOff: () => void;
+  /** `AnimatePresence`'s, so the tile can be lifted out of the flow as the grid closes over it. */
+  readonly ref?: Ref<HTMLLIElement>;
 }) {
   return (
-    <li className="relative min-w-0">
+    // `layout="position"`, so the tiles behind a leaving one take its place on `smooth`;
+    // `exit`, so the one leaving fades as the grid closes over it (the `AnimatePresence`
+    // above lifts it out of the flow) — `up-next-episode-row.tsx`'s own two props, for
+    // the same reason.
+    <m.li
+      ref={ref}
+      layout="position"
+      transition={smooth}
+      exit={{ opacity: 0, transition: exit }}
+      className="relative min-w-0"
+    >
       {/* A sibling of the link, not inside it, so the press takes the title off rather than
           opening it. */}
       <button
@@ -215,6 +249,6 @@ function IconCell({
         )}
         </PosterLink>
       )}
-    </li>
+    </m.li>
   );
 }

@@ -145,10 +145,13 @@ export default async function SettingsPage() {
                 the same file twice changes nothing the second time.
               </p>
 
-              {/* A row that navigates: the plain treatment, its chevron at the far end. */}
+              {/* A row that navigates: the plain treatment, its chevron at the far end.
+                  Issue #433: a surface, pressing at the default register. `pressable`
+                  already declares `transition` (`app/globals.css`), so `hover:text-dim`'s
+                  fade rides it rather than a second `transition-colors` utility. */}
               <Link
                 href="/import"
-                className="flex h-11 items-center justify-between text-note font-semibold text-text transition-colors duration-[var(--dur-fast)] hover:text-dim"
+                className="pressable flex h-11 items-center justify-between text-note font-semibold text-text hover:text-dim"
               >
                 Import a library
                 <span aria-hidden="true">›</span>
