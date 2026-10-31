@@ -81,7 +81,14 @@ export function ActionToasts() {
             settle();
           }
         }}
-        className="action-toast-transition pointer-events-auto w-full rounded-[var(--radius-5)] border border-hair bg-ground p-4 shadow-[0_16px_40px_rgb(0_0_0/0.25)] lg:w-[420px]"
+        // `pointer-events-none` while leaving — issue #438's fix for a regression its own
+        // retain-for-the-exit kept on screen: before this diff the node unmounted the
+        // moment the store dropped the offer, so a second press had nothing left to land
+        // on. Now the node (and its live Undo button) sits through the whole 140ms exit,
+        // so without this a second press inside that window fires `offer.undo()` again —
+        // `db/access.ts`'s `undoWatch` has no way to tell that apart from an intentional
+        // second undo, and deletes a second watch silently.
+        className={`action-toast-transition ${leaving ? "pointer-events-none" : "pointer-events-auto"} w-full rounded-[var(--radius-5)] border border-hair bg-ground p-4 shadow-[0_16px_40px_rgb(0_0_0/0.25)] lg:w-[420px]`}
       >
         {/* Named in full, both of them, the same restraint `write-failure-toast.tsx` keeps
             for the same reason: episodes have real names, and a sentence with
