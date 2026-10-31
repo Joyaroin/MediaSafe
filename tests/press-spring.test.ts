@@ -949,6 +949,15 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
   "app/tab-bar.tsx": ["control"],
+
+  /* The shared button base — issue #463. Every button in the application is built from
+     `BASE`, and `BASE` is the one place the literal word `pressable` appears: every
+     exported button constant interpolates it rather than restating it, so the sweep finds
+     exactly one call site here and not twenty. Buttons keep the surface register — the
+     small-control register (chips, pills, segmented controls, icon-only controls) is the
+     next ticket's business. `PRIMARY_BUTTON_LARGE_MOTION_PRESS`, built off `MOTION_BASE`
+     for Tonight's featured *Mark watched*, deliberately carries no `pressable` at all. */
+  "app/buttons.ts": ["surface"],
 };
 
 /** How a call site spells a register, as Tailwind spells an arbitrary property —
@@ -1491,5 +1500,107 @@ describe("the tab bar's icon leads its label", () => {
 
     // And the navigation still happens: nothing here takes a tab off the pointer.
     expect(blocks[0]).not.toMatch(/pointer-events|display\s*:|visibility/);
+  });
+});
+
+/**
+ * ── The shared button base wears the press — issue #463 ─────────────────────────────
+ *
+ * Every button in the application — Tonight's *Mark watched* from a row, Undo, *Try
+ * again*, *Continue with Google*, back, Save, Dismiss — is built from `app/buttons.ts`'s
+ * `BASE`, and until now `BASE` answered a finger with nothing at all.
+ *
+ * It also carried its own `transition-[filter,color,background-color]`, which is a second
+ * `transition` shorthand on an element that would also wear `pressable` — exactly the trap
+ * the tab bar's own history documents above: two `transition-*` utilities in the
+ * `utilities` cascade layer settle `transition-property` by Tailwind's emission order, not
+ * by which one a reader meant, and the loser can lose `transform` entirely. So `BASE` now
+ * carries `pressable` and nothing that competes with it, and the colour and filter changes
+ * buttons need ride on `pressable`'s own transition list instead.
+ */
+describe("the shared button base wears the press", () => {
+  const BUTTONS = "app/buttons.ts";
+
+  /** `BASE`'s own backtick literal, read as source text — the one place in the file the
+   *  word `pressable` is written down; every exported button constant interpolates `BASE`
+   *  rather than restating it. */
+  function base(): string {
+    const match = codeOf(BUTTONS).match(/const BASE = `([^`]*)`;/);
+    expect(match, "buttons.ts must still declare BASE as a backtick template").not.toBeNull();
+    return match![1];
+  }
+
+  /** `MOTION_BASE`'s own backtick literal — `BASE` minus the press, for the one button
+   *  that presses through Motion instead. */
+  function motionBase(): string {
+    const match = codeOf(BUTTONS).match(/const MOTION_BASE = `([^`]*)`;/);
+    expect(match, "buttons.ts must still declare MOTION_BASE as a backtick template").not.toBeNull();
+    return match![1];
+  }
+
+  it("wears pressable, and no transition utility of its own", () => {
+    const tokens = base().split(/\s+/);
+
+    expect(tokens).toContain("pressable");
+    // Neither `transition-[...]` nor a bare `transition-colors`/`transition-all` — any
+    // second `transition-*` utility is the failure, not only the one this base used to
+    // carry.
+    expect(tokens.some((token) => /^transition(-|$)/.test(token))).toBe(false);
+    expect(tokens.some((token) => /^duration-\[/.test(token))).toBe(false);
+  });
+
+  it("leaves buttons at the surface register, saying nothing", () => {
+    // The default register is spelled by saying nothing at all — REGISTER_CLASS.surface
+    // above is `null` for the same reason. A button that declared `--press-register`
+    // would be reaching for the next ticket's small-control register early.
+    expect(base()).not.toContain(REGISTER_PROPERTY);
+    expect(compression(REGISTERS.surface.register)).toBeCloseTo(REGISTERS.surface.compress, 6);
+  });
+
+  it("still transitions colour and filter, from pressable's own list now rather than its own", () => {
+    expect(pressableUtility()).toMatch(/\bcolor\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(pressableUtility()).toMatch(/\bfilter\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    // And the surface's own compression and depth step are still there: colour joined
+    // the list rather than replacing anything on it.
+    expect(pressableUtility()).toMatch(/transform\s+var\(--dur-press\)\s+var\(--ease-out-quart\)/);
+    expect(pressableUtility()).toMatch(
+      /background-color\s+var\(--dur-press\)\s+var\(--ease-out-quart\)/,
+    );
+  });
+
+  it("builds every primary, secondary, plain and destructive export off BASE", () => {
+    const source = codeOf(BUTTONS);
+
+    for (const name of [
+      "PRIMARY_BUTTON_LARGE",
+      "PRIMARY_BUTTON",
+      "PRIMARY_BUTTON_COMPACT",
+      "SECONDARY_BUTTON",
+      "SECONDARY_BUTTON_COMPACT",
+      "PLAIN_BUTTON",
+      "ICON_BUTTON",
+      "ICON_BUTTON_SQUARE",
+      "ICON_BUTTON_OVER_ARTWORK",
+      "DESTRUCTIVE_BUTTON",
+      "DESTRUCTIVE_BUTTON_COMPACT",
+    ]) {
+      expect(source, `${name} must still be built from BASE`).toMatch(
+        new RegExp(`export const ${name} = \`\\$\\{BASE\\}`),
+      );
+    }
+  });
+
+  it("opts the one Motion-driven button out of the CSS press, off the same stem", () => {
+    // MOTION_BASE is BASE's own stem without `pressable`, not a second hand-written base:
+    // the two can drift from each other only on the press itself.
+    expect(motionBase()).not.toContain("pressable");
+    expect(codeOf(BUTTONS)).toMatch(
+      /export const PRIMARY_BUTTON_LARGE_MOTION_PRESS = `\$\{MOTION_BASE\}/,
+    );
+
+    const tonightFeatured = codeOf("app/(signed-in)/up-next/tonight-featured.tsx");
+    expect(tonightFeatured).not.toMatch(/\bpressable\b/);
+    expect(tonightFeatured).toContain("PRIMARY_BUTTON_LARGE_MOTION_PRESS");
+    expect(tonightFeatured).not.toContain("PRIMARY_BUTTON_LARGE}");
   });
 });

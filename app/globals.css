@@ -1659,9 +1659,10 @@
 
    **CSS rather than Motion, for the half of the old argument that was always
    load-bearing.** Every tile, cell and row wearing this stays a server component and a
-   rail of them costs no per-frame JavaScript. `filter` keeps `--dur-fast` and
-   `--ease-out-quart`: the only thing that animates it here is `IN_FLIGHT`'s brightness,
-   and a colour has no mass to overshoot with.
+   rail of them costs no per-frame JavaScript. `filter` and `color` both keep `--dur-fast`
+   and `--ease-out-quart`: what animates them is `IN_FLIGHT`'s brightness and, since #463
+   put the press on the shared button base, a button's own `hover:brightness-95`,
+   `hover:text-dim` and `hover:bg-danger` — and a colour has no mass to overshoot with.
 
    **One control presses through Motion instead, and only one.** Tonight's featured *Mark
    watched* is a Motion `m.button` with a `layoutId` — it narrows into the tick — so Motion
@@ -1762,9 +1763,15 @@
      exceeds the label's and falls short of the recording one. */
   --press-lead: 0.98;
 
+  /* `color` joined this list in #463: the shared button base (`app/buttons.ts`) used to
+     carry its own `transition-[filter,color,background-color]`, a second `transition-*`
+     utility that fought this one for `transition-property` — the same trap the tab bar's
+     own history above documents. The base now wears only `pressable`, and `hover:text-dim`,
+     `hover:bg-danger` and the rest of the buttons' hover colours ride on this list instead. */
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     background-color var(--dur-press) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
   &:active,
