@@ -527,6 +527,7 @@ Reference: `motion-spec`, `motion-gestures.html` (open it; it plays by itself), 
 | Write lost | The tick empties slowly, the reverse of filling, while the toast arrives and stays | `--dur-travel` and `--dur-slow`, together | The tick empties, the toast appears |
 | Finish a season | The episode line is replaced by the finish line in italic serif, which holds for the mark hold. The progress segments close their gaps into one bar. The existing short vibration fires | the mark hold | The italic line shows, nothing moves |
 | Leaves the list | The row closes. At the same moment a copy of its poster travels to the tab it now belongs to and fades as it lands; that tab's icon nods (scale only) as it arrives | `smooth` for the row, `--dur-travel` for the poster, together | The row disappears |
+| A *…* menu opens (issue #439) | The title page's menu and a list's Rename / Delete menu — both a native `<details>` — grow their panel from the summary button's top-right corner: `scale(0.97)` and `opacity: 0` to identity, via `@starting-style`, no JavaScript. `menu-transition` (`globals.css`) | `--dur-fast` on `--ease-out-quart` | The scale drops, the fade stays. Closing is instant either way — animating the close is out of scope |
 | Only what changed moves | When a list updates, rows that did not change do not animate | | |
 
 - What happens after the hold is the existing behaviour: the featured entry advances to its next episode, or leaves and the next entry takes its place.
