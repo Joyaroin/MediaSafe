@@ -588,6 +588,13 @@
      than typed at each `nth-child`, the same reason every other beat on this ramp has a
      name instead of a literal. */
   --stagger-step: 20ms; /* the stagger's per-child beat */
+
+  /* Issue #436. The pending shimmer's own loop (`pending-shimmer`, below) was the last
+     hand-typed figure left in the stylesheet; named here for the same reason every other
+     beat on this ramp is. It sits off the rest of the ramp's scale on purpose — a loop
+     read over and over, not a one-off state change, so it is paced to be glanced at
+     rather than felt the way a press or an arrival is. */
+  --dur-shimmer: 1600ms; /* the pending shimmer's loop */
 }
 
 @layer base {
@@ -1300,13 +1307,15 @@
 /* The desktop tilt (`app/poster-tilt.ts`, UI overhaul): a poster under a mouse leans toward
    it, and settles back when the mouse leaves. Fine pointers with hover only — a phone never
    gets `data-tilting` — and nothing at all under reduced motion. `transform` rather than
-   `translate`/`rotate`, because the perspective has to be part of the same function list. */
+   `translate`/`rotate`, because the perspective has to be part of the same function list.
+   The settle-back (hover-out) ran on `--dur-slow` until issue #436 moved it to `--dur-base`:
+   moving across a grid of posters should not leave a trail of slow returns behind it. */
 @media (hover: hover) and (pointer: fine) {
   .poster {
     /* `filter` too: this unlayered rule outranks the `transition` utility some call sites
        put on a poster for their hover brighten, so it has to carry that one as well. */
     transition:
-      transform var(--dur-slow) var(--ease-out-quart),
+      transform var(--dur-base) var(--ease-out-quart),
       filter var(--dur-fast) var(--ease-out-quart);
   }
   .poster[data-tilting] {
@@ -1359,8 +1368,10 @@
    Issue #88 built this row's watch as a material event with two motions, a strike and a
    stamp, timed off `--ease-press` — that pair's own `watch-strike`/`watch-stamp`
    utilities retired with issue #138, which retired the last surface still drawing them,
-   the phone home's dominant card. `~200ms` on `--ease-press`, roughly half of the old
-   strike's `420ms` — "quiet and immediate", not a performance to sit through.
+   the phone home's dominant card. `--dur-base` (220ms) on `--ease-press`, roughly half of
+   the old strike's `420ms` — "quiet and immediate", not a performance to sit through.
+   Issue #436 moved this off a hand-typed `200ms` onto the ramp's own routine-state-change
+   token, the same one the hold below now reads.
    `WatchSweep`'s own `onAnimationEnd` is what ends `marking` and starts `settled`. */
 @utility watch-sweep {
   position: absolute;
@@ -1369,7 +1380,7 @@
   transform: scaleX(0);
   transform-origin: left center;
   pointer-events: none;
-  animation: watch-sweep-in 200ms var(--ease-press) forwards;
+  animation: watch-sweep-in var(--dur-base) var(--ease-press) forwards;
 }
 
 @keyframes watch-sweep-in {
@@ -1400,10 +1411,12 @@
    text keeps its contrast.
 
    The wash comes in from the check's side and fades up together, so it reads as spreading
-   from the press rather than switching on. */
+   from the press rather than switching on. Issue #436 moved the wash itself from
+   `--dur-slow` (380ms) to `--dur-base`: marking several rows in a row should not feel
+   like waiting on the highlight, only on the hold Tonight's own `HOLD_MS` still governs. */
 @utility watch-hold {
   background-color: color-mix(in oklab, var(--color-accent) 14%, var(--color-raised));
-  transition: background-color var(--dur-slow) var(--ease-press);
+  transition: background-color var(--dur-base) var(--ease-press);
   &::before {
     content: "";
     position: absolute;
@@ -1411,7 +1424,7 @@
     background: color-mix(in oklab, var(--color-accent) 22%, transparent);
     transform-origin: right center;
     pointer-events: none;
-    animation: watch-hold-in var(--dur-slow) var(--ease-press) forwards;
+    animation: watch-hold-in var(--dur-base) var(--ease-press) forwards;
   }
 }
 
@@ -2265,7 +2278,11 @@
   /* The shimmer — the UI overhaul, replacing the opacity breathe. A faint highlight
      sweeps across the block on `transform` alone, so it is compositor work and costs no
      paint per frame on a mid-range phone. `animation-delay: inherit` lets the stagger
-     below reach the sweep, so a page shimmers down its own reading order. */
+     below reach the sweep, so a page shimmers down its own reading order.
+     Linear, not `--ease-in-out-soft`, since issue #436: this is a constant loop, and an
+     eased loop pumps — it visibly speeds up and slows down on every pass rather than
+     sweeping at one steady rate. The duration itself moved off a hand-typed `1.6s` onto
+     `--dur-shimmer`. */
   &::after {
     content: "";
     position: absolute;
@@ -2277,7 +2294,7 @@
       transparent 80%
     );
     transform: translateX(-100%);
-    animation: pending-shimmer 1.6s var(--ease-in-out-soft) infinite;
+    animation: pending-shimmer var(--dur-shimmer) linear infinite;
     animation-delay: inherit;
   }
 }
@@ -2294,18 +2311,20 @@
 
 /* Staggered down the page so a region reads as one thing loading in its own order rather
    than as blocks blinking in lockstep. By position within its own group rather than by a
-   flat child index, because a shape nests its blocks into rows and columns. */
+   flat child index, because a shape nests its blocks into rows and columns. Issue #436
+   moved these off their hand-typed fractions of a second onto `--stagger-step` — the same
+   per-child beat the entrance stagger uses — rather than a second, unrelated figure. */
 .pending-bar:nth-child(2) {
-  animation-delay: 0.08s;
+  animation-delay: calc(var(--stagger-step) * 4);
 }
 .pending-bar:nth-child(3) {
-  animation-delay: 0.16s;
+  animation-delay: calc(var(--stagger-step) * 8);
 }
 .pending :nth-child(2) .pending-bar {
-  animation-delay: 0.12s;
+  animation-delay: calc(var(--stagger-step) * 6);
 }
 .pending :nth-child(3) .pending-bar {
-  animation-delay: 0.24s;
+  animation-delay: calc(var(--stagger-step) * 12);
 }
 
 @keyframes pending-shimmer {

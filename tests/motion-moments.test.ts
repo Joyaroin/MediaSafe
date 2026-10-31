@@ -84,6 +84,53 @@ describe("the default transition curve is the app's own, not Tailwind's", () => 
   });
 });
 
+/**
+ * Issue #436 — *The stylesheet's last timing literals move onto the ramp*. Two moments a
+ * reader feels (Tonight's watch-hold highlight, the poster's hover-out — covered by
+ * `tests/poster-tilt.test.ts`) plus a sweep across the stylesheet for whatever hand-typed
+ * millisecond figures were still left: the title-detail episode row's watch-sweep and the
+ * pending shimmer, including its per-child delays.
+ */
+describe("the stylesheet's last timing literals (issue #436)", () => {
+  it("runs Tonight's watch-hold highlight on --dur-base, not --dur-slow", () => {
+    const rule = block("@utility watch-hold");
+    expect(rule).toContain("transition: background-color var(--dur-base)");
+    expect(rule).toContain("animation: watch-hold-in var(--dur-base)");
+    expect(rule).not.toContain("--dur-slow");
+    expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+  });
+
+  it("runs the episode row's watch-sweep on a ramp token, with no literal left", () => {
+    const rule = block("@utility watch-sweep");
+    expect(rule).toMatch(/animation: watch-sweep-in var\(--dur-base\)/);
+    expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+  });
+
+  it("declares the shimmer's own loop token and times the shimmer on it, linear", () => {
+    expect(CSS_CODE).toMatch(/--dur-shimmer:\s*1600ms;/);
+    const rule = block("@utility pending-bar");
+    expect(rule).toContain("animation: pending-shimmer var(--dur-shimmer) linear infinite");
+    expect(rule).not.toContain("--ease-in-out-soft");
+  });
+
+  it("reads the shimmer's per-child delays off --stagger-step, with no raw fraction of a second", () => {
+    const delays = CSS_CODE.match(
+      /\.pending-bar:nth-child\(2\)\s*\{[\s\S]*?\}|\.pending-bar:nth-child\(3\)\s*\{[\s\S]*?\}|\.pending :nth-child\(2\) \.pending-bar\s*\{[\s\S]*?\}|\.pending :nth-child\(3\) \.pending-bar\s*\{[\s\S]*?\}/g,
+    );
+    expect(delays).not.toBeNull();
+    expect(delays).toHaveLength(4);
+    const multipliers = [4, 8, 6, 12];
+    delays!.forEach((rule, index) => {
+      expect(rule).toMatch(
+        new RegExp(
+          `animation-delay:\\s*calc\\(var\\(--stagger-step\\) \\* ${multipliers[index]}\\)`,
+        ),
+      );
+      expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+    });
+  });
+});
+
 describe("motion changes what is drawn, never when a write is sent", () => {
   it("leaves the mark hold at 1200ms and the Undo window at 6000ms", () => {
     expect(HOLD_MS).toBe(1_200);
