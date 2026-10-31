@@ -252,7 +252,7 @@ function WatchedBar({
             `gap`: a flex container drops a plain space between its items, and the line's
             text must still read *1 of 8 · Season 1* to assistive technology and to tests. */}
         <Roll rollKey={`season-${seasonNo}`}>
-          {" · "}
+          {" · "}
           {seasonHeading(seasonNo)}
         </Roll>
       </p>
