@@ -54,6 +54,43 @@ for (const [device, size] of [
   });
 }
 
+/**
+ * Issue #434 — the button is a Motion `m.button` with a `layoutId`, so CSS must not set
+ * its transform: it presses through Motion's own `whileTap` instead, on `snappy`. A
+ * `mouse.down` followed by a `mouse.up` away from the control reads the pressed computed
+ * style without ever completing the click — `press-reaches-buttons.spec.ts`'s own
+ * technique — which both keeps this test from marking the fixture's episode and proves
+ * the scale lets go on release rather than being left behind by the gesture.
+ */
+test("Tonight's featured Mark watched compresses under a finger and returns on release", async ({
+  page,
+}) => {
+  await page.goto("/up-next");
+  // Scoped to the featured card itself: a row elsewhere on the screen can be at the same
+  // season and episode number as the featured show and would otherwise match too.
+  const mark = page
+    .getByRole("main")
+    .locator("[data-featured]")
+    .getByRole("button", { name: /^Mark .*, Season 1, Episode 2 — / });
+  await expect(mark).toBeVisible();
+
+  const box = (await mark.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  const pressed = await mark.evaluate((element) => getComputedStyle(element).transform);
+  expect(pressed).not.toBe("none");
+
+  await page.mouse.move(x, Math.max(0, y - 300));
+  await page.mouse.up();
+
+  await expect
+    .poll(() => mark.evaluate((element) => getComputedStyle(element).transform))
+    .toBe("none");
+});
+
 test("the featured card marks, holds, takes an Undo, and advances like any card", async ({
   page,
 }) => {
