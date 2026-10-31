@@ -1,9 +1,10 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { cachedLibraryEntries, cachedLists } from "@/cache/tags";
 import { sortFrom } from "@/db/library-sort";
 import { requireImportOfferAnswered, requireUserId } from "@/lib/session";
-import { libraryViewFrom } from "./library-view";
+import { LIBRARY_VIEW_COOKIE, resolveLibraryView } from "./library-view";
 import { LibrarySurface } from "./library-surface";
 import { NavTransition } from "../nav-transition";
 
@@ -95,6 +96,18 @@ export default async function LibraryPage({
   const sort = sortFrom(sortParam);
 
   /**
+   * Issue #453 — `?view=` → cookie → default, resolved before anything below renders so
+   * a cold load (a reload, a phone home screen) opens on the remembered tab rather than
+   * painting Shows and switching under the reader once the client corrects it. Reading
+   * the cookie here is a plain request-header read, same as `requireUserId()` above —
+   * nothing is ever written to it from a Server Component (Next 16's `cookies()` guide:
+   * writing one needs a Server Function or Route Handler), only from `keepLibraryView` on
+   * the client.
+   */
+  const cookieView = (await cookies()).get(LIBRARY_VIEW_COOKIE)?.value;
+  const view = resolveLibraryView(viewParam, cookieView);
+
+  /**
    * Unguarded, deliberately. A failure here throws into `error.tsx`, which is the whole
    * error discipline in one line — and it still does through the cache: `unstable_cache`
    * stores a resolved value and lets a rejection through untouched, so there is no cache
@@ -140,12 +153,7 @@ export default async function LibraryPage({
 
   return (
     <NavTransition>
-      <LibrarySurface
-        entries={entries}
-        sort={sort}
-        lists={lists}
-        initialView={libraryViewFrom(viewParam)}
-      />
+      <LibrarySurface entries={entries} sort={sort} lists={lists} initialView={view} />
     </NavTransition>
   );
 }

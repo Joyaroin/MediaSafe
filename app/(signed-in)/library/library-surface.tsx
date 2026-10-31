@@ -32,6 +32,9 @@ import {
  *
  * A link can name one (`?view=lists`, where a list's back control leads); otherwise it is
  * the one this reader last chose on this device, rather than Shows on every visit.
+ * `LibraryPage` already resolved `?view=` → cookie → default (issue #453) before this ever
+ * renders, so `initialView` arrives as the real tab to open on — never a guess the client
+ * corrects after the fact, which is what painted Shows first on a cold load.
  *
  * ── One axis that narrows, one that is a real navigation ─────────────────────────────
  *
@@ -62,8 +65,8 @@ export function LibrarySurface({
   entries: readonly LibraryEntryRow[];
   sort: LibrarySort;
   lists: readonly ListOverview[];
-  /** The tab a link named, which wins over the remembered one for this visit. */
-  initialView: LibraryView | null;
+  /** The tab to open on — `LibraryPage`'s `?view=` → cookie → default resolution. */
+  initialView: LibraryView;
 }) {
   return (
     <main className="flex w-full flex-1 flex-col">
@@ -83,16 +86,21 @@ function LibraryColumn({
   entries: readonly LibraryEntryRow[];
   sort: LibrarySort;
   lists: readonly ListOverview[];
-  initialView: LibraryView | null;
+  initialView: LibraryView;
 }) {
   const selecting = useIsSelecting();
 
+  // `linked` starts at the tab the server already resolved (issue #453), so the first
+  // render matches the static markup exactly — nothing to correct, nothing to flash.
+  // Once the reader picks a tab themselves, `choose` clears it and `remembered`
+  // (`localStorage`, kept in sync with the cookie by `keepLibraryView`) takes over for the
+  // rest of this visit, the same as it always has.
   const remembered = useSyncExternalStore(
     subscribeToLibraryView,
     rememberedLibraryView,
     defaultLibraryView,
   );
-  const [linked, setLinked] = useState(initialView);
+  const [linked, setLinked] = useState<LibraryView | null>(initialView);
   const view = linked ?? remembered;
 
   const [chip, setChip] = useState<Chip>("all");
