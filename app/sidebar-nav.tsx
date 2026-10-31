@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { smooth } from "./motion";
-import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
+import { SELECTED, SELECTED_MARKER, UNSELECTED_PRESSABLE } from "./selection";
 import { DESTINATIONS } from "./destinations";
 import { DESTINATION_ICONS } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
@@ -84,10 +84,14 @@ const PRIMARY = DESTINATIONS.map(({ href, label }) => ({
    `2px` left rule — `44px` high, a `20px` icon and a `15px` label. The line is
    `<CurrentMarker />`, one `layoutId` element that Motion slides down the column between
    destinations rather than repainting a line in a new cell. */
+/* `pressable`, at the surface register, since issue #466 — a sidebar item presses like
+   every other row this ticket reaches. `NOT_CURRENT` takes `UNSELECTED_PRESSABLE` rather
+   than `UNSELECTED`: the latter's own `transition-colors` would be a second `transition-*`
+   utility beside `pressable`'s, and `selection.ts`'s own note on it has the whole reason. */
 const ITEM =
-  "relative flex h-11 items-center gap-3 rounded-[var(--radius-4)] px-3 text-note";
+  "relative pressable flex h-11 items-center gap-3 rounded-[var(--radius-4)] px-3 text-note";
 const CURRENT = `${ITEM} ${SELECTED}`;
-const NOT_CURRENT = `${ITEM} ${UNSELECTED}`;
+const NOT_CURRENT = `${ITEM} ${UNSELECTED_PRESSABLE}`;
 
 function CurrentMarker() {
   return (
