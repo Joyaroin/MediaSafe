@@ -505,10 +505,12 @@ Reference: `motion-spec`, `motion-gestures.html` (open it; it plays by itself), 
 | `--dur-roll` | 280ms | A line of text replaced in place | **new** |
 | `--dur-slow` | 380ms | Arrivals, the toast | exists |
 | `--dur-travel` | 420ms | Something moving to another place, and a failure rewinding | **new** |
+| `--stagger-step` | 20ms | A staggered entrance's per-child delay step | **new** |
 
-- The names of the two new tokens are proposals; keep them unless they collide.
+- `--dur-roll` and `--dur-travel` were proposals from #407 and both were kept. `--stagger-step` is this ticket's own addition (#429): the staggered entrance's per-child delay is now a multiple of it rather than a hand-typed step.
 - `mediasafe/duration-on-the-ramp` and `tests/press-spring.test.ts` ("reads every duration it declares") mean a new token must be added in the same change as its first use.
 - Easing by role, all existing: arrive `--ease-press`, leave `--ease-out-quart`, travel `--ease-in-out-soft`.
+- `--default-transition-timing-function: var(--ease-out-quart)` (#429) is set in `@theme`, so a `transition-*` utility written with no easing class lands on this app's own ease-out rather than Tailwind's own default curve.
 - **Tokens time what CSS does:** fills, fades, the line roll, the travelling poster, the toast. **Springs time what Motion does:** anything that changes size or follows a finger. By `app/motion.ts`'s own definitions that is `smooth` for a size change (the button narrowing, a row closing), `snappy` for anything a finger just let go of (the swipe wash withdrawing), and `bouncy` only for the tick and the season finish. A moment never needs both for the same element.
 
 ### 11.2 Moments

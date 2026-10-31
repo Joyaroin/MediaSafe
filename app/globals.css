@@ -474,6 +474,13 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Issue #429 (handoff §11.1). Tailwind's own default for a `transition-*` utility
+     written with no easing class — `transition-colors`, `transition-opacity` — is a
+     curve nobody on this project chose. Overriding Tailwind's default variable rather
+     than auditing every call site for a missing easing class means an unstyled
+     transition now lands on this app's own ease-out instead of a fourth, unnamed one. */
+  --default-transition-timing-function: var(--ease-out-quart);
+
   /* ── The poster morph's spring — issue #338 ──────────────────────
      `app/motion.ts`'s `smooth` — the module's one *non-bouncing*
      spring, `duration: 0.3, bounce: 0` — transcribed into a `linear()`
@@ -567,6 +574,12 @@
   /* Charcoal, issue #407 (handoff §11.1). */
   --dur-roll: 280ms; /* a line of text replaced in place          */
   --dur-travel: 420ms; /* something moving to another place, and a failure rewinding */
+  /* Issue #429 (handoff §11.1). The staggered entrance's per-child delay, as a token
+     rather than a hand-typed step: `@utility stagger-rise` multiplies this by a
+     child's position, so the ninth child is `8 * 20ms + --dur-base = 380ms` in —
+     quick enough that the last row is not still moving half a second after the rest
+     of the screen has settled. */
+  --stagger-step: 20ms; /* the staggered entrance's per-child delay step */
   /* Issue #301. Not a motion — nothing here travels or eases — but named and kept on
      this ramp for the same reason the ramp exists at all: a delay a reader can feel is
      a decision, not a literal buried at a call site. Up next renders in 175–235ms and
@@ -905,42 +918,48 @@
    the length of its own delay and then snaps back to 0 to start animating, which reads
    as a flash rather than a stagger.
 
+   Issue #429 (handoff §11.1). The rise runs on `--dur-base` (220ms) and each child is a
+   `--stagger-step` (20ms) behind the last, a multiple of the token rather than a
+   hand-typed figure, so the ninth child's entrance finishes at `8 * 20ms + 220ms =
+   380ms` — down from the 620ms a 380ms rise on top of a 30ms-a-row delay used to take.
+
    The run stops at the tenth child, and everything past it is simply already there. A
-   library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
-   arriving; the cap keeps the whole run under 300ms at any length, which is the point
-   where stagger still reads as rhythm instead of as the page being slow — and it now
-   costs ten animations rather than 472, which is the same rule applied to the count as
-   well as to the clock. See the `nth-child(n + 10)` rule at the foot of this utility. */
+   library of 472 titles at 20ms a row would otherwise take nine and a half seconds to
+   finish arriving; the cap keeps the whole run's delay under 300ms at any length, which
+   is the point where stagger still reads as rhythm instead of as the page being slow —
+   and it now costs ten animations rather than 472, which is the same rule applied to
+   the count as well as to the clock. See the `nth-child(n + 10)` rule at the foot of
+   this utility. */
 @utility stagger-rise {
   & > * {
-    animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+    animation: rise-in var(--dur-base) var(--ease-press) backwards;
   }
   & > *:nth-child(1) {
-    animation-delay: 0ms;
+    animation-delay: calc(var(--stagger-step) * 0);
   }
   & > *:nth-child(2) {
-    animation-delay: 30ms;
+    animation-delay: calc(var(--stagger-step) * 1);
   }
   & > *:nth-child(3) {
-    animation-delay: 60ms;
+    animation-delay: calc(var(--stagger-step) * 2);
   }
   & > *:nth-child(4) {
-    animation-delay: 90ms;
+    animation-delay: calc(var(--stagger-step) * 3);
   }
   & > *:nth-child(5) {
-    animation-delay: 120ms;
+    animation-delay: calc(var(--stagger-step) * 4);
   }
   & > *:nth-child(6) {
-    animation-delay: 150ms;
+    animation-delay: calc(var(--stagger-step) * 5);
   }
   & > *:nth-child(7) {
-    animation-delay: 180ms;
+    animation-delay: calc(var(--stagger-step) * 6);
   }
   & > *:nth-child(8) {
-    animation-delay: 210ms;
+    animation-delay: calc(var(--stagger-step) * 7);
   }
   & > *:nth-child(9) {
-    animation-delay: 240ms;
+    animation-delay: calc(var(--stagger-step) * 8);
   }
   /* **The tenth child is where the animation stops, not merely where the delay does.**
 
@@ -997,10 +1016,16 @@
 
 /* The same rule the sweep and the poster morph already follow: the content still
    arrives, it just stops travelling to get here. Opacity is kept — it is what makes the
-   arrival legible at all — and only the movement is dropped. */
+   arrival legible at all — and only the movement is dropped.
+
+   Issue #429. This used to collapse `animation-duration` to `1ms`, which is not a
+   still fade but no arrival at all — content would appear to cut in rather than fade.
+   `--dur-base` keeps the same real duration the full-motion rise already runs on, so
+   reduced motion drops the travel and keeps a fade a reader can actually see; only the
+   per-child delay is still zeroed, since nothing is left to stagger once nothing moves. */
 @media (prefers-reduced-motion: reduce) {
   .stagger-rise > * {
-    animation-duration: 1ms;
+    animation-duration: var(--dur-base);
     animation-delay: 0ms !important;
   }
   @keyframes rise-in {
