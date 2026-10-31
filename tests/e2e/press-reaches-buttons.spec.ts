@@ -24,7 +24,7 @@ import { toStorageState } from "./support/storage-state";
  * back control, and — for the sign-in button — a real redirect to Google). A `mouse.down`
  * followed by a `mouse.up` at the same point is a click; releasing somewhere else first is
  * not, in every engine Chromium implements this on. So `pressedTransform` reads the
- * computed style the instant the pointer goes down — which is the whole of what `:active`
+ * computed style while the pointer is down — which is the whole of what `:active`
  * and `pressable`'s own `&:active` rule need — and then lets go away from the control,
  * proving the press without ever completing the gesture it is a part of.
  */
@@ -53,17 +53,28 @@ test.beforeAll(async () => {
 
 test.use({ storageState: path.join(__dirname, ".auth", "press-reaches-buttons-session.json") });
 
-/** The scale a finger actually gets, read the instant the pointer goes down and released
- *  away from the control so the gesture never completes as a click or a navigation. */
+/** The scale a finger actually gets, read while the pointer is down and released away from
+ *  the control so the gesture never completes as a click or a navigation.
+ *
+ *  `hover()` rather than a measured box: it waits for the control to stop moving and to be
+ *  what the pointer would actually hit. Tonight's rows arrive on a stagger, and a box measured
+ *  mid-arrival can put the press beside the button. The read is polled for the same reason
+ *  `up-next-featured.spec.ts` polls since #434: on a loaded machine the first read can land
+ *  before the press has been painted. This failed once in a foundry post-merge gate (spec
+ *  #428, 2026-10-31) and passed 8 of 8 times run alone; which of the two it was is not known. */
 async function pressedTransform(page: Page, locator: Locator): Promise<string> {
-  await locator.scrollIntoViewIfNeeded();
+  await locator.hover();
   const box = (await locator.boundingBox())!;
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
 
-  await page.mouse.move(x, y);
   await page.mouse.down();
-  const transform = await locator.evaluate((element) => getComputedStyle(element).transform);
+  let transform = "none";
+  await expect
+    .poll(async () => (transform = await locator.evaluate((element) => getComputedStyle(element).transform)), {
+      timeout: 2_000,
+    })
+    .not.toBe("none");
   await page.mouse.move(x, Math.max(0, y - 300));
   await page.mouse.up();
 
