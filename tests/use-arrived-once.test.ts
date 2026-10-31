@@ -76,13 +76,32 @@ describe("createArrivalWatch — the false → true transition useArrivedOnce bi
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("cancelling before the full length has passed leaves it false for ever", () => {
+  it("cancelling before the full length has passed leaves it false while nothing restarts it", () => {
     const watch = createArrivalWatch();
     const cancel = watch.start();
     vi.advanceTimersByTime(ARRIVAL_STAGGER_MS - 1);
     cancel();
     vi.advanceTimersByTime(ARRIVAL_STAGGER_MS * 100);
     expect(watch.arrived).toBe(false);
+  });
+
+  // React Strict Mode runs an effect, cleans it up and runs it again on mount. A
+  // cancellation that left the watch armed made the second `start()` a no-op, so in
+  // development the screen never counted as arrived and the stagger replayed for ever.
+  it("arms afresh when started again after a cancellation, as Strict Mode does", () => {
+    const watch = createArrivalWatch();
+    const onChange = vi.fn();
+    watch.subscribe(onChange);
+
+    const cancel = watch.start();
+    cancel();
+    watch.start();
+    vi.advanceTimersByTime(ARRIVAL_STAGGER_MS - 1);
+    expect(watch.arrived).toBe(false);
+    vi.advanceTimersByTime(1);
+
+    expect(watch.arrived).toBe(true);
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it("honours a custom length, for a caller whose own wait differs from the default", () => {

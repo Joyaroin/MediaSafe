@@ -47,11 +47,14 @@ export const ARRIVAL_STAGGER_MS = 380;
  * called, then `true` for the rest of this watch's life. Knows nothing about a screen, a
  * container or React — it is a clock with one alarm.
  *
- * `start()` arms the one timer this watch will ever run. Calling it again — whether
- * because a caller re-subscribed, or because `arrived` is already `true` — does nothing;
- * there is only ever one arrival to watch for, and rearming it would be exactly the
- * replayed stagger this ticket removes. It returns the cancellation for an unmount before
- * the wait is over, which clears the timer without ever flipping `arrived`.
+ * `start()` arms the watch's timer. Calling it again while that timer is running, or once
+ * `arrived` is already `true`, does nothing: there is only ever one arrival to watch for,
+ * and rearming a finished one would be exactly the replayed stagger this ticket removes.
+ * It returns the cancellation for an unmount before the wait is over, which clears the
+ * timer without flipping `arrived` **and disarms the watch**, so a later `start()` arms it
+ * afresh. React Strict Mode runs every effect, cleans it up and runs it again on mount;
+ * a cancellation that left the watch armed would make that second `start()` a no-op, and
+ * the screen would never count as arrived in development.
  */
 export interface ArrivalWatch {
   readonly arrived: boolean;
@@ -79,7 +82,10 @@ export function createArrivalWatch(afterMs: number = ARRIVAL_STAGGER_MS): Arriva
         arrived = true;
         for (const listener of listeners) listener();
       }, afterMs);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        started = false;
+      };
     },
   };
 }

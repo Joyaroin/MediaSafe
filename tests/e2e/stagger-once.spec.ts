@@ -46,6 +46,26 @@ test("a fresh arrival at Library stages its rows, and a filter chip afterwards d
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
+
+  // The arrival is recorded the moment the grid first appears, not looked for after
+  // `goto`: `goto` waits for the load event and the cell's visibility after that, by which
+  // time the 380ms arrival window can already have closed — the check raced the clock it
+  // was checking. An init script runs before any of the page's own code.
+  await page.addInitScript(() => {
+    const record = { seen: false, arrivedAtFirstSight: false, firstCellAnimation: "" };
+    (window as unknown as { staggerFirstSight: typeof record }).staggerFirstSight = record;
+    const look = () => {
+      if (record.seen) return;
+      const grid = document.querySelector("main ol.stagger-rise");
+      const cell = grid?.firstElementChild;
+      if (!grid || !cell) return;
+      record.seen = true;
+      record.arrivedAtFirstSight = grid.getAttribute("data-arrived") === "true";
+      record.firstCellAnimation = getComputedStyle(cell).animationName;
+    };
+    new MutationObserver(look).observe(document, { subtree: true, childList: true });
+  });
+
   await page.goto("/library");
 
   // Through `main`, not the bare page: for ~300ms after a load React's streamed copy of
@@ -65,10 +85,17 @@ test("a fresh arrival at Library stages its rows, and a filter chip afterwards d
   // `data-arrived` has not been set yet — this screen has not had time to finish its own
   // entrance — so the stylesheet's override does not apply, and the cell is still carrying
   // the entrance `@utility stagger-rise` gives every one of its children.
-  await expect(grid).not.toHaveAttribute("data-arrived", "true");
-  expect(await survivingCell.evaluate((cell) => getComputedStyle(cell).animationName)).toBe(
-    "rise-in",
+  const firstSight = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          staggerFirstSight: { seen: boolean; arrivedAtFirstSight: boolean; firstCellAnimation: string };
+        }
+      ).staggerFirstSight,
   );
+  expect(firstSight.seen).toBe(true);
+  expect(firstSight.arrivedAtFirstSight).toBe(false);
+  expect(firstSight.firstCellAnimation).toBe("rise-in");
 
   // ── Once arrived, a filter chip does not replay it ──────────────────────────────────
   await expect(grid).toHaveAttribute("data-arrived", "true");
