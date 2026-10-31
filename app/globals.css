@@ -1278,10 +1278,37 @@
     transform var(--dur-fast) var(--ease-out-quart);
 }
 
+/* The *…* menus (`library/title-actions.tsx`'s `MoreMenu`, `lists/[listId]/
+   list-detail-surface.tsx`'s `ListMenu`) — issue #439. Both panels are a native
+   `<details>`, which is its own `display` toggle: the browser removes the panel from the
+   render tree while closed and renders it anew the moment `open` is added, so there is no
+   `[open]`/`data-leaving` state to write here the way `dialog-transition` and the toasts
+   above need one. That "newly rendered" moment is exactly what `@starting-style` answers,
+   with no JavaScript of its own and the `<details>` staying a `<details>`.
+   `transform-origin: top right` matches where both panels actually sit — `absolute
+   right-0` under a trailing `summary` button — so the panel visibly grows out of its own
+   corner rather than the button's centre. Closing is explicitly out of scope: the panel
+   is simply gone the instant `open` is removed, the same way it was before this rule. */
+@utility menu-transition {
+  transform-origin: top right;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
+@starting-style {
+  .menu-transition {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 /* The event still happens under reduced motion — a dialog still opens and closes, the
    banner and the action bar still appear and disappear, a toast still arrives and
-   leaves — only the travel drops, the same rule `rise-in`'s own reduced-motion block
-   states above. */
+   leaves, a menu still opens — only the travel drops, the same rule `rise-in`'s own
+   reduced-motion block states above. */
 @media (prefers-reduced-motion: reduce) {
   .dialog-transition,
   .dialog-transition[open],
@@ -1292,7 +1319,8 @@
   .write-failure-toast-transition,
   .write-failure-toast-transition[data-leaving="true"],
   .action-toast-transition,
-  .action-toast-transition[data-leaving="true"] {
+  .action-toast-transition[data-leaving="true"],
+  .menu-transition {
     transform: none;
   }
 
@@ -1301,6 +1329,7 @@
     .offline-banner-transition[data-open="true"],
     .selection-action-bar-transition[data-open="true"],
     .write-failure-toast-transition,
+    .menu-transition,
     .action-toast-transition {
       transform: none;
     }

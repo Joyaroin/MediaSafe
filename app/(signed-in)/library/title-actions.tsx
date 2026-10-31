@@ -229,8 +229,10 @@ function MoreMenu({
       </summary>
 
       {/* The list page's menu, the same panel (Charcoal §8: menus are `raised` with `44px`
-          rows). It opens to the left now because the button is the row's last. */}
-      <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col rounded-[var(--radius-4)] bg-raised plate-line p-1.5">
+          rows). It opens to the left now because the button is the row's last.
+          `menu-transition` (issue #439) grows it from the summary button's top-right
+          corner — pure CSS, nothing wired here but the class. */}
+      <div className="menu-transition absolute right-0 z-20 mt-2 flex w-60 flex-col rounded-[var(--radius-4)] bg-raised plate-line p-1.5">
         {kind === "film" && state === "finished" ? (
           <FilmUnwatchItem
             libraryEntryId={libraryEntryId}

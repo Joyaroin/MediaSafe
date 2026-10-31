@@ -113,7 +113,9 @@ function ListMenu({
         </svg>
       </summary>
 
-      <div className="absolute right-0 z-20 mt-2 flex w-52 flex-col rounded-[var(--radius-4)] bg-raised plate-line p-1.5">
+      {/* `menu-transition` (issue #439) grows this panel from the summary button's
+          top-right corner — pure CSS, nothing wired here but the class. */}
+      <div className="menu-transition absolute right-0 z-20 mt-2 flex w-52 flex-col rounded-[var(--radius-4)] bg-raised plate-line p-1.5">
         <button type="button" onClick={() => choose(onRename)} className={`${MENU_ITEM} text-text`}>
           Rename
         </button>

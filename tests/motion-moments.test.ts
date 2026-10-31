@@ -253,6 +253,82 @@ describe("every new moment has its still version", () => {
   });
 });
 
+/**
+ * Issue #439 — *the …* menus grow from their button*. Both menus (the title page's
+ * `MoreMenu` and a list's `ListMenu`, Rename / Delete) are a native `<details>`, so there
+ * is no `[open]`/`data-leaving` state here for the panel to carry the way the dialogs and
+ * the toasts above do: the browser's own open/close toggle is what shows and hides it, and
+ * `@starting-style` catches the panel's own "newly rendered" moment that toggle creates.
+ * This is the static half, proving the rule computes to the values the ticket names;
+ * `tests/e2e/menu-motion.spec.ts` is the browser half, that the panel's own transform is
+ * actually seen moving from `scale(0.97)` toward identity.
+ */
+describe("the *…* menu panels carry menu-transition (issue #439)", () => {
+  const TITLE_ACTIONS = at("app/(signed-in)/library/title-actions.tsx");
+  const LIST_DETAIL_SURFACE = at("app/(signed-in)/lists/[listId]/list-detail-surface.tsx");
+
+  it("wires the class onto both <details> panels, with no JavaScript added for it", () => {
+    for (const source of [TITLE_ACTIONS, LIST_DETAIL_SURFACE]) {
+      expect(source).toMatch(/className="menu-transition /);
+      // Still a plain <details>: no ref read or attribute write beyond the existing
+      // open/close toggling this file already does for its own reasons (closing the
+      // menu before an item's action runs).
+      expect(source).toMatch(/<details\b/);
+    }
+  });
+
+  it("grows from the top-right corner, from scale(0.97) and opacity: 0, to identity", () => {
+    const rule = block("@utility menu-transition");
+    expect(rule).toContain("transform-origin: top right;");
+    expect(rule).toContain("opacity: 1;");
+    expect(rule).toContain("transform: none;");
+
+    const starting = CSS_CODE.match(/@starting-style\s*\{\s*\.menu-transition\s*\{([^}]*)\}/);
+    expect(starting, "a @starting-style block for .menu-transition").not.toBeNull();
+    expect(starting![1]).toContain("opacity: 0;");
+    expect(starting![1]).toMatch(/transform:\s*scale\(0\.97\);/);
+  });
+
+  it("times the entrance on --dur-fast and --ease-out-quart, with no raw literal of its own", () => {
+    const rule = block("@utility menu-transition");
+    expect(rule).toMatch(/opacity\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(rule).toMatch(/transform\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(rule.replace(/var\([^)]*\)/g, "")).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+  });
+
+  it("declares no closing transition — animating the close is out of scope", () => {
+    // No data-leaving state, no :not([open]) rule, no second .menu-transition selector
+    // anywhere but the entrance and its two reduced-motion mentions below: closing a
+    // <details> is the browser dropping the panel on the spot, same as before this rule.
+    expect(CSS_CODE).not.toContain(".menu-transition[data-leaving");
+    expect(CSS_CODE).not.toContain(".menu-transition:not(");
+    expect(CSS_CODE.match(/\.menu-transition\b/g)).toHaveLength(3);
+  });
+
+  it("drops the scale under reduced motion and keeps the opacity change", () => {
+    const reduced = CSS_CODE.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
+    )!.join("\n");
+
+    // The resting selector list (`transform: none`, no `@starting-style`): `menu-transition`
+    // joins it, and the shared body it joins drops the transform and nothing else.
+    const resting = reduced.match(/([^{}]*\.menu-transition[^{}]*)\{([^}]*)\}/);
+    expect(resting, "a reduced-motion rule naming .menu-transition").not.toBeNull();
+    expect(resting![1]).toContain(".menu-transition");
+    expect(resting![2]).toContain("transform: none;");
+    expect(resting![2]).not.toContain("opacity");
+
+    // The nested `@starting-style` list (dropping the scale on the starting values too):
+    // same shape, found past the first match above.
+    const starting = reduced.slice(reduced.indexOf("@starting-style"));
+    const startingRule = starting.match(/([^{}]*\.menu-transition[^{}]*)\{([^}]*)\}/);
+    expect(startingRule, "a @starting-style reduced-motion rule naming .menu-transition").not
+      .toBeNull();
+    expect(startingRule![2]).toContain("transform: none;");
+    expect(startingRule![2]).not.toContain("opacity");
+  });
+});
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = path.join(dir, name);
