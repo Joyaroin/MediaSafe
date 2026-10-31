@@ -89,9 +89,14 @@ test("a tile taken off a list fades out while it leaves, and the tile behind it 
   const leaving = await removed.evaluate((element) => ({
     animating: element.getAnimations().length > 0,
     opacity: Number(getComputedStyle(element).opacity),
+    position: getComputedStyle(element).position,
   }));
   expect(leaving.animating).toBe(true);
   expect(leaving.opacity).toBeLessThan(1);
+  // Lifted out of the flow while it fades (`popLayout`), so the grid closes under it now
+  // rather than after the exit. This is what needs the tile to take `AnimatePresence`'s
+  // `ref`: without it the tile stays in the flow and holds its slot open until it is gone.
+  expect(leaving.position).toBe("absolute");
 
   // It finishes leaving, and the gap behind it closes: the tile a row down comes up to
   // take its place, by a layout animation rather than a jump.

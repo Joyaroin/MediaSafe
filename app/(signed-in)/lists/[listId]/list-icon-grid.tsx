@@ -1,6 +1,7 @@
 import { AnimatePresence } from "motion/react";
 import * as m from "motion/react-m";
 import Link from "next/link";
+import type { Ref } from "react";
 
 import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 import { exit, smooth } from "@/app/motion";
@@ -100,17 +101,26 @@ function IconCell({
   title,
   aboveFold,
   onTakeOff,
+  ref,
 }: {
   readonly title: ListDetailTitleRow;
   readonly aboveFold: boolean;
   readonly onTakeOff: () => void;
+  /** `AnimatePresence`'s, so the tile can be lifted out of the flow as the grid closes over it. */
+  readonly ref?: Ref<HTMLLIElement>;
 }) {
   return (
     // `layout="position"`, so the tiles behind a leaving one take its place on `smooth`;
     // `exit`, so the one leaving fades as the grid closes over it (the `AnimatePresence`
     // above lifts it out of the flow) — `up-next-episode-row.tsx`'s own two props, for
     // the same reason.
-    <m.li layout="position" transition={smooth} exit={{ opacity: 0, transition: exit }} className="relative min-w-0">
+    <m.li
+      ref={ref}
+      layout="position"
+      transition={smooth}
+      exit={{ opacity: 0, transition: exit }}
+      className="relative min-w-0"
+    >
       {/* A sibling of the link, not inside it, so the press takes the title off rather than
           opening it. */}
       <button
