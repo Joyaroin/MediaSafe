@@ -3,7 +3,7 @@
 import * as m from "motion/react-m";
 
 import { snappy } from "./motion";
-import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
+import { SELECTED, SELECTED_MARKER, UNSELECTED_PRESSABLE } from "./selection";
 
 /**
  * The segmented control — handoff §6, issue #397. Three controls drew it three ways before
@@ -25,6 +25,15 @@ import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
  * **On a card** (Settings' Appearance) the track is `ground` with a `1px` `hair` inset
  * (`hair-line`) rather than `raised`, which would vanish into the card it sits on — the
  * same swap `field-well` makes for a field.
+ *
+ * ── The press — issue #465 ───────────────────────────────────────────────────────────
+ *
+ * `pressable [--press-register:1]` on the segment's own `<button>`, which is also the one
+ * element `SELECTED`/`UNSELECTED` colour it — there is no separate target/face split here
+ * the way the chip has one. So the unselected option takes `UNSELECTED_PRESSABLE` rather
+ * than `UNSELECTED`: the latter's own `transition-colors` would be a second `transition-*`
+ * utility beside `pressable`'s, the tab bar's own trap (`app/globals.css`'s `pressable`
+ * docblock) — `selection.ts`'s own note on `UNSELECTED_PRESSABLE` has the whole reason.
  */
 export function SegmentedControl<Value extends string>({
   label,
@@ -63,11 +72,11 @@ export function SegmentedControl<Value extends string>({
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
-            className={`relative flex flex-1 items-center justify-center rounded-[var(--radius-4)] ${
+            className={`pressable [--press-register:1] relative flex flex-1 items-center justify-center rounded-[var(--radius-4)] ${
               compact
                 ? "h-9 px-3.5 text-item before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']"
                 : "h-11 px-4 text-note"
-            } ${selected ? SELECTED : UNSELECTED}`}
+            } ${selected ? SELECTED : UNSELECTED_PRESSABLE}`}
           >
             {selected ? (
               <m.span

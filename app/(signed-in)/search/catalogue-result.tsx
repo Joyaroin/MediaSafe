@@ -142,6 +142,12 @@ export function CatalogueResultRow({
            * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
            * face, so the row grows by the face and not by the target.
            *
+           * ── The press register — issue #465 ────────────────────────────────────────
+           *
+           * `pressable [--press-register:1]`, the same control register the *Add* pill
+           * below already wears — two pills in one row press the same way as each other,
+           * which is the ticket's own wording for it.
+           *
            * ── It disappears with the pill, not separately ────────────────────────────
            *
            * `inLibrary` is the optimistic flag both controls set, so pressing either one
@@ -153,7 +159,7 @@ export function CatalogueResultRow({
             type="button"
             onClick={() => void attempt(true)}
             aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
-            className={`-mb-1.5 mt-0.5 ${PILL_TARGET}`}
+            className={`pressable [--press-register:1] -mb-1.5 mt-0.5 ${PILL_TARGET}`}
           >
             <span className={SECONDARY_PILL}>{addWatchedLabel(result.kind)}</span>
           </button>
