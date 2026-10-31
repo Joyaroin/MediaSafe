@@ -1244,6 +1244,40 @@
     transform var(--dur-fast) var(--ease-out-quart);
 }
 
+/* The action toast (`app/(signed-in)/library/action-toast-toasts.tsx`) — issue #438. The
+   *Watched. Undo* offer used to teleport in and blink out; this is
+   `write-failure-toast-transition` above, read again rather than redeclared, because the
+   mechanism — an `@starting-style` entrance and a held `data-leaving="true"` exit on a
+   node that is genuinely removed, not hidden — is exactly the same one. Only the
+   direction differs: this toast is anchored to the *top* of the viewport
+   (`action-toast-toasts.tsx`'s own `top-4`/`top-6`), so it arrives from 8px *above* and
+   leaves back the way it came, where the write-failure toast's bottom corner arrives from
+   below and leaves back down. Same two durations, same two curves: `--dur-slow` on
+   `--ease-press` in, `--dur-fast` on `--ease-out-quart` out — nothing here is a new
+   timing, so nothing here is a new token. */
+@utility action-toast-transition {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press);
+}
+
+@starting-style {
+  .action-toast-transition {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.action-toast-transition[data-leaving="true"] {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
 /* The event still happens under reduced motion — a dialog still opens and closes, the
    banner and the action bar still appear and disappear, a toast still arrives and
    leaves — only the travel drops, the same rule `rise-in`'s own reduced-motion block
@@ -1256,7 +1290,9 @@
   .selection-action-bar-transition,
   .selection-action-bar-transition[data-open="true"],
   .write-failure-toast-transition,
-  .write-failure-toast-transition[data-leaving="true"] {
+  .write-failure-toast-transition[data-leaving="true"],
+  .action-toast-transition,
+  .action-toast-transition[data-leaving="true"] {
     transform: none;
   }
 
@@ -1264,7 +1300,8 @@
     .dialog-transition[open],
     .offline-banner-transition[data-open="true"],
     .selection-action-bar-transition[data-open="true"],
-    .write-failure-toast-transition {
+    .write-failure-toast-transition,
+    .action-toast-transition {
       transform: none;
     }
   }
