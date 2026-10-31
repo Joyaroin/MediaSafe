@@ -74,31 +74,45 @@ const takeOffButton = (item: Locator, name: string) =>
 
 /** Starts an in-page recorder on `element` that never stops watching once armed: whether
  *  its `transform` is ever anything but `none` (a row or cell that did not change must
- *  never animate), and how many milliseconds after arming its edge first moved by more
- *  than a pixel in either axis (closing up the gap a taken-off item leaves — a row closes
- *  vertically, a grid cell can close sideways within its row too) — both written to
- *  `window[flag]` so the test can read them back once the gesture is done. A continuous
- *  recorder rather than a poll, because the window this proves anything in is under the
- *  exit's own 140ms (`--dur-fast`) — too short to catch by sampling at an interval.
+ *  never animate), how many milliseconds after arming its edge first moved by more than a
+ *  pixel in either axis (closing up the gap a taken-off item leaves — a row closes
+ *  vertically, a grid cell can close sideways within its row too), and a running trail of
+ *  `{ t, top, left }` samples so the test can tell *started moving* apart from *arrived* —
+ *  all written to `window[flag]` so the test can read them back once the gesture is done.
+ *  A continuous recorder rather than a poll, because the window this proves anything in is
+ *  under the exit's own 140ms (`--dur-fast`) — too short to catch by sampling at an
+ *  interval.
  */
 async function armRecorder(target: Locator, flag: string): Promise<void> {
   await target.evaluate((element, flagName) => {
     const win = window as unknown as Record<
       string,
-      { startedAt: number; movedAfterMs: number | null; everMoved: boolean }
+      {
+        startedAt: number;
+        movedAfterMs: number | null;
+        everMoved: boolean;
+        samples: { t: number; top: number; left: number }[];
+      }
     >;
     const start = element.getBoundingClientRect();
-    win[flagName] = { startedAt: performance.now(), movedAfterMs: null, everMoved: false };
+    win[flagName] = {
+      startedAt: performance.now(),
+      movedAfterMs: null,
+      everMoved: false,
+      samples: [],
+    };
     const tick = () => {
       const record = win[flagName];
       if (!record) return;
       if (getComputedStyle(element).transform !== "none") record.everMoved = true;
       const now = element.getBoundingClientRect();
+      const t = performance.now() - record.startedAt;
+      record.samples.push({ t, top: now.top, left: now.left });
       if (
         record.movedAfterMs === null &&
         (Math.abs(now.top - start.top) > 1 || Math.abs(now.left - start.left) > 1)
       ) {
-        record.movedAfterMs = performance.now() - record.startedAt;
+        record.movedAfterMs = t;
       }
       requestAnimationFrame(tick);
     };
@@ -109,15 +123,68 @@ async function armRecorder(target: Locator, flag: string): Promise<void> {
 async function readRecorder(
   page: Page,
   flag: string,
-): Promise<{ readonly movedAfterMs: number | null; readonly everMoved: boolean }> {
+): Promise<{
+  readonly movedAfterMs: number | null;
+  readonly everMoved: boolean;
+  readonly samples: ReadonlyArray<{ readonly t: number; readonly top: number; readonly left: number }>;
+}> {
   return page.evaluate((flagName) => {
     const win = window as unknown as Record<
       string,
-      { movedAfterMs: number | null; everMoved: boolean }
+      {
+        movedAfterMs: number | null;
+        everMoved: boolean;
+        samples: { t: number; top: number; left: number }[];
+      }
     >;
     const record = win[flagName];
-    return { movedAfterMs: record?.movedAfterMs ?? null, everMoved: record?.everMoved ?? false };
+    return {
+      movedAfterMs: record?.movedAfterMs ?? null,
+      everMoved: record?.everMoved ?? false,
+      samples: record?.samples ?? [],
+    };
   }, flag);
+}
+
+/** The time of the last recorded sample that still differs from where the element ends up
+ *  — *has settled*, not *has started moving*. A row riding `smooth`'s full 300ms spring
+ *  also moves within the first frame, so `movedAfterMs` alone cannot distinguish that from
+ *  reduced motion's "arrives at once"; this can, because the spring keeps nudging the row
+ *  for most of those 300ms while an immediate arrival stops after a frame or two.
+ */
+function settledAfterMs(
+  samples: ReadonlyArray<{ readonly t: number; readonly top: number; readonly left: number }>,
+): number {
+  if (samples.length === 0) return 0;
+  const final = samples[samples.length - 1];
+  for (let i = samples.length - 1; i >= 0; i--) {
+    const sample = samples[i];
+    if (Math.abs(sample.top - final.top) > 1 || Math.abs(sample.left - final.left) > 1) {
+      return (samples[i + 1] ?? sample).t;
+    }
+  }
+  return samples[0].t;
+}
+
+/** Starts an in-page recorder of `element`'s computed opacity, one sample per frame, until
+ *  the element leaves the document — which is when `AnimatePresence` finishes popping it
+ *  out, so the trail it leaves behind in `window[flag]` is the whole of its exit fade. */
+async function armOpacityRecorder(target: Locator, flag: string): Promise<void> {
+  await target.evaluate((element, flagName) => {
+    const win = window as unknown as Record<string, number[]>;
+    const samples: number[] = [];
+    win[flagName] = samples;
+    const tick = () => {
+      if (!element.isConnected) return;
+      samples.push(Number(getComputedStyle(element).opacity));
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }, flag);
+}
+
+async function readOpacitySamples(page: Page, flag: string): Promise<readonly number[]> {
+  return page.evaluate((flagName) => (window as unknown as Record<string, number[]>)[flagName] ?? [], flag);
 }
 
 test("a taken-off row fades out on the exit timing and the rows below close up on smooth, giving up its space at once — rows that did not change never animate", async ({
@@ -188,16 +255,29 @@ test.describe("under reduced motion", () => {
     await expect(itemFor(page, india)).toBeVisible();
 
     await armRecorder(itemFor(page, india), "reducedBelowRecord");
+    await armOpacityRecorder(itemFor(page, hotel), "reducedFadeRecord");
 
     await takeOffButton(itemFor(page, hotel), hotel).click();
 
     await expect(itemFor(page, hotel)).toHaveCount(0);
     await expect(page.getByRole("status")).toContainText("Taken off");
 
-    // "At once": the row below settles into place well inside a single frame or two of
-    // the click, rather than riding `smooth`'s own 300ms of movement.
+    // Give `smooth`'s own 300ms a chance to finish riding out, so a regression that drops
+    // reduced motion (and lets the row ease into place on the spring instead of arriving
+    // at once) shows up in the recorded trail rather than being missed by reading too soon.
+    await page.waitForTimeout(350);
+
+    // "At once": the row below reaches its final offset within a frame or two of the
+    // click, not merely *starts* moving within that window — a row riding `smooth`'s full
+    // spring also starts moving in the first frame, so settling is what distinguishes it.
     const below = await readRecorder(page, "reducedBelowRecord");
     expect(below.movedAfterMs).not.toBeNull();
-    expect(below.movedAfterMs as number).toBeLessThan(80);
+    expect(settledAfterMs(below.samples)).toBeLessThan(80);
+
+    // It still fades out: reduced motion drops the movement, not the exit itself, so the
+    // leaving row's opacity must pass through a visible mid-value rather than cut straight
+    // from 1 to 0.
+    const fade = await readOpacitySamples(page, "reducedFadeRecord");
+    expect(fade.some((opacity) => opacity > 0.05 && opacity < 0.95)).toBe(true);
   });
 });
