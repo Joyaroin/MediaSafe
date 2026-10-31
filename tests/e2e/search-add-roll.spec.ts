@@ -24,6 +24,9 @@ test.skip(
   "needs a real TMDB_READ_ACCESS_TOKEN",
 );
 
+// Every *Add* lookup below is `exact`: a role name matches as a substring by default, and the
+// row's *Add watched* pill is named "Add <title> to your library as watched" (or "…, recording
+// every released episode as watched"), so a bare "Add <title> to your library" finds both pills.
 async function searchRow(page: import("@playwright/test").Page, name: string, query: string) {
   const main = page.getByRole("main");
   await main.getByLabel("Search films and shows").fill(query);
@@ -39,7 +42,7 @@ test("adding a result rolls the pills into In your library", async ({ page }) =>
   await page.goto("/search");
   const row = await searchRow(page, "Severance", "Severance");
 
-  const add = row.getByRole("button", { name: "Add Severance to your library" });
+  const add = row.getByRole("button", { name: "Add Severance to your library", exact: true });
   await expect(add).toBeVisible();
 
   await add.click();
@@ -68,14 +71,26 @@ test("a lost add rolls the pills back, through the same roll", async ({ page }) 
   const row = await searchRow(page, "Arrival", "Arrival 2016");
 
   // Every Server Action fails on the wire, as `up-next-motion.spec.ts` already does it for
-  // the mark — the add is lost exactly as it would be offline.
-  await page.route("**/*", (route) =>
-    route.request().method() === "POST" && route.request().headers()["next-action"]
-      ? route.abort()
-      : route.continue(),
-  );
+  // the mark — the add is lost exactly as it would be offline. The failure is **held**
+  // until the optimistic half has been seen: aborted at once, it lands within milliseconds
+  // and the row is back on *Add* before the next assertion can look.
+  let releaseFailure!: () => void;
+  const failureHeld = new Promise<void>((resolve) => (releaseFailure = resolve));
+  await page.route("**/*", async (route) => {
+    if (route.request().method() === "POST" && route.request().headers()["next-action"]) {
+      await failureHeld;
+      await route.abort();
+    } else {
+      await route.continue();
+    }
+  });
 
-  const add = row.getByRole("button", { name: "Add Arrival to your library" });
+  // Stretched so the rollback's outgoing and incoming lines are reliably on screen at once
+  // below, rather than the test racing the real --dur-roll (280ms) — `title-count-roll.spec.ts`
+  // does the same.
+  await page.addStyleTag({ content: ".roll-out, .roll-in { animation-duration: 3s !important; }" });
+
+  const add = row.getByRole("button", { name: "Add Arrival to your library", exact: true });
   await add.click();
 
   // The optimistic half still happens — the row says *In your library* before the server
@@ -83,6 +98,7 @@ test("a lost add rolls the pills back, through the same roll", async ({ page }) 
   await expect(
     row.getByRole("link", { name: "Arrival is in your library — open it" }),
   ).toBeVisible();
+  releaseFailure();
 
   // The write-failure toast — unchanged by this ticket, and still the one way a lost write
   // is reported.
@@ -92,12 +108,12 @@ test("a lost add rolls the pills back, through the same roll", async ({ page }) 
   // screen at once, not a cut straight back to *Add*.
   const outgoing = row.locator(".roll-out", { hasText: "In your library" });
   const incoming = row.locator(".roll-in").filter({
-    has: page.getByRole("button", { name: "Add Arrival to your library" }),
+    has: page.getByRole("button", { name: "Add Arrival to your library", exact: true }),
   });
   await expect(outgoing).toHaveCount(1);
   await expect(incoming).toHaveCount(1);
 
-  await expect(row.getByRole("button", { name: "Add Arrival to your library" })).toBeVisible();
+  await expect(row.getByRole("button", { name: "Add Arrival to your library", exact: true })).toBeVisible();
   await expect(
     row.getByRole("link", { name: "Arrival is in your library — open it" }),
   ).toHaveCount(0);
