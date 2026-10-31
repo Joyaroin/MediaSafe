@@ -4,6 +4,7 @@ import { AnimatePresence } from "motion/react";
 import { useState } from "react";
 
 import type { LibraryStateGroupEntry, UpNextEntry, UpNextPendingEntry } from "@/db/access";
+import { useArrivedOnce } from "@/app/use-arrived-once";
 import { FilmRow, useFilmsStanding } from "./film-row";
 import { ROW_LIST } from "./up-next-card-styles";
 import { UpNextEpisodeRow, UpNextPendingRow } from "./up-next-episode-row";
@@ -50,6 +51,11 @@ export function TonightList({
 }) {
   const [expanded, setExpanded] = useState(false);
   const filmsStanding = useFilmsStanding(films);
+  // Issue #430: called unconditionally, above the early return below, so the one watch
+  // this list ever runs is armed on its first render regardless of which branch that
+  // render takes — a row landing or leaving re-renders this same mounted list and must
+  // not replay the stagger on the rows left standing.
+  const arrived = useArrivedOnce();
   const count = pending.length + entries.length + filmsStanding.length;
 
   if (count === 0) return null;
@@ -87,6 +93,7 @@ export function TonightList({
 
       <ul
         id="tonight-list"
+        data-arrived={arrived ? "true" : undefined}
         className={`relative ${ROW_LIST} ${expanded ? "" : "[&>li:nth-child(n+6)]:hidden"}`}
       >
         {pending.map((entry, index) => (
