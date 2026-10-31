@@ -102,7 +102,7 @@ describe("the stylesheet's last timing literals (issue #436)", () => {
 
   it("runs the episode row's watch-sweep on a ramp token, with no literal left", () => {
     const rule = block("@utility watch-sweep");
-    expect(rule).toMatch(/animation: watch-sweep-in var\(--dur-[a-z]+\)/);
+    expect(rule).toMatch(/animation: watch-sweep-in var\(--dur-base\)/);
     expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
   });
 
@@ -119,10 +119,15 @@ describe("the stylesheet's last timing literals (issue #436)", () => {
     );
     expect(delays).not.toBeNull();
     expect(delays).toHaveLength(4);
-    for (const rule of delays!) {
-      expect(rule).toMatch(/animation-delay:\s*calc\(var\(--stagger-step\) \* \d+\)/);
+    const multipliers = [4, 8, 6, 12];
+    delays!.forEach((rule, index) => {
+      expect(rule).toMatch(
+        new RegExp(
+          `animation-delay:\\s*calc\\(var\\(--stagger-step\\) \\* ${multipliers[index]}\\)`,
+        ),
+      );
       expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
-    }
+    });
   });
 });
 
