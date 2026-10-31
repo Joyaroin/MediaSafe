@@ -33,23 +33,29 @@ import { toStorageState } from "./support/storage-state";
  * for: the real network call before each of the first two chunks' successors gives the
  * browser room to commit and paint the one before it.
  *
- * Mostly real, long-standing TMDB film ids (famous enough to be in no danger of leaving
- * the catalogue), padded with a run of filler ids the test does not depend on resolving —
- * what the assertions need is *most* of a chunk landing, never *every* title in it.
+ * ── Few real titles, the rest ids TMDB cannot have ──────────────────────────────────
+ *
+ * The bar is *titles written over total*, so a chunk moves it as long as it writes
+ * anything. Each of the first two chunks leads with a few long-standing TMDB film ids
+ * (famous enough to be in no danger of leaving the catalogue) and is padded with ids far
+ * past any TMDB has issued. Those come back as TMDB's own 404 and are skipped per title
+ * (`import/actions.ts`), which is fast — so the run proves the same motion in seconds
+ * rather than mirroring fifty real films, which took minutes and made the timing of the
+ * chunks the thing under test.
  */
-const CONFIDENT_FILM_IDS = [
-  550, 238, 680, 278, 155, 27205, 603, 13, 597, 769, 274, 807, 8587, 862, 329, 105, 98, 497, 73,
-  424, 1124, 77, 1422, 244786, 496243, 157336, 129, 14160, 354912, 10681, 12, 313369,
+const REAL_PER_CHUNK = [
+  [550, 238, 680],
+  [278, 155, 27205],
 ];
 
-const TOTAL_TITLES = IMPORT_CHUNK_SIZE * 2 + 1;
+/** No TMDB film has an id this high; each comes back 404 and is skipped. */
+const NO_SUCH_FILM = 990_000_000;
 
-const FILLER_FILM_IDS = Array.from(
-  { length: Math.max(0, TOTAL_TITLES - CONFIDENT_FILM_IDS.length) },
-  (_, index) => 100_000 + index,
-);
-
-const FILM_IDS = [...CONFIDENT_FILM_IDS, ...FILLER_FILM_IDS].slice(0, TOTAL_TITLES);
+const FILM_IDS = Array.from({ length: IMPORT_CHUNK_SIZE * 2 + 1 }, (_, index) => {
+  const chunk = Math.floor(index / IMPORT_CHUNK_SIZE);
+  const real = REAL_PER_CHUNK[chunk]?.[index % IMPORT_CHUNK_SIZE];
+  return real ?? NO_SUCH_FILM + index;
+});
 
 function nativeImportFile(): { name: string; mimeType: string; buffer: Buffer } {
   const file = {
@@ -92,44 +98,81 @@ test("the bar eases on transform between chunks, and the finish arrives", async 
 
   await page.goto("/import");
   const main = page.getByRole("main");
+
+  // Recorded, not sampled: every transform the bar is given and every roll that starts,
+  // from before the file is chosen. Polling the computed style raced the chunks — one
+  // could land mid-transition, or the run reach *done* (which removes the bar) between
+  // two polls — so the test now reads what happened after the run, instead of hoping to
+  // be looking at the right moment.
+  await page.evaluate(() => {
+    const seen = { transforms: [] as string[], rolled: false };
+    (window as unknown as { importSeen: typeof seen }).importSeen = seen;
+    new MutationObserver((records) => {
+      for (const record of records) {
+        const target = record.target as Element;
+        if (record.type === "attributes" && target.classList.contains("progress-fill")) {
+          const value = (target as HTMLElement).style.transform;
+          if (value !== seen.transforms.at(-1)) seen.transforms.push(value);
+        }
+        for (const node of record.addedNodes) {
+          if (node instanceof Element && (node.matches(".roll-in") || node.querySelector(".roll-in"))) {
+            seen.rolled = true;
+          }
+        }
+      }
+    }).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
+  });
+
   await main.getByLabel("Choose your file").setInputFiles(nativeImportFile());
 
   await expect(main.getByRole("heading", { name: "Importing your library" })).toBeVisible();
 
   const fill = main.locator(".progress-fill");
-  const transformOf = () => fill.evaluate((element) => getComputedStyle(element).transform);
 
   // Never `width`: the fill carries no inline `width`, and slides by `transform` instead.
   expect(await fill.evaluate((element) => (element as HTMLElement).style.width)).toBe("");
-  expect(await fill.evaluate((element) => getComputedStyle(element).transitionProperty)).toBe(
-    "transform",
-  );
+  // Tailwind v4's `transition-transform` lists the individual transform properties too
+  // (`transform, translate, scale, rotate`), so this reads the list rather than one value:
+  // `transform` is on it, and `width` — the size §11.4 never animates — is not.
+  const transitioned = (
+    await fill.evaluate((element) => getComputedStyle(element).transitionProperty)
+  )
+    .split(",")
+    .map((property) => property.trim());
+  expect(transitioned).toContain("transform");
+  expect(transitioned).not.toContain("width");
   // `--dur-base` (220ms) — a chunk landing is a routine state change, the ramp position
   // the poster and title-page bars already use.
   expect(await fill.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe(
     "0.22s",
   );
 
-  const beforeAnyChunk = await transformOf();
-  await expect.poll(transformOf, { timeout: 150_000 }).not.toBe(beforeAnyChunk);
-  const afterFirstChunk = await transformOf();
-
-  // The bar's `transform` moves again as the second chunk lands — "between chunks", not
-  // a single jump from nothing to everything.
-  await expect.poll(transformOf, { timeout: 150_000 }).not.toBe(afterFirstChunk);
-  const afterSecondChunk = await transformOf();
-  expect(afterSecondChunk).not.toBe(afterFirstChunk);
-
-  // The three counters roll through the existing `Roll`, in the same beat as the bar.
-  const rolled = main.getByRole("status").locator(".roll-in");
-  expect(await rolled.count()).toBeGreaterThan(0);
-  expect(
-    await rolled.first().evaluate((element) => getComputedStyle(element).animationName),
-  ).toBe("roll-in");
-
   // The run finishes: *Import done* arrives on the existing rise, never a hard cut.
   const heading = main.getByRole("heading", { name: "Import done" });
   await expect(heading).toBeVisible({ timeout: 150_000 });
+
+  const seen = await page.evaluate(
+    () => (window as unknown as { importSeen: { transforms: string[]; rolled: boolean } }).importSeen,
+  );
+
+  // The bar moved by `transform` once per chunk that painted — the first two chunks; the
+  // last chunk's update is batched with *done* (see the docblock above) — "between
+  // chunks", not a single jump from nothing to everything. Each step slides it further
+  // right: less of the fill is held back off the track's left edge.
+  const offsets = seen.transforms.map((value) => Number(/translateX\((-?[\d.]+)%\)/.exec(value)?.[1]));
+  expect(offsets.length).toBeGreaterThanOrEqual(2);
+  for (const [index, offset] of offsets.entries()) {
+    expect(Number.isFinite(offset)).toBe(true);
+    if (index > 0) expect(offset).toBeGreaterThan(offsets[index - 1]);
+  }
+
+  // The counters rolled through the existing `Roll`, in the same beat as the bar.
+  expect(seen.rolled).toBe(true);
   const doneRoot = main.locator(".arrive", { hasText: "Import done" });
   await expect(doneRoot).toHaveCount(1);
   expect(await doneRoot.evaluate((element) => getComputedStyle(element).animationName)).toBe(
