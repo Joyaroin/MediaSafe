@@ -89,6 +89,14 @@ test.describe("a recommendation card", () => {
     // role name matches as a substring by default, so "Add Breaking Bad to your library"
     // alone also finds the plain *Add* — and the plain add records no watch, while the
     // rail below is seeded from the most recently watched title, so it would never render.
+    // Waited on by its response, not by the row's *In your library*: that line is optimistic,
+    // and navigating on it can reach the server before the watches are written, so the rail
+    // renders with no seed (`one-app.spec.ts`'s rename test waits the same way).
+    const added = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.request().headers()["next-action"] !== undefined,
+    );
     await row
       .getByRole("button", {
         name: "Add Breaking Bad to your library, recording every released episode as watched",
@@ -98,6 +106,7 @@ test.describe("a recommendation card", () => {
     await expect(
       row.getByRole("link", { name: "Breaking Bad is in your library — open it" }),
     ).toBeVisible();
+    await added;
 
     // A fresh visit, so the server re-renders the rail against the seed just watched.
     await page.goto("/search");
