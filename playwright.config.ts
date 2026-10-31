@@ -23,7 +23,22 @@ import "dotenv/config";
  * timing, not about a browser engine's rendering quirks, so a second and third project
  * would triple the run for nothing this ticket asks for. Port 3100, not 3000, so this
  * never fights a `next dev` server already running on the usual port.
+ *
+ * The port is `E2E_PORT` when it is set, because Foundry runs up to three builders at once,
+ * each running its own ticket's specs against its own server: one fixed port would have
+ * the second builder's `next start` fail to bind, or worse, the second suite measure the
+ * first builder's build. `foundry.config.json`'s `builderEnv` gives each builder `4{ticket}`.
+ * Unset — CI, the verify gate, a plain `npm run test:e2e` — it is 3100, as it always was.
+ * `PORT` below is the one source: the server, the URL Playwright waits on and `baseURL`.
  */
+const PORT = Number(process.env.E2E_PORT ?? 3100);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65_535) {
+  throw new Error(
+    `E2E_PORT must be a TCP port number; it is "${process.env.E2E_PORT}".`,
+  );
+}
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: path.join(__dirname, "tests/e2e"),
   testMatch: "**/*.spec.ts",
@@ -45,7 +60,7 @@ export default defineConfig({
   reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
 
   use: {
-    baseURL: "http://localhost:3100",
+    baseURL: BASE_URL,
     storageState: path.join(__dirname, "tests/e2e/.auth/fixture-session.json"),
     trace: "retain-on-failure",
     /**
@@ -83,8 +98,8 @@ export default defineConfig({
    * from a previous run can never be what the suite measures.
    */
   webServer: {
-    command: "npm run build && npm run start -- -p 3100",
-    url: "http://localhost:3100",
+    command: `npm run build && npm run start -- -p ${PORT}`,
+    url: BASE_URL,
     timeout: 180_000,
     reuseExistingServer: !process.env.CI,
   },
