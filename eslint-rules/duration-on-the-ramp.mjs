@@ -1,9 +1,16 @@
 /**
- * Issue #332, made mechanical: **the timing ramp becomes enforceable.** `app/globals.css`
- * declares seven duration tokens — `--dur-fast` through `--dur-pending-hold` — and a
- * millisecond value written at a call site instead of one of them is exactly the mistake
- * `app/motion.ts`'s own docblock warns against for the type ramp: as visible a mistake as a
- * `text-[1.37rem]` would be.
+ * Issue #332, made mechanical: **the timing ramp becomes enforceable.** The ramp is the
+ * `--dur-*` tokens `app/globals.css` declares, `--dur-press` through `--dur-pending-hold`,
+ * plus two that are not `--dur-` names: `--stagger-step`, the gap between staggered rows,
+ * and `--hold-shown`, the long-press time an element is handed from the hold logic's own
+ * constant. A millisecond value written at a call site instead of one of them is exactly
+ * the mistake `app/motion.ts`'s own docblock warns against for the type ramp: as visible a
+ * mistake as a `text-[1.37rem]` would be.
+ *
+ * **The only exceptions to the ramp are the ambient loops** — the pending shimmer and the
+ * pending bars' offsets down a skeleton (`globals.css`'s `pending-bar`). They run for as
+ * long as a read takes, not for a duration anyone waits through, so they keep their own
+ * timing. Both live in the stylesheet, which this rule does not read.
  *
  * The rule covers **two surfaces, and both are required**. The reorder list's row-shift
  * transition — the literal that motivated this rule — is written in a style object, not a
@@ -15,7 +22,8 @@
  *    repository already takes (`CHIP_BASE`, `GHOST_RECOVERY`, `IN_FLIGHT`, …). Both are
  *    scanned for a `duration-` Tailwind utility that is a bare number (`duration-150`) or
  *    an arbitrary value that is not a ramp token (`duration-[150ms]`).
- *    `duration-[var(--dur-fast)]` is left alone.
+ *    `duration-[var(--dur-fast)]`, `duration-[var(--stagger-step)]` and
+ *    `duration-[var(--hold-shown)]` are left alone.
  *  - **A style object.** Any object literal with a CSS timing property — `transition`,
  *    `transitionDuration`, `transitionDelay`, `animation`, `animationDuration` or
  *    `animationDelay` — whose value contains a raw `Nms`/`Ns` outside of a `var()`
@@ -38,8 +46,9 @@
 /** Tailwind's `duration-` utility: a bare number, or an arbitrary `[...]` value. */
 const DURATION_UTILITY = /\bduration-(\d+(?:\.\d+)?|\[[^\]]*\])/g;
 
-/** A ramp token, reached the one sanctioned way. */
-const RAMP_REFERENCE = /^var\(\s*--dur-[\w-]+\s*(?:,[^)]*)?\)$/;
+/** A ramp token — a `--dur-*` token, `--stagger-step` or `--hold-shown` — reached the one
+ *  sanctioned way. */
+const RAMP_REFERENCE = /^var\(\s*(?:--dur-[\w-]+|--stagger-step|--hold-shown)\s*(?:,[^)]*)?\)$/;
 
 /** A raw duration once every `var(...)` reference has been removed from the text. */
 const RAW_DURATION_VALUE = /\b\d+(?:\.\d+)?m?s\b/;

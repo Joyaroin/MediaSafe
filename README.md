@@ -152,8 +152,9 @@ Postgres, so there is one data path everywhere.
 
 ```bash
 npm run typecheck && npm run lint
-DOTENV_CONFIG_PATH=.env.development.local npx vitest run   # full suite, against local Postgres
-npm run test:e2e                                           # Playwright, local only
+npx vitest run      # full suite, against local Postgres, through the .env provision.sh wrote
+                    # (not .env.development.local, which points at a dead Neon database)
+npm run test:e2e    # Playwright, local only
 ```
 
 ## Repository layout

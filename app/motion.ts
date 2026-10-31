@@ -34,7 +34,8 @@ import type { Transition } from "motion/react";
  *
  * Reduced motion is not handled here. `<MotionConfig reducedMotion="user">` in the root
  * layout is what honours it, globally and once, by dropping transform and layout
- * animation while leaving opacity and colour intact — the event still happens, it just
+ * animation while leaving opacity and colour intact, at the animation's own duration and
+ * on its own curve — the event still happens and still fades rather than cutting, it just
  * stops moving through space.
  */
 
@@ -67,11 +68,13 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  * beside it drifting.
  *
  * `globals.css` says why the other one wins, in its own words at `@utility stagger-rise`:
- * *kept in CSS rather than given to Motion on purpose … a spring buys interruptibility,
- * and nothing can catch a grid that is appearing.* A declarative, uncatchable reveal is
- * what a keyframe is for, and doing it in CSS costs no client boundary — the library cell
- * and the rail tiles stay server components. The press is the same story: `.pressable` in
- * `globals.css` is the one every call site wears.
+ * *a spring buys interruptibility, and nothing can catch a grid that is appearing.* A
+ * declarative, uncatchable reveal is what a keyframe is for, and keeping the keyframe in
+ * CSS costs the rows no client boundary — the library cell and the rail tiles stay server
+ * components. Whether a screen's arrival has already played is a fact about the screen,
+ * not a spring, and a component may tell the stylesheet so on the container
+ * (`data-arrived`) without the rise moving here. The press is the same story: `.pressable`
+ * in `globals.css` is the press every control wears, and the one exception is named below.
  *
  * Two spellings of one rule is two places for the numbers to disagree, and they already
  * had: the cap lived here as `STAGGER_CAP = 10` and there as `:nth-child(n + 10)`, with
@@ -83,8 +86,8 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  *
  * ── #270 reversed one word of this, and left the conclusion standing ─────────────────
  *
- * The press is still in CSS, still has no variant here, and this module gains nothing
- * back. What was wrong is *the press is the same story*. The grid's story is that a spring
+ * The press is still in CSS and still has no variant here. What was wrong is *the press is
+ * the same story*. The grid's story is that a spring
  * buys nothing because nothing can catch a reveal — and that had come to be read as
  * *therefore a press is flat*. A press cannot be caught either, but it can still have a
  * spring's **shape**, and those are two properties rather than one. `linear()` holds an
@@ -98,7 +101,7 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  * ── #281 kept all of that and moved where the spring is written ─────────────────────
  *
  * `globals.css`'s `--spring-press` is gone, and none of the above changes: the press is
- * still in CSS, this module still gains nothing back, and the press is still `snappy`.
+ * still in CSS, still has no variant here, and is still `snappy`.
  * What was wrong was the **timing function** as the place to put it. A transition's easing
  * scales the *delta* between two values rather than a value, so a curve peaking at `1.0062`
  * over a `0.97 → 1` release arrived at `1.00019` — a faithful transcription of the spring
@@ -110,4 +113,13 @@ export const exit: Transition = { duration: 0.14, ease: [0.25, 1, 0.5, 1] };
  * and now also asserts the pop exceeds rest: this note's own warning about two spellings,
  * answered first by making the second spelling a function of the first, and then by
  * asserting that the second one does anything at all.
+ *
+ * ── The one press Motion drives ──────────────────────────────────────────────────────
+ *
+ * Every press is that CSS transition, with exactly one exception: Tonight's featured
+ * *Mark watched*. It is already a Motion `m.button` carrying a `layoutId` — it narrows into
+ * the tick — so Motion owns its `transform`, and a CSS scale on the same element would fight
+ * the layout animation for it. It presses through `whileTap`, scale `0.97` on `snappy`
+ * above: the spring `press-pop` is sampled from, so it is still one press and not a second
+ * feel. No variant is added here for it; the call site names `snappy`.
  */
