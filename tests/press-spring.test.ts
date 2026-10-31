@@ -4,6 +4,14 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { HOLD_MS } from "@/app/(signed-in)/library/use-hold-to-select";
+import {
+  ICON_BUTTON,
+  ICON_BUTTON_OVER_ARTWORK,
+  ICON_BUTTON_SQUARE,
+  MENU_ITEM,
+  PRIMARY_BUTTON_LARGE,
+  withoutPress,
+} from "@/app/buttons";
 import { snappy } from "@/app/motion";
 
 /**
@@ -949,6 +957,14 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
   "app/tab-bar.tsx": ["control"],
+
+  // The shared button base — issue #431. `BASE` is the one site every button variant
+  // composes, and it declares no register of its own (the default, left quiet, is what
+  // lets `PRIMARY_BUTTON`, `SECONDARY_BUTTON`, the pills and every other plain button stay
+  // on the surface register). `MENU_ITEM` does not build on `BASE` — it is its own call
+  // site, a surface in the same sense a card or a row is — so it is the second string this
+  // file finds, in the order both appear in `app/buttons.ts`.
+  "app/buttons.ts": ["surface", "surface"],
 };
 
 /** How a call site spells a register, as Tailwind spells an arbitrary property —
@@ -1491,5 +1507,103 @@ describe("the tab bar's icon leads its label", () => {
 
     // And the navigation still happens: nothing here takes a tab off the pointer.
     expect(blocks[0]).not.toMatch(/pointer-events|display\s*:|visibility/);
+  });
+});
+
+/**
+ * ── The shared button base wears the press — issue #431 ─────────────────────────────
+ *
+ * Every button in the application is built on `app/buttons.ts`'s `BASE`, so one change
+ * there reaches Tonight's row *Mark watched*, the action toast's *Undo*, every *Try
+ * again*, the sign-in button, the back control and the list back control at once — they
+ * were all dead under a touch because the shared base never wore `pressable`, not because
+ * any one of them opted out.
+ */
+describe("the shared button base wears the press", () => {
+  const BUTTONS = "app/buttons.ts";
+
+  /** `BASE`'s own template literal, read as source rather than imported, so this does not
+   *  care which variant happens to compose it. */
+  function baseDeclaration(): string {
+    const match = codeOf(BUTTONS).match(/const BASE = `([^`]*)`/);
+    expect(match, "app/buttons.ts must still declare BASE as a template literal").not.toBeNull();
+    return match![1];
+  }
+
+  /** A top-level `const`/`export const` declaration, as the one line of source that makes
+   *  it — comments already blanked, so prose discussing the name cannot match instead. */
+  function declaration(name: string): string {
+    const match = new RegExp(`(?:export )?const ${name} =[^;]*;`).exec(codeOf(BUTTONS));
+    expect(match, `app/buttons.ts must still declare ${name}`).not.toBeNull();
+    return match![0];
+  }
+
+  it("carries pressable and no transition utility of its own", () => {
+    const base = baseDeclaration();
+
+    expect(base.split(/\s+/)).toContain("pressable");
+    // Two transition utilities on one element fight over `transition-property`, and the
+    // later-emitted one wins — `app/tab-bar.tsx`'s own docblock already names this failure.
+    expect(base).not.toMatch(/transition-\[/);
+    expect(base).not.toMatch(/\bduration-\[/);
+  });
+
+  it("drives the filled, plain and destructive variants' hover colour from its own transition list", () => {
+    // The hover classes are untouched — what moved is which transition drives them, and
+    // none of the three may have grown a second transition utility of its own to do it.
+    expect(declaration("PRIMARY")).toBe("const PRIMARY = `${FILLED} hover:brightness-95`;");
+    expect(declaration("PLAIN")).toBe('const PLAIN = "text-text hover:text-dim";');
+    expect(declaration("DESTRUCTIVE")).toBe(
+      'const DESTRUCTIVE = "danger-line text-danger hover:bg-danger hover:text-ground";',
+    );
+    for (const variant of ["PRIMARY", "PLAIN", "DESTRUCTIVE"]) {
+      expect(declaration(variant), `${variant} must not add its own transition utility`).not.toMatch(
+        /transition-/,
+      );
+    }
+
+    // `pressable` is what is left to drive them, and it has to actually carry all three
+    // properties those three hovers change — `filter` and `background-color` already did;
+    // `color` is the one this ticket adds, for `hover:text-dim` and `hover:text-ground`.
+    const transition = pressableUtility().match(/transition:\s*([\s\S]*?);/);
+    expect(transition, "`pressable` must still declare one `transition` list").not.toBeNull();
+    expect(transition![1]).toMatch(/\bcolor\b/);
+    expect(transition![1]).toMatch(/\bbackground-color\b/);
+    expect(transition![1]).toMatch(/\bfilter\b/);
+  });
+
+  it("gives every icon-only button constant the small-control register", () => {
+    const control = REGISTER_CLASS.control as string;
+
+    // The register rides in through an interpolated constant rather than a literal in the
+    // declaration's own source, so these are read as the strings a consumer actually gets.
+    for (const classes of [ICON_BUTTON, ICON_BUTTON_SQUARE, ICON_BUTTON_OVER_ARTWORK]) {
+      expect(classes.split(/\s+/)).toContain("pressable");
+      expect(classes.split(/\s+/)).toContain(control);
+    }
+  });
+
+  it("leaves the menu item on the surface register, spelled by saying nothing", () => {
+    expect(MENU_ITEM.split(/\s+/)).toContain("pressable");
+    expect(MENU_ITEM).not.toContain(REGISTER_PROPERTY);
+  });
+
+  it("drops the CSS press on Tonight's featured Mark watched, whose layoutId morph it must not fight", () => {
+    const source = codeOf("app/(signed-in)/up-next/tonight-featured.tsx");
+
+    expect(source).toContain("withoutPress(PRIMARY_BUTTON_LARGE)");
+    // Its own Motion press is the next ticket's; this ticket removes only the CSS one.
+    expect(source).toContain("layoutId={shape}");
+    expect(source).not.toMatch(/className=\{`\$\{PRIMARY_BUTTON_LARGE\}/);
+  });
+
+  it("withoutPress strips exactly the pressable token and nothing else", () => {
+    expect(PRIMARY_BUTTON_LARGE.split(/\s+/)).toContain("pressable");
+
+    const stripped = withoutPress(PRIMARY_BUTTON_LARGE);
+    expect(stripped.split(/\s+/)).not.toContain("pressable");
+    expect(stripped.split(/\s+/)).toEqual(
+      PRIMARY_BUTTON_LARGE.split(/\s+/).filter((token) => token !== "pressable"),
+    );
   });
 });
