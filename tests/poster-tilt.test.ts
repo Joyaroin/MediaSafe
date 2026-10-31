@@ -35,4 +35,20 @@ describe("posters tilt on a desktop and nowhere else", () => {
     const provider = readFileSync("app/motion-provider.tsx", "utf8");
     expect(provider).toMatch(/usePressMarks\(\);\s*usePosterTilt\(\);/);
   });
+
+  /**
+   * Issue #436: the settle-back, when the mouse leaves and the tilt lets go, used to run
+   * on `--dur-slow` (380ms) — the same rest-state transition the hover brighten's `filter`
+   * shares a `transition` list with. Moving across a grid of posters should not leave a
+   * trail of slow returns, so it now reads `--dur-base`, no hand-typed figure left behind.
+   */
+  it("lets go of the tilt on --dur-base, not --dur-slow", () => {
+    const restState = GLOBALS.match(
+      /@media \(hover: hover\) and \(pointer: fine\) \{\s*\.poster \{[\s\S]*?\n {2}\}/,
+    );
+    expect(restState).not.toBeNull();
+    expect(restState![0]).toContain("transform var(--dur-base)");
+    expect(restState![0]).not.toContain("--dur-slow");
+    expect(restState![0]).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+  });
 });
