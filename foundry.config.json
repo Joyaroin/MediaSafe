@@ -22,17 +22,19 @@
   "builderVerify": [
     {
       "when": "tests/e2e/**/*.spec.ts",
-      "run": "npx playwright test {files} --retries=0"
+      "run": "npx playwright test {files} --retries=0",
+      "serial": true
     },
     { "when": "tests/**/*.test.ts", "run": "npx vitest run {files}" }
   ],
   "builderSetup": [
     "/bin/cp -cR {repoRoot}/node_modules node_modules",
-    "ln -sfn {repoRoot}/.env .env",
+    "/bin/cp {repoRoot}/.env .env",
     "docker exec mediasafe-postgres createdb -U mediasafe mediasafe_t{ticket}",
     "npm run db:migrate"
   ],
   "builderTeardown": [
     "docker exec mediasafe-postgres dropdb --if-exists -U mediasafe mediasafe_t{ticket}"
-  ]
+  ],
+  "agentsMayNotRun": ["playwright test", "test:e2e"]
 }
