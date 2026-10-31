@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -137,5 +139,128 @@ describe("what the toast says — issue #357", () => {
     const markup = renderToStaticMarkup(createElement(ActionToasts));
     expect(markup).toContain(">Taken off Comfort shows.<");
     expect(markup).not.toContain("Watched.");
+  });
+});
+
+/**
+ * ── It arrives and leaves instead of blinking — issue #438 ──────────────────────────────
+ *
+ * The toast reuses `errors/write-failure-toast.tsx`'s own mechanism rather than a new one:
+ * `action-toast-transition` (`app/globals.css`) mirrors `write-failure-toast-transition` —
+ * an entrance via `@starting-style` and a held `data-leaving="true"` state for the exit —
+ * sharing its two existing durations and two existing easing curves rather than declaring
+ * either from scratch. The browser half of this — the transform and opacity actually
+ * changing on arrival and again on the way out — is `tests/e2e/action-toast-motion.spec.ts`;
+ * this is the static half: that the rule computes to the values the ticket names, and that
+ * the component wires the class and the attribute `write-failure-toast.tsx` does.
+ */
+
+const GLOBALS = readFileSync("app/globals.css", "utf8");
+const GLOBALS_CODE = GLOBALS.replace(/\/\*[\s\S]*?\*\//g, (comment) => " ".repeat(comment.length));
+const ACTION_TOAST_TOASTS_SOURCE = readFileSync(
+  "app/(signed-in)/library/action-toast-toasts.tsx",
+  "utf8",
+);
+
+/** The body of `@utility name { … }` or of a plain rule, up to its closing brace — the
+ *  same brace-balanced read `tests/motion-moments.test.ts` uses, since a bare
+ *  `match(/\{[^}]*\}/)` cannot survive a rule with a nested `@starting-style` inside it. */
+function cssBlock(selector: string): string {
+  const start = GLOBALS_CODE.indexOf(selector);
+  expect(start, `${selector} is declared`).toBeGreaterThanOrEqual(0);
+  let depth = 0;
+  for (let index = GLOBALS_CODE.indexOf("{", start); index < GLOBALS_CODE.length; index += 1) {
+    if (GLOBALS_CODE[index] === "{") depth += 1;
+    if (GLOBALS_CODE[index] === "}") depth -= 1;
+    if (depth === 0) return GLOBALS_CODE.slice(start, index + 1);
+  }
+  throw new Error(`${selector} never closes`);
+}
+
+describe("the toast carries action-toast-transition (issue #438)", () => {
+  it("wires the toast's own element to the class, with data-leaving held through its exit", () => {
+    expect(ACTION_TOAST_TOASTS_SOURCE).toContain("action-toast-transition");
+    expect(ACTION_TOAST_TOASTS_SOURCE).toMatch(/data-leaving=\{.*\?\s*"true"/);
+  });
+
+  it("does not reach for the arrival stagger or the region-entrance keyframe instead", () => {
+    expect(ACTION_TOAST_TOASTS_SOURCE).not.toMatch(/\brise-in\b/);
+    expect(ACTION_TOAST_TOASTS_SOURCE).not.toMatch(/\bstagger-rise\b/);
+    expect(ACTION_TOAST_TOASTS_SOURCE).not.toMatch(/(^|[^-])\barrive(-panel)?\b/);
+  });
+});
+
+describe("the entrance — 8px above, with a fade, via @starting-style (issue #438)", () => {
+  it("rests at its landed position and opacity, transitioning in on --dur-slow and the arrival curve", () => {
+    const body = cssBlock("@utility action-toast-transition");
+    expect(body).toContain("opacity: 1;");
+    expect(body).toContain("transform: none;");
+    expect(body).toMatch(/opacity\s+var\(--dur-slow\)\s+var\(--ease-press\)/);
+    expect(body).toMatch(/transform\s+var\(--dur-slow\)\s+var\(--ease-press\)/);
+  });
+
+  it("starts 8px above, faded out", () => {
+    const starting = GLOBALS_CODE.match(
+      /@starting-style\s*\{\s*\.action-toast-transition\s*\{([^}]*)\}/,
+    );
+    expect(starting, "a @starting-style block for .action-toast-transition").not.toBeNull();
+    const body = starting![1];
+    expect(body).toContain("opacity: 0;");
+    expect(body).toMatch(/transform:\s*translateY\(-8px\);/);
+  });
+
+  it("declares no raw millisecond or second literal of its own", () => {
+    const body = cssBlock("@utility action-toast-transition");
+    expect(body.replace(/var\([^)]*\)/g, "")).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+  });
+});
+
+describe("the exit — data-leaving, held through --dur-fast (issue #438)", () => {
+  it("fades and moves back out on --dur-fast and the leave curve", () => {
+    const body = cssBlock('.action-toast-transition[data-leaving="true"]');
+    expect(body).toContain("opacity: 0;");
+    expect(body).toMatch(/transform:\s*translateY\(-8px\);/);
+    expect(body).toMatch(/opacity\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(body).toMatch(/transform\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+  });
+});
+
+/** The one `@media (prefers-reduced-motion: reduce)` block that already names
+ *  `write-failure-toast-transition` — `globals.css` carries several of these scoped to the
+ *  section above them, so a bare first-match would silently grab an unrelated one
+ *  (`.poster-glow`'s, earlier in the file). The ticket's own instruction is to mirror the
+ *  write-failure toast's rule, which means landing in *this* block, not a new one. */
+function reducedMotionBlockContaining(needle: string): string {
+  const needleIndex = GLOBALS_CODE.indexOf(needle);
+  expect(needleIndex, `${needle} is declared`).toBeGreaterThanOrEqual(0);
+  const mediaStart = GLOBALS_CODE.lastIndexOf(
+    "@media (prefers-reduced-motion: reduce)",
+    needleIndex,
+  );
+  expect(mediaStart, `an enclosing reduced-motion block for ${needle}`).toBeGreaterThanOrEqual(0);
+  let depth = 0;
+  for (let index = GLOBALS_CODE.indexOf("{", mediaStart); index < GLOBALS_CODE.length; index += 1) {
+    if (GLOBALS_CODE[index] === "{") depth += 1;
+    if (GLOBALS_CODE[index] === "}") depth -= 1;
+    if (depth === 0) return GLOBALS_CODE.slice(mediaStart, index + 1);
+  }
+  throw new Error(`${needle}'s reduced-motion block never closes`);
+}
+
+describe("reduced motion drops the movement, keeps the opacity change (issue #438)", () => {
+  it("joins write-failure-toast-transition's own reduced-motion block rather than a new one", () => {
+    const reducedMotion = reducedMotionBlockContaining(".write-failure-toast-transition,");
+    expect(reducedMotion).toContain(".action-toast-transition,");
+    expect(reducedMotion).toContain('.action-toast-transition[data-leaving="true"]');
+    // Transform drops to none for both the resting and the leaving rule — opacity is left
+    // untouched by this block, which is what keeps the fade while the travel goes.
+    expect(reducedMotion).toMatch(/\.action-toast-transition,[\s\S]*?transform:\s*none;/);
+  });
+
+  it("keeps the opacity fade on the starting style under reduced motion too", () => {
+    const reducedMotion = reducedMotionBlockContaining(".write-failure-toast-transition,");
+    expect(reducedMotion).toMatch(
+      /@starting-style\s*\{[\s\S]*?\.action-toast-transition\s*\{\s*transform:\s*none;/,
+    );
   });
 });
