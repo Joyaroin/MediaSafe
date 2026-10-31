@@ -1,6 +1,7 @@
 {
   "verify": [
     "rm -rf .next",
+    "npm run db:migrate",
     "npm run typecheck",
     "npm run build",
     "npm test",
