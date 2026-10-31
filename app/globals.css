@@ -1586,15 +1586,16 @@
   }
 }
 
-/* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
+/* ── Every progress bar follows the mark — issue #335, widened by #444 ───────────────
    The state that drives each bar's fill already updates at the sweep's settle
-   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), and each fill carries a
-   transition on the ramp, declared at its call site. Issue #407 moved that transition off
-   `width` — handoff §11.4 never animates a size — and onto `transform`: the fill is the
-   track's full width, slid left by what is not yet watched, and the track clips it, so
-   the fill's own rounded end stays round where a `scaleX` would flatten it.
+   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`) or at a chunk landing
+   (`import-surface.tsx`'s `Running`), and each fill carries a transition on the ramp,
+   declared at its call site. Issue #407 moved that transition off `width` — handoff
+   §11.4 never animates a size — and onto `transform`: the fill is the track's full
+   width, slid left by what is not yet written, and the track clips it, so the fill's
+   own rounded end stays round where a `scaleX` would flatten it.
    `progress-fill` carries no rule of its own; it exists only so this block has one
-   selector to reach both bars.
+   selector to reach all three bars.
 
    Same shape as the sweep just above: the same unconditional-event, no-lingering-
    animation rule. The fill still lands on the mark's new value — it just stops
