@@ -582,7 +582,7 @@
      front of. */
   --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
 
-  /* Issue #429. The staggered entrance's own beat — each child a fifth of `--dur-base`
+  /* Issue #429. The staggered entrance's own beat — each child `--stagger-step` (20ms)
      behind the last, so the ninth of the capped nine lands at `8 * 20ms + 220ms = 380ms`
      rather than at the hand-typed 30ms step that used to put it at 620ms. Named rather
      than typed at each `nth-child`, the same reason every other beat on this ramp has a

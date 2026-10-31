@@ -507,7 +507,7 @@ Reference: `motion-spec`, `motion-gestures.html` (open it; it plays by itself), 
 | `--dur-travel` | 420ms | Something moving to another place, and a failure rewinding | **new** |
 | `--stagger-step` | 20ms | The staggered entrance's per-child beat — the ninth of the capped nine lands at `8 * 20ms + --dur-base = 380ms` | **new** |
 
-- The names of the two new tokens are proposals; keep them unless they collide.
+- `--dur-roll` and `--dur-travel` were named here as proposals and kept; `--stagger-step` was added by issue #429.
 - `mediasafe/duration-on-the-ramp` and `tests/press-spring.test.ts` ("reads every duration it declares") mean a new token must be added in the same change as its first use.
 - Easing by role, all existing: arrive `--ease-press`, leave `--ease-out-quart`, travel `--ease-in-out-soft`.
 - **Tokens time what CSS does:** fills, fades, the line roll, the travelling poster, the toast. **Springs time what Motion does:** anything that changes size or follows a finger. By `app/motion.ts`'s own definitions that is `smooth` for a size change (the button narrowing, a row closing), `snappy` for anything a finger just let go of (the swipe wash withdrawing), and `bouncy` only for the tick and the season finish. A moment never needs both for the same element.
