@@ -1,6 +1,10 @@
+import { AnimatePresence } from "motion/react";
+import * as m from "motion/react-m";
 import Link from "next/link";
+import type { Ref } from "react";
 
 import { PosterLink } from "@/app/(signed-in)/library/poster-link";
+import { exit, smooth } from "@/app/motion";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import type { ListDetailTitleRow } from "@/db/access";
@@ -40,6 +44,14 @@ const CELL_LINK = "pressable group block";
  * this view is view-only and the **List** tab is where a list is reordered, which is the
  * bargain Finder strikes too: you cannot drag a file into place in a sorted list view
  * there either. The numerals are what keep the order legible without switching.
+ *
+ * ── A taken-off cell leaves with an exit, the way a row does — issue #476 ────────────
+ *
+ * `AnimatePresence` in `popLayout`, exactly as `tonight-list.tsx`'s rows leave and
+ * `list-title-row.tsx`'s own now do: the cell fades on `--dur-fast` (`exit`) while
+ * `layout="position"` carries the cells after it into the gap on `smooth`. `IconCell`
+ * takes the `ref` `AnimatePresence` forwards and puts it on its own `m.li`, or the leaving
+ * cell would hold its place until its fade finished rather than giving it up at once.
  */
 export function ListIconGrid({
   titles,
@@ -56,14 +68,19 @@ export function ListIconGrid({
        reasoning — the cell's padding is inside the card, so a `14px` list gutter is what
        puts a poster's *edge* on the page's `22px`. */
     <ol className="stagger-rise grid grid-cols-3 gap-x-3.5 gap-y-5 px-gutter pb-6 lg:px-10 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-      {titles.map((title, index) => (
-        <IconCell
-          key={title.titleId}
-          title={title}
-          aboveFold={index < FIRST_ROW}
-          onTakeOff={() => onTakeOff(title)}
-        />
-      ))}
+      {/* `initial={false}`: a cell on the first paint arrives with the grid's own
+          `stagger-rise`, not a second entrance — this is for the leaving, a title taken
+          off the list (issue #476). */}
+      <AnimatePresence initial={false} mode="popLayout">
+        {titles.map((title, index) => (
+          <IconCell
+            key={title.titleId}
+            title={title}
+            aboveFold={index < FIRST_ROW}
+            onTakeOff={() => onTakeOff(title)}
+          />
+        ))}
+      </AnimatePresence>
     </ol>
   );
 }
@@ -80,13 +97,17 @@ function IconCell({
   title,
   aboveFold,
   onTakeOff,
+  ref,
 }: {
   readonly title: ListDetailTitleRow;
   readonly aboveFold: boolean;
   readonly onTakeOff: () => void;
+  /** `AnimatePresence`'s, so a leaving cell can be popped out of the flow as it closes
+   *  (issue #476). */
+  readonly ref?: Ref<HTMLLIElement>;
 }) {
   return (
-    <li className="relative min-w-0">
+    <m.li ref={ref} layout="position" exit={{ opacity: 0, transition: exit }} transition={smooth} className="relative min-w-0">
       {/* A sibling of the link, not inside it, so the press takes the title off rather than
           opening it. */}
       <button
@@ -215,6 +236,6 @@ function IconCell({
         )}
         </PosterLink>
       )}
-    </li>
+    </m.li>
   );
 }

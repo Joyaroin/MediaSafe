@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence } from "motion/react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
 import { useRef, useState } from "react";
 
@@ -65,6 +66,14 @@ import { ListTitleRow } from "./list-title-row";
  * `setDragState` alongside it exists only to ask React to re-render the row that is
  * following the pointer. Verified by hand against a synthetic same-tick pointer sequence,
  * which reproduced the dropped gesture before this split and does not after.
+ *
+ * ── A taken-off row leaves with an exit, the way Tonight's rows do — issue #476 ──────
+ *
+ * The rows are wrapped in `AnimatePresence` `mode="popLayout"`, exactly as
+ * `tonight-list.tsx`'s own: the row taken off fades on `--dur-fast` while
+ * `list-title-row.tsx`'s `layout="position"` carries the rows below it into the gap on
+ * `smooth`. `ListTitleRow` forwards the `ref` `AnimatePresence` hands it, or the leaving
+ * row would hold its space until the fade finished rather than giving it up at once.
  */
 export function ReorderableTitleList({
   listId,
@@ -219,58 +228,62 @@ export function ReorderableTitleList({
       </div>
 
       <ul className="px-gutter">
-        {order.map((title, index) => {
-          const shift = shiftFor(index, dragState, hoverIndex);
-          const style: CSSProperties | undefined =
-            dragState && dragState.titleId === title.titleId
-              ? {
-                  position: "relative",
-                  zIndex: 20,
-                  touchAction: "none",
-                  transform: `translateY(${dragState.translateY}px)`,
-                }
-              : undefined;
+        {/* `initial={false}`: a row on the first paint arrives with no entrance of its own.
+            What this is for is the leaving — a title taken off the list (issue #476). */}
+        <AnimatePresence initial={false} mode="popLayout">
+          {order.map((title, index) => {
+            const shift = shiftFor(index, dragState, hoverIndex);
+            const style: CSSProperties | undefined =
+              dragState && dragState.titleId === title.titleId
+                ? {
+                    position: "relative",
+                    zIndex: 20,
+                    touchAction: "none",
+                    transform: `translateY(${dragState.translateY}px)`,
+                  }
+                : undefined;
 
-          return (
-            <ListTitleRow
-              key={title.titleId}
-              title={title}
-              style={style}
-              shift={shift}
-              aboveFold={index === 0}
-              liRef={(element) => {
-                if (element) rowElements.current.set(title.titleId, element);
-                else rowElements.current.delete(title.titleId);
-              }}
-              dragHandle={
-                <button
-                  type="button"
-                  aria-label={`Reorder ${title.name}, position ${index + 1} of ${order.length}`}
-                  className="touch-none cursor-grab select-none p-2 text-dim transition-colors duration-[var(--dur-fast)] hover:text-text active:cursor-grabbing"
-                  onPointerDown={(event) => onHandlePointerDown(event, index, title.titleId)}
-                  onPointerMove={onHandlePointerMove}
-                  onPointerUp={endDrag}
-                  onPointerCancel={endDrag}
-                  onKeyDown={(event) => onHandleKeyDown(event, index, title.titleId)}
-                >
-                  <DragHandleIcon className="h-5 w-5" />
-                </button>
-              }
-              trailing={
-                <button
-                  type="button"
-                  onClick={() => onTakeOff(title)}
-                  aria-label={`Take ${title.name} off this list`}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-full)] text-dim transition-colors duration-[var(--dur-fast)] hover:text-danger"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                    <path d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
-              }
-            />
-          );
-        })}
+            return (
+              <ListTitleRow
+                key={title.titleId}
+                title={title}
+                style={style}
+                shift={shift}
+                aboveFold={index === 0}
+                liRef={(element) => {
+                  if (element) rowElements.current.set(title.titleId, element);
+                  else rowElements.current.delete(title.titleId);
+                }}
+                dragHandle={
+                  <button
+                    type="button"
+                    aria-label={`Reorder ${title.name}, position ${index + 1} of ${order.length}`}
+                    className="touch-none cursor-grab select-none p-2 text-dim transition-colors duration-[var(--dur-fast)] hover:text-text active:cursor-grabbing"
+                    onPointerDown={(event) => onHandlePointerDown(event, index, title.titleId)}
+                    onPointerMove={onHandlePointerMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
+                    onKeyDown={(event) => onHandleKeyDown(event, index, title.titleId)}
+                  >
+                    <DragHandleIcon className="h-5 w-5" />
+                  </button>
+                }
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => onTakeOff(title)}
+                    aria-label={`Take ${title.name} off this list`}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-full)] text-dim transition-colors duration-[var(--dur-fast)] hover:text-danger"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                }
+              />
+            );
+          })}
+        </AnimatePresence>
       </ul>
     </>
   );
