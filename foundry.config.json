@@ -27,7 +27,7 @@
     { "when": "tests/**/*.test.ts", "run": "npx vitest run {files}" }
   ],
   "builderSetup": [
-    "ln -sfn {repoRoot}/node_modules node_modules",
+    "/bin/cp -cR {repoRoot}/node_modules node_modules",
     "ln -sfn {repoRoot}/.env .env",
     "docker exec mediasafe-postgres createdb -U mediasafe mediasafe_t{ticket}",
     "npm run db:migrate"
