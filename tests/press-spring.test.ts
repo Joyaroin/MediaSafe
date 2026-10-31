@@ -13,6 +13,7 @@ import {
   withoutPress,
 } from "@/app/buttons";
 import { snappy } from "@/app/motion";
+import { SELECTED, UNSELECTED, UNSELECTED_PRESSABLE } from "@/app/selection";
 
 /**
  * The press, asserted against the spring it claims to come from — issues #270, #281, #282.
@@ -1629,6 +1630,42 @@ describe("the shared button base wears the press", () => {
     expect(stripped.split(/\s+/)).not.toContain("pressable");
     expect(stripped.split(/\s+/)).toEqual(
       PRIMARY_BUTTON_LARGE.split(/\s+/).filter((token) => token !== "pressable"),
+    );
+  });
+});
+
+/**
+ * Issue #433's review: the sidebar item wore `.pressable` and `UNSELECTED`, whose
+ * `transition-colors` is emitted after `.pressable` and so took `transform` out of the
+ * item's `transition-property` — the compression snapped while the release still sprang.
+ * The guard above holds `BASE` to one transition; this holds the sidebar's two states, the
+ * one call site that pairs the press with a selection treatment, to the same rule.
+ */
+describe("the sidebar item presses through one transition list (issue #433)", () => {
+  const SIDEBAR = codeOf("app/sidebar-nav.tsx");
+
+  function classesOf(name: string): string {
+    const match = new RegExp(`const ${name} =\\s*([\\s\\S]*?);`).exec(SIDEBAR);
+    expect(match, `app/sidebar-nav.tsx must still declare ${name}`).not.toBeNull();
+    return match![1];
+  }
+
+  it("builds the not-current item from the pressable selection treatment", () => {
+    expect(classesOf("NOT_CURRENT")).toContain("UNSELECTED_PRESSABLE");
+    expect(classesOf("NOT_CURRENT")).not.toMatch(/\$\{UNSELECTED\}/);
+  });
+
+  it("carries no transition utility beside the press, in either state", () => {
+    for (const classes of [classesOf("ITEM"), SELECTED, UNSELECTED_PRESSABLE]) {
+      expect(classes).not.toMatch(/\btransition-/);
+      expect(classes).not.toMatch(/\bduration-\[/);
+    }
+    expect(classesOf("ITEM")).toMatch(/(^|[\s"`])pressable(\s|$)/);
+  });
+
+  it("keeps the selection treatment's look", () => {
+    expect(UNSELECTED_PRESSABLE.split(/\s+/)).toEqual(
+      UNSELECTED.split(/\s+/).filter((token) => !/^(transition-|duration-)/.test(token)),
     );
   });
 });

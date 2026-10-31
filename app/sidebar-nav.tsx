@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { smooth } from "./motion";
-import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
+import { SELECTED, SELECTED_MARKER, UNSELECTED_PRESSABLE } from "./selection";
 import { DESTINATIONS } from "./destinations";
 import { DESTINATION_ICONS } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
@@ -92,7 +92,7 @@ const PRIMARY = DESTINATIONS.map(({ href, label }) => ({
 const ITEM =
   "pressable [--press-register:1] relative flex h-11 items-center gap-3 rounded-[var(--radius-4)] px-3 text-note";
 const CURRENT = `${ITEM} ${SELECTED}`;
-const NOT_CURRENT = `${ITEM} ${UNSELECTED}`;
+const NOT_CURRENT = `${ITEM} ${UNSELECTED_PRESSABLE}`;
 
 function CurrentMarker() {
   return (

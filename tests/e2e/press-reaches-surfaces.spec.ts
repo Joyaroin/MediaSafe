@@ -85,7 +85,16 @@ test.describe("a recommendation card", () => {
       .locator("li", { has: page.getByRole("heading", { name: "Breaking Bad", exact: true }) })
       .first();
     await expect(row).toBeVisible();
-    await row.getByRole("button", { name: /^Add Breaking Bad to your library/ }).click();
+    // The *Add watched* pill by its exact name (`catalogue/add-watched.ts`'s show label). A
+    // role name matches as a substring by default, so "Add Breaking Bad to your library"
+    // alone also finds the plain *Add* — and the plain add records no watch, while the
+    // rail below is seeded from the most recently watched title, so it would never render.
+    await row
+      .getByRole("button", {
+        name: "Add Breaking Bad to your library, recording every released episode as watched",
+        exact: true,
+      })
+      .click();
     await expect(
       row.getByRole("link", { name: "Breaking Bad is in your library — open it" }),
     ).toBeVisible();

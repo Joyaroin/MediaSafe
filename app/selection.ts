@@ -18,6 +18,16 @@ export const SELECTED = "font-semibold text-text";
 export const UNSELECTED =
   "font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text";
 
+/**
+ * `UNSELECTED` for an option that wears `.pressable` — the same look, with no transition of
+ * its own. Two `transition-*` utilities on one element fight over `transition-property`
+ * and the later-emitted one wins (`app/tab-bar.tsx`'s docblock): `transition-colors` is
+ * emitted after `.pressable`, so it took `transform` out of the list and the press's
+ * compression snapped instead of easing. `.pressable`'s own transition already carries
+ * `color` (issue #431), which is what drives the hover here (issue #433).
+ */
+export const UNSELECTED_PRESSABLE = "font-medium text-dim hover:text-text";
+
 /** The line alone, for a marker that travels between options under a `layoutId`. The
  *  caller gives it its own radius, because the marker takes the shape of what it marks. */
 export const SELECTED_MARKER = "pointer-events-none absolute inset-0 selected-line";
