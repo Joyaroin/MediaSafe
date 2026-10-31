@@ -759,7 +759,7 @@ describe("the rows making way for a dragged row get a spring", () => {
   });
 
   it("animates the displaced rows on the motion module's own spring", () => {
-    expect(LIST_TITLE_ROW).toMatch(/import \{ smooth \} from "@\/app\/motion"/);
+    expect(LIST_TITLE_ROW).toMatch(/import \{[^}]*\bsmooth\b[^}]*\} from "@\/app\/motion"/);
     expect(LIST_TITLE_ROW).toMatch(/animate=\{[^}]*shift[^}]*\}/);
     expect(LIST_TITLE_ROW).toMatch(/transition=\{smooth\}/);
   });

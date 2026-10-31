@@ -1,8 +1,8 @@
 import Link from "next/link";
 import * as m from "motion/react-m";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 
-import { smooth } from "@/app/motion";
+import { exit, smooth } from "@/app/motion";
 import { PosterLink } from "@/app/(signed-in)/library/poster-link";
 import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
@@ -60,11 +60,22 @@ import type { ListDetailTitleRow } from "@/db/access";
  * mid-gesture carries the row's velocity into the new target instead of restarting it from
  * rest. `shiftFor` never moves the row it belongs to, so `style` and `shift` never fight
  * over the same row at once.
+ *
+ * ── Leaving the list, the way a Tonight row leaves — issue #476 ──────────────────────
+ *
+ * `ReorderableTitleList` wraps its rows in `AnimatePresence` `mode="popLayout"`, exactly as
+ * `tonight-list.tsx` wraps its own: a taken-off row fades on `--dur-fast` (`exit`, this
+ * module's own) while `layout="position"` carries the rows below it into the gap on
+ * `smooth`. `ref` is what `AnimatePresence` forwards so the leaving row is popped out of
+ * the flow and gives up its space at once rather than holding it until the fade finishes —
+ * merged below with `liRef`, which answers a different question about the same node (this
+ * row's own height, read while a drag is live).
  */
 export function ListTitleRow({
   title,
   dragHandle,
   liRef,
+  ref,
   style,
   shift = 0,
   aboveFold = false,
@@ -74,6 +85,9 @@ export function ListTitleRow({
   readonly dragHandle: ReactNode;
   /** How `ReorderableTitleList` measures this row's height at the start of a drag. */
   readonly liRef?: (element: HTMLLIElement | null) => void;
+  /** `AnimatePresence`'s, so a leaving row can be popped out of the flow as it closes
+   *  (issue #476). */
+  readonly ref?: Ref<HTMLLIElement>;
   /** The dragged row's own live transform, written directly and never through Motion —
    *  `undefined` for every row except the one currently under a finger. */
   readonly style?: CSSProperties;
@@ -145,10 +159,15 @@ export function ListTitleRow({
 
   return (
     <m.li
-      ref={liRef}
+      ref={(element: HTMLLIElement | null) => {
+        liRef?.(element);
+        setLiRef(ref, element);
+      }}
+      layout="position"
       style={style}
       animate={style === undefined ? { y: shift } : undefined}
       transition={smooth}
+      exit={{ opacity: 0, transition: exit }}
       className="flex items-center gap-1 border-b border-hair bg-ground"
     >
       {dragHandle}
@@ -156,6 +175,14 @@ export function ListTitleRow({
       {trailing}
     </m.li>
   );
+}
+
+/** Writes `value` through whichever shape a `ref` prop takes — a callback, or a
+ *  `RefObject` from `useRef` — so `AnimatePresence`'s own ref and `liRef`'s callback can
+ *  both land on the one DOM node this row renders. */
+function setLiRef(ref: Ref<HTMLLIElement> | undefined, value: HTMLLIElement | null): void {
+  if (typeof ref === "function") ref(value);
+  else if (ref) (ref as { current: HTMLLIElement | null }).current = value;
 }
 
 function metaLine(title: ListDetailTitleRow): string | null {
