@@ -55,8 +55,9 @@ describe("running", () => {
     expect(markup).toMatch(/<section role="status"[^>]*>.*212.*of 472 titles/);
   });
 
-  it("draws a bar of written over total", () => {
-    expect(markup).toContain(`width:${(212 / 472) * 100}%`);
+  it("draws a bar of written over total, slid rather than sized (never `width`)", () => {
+    expect(markup).not.toMatch(/style="[^"]*width:/);
+    expect(markup).toContain(`transform:translateX(${(212 / 472) * 100 - 100}%)`);
   });
 
   it("shows watches and dropped as figures, grouped like every other count", () => {
@@ -70,10 +71,14 @@ describe("running", () => {
     );
   });
 
-  it("draws an empty bar for a file with no titles rather than dividing by zero", () => {
+  it("draws a fully-slid bar for a file with no titles rather than dividing by zero", () => {
     expect(render({ kind: "running", ...RUN, totalTitles: 0, titlesAdded: 0 })).toContain(
-      "width:0%",
+      "transform:translateX(-100%)",
     );
+  });
+
+  it("rolls its three counters through the existing Roll, not a plain figure", () => {
+    expect(markup.match(/class="grid min-w-0 "/g)).toHaveLength(3);
   });
 });
 
@@ -106,6 +111,10 @@ describe("done", () => {
 
   it("ends at a link into the library, not at the count", () => {
     expect(markup).toMatch(/<a[^>]*href="\/library"[^>]*>Open your library<\/a>/);
+  });
+
+  it("arrives on the existing rise rather than hard-cutting into place", () => {
+    expect(markup).toMatch(/<div class="arrive"><h2[^>]*>Import done<\/h2>/);
   });
 });
 
