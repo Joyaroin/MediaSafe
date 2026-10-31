@@ -982,6 +982,31 @@
   }
 }
 
+/* ── The stagger plays once per arrival of a screen — issue #430 ──────────────────────
+   `stagger-rise` above is an **arrival** motion: a list rising into place the moment a
+   screen is first painted. It has no memory of its own — the `@utility` reruns `rise-in`
+   on every child every time one re-renders — so until this rule, anything that changed
+   what filled the container replayed the same entrance: a Library filter chip, a sort, one
+   result set swapping for another. A reader who taps a chip does not expect the posters
+   they are already looking at to vanish and climb back in.
+
+   `useArrivedOnce()` (`app/use-arrived-once.ts`) is the memory: `false` on a screen's own
+   first render, `true` once the nine-row stagger has had time to finish, and never back.
+   A `stagger-rise` container carries that answer as `data-arrived="true"`, and this rule
+   is what the attribute is for — once a container has arrived, `rise-in` stops running for
+   its children, so a chip changing the rows underneath it, or a fresh set of rows landing
+   in its place, paints in without a second rise. A screen left and returned to, or a tab
+   switched away from and back, remounts the container and so starts the one-time watch
+   over, which is the arrival the rule is named for.
+
+   Unlayered on purpose, the same reason `.pressable[data-holding="true"]` further down is:
+   `stagger-rise` is a `@utility` and so lives in the `utilities` cascade layer, and no
+   amount of specificity inside that layer can out-rank a plain rule that sits outside
+   every layer, which is what this is. */
+.stagger-rise[data-arrived="true"] > * {
+  animation: none;
+}
+
 /* ── Rows the reader has not reached ─────────────────────────────────────────────────
 
    `content-visibility: auto` lets the browser skip layout, paint and compositing for a

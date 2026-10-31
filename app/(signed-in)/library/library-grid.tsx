@@ -1,4 +1,5 @@
 import type { LibraryEntryRow } from "@/db/access";
+import { useArrivedOnce } from "@/app/use-arrived-once";
 import { LibraryEntryCell } from "./library-entry-cell";
 import { SelectionOrderProvider } from "./selectable-entry";
 import { LIBRARY_HEADING_ID } from "./library-heading";
@@ -126,6 +127,12 @@ export function LibraryGrid({
    */
   labelledBy?: string;
 }) {
+  // Issue #430: the stagger plays once per arrival of this grid, not once per render of
+  // whatever `entries` currently holds — a filter chip narrowing `visible` in
+  // `library-surface.tsx` re-renders this same mounted component with a different
+  // `entries`, and `data-arrived` is what stops that re-render from replaying `rise-in`.
+  const arrived = useArrivedOnce();
+
   return (
     <SelectionOrderProvider
       titles={entries.map((entry) => ({
@@ -153,6 +160,7 @@ export function LibraryGrid({
         // next poster starts. Equal gaps in both directions read as a denser grid than it
         // is.
         className={`stagger-rise mt-5 ${LIBRARY_GRID}`}
+        data-arrived={arrived ? "true" : undefined}
       >
         {entries.map((entry, index) => (
           <LibraryEntryCell
