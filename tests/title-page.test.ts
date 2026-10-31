@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -182,5 +184,33 @@ describe("a season's tick", () => {
 
   it("never ticks specials", () => {
     expect(finishedSeasons([episode({ seasonNo: 0, watched: true, watches: 1 })]).size).toBe(0);
+  });
+});
+
+/**
+ * Issue #440 — the title hero's *N of M* season count rolls the way Tonight's already
+ * does (`tests/motion-moments.test.ts`'s "rolls only the featured episode line and the
+ * count"), through the existing `Roll` rather than a second mechanism. Read as source,
+ * the way that file reads `tonight-featured.tsx`: there is no rendering harness in this
+ * repo for a component with its own state, and what matters here — which text is inside
+ * the `Roll` and which is not — is a textual fact about the markup, not a runtime one.
+ */
+describe("the title hero's season count (issue #440)", () => {
+  const TITLE_HERO = readFileSync("app/(signed-in)/library/title-hero.tsx", "utf8");
+
+  it("rolls the watched count through the existing Roll, keyed on the fraction", () => {
+    expect(TITLE_HERO).toMatch(/<Roll\s+rollKey=\{`\$\{watched\}\/\$\{total\}`\}/);
+  });
+
+  it("does not roll the season heading beside the count", () => {
+    const [, rollBody] = TITLE_HERO.match(
+      /<Roll\s+rollKey=\{`\$\{watched\}\/\$\{total\}`\}[^>]*>([\s\S]*?)\n\s*<\/Roll>/,
+    )!;
+
+    expect(rollBody).not.toContain("seasonHeading");
+  });
+
+  it("adds no second Roll to the hero", () => {
+    expect(TITLE_HERO.match(/<Roll\b/g)).toHaveLength(1);
   });
 });

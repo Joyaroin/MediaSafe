@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { posterSrc } from "@/app/poster";
 import { posterBandStyle, titleScrimGradient } from "@/app/poster-tint";
+import { Roll } from "@/app/roll";
 import { HeroPoster } from "./hero-poster";
 import { seasonHeading } from "./season-grouping";
 
@@ -209,6 +210,14 @@ function HeroBand({ posterPath }: { posterPath: string | null }) {
  * Season 1*. The fill is the accent, which is `text` now; the track is `text` at 20%, one
  * value that reads as §6's *24% white* in dark and *16% ink* in light closely enough to
  * need no theme branch.
+ *
+ * ── The count rolls with the bar's own fill — issue #440 (handoff §11.2) ────────────
+ *
+ * A mark changes `watched` and `total` in the same render that moves the fill, so the
+ * fraction's `Roll` and the bar's `translateX` start together without any wiring between
+ * them — one fact, read twice. Only the fraction is inside the `Roll`: the season heading
+ * beside it does not change when an episode is marked, so it stays a plain sibling rather
+ * than being torn down and rebuilt on every mark it has nothing to do with.
  */
 function WatchedBar({
   watched,
@@ -234,8 +243,11 @@ function WatchedBar({
         />
       </div>
 
-      <p className="mt-1.5 text-meta text-dim" data-numeric>
-        {watched} of {total} · {seasonHeading(seasonNo)}
+      <p className="mt-1.5 flex items-baseline gap-1 text-meta text-dim" data-numeric>
+        <Roll rollKey={`${watched}/${total}`}>
+          {watched} of {total}
+        </Roll>
+        <span>· {seasonHeading(seasonNo)}</span>
       </p>
     </div>
   );
