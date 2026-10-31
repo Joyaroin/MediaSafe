@@ -98,7 +98,9 @@ function Rail({ rail, mode }: { rail: Recommendations; mode: KindMode }) {
                 interceptions. */}
             <Link
               href={`/catalogue/${result.kind}/${result.tmdbId}`}
-              className="group block"
+              // Issue #433: a surface, pressing at the default register a card or a row
+              // gets — spelled by setting nothing (`tests/press-spring.test.ts`).
+              className="pressable group block"
             >
               <Poster
                 posterPath={result.posterPath}

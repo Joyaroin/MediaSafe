@@ -13,6 +13,7 @@ import {
   withoutPress,
 } from "@/app/buttons";
 import { snappy } from "@/app/motion";
+import { SELECTED, UNSELECTED, UNSELECTED_PRESSABLE } from "@/app/selection";
 
 /**
  * The press, asserted against the spring it claims to come from — issues #270, #281, #282.
@@ -943,6 +944,28 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
 
+  // Issue #433 — every surface a reader can open answers the finger the same way.
+  /* The search screen's "Because you watched" rail — a card that opens catalogue detail. */
+  "app/(signed-in)/search/recommendation-rail.tsx": ["surface"],
+  /* The empty-state suggestion rail's card. Its own *Add* pill (below, in the bare-control
+     section) already presses on its own register; this is the second, quieter press on the
+     poster/name link, so the Link comes first in source order and the button second. */
+  "app/(signed-in)/up-next/suggestion-card.tsx": ["surface", "control"],
+  /* A list's title rows — list detail, both the owned (`PosterLink`) and unowned (`Link`)
+     branches share one `rowClass`, so this is one call site. */
+  "app/(signed-in)/lists/[listId]/list-title-row.tsx": ["surface"],
+  /* The watch menu's option rows — Rewatch, Undo, Unwatch — hand-rolled rather than
+     `MENU_ITEM`, because this menu's rows carry a description line `MENU_ITEM` has no slot
+     for. */
+  "app/(signed-in)/library/watch-menu.tsx": ["surface"],
+  /* Settings' one still-inert row — *Import a library*, a plain navigating link. Every
+     control beside it is already a button built on `app/buttons.ts`'s `BASE` (issue #431). */
+  "app/(signed-in)/settings/page.tsx": ["surface"],
+  /* The sidebar's navigation items — the desktop counterpart of the phone tab bar, and the
+     one asymmetry the ticket names: it takes the tab bar's own control register rather
+     than the surface default. */
+  "app/sidebar-nav.tsx": ["control"],
+
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
@@ -952,7 +975,8 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
   "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
   // The empty-state suggestions' *Add* (#365) — the search result's pill, under a poster.
-  "app/(signed-in)/up-next/suggestion-card.tsx": ["control"],
+  // Issue #433 adds the card's own quieter press above, as this file's first call site; the
+  // pill stays this register, as this file's second.
 
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
@@ -1070,12 +1094,14 @@ describe("every pressable call site declares a register or is deliberately left 
       .sort();
 
     expect(client).toEqual([
+      "app/(signed-in)/library/watch-menu.tsx",
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
       "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
+      "app/sidebar-nav.tsx",
       "app/tab-bar.tsx",
     ]);
   });
@@ -1604,6 +1630,42 @@ describe("the shared button base wears the press", () => {
     expect(stripped.split(/\s+/)).not.toContain("pressable");
     expect(stripped.split(/\s+/)).toEqual(
       PRIMARY_BUTTON_LARGE.split(/\s+/).filter((token) => token !== "pressable"),
+    );
+  });
+});
+
+/**
+ * Issue #433's review: the sidebar item wore `.pressable` and `UNSELECTED`, whose
+ * `transition-colors` is emitted after `.pressable` and so took `transform` out of the
+ * item's `transition-property` — the compression snapped while the release still sprang.
+ * The guard above holds `BASE` to one transition; this holds the sidebar's two states, the
+ * one call site that pairs the press with a selection treatment, to the same rule.
+ */
+describe("the sidebar item presses through one transition list (issue #433)", () => {
+  const SIDEBAR = codeOf("app/sidebar-nav.tsx");
+
+  function classesOf(name: string): string {
+    const match = new RegExp(`const ${name} =\\s*([\\s\\S]*?);`).exec(SIDEBAR);
+    expect(match, `app/sidebar-nav.tsx must still declare ${name}`).not.toBeNull();
+    return match![1];
+  }
+
+  it("builds the not-current item from the pressable selection treatment", () => {
+    expect(classesOf("NOT_CURRENT")).toContain("UNSELECTED_PRESSABLE");
+    expect(classesOf("NOT_CURRENT")).not.toMatch(/\$\{UNSELECTED\}/);
+  });
+
+  it("carries no transition utility beside the press, in either state", () => {
+    for (const classes of [classesOf("ITEM"), SELECTED, UNSELECTED_PRESSABLE]) {
+      expect(classes).not.toMatch(/\btransition-/);
+      expect(classes).not.toMatch(/\bduration-\[/);
+    }
+    expect(classesOf("ITEM")).toMatch(/(^|[\s"`])pressable(\s|$)/);
+  });
+
+  it("keeps the selection treatment's look", () => {
+    expect(UNSELECTED_PRESSABLE.split(/\s+/)).toEqual(
+      UNSELECTED.split(/\s+/).filter((token) => !/^(transition-|duration-)/.test(token)),
     );
   });
 });

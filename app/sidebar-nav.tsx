@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { smooth } from "./motion";
-import { SELECTED, SELECTED_MARKER, UNSELECTED } from "./selection";
+import { SELECTED, SELECTED_MARKER, UNSELECTED_PRESSABLE } from "./selection";
 import { DESTINATIONS } from "./destinations";
 import { DESTINATION_ICONS } from "./nav-icons";
 import { isCurrentRoute } from "./nav-route";
@@ -83,11 +83,16 @@ const PRIMARY = DESTINATIONS.map(({ href, label }) => ({
 /* Charcoal, issue #397: the current item is *outlined* (`app/selection.ts`), where it was a
    `2px` left rule — `44px` high, a `20px` icon and a `15px` label. The line is
    `<CurrentMarker />`, one `layoutId` element that Motion slides down the column between
-   destinations rather than repainting a line in a new cell. */
+   destinations rather than repainting a line in a new cell.
+
+   Issue #433: the one asymmetry the ticket names. This item is a `44px` hit box, the same
+   kind of thing as the phone tab bar's own tab (`app/tab-bar.tsx`), rather than a card or a
+   row — so it takes the tab bar's control register (`[--press-register:1]`) instead of the
+   surface default, and no fourth register is introduced. */
 const ITEM =
-  "relative flex h-11 items-center gap-3 rounded-[var(--radius-4)] px-3 text-note";
+  "pressable [--press-register:1] relative flex h-11 items-center gap-3 rounded-[var(--radius-4)] px-3 text-note";
 const CURRENT = `${ITEM} ${SELECTED}`;
-const NOT_CURRENT = `${ITEM} ${UNSELECTED}`;
+const NOT_CURRENT = `${ITEM} ${UNSELECTED_PRESSABLE}`;
 
 function CurrentMarker() {
   return (
