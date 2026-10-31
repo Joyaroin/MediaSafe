@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { LIBRARY_STATES, type LibraryState } from "@/db/access";
@@ -112,21 +113,59 @@ export function LibraryChips({
  * The default carries no query string at all: a reader who never touches this control
  * keeps a clean `/library`, and picking the default again removes `?sort=` rather than
  * writing it out.
+ *
+ * ── The control answers the tap — issue #452 ─────────────────────────────────────────
+ *
+ * A navigation is not instant: Postgres and the RSC round trip both take time, and until
+ * this ticket the control itself gave no sign that the tap had registered at all — it sat
+ * exactly as it was until the new order simply appeared, which on a slow connection reads
+ * as the control having ignored the reader. `router.push` now runs inside `useTransition`,
+ * so `isPending` is `true` from the moment the select changes until the new order has
+ * rendered (or the navigation fails) and then clears on its own — React resolves a
+ * transition's pending state on either outcome, so a failed navigation is not a stuck one.
+ * Nothing about *what* sorts the grid moves: `?sort=` still carries the order and `db/
+ * access.ts` still decides it in SQL.
  */
 export function SortSelect({ value }: { value: LibrarySort }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
 
   function onChange(next: LibrarySort) {
     const query = next === DEFAULT_LIBRARY_SORT ? "" : `?sort=${next}`;
-    router.push(`${pathname}${query}`);
+    startTransition(() => {
+      router.push(`${pathname}${query}`);
+    });
   }
 
+  return <SortSelectFace value={value} pending={isPending} onChange={onChange} />;
+}
+
+/**
+ * The sort control's render, split from `SortSelect` above for the reason `use-arrived-
+ * once.ts` already names for the same shape of problem — *the pure half and the
+ * binding*. `useTransition`'s `isPending` cannot be driven from a Vitest test: there is no
+ * mounted router and no DOM in this suite's `environment: "node"`, and nothing short of a
+ * real transition flips it. So the face that actually answers "is it working" takes
+ * `pending` as a plain prop instead of reading the hook itself, and
+ * `tests/library-pending.test.ts` asserts against it directly; `SortSelect` is the thin,
+ * untested-in-isolation wiring onto `useTransition` and the router.
+ */
+export function SortSelectFace({
+  value,
+  pending,
+  onChange,
+}: {
+  value: LibrarySort;
+  pending: boolean;
+  onChange: (next: LibrarySort) => void;
+}) {
   const current = LIBRARY_SORTS.find((one) => one.value === value)?.label ?? "";
 
   return (
     <span
-      className={`${ICON_BUTTON} relative lg:w-auto lg:px-4 lg:text-item has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-text`}
+      aria-busy={pending ? "true" : undefined}
+      className={`${ICON_BUTTON} relative lg:w-auto lg:px-4 lg:text-item has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-text${pending ? " opacity-60" : ""}`}
     >
       <svg
         viewBox="0 0 24 24"
@@ -145,9 +184,10 @@ export function SortSelect({ value }: { value: LibrarySort }) {
       </span>
       <select
         value={value}
+        disabled={pending}
         onChange={(event) => onChange(event.target.value as LibrarySort)}
         aria-label="Sort the library"
-        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+        className={`absolute inset-0 appearance-none opacity-0 ${pending ? "cursor-wait" : "cursor-pointer"}`}
       >
         {LIBRARY_SORTS.map((sort) => (
           <option key={sort.value} value={sort.value}>
