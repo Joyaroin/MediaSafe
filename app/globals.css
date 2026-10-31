@@ -486,6 +486,12 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Issue #462. Tailwind's own default for a `transition-*` utility with no easing class
+     is `ease` — a curve this application never chose and nobody reaches for on purpose.
+     Pointing the default at `--ease-out-quart` means an unstyled `transition-*` runs on
+     this app's own arrival curve instead of falling through to one nobody picked. */
+  --default-transition-timing-function: var(--ease-out-quart);
+
   /* ── The poster morph's spring — issue #338 ──────────────────────
      `app/motion.ts`'s `smooth` — the module's one *non-bouncing*
      spring, `duration: 0.3, bounce: 0` — transcribed into a `linear()`
@@ -586,6 +592,14 @@
      room for jitter, so a wifi navigation never shows the pending state it is held in
      front of. */
   --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
+
+  /* Issue #462. The gap between a staggered row and the one before it (`@utility
+     stagger-rise` below), so the stagger's own rhythm is a token and not a literal
+     three different values would otherwise repeat. Was an untokened 30ms; 20ms is what
+     keeps the ninth row — the tenth-child cap's edge — landing inside the figure the
+     ticket names: 8 steps + the rise itself (`--dur-base`) is 160ms + 220ms = 380ms,
+     where the old 30ms step over the old `--dur-slow` rise ran to 240ms + 380ms = 620ms. */
+  --stagger-step: 20ms;
 }
 
 @layer base {
@@ -927,41 +941,49 @@
    as a flash rather than a stagger.
 
    The run stops at the tenth child, and everything past it is simply already there. A
-   library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
-   arriving; the cap keeps the whole run under 300ms at any length, which is the point
-   where stagger still reads as rhythm instead of as the page being slow — and it now
-   costs ten animations rather than 472, which is the same rule applied to the count as
-   well as to the clock. See the `nth-child(n + 10)` rule at the foot of this utility. */
+   library of 472 titles at `--stagger-step` (20ms) a row would otherwise take about nine
+   and a half seconds to finish arriving; the cap keeps the whole run's delay under 300ms
+   at any length, which is the point where stagger still reads as rhythm instead of as the
+   page being slow — and it now costs ten animations rather than 472, which is the same
+   rule applied to the count as well as to the clock. See the `nth-child(n + 10)` rule at
+   the foot of this utility.
+
+   **Issue #462 moved the rise onto `--dur-base` and the per-row gap onto `--stagger-step`
+   (20ms, was an untokened 30ms).** The ninth row — the one the tenth-child cap leaves
+   furthest out — used to start at 240ms and run the old `--dur-slow` (380ms) rise, so it
+   was still moving past 620ms. It now starts at 160ms and runs `--dur-base` (220ms),
+   landing at 380ms: quickly enough that a reader arriving at Library, Tonight or Search
+   is not still watching the last row settle half a second later. */
 @utility stagger-rise {
   & > * {
-    animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+    animation: rise-in var(--dur-base) var(--ease-press) backwards;
   }
   & > *:nth-child(1) {
     animation-delay: 0ms;
   }
   & > *:nth-child(2) {
-    animation-delay: 30ms;
+    animation-delay: 20ms;
   }
   & > *:nth-child(3) {
-    animation-delay: 60ms;
+    animation-delay: 40ms;
   }
   & > *:nth-child(4) {
-    animation-delay: 90ms;
+    animation-delay: 60ms;
   }
   & > *:nth-child(5) {
-    animation-delay: 120ms;
+    animation-delay: 80ms;
   }
   & > *:nth-child(6) {
-    animation-delay: 150ms;
+    animation-delay: 100ms;
   }
   & > *:nth-child(7) {
-    animation-delay: 180ms;
+    animation-delay: 120ms;
   }
   & > *:nth-child(8) {
-    animation-delay: 210ms;
+    animation-delay: 140ms;
   }
   & > *:nth-child(9) {
-    animation-delay: 240ms;
+    animation-delay: 160ms;
   }
   /* **The tenth child is where the animation stops, not merely where the delay does.**
 

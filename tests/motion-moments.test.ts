@@ -171,6 +171,48 @@ describe("every new moment has its still version", () => {
   });
 });
 
+/**
+ * Issue #462 — *the rows rise quickly*. Arriving at Library, Tonight or Search used to
+ * stagger at 30ms a row over `--dur-slow` (380ms), so the ninth row didn't land until
+ * 240ms (delay) + 380ms (rise) = 620ms. `--stagger-step` makes the per-row gap a token
+ * rather than a literal, and the rise itself moves onto `--dur-base` (220ms), so the same
+ * ninth row lands at 160ms + 220ms = 380ms — the figure the ticket names.
+ */
+describe("the stagger ramp (issue #462)", () => {
+  it("declares --stagger-step: 20ms on the ramp", () => {
+    expect(CSS_CODE).toMatch(/--stagger-step:\s*20ms;/);
+  });
+
+  it("sets Tailwind's default transition timing function to the app's own ease-out", () => {
+    const theme = block("@theme");
+    expect(theme).toMatch(/--default-transition-timing-function:\s*var\(--ease-out-quart\);/);
+  });
+
+  it("rises on --dur-base and steps the first nine children by multiples of --stagger-step", () => {
+    const rise = block("@utility stagger-rise");
+
+    expect(rise).toMatch(/animation:\s*rise-in\s+var\(--dur-base\)\s+var\(--ease-press\)\s+backwards;/);
+
+    for (let n = 1; n <= 9; n += 1) {
+      const delay = (n - 1) * 20;
+      expect(rise, `child ${n}`).toMatch(
+        new RegExp(`:nth-child\\(${n}\\)\\s*\\{\\s*animation-delay:\\s*${delay}ms;`),
+      );
+    }
+  });
+
+  it("still stops the rise at the tenth child, not merely the delay", () => {
+    const rise = block("@utility stagger-rise");
+    expect(rise).toMatch(/:nth-child\(n \+ 10\)\s*\{\s*animation:\s*none;/);
+  });
+
+  it("lands the ninth row by 380ms, the figure the ticket names", () => {
+    const durBase = Number(CSS_CODE.match(/--dur-base:\s*(\d+)ms;/)![1]);
+    const step = Number(CSS_CODE.match(/--stagger-step:\s*(\d+)ms;/)![1]);
+    expect(8 * step + durBase).toBe(380);
+  });
+});
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = path.join(dir, name);
