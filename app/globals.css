@@ -474,6 +474,13 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Issue #429. Tailwind's own default for a bare `transition-*` utility with no easing
+     class is `cubic-bezier(0.4, 0, 0.2, 1)` — a curve nobody on this project chose. Pointed
+     at `--ease-out-quart` instead, so a `transition-colors` with no `ease-` class reads the
+     app's own leave curve rather than falling back to Tailwind's. `--default-transition-duration`
+     is left at Tailwind's 150ms; nothing here asks for it to move. */
+  --default-transition-timing-function: var(--ease-out-quart);
+
   /* ── The poster morph's spring — issue #338 ──────────────────────
      `app/motion.ts`'s `smooth` — the module's one *non-bouncing*
      spring, `duration: 0.3, bounce: 0` — transcribed into a `linear()`
@@ -574,6 +581,20 @@
      room for jitter, so a wifi navigation never shows the pending state it is held in
      front of. */
   --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
+
+  /* Issue #429. The staggered entrance's own beat — each child `--stagger-step` (20ms)
+     behind the last, so the ninth of the capped nine lands at `8 * 20ms + 220ms = 380ms`
+     rather than at the hand-typed 30ms step that used to put it at 620ms. Named rather
+     than typed at each `nth-child`, the same reason every other beat on this ramp has a
+     name instead of a literal. */
+  --stagger-step: 20ms; /* the stagger's per-child beat */
+
+  /* Issue #436. The pending shimmer's own loop (`pending-shimmer`, below) was the last
+     hand-typed figure left in the stylesheet; named here for the same reason every other
+     beat on this ramp is. It sits off the rest of the ramp's scale on purpose — a loop
+     read over and over, not a one-off state change, so it is paced to be glanced at
+     rather than felt the way a press or an arrival is. */
+  --dur-shimmer: 1600ms; /* the pending shimmer's loop */
 }
 
 @layer base {
@@ -905,42 +926,51 @@
    the length of its own delay and then snaps back to 0 to start animating, which reads
    as a flash rather than a stagger.
 
+   **Issue #429: the run moved onto `--dur-base`.** It ran on `--dur-slow` (380ms) with a
+   hand-typed 30ms step, so the ninth and last running child did not finish rising until
+   240ms + 380ms = 620ms after arrival — longer than a reader waits for anything else on
+   this screen. `--dur-base` is the ramp's own *routine state change*, and `--stagger-step`
+   (20ms, declared on the ramp above) is the per-child beat, so the ninth child now
+   finishes at `8 * 20ms + 220ms = 380ms`, and every delay below is that token's `calc()`
+   multiple rather than a number typed at each `nth-child`.
+
    The run stops at the tenth child, and everything past it is simply already there. A
-   library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
-   arriving; the cap keeps the whole run under 300ms at any length, which is the point
-   where stagger still reads as rhythm instead of as the page being slow — and it now
-   costs ten animations rather than 472, which is the same rule applied to the count as
-   well as to the clock. See the `nth-child(n + 10)` rule at the foot of this utility. */
+   library of 472 titles at `--stagger-step`'s 20ms a row would otherwise take about nine
+   seconds to finish arriving; the cap keeps the whole run's delays under 200ms at any
+   length, which is the point where stagger still reads as rhythm instead of as the page
+   being slow — and it now costs ten animations rather than 472, which is the same rule
+   applied to the count as well as to the clock. See the `nth-child(n + 10)` rule at the
+   foot of this utility. */
 @utility stagger-rise {
   & > * {
-    animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+    animation: rise-in var(--dur-base) var(--ease-press) backwards;
   }
   & > *:nth-child(1) {
-    animation-delay: 0ms;
+    animation-delay: calc(var(--stagger-step) * 0);
   }
   & > *:nth-child(2) {
-    animation-delay: 30ms;
+    animation-delay: calc(var(--stagger-step) * 1);
   }
   & > *:nth-child(3) {
-    animation-delay: 60ms;
+    animation-delay: calc(var(--stagger-step) * 2);
   }
   & > *:nth-child(4) {
-    animation-delay: 90ms;
+    animation-delay: calc(var(--stagger-step) * 3);
   }
   & > *:nth-child(5) {
-    animation-delay: 120ms;
+    animation-delay: calc(var(--stagger-step) * 4);
   }
   & > *:nth-child(6) {
-    animation-delay: 150ms;
+    animation-delay: calc(var(--stagger-step) * 5);
   }
   & > *:nth-child(7) {
-    animation-delay: 180ms;
+    animation-delay: calc(var(--stagger-step) * 6);
   }
   & > *:nth-child(8) {
-    animation-delay: 210ms;
+    animation-delay: calc(var(--stagger-step) * 7);
   }
   & > *:nth-child(9) {
-    animation-delay: 240ms;
+    animation-delay: calc(var(--stagger-step) * 8);
   }
   /* **The tenth child is where the animation stops, not merely where the delay does.**
 
@@ -950,13 +980,38 @@
      the fold, none of them ever watched, all of them composited against the 220ms tab
      slide that is running at the same moment.
 
-     The cap the docblock above describes — *the whole run under 300ms at any list length*
-     — is unchanged, and so is what a reader sees: the rows they are looking at rise, the
-     rest are already there. `animation: none` rather than a `0s` duration, so no animation
-     instance is created at all. */
+     The cap the docblock above describes — *the whole run's delays under 200ms at any
+     list length* — is unchanged, and so is what a reader sees: the rows they are looking
+     at rise, the rest are already there. `animation: none` rather than a `0s` duration,
+     so no animation instance is created at all. */
   & > *:nth-child(n + 10) {
     animation: none;
   }
+}
+
+/* ── The stagger plays once per arrival of a screen — issue #430 ──────────────────────
+   `stagger-rise` above is an **arrival** motion: a list rising into place the moment a
+   screen is first painted. It has no memory of its own — the `@utility` reruns `rise-in`
+   on every child every time one re-renders — so until this rule, anything that changed
+   what filled the container replayed the same entrance: a Library filter chip, a sort, one
+   result set swapping for another. A reader who taps a chip does not expect the posters
+   they are already looking at to vanish and climb back in.
+
+   `useArrivedOnce()` (`app/use-arrived-once.ts`) is the memory: `false` on a screen's own
+   first render, `true` once the nine-row stagger has had time to finish, and never back.
+   A `stagger-rise` container carries that answer as `data-arrived="true"`, and this rule
+   is what the attribute is for — once a container has arrived, `rise-in` stops running for
+   its children, so a chip changing the rows underneath it, or a fresh set of rows landing
+   in its place, paints in without a second rise. A screen left and returned to, or a tab
+   switched away from and back, remounts the container and so starts the one-time watch
+   over, which is the arrival the rule is named for.
+
+   Unlayered on purpose, the same reason `.pressable[data-holding="true"]` further down is:
+   `stagger-rise` is a `@utility` and so lives in the `utilities` cascade layer, and no
+   amount of specificity inside that layer can out-rank a plain rule that sits outside
+   every layer, which is what this is. */
+.stagger-rise[data-arrived="true"] > * {
+  animation: none;
 }
 
 /* ── Rows the reader has not reached ─────────────────────────────────────────────────
@@ -997,10 +1052,17 @@
 
 /* The same rule the sweep and the poster morph already follow: the content still
    arrives, it just stops travelling to get here. Opacity is kept — it is what makes the
-   arrival legible at all — and only the movement is dropped. */
+   arrival legible at all — and only the movement is dropped.
+
+   **Issue #429: the duration stays real.** This read `animation-duration: 1ms` — fast
+   enough to be indistinguishable from a collapse to nothing, which is the opposite of
+   what reduced motion asks for here: movement is what the reader turned off, not
+   content showing up at all. `--dur-base` keeps the fade itself visible — a gentle
+   arrival rather than a cut — while the delay is still zeroed below, so nothing about
+   the stagger's *rhythm* survives, only its presence. */
 @media (prefers-reduced-motion: reduce) {
   .stagger-rise > * {
-    animation-duration: 1ms;
+    animation-duration: var(--dur-base);
     animation-delay: 0ms !important;
   }
   @keyframes rise-in {
@@ -1182,10 +1244,71 @@
     transform var(--dur-fast) var(--ease-out-quart);
 }
 
+/* The action toast (`app/(signed-in)/library/action-toast-toasts.tsx`) — issue #438. The
+   *Watched. Undo* offer used to teleport in and blink out; this is
+   `write-failure-toast-transition` above, read again rather than redeclared, because the
+   mechanism — an `@starting-style` entrance and a held `data-leaving="true"` exit on a
+   node that is genuinely removed, not hidden — is exactly the same one. Only the
+   direction differs: this toast is anchored to the *top* of the viewport
+   (`action-toast-toasts.tsx`'s own `top-4`/`top-6`), so it arrives from 8px *above* and
+   leaves back the way it came, where the write-failure toast's bottom corner arrives from
+   below and leaves back down. Same two durations, same two curves: `--dur-slow` on
+   `--ease-press` in, `--dur-fast` on `--ease-out-quart` out — nothing here is a new
+   timing, so nothing here is a new token. */
+@utility action-toast-transition {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press);
+}
+
+@starting-style {
+  .action-toast-transition {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.action-toast-transition[data-leaving="true"] {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
+/* The *…* menus (`library/title-actions.tsx`'s `MoreMenu`, `lists/[listId]/
+   list-detail-surface.tsx`'s `ListMenu`) — issue #439. Both panels are a native
+   `<details>`, which is its own `display` toggle: the browser removes the panel from the
+   render tree while closed and renders it anew the moment `open` is added, so there is no
+   `[open]`/`data-leaving` state to write here the way `dialog-transition` and the toasts
+   above need one. That "newly rendered" moment is exactly what `@starting-style` answers,
+   with no JavaScript of its own and the `<details>` staying a `<details>`.
+   `transform-origin: top right` matches where both panels actually sit — `absolute
+   right-0` under a trailing `summary` button — so the panel visibly grows out of its own
+   corner rather than the button's centre. Closing is explicitly out of scope: the panel
+   is simply gone the instant `open` is removed, the same way it was before this rule. */
+@utility menu-transition {
+  transform-origin: top right;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
+@starting-style {
+  .menu-transition {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 /* The event still happens under reduced motion — a dialog still opens and closes, the
    banner and the action bar still appear and disappear, a toast still arrives and
-   leaves — only the travel drops, the same rule `rise-in`'s own reduced-motion block
-   states above. */
+   leaves, a menu still opens — only the travel drops, the same rule `rise-in`'s own
+   reduced-motion block states above. */
 @media (prefers-reduced-motion: reduce) {
   .dialog-transition,
   .dialog-transition[open],
@@ -1194,7 +1317,10 @@
   .selection-action-bar-transition,
   .selection-action-bar-transition[data-open="true"],
   .write-failure-toast-transition,
-  .write-failure-toast-transition[data-leaving="true"] {
+  .write-failure-toast-transition[data-leaving="true"],
+  .action-toast-transition,
+  .action-toast-transition[data-leaving="true"],
+  .menu-transition {
     transform: none;
   }
 
@@ -1202,7 +1328,9 @@
     .dialog-transition[open],
     .offline-banner-transition[data-open="true"],
     .selection-action-bar-transition[data-open="true"],
-    .write-failure-toast-transition {
+    .write-failure-toast-transition,
+    .menu-transition,
+    .action-toast-transition {
       transform: none;
     }
   }
@@ -1245,13 +1373,15 @@
 /* The desktop tilt (`app/poster-tilt.ts`, UI overhaul): a poster under a mouse leans toward
    it, and settles back when the mouse leaves. Fine pointers with hover only — a phone never
    gets `data-tilting` — and nothing at all under reduced motion. `transform` rather than
-   `translate`/`rotate`, because the perspective has to be part of the same function list. */
+   `translate`/`rotate`, because the perspective has to be part of the same function list.
+   The settle-back (hover-out) ran on `--dur-slow` until issue #436 moved it to `--dur-base`:
+   moving across a grid of posters should not leave a trail of slow returns behind it. */
 @media (hover: hover) and (pointer: fine) {
   .poster {
     /* `filter` too: this unlayered rule outranks the `transition` utility some call sites
        put on a poster for their hover brighten, so it has to carry that one as well. */
     transition:
-      transform var(--dur-slow) var(--ease-out-quart),
+      transform var(--dur-base) var(--ease-out-quart),
       filter var(--dur-fast) var(--ease-out-quart);
   }
   .poster[data-tilting] {
@@ -1304,8 +1434,10 @@
    Issue #88 built this row's watch as a material event with two motions, a strike and a
    stamp, timed off `--ease-press` — that pair's own `watch-strike`/`watch-stamp`
    utilities retired with issue #138, which retired the last surface still drawing them,
-   the phone home's dominant card. `~200ms` on `--ease-press`, roughly half of the old
-   strike's `420ms` — "quiet and immediate", not a performance to sit through.
+   the phone home's dominant card. `--dur-base` (220ms) on `--ease-press`, roughly half of
+   the old strike's `420ms` — "quiet and immediate", not a performance to sit through.
+   Issue #436 moved this off a hand-typed `200ms` onto the ramp's own routine-state-change
+   token, the same one the hold below now reads.
    `WatchSweep`'s own `onAnimationEnd` is what ends `marking` and starts `settled`. */
 @utility watch-sweep {
   position: absolute;
@@ -1314,7 +1446,7 @@
   transform: scaleX(0);
   transform-origin: left center;
   pointer-events: none;
-  animation: watch-sweep-in 200ms var(--ease-press) forwards;
+  animation: watch-sweep-in var(--dur-base) var(--ease-press) forwards;
 }
 
 @keyframes watch-sweep-in {
@@ -1345,10 +1477,12 @@
    text keeps its contrast.
 
    The wash comes in from the check's side and fades up together, so it reads as spreading
-   from the press rather than switching on. */
+   from the press rather than switching on. Issue #436 moved the wash itself from
+   `--dur-slow` (380ms) to `--dur-base`: marking several rows in a row should not feel
+   like waiting on the highlight, only on the hold Tonight's own `HOLD_MS` still governs. */
 @utility watch-hold {
   background-color: color-mix(in oklab, var(--color-accent) 14%, var(--color-raised));
-  transition: background-color var(--dur-slow) var(--ease-press);
+  transition: background-color var(--dur-base) var(--ease-press);
   &::before {
     content: "";
     position: absolute;
@@ -1356,7 +1490,7 @@
     background: color-mix(in oklab, var(--color-accent) 22%, transparent);
     transform-origin: right center;
     pointer-events: none;
-    animation: watch-hold-in var(--dur-slow) var(--ease-press) forwards;
+    animation: watch-hold-in var(--dur-base) var(--ease-press) forwards;
   }
 }
 
@@ -1556,15 +1690,16 @@
   }
 }
 
-/* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
+/* ── Every progress bar follows the mark — issue #335, widened by #444 ───────────────
    The state that drives each bar's fill already updates at the sweep's settle
-   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), and each fill carries a
-   transition on the ramp, declared at its call site. Issue #407 moved that transition off
-   `width` — handoff §11.4 never animates a size — and onto `transform`: the fill is the
-   track's full width, slid left by what is not yet watched, and the track clips it, so
-   the fill's own rounded end stays round where a `scaleX` would flatten it.
+   (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`) or at a chunk landing
+   (`import-surface.tsx`'s `Running`), and each fill carries a transition on the ramp,
+   declared at its call site. Issue #407 moved that transition off `width` — handoff
+   §11.4 never animates a size — and onto `transform`: the fill is the track's full
+   width, slid left by what is not yet written, and the track clips it, so the fill's
+   own rounded end stays round where a `scaleX` would flatten it.
    `progress-fill` carries no rule of its own; it exists only so this block has one
-   selector to reach both bars.
+   selector to reach all three bars.
 
    Same shape as the sweep just above: the same unconditional-event, no-lingering-
    animation rule. The fill still lands on the mark's new value — it just stops
@@ -1710,9 +1845,15 @@
      exceeds the label's and falls short of the recording one. */
   --press-lead: 0.98;
 
+  /* `color` and `filter` are here for the button variants' own hover states (issue #431):
+     the base they press through carries no `transition-*` of its own any more, exactly the
+     reasoning `app/tab-bar.tsx`'s docblock already states for why a second `transition`
+     utility cannot share an element with this one. `background-color` was already here for
+     the depth step below. */
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     background-color var(--dur-press) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
   &:active,
@@ -2203,7 +2344,11 @@
   /* The shimmer — the UI overhaul, replacing the opacity breathe. A faint highlight
      sweeps across the block on `transform` alone, so it is compositor work and costs no
      paint per frame on a mid-range phone. `animation-delay: inherit` lets the stagger
-     below reach the sweep, so a page shimmers down its own reading order. */
+     below reach the sweep, so a page shimmers down its own reading order.
+     Linear, not `--ease-in-out-soft`, since issue #436: this is a constant loop, and an
+     eased loop pumps — it visibly speeds up and slows down on every pass rather than
+     sweeping at one steady rate. The duration itself moved off a hand-typed `1.6s` onto
+     `--dur-shimmer`. */
   &::after {
     content: "";
     position: absolute;
@@ -2215,7 +2360,7 @@
       transparent 80%
     );
     transform: translateX(-100%);
-    animation: pending-shimmer 1.6s var(--ease-in-out-soft) infinite;
+    animation: pending-shimmer var(--dur-shimmer) linear infinite;
     animation-delay: inherit;
   }
 }
@@ -2232,18 +2377,20 @@
 
 /* Staggered down the page so a region reads as one thing loading in its own order rather
    than as blocks blinking in lockstep. By position within its own group rather than by a
-   flat child index, because a shape nests its blocks into rows and columns. */
+   flat child index, because a shape nests its blocks into rows and columns. Issue #436
+   moved these off their hand-typed fractions of a second onto `--stagger-step` — the same
+   per-child beat the entrance stagger uses — rather than a second, unrelated figure. */
 .pending-bar:nth-child(2) {
-  animation-delay: 0.08s;
+  animation-delay: calc(var(--stagger-step) * 4);
 }
 .pending-bar:nth-child(3) {
-  animation-delay: 0.16s;
+  animation-delay: calc(var(--stagger-step) * 8);
 }
 .pending :nth-child(2) .pending-bar {
-  animation-delay: 0.12s;
+  animation-delay: calc(var(--stagger-step) * 6);
 }
 .pending :nth-child(3) .pending-bar {
-  animation-delay: 0.24s;
+  animation-delay: calc(var(--stagger-step) * 12);
 }
 
 @keyframes pending-shimmer {

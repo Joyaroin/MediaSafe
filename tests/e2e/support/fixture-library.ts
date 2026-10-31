@@ -228,3 +228,70 @@ export async function seedShowWithSeason(
     await pool.end();
   }
 }
+
+/** One title on a seeded list — just enough to find its row by name and press its own
+ *  take-off control (issue #442's browser spec). */
+export interface SeededListTitle {
+  readonly titleId: string;
+  readonly titleName: string;
+}
+
+export interface SeededList {
+  readonly listId: string;
+  readonly listName: string;
+  /** In list order — `position` 1 first, matching what `getListDetail` returns. */
+  readonly titles: readonly SeededListTitle[];
+}
+
+/**
+ * A list of `count` titles, in order — issue #442's take-off exit needs several rows so a
+ * removal has a neighbour to close the gap and a neighbour far enough away to prove it
+ * never moved. Films, and none of them owned: a list holds anything in the catalogue
+ * (`db/access.ts`'s `getListDetail`), and take-off cares about the membership row, not
+ * about a library entry riding along with it.
+ */
+export async function seedListWithTitles(userId: string, count: number): Promise<SeededList> {
+  const pool = createPool(requireDatabaseUrl());
+  const db = drizzle(pool, { schema });
+
+  try {
+    const listUnique = randomUUID();
+    const listName = `E2E Fixture List ${listUnique}`;
+
+    const [listRow] = await db
+      .insert(schema.list)
+      .values({ userId, name: listName })
+      .returning({ id: schema.list.id });
+
+    const titles: SeededListTitle[] = [];
+
+    for (let position = 1; position <= count; position += 1) {
+      const unique = randomUUID();
+      const titleName = `E2E Fixture List Title ${unique}`;
+
+      const [titleRow] = await db
+        .insert(schema.title)
+        .values({
+          kind: "film",
+          tmdbId: Math.floor(Math.random() * 200_000_000),
+          name: titleName,
+          releaseYear: 2021,
+          posterPath: `/e2e-fixture-list-${unique}.jpg`,
+        })
+        .returning({ id: schema.title.id });
+
+      await db.insert(schema.listMembership).values({
+        listId: listRow.id,
+        titleId: titleRow.id,
+        userId,
+        position,
+      });
+
+      titles.push({ titleId: titleRow.id, titleName });
+    }
+
+    return { listId: listRow.id, listName, titles };
+  } finally {
+    await pool.end();
+  }
+}

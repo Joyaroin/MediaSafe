@@ -4,7 +4,16 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { HOLD_MS } from "@/app/(signed-in)/library/use-hold-to-select";
+import {
+  ICON_BUTTON,
+  ICON_BUTTON_OVER_ARTWORK,
+  ICON_BUTTON_SQUARE,
+  MENU_ITEM,
+  PRIMARY_BUTTON_LARGE,
+  withoutPress,
+} from "@/app/buttons";
 import { snappy } from "@/app/motion";
+import { SELECTED, UNSELECTED, UNSELECTED_PRESSABLE } from "@/app/selection";
 
 /**
  * The press, asserted against the spring it claims to come from — issues #270, #281, #282.
@@ -935,6 +944,28 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
 
+  // Issue #433 — every surface a reader can open answers the finger the same way.
+  /* The search screen's "Because you watched" rail — a card that opens catalogue detail. */
+  "app/(signed-in)/search/recommendation-rail.tsx": ["surface"],
+  /* The empty-state suggestion rail's card. Its own *Add* pill (below, in the bare-control
+     section) already presses on its own register; this is the second, quieter press on the
+     poster/name link, so the Link comes first in source order and the button second. */
+  "app/(signed-in)/up-next/suggestion-card.tsx": ["surface", "control"],
+  /* A list's title rows — list detail, both the owned (`PosterLink`) and unowned (`Link`)
+     branches share one `rowClass`, so this is one call site. */
+  "app/(signed-in)/lists/[listId]/list-title-row.tsx": ["surface"],
+  /* The watch menu's option rows — Rewatch, Undo, Unwatch — hand-rolled rather than
+     `MENU_ITEM`, because this menu's rows carry a description line `MENU_ITEM` has no slot
+     for. */
+  "app/(signed-in)/library/watch-menu.tsx": ["surface"],
+  /* Settings' one still-inert row — *Import a library*, a plain navigating link. Every
+     control beside it is already a button built on `app/buttons.ts`'s `BASE` (issue #431). */
+  "app/(signed-in)/settings/page.tsx": ["surface"],
+  /* The sidebar's navigation items — the desktop counterpart of the phone tab bar, and the
+     one asymmetry the ticket names: it takes the tab bar's own control register rather
+     than the surface default. */
+  "app/sidebar-nav.tsx": ["control"],
+
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
@@ -944,11 +975,20 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
   "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
   // The empty-state suggestions' *Add* (#365) — the search result's pill, under a poster.
-  "app/(signed-in)/up-next/suggestion-card.tsx": ["control"],
+  // Issue #433 adds the card's own quieter press above, as this file's first call site; the
+  // pill stays this register, as this file's second.
 
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
   "app/tab-bar.tsx": ["control"],
+
+  // The shared button base — issue #431. `BASE` is the one site every button variant
+  // composes, and it declares no register of its own (the default, left quiet, is what
+  // lets `PRIMARY_BUTTON`, `SECONDARY_BUTTON`, the pills and every other plain button stay
+  // on the surface register). `MENU_ITEM` does not build on `BASE` — it is its own call
+  // site, a surface in the same sense a card or a row is — so it is the second string this
+  // file finds, in the order both appear in `app/buttons.ts`.
+  "app/buttons.ts": ["surface", "surface"],
 };
 
 /** How a call site spells a register, as Tailwind spells an arbitrary property —
@@ -1054,12 +1094,14 @@ describe("every pressable call site declares a register or is deliberately left 
       .sort();
 
     expect(client).toEqual([
+      "app/(signed-in)/library/watch-menu.tsx",
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
       "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
+      "app/sidebar-nav.tsx",
       "app/tab-bar.tsx",
     ]);
   });
@@ -1491,5 +1533,139 @@ describe("the tab bar's icon leads its label", () => {
 
     // And the navigation still happens: nothing here takes a tab off the pointer.
     expect(blocks[0]).not.toMatch(/pointer-events|display\s*:|visibility/);
+  });
+});
+
+/**
+ * ── The shared button base wears the press — issue #431 ─────────────────────────────
+ *
+ * Every button in the application is built on `app/buttons.ts`'s `BASE`, so one change
+ * there reaches Tonight's row *Mark watched*, the action toast's *Undo*, every *Try
+ * again*, the sign-in button, the back control and the list back control at once — they
+ * were all dead under a touch because the shared base never wore `pressable`, not because
+ * any one of them opted out.
+ */
+describe("the shared button base wears the press", () => {
+  const BUTTONS = "app/buttons.ts";
+
+  /** `BASE`'s own template literal, read as source rather than imported, so this does not
+   *  care which variant happens to compose it. */
+  function baseDeclaration(): string {
+    const match = codeOf(BUTTONS).match(/const BASE = `([^`]*)`/);
+    expect(match, "app/buttons.ts must still declare BASE as a template literal").not.toBeNull();
+    return match![1];
+  }
+
+  /** A top-level `const`/`export const` declaration, as the one line of source that makes
+   *  it — comments already blanked, so prose discussing the name cannot match instead. */
+  function declaration(name: string): string {
+    const match = new RegExp(`(?:export )?const ${name} =[^;]*;`).exec(codeOf(BUTTONS));
+    expect(match, `app/buttons.ts must still declare ${name}`).not.toBeNull();
+    return match![0];
+  }
+
+  it("carries pressable and no transition utility of its own", () => {
+    const base = baseDeclaration();
+
+    expect(base.split(/\s+/)).toContain("pressable");
+    // Two transition utilities on one element fight over `transition-property`, and the
+    // later-emitted one wins — `app/tab-bar.tsx`'s own docblock already names this failure.
+    expect(base).not.toMatch(/transition-\[/);
+    expect(base).not.toMatch(/\bduration-\[/);
+  });
+
+  it("drives the filled, plain and destructive variants' hover colour from its own transition list", () => {
+    // The hover classes are untouched — what moved is which transition drives them, and
+    // none of the three may have grown a second transition utility of its own to do it.
+    expect(declaration("PRIMARY")).toBe("const PRIMARY = `${FILLED} hover:brightness-95`;");
+    expect(declaration("PLAIN")).toBe('const PLAIN = "text-text hover:text-dim";');
+    expect(declaration("DESTRUCTIVE")).toBe(
+      'const DESTRUCTIVE = "danger-line text-danger hover:bg-danger hover:text-ground";',
+    );
+    for (const variant of ["PRIMARY", "PLAIN", "DESTRUCTIVE"]) {
+      expect(declaration(variant), `${variant} must not add its own transition utility`).not.toMatch(
+        /transition-/,
+      );
+    }
+
+    // `pressable` is what is left to drive them, and it has to actually carry all three
+    // properties those three hovers change — `filter` and `background-color` already did;
+    // `color` is the one this ticket adds, for `hover:text-dim` and `hover:text-ground`.
+    const transition = pressableUtility().match(/transition:\s*([\s\S]*?);/);
+    expect(transition, "`pressable` must still declare one `transition` list").not.toBeNull();
+    expect(transition![1]).toMatch(/\bcolor\b/);
+    expect(transition![1]).toMatch(/\bbackground-color\b/);
+    expect(transition![1]).toMatch(/\bfilter\b/);
+  });
+
+  it("gives every icon-only button constant the small-control register", () => {
+    const control = REGISTER_CLASS.control as string;
+
+    // The register rides in through an interpolated constant rather than a literal in the
+    // declaration's own source, so these are read as the strings a consumer actually gets.
+    for (const classes of [ICON_BUTTON, ICON_BUTTON_SQUARE, ICON_BUTTON_OVER_ARTWORK]) {
+      expect(classes.split(/\s+/)).toContain("pressable");
+      expect(classes.split(/\s+/)).toContain(control);
+    }
+  });
+
+  it("leaves the menu item on the surface register, spelled by saying nothing", () => {
+    expect(MENU_ITEM.split(/\s+/)).toContain("pressable");
+    expect(MENU_ITEM).not.toContain(REGISTER_PROPERTY);
+  });
+
+  it("drops the CSS press on Tonight's featured Mark watched, whose layoutId morph it must not fight", () => {
+    const source = codeOf("app/(signed-in)/up-next/tonight-featured.tsx");
+
+    expect(source).toContain("withoutPress(PRIMARY_BUTTON_LARGE)");
+    // Its own Motion press is the next ticket's; this ticket removes only the CSS one.
+    expect(source).toContain("layoutId={shape}");
+    expect(source).not.toMatch(/className=\{`\$\{PRIMARY_BUTTON_LARGE\}/);
+  });
+
+  it("withoutPress strips exactly the pressable token and nothing else", () => {
+    expect(PRIMARY_BUTTON_LARGE.split(/\s+/)).toContain("pressable");
+
+    const stripped = withoutPress(PRIMARY_BUTTON_LARGE);
+    expect(stripped.split(/\s+/)).not.toContain("pressable");
+    expect(stripped.split(/\s+/)).toEqual(
+      PRIMARY_BUTTON_LARGE.split(/\s+/).filter((token) => token !== "pressable"),
+    );
+  });
+});
+
+/**
+ * Issue #433's review: the sidebar item wore `.pressable` and `UNSELECTED`, whose
+ * `transition-colors` is emitted after `.pressable` and so took `transform` out of the
+ * item's `transition-property` — the compression snapped while the release still sprang.
+ * The guard above holds `BASE` to one transition; this holds the sidebar's two states, the
+ * one call site that pairs the press with a selection treatment, to the same rule.
+ */
+describe("the sidebar item presses through one transition list (issue #433)", () => {
+  const SIDEBAR = codeOf("app/sidebar-nav.tsx");
+
+  function classesOf(name: string): string {
+    const match = new RegExp(`const ${name} =\\s*([\\s\\S]*?);`).exec(SIDEBAR);
+    expect(match, `app/sidebar-nav.tsx must still declare ${name}`).not.toBeNull();
+    return match![1];
+  }
+
+  it("builds the not-current item from the pressable selection treatment", () => {
+    expect(classesOf("NOT_CURRENT")).toContain("UNSELECTED_PRESSABLE");
+    expect(classesOf("NOT_CURRENT")).not.toMatch(/\$\{UNSELECTED\}/);
+  });
+
+  it("carries no transition utility beside the press, in either state", () => {
+    for (const classes of [classesOf("ITEM"), SELECTED, UNSELECTED_PRESSABLE]) {
+      expect(classes).not.toMatch(/\btransition-/);
+      expect(classes).not.toMatch(/\bduration-\[/);
+    }
+    expect(classesOf("ITEM")).toMatch(/(^|[\s"`])pressable(\s|$)/);
+  });
+
+  it("keeps the selection treatment's look", () => {
+    expect(UNSELECTED_PRESSABLE.split(/\s+/)).toEqual(
+      UNSELECTED.split(/\s+/).filter((token) => !/^(transition-|duration-)/.test(token)),
+    );
   });
 });

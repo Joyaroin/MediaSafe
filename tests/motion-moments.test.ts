@@ -61,6 +61,76 @@ describe("the two new tokens (handoff §11.1)", () => {
   });
 });
 
+/**
+ * Issue #429. A `transition-*` utility written with no easing class used to fall back to
+ * Tailwind's own default, `cubic-bezier(0.4, 0, 0.2, 1)` — a curve nobody on this project
+ * chose, and a fourth easing curve beside the three the handoff names by role. Pointing
+ * Tailwind's `--default-transition-timing-function` at this app's own `--ease-out-quart`
+ * means an unstyled `transition-*` now reads the app's own leave curve instead.
+ */
+describe("the default transition curve is the app's own, not Tailwind's", () => {
+  it("sets --default-transition-timing-function to --ease-out-quart in the @theme block", () => {
+    const theme = block("@theme");
+    expect(theme).toMatch(
+      /--default-transition-timing-function:\s*var\(--ease-out-quart\);/,
+    );
+  });
+
+  it("declares it exactly once", () => {
+    const declarations = [
+      ...CSS_CODE.matchAll(/--default-transition-timing-function:\s*[^;]+;/g),
+    ];
+    expect(declarations).toHaveLength(1);
+  });
+});
+
+/**
+ * Issue #436 — *The stylesheet's last timing literals move onto the ramp*. Two moments a
+ * reader feels (Tonight's watch-hold highlight, the poster's hover-out — covered by
+ * `tests/poster-tilt.test.ts`) plus a sweep across the stylesheet for whatever hand-typed
+ * millisecond figures were still left: the title-detail episode row's watch-sweep and the
+ * pending shimmer, including its per-child delays.
+ */
+describe("the stylesheet's last timing literals (issue #436)", () => {
+  it("runs Tonight's watch-hold highlight on --dur-base, not --dur-slow", () => {
+    const rule = block("@utility watch-hold");
+    expect(rule).toContain("transition: background-color var(--dur-base)");
+    expect(rule).toContain("animation: watch-hold-in var(--dur-base)");
+    expect(rule).not.toContain("--dur-slow");
+    expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+  });
+
+  it("runs the episode row's watch-sweep on a ramp token, with no literal left", () => {
+    const rule = block("@utility watch-sweep");
+    expect(rule).toMatch(/animation: watch-sweep-in var\(--dur-base\)/);
+    expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+  });
+
+  it("declares the shimmer's own loop token and times the shimmer on it, linear", () => {
+    expect(CSS_CODE).toMatch(/--dur-shimmer:\s*1600ms;/);
+    const rule = block("@utility pending-bar");
+    expect(rule).toContain("animation: pending-shimmer var(--dur-shimmer) linear infinite");
+    expect(rule).not.toContain("--ease-in-out-soft");
+  });
+
+  it("reads the shimmer's per-child delays off --stagger-step, with no raw fraction of a second", () => {
+    const delays = CSS_CODE.match(
+      /\.pending-bar:nth-child\(2\)\s*\{[\s\S]*?\}|\.pending-bar:nth-child\(3\)\s*\{[\s\S]*?\}|\.pending :nth-child\(2\) \.pending-bar\s*\{[\s\S]*?\}|\.pending :nth-child\(3\) \.pending-bar\s*\{[\s\S]*?\}/g,
+    );
+    expect(delays).not.toBeNull();
+    expect(delays).toHaveLength(4);
+    const multipliers = [4, 8, 6, 12];
+    delays!.forEach((rule, index) => {
+      expect(rule).toMatch(
+        new RegExp(
+          `animation-delay:\\s*calc\\(var\\(--stagger-step\\) \\* ${multipliers[index]}\\)`,
+        ),
+      );
+      expect(rule).not.toMatch(/\b\d+(?:\.\d+)?m?s\b/);
+    });
+  });
+});
+
 describe("motion changes what is drawn, never when a write is sent", () => {
   it("leaves the mark hold at 1200ms and the Undo window at 6000ms", () => {
     expect(HOLD_MS).toBe(1_200);
@@ -111,6 +181,18 @@ describe("the moments (handoff §11.2)", () => {
   it("narrows the featured button into the held tick as one shape, on smooth", () => {
     expect(FEATURED.match(/layoutId=\{shape\}/g)).toHaveLength(2);
     expect(FEATURED).toMatch(/transition=\{smooth\}/);
+  });
+
+  /**
+   * Issue #434 — the button is a Motion `m.button` with a `layoutId`, so CSS must not set
+   * its transform (`tests/press-spring.test.ts` holds that half). It presses through
+   * Motion instead: `whileTap` scale `0.97` on `snappy`, imported from `app/motion.ts` and
+   * not a new spring — and given its own `transition` so it composes with, rather than
+   * replaces, the `layoutId` morph's own `smooth` transition on the same element.
+   */
+  it("presses the featured button on snappy, composing with its layoutId morph", () => {
+    expect(FEATURED).toMatch(/import \{\s*smooth,\s*snappy\s*\} from "@\/app\/motion"/);
+    expect(FEATURED).toMatch(/whileTap=\{\{\s*scale:\s*0\.97,\s*transition:\s*snappy\s*\}\}/);
   });
 
   it("rolls only the featured episode line and the count", () => {
@@ -168,6 +250,82 @@ describe("every new moment has its still version", () => {
 
   it("sends no poster under reduced motion — the row just disappears", () => {
     expect(FLIGHT).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches\) return;/);
+  });
+});
+
+/**
+ * Issue #439 — *the …* menus grow from their button*. Both menus (the title page's
+ * `MoreMenu` and a list's `ListMenu`, Rename / Delete) are a native `<details>`, so there
+ * is no `[open]`/`data-leaving` state here for the panel to carry the way the dialogs and
+ * the toasts above do: the browser's own open/close toggle is what shows and hides it, and
+ * `@starting-style` catches the panel's own "newly rendered" moment that toggle creates.
+ * This is the static half, proving the rule computes to the values the ticket names;
+ * `tests/e2e/menu-motion.spec.ts` is the browser half, that the panel's own transform is
+ * actually seen moving from `scale(0.97)` toward identity.
+ */
+describe("the *…* menu panels carry menu-transition (issue #439)", () => {
+  const TITLE_ACTIONS = at("app/(signed-in)/library/title-actions.tsx");
+  const LIST_DETAIL_SURFACE = at("app/(signed-in)/lists/[listId]/list-detail-surface.tsx");
+
+  it("wires the class onto both <details> panels, with no JavaScript added for it", () => {
+    for (const source of [TITLE_ACTIONS, LIST_DETAIL_SURFACE]) {
+      expect(source).toMatch(/className="menu-transition /);
+      // Still a plain <details>: no ref read or attribute write beyond the existing
+      // open/close toggling this file already does for its own reasons (closing the
+      // menu before an item's action runs).
+      expect(source).toMatch(/<details\b/);
+    }
+  });
+
+  it("grows from the top-right corner, from scale(0.97) and opacity: 0, to identity", () => {
+    const rule = block("@utility menu-transition");
+    expect(rule).toContain("transform-origin: top right;");
+    expect(rule).toContain("opacity: 1;");
+    expect(rule).toContain("transform: none;");
+
+    const starting = CSS_CODE.match(/@starting-style\s*\{\s*\.menu-transition\s*\{([^}]*)\}/);
+    expect(starting, "a @starting-style block for .menu-transition").not.toBeNull();
+    expect(starting![1]).toContain("opacity: 0;");
+    expect(starting![1]).toMatch(/transform:\s*scale\(0\.97\);/);
+  });
+
+  it("times the entrance on --dur-fast and --ease-out-quart, with no raw literal of its own", () => {
+    const rule = block("@utility menu-transition");
+    expect(rule).toMatch(/opacity\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(rule).toMatch(/transform\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(rule.replace(/var\([^)]*\)/g, "")).not.toMatch(/\b\d+(\.\d+)?m?s\b/);
+  });
+
+  it("declares no closing transition — animating the close is out of scope", () => {
+    // No data-leaving state, no :not([open]) rule, no second .menu-transition selector
+    // anywhere but the entrance and its two reduced-motion mentions below: closing a
+    // <details> is the browser dropping the panel on the spot, same as before this rule.
+    expect(CSS_CODE).not.toContain(".menu-transition[data-leaving");
+    expect(CSS_CODE).not.toContain(".menu-transition:not(");
+    expect(CSS_CODE.match(/\.menu-transition\b/g)).toHaveLength(3);
+  });
+
+  it("drops the scale under reduced motion and keeps the opacity change", () => {
+    const reduced = CSS_CODE.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
+    )!.join("\n");
+
+    // The resting selector list (`transform: none`, no `@starting-style`): `menu-transition`
+    // joins it, and the shared body it joins drops the transform and nothing else.
+    const resting = reduced.match(/([^{}]*\.menu-transition[^{}]*)\{([^}]*)\}/);
+    expect(resting, "a reduced-motion rule naming .menu-transition").not.toBeNull();
+    expect(resting![1]).toContain(".menu-transition");
+    expect(resting![2]).toContain("transform: none;");
+    expect(resting![2]).not.toContain("opacity");
+
+    // The nested `@starting-style` list (dropping the scale on the starting values too):
+    // same shape, found past the first match above.
+    const starting = reduced.slice(reduced.indexOf("@starting-style"));
+    const startingRule = starting.match(/([^{}]*\.menu-transition[^{}]*)\{([^}]*)\}/);
+    expect(startingRule, "a @starting-style reduced-motion rule naming .menu-transition").not
+      .toBeNull();
+    expect(startingRule![2]).toContain("transform: none;");
+    expect(startingRule![2]).not.toContain("opacity");
   });
 });
 

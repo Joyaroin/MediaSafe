@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { stillSrc } from "@/app/(signed-in)/library/episode-still";
-import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON } from "@/app/buttons";
+import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON, withoutPress } from "@/app/buttons";
 import { posterSrc } from "@/app/poster";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
@@ -17,7 +17,7 @@ import {
   tonightTitleScrimGradient,
 } from "@/app/poster-tint";
 import { RECORDS_A_WATCH } from "@/app/accent-meaning";
-import { smooth } from "@/app/motion";
+import { smooth, snappy } from "@/app/motion";
 import { Roll } from "@/app/roll";
 import type { UpNextEntry } from "@/db/access";
 import { episodeCode } from "./episode-card-line";
@@ -238,11 +238,17 @@ function FeaturedMark({
     <m.button
       layoutId={shape}
       transition={smooth}
+      whileTap={{ scale: 0.97, transition: snappy }}
       type="button"
       onClick={press.mark}
       disabled={press.pending}
       aria-label={markLabel(entry.titleName, press.episode)}
-      className={`${PRIMARY_BUTTON_LARGE} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
+      // CSS must not set this element's transform — the layoutId morph above already does,
+      // and `withoutPress` is the base's own escape for that fight (issue #431). The press
+      // itself is Motion's own `whileTap`, on `snappy` (issue #434) — the same spring the
+      // CSS press-pop everywhere else is sampled from — given its own `transition` so the
+      // tap scale composes with the layoutId morph's `smooth` rather than replacing it.
+      className={`${withoutPress(PRIMARY_BUTTON_LARGE)} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
       style={{ borderRadius: FEATURED_BUTTON_RADIUS }}
     >
       <m.span layout transition={smooth} className="flex items-center gap-2 whitespace-nowrap">
