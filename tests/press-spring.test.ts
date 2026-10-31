@@ -934,6 +934,19 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
+  /* The search screen's own recommendation card ("Because you watched") — issue #466. No
+     pill of its own, so the press sits on the whole-card `<Link>` directly. */
+  "app/(signed-in)/search/recommendation-rail.tsx": ["surface"],
+  /* One row inside a `raised` settings card that navigates rather than writes —
+     `SETTING_ROW_LINK`, issue #466's own export. */
+  "app/(signed-in)/settings/settings-group.tsx": ["surface"],
+  /* The sidebar's own destinations — issue #466. One shared `ITEM` string builds both
+     `CURRENT` and `NOT_CURRENT`, so the sweep finds one call site rather than five. */
+  "app/sidebar-nav.tsx": ["surface"],
+  /* Rewatch/Undo/Unwatch inside the watched row's own menu (a native `<dialog>`, not the
+     `<details>` the rest of the app's menus use) — issue #466: it presses the way
+     `MENU_ITEM` below does. */
+  "app/(signed-in)/library/watch-menu.tsx": ["surface"],
 
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
@@ -943,21 +956,24 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/search/search-surface.tsx": ["control"],
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
   "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
-  // The empty-state suggestions' *Add* (#365) — the search result's pill, under a poster.
-  "app/(signed-in)/up-next/suggestion-card.tsx": ["control"],
+  /* The empty-state suggestions' card (#365) — issue #466 adds the first entry: the whole
+     card (the `<li>`, no pill of its own on the element itself) at the surface register,
+     holding the second — the search result's *Add* pill, under the poster, unchanged at
+     the control register. Two things on one card, `globals.css`'s `pressable` docblock's
+     own phrase for it, in the order the JSX renders them. */
+  "app/(signed-in)/up-next/suggestion-card.tsx": ["surface", "control"],
 
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
   "app/tab-bar.tsx": ["control"],
 
-  /* The shared button base — issue #463. Every button in the application is built from
-     `BASE`, and `BASE` is the one place the literal word `pressable` appears: every
-     exported button constant interpolates it rather than restating it, so the sweep finds
-     exactly one call site here and not twenty. Buttons keep the surface register — the
-     small-control register (chips, pills, segmented controls, icon-only controls) is the
-     next ticket's business. `PRIMARY_BUTTON_LARGE_MOTION_PRESS`, built off `MOTION_BASE`
+  /* The shared button base — issue #463 — and, since issue #466, `MENU_ITEM` beside it.
+     `BASE` is still the one place the literal word `pressable` appears for every button;
+     `MENU_ITEM` is the second and last. Both keep the surface register — the small-control
+     register (chips, pills, segmented controls, icon-only controls) is a different
+     ticket's business. `PRIMARY_BUTTON_LARGE_MOTION_PRESS`, built off `MOTION_BASE`
      for Tonight's featured *Mark watched*, deliberately carries no `pressable` at all. */
-  "app/buttons.ts": ["surface"],
+  "app/buttons.ts": ["surface", "surface"],
 };
 
 /** How a call site spells a register, as Tailwind spells an arbitrary property —
@@ -1049,10 +1065,11 @@ describe("every pressable call site declares a register or is deliberately left 
   /**
    * **The register costs no client boundary.** It is a class token on a string, so it
    * cannot make a server component a client one — and this pins that rather than trusting
-   * it. The four files below were already `"use client"` for their own reasons (a pointer
-   * gesture, an optimistic mark, an in-flight write, and — since #295 put the press on the
-   * tab bar — `usePathname`) and every other call site renders on the server, which is the
-   * argument for the press being CSS at all.
+   * it. The files below were already `"use client"` for their own reasons (a pointer
+   * gesture, an optimistic mark, an in-flight write, a dialog's own state, `usePathname` —
+   * #295 put the press on the tab bar for that one, #466 the sidebar for the same one) and
+   * every other call site renders on the server, which is the argument for the press being
+   * CSS at all.
    */
   it("leaves every call site on the boundary it was already on", () => {
     const client = found
@@ -1063,14 +1080,94 @@ describe("every pressable call site declares a register or is deliberately left 
       .sort();
 
     expect(client).toEqual([
+      "app/(signed-in)/library/watch-menu.tsx",
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
       "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
+      "app/sidebar-nav.tsx",
       "app/tab-bar.tsx",
     ]);
+  });
+
+  /**
+   * **No pressable surface wears a second `transition-*` utility — issue #466's own
+   * acceptance criterion**, over the surfaces this ticket put the press on. Two
+   * `transition` shorthands land in the same `utilities` cascade layer, and whichever
+   * Tailwind emits last wins `transition-property` outright — the tab bar's own history,
+   * and `#463`'s fix to the shared button base, are both this same trap. Over this
+   * ticket's own six files rather than the whole tree: `app/(signed-in)/search
+   * /search-surface.tsx`'s clear button already carries `transition-colors` beside
+   * `pressable` from before this ticket, and fixing a call site this ticket does not own
+   * is the next ticket's business, not this sweep's.
+   */
+  it("wears no second transition-* utility beside the press, at every surface this ticket presses", () => {
+    const TICKET_OWN_FILES = [
+      "app/(signed-in)/search/recommendation-rail.tsx",
+      "app/(signed-in)/up-next/suggestion-card.tsx",
+      "app/(signed-in)/lists/list-row.tsx",
+      "app/(signed-in)/library/watch-menu.tsx",
+      "app/(signed-in)/settings/settings-group.tsx",
+      "app/sidebar-nav.tsx",
+      "app/buttons.ts",
+    ];
+
+    for (const { file, strings } of found.filter((site) => TICKET_OWN_FILES.includes(site.file))) {
+      for (const classes of strings) {
+        const tokens = classes.split(/\s+/);
+        const second = tokens.filter((token) => /^transition(-|$)/.test(token));
+
+        expect(second, `${file} carries ${second.join(", ")} beside pressable`).toEqual([]);
+      }
+    }
+  });
+});
+
+/**
+ * ── Two things on one card — issue #466 ──────────────────────────────────────────────
+ *
+ * A recommendation or suggestion card holds its own *Add* pill, and the two press as two
+ * things (`globals.css`'s `pressable` docblock, and the ticket's own wording): pressing
+ * the pill presses only the pill, and pressing anywhere else on the card presses the card.
+ *
+ * `:active` is not scoped to the element a finger actually landed on — the platform
+ * matches every ancestor of the pressed element too, so without a guard a press on the
+ * pill would compress the card wrapped around it in the same gesture. This is a stylesheet
+ * assertion of the guard's presence and position; `tests/e2e/press-reaches-surfaces.spec.ts`
+ * is where a real browser proves the computed transform it produces.
+ */
+describe("a card's own pill presses alone", () => {
+  /** The selector list in front of the brace that scales a pressed control to
+   *  `--press-compress` — the same rule `compression()` above reads values out of, read
+   *  here for its selector text instead of its declarations. */
+  function compressionSelector(): string {
+    const rule = pressableUtility().match(/(&:active[^{]*)\{/);
+    expect(rule, "`pressable` must still scale on `:active`").not.toBeNull();
+    return rule![1];
+  }
+
+  it("excludes a card's own compression while a nested pressable control is the one pressed", () => {
+    expect(compressionSelector()).toContain(":not(:has(.pressable:active))");
+  });
+
+  /** The two branches are one rule (`:active` and `data-pressed` is one rule and not two,
+   *  the utility's own docblock) and the guard has to sit on the one that needs it: a
+   *  `:not()` written onto `[data-pressed="true"]` instead would leave the native branch —
+   *  the one a mouse or a keyboard actually produces — unguarded. Split on the comma
+   *  between the two selectors in the list, rather than searched for across both, so the
+   *  guard is pinned to its own branch and not merely present somewhere in the rule. */
+  it("leaves the guard on the native branch, not on the delegated mark", () => {
+    const [native, delegated] = compressionSelector().split(",");
+
+    expect(native).toContain(":active");
+    expect(native).toContain(":not(:has(.pressable:active))");
+
+    expect(delegated, "`pressable` must still mark the delegated press too").toContain(
+      '[data-pressed="true"]',
+    );
+    expect(delegated).not.toContain(":not(");
   });
 });
 

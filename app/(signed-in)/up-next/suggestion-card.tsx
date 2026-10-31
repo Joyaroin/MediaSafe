@@ -34,7 +34,14 @@ export function SuggestionCard({
   const href = `/catalogue/${result.kind}/${result.tmdbId}`;
 
   return (
-    <li className="w-28 shrink-0 snap-start">
+    // `pressable`, at the surface register — issue #466. The card holds its own pill
+    // (the *Add* button below, at the control register), and the two press as two
+    // things: `globals.css`'s `pressable` docblock is where `:not(:has(.pressable:active))`
+    // keeps this card's own compression from also firing while the pill is the one being
+    // pressed. Pressing the poster or the name finds this `<li>` through
+    // `motion-provider.tsx`'s `closest(".pressable")`, since neither carries the class
+    // itself.
+    <li className="pressable w-28 shrink-0 snap-start">
       <Link href={href} className="group block">
         <Poster
           posterPath={result.posterPath}

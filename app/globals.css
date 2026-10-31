@@ -1774,7 +1774,25 @@
     color var(--dur-fast) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
-  &:active,
+  /* ── Two things on one card — issue #466 ──────────────────────────────────────────
+     A recommendation or suggestion card wears this utility around its own *Add* pill,
+     and the pill wears it too, at the control register. `:active` is not scoped to the
+     element a finger actually landed on — the platform matches it on every ancestor of
+     the pressed element as well (press a nested button and the `<li>` around it reads as
+     pressed too) — so a press that lands on the pill would otherwise compress the card
+     wrapped around it in the same gesture, one press answering twice.
+
+     `:not(:has(.pressable:active))` is the card's own exemption: a card whose
+     *descendant* is already pressed hands the gesture to that descendant and sits still.
+     A leaf control has no `.pressable` descendant of its own, so the clause is always
+     false there and costs it nothing — this reads as one rule for every call site, not a
+     card-shaped special case.
+
+     `[data-pressed="true"]` needs no equivalent guard. The delegated listener
+     (`motion-provider.tsx`) marks the nearest `.pressable` ancestor of wherever a finger
+     came down — `closest(".pressable")` — which for a press that started on the pill is
+     the pill and never the card around it, by construction. */
+  &:active:not(:has(.pressable:active)),
   &[data-pressed="true"] {
     transform: scale(var(--press-compress));
   }

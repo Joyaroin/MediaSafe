@@ -247,7 +247,13 @@ function MenuItem({
       <button
         type="button"
         onClick={onClick}
-        className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-4)] px-3 py-2.5 text-left transition-colors duration-[var(--dur-fast)] hover:quiet-fill"
+        // `pressable`, at the surface register — issue #466: this menu's items press the
+        // way `app/buttons.ts`'s `MENU_ITEM` does. The old `transition-colors
+        // duration-[var(--dur-fast)]` is gone rather than kept beside it: a second
+        // `transition-*` utility on a `pressable` element is the tab bar's own trap
+        // (`globals.css`'s `pressable` docblock), and `pressable`'s own list already
+        // carries `color` at the same `--dur-fast` for `hover:quiet-fill` to ride on.
+        className="pressable flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-4)] px-3 py-2.5 text-left hover:quiet-fill"
       >
         <span
           className={`flex items-center gap-1.5 text-item font-semibold ${
