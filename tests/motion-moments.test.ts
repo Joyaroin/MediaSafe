@@ -213,6 +213,34 @@ describe("the stagger ramp (issue #462)", () => {
   });
 });
 
+/**
+ * Issue #468 — *both title pages arrive on the page transition's clock*. `arrive-panel`
+ * used to replay a hand-typed 420ms rise on top of the page transition's 190ms, so the
+ * hero kept moving after the reader had started reading. It now runs the one arrival
+ * every other entrance uses: `--dur-base` on the arrival curve, with the 420ms literal
+ * deleted rather than moved onto `--dur-travel` (that token names something travelling to
+ * another place, not an arrival).
+ */
+describe("the title page arrives on the page transition's clock (issue #468)", () => {
+  it("runs arrive-panel on --dur-base with the arrival curve", () => {
+    const panel = block("@utility arrive-panel");
+    expect(panel).toMatch(/animation:\s*rise-in\s+var\(--dur-base\)\s+var\(--ease-press\)\s+backwards;/);
+  });
+
+  it("leaves no duration literal in the rule", () => {
+    const panel = block("@utility arrive-panel");
+    expect(panel).not.toMatch(/\d+m?s\b/);
+  });
+
+  it("fades on --dur-base without the rise under reduced motion", () => {
+    // `arrive-panel` carries no reduced-motion override of its own: it inherits the
+    // shared `rise-in` keyframe's reduced-motion redefinition (opacity only, no
+    // transform) and keeps --dur-base as its duration, so the fade runs no faster or
+    // slower under reduced motion than it does at full motion.
+    expect(CSS_CODE).not.toMatch(/\.arrive-panel\b[^{]*\{\s*animation-duration:/);
+  });
+});
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = path.join(dir, name);

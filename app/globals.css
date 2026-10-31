@@ -2244,8 +2244,7 @@
    on the arrival curve (handoff §11.2), so the page has settled with the page transition and
    the poster morph rather than still moving after the reader has started reading. */
 @utility arrive-panel {
-  animation: rise-in var(--dur-slow) var(--ease-press) backwards;
-  animation-duration: 420ms;
+  animation: rise-in var(--dur-base) var(--ease-press) backwards;
 }
 
 /* ── Reading, drawn ─────────────────────────────────────────────────────────────────
