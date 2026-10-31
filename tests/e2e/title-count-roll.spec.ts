@@ -58,7 +58,10 @@ test("marking an episode rolls the season count, outgoing and incoming lines bot
   // the test racing the real --dur-roll (280ms, `tests/motion-moments.test.ts`).
   await page.addStyleTag({ content: ".roll-out, .roll-in { animation-duration: 3s !important; }" });
 
-  await main.getByRole("button", { name: /^Mark .* watched$/ }).click();
+  // The hero's own button, by its visible text: its accessible name is the same as the
+  // Episode 2 row's tick in the episode list (`one-app.spec.ts`), so a name lookup is
+  // ambiguous on this page.
+  await main.getByRole("button").filter({ hasText: "Mark S1 E2 watched" }).click();
 
   const outgoing = main.locator(".roll-out", { hasText: "1 of 4" });
   const incoming = main.locator(".roll-in", { hasText: "2 of 4" });

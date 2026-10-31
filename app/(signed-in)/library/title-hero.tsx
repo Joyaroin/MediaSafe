@@ -215,9 +215,10 @@ function HeroBand({ posterPath }: { posterPath: string | null }) {
  *
  * A mark changes `watched` and `total` in the same render that moves the fill, so the
  * fraction's `Roll` and the bar's `translateX` start together without any wiring between
- * them — one fact, read twice. Only the fraction is inside the `Roll`: the season heading
- * beside it does not change when an episode is marked, so it stays a plain sibling rather
- * than being torn down and rebuilt on every mark it has nothing to do with.
+ * them — one fact, read twice. The fraction and the season heading are two `Roll`s, keyed
+ * apart: a mark inside a season rolls only the fraction, and the mark that finishes a
+ * season — which moves the bar on to the next one — rolls the heading in the same beat, so
+ * *4 of 4* never leaves beside a *Season 2* that has already cut in.
  */
 function WatchedBar({
   watched,
@@ -243,11 +244,17 @@ function WatchedBar({
         />
       </div>
 
-      <p className="mt-1.5 flex items-baseline gap-1 text-meta text-dim" data-numeric>
+      <p className="mt-1.5 flex items-baseline text-meta text-dim" data-numeric>
         <Roll rollKey={`${watched}/${total}`}>
           {watched} of {total}
         </Roll>
-        <span>· {seasonHeading(seasonNo)}</span>
+        {/* The separator's space is a no-break space inside the heading's own line, not a
+            `gap`: a flex container drops a plain space between its items, and the line's
+            text must still read *1 of 8 · Season 1* to assistive technology and to tests. */}
+        <Roll rollKey={`season-${seasonNo}`}>
+          {" · "}
+          {seasonHeading(seasonNo)}
+        </Roll>
       </p>
     </div>
   );

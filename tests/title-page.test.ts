@@ -202,7 +202,7 @@ describe("the title hero's season count (issue #440)", () => {
     expect(TITLE_HERO).toMatch(/<Roll\s+rollKey=\{`\$\{watched\}\/\$\{total\}`\}/);
   });
 
-  it("does not roll the season heading beside the count", () => {
+  it("keeps the season heading out of the count's roll", () => {
     const [, rollBody] = TITLE_HERO.match(
       /<Roll\s+rollKey=\{`\$\{watched\}\/\$\{total\}`\}[^>]*>([\s\S]*?)\n\s*<\/Roll>/,
     )!;
@@ -210,7 +210,15 @@ describe("the title hero's season count (issue #440)", () => {
     expect(rollBody).not.toContain("seasonHeading");
   });
 
-  it("adds no second Roll to the hero", () => {
-    expect(TITLE_HERO.match(/<Roll\b/g)).toHaveLength(1);
+  // A mark that finishes a season moves the bar on to the next one. Keyed on the season,
+  // the heading rolls in that same beat and only then, so *4 of 4* never leaves beside a
+  // *Season 2* that has already cut in.
+  it("rolls the season heading in its own Roll, keyed on the season alone", () => {
+    const [, rollBody] = TITLE_HERO.match(
+      /<Roll\s+rollKey=\{`season-\$\{seasonNo\}`\}[^>]*>([\s\S]*?)\n\s*<\/Roll>/,
+    )!;
+
+    expect(rollBody).toContain("seasonHeading(seasonNo)");
+    expect(TITLE_HERO.match(/<Roll\b/g)).toHaveLength(2);
   });
 });
