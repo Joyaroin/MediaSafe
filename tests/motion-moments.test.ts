@@ -136,6 +136,18 @@ describe("the moments (handoff §11.2)", () => {
     expect(FEATURED).toMatch(/transition=\{smooth\}/);
   });
 
+  /**
+   * Issue #434 — the button is a Motion `m.button` with a `layoutId`, so CSS must not set
+   * its transform (`tests/press-spring.test.ts` holds that half). It presses through
+   * Motion instead: `whileTap` scale `0.97` on `snappy`, imported from `app/motion.ts` and
+   * not a new spring — and given its own `transition` so it composes with, rather than
+   * replaces, the `layoutId` morph's own `smooth` transition on the same element.
+   */
+  it("presses the featured button on snappy, composing with its layoutId morph", () => {
+    expect(FEATURED).toMatch(/import \{\s*smooth,\s*snappy\s*\} from "@\/app\/motion"/);
+    expect(FEATURED).toMatch(/whileTap=\{\{\s*scale:\s*0\.97,\s*transition:\s*snappy\s*\}\}/);
+  });
+
   it("rolls only the featured episode line and the count", () => {
     expect(FEATURED.match(/<Roll\b/g)).toHaveLength(2);
   });
