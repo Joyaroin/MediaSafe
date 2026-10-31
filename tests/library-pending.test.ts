@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import LibraryLoading from "@/app/(signed-in)/library/loading";
+import { SortSelectFace } from "@/app/(signed-in)/library/library-filter-bar";
 import { ProgrammeNoteEpisodes } from "@/app/(signed-in)/library/programme-note-episodes";
 import TitleDetailLoading from "@/app/(signed-in)/titles/[entryId]/loading";
 import RemoveTitleLoading from "@/app/(signed-in)/titles/[entryId]/remove/loading";
@@ -468,5 +469,85 @@ describe("what replaces a pending region arrives", () => {
     )!.join("\n");
     expect(reduced).toContain("rise-in");
     expect(reduced).toMatch(/transform:\s*none/);
+  });
+});
+
+/**
+ * ── The sort control shows it is working — issue #452 ────────────────────────────────
+ *
+ * Today's bug is specific: a reader changes the sort, the control keeps rendering as if
+ * nothing happened, and the new order only shows up when Postgres and the RSC round trip
+ * finish — which on a slow connection reads as the tap being dropped. `SortSelect` fixes
+ * that with `useTransition`, but `useTransition`'s own `isPending` cannot be driven from
+ * here: this suite is `environment: "node"`, there is no DOM and no mounted router, and
+ * nothing short of a browser actually starts a transition. So the split is the one
+ * `use-arrived-once.ts` already names for the same reason — *the pure half and the
+ * binding* — and `SortSelectFace` is the pure half: the render that answers "is it
+ * working", taking `pending` as a plain prop instead of reading it off the hook.
+ * `SortSelect` itself is the thin, untested-in-isolation wiring onto `useTransition` and
+ * `router.push`, trusted rather than exercised here.
+ */
+describe("the sort control shows it is working", () => {
+  const face = (pending: boolean) =>
+    markupOf(
+      createElement(SortSelectFace, {
+        value: "title",
+        pending,
+        onChange: () => {},
+      }),
+    );
+
+  const idle = face(false);
+  const working = face(true);
+
+  /**
+   * The literal acceptance criterion: pending while pending, and — just as load-bearing —
+   * **not otherwise**. A control that always looked busy would pass a test that only
+   * checked the `true` side and would not acknowledge anything, because it would never
+   * stop looking like it was still thinking.
+   */
+  it("renders its pending state while a transition is pending, and not otherwise", () => {
+    expect(working).toContain('aria-busy="true"');
+    expect(idle).not.toContain("aria-busy");
+  });
+
+  /**
+   * `aria-busy` alone is not a visual cue — a sighted reader needs the control itself to
+   * look different, which is what actually answers the tap.
+   */
+  it("dims while working", () => {
+    expect(working).toContain(" opacity-60");
+    expect(idle).not.toContain("opacity-60");
+  });
+
+  /**
+   * The native `<select>` under the face is disabled while a sort is already on its way —
+   * so a second tap mid-transition cannot queue a navigation behind the one already
+   * running — and its cursor says so rather than the ordinary pointer.
+   */
+  it("disables the select underneath while working, and only then", () => {
+    expect(working).toContain('disabled=""');
+    expect(working).toContain("cursor-wait");
+    expect(idle).not.toContain('disabled=""');
+    expect(idle).toContain("cursor-pointer");
+  });
+
+  /**
+   * Nothing about which order is current, or the four choices themselves, changes with
+   * `pending` — only the face's own "is it working" signal does. A sort control that lost
+   * its options or its current label while busy would be a second bug wearing this one's
+   * fix.
+   */
+  it("changes nothing about the sort's own options while working", () => {
+    const strip = (markup: string) =>
+      markup
+        .replace(' aria-busy="true"', "")
+        .replace(" opacity-60", "")
+        .replace(' disabled=""', "")
+        // The leading space picks out the select's own `cursor-wait`, not the dead
+        // `disabled:cursor-wait` the button base carries unconditionally (`IN_FLIGHT`)
+        // and which never matches on a `<span>` that is never itself `:disabled`.
+        .replace(" cursor-wait", " cursor-pointer");
+    expect(strip(working)).toEqual(idle);
   });
 });
