@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { stillSrc } from "@/app/(signed-in)/library/episode-still";
-import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON } from "@/app/buttons";
+import { PRIMARY_BUTTON_LARGE_MOTION_PRESS, SECONDARY_BUTTON } from "@/app/buttons";
 import { posterSrc } from "@/app/poster";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
@@ -242,7 +242,11 @@ function FeaturedMark({
       onClick={press.mark}
       disabled={press.pending}
       aria-label={markLabel(entry.titleName, press.episode)}
-      className={`${PRIMARY_BUTTON_LARGE} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
+      // `PRIMARY_BUTTON_LARGE_MOTION_PRESS` and not `PRIMARY_BUTTON_LARGE`: this is a
+      // Motion `m.button` with a `layoutId`, so CSS must never set its `transform` — it
+      // presses through Motion's own `whileTap` instead (issue #463; the Motion press
+      // itself is a separate ticket's work).
+      className={`${PRIMARY_BUTTON_LARGE_MOTION_PRESS} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
       style={{ borderRadius: FEATURED_BUTTON_RADIUS }}
     >
       <m.span layout transition={smooth} className="flex items-center gap-2 whitespace-nowrap">
