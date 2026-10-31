@@ -80,8 +80,12 @@ test("Tonight's featured Mark watched compresses under a finger and returns on r
 
   await page.mouse.move(x, y);
   await page.mouse.down();
-  const pressed = await mark.evaluate((element) => getComputedStyle(element).transform);
-  expect(pressed).not.toBe("none");
+  // Motion needs a frame (and its lazy-loaded gesture chunk) before the press is applied, so
+  // the first read after `mouse.down()` can still be the resting `none` — poll until the
+  // scale has actually taken hold rather than reading once.
+  await expect
+    .poll(() => mark.evaluate((element) => getComputedStyle(element).transform))
+    .not.toBe("none");
 
   await page.mouse.move(x, Math.max(0, y - 300));
   await page.mouse.up();
