@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { posterSrc } from "@/app/poster";
 import { posterBandStyle, titleScrimGradient } from "@/app/poster-tint";
+import { Roll } from "@/app/roll";
 import { HeroPoster } from "./hero-poster";
 import { seasonHeading } from "./season-grouping";
 
@@ -209,6 +210,23 @@ function HeroBand({ posterPath }: { posterPath: string | null }) {
  * Season 1*. The fill is the accent, which is `text` now; the track is `text` at 20%, one
  * value that reads as §6's *24% white* in dark and *16% ink* in light closely enough to
  * need no theme branch.
+ *
+ * ── The count rolls — issue #474 (handoff §11.2) ─────────────────────────────────────
+ *
+ * Marking an episode moves `watched` (`seasonWatchProgress`, live over the marks store),
+ * and only the count answers for that: it rolls through the existing `Roll`, the same
+ * mechanism Tonight's own count uses (`tonight-featured.tsx`), never a second odometer.
+ * The season heading beside it is plain text, outside the `Roll`, so it never rolls when
+ * only the count changes. The fill's own transition moves from `--dur-base` onto
+ * `--dur-roll` so the two travel in the same beat, exactly as Tonight's segments do
+ * (`SeasonSegments`'s `transition-colors duration-[var(--dur-roll)]`, "the count's beat").
+ *
+ * The row is `flex` so the heading sits beside the rolling count rather than inside its
+ * grid cell; `gap-1` is what actually separates them — a flex item's own leading
+ * whitespace collapses at the start of its line box, so the space kept in
+ * `· {seasonHeading(seasonNo)}` below reads correctly to a screen reader (the text is
+ * unchanged from before this ticket) but renders no pixel of its own. Dropping the
+ * character instead would have changed the accessible text for no reason.
  */
 function WatchedBar({
   watched,
@@ -229,13 +247,18 @@ function WatchedBar({
       >
         {/* Slid, not sized: handoff §11.4 never animates `width` (issue #407). */}
         <div
-          className="progress-fill h-full w-full rounded-[var(--radius-full)] bg-accent transition-transform duration-[var(--dur-base)]"
+          className="progress-fill h-full w-full rounded-[var(--radius-full)] bg-accent transition-transform duration-[var(--dur-roll)]"
           style={{ transform: `translateX(${filled - 100}%)` }}
         />
       </div>
 
-      <p className="mt-1.5 text-meta text-dim" data-numeric>
-        {watched} of {total} · {seasonHeading(seasonNo)}
+      <p className="mt-1.5 flex items-baseline gap-1 text-meta text-dim" data-numeric>
+        <Roll rollKey={`${watched}/${total}`} className="count-roll">
+          <span>
+            {watched} of {total}
+          </span>
+        </Roll>
+        <span data-season-heading> · {seasonHeading(seasonNo)}</span>
       </p>
     </div>
   );
