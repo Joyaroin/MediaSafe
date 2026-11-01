@@ -1344,9 +1344,12 @@ describe("the hold and the press are one hand on a library cell", () => {
    * the gesture looking finished.
    */
   it("still reads as a timer rather than as a press", () => {
-    // `HOLD_MS` is imported rather than written down: the compression has to finish at the
-    // exact moment the hold lands, and a second copy of 500 is how that stops being true.
-    expect(holdRule()).toMatch(new RegExp(`transition:\\s*transform\\s+${HOLD_MS}ms\\s+linear`));
+    // `--hold-shown` is read, not a literal `500ms`: issue #470 moved the duration off the
+    // stylesheet entirely, onto the element itself, set from `HOLD_MS` — so the compression
+    // still finishes at the exact moment the hold lands, and a second copy of the number
+    // cannot drift from the first because there is no second copy left to drift.
+    expect(holdRule()).toMatch(/transition:\s*transform\s+var\(--hold-shown\)\s+linear/);
+    expect(holdRule()).not.toMatch(/\d+ms/);
     expect(holdRule()).not.toContain("--dur-press");
     expect(holdRule()).not.toContain("--ease-out-quart");
 
@@ -1416,8 +1419,13 @@ describe("the hold and the press are one hand on a library cell", () => {
   /**
    * Reduced motion covers **both** halves of the hold — the ramp and the arrival — and
    * neither the gesture nor the selection is dropped with them. The event always happens.
+   *
+   * Issue #470: the ramp used to disappear outright (`transform: none; transition: none;`),
+   * which left reduced motion with no cue at all for *how long to keep holding*. It fades
+   * instead — to about 70% opacity, over the same `--hold-shown` the full-motion ramp reads,
+   * so the two can never show a different duration for the one timer.
    */
-  it("drops the hold's movement without dropping the hold", () => {
+  it("fades the held cell rather than hiding the hold under reduced motion", () => {
     const blocks = [
       ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
     ]
@@ -1425,9 +1433,15 @@ describe("the hold and the press are one hand on a library cell", () => {
       .filter((block) => block.includes("data-holding"));
 
     expect(blocks).toHaveLength(1);
+    // No compression under reduced motion — the cue is a fade, never a scale.
     expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?transform:\s*none/);
-    expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?transition:\s*none/);
-    expect(blocks[0]).toMatch(/\[data-landed="true"\][\s\S]*?animation:\s*none/);
+    // The fade runs on the same timer the full-motion ramp does, read rather than retyped.
+    expect(blocks[0]).toMatch(
+      /\[data-holding="true"\]\s*\{[\s\S]*?transition:\s*opacity\s+var\(--hold-shown\)\s+linear/,
+    );
+    expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?opacity:\s*0\.7/);
+    // The landing itself still does not move.
+    expect(blocks[0]).toMatch(/\[data-landed="true"\]\s*\{[\s\S]*?animation:\s*none/);
 
     // Holding still selects: the timer never asks about the preference, exactly as the
     // press's own listener never does. Only the animation is negotiable.
@@ -1435,6 +1449,50 @@ describe("the hold and the press are one hand on a library cell", () => {
     expect(hold).toContain("HOLD_MS");
     expect(hold).not.toContain("prefers-reduced-motion");
     expect(hold).not.toContain("matchMedia");
+  });
+
+  /**
+   * The check badge is the one confirmation iOS Safari's missing Vibration API leaves —
+   * `selection-check-badge.tsx`'s own note calls it *the load-bearing feedback*. Dropping it
+   * to `animation: none` under reduced motion, as issue #470 found it, silenced the one
+   * signal a reader with that setting on has that the hold actually landed. It keeps its
+   * fade instead, on the same `--dur-base` it already runs on outside the media query —
+   * only the overshoot is dropped, the same shape `tests/motion-moments.test.ts` already
+   * proves for `watch-hold-in`/`check-pop`.
+   */
+  it("keeps the check badge's fade under reduced motion, dropping only its overshoot", () => {
+    const blocks = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ]
+      .map((match) => match[0])
+      .filter((block) => block.includes("badge-arrive"));
+
+    expect(blocks).toHaveLength(1);
+    // No more blanket cut on the class itself.
+    expect(blocks[0]).not.toMatch(/\.badge-arrive\s*\{[\s\S]*?animation:\s*none/);
+    // The keyframe is redefined instead, fading in without the scale.
+    expect(blocks[0]).toMatch(/@keyframes badge-arrive\s*\{\s*from\s*\{\s*opacity:\s*0;\s*\}\s*\}/);
+
+    // Outside the media query the rule is untouched: still `--dur-base`, as the full-motion
+    // badge already runs.
+    expect(CSS_CODE).toMatch(
+      /\.badge-arrive\s*\{\s*animation:\s*badge-arrive\s+var\(--dur-base\)\s+var\(--ease-out-quart\);\s*\}/,
+    );
+  });
+
+  /**
+   * **`--hold-shown` comes from the element, not the stylesheet.** `programme-note-episodes
+   * .tsx`'s `HoldRing` already hands its own hold ring this exact value, from this exact
+   * constant; `selectable-entry.tsx` is the second reader and has to do it the same way,
+   * so a reader of either file sees the one mechanism rather than two that happen to agree
+   * today.
+   */
+  it("sets --hold-shown on the held cell from HOLD_MS, never a literal in the stylesheet", () => {
+    const entry = codeOf("app/(signed-in)/library/selectable-entry.tsx");
+    expect(entry).toMatch(/"--hold-shown":\s*`\$\{HOLD_MS\}ms`/);
+
+    // And the stylesheet never assigns it a value of its own — only ever reads it.
+    expect(CSS_CODE).not.toMatch(/--hold-shown:\s*[^;]+;/);
   });
 
   /**
