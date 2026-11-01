@@ -2051,11 +2051,14 @@
    ticket asks for both: *the held cell scales under the press, then springs into its
    selected state.*
 
-   `data-holding` is the press itself, and its `500ms` is `use-hold-to-select.ts`'s
-   `HOLD_MS` — the compression finishes at the exact moment the hold lands, so the cell is
-   at its smallest when it pops. `linear` and not an ease, because this one is a *timer
-   made visible* rather than a movement: an ease-out would spend the first half of the
-   gesture looking finished.
+   `data-holding` is the press itself, and its duration is `--hold-shown`, not a literal —
+   issue #470 moved the `500ms` this used to type here onto the held element instead,
+   `selectable-entry.tsx` setting it from `use-hold-to-select.ts`'s own `HOLD_MS`, the exact
+   constant `programme-note-episodes.tsx`'s `HoldRing` already hands the same variable: the
+   compression finishes at the exact moment the hold lands, so the cell is at its smallest
+   when it pops, and there is no second copy of the number left to drift from the first.
+   `linear` and not an ease, because this one is a *timer made visible* rather than a
+   movement: an ease-out would spend the first half of the gesture looking finished.
 
    `data-landed` is the arrival. `app/motion.ts` reserves visible overshoot for exactly
    this and would ordinarily supply the spring, but not here: this rule is on a library
@@ -2105,7 +2108,7 @@
 
 .pressable[data-holding="true"] {
   transform: scale(var(--press-compress));
-  transition: transform 500ms linear;
+  transition: transform var(--hold-shown) linear;
 }
 
 .pressable[data-landed="true"] {
@@ -2139,15 +2142,29 @@
 }
 
 /* The event still happens; it stops moving through space. `motion-provider.tsx` does this
-   globally for anything Motion drives, and these two are CSS, so they say it themselves. */
+   globally for anything Motion drives, and these two are CSS, so they say it themselves.
+
+   Issue #470: `data-holding` used to drop to nothing at all here — no compression and no
+   replacement, so a reader with reduced motion on had no way to tell a hold was even
+   running. It fades instead, to about 70% opacity, over the same `--hold-shown` the
+   full-motion ramp above reads — the one duration, read twice, never retyped. `data-landed`
+   still does not move, because the overshoot it plays is pure `transform` with no fade to
+   keep; what changes instead is `badge-arrive`, redefined below rather than cut to
+   `animation: none`, so the one confirmation iOS Safari's missing Vibration API leaves
+   still arrives — fading in on its own `--dur-base`, with only its scale dropped. */
 @media (prefers-reduced-motion: reduce) {
   .pressable[data-holding="true"] {
     transform: none;
-    transition: none;
+    transition: opacity var(--hold-shown) linear;
+    opacity: 0.7;
   }
-  .pressable[data-landed="true"],
-  .badge-arrive {
+  .pressable[data-landed="true"] {
     animation: none;
+  }
+  @keyframes badge-arrive {
+    from {
+      opacity: 0;
+    }
   }
 }
 
