@@ -310,6 +310,60 @@ describe("the title page arrives on the page transition's clock (issue #468)", (
   });
 });
 
+/**
+ * Issue #472, handoff §11.2's *the Watched. Undo toast enters from 8px above with a fade
+ * and leaves the same way* — the write-failure toast's own mechanism
+ * (`write-failure-toast-transition`, asserted the same way a few blocks up this file in
+ * spirit, though that rule predates this one), mirrored at the opposite corner: the
+ * action toast sits at the top of the viewport, so it moves the other way, up instead of
+ * down, on the entrance and the exit alike — "every toast moves this one way, from the
+ * edge it sits on."
+ */
+describe("the action toast arrives and leaves (issue #472)", () => {
+  it("enters from 8px above with a fade, on --dur-slow and the arrival curve", () => {
+    const rule = block("@utility action-toast-transition");
+    expect(rule).toContain("opacity: 1;");
+    expect(rule).toContain("transform: none;");
+    expect(rule).toMatch(/opacity var\(--dur-slow\) var\(--ease-press\)/);
+    expect(rule).toMatch(/transform var\(--dur-slow\) var\(--ease-press\)/);
+
+    const starting = CSS_CODE.match(
+      /@starting-style\s*\{\s*\.action-toast-transition\s*\{([^}]*)\}/,
+    );
+    expect(starting, "a @starting-style block for .action-toast-transition").toBeTruthy();
+    expect(starting![1]).toMatch(/opacity:\s*0;/);
+    expect(starting![1]).toMatch(/transform:\s*translateY\(-8px\);/);
+  });
+
+  it("leaves upward on --dur-fast while data-leaving=\"true\" is held", () => {
+    const leaving = block('.action-toast-transition[data-leaving="true"]');
+    expect(leaving).toMatch(/opacity:\s*0;/);
+    expect(leaving).toMatch(/transform:\s*translateY\(-8px\);/);
+    expect(leaving).toMatch(/opacity var\(--dur-fast\) var\(--ease-out-quart\)/);
+    expect(leaving).toMatch(/transform var\(--dur-fast\) var\(--ease-out-quart\)/);
+  });
+
+  it("drops only the travel under reduced motion — both fades keep their durations", () => {
+    const reducedBlocks = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ].map((match) => match[0]);
+    const reduced = reducedBlocks.join("\n");
+
+    expect(reduced).toMatch(/\.action-toast-transition\b/);
+    expect(reduced).toMatch(/\.action-toast-transition\[data-leaving="true"\]/);
+    // Neither duration is collapsed anywhere in a reduced-motion rule (the shared
+    // assertion above already proves this file-wide; this just names the two rules
+    // involved so a future edit that narrows that shared check still has to look here).
+    for (const selector of [
+      '.action-toast-transition',
+      '.action-toast-transition[data-leaving="true"]',
+    ]) {
+      const segment = reduced.slice(reduced.indexOf(selector));
+      expect(segment.slice(0, 200)).not.toMatch(/transition-duration:\s*(?:1ms|0s)/);
+    }
+  });
+});
+
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = path.join(dir, name);

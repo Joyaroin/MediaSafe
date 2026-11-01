@@ -128,6 +128,22 @@ describe("a second action — issue #357", () => {
   });
 });
 
+describe("the toast arrives and leaves, instead of blinking — issue #472", () => {
+  /** `action-toast-toasts.tsx`'s own docblock has the rest: the component, not the store,
+   *  holds how long a toast's DOM node outlives the offer it was raised for, the same
+   *  split `errors/write-failure-toast.tsx`'s `useRetainedFailures` makes for the
+   *  write-failure toast. This is the one slice of that a static render can hold: the
+   *  class the CSS transition hangs off, and that a fresh toast carries no
+   *  `data-leaving` of its own. */
+  it("wears action-toast-transition, with no data-leaving on a freshly raised offer", () => {
+    actionToasts.raise({ title: "Severance", undo: () => {} });
+    const markup = renderToStaticMarkup(createElement(ActionToasts));
+
+    expect(markup).toMatch(/class="[^"]*\baction-toast-transition\b[^"]*"/);
+    expect(markup).not.toContain("data-leaving");
+  });
+});
+
 describe("what the toast says — issue #357", () => {
   it("says Watched unless the write says something else", () => {
     actionToasts.raise({ title: "Severance", undo: () => {} });
