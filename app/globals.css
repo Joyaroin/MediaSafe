@@ -1229,6 +1229,37 @@
     transform var(--dur-fast) var(--ease-out-quart);
 }
 
+/* The action toast (`app/(signed-in)/library/action-toast-toasts.tsx`) — issue #472. The
+   same mechanism as the write-failure toast just above (a `@starting-style` entrance and
+   a `data-leaving="true"` exit held by the component for exactly as long as this
+   transition takes), at the opposite edge: this toast sits at the top of the viewport,
+   not the bottom, so it moves the other way — down into place on the way in, up and out
+   on the way back — "every toast moves this one way, from the edge it sits on." Entrance
+   `--dur-slow` on the arrival curve, exit `--dur-fast`, the same pair the write-failure
+   toast uses, because every toast on this ramp uses it. */
+@utility action-toast-transition {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press);
+}
+
+@starting-style {
+  .action-toast-transition {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.action-toast-transition[data-leaving="true"] {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
 /* The event still happens under reduced motion — a dialog still opens and closes, the
    banner and the action bar still appear and disappear, a toast still arrives and
    leaves — only the travel drops, the same rule `rise-in`'s own reduced-motion block
@@ -1241,7 +1272,9 @@
   .selection-action-bar-transition,
   .selection-action-bar-transition[data-open="true"],
   .write-failure-toast-transition,
-  .write-failure-toast-transition[data-leaving="true"] {
+  .write-failure-toast-transition[data-leaving="true"],
+  .action-toast-transition,
+  .action-toast-transition[data-leaving="true"] {
     transform: none;
   }
 
@@ -1249,7 +1282,8 @@
     .dialog-transition[open],
     .offline-banner-transition[data-open="true"],
     .selection-action-bar-transition[data-open="true"],
-    .write-failure-toast-transition {
+    .write-failure-toast-transition,
+    .action-toast-transition {
       transform: none;
     }
   }
