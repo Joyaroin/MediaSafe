@@ -151,23 +151,92 @@ describe("the moments (handoff §11.2)", () => {
   });
 });
 
-describe("every new moment has its still version", () => {
-  const reduced = CSS_CODE.match(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g)!.join(
-    "\n",
-  );
+describe("reduced motion is a fade, never a cut — issue #471 (handoff §11.1, §11.2)", () => {
+  const reducedBlocks = [
+    ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+  ].map((match) => match[0]);
+  const reduced = reducedBlocks.join("\n");
 
-  it("swaps a rolled line, a rewound tick and a nod at once", () => {
-    for (const name of ["roll-in", "roll-out", "tick-rewind", "tab-nod"]) {
-      expect(reduced, name).toMatch(new RegExp(`\\.${name}\\b[^{]*\\{?[\\s\\S]*?animation-duration:\\s*1ms`));
+  it("finds every reduced-motion block in the stylesheet", () => {
+    // A floor so a regex slip (the lazy match swallowing less than a whole block) cannot
+    // make every assertion below vacuously pass.
+    expect(reducedBlocks.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("collapses no duration to 1ms or 0s anywhere in a reduced-motion rule", () => {
+    for (const block of reducedBlocks) {
+      expect(block).not.toMatch(/animation-duration:\s*1ms/);
+      expect(block).not.toMatch(/transition-duration:\s*1ms/);
+      expect(block).not.toMatch(/animation-duration:\s*0s/);
+      expect(block).not.toMatch(/transition-duration:\s*0s/);
     }
+  });
+
+  it("rolls the line at its own pace, dropping only the travel", () => {
+    const rollBlock = reducedBlocks.find((candidate) => /@keyframes roll-in/.test(candidate));
+    expect(rollBlock, "the roll's reduced-motion block").toBeTruthy();
+    expect(rollBlock).toMatch(/@keyframes roll-in\s*\{\s*from\s*\{\s*opacity:\s*0;\s*\}\s*\}/);
+    expect(rollBlock).toMatch(/@keyframes roll-out\s*\{\s*to\s*\{\s*opacity:\s*0;\s*\}\s*\}/);
+  });
+
+  it("sends no poster and nods no tab under reduced motion — poster-flight.ts never starts either", () => {
+    // `tab-nod` is only ever added by `flyPosterToTab`, which already returns before doing
+    // anything when the OS asks for reduced motion (the assertion below), so the class
+    // never reaches the DOM there. The keyframe redefinition is what keeps the *stylesheet*
+    // honest regardless: if it were ever applied it would still only sit inert at
+    // `--dur-pop`, never snap through a collapsed one.
+    expect(FLIGHT).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches\) return;/);
+    const tabNodBlock = reducedBlocks.find((candidate) => /@keyframes tab-nod/.test(candidate));
+    expect(tabNodBlock, "the tab-nod reduced-motion block").toBeTruthy();
+    expect(tabNodBlock).toMatch(/@keyframes tab-nod\s*\{\s*40%\s*\{\s*transform:\s*none;\s*\}\s*\}/);
+  });
+
+  it("leaves the tick's rewind and the held reveal at full pace — neither ever moved through space", () => {
+    // `tick-rewind` only ever changes colour and `held-reveal` only ever changes opacity,
+    // so neither needed a collapse: the fix is removing the forced one, not redefining
+    // either rule.
+    expect(reduced).not.toMatch(/\.tick-rewind\b[^{]*\{[^}]*animation-duration/);
+    expect(reduced).not.toMatch(/\.held-reveal\b[^{]*\{[^}]*transition-duration/);
+  });
+
+  it("fades the watch-sweep's wash, holding its width constant rather than dropping transform outright", () => {
+    const sweepBlock = reducedBlocks.find((candidate) => /@keyframes watch-sweep-in/.test(candidate));
+    expect(sweepBlock, "the watch-sweep reduced-motion block").toBeTruthy();
+    // The wash's own `transform: scaleX(0)` (outside this block) would make it zero-width
+    // for its whole run if this block dropped `transform` outright, so both frames hold it
+    // at `scaleX(1)` instead — the value never changes, only `opacity` does.
+    expect(sweepBlock).toMatch(/0%\s*\{\s*transform:\s*scaleX\(1\);\s*opacity:\s*0\.3;\s*\}/);
+    expect(sweepBlock).toMatch(/100%\s*\{\s*transform:\s*scaleX\(1\);\s*opacity:\s*0;\s*\}/);
+  });
+
+  it("fades the watch-hold's wash and the recorded check's pop, dropping only their scale", () => {
+    const holdBlock = reducedBlocks.find(
+      (candidate) => /@keyframes watch-hold-in/.test(candidate) && /@keyframes check-pop/.test(candidate),
+    );
+    expect(holdBlock, "the watch-hold/check-pop reduced-motion block").toBeTruthy();
+    expect(holdBlock).not.toMatch(/transform/);
+    expect(holdBlock).toMatch(/@keyframes watch-hold-in\s*\{\s*0%\s*\{\s*opacity:\s*1;\s*\}\s*100%\s*\{\s*opacity:\s*0;\s*\}\s*\}/);
+  });
+
+  it("leaves the stagger rising at --dur-base, dropping only the rise itself", () => {
+    const riseBlock = reducedBlocks.find((candidate) => /\.stagger-rise > \*/.test(candidate));
+    expect(riseBlock, "the stagger-rise reduced-motion block").toBeTruthy();
+    expect(riseBlock).not.toMatch(/animation-duration/);
+  });
+
+  it("drops only the slide on the progress bars, and leaves arrive-fast running at full pace", () => {
+    // The fill is pure `transform` with no opacity of its own, so the rule cannot drop
+    // `transform` the way the other moments drop theirs — it still has to reach its new
+    // value. `transition: none` removes the slide instead: the fill jumps there rather
+    // than cutting through a collapsed duration.
+    expect(reduced).toMatch(/\.progress-fill\s*\{\s*transition:\s*none;\s*\}/);
+    // `nav-fade`, the keyframe `arrive-fast` runs, only ever changes opacity — there was
+    // never a rise to drop, so there is no reduced-motion rule for it at all any more.
+    expect(reduced).not.toMatch(/\.arrive-fast\b/);
   });
 
   it("drops the Undo ring entirely, and Undo stays", () => {
     expect(reduced).toMatch(/\.undo-ring\s*\{\s*display:\s*none;/);
-  });
-
-  it("sends no poster under reduced motion — the row just disappears", () => {
-    expect(FLIGHT).toMatch(/prefers-reduced-motion: reduce\)"\)\.matches\) return;/);
   });
 });
 

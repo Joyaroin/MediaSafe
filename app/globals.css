@@ -1040,10 +1040,14 @@
 
 /* The same rule the sweep and the poster morph already follow: the content still
    arrives, it just stops travelling to get here. Opacity is kept — it is what makes the
-   arrival legible at all — and only the movement is dropped. */
+   arrival legible at all — and only the movement is dropped.
+
+   Issue #471: the duration stays `--dur-base` — only the rise drops, via the keyframe
+   redefinition below, which every `rise-in` caller (`stagger-rise`, `arrive`,
+   `arrive-panel`) shares. The stagger's own delay still zeroes: once a screen's rows no
+   longer travel there is nothing for the gap between them to stagger. */
 @media (prefers-reduced-motion: reduce) {
   .stagger-rise > * {
-    animation-duration: 1ms;
     animation-delay: 0ms !important;
   }
   @keyframes rise-in {
@@ -1371,12 +1375,22 @@
   }
 }
 
-/* The same unconditional-event, no-lingering-animation rule as the strike and stamp
-   above: the state flip is instant already, this only shortens how long the wash takes
-   to reach the fully-transparent end it always reaches. */
+/* Issue #471: the wash still fades at its own 200ms — holding `transform: scaleX(1)`
+   across both frames below keeps the wash full-width throughout, so there is still
+   something for the fade to draw; only the scale it travelled on under full motion
+   drops. Dropping `transform` outright, rather than holding it, would leave the row's
+   own static `transform: scaleX(0)` above in force for the whole run, fading a
+   zero-width box in and out of nothing. */
 @media (prefers-reduced-motion: reduce) {
-  .watch-sweep {
-    animation-duration: 1ms;
+  @keyframes watch-sweep-in {
+    0% {
+      transform: scaleX(1);
+      opacity: 0.3;
+    }
+    100% {
+      transform: scaleX(1);
+      opacity: 0;
+    }
   }
 }
 
@@ -1433,10 +1447,31 @@
   }
 }
 
+/* Issue #471: both still play at their own duration — the hold's wash and the check's
+   pop drop only their scale. Neither utility sets a static `transform` outside its
+   keyframe, so simply leaving `transform` out of the redefinitions below is enough: it
+   stays at its initial value (`none`) for the whole run rather than needing one held
+   constant, the way the sweep above does. */
 @media (prefers-reduced-motion: reduce) {
-  .watch-hold::before,
-  .check-pop {
-    animation-duration: 1ms;
+  @keyframes watch-hold-in {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes check-pop {
+    0% {
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+    }
   }
 }
 
@@ -1582,20 +1617,38 @@
   }
 }
 
+/* Issue #471. `tick-rewind` only ever changes colour and `held-reveal` only ever changes
+   opacity — neither travels through space, so neither needed a collapse and neither gets
+   one now: dropping the forced one is the whole fix for both, which is why they carry no
+   rule here at all. `roll-in`/`roll-out` do travel and keep their own `--dur-roll` while
+   the keyframe redefinitions below drop just that, fading rather than sliding. `tab-nod`
+   is only ever added by `flyPosterToTab` (`poster-flight.ts`), which already returns
+   before adding it when reduced motion is on, so the redefinition below is never reached
+   in practice — it exists so the rule, if it ever were, plays inert rather than scaling.
+   The undo ring is untouched: it is a timer made visible, not a moment that arrives or
+   leaves, and #407 already decided it disappears outright while Undo stays on screen for
+   the same time. */
 @media (prefers-reduced-motion: reduce) {
-  .roll-in,
-  .roll-out,
-  .tick-rewind,
-  .tab-nod {
-    animation-duration: 1ms;
+  @keyframes roll-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes roll-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tab-nod {
+    40% {
+      transform: none;
+    }
   }
 
   .undo-ring {
     display: none;
-  }
-
-  .held-reveal {
-    transition-duration: 1ms;
   }
 }
 
@@ -1606,15 +1659,18 @@
    `width` — handoff §11.4 never animates a size — and onto `transform`: the fill is the
    track's full width, slid left by what is not yet done, and the track clips it, so
    the fill's own rounded end stays round where a `scaleX` would flatten it.
-   `progress-fill` carries no rule of its own; it exists so this block has one selector
-   for every progress bar in the app, and a bar that moves (Import's included) wears it.
+   `progress-fill` exists so this block has one selector for every progress bar in the
+   app, and a bar that moves (Import's included) wears it.
 
-   Same shape as the sweep just above: the same unconditional-event, no-lingering-
-   animation rule. The fill still lands on the mark's new value — it just stops
-   travelling to get there. */
+   Issue #471 ends the duration collapse this used to carry: the fill is pure `transform`
+   with no opacity of its own, so dropping the movement under reduced motion by shortening
+   the slide would mean dropping the only way it ever reaches the mark. Instead the rule
+   below removes the transition outright — the fill still reaches its new value, it just
+   does not slide to get there (handoff §11.2, "The fill reaches its new value without
+   sliding"). */
 @media (prefers-reduced-motion: reduce) {
   .progress-fill {
-    transition-duration: 1ms;
+    transition: none;
   }
 }
 
@@ -2251,11 +2307,9 @@
   animation: nav-fade var(--dur-fast) var(--ease-out-quart) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .arrive-fast {
-    animation-duration: 1ms;
-  }
-}
+/* Issue #471: `nav-fade` only ever changes opacity, so there was never anything to drop —
+   the collapse this used to carry gave reduced motion a flash instead of the same fade.
+   Removed rather than redefined, the same fix as `tick-rewind` and `held-reveal` above. */
 
 /* A title page arriving — the held title page's hero and actions, and the catalogue page's
    body for a title the reader does not hold. The rule for both is an entrance's: `--dur-base`
@@ -2443,17 +2497,22 @@
   pointer-events: none;
 }
 
-/* Issue #141's poster morph, collapsed rather than removed: `::view-transition-group`
-   is what moves and resizes the shared element, `::view-transition-old`/`-new` are what
-   cross-fade the two snapshots inside it. Zeroing all three is what the browser itself
-   falls back to without View Transitions support, so a reader who asks for reduced
-   motion sees exactly that fallback — an instant swap, navigation and panel-swap alike,
-   never a missing tile or a missing panel. */
+/* Issue #471: an instant swap was the browser's own fallback and this file chose it
+   deliberately, but it is exactly the cut the handoff now forbids. The crossfade keeps
+   its own durations — `--dur-fast` leaving, `--dur-quick` arriving, the same pair the
+   full-motion rule above runs — and only two things are dropped: the small rise on the
+   way in (`nav-rise`), and the poster's own travel, which would otherwise still resize
+   and reposition across the screen. `::view-transition-old(root)` needs no override of
+   its own: it already runs nothing but `nav-fade` reverse, so there was never a rise on
+   the way out to drop. Disabling the poster group's own animation outright leaves its
+   old/new snapshot pair to cross-fade in place on the browser's own default, exactly
+   like any other named group this file does not author. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
+  ::view-transition-new(root) {
+    animation: var(--dur-quick) var(--ease-out-quart) both nav-fade;
+  }
+
+  ::view-transition-group(*.poster) {
+    animation: none;
   }
 }
