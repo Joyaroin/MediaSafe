@@ -168,7 +168,12 @@ describe("one motion, and nothing that has to choose between motions", () => {
       entry.includes("::view-transition-group(*.poster)"),
     );
     expect(posterReduced, "a reduced-motion rule that stops the poster travelling").toBeTruthy();
-    expect(posterReduced).toMatch(/::view-transition-group\(\*\.poster\)\s*\{\s*animation:\s*none;/);
+    // `animation-name: none`, not the `animation` shorthand: the shorthand also zeroes
+    // `animation-duration`, and the UA stylesheet gives the poster's own snapshot pair
+    // `animation-duration: inherit` from this group — a `0s` duration here would cut
+    // their cross-fade too, exactly the collapse this ticket removes.
+    expect(posterReduced).toMatch(/::view-transition-group\(\*\.poster\)\s*\{\s*animation-name:\s*none;/);
+    expect(posterReduced).not.toMatch(/::view-transition-group\(\*\.poster\)\s*\{\s*animation:\s*none;/);
   });
 });
 

@@ -2504,15 +2504,19 @@
    way in (`nav-rise`), and the poster's own travel, which would otherwise still resize
    and reposition across the screen. `::view-transition-old(root)` needs no override of
    its own: it already runs nothing but `nav-fade` reverse, so there was never a rise on
-   the way out to drop. Disabling the poster group's own animation outright leaves its
-   old/new snapshot pair to cross-fade in place on the browser's own default, exactly
-   like any other named group this file does not author. */
+   the way out to drop. The poster group gets `animation-name: none`, not the `animation`
+   shorthand: the shorthand also resets `animation-duration` to `0s`, and the UA stylesheet
+   gives `::view-transition-old/new` (via `::view-transition-image-pair`) `animation-duration:
+   inherit` from the group — so a `0s` duration here would silently zero their cross-fade
+   too. `animation-name: none` drops only the group's own travel and leaves `--dur-quick`
+   and `--spring-poster` in place for the snapshot pair to inherit, so the poster still
+   fades in place like any other named group this file does not otherwise author. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-new(root) {
     animation: var(--dur-quick) var(--ease-out-quart) both nav-fade;
   }
 
   ::view-transition-group(*.poster) {
-    animation: none;
+    animation-name: none;
   }
 }
