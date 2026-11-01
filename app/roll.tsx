@@ -12,7 +12,9 @@ import { useState, type ReactNode } from "react";
  *
  * `rollKey` must change whenever the words do — it is what says *this is a different line*,
  * and the leaving copy is the content first drawn under the old key. Nothing rolls on the
- * first paint; under reduced motion the swap is immediate (the keyframes run for `1ms`).
+ * first paint; under reduced motion the roll still plays at `--dur-roll`, fading rather
+ * than travelling (issue #471) — `globals.css`'s `roll-in`/`roll-out` keyframes are
+ * redefined to opacity alone there, not collapsed to `1ms`.
  *
  * The leaving copy is `aria-hidden` and gone once its animation ends: a screen reader only
  * ever hears the current line.

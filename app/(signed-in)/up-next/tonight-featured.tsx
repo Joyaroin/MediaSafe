@@ -75,8 +75,9 @@ import {
  *
  * The narrowing and the joining are Motion's layout animation on `smooth` — a size changing
  * is never animated as a `width` or a `gap` — and the rolls are CSS on `--dur-roll`. Under
- * reduced motion `MotionConfig` drops the layout animation and the rolls run for `1ms`:
- * everything changes at once.
+ * reduced motion `MotionConfig` drops the layout animation's movement while leaving its
+ * opacity alone, and the rolls keep running at `--dur-roll` too, fading rather than
+ * travelling (issue #471) — nothing here cuts to its end state.
  */
 export function TonightFeatured({ entry }: { entry: UpNextEntry }) {
   const mark = useUpNextMark(entry);
