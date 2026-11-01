@@ -5,12 +5,12 @@ import { useRef, useState } from "react";
 import {
   addTitleToListAction,
   createListAndAddTitleAction,
-  listsForPickerAction,
   type AddTitleToListActionOutcome,
   type CreateListAndAddOutcome,
-  type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
+import type { ListsForPickerOutcome } from "@/app/(signed-in)/lists/lists-for-picker";
 import { ListNameForm } from "@/app/(signed-in)/lists/list-name-form";
+import { readRoute, SignedOutError } from "@/app/read-route";
 import { DIALOG_FRAME, ICON_BUTTON_SQUARE, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
 import type { ListSummary } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
@@ -55,8 +55,8 @@ const SHEET =
  * component. `AGENTS.md`'s **one toast per lost write, not one per attempt** still holds,
  * per row: a second press on a row whose toast is still standing raises nothing new.
  *
- * A row's own membership before this dialog opened is not read back — `listsForPickerAction`
- * answers `ListSummary`, the same shape the Lists page itself reads, with no per-title
+ * A row's own membership before this dialog opened is not read back — `GET /api/lists/
+ * picker` answers `ListSummary`, the same shape the Lists page itself reads, with no per-title
  * join. Pressing a list this title is already in is exactly issue #147's *not an error and
  * not a duplicate*: the write lands, the row's tick fills, and nothing about the list
  * changes twice.
@@ -108,6 +108,9 @@ export function AddToListControl({
 
   async function read(): Promise<void> {
     const outcome = await readLists();
+    // `null` is signed-out: `readRoute` has already sent the reader to `/sign-in`, so
+    // there is nothing left here for this dialog to draw.
+    if (outcome === null) return;
     setPhase(
       outcome.ok
         ? { kind: "loaded", lists: outcome.lists }
@@ -291,10 +294,17 @@ function ListPickerRow({
   );
 }
 
-async function readLists(): Promise<ListsForPickerOutcome> {
+/**
+ * `null` means *this answer must never be drawn* — `readRoute` has already sent the
+ * reader to `/sign-in` and thrown `SignedOutError`, exactly as `search-surface.tsx`'s own
+ * `search()` reads it. Anything else thrown is a genuine failure and becomes the same
+ * `{ ok: false, reference }` the route itself answers for one it catches.
+ */
+async function readLists(): Promise<ListsForPickerOutcome | null> {
   try {
-    return await listsForPickerAction();
+    return await readRoute<ListsForPickerOutcome>("/api/lists/picker");
   } catch (error) {
+    if (error instanceof SignedOutError) return null;
     return { ok: false, reference: referenceFor(error, { surface: "add-to-list" }) };
   }
 }
