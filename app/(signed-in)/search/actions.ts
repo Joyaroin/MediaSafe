@@ -5,16 +5,11 @@ import { after } from "next/server";
 import { colourAfterAdd } from "@/app/api/cron/nightly-sweep/colour-after-add";
 import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
-import {
-  accountsHoldingTitles,
-  addTitleToLibraryWatched,
-  libraryCatalogueKeys,
-} from "@/db/access";
+import { accountsHoldingTitles, addTitleToLibraryWatched } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
-import { searchCatalogueOfKind, titleMirror, titleRowMirror } from "@/tmdb/catalogue";
+import { titleMirror, titleRowMirror } from "@/tmdb/catalogue";
 import {
   catalogueKeyFrom,
-  catalogueKeyOf,
   type CatalogueKey,
   type CatalogueResult,
   type TitleKind,
@@ -22,28 +17,29 @@ import {
 import { requireUserId } from "@/lib/session";
 
 import { addTitleAnswering } from "./add-title";
-import type { BothKinds, KindOutcome } from "./search-groups";
 
 /**
- * The two things the search screen asks the server for.
+ * The two writes the search screen makes. The search itself moved off this file and off
+ * the Server Action queue entirely — `GET /api/search` (`app/api/search/route.ts`), through
+ * `app/read-route.ts` — issue #480: a `searchCatalogueAction` queued behind whatever
+ * Server Action a watch mark was already saving, because Next dispatches them one at a
+ * time, and a reader typing into Search felt that wait. Adding stays here: it is a write,
+ * and every write in this application stays a Server Action.
  *
- * ── Why these return an outcome instead of throwing ──────────────────────────────────
+ * ── Why a write still returns an outcome instead of throwing ─────────────────────────
  *
  * The rule is *empty and failed are structurally separate*, and `AGENTS.md` spells
  * the forbidden shape out: no `catch` returns `[]`. Both are obeyed here, and the second
  * one's own lint message names this escape hatch — *"rethrow, or return a value that says
  * the read failed."* That is what `{ ok: false }` is. Nothing below manufactures an empty
- * list out of a failure; a failed search is a different variant of a different type, and
- * the screen cannot render it as *no results* without a compile error.
+ * list out of a failure.
  *
- * Throwing was the alternative and it is worse **here specifically**, for a reason that
- * does not generalise: a failure on this screen must be inline within the results region
- * — one region failed to load, which is the first blast radius — and it must
- * carry a reference id. React strips a thrown Server Action error before it crosses to
- * the browser: the client would get a generic message and a `digest`, and `referenceFor`
- * on the client would report an error that has already lost everything worth reporting.
- * Catching here means Sentry gets the real exception, with the TMDB status in its message,
- * and the reader gets the event id for *that* event.
+ * Throwing was the alternative and it is worse **here specifically**: a failed add must
+ * raise the write-failure toast with a reference id, and React strips a thrown Server
+ * Action error before it crosses to the browser — the client would get a generic message
+ * and a `digest`, and `referenceFor` on the client would report an error that has already
+ * lost everything worth reporting. Catching here means Sentry gets the real exception, and
+ * the reader gets the event id for *that* event.
  *
  * The rest of the application still throws. `app/error.tsx` is the boundary for every read
  * that renders on the server, and nothing here changes that.
@@ -68,67 +64,6 @@ export interface MarkedResult extends CatalogueResult {
 export type AddOutcome =
   | { readonly ok: true }
   | { readonly ok: false; readonly reference: string | null };
-
-/**
- * Search the catalogue by name, for films and shows at once, and mark the results this
- * account already holds — issue #357, which retired the Shows/Films toggle a reader had to
- * set before typing.
- *
- * *Search*, not *filter*: the first is reserved for the catalogue and the second for your
- * own library, and this one has never seen your library except to answer *do you have
- * this*.
- *
- * ── Two searches, not one mixed one ──────────────────────────────────────────────────
- *
- * TMDB's multi-search ranks films and shows against each other, and filtering or grouping
- * its mixed page afterwards would return three films whenever seventeen of twenty were
- * shows — hiding the best film for a query behind better-ranked shows. So each kind is
- * searched on its own endpoint, in parallel, and keeps its own ranking; the screen draws
- * them as two groups (`search-groups.ts`).
- *
- * ── Each kind answers for itself ─────────────────────────────────────────────────────
- *
- * One kind failing does not fail the other. A failed kind comes back as `{ ok: false }`
- * with its own reference, and the screen draws it as a failure beside the kind that
- * succeeded — never as a kind with nothing in it.
- */
-export async function searchCatalogueAction(query: string): Promise<BothKinds> {
-  const userId = await requireUserId();
-
-  const trimmed = query.trim();
-  // A blank query is not a search. The screen does not send one, and if something else
-  // ever does, the honest answer is that nothing was asked, not that nothing matched.
-  if (!trimmed) {
-    return { show: { ok: true, results: [] }, film: { ok: true, results: [] } };
-  }
-
-  const [show, film] = await Promise.all([
-    searchOneKind(userId, "show", trimmed),
-    searchOneKind(userId, "film", trimmed),
-  ]);
-  return { show, film };
-}
-
-async function searchOneKind(
-  userId: Awaited<ReturnType<typeof requireUserId>>,
-  kind: TitleKind,
-  trimmed: string,
-): Promise<KindOutcome> {
-  try {
-    const results = await searchCatalogueOfKind(kind, trimmed);
-    const held = await libraryCatalogueKeys(userId, results);
-
-    return {
-      ok: true,
-      results: results.map((result) => ({
-        ...result,
-        inLibrary: held.has(catalogueKeyOf(result)),
-      })),
-    };
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "search", kind }) };
-  }
-}
 
 /**
  * Add one catalogue result to this account's library, and answer immediately.
