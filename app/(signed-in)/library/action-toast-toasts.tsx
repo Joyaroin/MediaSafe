@@ -138,6 +138,14 @@ function ActionToast({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
+          // `leaving` disables this the moment a second mark (or the timer, or the
+          // reader's own press) starts this toast's exit: `actionToasts.dismiss(offer.id)`
+          // is already a no-op once this offer is no longer current
+          // (`action-toast.ts`'s `dismissAction`), so without this a tap landing inside
+          // the exit's ~140ms would still run `offer.undo()` a second time — the double
+          // send `watch-marks.ts` documents as forbidden, deleting a second, unrelated
+          // watch row rather than merely repeating a no-op.
+          disabled={leaving}
           onClick={() => {
             actionToasts.dismiss(offer.id);
             offer.undo();
@@ -150,6 +158,7 @@ function ActionToast({
         {offer.also === undefined ? null : (
           <button
             type="button"
+            disabled={leaving}
             onClick={() => {
               actionToasts.dismiss(offer.id);
               offer.also?.run();
