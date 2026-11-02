@@ -70,10 +70,10 @@ after a Terraform or k3s upgrade:
 
 ## The home cluster's tunnel
 
-The cluster is moving from the Linode VM to `jonathan`, a VM at home that opens no ports: Cloudflare
-reaches it through a Tunnel whose connector runs in the cluster (`mediasafe-gitops`, branch
-`homelab`, `platform/cloudflared`). This stack owns the tunnel and its routes; DNS keeps pointing
-at Linode until `serve_from_tunnel` is turned on.
+The cluster runs on `hamon`, a VM on the home Proxmox host `jonathan`, which opens no ports:
+Cloudflare reaches it through a Tunnel whose connector runs in the cluster (`mediasafe-gitops`,
+`platform/cloudflared`). This stack owns the tunnel and its routes; `serve_from_tunnel` points DNS
+at it, and turned off points DNS back at the Linode VM.
 
 The connector's token is the one secret here, and it never passes through Terraform. After the apply
 that creates the tunnel, copy it from Cloudflare's API straight into Vault, without it ever being
