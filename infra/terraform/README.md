@@ -24,7 +24,7 @@ directory's.
    | Bitwarden item | Username | Password | Where to create it | Scope |
    |---|---|---|---|---|
    | `mediasafe/linode-token` | — | the token | Linode → API Tokens | Linodes: Read/Write, Volumes: Read/Write, Firewalls: Read/Write. Nothing else |
-   | `mediasafe/cloudflare-token` | — | the token | Cloudflare → My Profile → API Tokens | Zone → DNS → Edit, on your one zone; Account → Workers R2 Storage → Edit (the snapshot bucket) |
+   | `mediasafe/cloudflare-token` | — | the token | Cloudflare → My Profile → API Tokens | Zone → DNS → Edit and Zone → Zone Settings → Edit, on your one zone; Account → Workers R2 Storage → Edit (the snapshot bucket); Account → Cloudflare Tunnel → Edit (the home cluster's tunnel) |
    | `mediasafe/r2-terraform-state` | Access Key ID | Secret Access Key | Cloudflare → R2 → Manage API tokens | Object Read & Write, on `mediasafe-tfstate` only |
 
    A fourth key is created **after the first apply that makes `mediasafe-vault-snapshots`**, and
@@ -67,3 +67,26 @@ after a Terraform or k3s upgrade:
   the first. Unlocking Bitwarden in the second terminal stales the first one's `BW_SESSION`.
 - **The API certificate covers the public IP.** `kubectl get nodes` above succeeding is the
   check. A TLS error naming the IP means `tls-san` has to be added to the k3s config.
+
+## The home cluster's tunnel
+
+The cluster is moving from the Linode VM to `jonathan`, a VM at home that opens no ports: Cloudflare
+reaches it through a Tunnel whose connector runs in the cluster (`mediasafe-gitops`, branch
+`homelab`, `platform/cloudflared`). This stack owns the tunnel and its routes; DNS keeps pointing
+at Linode until `serve_from_tunnel` is turned on.
+
+The connector's token is the one secret here, and it never passes through Terraform. After the apply
+that creates the tunnel, copy it from Cloudflare's API straight into Vault, without it ever being
+printed (Vault port-forwarded and logged in as in `infra/vault/README.md`):
+
+```sh
+export BW_SESSION="$(bw unlock --raw)"
+curl -fsS -H "Authorization: Bearer $(bw get password mediasafe/cloudflare-token --session "$BW_SESSION")" \
+  "https://api.cloudflare.com/client/v4/accounts/$(awk -F'"' '/cloudflare_account_id/ {print $2}' terraform.tfvars)/cfd_tunnel/$(./tf output -raw tunnel_id)/token" \
+  | jq -er .result | vault kv put kv/infra/cloudflared/tunnel token=-
+```
+
+**The cutover** is `serve_from_tunnel = true` in `terraform.tfvars` and an apply: each A record to
+the VM becomes a proxied CNAME to the tunnel. Read the plan: if it replaces the records rather
+than updating them, each name is briefly absent; with Linode already stopped, nothing is lost by it.
+

@@ -56,3 +56,9 @@ variable "cloudflare_account_id" {
   description = "The Cloudflare account that holds R2. Not secret: it is in every R2 URL, including backend.hcl's."
   type        = string
 }
+
+variable "serve_from_tunnel" {
+  description = "false: DNS points at the Linode VM. true: DNS points at the home cluster's Cloudflare Tunnel. Flipped once, at the cutover."
+  type        = bool
+  default     = false
+}

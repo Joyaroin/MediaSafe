@@ -93,28 +93,76 @@ resource "linode_volume" "vault" {
 
 # ── DNS ──────────────────────────────────────────────────────────────────────────────────
 #
-# Unproxied: cert-manager's HTTP-01 challenge must reach the VM itself, and Traefik
-# terminates TLS there. `argocd.` exists from the start but serves nothing until stage 5.
+# Two ways in, and serve_from_tunnel picks one. Off, each name is an unproxied A record to the
+# Linode VM, where Traefik terminates TLS. On, each is a proxied CNAME to the home cluster's
+# tunnel, below. Turning it on is the cutover; Linode stays up until it has been flipped.
+# `argocd.` exists from the start but serves nothing until stage 5.
 data "cloudflare_zone" "site" {
   filter = {
     name = var.domain
   }
 }
 
-resource "cloudflare_dns_record" "site" {
-  for_each = {
+locals {
+  hostnames = {
     apex    = var.domain
     staging = "staging.${var.domain}"
     argocd  = "argocd.${var.domain}"
   }
+}
+
+resource "cloudflare_dns_record" "site" {
+  for_each = local.hostnames
 
   zone_id = data.cloudflare_zone.site.zone_id
   name    = each.value
-  type    = "A"
-  content = local.public_ip
-  ttl     = 300
-  proxied = false
+  type    = var.serve_from_tunnel ? "CNAME" : "A"
+  content = var.serve_from_tunnel ? "${cloudflare_zero_trust_tunnel_cloudflared.home.id}.cfargotunnel.com" : local.public_ip
+  ttl     = var.serve_from_tunnel ? 1 : 300 # 1 is "automatic", the only TTL a proxied record takes
+  proxied = var.serve_from_tunnel
   comment = "MediaSafe infra/terraform"
+}
+
+# Only proxied names are affected, so this changes nothing while serve_from_tunnel is off. On,
+# Cloudflare's edge is the only place a plain-HTTP request can be turned away: the cluster has
+# no HTTP listener at all (mediasafe-gitops, platform/edge/gateway.yaml).
+resource "cloudflare_zone_setting" "always_use_https" {
+  zone_id    = data.cloudflare_zone.site.zone_id
+  setting_id = "always_use_https"
+  value      = "on"
+}
+
+# ── The tunnel to the home cluster ───────────────────────────────────────────────────────
+#
+# cloudflared runs inside the home cluster (mediasafe-gitops, platform/cloudflared) and dials
+# out to Cloudflare, so the home network opens no ports. Its routes live here: every hostname
+# goes to Traefik's HTTPS port with that hostname as SNI, so Traefik picks the Gateway listener
+# and certificate exactly as for a direct visitor, and cloudflared checks that certificate.
+#
+# No tunnel_secret is set, so Cloudflare generates it and it never reaches this state. The
+# connector's token is copied from Cloudflare's API into Vault at kv/infra/cloudflared/tunnel
+# by hand (README.md); deliberately not through the token data source, which would store it here.
+resource "cloudflare_zero_trust_tunnel_cloudflared" "home" {
+  account_id = var.cloudflare_account_id
+  name       = "${local.name}-home"
+  config_src = "cloudflare"
+}
+
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "home" {
+  account_id = var.cloudflare_account_id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.home.id
+
+  config = {
+    ingress = concat(
+      [for hostname in values(local.hostnames) : {
+        hostname       = hostname
+        service        = "https://traefik.traefik.svc.cluster.local:443"
+        origin_request = { origin_server_name = hostname }
+      }],
+      # Anything else that reaches the tunnel, e.g. a hostname added here before the Gateway.
+      [{ service = "http_status:404" }],
+    )
+  }
 }
 
 # ── Vault's snapshots ────────────────────────────────────────────────────────────────────
