@@ -244,6 +244,27 @@ export const authOptions = {
     storage: "database",
   },
 
+  /**
+   * *Whose address a request is counted against.* The limiter above keys on it, so getting
+   * it wrong is either one bucket shared by everyone or a fresh bucket per request.
+   *
+   * Every request reaches the cluster through the Cloudflare Tunnel, so the connection the
+   * app sees is cloudflared's, and Traefik writes cloudflared's pod address into
+   * `X-Forwarded-For`. Cloudflare's edge puts the visitor's address in `CF-Connecting-IP`,
+   * overwriting whatever the visitor sent, so that header is read first. `X-Forwarded-For`
+   * stays as the fallback for anything that arrives without it, i.e. from inside the cluster.
+   *
+   * This is trustworthy only because nothing reaches Traefik except through the tunnel
+   * (`mediasafe-gitops`, `platform/traefik/values.yaml`: a ClusterIP Service). With a
+   * public port in front of it, anyone could send their own `CF-Connecting-IP` and get a
+   * new bucket on every request.
+   */
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+    },
+  },
+
   databaseHooks: {
     user: {
       create: {

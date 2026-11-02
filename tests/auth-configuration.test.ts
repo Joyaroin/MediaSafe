@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { getIp } from "better-auth/api";
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
@@ -167,6 +168,26 @@ describe("what the auth configuration commits to", () => {
   it("rate limits, in Postgres, everywhere rather than only in production", () => {
     expect(authOptions.rateLimit.enabled).toBe(true);
     expect(authOptions.rateLimit.storage).toBe("database");
+  });
+
+  /**
+   * Asked of Better Auth's own resolver, the one its rate limiter calls, rather than of the
+   * header list: what matters is the address a request is counted against.
+   */
+  describe("the address a request is rate limited by", () => {
+    it("is the visitor's, from Cloudflare, not the tunnel connector's", () => {
+      const throughTheTunnel = new Headers({
+        "cf-connecting-ip": "203.0.113.9",
+        // What Traefik writes: the connection it saw, which is cloudflared's pod.
+        "x-forwarded-for": "10.42.0.15",
+      });
+      expect(getIp(throughTheTunnel, authOptions)).toBe("203.0.113.9");
+    });
+
+    it("falls back to X-Forwarded-For for a request that did not come through Cloudflare", () => {
+      const fromInsideTheCluster = new Headers({ "x-forwarded-for": "10.42.0.31" });
+      expect(getIp(fromInsideTheCluster, authOptions)).toBe("10.42.0.31");
+    });
   });
 });
 
