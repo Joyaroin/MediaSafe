@@ -7,6 +7,8 @@
 #   kv/mediasafe/staging/*   the staging app's environment
 #   kv/mediasafe/prod/*      the production app's environment
 #   kv/infra/argocd/*        Argo CD's Google sign-in secret
+#   kv/infra/cert-manager/*  the Cloudflare API token cert-manager proves DNS-01 challenges with
+#   kv/infra/cloudflared/*   the Cloudflare Tunnel token the home cluster's connector runs with
 #   kv/infra/vault-snapshots the R2 key the nightly snapshot uploads with
 resource "vault_mount" "kv" {
   path        = "kv"
@@ -39,6 +41,24 @@ resource "vault_policy" "argocd_read" {
   name   = "argocd-read"
   policy = <<-EOT
     path "${vault_mount.kv.path}/data/infra/argocd/*" {
+      capabilities = ["read"]
+    }
+  EOT
+}
+
+resource "vault_policy" "cert_manager_read" {
+  name   = "cert-manager-read"
+  policy = <<-EOT
+    path "${vault_mount.kv.path}/data/infra/cert-manager/*" {
+      capabilities = ["read"]
+    }
+  EOT
+}
+
+resource "vault_policy" "cloudflared_read" {
+  name   = "cloudflared-read"
+  policy = <<-EOT
+    path "${vault_mount.kv.path}/data/infra/cloudflared/*" {
       capabilities = ["read"]
     }
   EOT
@@ -99,6 +119,16 @@ locals {
       namespace = "argocd"
       account   = "vault-reader"
       policies  = [vault_policy.argocd_read.name]
+    }
+    "eso-cert-manager" = {
+      namespace = "cert-manager"
+      account   = "vault-reader"
+      policies  = [vault_policy.cert_manager_read.name]
+    }
+    "eso-cloudflared" = {
+      namespace = "cloudflared"
+      account   = "vault-reader"
+      policies  = [vault_policy.cloudflared_read.name]
     }
     "vault-snapshot" = {
       namespace = "vault"
