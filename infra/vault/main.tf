@@ -9,6 +9,8 @@
 #   kv/infra/argocd/*        Argo CD's Google sign-in secret
 #   kv/infra/cert-manager/*  the Cloudflare API token cert-manager proves DNS-01 challenges with
 #   kv/infra/cloudflared/*   the Cloudflare Tunnel token the home cluster's connector runs with
+#   kv/infra/forgejo/*       the home Forgejo's admin login
+#   kv/infra/tailscale/*     the OAuth client the Tailscale operator joins devices to the tailnet with
 #   kv/infra/vault-snapshots the R2 key the nightly snapshot uploads with
 resource "vault_mount" "kv" {
   path        = "kv"
@@ -59,6 +61,24 @@ resource "vault_policy" "cloudflared_read" {
   name   = "cloudflared-read"
   policy = <<-EOT
     path "${vault_mount.kv.path}/data/infra/cloudflared/*" {
+      capabilities = ["read"]
+    }
+  EOT
+}
+
+resource "vault_policy" "forgejo_read" {
+  name   = "forgejo-read"
+  policy = <<-EOT
+    path "${vault_mount.kv.path}/data/infra/forgejo/*" {
+      capabilities = ["read"]
+    }
+  EOT
+}
+
+resource "vault_policy" "tailscale_read" {
+  name   = "tailscale-read"
+  policy = <<-EOT
+    path "${vault_mount.kv.path}/data/infra/tailscale/*" {
       capabilities = ["read"]
     }
   EOT
@@ -129,6 +149,16 @@ locals {
       namespace = "cloudflared"
       account   = "vault-reader"
       policies  = [vault_policy.cloudflared_read.name]
+    }
+    "eso-forgejo" = {
+      namespace = "forgejo"
+      account   = "vault-reader"
+      policies  = [vault_policy.forgejo_read.name]
+    }
+    "eso-tailscale" = {
+      namespace = "tailscale"
+      account   = "vault-reader"
+      policies  = [vault_policy.tailscale_read.name]
     }
     "vault-snapshot" = {
       namespace = "vault"
