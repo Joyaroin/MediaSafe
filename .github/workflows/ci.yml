@@ -85,7 +85,7 @@ jobs:
           # so a build that passes here is a build that passes there. Local development is 22-or-newer
           # for local development; this pins the one that has to agree with
           # production, and only that.
-          node-version: "22"
+          node-version: "26"
           cache: npm
 
       # Node 22 ships npm 10, and **npm 10 cannot read this repository's lock file**:
