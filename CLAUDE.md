@@ -8,7 +8,7 @@ A working codebase, not a spec-stage repo — do not treat it as greenfield. `ap
 `tests/`, `drizzle/` and custom `eslint-rules/` all exist. For how far along it is, read
 `git log`, not this file.
 
-Stack: Next.js on k3s (one Linode VM, Argo CD from `mediasafe-gitops`; ADR 0001), Postgres on
+Stack: Next.js on k3s (one Linode VM, Argo CD from `morioh-cho-gitops`; ADR 0001), Postgres on
 Neon, Drizzle.
 
 ## Work
@@ -22,7 +22,7 @@ original spec-stage map; it is closed and historical.
 ## Shipping
 
 A merge to `main` is a staging deploy: `image.yml` builds the image and commits its tag to
-`mediasafe-gitops`'s `values-staging.yaml`, and Argo CD runs pending migrations as a Job before
+`morioh-cho-gitops`'s `values-staging.yaml`, and Argo CD runs pending migrations as a Job before
 the new pods roll out (staging.mediasafe.space). Prod is a separate promotion (`promote.yml`).
 
 CI (`ci.yml`) runs typecheck, lint, build, the route manifest and a few named suites — **not**

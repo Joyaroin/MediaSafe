@@ -84,7 +84,7 @@ jobs:
           min-versions-to-keep: 10
 
   # Staging runs whatever was built last. A fine-grained token (GITOPS_TOKEN: Contents read and
-  # write on mediasafe-gitops, nothing else) is the only credential this repo holds for the
+  # write on morioh-cho-gitops, nothing else) is the only credential this repo holds for the
   # cluster, and all it can do is change files Argo CD reads.
   deploy-staging:
     name: deploy to staging
@@ -99,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          repository: Joyaroin/mediasafe-gitops
+          repository: Joyaroin/morioh-cho-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
 
       - name: Point staging at this image

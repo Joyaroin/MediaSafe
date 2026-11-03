@@ -255,7 +255,7 @@ export const authOptions = {
    * stays as the fallback for anything that arrives without it, i.e. from inside the cluster.
    *
    * This is trustworthy only because nothing reaches Traefik except through the tunnel
-   * (`mediasafe-gitops`, `platform/traefik/values.yaml`: a ClusterIP Service). With a
+   * (`morioh-cho-gitops`, `platform/traefik/values.yaml`: a ClusterIP Service). With a
    * public port in front of it, anyone could send their own `CF-Connecting-IP` and get a
    * new bucket on every request.
    */
