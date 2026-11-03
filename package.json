@@ -52,7 +52,7 @@
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.25.12",
-    "eslint": "^9",
+    "eslint": "^10.0.0",
     "eslint-config-next": "16.3.1",
     "squawk-cli": "2.62.0",
     "tailwindcss": "^4",
