@@ -70,6 +70,6 @@ if ! curl -fsS -o /dev/null http://127.0.0.1:8200/v1/sys/health 2>/dev/null; the
   done
 fi
 curl -fsS -o /dev/null http://127.0.0.1:8200/v1/sys/health \
-  || { echo "Vault is not answering (sealed? run bootstrap/vault-unseal in mediasafe-gitops)." >&2; exit 1; }
+  || { echo "Vault is not answering (sealed? run bootstrap/vault-unseal in morioh-cho-gitops)." >&2; exit 1; }
 
 terraform "$@"

@@ -71,7 +71,7 @@ after a Terraform or k3s upgrade:
 ## The home cluster's tunnel
 
 The cluster runs on `hamon`, a VM on the home Proxmox host `jonathan`, which opens no ports:
-Cloudflare reaches it through a Tunnel whose connector runs in the cluster (`mediasafe-gitops`,
+Cloudflare reaches it through a Tunnel whose connector runs in the cluster (`morioh-cho-gitops`,
 `platform/cloudflared`). This stack owns the tunnel and its routes; `serve_from_tunnel` points DNS
 at it, and turned off points DNS back at the Linode VM.
 

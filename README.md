@@ -69,7 +69,7 @@ flowchart LR
   staging --> neons[(Neon Postgres<br/>staging branch)]
   prod & staging --> tmdb[TMDB API]
   vault -->|nightly snapshot| r2[(Cloudflare R2)]
-  gitops[[mediasafe-gitops]] -->|synced by| argo
+  gitops[[morioh-cho-gitops]] -->|synced by| argo
 ```
 
 **The app.** Next.js 16 (App Router, React Server Components, server actions) with TypeScript,
@@ -81,7 +81,7 @@ write on one pod invalidates the cache for all of them. Errors go to Sentry.
 **The infrastructure.** One Linode VM running k3s, created by Terraform along with its
 firewall, a block volume, the DNS records and the R2 buckets
 ([`infra/terraform`](infra/terraform)). Everything *inside* the cluster is declared in a second
-repository, **[mediasafe-gitops](https://github.com/Joyaroin/mediasafe-gitops)**, which Argo CD
+repository, **[morioh-cho-gitops](https://github.com/Joyaroin/morioh-cho-gitops)**, which Argo CD
 keeps the cluster in sync with: Traefik behind the Kubernetes Gateway API, cert-manager for TLS,
 HashiCorp Vault for secrets (configured by Terraform in [`infra/vault`](infra/vault)) with
 External Secrets copying them into each namespace, and a Helm chart for the app itself, with one

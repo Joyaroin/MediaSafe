@@ -1,7 +1,7 @@
 # infra/vault — Vault's configuration
 
 Stage 5b of [ADR 0001](../../docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md). Vault itself is
-installed by Argo CD (`mediasafe-gitops/apps/vault.yaml`); this directory configures what is inside
+installed by Argo CD (`morioh-cho-gitops/apps/vault.yaml`); this directory configures what is inside
 it: the KV store, the policies, the Kubernetes roles pods log in with, and Google sign-in for you.
 
 Secret **values** are not here. They go in by hand (`vault kv put`), so they never reach state or git.

@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          repository: Joyaroin/mediasafe-gitops
+          repository: Joyaroin/morioh-cho-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
 
       - name: Copy staging's image to prod

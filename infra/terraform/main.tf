@@ -125,7 +125,7 @@ resource "cloudflare_dns_record" "site" {
 
 # Only proxied names are affected, so this changes nothing while serve_from_tunnel is off. On,
 # Cloudflare's edge is the only place a plain-HTTP request can be turned away: the cluster has
-# no HTTP listener at all (mediasafe-gitops, platform/edge/gateway.yaml).
+# no HTTP listener at all (morioh-cho-gitops, platform/edge/gateway.yaml).
 resource "cloudflare_zone_setting" "always_use_https" {
   zone_id    = data.cloudflare_zone.site.zone_id
   setting_id = "always_use_https"
@@ -134,7 +134,7 @@ resource "cloudflare_zone_setting" "always_use_https" {
 
 # ── The tunnel to the home cluster ───────────────────────────────────────────────────────
 #
-# cloudflared runs inside the home cluster (mediasafe-gitops, platform/cloudflared) and dials
+# cloudflared runs inside the home cluster (morioh-cho-gitops, platform/cloudflared) and dials
 # out to Cloudflare, so the home network opens no ports. Its routes live here: every hostname
 # goes to Traefik's HTTPS port with that hostname as SNI, so Traefik picks the Gateway listener
 # and certificate exactly as for a direct visitor, and cloudflared checks that certificate.
@@ -167,7 +167,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "home" {
 
 # ── Vault's snapshots ────────────────────────────────────────────────────────────────────
 #
-# A nightly CronJob in the cluster (mediasafe-gitops, platform/vault) uploads a Raft snapshot
+# A nightly CronJob in the cluster (morioh-cho-gitops, platform/vault) uploads a Raft snapshot
 # here. Snapshots are encrypted by Vault's own keyring, so they are useless without the unseal
 # key in Bitwarden. Fourteen nights are kept; a snapshot older than that is not worth restoring.
 #
