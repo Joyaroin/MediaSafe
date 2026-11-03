@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Run by the Renovate job on harvest (Forgejo repo adham/renovate). Every update, majors included, merges itself once CI passes: a merge only deploys staging, so promote is where a person checks staging before prod. CI covers typecheck, lint, build and a few test sets, not the database tests or a browser: a major can pass it and still change behaviour.",
+  "description": "Run by the Renovate job on echoes (Joyaroin/renovate). Every update, majors included, merges itself once CI passes: a merge only deploys staging, so promote is where a person checks staging before prod. CI covers typecheck, lint, build and a few test sets, not the database tests or a browser: a major can pass it and still change behaviour.",
   "extends": [
     "config:recommended"
   ],
