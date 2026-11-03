@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Run by the Renovate job on harvest (Forgejo repo adham/renovate). Every pull request goes through CI like any other; merging one is a staging deploy.",
+  "description": "Run by the Renovate job on harvest (Forgejo repo adham/renovate). Every pull request goes through CI like any other; merging one is a staging deploy. Patch updates and the grouped npm minor-and-patch pull request merge themselves once CI passes.",
   "extends": [
     "config:recommended"
   ],
@@ -11,7 +11,15 @@
   "minimumReleaseAge": "3 days",
   "packageRules": [
     {
-      "description": "Minor and patch npm updates of stable packages: one pull request a week. Majors, and 0.x packages where any bump can break, stay one pull request each.",
+      "description": "Patch updates of stable versions merge themselves once CI passes: a merge only deploys staging, and prod still waits for promote.",
+      "matchUpdateTypes": [
+        "patch"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Minor and patch npm updates of stable packages: one pull request a week, merged by Renovate once CI passes. Majors, and 0.x packages where any bump can break, stay one pull request each and wait for you.",
       "matchManagers": [
         "npm"
       ],
@@ -20,7 +28,8 @@
         "patch"
       ],
       "matchCurrentVersion": "!/^0/",
-      "groupName": "npm minor and patch"
+      "groupName": "npm minor and patch",
+      "automerge": true
     },
     {
       "description": "GitHub Actions versions together.",
@@ -44,5 +53,6 @@
       ],
       "allowedVersions": "<18"
     }
-  ]
+  ],
+  "platformAutomerge": false
 }
