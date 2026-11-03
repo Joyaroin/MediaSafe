@@ -52,6 +52,17 @@
         "postgres"
       ],
       "allowedVersions": "<18"
+    },
+    {
+      "description": "Libraries that have broken MediaSafe in a minor release, so never grouped and never automerged: better-auth renamed getIp to getIP and moved @better-auth/core/context in 1.6.x (PR #507), and a squawk-cli minor added a lint rule that fails on already-applied migrations.",
+      "matchPackageNames": [
+        "better-auth",
+        "auth",
+        "@better-auth/**",
+        "squawk-cli"
+      ],
+      "groupName": null,
+      "automerge": false
     }
   ],
   "platformAutomerge": false
