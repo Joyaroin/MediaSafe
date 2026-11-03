@@ -56,7 +56,7 @@ services:
   # The shared Next.js cache (`cache-handler.mjs`), as in the cluster: Valkey, no volume.
   # Losing it costs a cold cache and nothing else, so there is nothing to persist.
   valkey:
-    image: valkey/valkey:8-alpine
+    image: valkey/valkey:9-alpine
     container_name: mediasafe-valkey
     restart: unless-stopped
     ports:
