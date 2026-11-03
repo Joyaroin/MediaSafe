@@ -35,7 +35,7 @@ Secret **values** are not here. They go in by hand (`vault kv put`), so they nev
 
 ```sh
 export BW_SESSION="$(bw unlock --raw)"
-export KUBECONFIG=~/.kube/mediasafe.yaml
+export KUBECONFIG=~/.kube/homelab.yaml
 ./tf init
 ./tf --root plan
 ./tf --root apply

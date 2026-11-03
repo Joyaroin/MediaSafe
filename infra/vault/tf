@@ -2,7 +2,7 @@
 # terraform for Vault's configuration, with a port-forward to Vault and the credentials it needs.
 #
 #   export BW_SESSION="$(bw unlock --raw)"
-#   export KUBECONFIG=~/.kube/mediasafe.yaml
+#   export KUBECONFIG=~/.kube/homelab.yaml
 #   ./tf init
 #   ./tf --root apply    # the first apply only: the root token is the only identity Vault has
 #   vault login -method=oidc        # then, and from now on:

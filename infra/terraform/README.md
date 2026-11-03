@@ -1,9 +1,15 @@
-# infra/terraform — the node
+# infra/terraform — Cloudflare, and the old Linode node
 
-Stage 2 of [ADR 0001](../../docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md): one Linode
-4 GB VM running k3s, the Block Storage volume Vault keeps its data on, a Cloud Firewall, and
-the Cloudflare DNS records. Everything that runs *on* the cluster is Argo CD's, not this
-directory's.
+**In use:** the Cloudflare side of the home cluster, meaning [the tunnel](#the-home-clusters-tunnel),
+the DNS records and the R2 snapshot bucket. Everything that runs *on* the cluster is Argo CD's, not
+this directory's, and the nodes are installed by `bootstrap/` in `morioh-cho-gitops`.
+
+**Left over until teardown:** stage 2 of
+[ADR 0001](../../docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md), one Linode 4 GB VM, its
+Block Storage volume and a Cloud Firewall. The VM has been powered off since the 2026-11-02
+cutover. *What survives what* and *After the first apply* describe it, not the home cluster. See
+[ADR 0002](../../docs/adr/0002-run-k3s-at-home-behind-a-cloudflare-tunnel.md) for the way back and
+the teardown steps.
 
 ## What survives what
 
@@ -70,10 +76,11 @@ after a Terraform or k3s upgrade:
 
 ## The home cluster's tunnel
 
-The cluster runs on `hamon`, a VM on the home Proxmox host `jonathan`, which opens no ports:
-Cloudflare reaches it through a Tunnel whose connector runs in the cluster (`morioh-cho-gitops`,
+The cluster runs on `hamon` and `hermit`, VMs on the home Proxmox hosts `jonathan` and `joseph`,
+and the home network opens no ports: Cloudflare reaches it through a Tunnel whose connector runs in the cluster (`morioh-cho-gitops`,
 `platform/cloudflared`). This stack owns the tunnel and its routes; `serve_from_tunnel` points DNS
-at it, and turned off points DNS back at the Linode VM.
+at it, and turned off points DNS back at the Linode VM. That alone is not a rollback: ADR 0002 says
+what else it takes.
 
 The connector's token is the one secret here, and it never passes through Terraform. After the apply
 that creates the tunnel, copy it from Cloudflare's API straight into Vault, without it ever being

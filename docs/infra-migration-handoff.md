@@ -1,5 +1,10 @@
 # Infra migration — handoff
 
+> **Historical.** This is the Vercel-to-Linode move as it stood on 2026-10-10. The cluster has since
+> moved home ([ADR 0002](adr/0002-run-k3s-at-home-behind-a-cloudflare-tunnel.md)), so its hosts,
+> kubeconfig, certificate setup and repo names are out of date. For how the cluster runs now, read
+> the [morioh-cho-gitops README](https://github.com/Joyaroin/morioh-cho-gitops#readme).
+
 Where the move from Vercel to k3s-on-Linode stands, and exactly what comes next. Written
 2026-10-10 so a fresh session can continue without the conversation that produced it.
 

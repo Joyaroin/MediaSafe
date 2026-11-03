@@ -1,15 +1,15 @@
 # MediaSafe
 
 **A personal tracker for the shows and films I watch — built, deployed and operated end to end
-by one person.** Live at **[mediasafe.space](https://mediasafe.space)**, running on a k3s
-cluster I provision with Terraform and deploy with Argo CD.
+by one person.** Live at **[mediasafe.space](https://mediasafe.space)**, running on a two-node
+k3s cluster in my home lab, deployed with Argo CD and reached through a Cloudflare Tunnel.
 
 [![Live](https://img.shields.io/badge/live-mediasafe.space-111?style=flat-square)](https://mediasafe.space)
 [![Staging](https://img.shields.io/badge/staging-staging.mediasafe.space-555?style=flat-square)](https://staging.mediasafe.space)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=nextdotjs)
 ![Postgres](https://img.shields.io/badge/Postgres-Neon-336791?style=flat-square&logo=postgresql&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/k3s-Argo%20CD-326CE5?style=flat-square&logo=kubernetes&logoColor=white)
-![Terraform](https://img.shields.io/badge/Terraform-Linode%20%2B%20Cloudflare-7B42BC?style=flat-square&logo=terraform&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-Cloudflare%20%2B%20Vault-7B42BC?style=flat-square&logo=terraform&logoColor=white)
 
 <p align="center">
   <img src="docs/screenshots/tonight.desktop.dark.jpg" alt="Tonight: the next episode to watch, over its artwork, beside the other shows that are ready and what airs this week" width="78%">
@@ -51,23 +51,36 @@ account starts empty and can add titles from search.
 
 ```mermaid
 flowchart LR
-  user([Browser]) -->|HTTPS| dns[Cloudflare DNS]
-  dns --> fw[Linode firewall]
+  user([Browser]) -->|HTTPS| edge[Cloudflare<br/>DNS and proxy]
+  edge -->|"Tunnel, dialled from inside"| cfd
 
-  subgraph vm["Linode VM · k3s (Terraform)"]
-    fw --> traefik["Traefik<br/>Gateway API + Let's Encrypt"]
-    traefik --> prod["mediasafe-prod<br/>Next.js × 2"]
-    traefik --> staging["mediasafe-staging<br/>Next.js"]
-    prod --- vprod[(Valkey<br/>shared cache)]
-    staging --- vstg[(Valkey)]
-    vault[Vault] -->|External Secrets| prod
-    vault -->|External Secrets| staging
+  subgraph home["k3s at home · two Proxmox VMs, no open ports"]
+    cfd["cloudflared × 2"] --> traefik["Traefik<br/>Gateway API + Let's Encrypt"]
+    subgraph hamon["hamon · server"]
+      prod["mediasafe-prod<br/>Next.js × 2"]
+      vprod[(Valkey<br/>shared cache)]
+      vault[Vault]
+    end
+    subgraph hermit["hermit · agent"]
+      staging["mediasafe-staging<br/>Next.js"]
+      vstg[(Valkey)]
+    end
+    traefik --> prod
+    traefik --> staging
+    prod --- vprod
+    staging --- vstg
+    vault -->|External Secrets| prod
+    vault --> staging
     argo[Argo CD]
   end
 
-  prod --> neonp[(Neon Postgres<br/>prod branch)]
-  staging --> neons[(Neon Postgres<br/>staging branch)]
-  prod & staging --> tmdb[TMDB API]
+  subgraph services["Outside the cluster"]
+    direction TB
+    neon[(Neon Postgres<br/>a branch per environment)]
+    tmdb[TMDB API]
+  end
+
+  prod & staging --> services
   vault -->|nightly snapshot| r2[(Cloudflare R2)]
   gitops[[morioh-cho-gitops]] -->|synced by| argo
 ```
@@ -78,15 +91,18 @@ Drizzle ORM; sign-in is Google OAuth through [Better Auth](https://www.better-au
 renders are cached in Valkey through a custom Next.js cache handler shared by every replica, so a
 write on one pod invalidates the cache for all of them. Errors go to Sentry.
 
-**The infrastructure.** One Linode VM running k3s, created by Terraform along with its
-firewall, a block volume, the DNS records and the R2 buckets
-([`infra/terraform`](infra/terraform)). Everything *inside* the cluster is declared in a second
-repository, **[morioh-cho-gitops](https://github.com/Joyaroin/morioh-cho-gitops)**, which Argo CD
+**The infrastructure.** Two mini PCs at home, each a Proxmox host with one k3s VM: `hamon` is the
+server and runs production and Vault, and `hermit` is an agent and runs staging. No ports are open
+at home: `cloudflared` runs in the cluster and dials out to a Cloudflare Tunnel, the only way in
+from the internet. Terraform owns the Cloudflare side, meaning the tunnel, the DNS records and the
+R2 snapshot bucket ([`infra/terraform`](infra/terraform)). Everything *inside* the cluster is
+declared in a second repository, **[morioh-cho-gitops](https://github.com/Joyaroin/morioh-cho-gitops)**, which Argo CD
 keeps the cluster in sync with: Traefik behind the Kubernetes Gateway API, cert-manager for TLS,
 HashiCorp Vault for secrets (configured by Terraform in [`infra/vault`](infra/vault)) with
 External Secrets copying them into each namespace, and a Helm chart for the app itself, with one
 values file per environment. Why this shape, and what it replaced, is in
-[ADR 0001](docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md).
+[ADR 0001](docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md); why it moved home from a Linode
+VM is in [ADR 0002](docs/adr/0002-run-k3s-at-home-behind-a-cloudflare-tunnel.md).
 
 ### How a change reaches production
 
@@ -128,9 +144,10 @@ from the repo, and no secret is ever in git.
   for destructive operations.
 - **The design system is tested.** Contrast ratios, corner radii and accent usage are asserted
   in Vitest, so a redesign can't quietly regress them.
-- **Real infrastructure, kept small.** About $25/month: single node, Vault with a nightly
-  Raft snapshot to R2 and a restore drill that has been run, secrets pulled from a password
-  manager at the moment Terraform needs them and never written to disk.
+- **Real infrastructure, kept small.** Two VMs on mini PCs at home with no open ports, Vault
+  with a nightly Raft snapshot to R2 and a restore that ran for real when the cluster moved home,
+  secrets pulled from a password manager at the moment Terraform needs them and never written to
+  disk.
 - **Nothing was lost moving off the old app.** The previous tracker's database was archived,
   redacted (emails and password hashes removed, verified by checksum) and converted through the
   same import code users run ([`fixtures/README.md`](fixtures/README.md)).
@@ -167,9 +184,9 @@ npm run test:e2e                                           # Playwright, local o
 | `tmdb/`, `import/`, `cache/` | The TMDB client and mirror, the import format, the shared cache and its tags |
 | `eslint-rules/` | Custom lint rules that make this repo's constraints mechanical |
 | `tests/` | Vitest against a real Postgres; `tests/e2e/` is Playwright |
-| `infra/terraform/` | The VM, firewall, volume, DNS and R2 buckets |
+| `infra/terraform/` | The Cloudflare Tunnel, DNS and R2 bucket, and the old Linode VM until it is torn down |
 | `infra/vault/` | Vault's mounts, policies and auth (Kubernetes service accounts, Google sign-in) |
-| `docs/` | The ADR, the infrastructure runbook, and the redesign spec |
+| `docs/` | The ADRs, the record of the move to k3s, and the redesign spec |
 | `fixtures/` | The redacted archive of the previous app's database |
 
 Work is planned as GitHub issues: each feature is a `Spec:` issue split into sub-issues with

@@ -3,6 +3,8 @@
 - **Status:** Accepted, stages 0–9 implemented; stage 10 in the migration PR
 - **Date:** 2026-09-25, revised 2026-09-26 (compute, storage, budget and probes)
 - **Replaces:** Vercel git-integration deploys and Vercel Cron
+- **Amended by:** [ADR 0002](0002-run-k3s-at-home-behind-a-cloudflare-tunnel.md): the cluster moved
+  from Linode to home on 2026-11-02. The Linode details below are history.
 
 ## Context
 
