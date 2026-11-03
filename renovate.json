@@ -1,0 +1,48 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Run by the Renovate job on harvest (Forgejo repo adham/renovate). Every pull request goes through CI like any other; merging one is a staging deploy.",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "America/Toronto",
+  "schedule": [
+    "* * * * 1"
+  ],
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "description": "Minor and patch npm updates of stable packages: one pull request a week. Majors, and 0.x packages where any bump can break, stay one pull request each.",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "groupName": "npm minor and patch"
+    },
+    {
+      "description": "GitHub Actions versions together.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Node.js moves as one: the Dockerfile's images, CI's node-version and @types/node, so the types never describe a different runtime.",
+      "matchDepNames": [
+        "node",
+        "@types/node"
+      ],
+      "groupName": "Node.js"
+    },
+    {
+      "description": "docker-compose's Postgres is for local development and matches Neon's major version, 17. When Neon's changes, change this limit with it.",
+      "matchDepNames": [
+        "postgres"
+      ],
+      "allowedVersions": "<18"
+    }
+  ]
+}
