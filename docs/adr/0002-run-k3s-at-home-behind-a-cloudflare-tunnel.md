@@ -1,6 +1,6 @@
 # 0002 — Run the cluster at home behind a Cloudflare Tunnel
 
-- **Status:** Accepted, cut over 2026-11-02; Linode teardown still to do
+- **Status:** Accepted, cut over 2026-11-02; Linode removed from Terraform 2026-11-05, closing the account still to do
 - **Date:** 2026-11-03
 - **Amends:** [ADR 0001](0001-deploy-to-k3s-on-linode-with-gitops.md), for where the cluster runs
   and how traffic reaches it. Its GitOps, Vault and Helm decisions stand.
@@ -48,6 +48,10 @@ restart.
   DNS is back and the pods leave crash-loop back-off. One copy per node lets either node restart.
 
 ## The way back, and teardown
+
+**Update, 2026-11-05:** the Linode VM was deleted by hand, so the way back below no longer exists.
+The `linode_*` resources were dropped from Terraform state without destroying anything left on
+Linode, so any volume or firewall still there has to be deleted in its console.
 
 The Linode VM is powered off, not deleted. Going back is **not** just `serve_from_tunnel = false`:
 `morioh-cho-gitops` `main` now describes the home cluster (prod pinned to `hamon`, ClusterIP

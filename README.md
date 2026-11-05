@@ -184,7 +184,7 @@ npm run test:e2e                                           # Playwright, local o
 | `tmdb/`, `import/`, `cache/` | The TMDB client and mirror, the import format, the shared cache and its tags |
 | `eslint-rules/` | Custom lint rules that make this repo's constraints mechanical |
 | `tests/` | Vitest against a real Postgres; `tests/e2e/` is Playwright |
-| `infra/terraform/` | The Cloudflare Tunnel, DNS and R2 bucket, and the old Linode VM until it is torn down |
+| `infra/terraform/` | The Cloudflare Tunnel, DNS and R2 bucket |
 | `infra/vault/` | Vault's mounts, policies and auth (Kubernetes service accounts, Google sign-in) |
 | `docs/` | The ADRs, the record of the move to k3s, and the redesign spec |
 | `fixtures/` | The redacted archive of the previous app's database |

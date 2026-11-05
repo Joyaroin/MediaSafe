@@ -3,10 +3,6 @@ terraform {
   required_version = ">= 1.11"
 
   required_providers {
-    linode = {
-      source  = "linode/linode"
-      version = "~> 4.5"
-    }
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 5.26"
@@ -18,6 +14,5 @@ terraform {
   backend "s3" {}
 }
 
-# LINODE_TOKEN and CLOUDFLARE_API_TOKEN, from the environment ./tf sets up.
-provider "linode" {}
+# CLOUDFLARE_API_TOKEN, from the environment ./tf sets up.
 provider "cloudflare" {}
