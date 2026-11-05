@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { PRIMARY_BUTTON } from "@/app/buttons";
+import { Roll } from "@/app/roll";
 import {
   FAILURE_HEADING,
   FAILURE_PROSE,
@@ -261,24 +262,38 @@ function Running({ totalTitles, titlesAdded, watchesAdded, abandonedAdded }: Pro
 
       <section role="status" className="mt-5 rounded-[var(--radius-5)] bg-raised p-5 plate-line">
         <p className="flex flex-wrap items-baseline gap-x-2.5" data-numeric>
-          <span className="bill-title text-display leading-[0.9] text-text">{count(titlesAdded)}</span>
+          <Roll rollKey={String(titlesAdded)}>
+            <span className="bill-title text-display leading-[0.9] text-text">
+              {count(titlesAdded)}
+            </span>
+          </Roll>
           <span className="text-note text-dim">of {count(totalTitles)} titles</span>
         </p>
 
-        <div aria-hidden="true" className="my-4 h-1 rounded-[var(--radius-full)] bg-hair">
+        {/* Slid, not sized: handoff §11.4 never animates `width` (issue #407), the same
+            rule the poster and title-page bars follow (`app/poster-progress-bar.tsx`,
+            `title-hero.tsx`'s `WatchedBar`). `--dur-base` because a chunk landing is a
+            routine state change, the same ramp position those two bars tie themselves to.
+            `progress-fill` carries no rule of its own; it is only what `globals.css`'s
+            reduced-motion block targets to collapse the duration. */}
+        <div aria-hidden="true" className="my-4 h-1 overflow-hidden rounded-[var(--radius-full)] bg-hair">
           <div
-            className="h-1 rounded-[var(--radius-full)] bg-text"
-            style={{ width: `${written * 100}%` }}
+            className="progress-fill h-1 w-full rounded-[var(--radius-full)] bg-text transition-transform duration-[var(--dur-base)]"
+            style={{ transform: `translateX(${written * 100 - 100}%)` }}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3" data-numeric>
           <p className="flex flex-col gap-0.5">
-            <span className="text-row font-semibold text-text">{count(watchesAdded)}</span>
+            <Roll rollKey={String(watchesAdded)}>
+              <span className="text-row font-semibold text-text">{count(watchesAdded)}</span>
+            </Roll>
             <span className="text-meta text-dim">watches</span>
           </p>
           <p className="flex flex-col gap-0.5">
-            <span className="text-row font-semibold text-text">{count(abandonedAdded)}</span>
+            <Roll rollKey={String(abandonedAdded)}>
+              <span className="text-row font-semibold text-text">{count(abandonedAdded)}</span>
+            </Roll>
             <span className="text-meta text-dim">marked dropped</span>
           </p>
         </div>
@@ -358,7 +373,10 @@ function Done({
   skipped,
 }: Progress & { skipped: readonly SkippedTitle[] }) {
   return (
-    <div>
+    // The finish arrives rather than hard-cutting into place: `arrive`, the same
+    // region entrance a swapped panel already uses (`globals.css`), on `--dur-slow`
+    // and `--ease-press` — no new celebration, no new curve.
+    <div className="arrive">
       <h2 className="bill-title text-bill-lg text-text">Import done</h2>
       <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
         Your file has been written in full. Running it again changes nothing that is

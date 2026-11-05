@@ -35,7 +35,10 @@ export function SuggestionCard({
 
   return (
     <li className="w-28 shrink-0 snap-start">
-      <Link href={href} className="group block">
+      {/* Issue #433: the card is a second, quieter press on the link itself — the default
+          surface register, spelled by setting nothing — distinct from the *Add* pill
+          below, which already presses on its own control register. */}
+      <Link href={href} className="pressable group block">
         <Poster
           posterPath={result.posterPath}
           name={result.name}

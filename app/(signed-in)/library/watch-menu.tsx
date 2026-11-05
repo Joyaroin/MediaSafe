@@ -247,7 +247,11 @@ function MenuItem({
       <button
         type="button"
         onClick={onClick}
-        className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-4)] px-3 py-2.5 text-left transition-colors duration-[var(--dur-fast)] hover:quiet-fill"
+        // Issue #433: a surface — the default register, the same as `app/buttons.ts`'s
+        // `MENU_ITEM`, whose shape this hand-rolls for the description line underneath the
+        // label. `pressable` already declares `transition` (`app/globals.css`), so
+        // `hover:quiet-fill`'s fade rides it rather than a second `transition-colors`.
+        className="pressable flex min-h-11 w-full flex-col items-start gap-0.5 rounded-[var(--radius-4)] px-3 py-2.5 text-left hover:quiet-fill"
       >
         <span
           className={`flex items-center gap-1.5 text-item font-semibold ${

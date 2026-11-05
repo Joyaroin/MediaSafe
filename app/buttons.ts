@@ -29,11 +29,43 @@ import { IN_FLIGHT } from "./button-states";
  * and shows the wait cursor the same way.
  */
 
-const BASE = `inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-5)] font-semibold transition-[filter,color,background-color] duration-[var(--dur-fast)] ${IN_FLIGHT}`;
+/**
+ * **The base wears the press, and nothing else sets `transition` on it — issue #431.**
+ * `pressable` (`app/globals.css`) declares `transition`, and the base's old
+ * `transition-[filter,color,background-color]` declared it too; two declarations of the
+ * same property on one element in the `utilities` cascade layer make *which one wins* a
+ * question about the order Tailwind emits them in rather than about either rule, and
+ * `app/tab-bar.tsx`'s own docblock already names the failure by hand. So the colour and
+ * filter changes a variant's hover needs — the filled button's `brightness-95`, the plain
+ * button's `text-dim`, the destructive button's `bg-danger`/`text-ground` — ride
+ * `pressable`'s own `transition` list instead of a second utility here.
+ *
+ * Every button is therefore pressable, at the register the quietest default spells by
+ * saying nothing — Tonight's featured *Mark watched* is the one exception, and it opts out
+ * through `withoutPress` below rather than through a second base.
+ */
+const BASE = `inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-5)] font-semibold pressable ${IN_FLIGHT}`;
 
 const LARGE = "h-14 min-w-14 px-6 text-row";
 const REGULAR = "h-12 min-w-12 px-5 text-bill-xs";
 const COMPACT = "h-11 min-w-11 px-4 text-note";
+
+/** The press's small-control register (`--press-register: 1`, `app/globals.css`) — a 44px
+ *  icon-only hit box travels further than the 262px card the base's default register was
+ *  chosen for, the same reason the phone tab bar (`app/tab-bar.tsx`) takes it. */
+const CONTROL_PRESS = "[--press-register:1]";
+
+/**
+ * Strips the press for the one call site Motion owns the gesture for instead — Tonight's
+ * featured *Mark watched* (`tonight-featured.tsx`), a Motion `m.button` with a `layoutId`:
+ * CSS must not set its `transform`, because Motion's layout animation already does and the
+ * two would fight over the same property the way two `transition` declarations would.
+ * It keeps every other class the base and its variant give it; only `pressable` leaves.
+ * Its own `whileTap` press is the next ticket's.
+ */
+export function withoutPress(classes: string): string {
+  return classes.replace(/(^|\s)pressable(?=\s|$)/, "").trim();
+}
 
 const FILLED = THE_BUTTON_REGISTER.solid;
 
@@ -52,22 +84,25 @@ export const SECONDARY_BUTTON_COMPACT = `${BASE} ${COMPACT} ${SECONDARY}`;
 /** Text alone, at the `44px` floor — the lost-write toast's *Dismiss*. */
 export const PLAIN_BUTTON = `${BASE} ${COMPACT} ${PLAIN}`;
 
-/** A quiet button that is only an icon — a `44px` circle, so no padding to override. */
-export const ICON_BUTTON = `${BASE} h-11 w-11 rounded-[var(--radius-full)] ${SECONDARY}`;
+/** A quiet button that is only an icon — a `44px` circle, so no padding to override. Small
+ *  control, not a surface (issue #431): it presses at `CONTROL_PRESS`. */
+export const ICON_BUTTON = `${BASE} h-11 w-11 rounded-[var(--radius-full)] ${SECONDARY} ${CONTROL_PRESS}`;
 
 /** The same, square and `48px`, beside a `48px` filled button — the title page's add-to-list
  *  and more (Charcoal §8.6). Square so the row reads as one bar of controls, not a button
  *  with two coins beside it. */
-export const ICON_BUTTON_SQUARE = `${BASE} h-12 w-12 ${SECONDARY}`;
+export const ICON_BUTTON_SQUARE = `${BASE} h-12 w-12 ${SECONDARY} ${CONTROL_PRESS}`;
 
 /** A round icon button over artwork (Charcoal §6): its own black at 50% under a white icon,
  *  because the artwork can be anything and §10 puts that pair at 4:1 over the worst of it. */
-export const ICON_BUTTON_OVER_ARTWORK = `${BASE} h-11 w-11 rounded-[var(--radius-full)] bg-black/50 text-white hover:bg-black/60`;
+export const ICON_BUTTON_OVER_ARTWORK = `${BASE} h-11 w-11 rounded-[var(--radius-full)] bg-black/50 text-white hover:bg-black/60 ${CONTROL_PRESS}`;
 
 /** One row of a menu — the title page's *…* menu. Colour is the caller's: text, or danger.
- *  Its hover is the quiet fill, so it still shows inside the raised dialog it opens in. */
+ *  Its hover is the quiet fill, so it still shows inside the raised dialog it opens in.
+ *  A surface, like a card or a row (issue #431): it presses at the default register, which
+ *  is spelled by setting nothing. */
 export const MENU_ITEM =
-  "flex h-11 w-full items-center rounded-[var(--radius-4)] px-3 text-left text-item hover:quiet-fill";
+  "pressable flex h-11 w-full items-center rounded-[var(--radius-4)] px-3 text-left text-item hover:quiet-fill";
 
 export const DESTRUCTIVE_BUTTON = `${BASE} ${REGULAR} ${DESTRUCTIVE}`;
 export const DESTRUCTIVE_BUTTON_COMPACT = `${BASE} ${COMPACT} ${DESTRUCTIVE}`;
