@@ -109,6 +109,10 @@ locals {
     staging = "staging.${var.domain}"
     argocd  = "argocd.${var.domain}"
   }
+
+  # The portfolio, deployed from Forgejo. It only ever lives behind the tunnel, so it stays out
+  # of hostnames: that list's records depend on the Linode's address.
+  lab_hostname = "lab.${var.domain}"
 }
 
 resource "cloudflare_dns_record" "site" {
@@ -123,6 +127,16 @@ resource "cloudflare_dns_record" "site" {
   comment = "MediaSafe infra/terraform"
 }
 
+resource "cloudflare_dns_record" "lab" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  name    = local.lab_hostname
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.home.id}.cfargotunnel.com"
+  ttl     = 1 # "automatic", the only TTL a proxied record takes
+  proxied = true
+  comment = "MediaSafe infra/terraform"
+}
+
 # Only proxied names are affected, so this changes nothing while serve_from_tunnel is off. On,
 # Cloudflare's edge is the only place a plain-HTTP request can be turned away: the cluster has
 # no HTTP listener at all (morioh-cho-gitops, platform/edge/gateway.yaml).
@@ -130,6 +144,27 @@ resource "cloudflare_zone_setting" "always_use_https" {
   zone_id    = data.cloudflare_zone.site.zone_id
   setting_id = "always_use_https"
   value      = "on"
+}
+
+# The portfolio's hashed assets never change, and .glb isn't an extension Cloudflare caches by
+# default. Caching them here keeps its 3D room off the home connection.
+resource "cloudflare_ruleset" "cache" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  name    = "Cache"
+  kind    = "zone"
+  phase   = "http_request_cache_settings"
+
+  rules = [{
+    description = "lab: hashed assets"
+    expression  = "(http.host eq \"${local.lab_hostname}\" and starts_with(http.request.uri.path, \"/assets/\"))"
+    action      = "set_cache_settings"
+    action_parameters = {
+      cache = true
+      edge_ttl = {
+        mode = "respect_origin"
+      }
+    }
+  }]
 }
 
 # ── The tunnel to the home cluster ───────────────────────────────────────────────────────
@@ -154,7 +189,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "home" {
 
   config = {
     ingress = concat(
-      [for hostname in values(local.hostnames) : {
+      [for hostname in concat(values(local.hostnames), [local.lab_hostname]) : {
         hostname       = hostname
         service        = "https://traefik.traefik.svc.cluster.local:443"
         origin_request = { origin_server_name = hostname }
