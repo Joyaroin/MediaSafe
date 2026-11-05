@@ -1,6 +1,6 @@
 "use server";
 
-import { cachedLists, invalidateFor } from "@/cache/tags";
+import { invalidateFor } from "@/cache/tags";
 import {
   addTitleToList,
   addTitlesToList,
@@ -16,9 +16,11 @@ import { referenceFor } from "@/errors/reference";
 import { requireUserId } from "@/lib/session";
 
 /**
- * The Lists destination's writes — issue #146 — plus issue #147's: reading this account's
- * lists for the *Add to list* picker, adding a title to one of them, and making a new
- * list in the same action a title is added from.
+ * The Lists destination's writes — issue #146 — plus issue #147's: adding a title to one
+ * of them, and making a new list in the same action a title is added from. Reading this
+ * account's lists for the *Add to list* picker left this file for `GET /api/lists/picker`
+ * (`app/api/lists/picker/route.ts`, issue #481) — a read, so it never belonged beside
+ * these writes once there was a signed-in `GET` for it to be instead.
  *
  * Same shape as `search/actions.ts`: caught here rather than left to throw, because every
  * one of these can run from a control that never navigates away — the Lists page's own
@@ -32,7 +34,7 @@ import { requireUserId } from "@/lib/session";
  * Before that ticket these six invalidated nothing, and `INVALIDATES` said so with an
  * empty array — correctly, because nothing that read `list` or `list_membership` was
  * cached. Three surfaces read them now (the Lists destination, the phone's rail above the
- * library grid, and the picker below), all through one `lists` tag, so each write ends in
+ * library grid, and the picker), all through one `lists` tag, so each write ends in
  * an `invalidateFor` and the three cannot fall out of step.
  *
  * **Past the `catch`, and past the outcomes that wrote nothing.** A failed write changed
@@ -87,23 +89,6 @@ export async function deleteListAction(listId: string): Promise<DeleteListOutcom
 
   invalidateFor("deleteList", userId);
   return { ok: true };
-}
-
-/** This account's lists, for the *Add to list* dialog to render as a picker — issue #147.
- *  A plain read, so the only failure worth naming is the request never reaching the
- *  server at all; there is no duplicate or validation case here. */
-export type ListsForPickerOutcome =
-  | { readonly ok: true; readonly lists: readonly ListSummary[] }
-  | { readonly ok: false; readonly reference: string | null };
-
-export async function listsForPickerAction(): Promise<ListsForPickerOutcome> {
-  const userId = await requireUserId();
-
-  try {
-    return { ok: true, lists: await cachedLists(userId) };
-  } catch (error) {
-    return { ok: false, reference: referenceFor(error, { surface: "lists" }) };
-  }
 }
 
 /** Whether the add landed — `added` distinguishes a fresh membership from a title that

@@ -228,6 +228,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Worktrees under `.claude/worktrees/` — Foundry's per-ticket ones and any made by hand —
+    // carry their own `.next` and `node_modules`. They are git-ignored, but flat config does not
+    // read `.gitignore`, so one built worktree left there made `npm run lint` walk its minified
+    // bundles and fail on code nobody wrote (found 2026-10-31).
+    ".claude/**",
     // The design tool's own canvas runtime (issue #255). `mediasafe-mobile.html` and the
     // exploration board beside it each load `./support.js`, vendored so the boards
     // actually open from the repository rather than being cited against a path that holds

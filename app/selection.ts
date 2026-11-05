@@ -18,6 +18,22 @@ export const SELECTED = "font-semibold text-text";
 export const UNSELECTED =
   "font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text";
 
+/**
+ * `UNSELECTED`, minus its own `transition-colors` — for an option that also wears
+ * `pressable` (issue #466's sidebar item is the first). A second `transition-*` utility
+ * beside `pressable` is the tab bar's own trap (`app/globals.css`'s `pressable` docblock):
+ * whichever one Tailwind emits last wins `transition-property`, and the loser can lose
+ * `transform` entirely. `pressable`'s own transition list already carries `color` at the
+ * same `--dur-fast`, so the hover still animates — only the second declaration goes.
+ *
+ * A second export rather than folding `pressable` into `UNSELECTED` itself: the chip
+ * (`library/chip.tsx`) puts the press on its `44px` target and `SELECTED`/`UNSELECTED` on
+ * the `36px` face inside it — two different elements, so the plain `UNSELECTED` costs it
+ * nothing. The segmented control (`app/segmented.tsx`, issue #465) has no such split and
+ * takes this export instead.
+ */
+export const UNSELECTED_PRESSABLE = "font-medium text-dim hover:text-text";
+
 /** The line alone, for a marker that travels between options under a `layoutId`. The
  *  caller gives it its own radius, because the marker takes the shape of what it marks. */
 export const SELECTED_MARKER = "pointer-events-none absolute inset-0 selected-line";

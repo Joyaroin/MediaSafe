@@ -919,8 +919,12 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // large tile staying quiet is what keeps a grid of them from reading as a trampoline.
   "app/(signed-in)/library/library-entry-cell.tsx": ["surface"],
   /* A custom list's icon view (`list-icon-grid.tsx`). A poster with a name under it is the
-     same surface the library grid and the Up next groups draw, at the same register. */
-  "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface"],
+     same surface the library grid and the Up next groups draw, at the same register —
+     `CELL_LINK`, declared once at module scope, so the sweep finds one call site for every
+     cell despite two render branches (owned / unowned). The take-off ✕ is this file's
+     second call site, a sibling of the link and not a descendant of it, at the control
+     register — issue #465. */
+  "app/(signed-in)/lists/[listId]/list-icon-grid.tsx": ["surface", "control"],
   /* A list's card on Lists — the whole card is the link since Charcoal (#402), a surface. */
   "app/(signed-in)/lists/list-row.tsx": ["surface"],
   "app/(signed-in)/up-next/film-row.tsx": ["surface"],
@@ -933,22 +937,68 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   "app/(signed-in)/up-next/up-next-episode-row.tsx": ["surface", "surface"],
   "app/(signed-in)/up-next/upcoming-films.tsx": ["surface"],
   "app/(signed-in)/up-next/upcoming-row.tsx": ["surface"],
+  // *See all N*, collapsing Tonight's own list — a bare control, no surface of its own —
+  // issue #465.
+  "app/(signed-in)/up-next/tonight-list.tsx": ["control"],
+  // *See all*, the link to `/coming-up` beside the preview's heading — issue #465, the
+  // same control as Tonight's own, this time a `Link` rather than a `button`.
+  "app/(signed-in)/up-next/tonight-coming-up.tsx": ["control"],
   "app/(signed-in)/you/you-title-tile.tsx": ["surface"],
+  /* The search screen's own recommendation card ("Because you watched") — issue #466. No
+     pill of its own, so the press sits on the whole-card `<Link>` directly. */
+  "app/(signed-in)/search/recommendation-rail.tsx": ["surface"],
+  /* One row inside a `raised` settings card that navigates rather than writes —
+     `SETTING_ROW_LINK`, issue #466's own export. */
+  "app/(signed-in)/settings/settings-group.tsx": ["surface"],
+  /* The sidebar's own destinations — issue #466. One shared `ITEM` string builds both
+     `CURRENT` and `NOT_CURRENT`, so the sweep finds one call site rather than five. */
+  "app/sidebar-nav.tsx": ["surface"],
+  /* Rewatch/Undo/Unwatch inside the watched row's own menu (a native `<dialog>`, not the
+     `<details>` the rest of the app's menus use) — issue #466: it presses the way
+     `MENU_ITEM` below does. */
+  "app/(signed-in)/library/watch-menu.tsx": ["surface"],
 
   // Bare controls — a 44px hit box with no surface of its own. Scale and the pop and
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
-  "app/(signed-in)/search/catalogue-result.tsx": ["control"],
+  /* Search's two pills in one row — issue #465: the filled *Add* (unchanged since #357)
+     and, beside it, the second add's own pill (*I've seen it* / *I've seen it all*), which
+     did not wear the press at all until this ticket. Order is the JSX's: the watched pill
+     sits under the name, above the trailing *Add*. */
+  "app/(signed-in)/search/catalogue-result.tsx": ["control", "control"],
   // The search field's ✕ — clears the query and keeps the focus in the field.
   "app/(signed-in)/search/search-surface.tsx": ["control"],
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
   "app/(signed-in)/up-next/up-next-card.tsx": ["control"],
-  // The empty-state suggestions' *Add* (#365) — the search result's pill, under a poster.
-  "app/(signed-in)/up-next/suggestion-card.tsx": ["control"],
+  /* The library filter chips and the season chips (`season-chips.tsx` renders no
+     `pressable` of its own — both share this one component) — issue #465. The `44px`
+     target is the call site; the `36px` face a reader sees is the `<span>` inside it,
+     which carries no `transition-*` of its own, so there is nothing for the press to
+     fight for either chip row. */
+  "app/(signed-in)/library/chip.tsx": ["control"],
+  /* The one segmented control — Library's Shows/Films/Lists, a list's Icons/List, and
+     Settings' Appearance — issue #465. Unlike the chip, the selection colours
+     (`UNSELECTED_PRESSABLE`) live on the same `<button>` the press does, so `selection.ts`'s
+     pressable-safe export replaces the plain `UNSELECTED` here. */
+  "app/segmented.tsx": ["control"],
+  /* The empty-state suggestions' card (#365) — issue #466 adds the first entry: the whole
+     card (the `<li>`, no pill of its own on the element itself) at the surface register,
+     holding the second — the search result's *Add* pill, under the poster, unchanged at
+     the control register. Two things on one card, `globals.css`'s `pressable` docblock's
+     own phrase for it, in the order the JSX renders them. */
+  "app/(signed-in)/up-next/suggestion-card.tsx": ["surface", "control"],
 
   // The phone tab bar — issue #295. Four 44px hit boxes rendered from one `<Link>`, so
   // one class string is four call sites, and they are controls rather than surfaces.
   "app/tab-bar.tsx": ["control"],
+
+  /* The shared button base — issue #463 — and, since issue #466, `MENU_ITEM` beside it.
+     `BASE` is still the one place the literal word `pressable` appears for every button;
+     `MENU_ITEM` is the second and last. Both keep the surface register — the small-control
+     register (chips, pills, segmented controls, icon-only controls) is a different
+     ticket's business. `PRIMARY_BUTTON_LARGE_MOTION_PRESS`, built off `MOTION_BASE`
+     for Tonight's featured *Mark watched*, deliberately carries no `pressable` at all. */
+  "app/buttons.ts": ["surface", "surface"],
 };
 
 /** How a call site spells a register, as Tailwind spells an arbitrary property —
@@ -1040,10 +1090,11 @@ describe("every pressable call site declares a register or is deliberately left 
   /**
    * **The register costs no client boundary.** It is a class token on a string, so it
    * cannot make a server component a client one — and this pins that rather than trusting
-   * it. The four files below were already `"use client"` for their own reasons (a pointer
-   * gesture, an optimistic mark, an in-flight write, and — since #295 put the press on the
-   * tab bar — `usePathname`) and every other call site renders on the server, which is the
-   * argument for the press being CSS at all.
+   * it. The files below were already `"use client"` for their own reasons (a pointer
+   * gesture, an optimistic mark, an in-flight write, a dialog's own state, `usePathname` —
+   * #295 put the press on the tab bar for that one, #466 the sidebar for the same one) and
+   * every other call site renders on the server, which is the argument for the press being
+   * CSS at all.
    */
   it("leaves every call site on the boundary it was already on", () => {
     const client = found
@@ -1054,14 +1105,126 @@ describe("every pressable call site declares a register or is deliberately left 
       .sort();
 
     expect(client).toEqual([
+      "app/(signed-in)/library/chip.tsx",
+      "app/(signed-in)/library/watch-menu.tsx",
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
       "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
+      "app/(signed-in)/up-next/tonight-list.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
       "app/(signed-in)/up-next/up-next-episode-row.tsx",
+      "app/segmented.tsx",
+      "app/sidebar-nav.tsx",
       "app/tab-bar.tsx",
     ]);
+  });
+
+  /**
+   * **No pressable surface wears a second `transition-*` utility — issue #466's own
+   * acceptance criterion**, over the surfaces this ticket put the press on. Two
+   * `transition` shorthands land in the same `utilities` cascade layer, and whichever
+   * Tailwind emits last wins `transition-property` outright — the tab bar's own history,
+   * and `#463`'s fix to the shared button base, are both this same trap. Over this
+   * ticket's own six files rather than the whole tree: `app/(signed-in)/search
+   * /search-surface.tsx`'s clear button already carried `transition-colors` beside
+   * `pressable` before this ticket — fixing it was a different ticket's business, #465's,
+   * which does exactly that below.
+   */
+  it("wears no second transition-* utility beside the press, at every surface this ticket presses", () => {
+    const TICKET_OWN_FILES = [
+      "app/(signed-in)/search/recommendation-rail.tsx",
+      "app/(signed-in)/up-next/suggestion-card.tsx",
+      "app/(signed-in)/lists/list-row.tsx",
+      "app/(signed-in)/library/watch-menu.tsx",
+      "app/(signed-in)/settings/settings-group.tsx",
+      "app/sidebar-nav.tsx",
+      "app/buttons.ts",
+    ];
+
+    for (const { file, strings } of found.filter((site) => TICKET_OWN_FILES.includes(site.file))) {
+      for (const classes of strings) {
+        const tokens = classes.split(/\s+/);
+        const second = tokens.filter((token) => /^transition(-|$)/.test(token));
+
+        expect(second, `${file} carries ${second.join(", ")} beside pressable`).toEqual([]);
+      }
+    }
+  });
+
+  /**
+   * **The same acceptance criterion, issue #465's own small controls.** The chips, the
+   * segmented control, search's two pills, the take-off ✕ and *See all* all either gain
+   * the press here for the first time or — `search-surface.tsx`'s clear button — finally
+   * lose the second `transition-*` utility that has sat beside `pressable` since before
+   * this ticket existed (the note above names it). Swept the same way #466's own files
+   * are, over this ticket's files rather than the whole tree.
+   */
+  it("wears no second transition-* utility beside the press, at every small control this ticket presses", () => {
+    const TICKET_OWN_FILES = [
+      "app/(signed-in)/library/chip.tsx",
+      "app/segmented.tsx",
+      "app/(signed-in)/search/catalogue-result.tsx",
+      "app/(signed-in)/search/search-surface.tsx",
+      "app/(signed-in)/lists/[listId]/list-icon-grid.tsx",
+      "app/(signed-in)/up-next/tonight-list.tsx",
+      "app/(signed-in)/up-next/tonight-coming-up.tsx",
+    ];
+
+    for (const { file, strings } of found.filter((site) => TICKET_OWN_FILES.includes(site.file))) {
+      for (const classes of strings) {
+        const tokens = classes.split(/\s+/);
+        const second = tokens.filter((token) => /^transition(-|$)/.test(token));
+
+        expect(second, `${file} carries ${second.join(", ")} beside pressable`).toEqual([]);
+      }
+    }
+  });
+});
+
+/**
+ * ── Two things on one card — issue #466 ──────────────────────────────────────────────
+ *
+ * A recommendation or suggestion card holds its own *Add* pill, and the two press as two
+ * things (`globals.css`'s `pressable` docblock, and the ticket's own wording): pressing
+ * the pill presses only the pill, and pressing anywhere else on the card presses the card.
+ *
+ * `:active` is not scoped to the element a finger actually landed on — the platform
+ * matches every ancestor of the pressed element too, so without a guard a press on the
+ * pill would compress the card wrapped around it in the same gesture. This is a stylesheet
+ * assertion of the guard's presence and position; `tests/e2e/press-reaches-surfaces.spec.ts`
+ * is where a real browser proves the computed transform it produces.
+ */
+describe("a card's own pill presses alone", () => {
+  /** The selector list in front of the brace that scales a pressed control to
+   *  `--press-compress` — the same rule `compression()` above reads values out of, read
+   *  here for its selector text instead of its declarations. */
+  function compressionSelector(): string {
+    const rule = pressableUtility().match(/(&:active[^{]*)\{/);
+    expect(rule, "`pressable` must still scale on `:active`").not.toBeNull();
+    return rule![1];
+  }
+
+  it("excludes a card's own compression while a nested pressable control is the one pressed", () => {
+    expect(compressionSelector()).toContain(":not(:has(.pressable:active))");
+  });
+
+  /** The two branches are one rule (`:active` and `data-pressed` is one rule and not two,
+   *  the utility's own docblock) and the guard has to sit on the one that needs it: a
+   *  `:not()` written onto `[data-pressed="true"]` instead would leave the native branch —
+   *  the one a mouse or a keyboard actually produces — unguarded. Split on the comma
+   *  between the two selectors in the list, rather than searched for across both, so the
+   *  guard is pinned to its own branch and not merely present somewhere in the rule. */
+  it("leaves the guard on the native branch, not on the delegated mark", () => {
+    const [native, delegated] = compressionSelector().split(",");
+
+    expect(native).toContain(":active");
+    expect(native).toContain(":not(:has(.pressable:active))");
+
+    expect(delegated, "`pressable` must still mark the delegated press too").toContain(
+      '[data-pressed="true"]',
+    );
+    expect(delegated).not.toContain(":not(");
   });
 });
 
@@ -1181,9 +1344,12 @@ describe("the hold and the press are one hand on a library cell", () => {
    * the gesture looking finished.
    */
   it("still reads as a timer rather than as a press", () => {
-    // `HOLD_MS` is imported rather than written down: the compression has to finish at the
-    // exact moment the hold lands, and a second copy of 500 is how that stops being true.
-    expect(holdRule()).toMatch(new RegExp(`transition:\\s*transform\\s+${HOLD_MS}ms\\s+linear`));
+    // `--hold-shown` is read, not a literal `500ms`: issue #470 moved the duration off the
+    // stylesheet entirely, onto the element itself, set from `HOLD_MS` — so the compression
+    // still finishes at the exact moment the hold lands, and a second copy of the number
+    // cannot drift from the first because there is no second copy left to drift.
+    expect(holdRule()).toMatch(/transition:\s*transform\s+var\(--hold-shown\)\s+linear/);
+    expect(holdRule()).not.toMatch(/\d+ms/);
     expect(holdRule()).not.toContain("--dur-press");
     expect(holdRule()).not.toContain("--ease-out-quart");
 
@@ -1253,8 +1419,13 @@ describe("the hold and the press are one hand on a library cell", () => {
   /**
    * Reduced motion covers **both** halves of the hold — the ramp and the arrival — and
    * neither the gesture nor the selection is dropped with them. The event always happens.
+   *
+   * Issue #470: the ramp used to disappear outright (`transform: none; transition: none;`),
+   * which left reduced motion with no cue at all for *how long to keep holding*. It fades
+   * instead — to about 70% opacity, over the same `--hold-shown` the full-motion ramp reads,
+   * so the two can never show a different duration for the one timer.
    */
-  it("drops the hold's movement without dropping the hold", () => {
+  it("fades the held cell rather than hiding the hold under reduced motion", () => {
     const blocks = [
       ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
     ]
@@ -1262,9 +1433,15 @@ describe("the hold and the press are one hand on a library cell", () => {
       .filter((block) => block.includes("data-holding"));
 
     expect(blocks).toHaveLength(1);
+    // No compression under reduced motion — the cue is a fade, never a scale.
     expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?transform:\s*none/);
-    expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?transition:\s*none/);
-    expect(blocks[0]).toMatch(/\[data-landed="true"\][\s\S]*?animation:\s*none/);
+    // The fade runs on the same timer the full-motion ramp does, read rather than retyped.
+    expect(blocks[0]).toMatch(
+      /\[data-holding="true"\]\s*\{[\s\S]*?transition:\s*opacity\s+var\(--hold-shown\)\s+linear/,
+    );
+    expect(blocks[0]).toMatch(/\[data-holding="true"\]\s*\{[\s\S]*?opacity:\s*0\.7/);
+    // The landing itself still does not move.
+    expect(blocks[0]).toMatch(/\[data-landed="true"\]\s*\{[\s\S]*?animation:\s*none/);
 
     // Holding still selects: the timer never asks about the preference, exactly as the
     // press's own listener never does. Only the animation is negotiable.
@@ -1272,6 +1449,50 @@ describe("the hold and the press are one hand on a library cell", () => {
     expect(hold).toContain("HOLD_MS");
     expect(hold).not.toContain("prefers-reduced-motion");
     expect(hold).not.toContain("matchMedia");
+  });
+
+  /**
+   * The check badge is the one confirmation iOS Safari's missing Vibration API leaves —
+   * `selection-check-badge.tsx`'s own note calls it *the load-bearing feedback*. Dropping it
+   * to `animation: none` under reduced motion, as issue #470 found it, silenced the one
+   * signal a reader with that setting on has that the hold actually landed. It keeps its
+   * fade instead, on the same `--dur-base` it already runs on outside the media query —
+   * only the overshoot is dropped, the same shape `tests/motion-moments.test.ts` already
+   * proves for `watch-hold-in`/`check-pop`.
+   */
+  it("keeps the check badge's fade under reduced motion, dropping only its overshoot", () => {
+    const blocks = [
+      ...CSS_CODE.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ]
+      .map((match) => match[0])
+      .filter((block) => block.includes("badge-arrive"));
+
+    expect(blocks).toHaveLength(1);
+    // No more blanket cut on the class itself.
+    expect(blocks[0]).not.toMatch(/\.badge-arrive\s*\{[\s\S]*?animation:\s*none/);
+    // The keyframe is redefined instead, fading in without the scale.
+    expect(blocks[0]).toMatch(/@keyframes badge-arrive\s*\{\s*from\s*\{\s*opacity:\s*0;\s*\}\s*\}/);
+
+    // Outside the media query the rule is untouched: still `--dur-base`, as the full-motion
+    // badge already runs.
+    expect(CSS_CODE).toMatch(
+      /\.badge-arrive\s*\{\s*animation:\s*badge-arrive\s+var\(--dur-base\)\s+var\(--ease-out-quart\);\s*\}/,
+    );
+  });
+
+  /**
+   * **`--hold-shown` comes from the element, not the stylesheet.** `programme-note-episodes
+   * .tsx`'s `HoldRing` already hands its own hold ring this exact value, from this exact
+   * constant; `selectable-entry.tsx` is the second reader and has to do it the same way,
+   * so a reader of either file sees the one mechanism rather than two that happen to agree
+   * today.
+   */
+  it("sets --hold-shown on the held cell from HOLD_MS, never a literal in the stylesheet", () => {
+    const entry = codeOf("app/(signed-in)/library/selectable-entry.tsx");
+    expect(entry).toMatch(/"--hold-shown":\s*`\$\{HOLD_MS\}ms`/);
+
+    // And the stylesheet never assigns it a value of its own — only ever reads it.
+    expect(CSS_CODE).not.toMatch(/--hold-shown:\s*[^;]+;/);
   });
 
   /**
@@ -1491,5 +1712,107 @@ describe("the tab bar's icon leads its label", () => {
 
     // And the navigation still happens: nothing here takes a tab off the pointer.
     expect(blocks[0]).not.toMatch(/pointer-events|display\s*:|visibility/);
+  });
+});
+
+/**
+ * ── The shared button base wears the press — issue #463 ─────────────────────────────
+ *
+ * Every button in the application — Tonight's *Mark watched* from a row, Undo, *Try
+ * again*, *Continue with Google*, back, Save, Dismiss — is built from `app/buttons.ts`'s
+ * `BASE`, and until now `BASE` answered a finger with nothing at all.
+ *
+ * It also carried its own `transition-[filter,color,background-color]`, which is a second
+ * `transition` shorthand on an element that would also wear `pressable` — exactly the trap
+ * the tab bar's own history documents above: two `transition-*` utilities in the
+ * `utilities` cascade layer settle `transition-property` by Tailwind's emission order, not
+ * by which one a reader meant, and the loser can lose `transform` entirely. So `BASE` now
+ * carries `pressable` and nothing that competes with it, and the colour and filter changes
+ * buttons need ride on `pressable`'s own transition list instead.
+ */
+describe("the shared button base wears the press", () => {
+  const BUTTONS = "app/buttons.ts";
+
+  /** `BASE`'s own backtick literal, read as source text — the one place in the file the
+   *  word `pressable` is written down; every exported button constant interpolates `BASE`
+   *  rather than restating it. */
+  function base(): string {
+    const match = codeOf(BUTTONS).match(/const BASE = `([^`]*)`;/);
+    expect(match, "buttons.ts must still declare BASE as a backtick template").not.toBeNull();
+    return match![1];
+  }
+
+  /** `MOTION_BASE`'s own backtick literal — `BASE` minus the press, for the one button
+   *  that presses through Motion instead. */
+  function motionBase(): string {
+    const match = codeOf(BUTTONS).match(/const MOTION_BASE = `([^`]*)`;/);
+    expect(match, "buttons.ts must still declare MOTION_BASE as a backtick template").not.toBeNull();
+    return match![1];
+  }
+
+  it("wears pressable, and no transition utility of its own", () => {
+    const tokens = base().split(/\s+/);
+
+    expect(tokens).toContain("pressable");
+    // Neither `transition-[...]` nor a bare `transition-colors`/`transition-all` — any
+    // second `transition-*` utility is the failure, not only the one this base used to
+    // carry.
+    expect(tokens.some((token) => /^transition(-|$)/.test(token))).toBe(false);
+    expect(tokens.some((token) => /^duration-\[/.test(token))).toBe(false);
+  });
+
+  it("leaves buttons at the surface register, saying nothing", () => {
+    // The default register is spelled by saying nothing at all — REGISTER_CLASS.surface
+    // above is `null` for the same reason. A button that declared `--press-register`
+    // would be reaching for the next ticket's small-control register early.
+    expect(base()).not.toContain(REGISTER_PROPERTY);
+    expect(compression(REGISTERS.surface.register)).toBeCloseTo(REGISTERS.surface.compress, 6);
+  });
+
+  it("still transitions colour and filter, from pressable's own list now rather than its own", () => {
+    expect(pressableUtility()).toMatch(/\bcolor\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    expect(pressableUtility()).toMatch(/\bfilter\s+var\(--dur-fast\)\s+var\(--ease-out-quart\)/);
+    // And the surface's own compression and depth step are still there: colour joined
+    // the list rather than replacing anything on it.
+    expect(pressableUtility()).toMatch(/transform\s+var\(--dur-press\)\s+var\(--ease-out-quart\)/);
+    expect(pressableUtility()).toMatch(
+      /background-color\s+var\(--dur-press\)\s+var\(--ease-out-quart\)/,
+    );
+  });
+
+  it("builds every primary, secondary, plain and destructive export off BASE", () => {
+    const source = codeOf(BUTTONS);
+
+    for (const name of [
+      "PRIMARY_BUTTON_LARGE",
+      "PRIMARY_BUTTON",
+      "PRIMARY_BUTTON_COMPACT",
+      "SECONDARY_BUTTON",
+      "SECONDARY_BUTTON_COMPACT",
+      "PLAIN_BUTTON",
+      "ICON_BUTTON",
+      "ICON_BUTTON_SQUARE",
+      "ICON_BUTTON_OVER_ARTWORK",
+      "DESTRUCTIVE_BUTTON",
+      "DESTRUCTIVE_BUTTON_COMPACT",
+    ]) {
+      expect(source, `${name} must still be built from BASE`).toMatch(
+        new RegExp(`export const ${name} = \`\\$\\{BASE\\}`),
+      );
+    }
+  });
+
+  it("opts the one Motion-driven button out of the CSS press, off the same stem", () => {
+    // MOTION_BASE is BASE's own stem without `pressable`, not a second hand-written base:
+    // the two can drift from each other only on the press itself.
+    expect(motionBase()).not.toContain("pressable");
+    expect(codeOf(BUTTONS)).toMatch(
+      /export const PRIMARY_BUTTON_LARGE_MOTION_PRESS = `\$\{MOTION_BASE\}/,
+    );
+
+    const tonightFeatured = codeOf("app/(signed-in)/up-next/tonight-featured.tsx");
+    expect(tonightFeatured).not.toMatch(/\bpressable\b/);
+    expect(tonightFeatured).toContain("PRIMARY_BUTTON_LARGE_MOTION_PRESS");
+    expect(tonightFeatured).not.toContain("PRIMARY_BUTTON_LARGE}");
   });
 });

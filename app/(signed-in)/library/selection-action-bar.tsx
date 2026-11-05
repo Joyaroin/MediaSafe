@@ -3,12 +3,10 @@
 import { DIALOG_FRAME, PILL_TARGET, SECONDARY_PILL } from "@/app/buttons";
 import { useEffect, useRef, useState } from "react";
 
-import {
-  listsForPickerAction,
-  type ListsForPickerOutcome,
-} from "@/app/(signed-in)/lists/actions";
+import type { ListsForPickerOutcome } from "@/app/(signed-in)/lists/lists-for-picker";
 import { formatTitleCount } from "@/app/(signed-in)/lists/title-count";
 import { PHONE_BAR, SELECTING_ATTRIBUTE } from "@/app/phone-bar";
+import { readRoute, SignedOutError } from "@/app/read-route";
 
 const DESKTOP =
   "lg:inset-x-auto lg:right-10 lg:bottom-6 lg:w-[460px] lg:rounded-[var(--radius-6)] lg:border lg:px-4 lg:pb-2";
@@ -106,11 +104,12 @@ import { useBulkSelection, useBulkSelectionView } from "./bulk-selection-context
  *
  * ── The picker, and what it does not offer ───────────────────────────────────────────
  *
- * The rows are `listsForPickerAction`'s — the same read title detail's *Add to list*
- * dialog makes (#147), because *this account's lists* is one question with one answer.
- * What is deliberately **not** here is that dialog's *name a new list* field. #147 built
- * it into the same action so that a first list was not a separate errand; here it would
- * have to raise its own write-failure toast from outside the store, and issue #197 puts
+ * The rows are `GET /api/lists/picker`'s — the same read title detail's *Add to list*
+ * dialog makes (#147, moved off its Server Action in #481), because *this account's
+ * lists* is one question with one answer. What is deliberately **not** here is that
+ * dialog's *name a new list* field. #147 built it into the same action so that a first
+ * list was not a separate errand; here it would have to raise its own write-failure toast
+ * from outside the store, and issue #197 puts
  * every rule — including *how a lost write is reported* — inside `bulk-selection.ts`
  * precisely so there is one of them. A reader with no lists at all is told where to make
  * one rather than being handed a second, differently-behaved write on the busiest bar in
@@ -175,6 +174,9 @@ export function SelectionActionBar() {
 
   async function read(): Promise<void> {
     const outcome = await readLists();
+    // `null` is signed-out: `readRoute` has already sent the reader to `/sign-in`, so
+    // there is nothing left here for this dialog to draw.
+    if (outcome === null) return;
     setPhase(
       outcome.ok
         ? { kind: "loaded", lists: outcome.lists }
@@ -317,10 +319,13 @@ export function SelectionActionBar() {
   );
 }
 
-async function readLists(): Promise<ListsForPickerOutcome> {
+/** `null` means *this answer must never be drawn* — see `add-to-list-control.tsx`'s own
+ *  `readLists` for the identical reasoning. */
+async function readLists(): Promise<ListsForPickerOutcome | null> {
   try {
-    return await listsForPickerAction();
+    return await readRoute<ListsForPickerOutcome>("/api/lists/picker");
   } catch (error) {
+    if (error instanceof SignedOutError) return null;
     return {
       ok: false,
       reference: referenceFor(error, { surface: "bulk-add-to-list" }),

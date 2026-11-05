@@ -29,7 +29,34 @@ import { IN_FLIGHT } from "./button-states";
  * and shows the wait cursor the same way.
  */
 
-const BASE = `inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-5)] font-semibold transition-[filter,color,background-color] duration-[var(--dur-fast)] ${IN_FLIGHT}`;
+const STEM =
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-5)] font-semibold";
+
+/**
+ * Every button's base — issue #463. Every one wears `pressable`, at the surface register,
+ * since nothing here declares `--press-register` (the small-control register — chips,
+ * pills, segmented controls, icon-only controls — is the next ticket's business).
+ *
+ * Carries no `transition-*` of its own. A second `transition-*` utility on an element that
+ * already wears `pressable` is a second `transition` shorthand in the same `utilities`
+ * cascade layer, and whichever one Tailwind happens to emit last wins the *whole*
+ * property — the phone tab bar's own history is what documents losing `transform` that
+ * way (`tests/press-spring.test.ts`). So the colour and filter changes a button needs —
+ * `hover:brightness-95`, `hover:text-dim`, `hover:bg-danger`... — ride on `pressable`'s
+ * own transition list in `app/globals.css` instead, which is why that list now names
+ * `color` beside the `filter` and `background-color` it already carried.
+ */
+const BASE = `${STEM} pressable ${IN_FLIGHT}`;
+
+/**
+ * `BASE`, minus the press — for the one button in the application that presses through
+ * Motion instead of CSS: Tonight's featured *Mark watched*
+ * (`app/(signed-in)/up-next/tonight-featured.tsx`), a Motion `m.button` carrying a
+ * `layoutId` so CSS must never set its `transform` — it would fight the layout animation
+ * that narrows the button into the held tick. Built from the same `STEM` so the two bases
+ * can never drift from each other on anything but the press itself.
+ */
+const MOTION_BASE = `${STEM} ${IN_FLIGHT}`;
 
 const LARGE = "h-14 min-w-14 px-6 text-row";
 const REGULAR = "h-12 min-w-12 px-5 text-bill-xs";
@@ -45,6 +72,10 @@ const DESTRUCTIVE = "danger-line text-danger hover:bg-danger hover:text-ground";
 export const PRIMARY_BUTTON_LARGE = `${BASE} ${LARGE} ${PRIMARY}`;
 export const PRIMARY_BUTTON = `${BASE} ${REGULAR} ${PRIMARY}`;
 export const PRIMARY_BUTTON_COMPACT = `${BASE} ${COMPACT} ${PRIMARY}`;
+
+/** `PRIMARY_BUTTON_LARGE`, off `MOTION_BASE` rather than `BASE` — see `MOTION_BASE`'s own
+ *  note. Its one caller is Tonight's featured *Mark watched*. */
+export const PRIMARY_BUTTON_LARGE_MOTION_PRESS = `${MOTION_BASE} ${LARGE} ${PRIMARY}`;
 
 export const SECONDARY_BUTTON = `${BASE} ${REGULAR} ${SECONDARY}`;
 export const SECONDARY_BUTTON_COMPACT = `${BASE} ${COMPACT} ${SECONDARY}`;
@@ -65,9 +96,13 @@ export const ICON_BUTTON_SQUARE = `${BASE} h-12 w-12 ${SECONDARY}`;
 export const ICON_BUTTON_OVER_ARTWORK = `${BASE} h-11 w-11 rounded-[var(--radius-full)] bg-black/50 text-white hover:bg-black/60`;
 
 /** One row of a menu — the title page's *…* menu. Colour is the caller's: text, or danger.
- *  Its hover is the quiet fill, so it still shows inside the raised dialog it opens in. */
+ *  Its hover is the quiet fill, so it still shows inside the raised dialog it opens in.
+ *
+ *  `pressable`, at the surface register, since issue #466 — a menu item presses as every
+ *  other surface this ticket reaches does, and `hover:quiet-fill` carries no `transition`
+ *  of its own for the press to fight. */
 export const MENU_ITEM =
-  "flex h-11 w-full items-center rounded-[var(--radius-4)] px-3 text-left text-item hover:quiet-fill";
+  "pressable flex h-11 w-full items-center rounded-[var(--radius-4)] px-3 text-left text-item hover:quiet-fill";
 
 export const DESTRUCTIVE_BUTTON = `${BASE} ${REGULAR} ${DESTRUCTIVE}`;
 export const DESTRUCTIVE_BUTTON_COMPACT = `${BASE} ${COMPACT} ${DESTRUCTIVE}`;

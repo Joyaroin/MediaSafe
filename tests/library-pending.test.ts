@@ -421,6 +421,10 @@ describe("what replaces a pending region arrives", () => {
   );
   const FACTS = readFileSync("app/(signed-in)/library/live-title-facts.tsx", "utf8");
   const PANEL = readFileSync("app/(signed-in)/library/programme-note-content.tsx", "utf8");
+  const UNOWNED_PANEL = readFileSync(
+    "app/(signed-in)/catalogue/[kind]/[tmdbId]/unowned-title-body.tsx",
+    "utf8",
+  );
 
   it("reuses the entrance every row already has rather than inventing a second", () => {
     const arrive = CSS.match(/@utility arrive \{[^}]*\}/)![0];
@@ -438,6 +442,11 @@ describe("what replaces a pending region arrives", () => {
       'className="arrive-panel flex min-w-0 flex-1 flex-col',
     );
     expect(EPISODES).toMatch(/className=\{`arrive \$\{PROGRAMME_NOTE_SECTION\}`\}/);
+
+    // The catalogue page for a title the reader does not hold shares the same
+    // `arrive-panel` utility, and therefore the same timing, as the owned page above —
+    // the ticket's own claim is otherwise unpinned on this side.
+    expect(UNOWNED_PANEL).toContain("className={`arrive-panel mt-3 grid");
   });
 
   it("does not give one to the placeholder or to the failure", () => {

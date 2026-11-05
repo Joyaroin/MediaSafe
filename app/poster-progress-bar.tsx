@@ -63,9 +63,11 @@ export function PosterProgressBar({
        * (issue #407), and a slide rather than a `scaleX`, which would flatten the poster's
        * own rounded corner along with the fill's end.
        * `--dur-base` because a watch landing is a routine state change, the same ramp
-       * position `WatchedBar` below ties itself to. `progress-fill` carries no rule of its
-       * own; it is only what `globals.css`'s reduced-motion block targets to collapse the
-       * duration — issue #335's *the event survives, the animation does not*.
+       * position `WatchedBar` below ties itself to. `progress-fill` exists so
+       * `globals.css` has one selector for every progress bar in the app; its own
+       * reduced-motion rule removes the transition outright rather than collapsing its
+       * duration (issue #471) — the fill still reaches its new value, it just does not
+       * slide to get there.
        */}
       <div
         className="progress-fill h-full w-full bg-[var(--poster-ink,white)] transition-transform duration-[var(--dur-base)]"

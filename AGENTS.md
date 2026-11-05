@@ -15,7 +15,8 @@ will ever add, so they are set out here.
 
 ## No `catch` returns `[]`
 
-**Empty and failed are structurally separate.** A read that fails throws. An empty state is
+**Empty and failed are structurally separate.** A read that fails throws, except in the two
+cases below, and neither of them ever turns a failure into an empty result. An empty state is
 reachable only by a query that succeeded and found nothing.
 
 ```ts
@@ -41,8 +42,16 @@ The same lie has other spellings, and they are all covered: `.catch(() => [])`,
 `npm run lint`, which is one of the three things CI runs. If you have a case the rule is
 wrong about, disable it on the line *with a reason* — and expect that reason to be read.
 
-Catching in order to **report and rethrow** is fine and always was. What the rule forbids is
-manufacturing a successful-looking empty result out of a failure.
+A failure may be caught in two cases, and they are one rule: **the failure still arrives as a
+failure, where it can be shown.**
+
+- **Report and rethrow.** The error goes on to the boundary that draws it.
+- **A Route Handler that serves a read** (search, and the list picker) reports the failure and
+  answers `200` with `{ ok: false, reference }`, the reference from `referenceFor()`. The client
+  must show the failure's reference, and a thrown error would reach it as a bare failed response
+  without one.
+
+What the rule forbids is manufacturing a successful-looking empty result out of a failure.
 
 ## Errors are placed by blast radius
 

@@ -16,7 +16,7 @@ import { toStorageState } from "./support/storage-state";
  *
  * The feed is fetched by **path** against this suite's own server, never by the URL's
  * origin: Settings writes the URL against `BETTER_AUTH_URL`, which locally is the dev server
- * on :3000, not the build under test on :3100.
+ * on :3000, not the build under test on `E2E_PORT` (3100 unless set).
  */
 
 let showName: string;

@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { stillSrc } from "@/app/(signed-in)/library/episode-still";
-import { PRIMARY_BUTTON_LARGE, SECONDARY_BUTTON } from "@/app/buttons";
+import { PRIMARY_BUTTON_LARGE_MOTION_PRESS, SECONDARY_BUTTON } from "@/app/buttons";
 import { posterSrc } from "@/app/poster";
 import { carryPoster } from "@/app/poster-handoff-memory";
 import {
@@ -75,8 +75,9 @@ import {
  *
  * The narrowing and the joining are Motion's layout animation on `smooth` — a size changing
  * is never animated as a `width` or a `gap` — and the rolls are CSS on `--dur-roll`. Under
- * reduced motion `MotionConfig` drops the layout animation and the rolls run for `1ms`:
- * everything changes at once.
+ * reduced motion `MotionConfig` drops the layout animation's movement while leaving its
+ * opacity alone, and the rolls keep running at `--dur-roll` too, fading rather than
+ * travelling (issue #471) — nothing here cuts to its end state.
  */
 export function TonightFeatured({ entry }: { entry: UpNextEntry }) {
   const mark = useUpNextMark(entry);
@@ -242,7 +243,11 @@ function FeaturedMark({
       onClick={press.mark}
       disabled={press.pending}
       aria-label={markLabel(entry.titleName, press.episode)}
-      className={`${PRIMARY_BUTTON_LARGE} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
+      // `PRIMARY_BUTTON_LARGE_MOTION_PRESS` and not `PRIMARY_BUTTON_LARGE`: this is a
+      // Motion `m.button` with a `layoutId`, so CSS must never set its `transform` — it
+      // presses through Motion's own `whileTap` instead (issue #463; the Motion press
+      // itself is a separate ticket's work).
+      className={`${PRIMARY_BUTTON_LARGE_MOTION_PRESS} w-full overflow-hidden sm:w-auto sm:min-w-[280px]`}
       style={{ borderRadius: FEATURED_BUTTON_RADIUS }}
     >
       <m.span layout transition={smooth} className="flex items-center gap-2 whitespace-nowrap">
