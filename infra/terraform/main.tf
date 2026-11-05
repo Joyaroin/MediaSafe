@@ -108,8 +108,11 @@ locals {
     apex    = var.domain
     staging = "staging.${var.domain}"
     argocd  = "argocd.${var.domain}"
-    lab     = "lab.${var.domain}" # the portfolio, deployed from Forgejo
   }
+
+  # The portfolio, deployed from Forgejo. It only ever lives behind the tunnel, so it stays out
+  # of hostnames: that list's records depend on the Linode's address.
+  lab_hostname = "lab.${var.domain}"
 }
 
 resource "cloudflare_dns_record" "site" {
@@ -121,6 +124,16 @@ resource "cloudflare_dns_record" "site" {
   content = var.serve_from_tunnel ? "${cloudflare_zero_trust_tunnel_cloudflared.home.id}.cfargotunnel.com" : local.public_ip
   ttl     = var.serve_from_tunnel ? 1 : 300 # 1 is "automatic", the only TTL a proxied record takes
   proxied = var.serve_from_tunnel
+  comment = "MediaSafe infra/terraform"
+}
+
+resource "cloudflare_dns_record" "lab" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  name    = local.lab_hostname
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.home.id}.cfargotunnel.com"
+  ttl     = 1 # "automatic", the only TTL a proxied record takes
+  proxied = true
   comment = "MediaSafe infra/terraform"
 }
 
@@ -143,7 +156,7 @@ resource "cloudflare_ruleset" "cache" {
 
   rules = [{
     description = "lab: hashed assets"
-    expression  = "(http.host eq \"lab.${var.domain}\" and starts_with(http.request.uri.path, \"/assets/\"))"
+    expression  = "(http.host eq \"${local.lab_hostname}\" and starts_with(http.request.uri.path, \"/assets/\"))"
     action      = "set_cache_settings"
     action_parameters = {
       cache = true
@@ -176,7 +189,7 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "home" {
 
   config = {
     ingress = concat(
-      [for hostname in values(local.hostnames) : {
+      [for hostname in concat(values(local.hostnames), [local.lab_hostname]) : {
         hostname       = hostname
         service        = "https://traefik.traefik.svc.cluster.local:443"
         origin_request = { origin_server_name = hostname }
