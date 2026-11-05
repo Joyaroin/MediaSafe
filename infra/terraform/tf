@@ -7,8 +7,6 @@
 #   ./tf apply
 #
 # Nothing is written to disk: the tokens live in this process's environment and die with it.
-# Your current public IP becomes the only address allowed to SSH and kubectl in, so a plan
-# after your IP changes shows the firewall rule moving — that is expected.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -32,14 +30,10 @@ secret() { # field item
     exit 1
   }
 }
-LINODE_TOKEN="$(secret password mediasafe/linode-token)"
 CLOUDFLARE_API_TOKEN="$(secret password mediasafe/cloudflare-token)"
 AWS_ACCESS_KEY_ID="$(secret username mediasafe/r2-terraform-state)"
 AWS_SECRET_ACCESS_KEY="$(secret password mediasafe/r2-terraform-state)"
-export LINODE_TOKEN CLOUDFLARE_API_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
-
-ip="$(curl -fsS https://api.ipify.org)"
-export TF_VAR_admin_cidrs="[\"$ip/32\"]"
+export CLOUDFLARE_API_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 
 if [[ "${1:-}" == "init" ]]; then
   shift
