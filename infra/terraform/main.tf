@@ -108,6 +108,7 @@ locals {
     apex    = var.domain
     staging = "staging.${var.domain}"
     argocd  = "argocd.${var.domain}"
+    lab     = "lab.${var.domain}" # the portfolio, deployed from Forgejo
   }
 }
 
@@ -130,6 +131,27 @@ resource "cloudflare_zone_setting" "always_use_https" {
   zone_id    = data.cloudflare_zone.site.zone_id
   setting_id = "always_use_https"
   value      = "on"
+}
+
+# The portfolio's hashed assets never change, and .glb isn't an extension Cloudflare caches by
+# default. Caching them here keeps its 3D room off the home connection.
+resource "cloudflare_ruleset" "cache" {
+  zone_id = data.cloudflare_zone.site.zone_id
+  name    = "Cache"
+  kind    = "zone"
+  phase   = "http_request_cache_settings"
+
+  rules = [{
+    description = "lab: hashed assets"
+    expression  = "(http.host eq \"lab.${var.domain}\" and starts_with(http.request.uri.path, \"/assets/\"))"
+    action      = "set_cache_settings"
+    action_parameters = {
+      cache = true
+      edge_ttl = {
+        mode = "respect_origin"
+      }
+    }
+  }]
 }
 
 # ── The tunnel to the home cluster ───────────────────────────────────────────────────────
