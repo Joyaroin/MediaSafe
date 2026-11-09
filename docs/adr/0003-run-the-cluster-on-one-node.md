@@ -36,7 +36,9 @@ data was copied with checksums compared, so its unseal key did not change.
 - **`joseph` is the single point of failure**, where `jonathan` was. Prod, staging, the control
   plane and Vault are all on it.
 - **Prod and staging share memory.** ADR 0002 kept prod off `hermit` so a staging deploy or side
-  project couldn't take its memory; that separation is gone, and nothing limits staging yet.
+  project couldn't take its memory. That separation is gone; memory limits stand in for it. The
+  chart caps the app at 512Mi and Valkey at 192Mi in every environment, and lab caps itself at
+  256Mi, so staging tops out at about 960Mi of the node's 6 GB.
 - **Both `cloudflared` copies are on one node.** ADR 0002's "one copy per node lets either node
   restart" no longer holds: a restart of `hermit` takes the site down until it is back.
 - **A second node can join later.** etcd lets another server join; `bootstrap/install-k3s` lists
