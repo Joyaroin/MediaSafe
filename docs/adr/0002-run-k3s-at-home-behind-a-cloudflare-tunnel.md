@@ -4,6 +4,8 @@
 - **Date:** 2026-11-03
 - **Amends:** [ADR 0001](0001-deploy-to-k3s-on-linode-with-gitops.md), for where the cluster runs
   and how traffic reaches it. Its GitOps, Vault and Helm decisions stand.
+- **Amended by:** [ADR 0003](0003-run-the-cluster-on-one-node.md): `jonathan` was returned on
+  2026-11-09 and the cluster now runs on `hermit` alone. The two-node details below are history.
 
 ## Context
 

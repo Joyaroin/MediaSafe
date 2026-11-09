@@ -54,17 +54,13 @@ flowchart LR
   user([Browser]) -->|HTTPS| edge[Cloudflare<br/>DNS and proxy]
   edge -->|"Tunnel, dialled from inside"| cfd
 
-  subgraph home["k3s at home · two Proxmox VMs, no open ports"]
+  subgraph home["k3s at home · one Proxmox VM, hermit, no open ports"]
     cfd["cloudflared × 2"] --> traefik["Traefik<br/>Gateway API + Let's Encrypt"]
-    subgraph hamon["hamon · server"]
-      prod["mediasafe-prod<br/>Next.js × 2"]
-      vprod[(Valkey<br/>shared cache)]
-      vault[Vault]
-    end
-    subgraph hermit["hermit · agent"]
-      staging["mediasafe-staging<br/>Next.js"]
-      vstg[(Valkey)]
-    end
+    prod["mediasafe-prod<br/>Next.js × 2"]
+    vprod[(Valkey<br/>shared cache)]
+    vault[Vault]
+    staging["mediasafe-staging<br/>Next.js"]
+    vstg[(Valkey)]
     traefik --> prod
     traefik --> staging
     prod --- vprod
@@ -91,8 +87,8 @@ Drizzle ORM; sign-in is Google OAuth through [Better Auth](https://www.better-au
 renders are cached in Valkey through a custom Next.js cache handler shared by every replica, so a
 write on one pod invalidates the cache for all of them. Errors go to Sentry.
 
-**The infrastructure.** Two mini PCs at home, each a Proxmox host with one k3s VM: `hamon` is the
-server and runs production and Vault, and `hermit` is an agent and runs staging. No ports are open
+**The infrastructure.** A mini PC at home, a Proxmox host with one k3s VM, `hermit`, that runs
+production, staging, Vault and the control plane. No ports are open
 at home: `cloudflared` runs in the cluster and dials out to a Cloudflare Tunnel, the only way in
 from the internet. Terraform owns the Cloudflare side, meaning the tunnel, the DNS records and the
 R2 snapshot bucket ([`infra/terraform`](infra/terraform)). Everything *inside* the cluster is
@@ -102,7 +98,8 @@ HashiCorp Vault for secrets (configured by Terraform in [`infra/vault`](infra/va
 External Secrets copying them into each namespace, and a Helm chart for the app itself, with one
 values file per environment. Why this shape, and what it replaced, is in
 [ADR 0001](docs/adr/0001-deploy-to-k3s-on-linode-with-gitops.md); why it moved home from a Linode
-VM is in [ADR 0002](docs/adr/0002-run-k3s-at-home-behind-a-cloudflare-tunnel.md).
+VM is in [ADR 0002](docs/adr/0002-run-k3s-at-home-behind-a-cloudflare-tunnel.md), and why it runs
+on one node in [ADR 0003](docs/adr/0003-run-the-cluster-on-one-node.md).
 
 ### How a change reaches production
 
@@ -144,7 +141,7 @@ from the repo, and no secret is ever in git.
   for destructive operations.
 - **The design system is tested.** Contrast ratios, corner radii and accent usage are asserted
   in Vitest, so a redesign can't quietly regress them.
-- **Real infrastructure, kept small.** Two VMs on mini PCs at home with no open ports, Vault
+- **Real infrastructure, kept small.** One VM on a mini PC at home with no open ports, Vault
   with a nightly Raft snapshot to R2 and a restore that ran for real when the cluster moved home,
   secrets pulled from a password manager at the moment Terraform needs them and never written to
   disk.

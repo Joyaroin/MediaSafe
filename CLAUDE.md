@@ -8,8 +8,8 @@ A working codebase, not a spec-stage repo — do not treat it as greenfield. `ap
 `tests/`, `drizzle/` and custom `eslint-rules/` all exist. For how far along it is, read
 `git log`, not this file.
 
-Stack: Next.js on k3s (two home VMs behind a Cloudflare Tunnel, Argo CD from `morioh-cho-gitops`;
-ADRs 0001 and 0002), Postgres on Neon, Drizzle.
+Stack: Next.js on k3s (one home VM behind a Cloudflare Tunnel, Argo CD from `morioh-cho-gitops`;
+ADRs 0001 to 0003), Postgres on Neon, Drizzle.
 
 ## Work
 

@@ -54,9 +54,9 @@ export VAULT_TOKEN
 # Reuse a port-forward that is already open (e.g. for `vault login`), otherwise open one for the
 # length of this command — but only into the MediaSafe cluster. A shell without KUBECONFIG falls
 # back to ~/.kube/config, whose current context may be some other cluster entirely. The cluster is
-# known by its node, `hamon`.
+# known by its node, `hermit`.
 if ! curl -fsS -o /dev/null http://127.0.0.1:8200/v1/sys/health 2>/dev/null; then
-  kubectl get node hamon >/dev/null 2>&1 || {
+  kubectl get node hermit >/dev/null 2>&1 || {
     echo "kubectl ($(kubectl config current-context 2>/dev/null || echo 'no context')) is not the MediaSafe cluster." >&2
     echo "Run: export KUBECONFIG=~/.kube/homelab.yaml" >&2
     exit 1

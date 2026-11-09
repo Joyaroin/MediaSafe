@@ -40,7 +40,7 @@ to disk. Back the state up after any apply that matters — R2 keeps no versions
 
 ## The home cluster's tunnel
 
-The cluster runs on `hamon` and `hermit`, VMs on the home Proxmox hosts `jonathan` and `joseph`,
+The cluster runs on `hermit`, a VM on the home Proxmox host `joseph`,
 and the home network opens no ports: Cloudflare reaches it through a Tunnel whose connector runs in the cluster (`morioh-cho-gitops`,
 `platform/cloudflared`). This stack owns the tunnel, its routes and the DNS that points at it.
 
