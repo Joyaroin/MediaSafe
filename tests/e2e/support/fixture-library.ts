@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { drizzle } from "drizzle-orm/neon-serverless";
 
+import { addTitleToList, asUserId, createList } from "@/db/access";
 import { createPool, requireDatabaseUrl } from "@/db/driver";
 import * as schema from "@/db/schema";
 
@@ -224,6 +225,58 @@ export async function seedShowWithSeason(
     }
 
     return { libraryEntryId: entryRow.id, titleName, posterPath };
+  } finally {
+    await pool.end();
+  }
+}
+
+/**
+ * A custom list holding `names.length` titles, in that order — issue #476's e2e spec
+ * needs several titles on one list to take one off and watch the rows or cells below it
+ * close up.
+ *
+ * ── Unowned titles, deliberately ──────────────────────────────────────────────────────
+ *
+ * A list holds anything in the catalogue, owned or not (issue #133's `db/access.ts`
+ * reasoning), and the motion this ticket is about does not depend on which: so this seeds
+ * bare `title` rows with no `libraryEntry`, which is the smaller write and keeps this
+ * spec's fixture from needing episodes or watch rows it has no use for.
+ *
+ * `createList` and `addTitleToList` are `db/access.ts`'s own write paths, called directly
+ * rather than reimplemented here, so a list this spec opens is built exactly the way the
+ * application itself builds one — positions included.
+ */
+export async function seedListOfFilms(
+  userId: string,
+  names: readonly string[],
+): Promise<{ readonly listId: string; readonly listName: string }> {
+  const pool = createPool(requireDatabaseUrl());
+  const db = drizzle(pool, { schema });
+
+  try {
+    const listName = `E2E Fixture List ${randomUUID()}`;
+    const outcome = await createList(asUserId(userId), listName, db);
+    if (!outcome.ok) {
+      throw new Error(`Fixture list name ${JSON.stringify(listName)} collided — retry the seed.`);
+    }
+
+    for (const name of names) {
+      const unique = randomUUID();
+      const [titleRow] = await db
+        .insert(schema.title)
+        .values({
+          kind: "film",
+          tmdbId: Math.floor(Math.random() * 200_000_000),
+          name,
+          releaseYear: 2024,
+          posterPath: `/e2e-fixture-${unique}.jpg`,
+        })
+        .returning({ id: schema.title.id });
+
+      await addTitleToList(asUserId(userId), outcome.list.id, titleRow.id, db);
+    }
+
+    return { listId: outcome.list.id, listName };
   } finally {
     await pool.end();
   }

@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { SEARCH_START, type SearchPlace } from "@/app/restoration";
 import { keepSearch, rememberedSearch } from "@/app/restoration-memory";
+import { readRoute, SignedOutError } from "@/app/read-route";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
 import { catalogueKeyOf } from "@/tmdb/mirror";
 import { CatalogueResultRow } from "./catalogue-result";
-import { searchCatalogueAction, type MarkedResult } from "./actions";
+import type { MarkedResult } from "./actions";
 import {
   groupByKind,
   searchPhaseFor,
@@ -102,9 +103,20 @@ export function SearchSurface({
   // newer one would put stale results under the field.
   const newestRequest = useRef(0);
 
+  /**
+   * The in-flight `GET`'s own cancellation, issue #480. A debounce alone stops a
+   * keystroke from *starting* a stale request; it does nothing about one already on the
+   * wire when the next keystroke lands, inside the round trip the debounce was timed
+   * around. Aborting it is what the ticket's *typing quickly cancels the stale query*
+   * is — not merely ignoring the answer once it arrives, but asking the browser not to
+   * wait for it in the first place.
+   */
+  const controller = useRef<AbortController | null>(null);
+
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
+      controller.current?.abort();
     },
     [],
   );
@@ -114,8 +126,17 @@ export function SearchSurface({
     const request = ++newestRequest.current;
 
     timer.current = setTimeout(async () => {
-      const answer = searchPhaseFor(await search(trimmed), trimmed);
-      if (request !== newestRequest.current) return;
+      // The previous request, if still in flight, is superseded by this one — abort it
+      // rather than merely outrunning it, and start this one's own controller.
+      controller.current?.abort();
+      const thisRequest = new AbortController();
+      controller.current = thisRequest;
+
+      const outcome = await search(trimmed, thisRequest.signal);
+      // `null` is a cancelled request, never drawn as a failure — see `search()`.
+      if (outcome === null || request !== newestRequest.current) return;
+
+      const answer = searchPhaseFor(outcome, trimmed);
 
       // Remember only a search that fully answered: a return should never reopen on a
       // failure, and a partly failed search is one worth asking again.
@@ -144,7 +165,8 @@ export function SearchSurface({
     if (!trimmed) {
       if (timer.current) clearTimeout(timer.current);
       // An emptied field is its own answer, and a request still in flight for what was
-      // there before must not land on top of it.
+      // there before must not land on top of it — aborted, not merely outvoted.
+      controller.current?.abort();
       newestRequest.current += 1;
       keepSearch(SEARCH_START);
       setPhase({ kind: "idle" });
@@ -192,13 +214,35 @@ export function SearchSurface({
 }
 
 /**
- * The action, with a thrown failure — a dropped connection, a redirect — turned into the
- * same per-kind failure a caught one is, so neither kind reads as *nothing found*.
+ * `GET /api/search`, through `app/read-route.ts` — issue #480, off the Server Action
+ * queue a watch mark still saving used to make this wait behind.
+ *
+ * `null` means *this answer must never be drawn*, and it covers the two cases that are
+ * not a search failure at all:
+ *
+ *  - **Cancelled.** `signal` was aborted because a newer keystroke superseded this
+ *    request — the ticket's *a superseded query is aborted and never drawn as a
+ *    failure*. The platform's `AbortError` is matched by name rather than
+ *    `instanceof DOMException`, which is what a browser throws and not what every
+ *    runtime this file might run under necessarily does.
+ *  - **Signed out.** `readRoute` has already sent the reader to `/sign-in` and thrown
+ *    `SignedOutError`; drawing that as this screen's own read failure would put an
+ *    inline error, with a reference nobody can use, in front of a reader who is already
+ *    leaving.
+ *
+ * Anything else — a dropped connection, a response that was not JSON — is a genuine
+ * failure and becomes the same per-kind shape a caught one on the server already is, so
+ * neither kind reads as *nothing found*.
  */
-async function search(query: string): Promise<BothKinds> {
+async function search(query: string, signal: AbortSignal): Promise<BothKinds | null> {
   try {
-    return await searchCatalogueAction(query);
+    return await readRoute<BothKinds>(`/api/search?q=${encodeURIComponent(query)}`, {
+      signal,
+    });
   } catch (error) {
+    if (error instanceof SignedOutError) return null;
+    if (error instanceof Error && error.name === "AbortError") return null;
+
     const reference = referenceFor(error, { surface: "search" });
     return { show: { ok: false, reference }, film: { ok: false, reference } };
   }
@@ -258,11 +302,17 @@ function SearchField({
         className="w-full min-w-0 bg-transparent text-row text-text placeholder:text-dim focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
       />
       {value === "" ? null : (
+        /* `arrive` is gone — issue #465: that class is for a region arriving whole, and
+           this is a control that already carries its own press. `transition-colors
+           duration-[var(--dur-fast)]` is gone too: a second `transition-*` utility beside
+           `pressable` is the tab bar's own trap (`app/globals.css`'s `pressable` docblock) —
+           `pressable`'s own transition list already carries `color` at the same
+           `--dur-fast`, so `hover:text-text` keeps animating with nothing declared twice. */
         <button
           type="button"
           onClick={clear}
           aria-label="Clear search"
-          className="pressable [--press-register:1] arrive flex h-11 w-11 shrink-0 items-center justify-center text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
+          className="pressable [--press-register:1] flex h-11 w-11 shrink-0 items-center justify-center text-dim hover:text-text"
         >
           {/* A bare cross, no disc behind it: plain, in `dim` (§5.2). The `44px` box is
               the target; the glyph is `18px` inside it. */}

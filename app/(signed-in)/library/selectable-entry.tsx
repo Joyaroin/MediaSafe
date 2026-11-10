@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useContext } from "react";
+import { createContext, useContext, type CSSProperties } from "react";
 
 import { carryPoster } from "@/app/poster-handoff-memory";
 import type { SelectableTitle } from "./bulk-selection";
 import { useBulkSelection, useIsSelected, useIsSelecting } from "./bulk-selection-context";
-import { HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
+import { HOLD_MS, HOLDABLE, SELECTED, useHoldToSelect } from "./use-hold-to-select";
 
 /**
  * The thin client shell every one of the bill's 472 buttons sits inside — the one piece
@@ -131,6 +131,12 @@ export function SelectableEntry({
       // cell does not announce itself as an unpressed toggle the rest of the time.
       aria-pressed={selecting ? selected : undefined}
       className={`${className}${bulk === null ? "" : ` ${HOLDABLE}`}${selected ? ` ${SELECTED}` : ""}`}
+      // The hold's own duration, handed to `globals.css` rather than restated there —
+      // `programme-note-episodes.tsx`'s `HoldRing` hands its ring the identical value from
+      // the identical constant (issue #470). Both the full-motion ramp
+      // (`.pressable[data-holding="true"]`) and the reduced-motion dim read this, so the
+      // cue and the gesture's own timer can never drift apart.
+      style={{ "--hold-shown": `${HOLD_MS}ms` } as CSSProperties}
     >
       <div className="relative">
         {poster}

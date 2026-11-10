@@ -10,7 +10,7 @@ This is the whole redesign in one place: the visual system, every screen, the st
 2. **Look at the reference before building a screen.** `docs/redesign/reference/` holds every final board twice: a `.png` to look at and a `.html` with inline styles to read exact sizes, spacing and colours from. The HTML is static mock-up markup, not code to copy, and its accessible names are examples; section 12 and each screen's accessibility notes are the rule. Section 15 indexes it.
 3. **Hex values in this document are the source of truth for colour.** The boards were drawn in hex; `app/globals.css` declares `oklch()`. Any `oklch()` string that resolves to the listed hex within one step per channel is correct.
 4. **Where the boards and this document disagree, this document wins.** The boards were drawn by hand and are not perfectly consistent with each other. Section 4 lists every place they differ from the build on purpose.
-5. **Do not work around a failing test.** This codebase holds its design system in tests (`tests/contrast.test.ts`, `tests/corners.test.ts`, `tests/accent-sweep.test.ts`, `tests/plate-line.test.ts`, `tests/nav-transitions.test.ts` and others). Section 13 says which ones the redesign keeps green untouched and which it changes on purpose. If a test fails that section 13 does not mention, stop and ask.
+5. **Do not work around a failing test.** This codebase holds its design system in tests (`tests/contrast.test.ts`, `tests/corners.test.ts`, `tests/accent-sweep.test.ts`, `tests/plate-line.test.ts`, `tests/nav-transitions.test.ts` and others). Section 13 says which ones the redesign keeps green untouched and which it changes on purpose. A test that asserts a value the ticket deliberately changes is updated test-first, in the same change. Any other failing test means stop, and report it in the ticket's failure report.
 6. **The error discipline in `AGENTS.md` is unchanged.** Empty and failed stay structurally separate, errors are placed by blast radius, and every user-facing string is a plain sentence. The redesign redraws those surfaces and changes none of their rules. The few wording changes are named in sections 3 and 8.
 7. **Section 3's open questions each say what to do until the owner answers.**
 
@@ -93,7 +93,7 @@ The boards were drawn freehand. These differences are below what the eye can tel
 | Tab bar ground | flat 94% | existing `frosted` utility | One blur radius in the product |
 | Raised card edge in light | 1px `hair` inset | existing `plate-line` | Already on every raised container, test-held |
 | Synopsis colour | a step dimmer than `text` | `text` | `globals.css` already rules out a separate body token |
-| Pressed and in-flight fills | fixed greys | existing `hover:brightness-*` and `IN_FLIGHT` (`brightness-75`) | The board's in-flight grey is `text` at 75% brightness |
+| Pressed, hover and in-flight fills | fixed greys | pressed is the press's scale (`pressable`, section 11.2) and nothing else; hover keeps the existing `hover:brightness-*`; in flight is `IN_FLIGHT` (`brightness-75`) | A press compresses and changes no fill. The board's in-flight grey is `text` at 75% brightness |
 | Small-caps labels | 11 to 12px, tracking 0.06 to 0.14em | `label-line` everywhere | One label register |
 | Small pills ("I've seen it", "Start again", "Add") | 28, 30 and 34px high, text 13 or 14px | one 32px pill inside a 44px target, text 14px at weight 600 | One size |
 | Button text | 15px on some 48px quiet buttons | by height: 17 at 56px, 16 at 48px, 15 at 44px, whatever the variant | One rule |
@@ -221,7 +221,7 @@ All sizes are in the reference HTML. This table says what each one is and which 
 | Plain button | Text only, 44px high | new variant, or the existing link style |
 | Pill | 32px high, fully rounded, inside a 44px target. Filled for "Add", `raised` for "I've seen it" and "Start again" | `catalogue-result.tsx`, `stopped-shows.tsx` |
 | Round icon button | 44px circle, `raised`. Over artwork: black at 50% with a white icon | `back-bar.tsx`, `ICON_BUTTON` |
-| In flight | The same button dimmed, wait cursor, label changes to the present participle already in the code ("Taking you to Google") | `IN_FLIGHT` |
+| In flight | Only for an action whose result cannot be drawn before the server answers (signing in, starting an import): the same button dimmed, wait cursor, label in the present participle already in the code ("Taking you to Google"). A write the UI can draw at once is optimistic and never waits behind this: creating a list, adding to a list, marking | `IN_FLIGHT` |
 | Not yet armed | `hair` fill, `dim` text, not-allowed cursor | `NOT_YET_ARMED` |
 | Segmented control | `raised` container, `--radius-5`, 4px padding; segments 44px high, `--radius-4`; selected is outlined. Compact form (the Icons / List control): 36px segments in a 44px container, each segment's hit area stretched to the container's height. On a card or dialog the container is `ground` with a 1px `hair` inset | `library-view.ts` callers, `list-view-control.tsx`, `theme-control.tsx` |
 | Chip | 36px pill, `raised` fill, `dim` text; selected is outlined, `text`, weight 600. Rows of chips scroll sideways | `library/chip.tsx`, `season-chips.tsx`, `library-filter-bar.tsx` |
@@ -272,7 +272,7 @@ Three existing treatments change, and their tests change with them:
 
 Each entry gives the reference files, the structure from top to bottom, where the data already comes from, and what to cover beyond the picture.
 
-**Surfaces this spec does not draw** keep their structure and behaviour: the suggestion and recommendation rails, the selection action bar, the watch menu, the more menu, the remove-title and delete-account pages, and the page for a title the reader does not hold. Rebuild them from section 6's components and nothing else. Rails use the Rail component. Menus are `raised` with 44px rows. The two confirmation pages follow the dialog's layout. Each is restyled in the slice that owns its screen: the suggestion rail with Tonight and Coming up, the recommendation rails with Search, the selection bar with Library, the watch menu, the more menu, remove-title and the unheld title with the title pages, and delete-account with Settings.
+**Surfaces this spec does not draw** keep their structure, and behave as sections 8 and 11 describe: the suggestion and recommendation rails, the selection action bar, the watch menu, the more menu, the remove-title and delete-account pages, and the page for a title the reader does not hold. Rebuild them from section 6's components and nothing else. Rails use the Rail component. Menus are `raised` with 44px rows. The two confirmation pages follow the dialog's layout. Each is restyled in the slice that owns its screen: the suggestion rail with Tonight and Coming up, the recommendation rails with Search, the selection bar with Library, the watch menu, the more menu, remove-title and the unheld title with the title pages, and delete-account with Settings.
 
 ### 8.1 Tonight
 
@@ -306,8 +306,8 @@ Reference: `search.dark`, `search.light`.
 
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
 - Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". A title already held shows a tick and "In your library" as a link instead of both actions.
-- Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
-- **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
+- Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`). Once added, the two pills give way to "In your library" through a roll (section 11.2).
+- **States.** Before typing: the recommendation rails. While a new search is in flight, the previous results stay up, dimmed and still fully tappable (open and add both work), the existing pending line shows the work, and the new results replace them in place. A superseded search is cancelled and is never drawn as a failure. Coming back to Search, a restored result set appears as you left it and does not stagger; only a fresh search's first result set staggers. No results and read failed inline (`rail-read-failure.tsx`, `search/error.tsx`) stay structurally separate, and a failure carries its reference.
 
 ### 8.4 Library
 
@@ -315,7 +315,12 @@ Reference: `library.dark`, `library.light`, `library-empty.*`, `desktop-library.
 
 - Screen heading, the Shows / Films / Lists segmented control, a row of filter chips (All, Watching, Caught up, Finished, Watchlist, Dropped) with a round sort button pinned on the right, then a three-column poster grid.
 - Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Watchlist", "Dropped", "Caught up".
-- **Data and behaviour** are unchanged: `cachedLibraryEntries()`, `?sort=`, `?view=`, hold to select and the selection action bar. A selected poster keeps its existing outline.
+- **Data and behaviour.** `cachedLibraryEntries()`, `?sort=`, `?view=`, hold to select and the selection action bar. A selected poster keeps its existing outline.
+- **The tab is remembered on the server too**, in a cookie beside `localStorage`, so a cold load opens on the last tab used. Precedence: `?view=`, then the cookie, then Shows.
+- **Sort.** Changing the sort shows a pending state on the sort control until the new order renders. The grid swaps in place and does not re-stagger.
+- **Opening a title.** A cell prefetches its title page on intent: on hover where there is hover, on pointer-down on touch, never on scroll. A prefetched title page still gets the poster handoff, because the poster is read when the page's first real frame mounts.
+- **Hold to select** takes its duration from one constant, `HOLD_MS` in `use-hold-to-select.ts`, which CSS reads as `--hold-shown` (section 11.1).
+- **Bulk add to a list.** Selection closes the moment a bulk add starts. A second bulk add started while the first is still writing queues behind it and runs when the first lands, each with its own toast.
 - **Empty library:** hide the chips; show the outlined panel "Your library is empty" with filled "Bring your library in" and plain "Search films and shows". An account that has not answered the import offer is still redirected to `/welcome`.
 - **No films yet / no shows yet:** the existing `NothingOfThisKind` wording in the outlined panel with a quiet "Search films and shows".
 - **Desktop.** Heading and segmented control on one line, chips and a labelled sort button ("Recently watched") on the next, then the grid at the existing column steps.
@@ -327,6 +332,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 **Lists** (Library with Lists selected)
 
 - A field "Name a new list" with a "New list" button beside it. The button is not armed until something is typed, then filled.
+- Creating a list appears at once: the new list is drawn before the server answers, and it is one write, as it is now. If that write fails for any reason, a dropped connection included, the list leaves, the typed name returns to the field, and the write-failure toast says so. A lost create is never silent.
 - One card per list: name (Row), "8 titles" (Meta, from `formatTitleCount`), a stack of up to three posters, a chevron. The whole card is the link. A list with no titles shows no stack.
 - **The lists read gains up to three poster paths per list**, in list order.
 - No Delete on the row.
@@ -336,13 +342,13 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 **A list**
 
 - Round back button top left, a three-dot button top right (menu: Rename, Delete list). List name at Screen size, "8 titles" in Meta, and the compact Icons / List control on the right.
-- List view: rows with a drag handle, the position as a serif numeral, a 40 by 60 poster, name, "2022 · Show", and a remove (×) button. Reordering and "Taken off {list}." keep their existing behaviour (`reorderable-title-list.tsx`, `take-off.ts`).
+- List view: rows with a drag handle, the position as a serif numeral, a 40 by 60 poster, name, "2022 · Show", and a remove (×) button. Dragging stays smooth on a list of any length, the dragged row tracking the finger, and on drop the rows settle into their slots without overshooting one (`reorderable-title-list.tsx`). Taking a title off says "Taken off {list}." (`take-off.ts`); the title leaves with an exit and the rows or the grid close up behind it (section 11.2).
 - Icons view is the Library poster grid.
 - Rename happens in place of the name, as `list-name-heading.tsx` does now.
 - Delete asks first in a dialog: "Delete “Comfort shows”?" / "It holds 8 titles. Nothing about those shows changes. This only removes the list itself." / danger "Delete list", plain "Cancel".
 - Empty list: "Nothing here yet" / "Open any title and choose “Add to list” to put it here."
 
-**Add to a list** (from a title) is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
+**Add to a list** (from a title) is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s. A list created from the sheet follows the rule for creating a list above: it appears at once, and a lost write takes it back out, returns the name to the field and raises the write-failure toast.
 
 ### 8.6 Title, a show
 
@@ -353,9 +359,10 @@ Reference: `title-show.dark`, `title-show.light`.
 - The name wraps to two lines at most, then truncates. As on Tonight, the scrim is measured from the text (section 10).
 - Actions: a 48px filled "Mark S1 E2 watched", then two 48px quiet icon buttons (add to list, more).
 - Synopsis, season chips, then the episode list. A row is the episode number as a serif numeral, the name, and the tick. Watched rows draw the name in `dim`. The Up next row is a raised, rounded row with the "Up next" label under the name and its ring in `text`. An unaired episode shows its date in Meta where the tick would be.
-- **Data and behaviour** are unchanged: `titlePrimaryAction()`, `useWatchMark`, the watch menu on a watched tick, the unwatch confirmation, the more menu, streamed synopsis, cast and where-to-watch.
+- **Data and behaviour.** `titlePrimaryAction()`, `useWatchMark`, the watch menu on a watched tick, the unwatch confirmation, the more menu, streamed synopsis, cast and where-to-watch. Marking an episode rolls the "1 of 8" count in the same beat as the progress bar. The more menu grows from its button (section 11.2).
+- **Synopsis.** Its area reserves three lines' height from the skeleton through the streamed placeholder to the text, and a longer synopsis grows downward once. When there is no synopsis, or its read failed, the reserve collapses smoothly; a failure shows the existing inline failure line (`LIVE_FACT_FAILURE`).
 - The hero recede and the poster morph keep working: the band replaces today's wash in the same element.
-- Caught up or finished: the filled button gives way to whatever `titlePrimaryAction()` returns, drawn as quiet when it is not a mark.
+- **The last mark.** Marking the last available episode rolls the main action's slot to the finish line Tonight shows (`finishLine()`, the same wording), and the same short vibration as Tonight fires. The icon buttons beside it stay where they are. The line stays until the Undo window ends, and Undo in that time takes back the mark and the line together. Then the slot settles into what the page shows for a finished title: whatever `titlePrimaryAction()` returns, drawn as quiet when it is not a mark.
 
 ### 8.7 Title, a film
 
@@ -417,7 +424,7 @@ Reference: `import.dark`, `import.light`, and the four import cells of `states`.
 | Stopped | Row heading "The import stopped", the existing sentence, the counter line, a filled "Try again" and the reference line when there is one | Outlined panel |
 | File could not be read | Row heading, the message, a quiet "Choose a different file" | Outlined panel |
 
-Behaviour is `import-surface.tsx`'s, unchanged.
+Behaviour is `import-surface.tsx`'s: its phases, chunking and halted state. The bar slides between chunks, the counters roll, and "Import done" arrives with the region rise (section 11.2).
 
 ## 9. States and errors
 
@@ -488,45 +495,93 @@ Hold all of this with a unit test in the manner of `tests/poster-tint.test.ts`: 
 
 ## 11. Motion
 
-Reference: `motion-spec`, `motion-gestures.html` (open it; it plays by itself), `motion-prototype.source.txt`.
-
 **Principle.** Nothing teleports. Every action turns into its own result. Motion says where something came from, where it went, or whether it worked. It never decorates.
 
-**Motion changes what is drawn, never when a write is sent.** `up-next-mark.ts`, `useWatchMark` and `watch-marks.ts` keep their semantics. Two existing timings matter here and neither changes. The **mark hold**, 1200ms (`HOLD_MS` in `up-next/up-next-card.tsx`): the card holds on the episode just recorded, showing "Watched" and Undo (`HeldControl`), and `useUpNextMark`'s `held` is set. The **Undo window**, 6000ms (`UNDO_WINDOW_MS` in `up-next-mark.ts`): how long the reversal stays offered after a press, during which `undoable` is set. The boards and the prototype show only the first.
+**Motion changes what is drawn, never when a write is sent.** `up-next-mark.ts`, `useWatchMark` and `watch-marks.ts` keep their semantics. Two timings matter here and neither is a motion token. The **mark hold**, 1200ms (`HOLD_MS` in `up-next/up-next-card.tsx`): the card holds on the episode just recorded, showing "Watched" and Undo (`HeldControl`), and `useUpNextMark`'s `held` is set. The **Undo window**, 6000ms (`UNDO_WINDOW_MS` in `up-next-mark.ts`): how long the reversal stays offered after a press, during which `undoable` is set.
 
-### 11.1 Tokens
+### 11.1 Tokens and rules
 
-| Token | Value | Role | Status |
-| --- | --- | --- | --- |
-| `--dur-press` | 100ms | Compression under the finger | exists |
-| `--dur-fast` | 140ms | Immediate feedback, every exit | exists |
-| `--dur-base` | 220ms | Routine state change | exists |
-| `--dur-pop` | 260ms | Tick pop | exists |
-| `--dur-roll` | 280ms | A line of text replaced in place | **new** |
-| `--dur-slow` | 380ms | Arrivals, the toast | exists |
-| `--dur-travel` | 420ms | Something moving to another place, and a failure rewinding | **new** |
+Every token is declared in `app/globals.css` unless its row says otherwise.
 
-- The names of the two new tokens are proposals; keep them unless they collide.
-- `mediasafe/duration-on-the-ramp` and `tests/press-spring.test.ts` ("reads every duration it declares") mean a new token must be added in the same change as its first use.
-- Easing by role, all existing: arrive `--ease-press`, leave `--ease-out-quart`, travel `--ease-in-out-soft`.
-- **Tokens time what CSS does:** fills, fades, the line roll, the travelling poster, the toast. **Springs time what Motion does:** anything that changes size or follows a finger. By `app/motion.ts`'s own definitions that is `smooth` for a size change (the button narrowing, a row closing), `snappy` for anything a finger just let go of (the swipe wash withdrawing), and `bouncy` only for the tick and the season finish. A moment never needs both for the same element.
+| Token | Value | Role |
+| --- | --- | --- |
+| `--dur-press` | 100ms | The press's compression. Shorter than a tap, so the control answers the finger instead of lagging it |
+| `--dur-fast` | 140ms | Every exit, and immediate feedback. `exit` in `app/motion.ts` mirrors it |
+| `--dur-quick` | 190ms | The one navigation motion: the arriving page and the poster morph |
+| `--dur-base` | 220ms | Routine state change, and the shortest an entrance runs: rows rising, both title pages arriving, the *…* menus opening, the watch-hold, the poster's hover-out, the progress bars |
+| `--dur-pop` | 260ms | The press's release (`press-pop`), the tick's pop, the tab's nod |
+| `--dur-roll` | 280ms | A line of text replaced in place (`app/roll.tsx`) |
+| `--dur-slow` | 380ms | A region arriving whole (`arrive`), and dialogs, the offline banner, the selection bar and the toasts arriving |
+| `--dur-travel` | 420ms | Something moving to another place, and a failure rewinding |
+| `--dur-pending-hold` | 300ms | Not a motion: how long a route's pending state stays invisible before it paints |
+| `--stagger-step` | 20ms | The gap between staggered rows. Each row's delay is a multiple of it, so with the tenth-child cap the ninth row starts at 160ms and has landed by 380ms |
+| `--hold-shown` | `HOLD_MS` in `library/use-hold-to-select.ts`, 500ms | The long-press time: hold to select, its reduced-motion dim, and the paint hold's ring. Set on the element from the hold logic's own constant, never typed in CSS |
+| `--undo-shown` | the mark hold | The Undo ring. Set by `undo-ring.tsx` from `HOLD_MS` in `up-next-card.tsx`, never typed in CSS |
+
+- **Every duration is a ramp token**, reached through `var()`. `mediasafe/duration-on-the-ramp` enforces it in class names and style objects and accepts `var(--stagger-step)` and `var(--hold-shown)` beside `var(--dur-*)`. `tests/press-spring.test.ts` ("reads every duration it declares") means a new token is added in the same change as its first use. **The only exceptions are the ambient loops**: the pending shimmer and the pending bars' offsets down a skeleton. They run for as long as a read takes, not for a duration anyone waits through, so they keep their own timing off the ramp.
+- **Entrances run on `--dur-base` or slower; exits run on `--dur-fast`.** Arriving is where the character lives; leaving is where impatience does. The one navigation motion is the only exception: the arriving page settles on `--dur-quick`, and a route's loading screen fades in on `--dur-fast` so it is over before the page replaces it.
+- **Easing by role.** Arrive on `--ease-press`: an entrance, a rise, a line rolling in. Leave on `--ease-out-quart`: an exit, a line rolling out, the press's compression, a fill or colour change. Travel on `--ease-in-out-soft`: the poster flight, a failure rewinding. The page's rise and the poster morph land on `--spring-poster`, which is `smooth` sampled. A timer made visible (the Undo ring, the hold) and an ambient loop (the shimmer) are `linear`. **A transition that names no curve runs on `--ease-out-quart`**, the app's own ease-out: it is the default transition timing function (`--default-transition-timing-function` in `@theme`), so there is no fourth curve nobody chose.
+- **Tokens time what CSS does; springs time what Motion does.** Tokens time fills, fades, the roll, the rise, the travelling poster, the toasts and the press. Springs time anything that changes size or follows a finger. By `app/motion.ts`'s own definitions that is `smooth` for a size change (the button narrowing, a row closing, a grid closing up, the synopsis reserve collapsing), `snappy` for anything a finger just let go of or is pressing through Motion (the swipe wash withdrawing, Tonight's featured *Mark watched*), and `bouncy` only for the tick and the season finish. A moment never needs both for the same element.
+- **Every press is the CSS press, `pressable`, with one exception.** Every button, chip, segmented control, pill, the take-off ✕ and "See all" wear it, and so do cards, poster cells, list rows, menu items, settings rows and sidebar items. It compresses on `--dur-press`, scale only and never a fill, and releases through `press-pop`, `snappy` sampled into a keyframe. Its depth is the element's register: surfaces by default, small controls with `[--press-register:1]`, and the recording tick deepest. Hover keeps its existing `hover:brightness-*`. A card with its own pill presses as two things: pressing the pill presses only the pill, and pressing anywhere else on the card presses the card. **The exception is Tonight's featured *Mark watched*.** It is a Motion `m.button` carrying a `layoutId`, so Motion owns its transform and a CSS scale would fight the layout animation; it presses through `whileTap`, scale 0.97 on `snappy`, the spring `press-pop` is sampled from.
+- **The stagger plays once per arrival of a screen.** A filter chip, a sort change, a swapped result set or a restored one shows its rows without a rise. A `stagger-rise` container whose arrival has played carries `data-arrived="true"`, and its children do not rise again.
+- **Reduced motion is a smooth fade, never a cut.** Under `prefers-reduced-motion: reduce`, every arrival, exit and roll keeps its own duration and its own ease-out curve and drops only the movement: opacity still changes, transform does not. Nothing collapses to `1ms`. `MotionConfig reducedMotion="user"` does this for everything Motion drives, and the stylesheet's reduced-motion blocks do it for CSS. Movement that is not an arrival, exit or roll has its reduced-motion version in its own row below.
 
 ### 11.2 Moments
 
-| Moment | What moves | Time | With reduced motion |
-| --- | --- | --- | --- |
-| Mark the featured episode (`held` is set) | The button narrows from full width to a 56px circle at its left edge and becomes the filled tick. "Watched" (Row size) appears beside it and a quiet "Undo" at the right end: this is `HeldControl`, redrawn. Its progress segment fills and the count rolls in the same beat | `smooth`; the roll is `--dur-roll` | Tick, segment and count change at once |
-| Undo offered (`undoable` is set) | A ring drains around the tick for exactly as long as Undo is on screen. Read how the row shows Undo after the hold today and keep that arrangement; only the ring is new | the time Undo is shown | Undo stays the same time, no ring |
-| The hold ends (`settle()`) | The circle widens back into the button, now for the next episode. Only the episode line rolls: the old line leaves upward, the new one rises in. Title and artwork stay still | `smooth`; the roll is `--dur-roll` | Button and line swap |
-| Mark from a row | The tick fills and pops once (the existing `check-pop`), with the same ring and an "Undo" in the row | `--dur-pop` | The tick fills |
-| Write lost | The tick empties slowly, the reverse of filling, while the toast arrives and stays | `--dur-travel` and `--dur-slow`, together | The tick empties, the toast appears |
-| Finish a season | The episode line is replaced by the finish line in italic serif, which holds for the mark hold. The progress segments close their gaps into one bar. The existing short vibration fires | the mark hold | The italic line shows, nothing moves |
-| Leaves the list | The row closes. At the same moment a copy of its poster travels to the tab it now belongs to and fades as it lands; that tab's icon nods (scale only) as it arrives | `smooth` for the row, `--dur-travel` for the poster, together | The row disappears |
-| Only what changed moves | When a list updates, rows that did not change do not animate | | |
+**Everywhere**
 
-- What happens after the hold is the existing behaviour: the featured entry advances to its next episode, or leaves and the next entry takes its place.
+| Moment | What moves | Duration | Curve | With reduced motion |
+| --- | --- | --- | --- | --- |
+| A press | The control compresses under the finger and pops past rest on release (section 11.1) | `--dur-press` in, `--dur-pop` out | `--ease-out-quart` in; `press-pop` runs `linear` over its sampled stops | No compression and no pop. The control still acts |
+| Tonight's featured *Mark watched*, pressed | Scales to 0.97 under the finger and springs back | `snappy` | `snappy` | Motion drops the scale |
+| Rows arriving (`stagger-rise`) | Each row of a list, grid or rail rises 8px and fades in, `--stagger-step` after the one before; from the tenth row on, rows are already there. Once per arrival of a screen | `--dur-base` | `--ease-press` | Each row fades in on `--dur-base`, without the rise |
+| A title page arriving (`arrive-panel`), on the held title page and on the catalogue page for a title the reader does not hold | The hero's text and the actions rise 8px and fade in | `--dur-base` | `--ease-press` | Fades in on `--dur-base` |
+| A region arriving whole (`arrive`): an episode list, a streamed section, "Import done" | Rises 8px and fades in | `--dur-slow` | `--ease-press` | Fades in on `--dur-slow` |
+| A page arriving (the view transition) | The leaving page fades; the arriving one fades in and rises 10px; a shared poster morphs between its two places | `--dur-fast` out; `--dur-quick` in and for the morph | `--ease-out-quart` for the fades; `--spring-poster` for the rise and the morph | The pages cross-fade on the same durations; nothing rises and the poster does not travel |
+| A route's loading screen arriving (`arrive-fast`) | Fades in | `--dur-fast` | `--ease-out-quart` | The same fade |
+| The *…* menus, on the title page and on a list | The panel grows from its button's top-right corner, from `scale(0.97)` and transparent, and closes back toward it, fading | `--dur-base` in, `--dur-fast` out | `--ease-press` in, `--ease-out-quart` out | Fades in and out on the same durations, without the scale |
+| Dialogs, the offline banner, and the selection bar trading places with the tab bar | Each rises 8px into place and fades in (the banner drops from above), and leaves the way it came | `--dur-slow` in, `--dur-fast` out | `--ease-press` in, `--ease-out-quart` out | The same fades, without the movement |
+| A toast: the *Watched. Undo* action toast and the write-failure toast | Every toast arrives and leaves the same way, from the edge it sits on: the action toast, at the top, comes in from 8px above; the write-failure toast, at the foot, from 8px below. Each fades as it moves and leaves the way it came. A new toast replaces one that is still leaving: the leaving one finishes its exit while the new one arrives in the same place | `--dur-slow` in, `--dur-fast` out | `--ease-press` in, `--ease-out-quart` out | The same fades, without the movement |
+| The progress bars (`progress-fill`): the poster's bar, the title page's bar, Import's bar | The fill slides to its new value by `transform`, never `width` | `--dur-base` | `--ease-out-quart` | The fill reaches its new value without sliding |
+| The shimmer | A faint highlight sweeps across each pending block, offset down the skeleton so a region shimmers in reading order. An ambient loop, off the ramp (section 11.1) | its own cycle | `linear` | No sweep; the blocks stay still |
+
+**Tonight**
+
+| Moment | What moves | Duration | Curve | With reduced motion |
+| --- | --- | --- | --- | --- |
+| Mark the featured episode (`held` is set) | The button narrows from full width to a 56px circle at its left edge and becomes the filled tick. "Watched" (Row size) appears beside it and a quiet "Undo" at the right end: this is `HeldControl`. Its progress segment fills and the count rolls in the same beat | `smooth` for the narrowing; "Watched" and "Undo" fade in on `--dur-base`; the count rolls on `--dur-roll` | `--ease-press` for the fades and the roll in | No narrowing: the tick fills, "Watched" and "Undo" fade in, the count rolls as a fade |
+| Undo offered (`undoable` is set) | A ring drains around the tick for exactly as long as Undo is on screen | `--undo-shown` | `linear` | No ring; Undo stays for the same time |
+| The hold ends (`settle()`) | The circle widens back into the button, now for the next episode. Only the episode line rolls: the old line leaves upward, the new one rises in. Title and artwork stay still | `smooth`; the roll on `--dur-roll` | roll in `--ease-press`, out `--ease-out-quart` | The button takes its shape at once; the line rolls as a fade |
+| Mark from a row | The tick fills and pops once (`check-pop`), with the same ring and an "Undo" in the row. The row's watch-hold wash spreads from the tick's side and fades | `--dur-pop` for the tick; `--dur-base` for the wash | `--ease-press` | The tick fills and the wash fades, without the pop or the spread |
+| Write lost | The tick empties slowly, the reverse of filling, while the write-failure toast arrives and stays | `--dur-travel` for the tick, `--dur-slow` for the toast, together | `--ease-in-out-soft` for the tick | The same: emptying is a colour change, and the toast fades in |
+| Finish a season | The episode line rolls to the finish line in italic serif, which holds for the mark hold. The progress segments close their gaps into one bar. The existing short vibration fires | the mark hold; the roll on `--dur-roll` | as the roll | The line rolls as a fade; the segments join at once |
+| Leaves the list | The row closes. At the same moment a copy of its poster travels to the tab it now belongs to and fades as it lands; that tab's icon nods (scale only) as it arrives | `smooth` for the row, `--dur-travel` for the poster, `--dur-pop` for the nod | `--ease-in-out-soft` for the poster | The row fades out on `--dur-fast` and the rows below close up at once; no poster travels and no tab nods |
+| Only what changed moves | When a list updates, rows that did not change do not animate | | | |
+
+**A title's page**
+
+| Moment | What moves | Duration | Curve | With reduced motion |
+| --- | --- | --- | --- | --- |
+| Mark an episode | The episode row's watch-sweep: a wash scales in from the left and fades out over the row. The "1 of 8" count rolls in the same beat as the progress bar | `--dur-base` for the sweep; `--dur-roll` for the count | `--ease-press` for the sweep; the roll's curves | The wash fades out without scaling; the count rolls as a fade |
+| The last mark | The main action's slot rolls to the finish line (`finishLine()`, Tonight's wording); the icon buttons stay where they are, and Tonight's short vibration fires. The line stays until the Undo window ends, then the slot settles into what the page shows for a finished title. Undo within the window rolls the line away and the action back | `--dur-roll` | roll in `--ease-press`, out `--ease-out-quart` | Each roll is a fade |
+| The synopsis | Its area keeps three lines' height from the skeleton through the placeholder to the text; a longer synopsis grows downward once. With no synopsis, or a failed read, the reserve collapses | `smooth`, as a layout animation, for the collapse | | The reserve collapses at once |
+
+**Library, lists and search**
+
+| Moment | What moves | Duration | Curve | With reduced motion |
+| --- | --- | --- | --- | --- |
+| Hold to select | The held cell compresses to its press depth across the hold, then lands selected with a pop; the check badge pops in | `--hold-shown` for the hold; `--dur-base` for the landing and the badge | `linear` for the hold; `--ease-out-quart` for the landing and the badge | The held cell fades to about 70% opacity across `--hold-shown` instead of compressing; the landing does not move; the badge fades in on `--dur-base` |
+| Changing the sort | The sort control shows a pending state until the new order renders; the grid swaps in place without a stagger | | | The same |
+| A poster under a mouse (desktop) | The poster tilts toward the mouse and returns when it leaves; its glow is a pre-drawn shadow layer fading in and out | `--dur-fast` toward the mouse, `--dur-base` back; `--dur-base` for the glow | `--ease-out-quart` | No tilt; the glow still fades |
+| A title taken off a list | It fades out and the rows or the grid close up behind it (`AnimatePresence` in `popLayout`, as Tonight's rows leave) | `--dur-fast` for the exit (`exit`); `smooth` for closing up | `--ease-out-quart` | It fades out on `--dur-fast`; the rest close up at once |
+| Reordering a list | The dragged row follows the finger through a motion value; the rows it passes shift to open a gap; on drop, the rows around it settle into their slots without overshooting one | `smooth` for the shift and the settle | | The dragged row still follows the finger; the others take their slots at once |
+| Search's add | "Add" and "I've seen it" give way to "In your library" through a roll | `--dur-roll` | roll in `--ease-press`, out `--ease-out-quart` | A fade |
+| A search in flight | The previous results dim and stay tappable; the new results replace them in place, without a stagger. Only a fresh search's first result set staggers; a restored set appears as it was left | | | The same |
+| Import | The bar slides between chunks (`progress-fill`); the three counters roll; "Import done" arrives with the region rise (`arrive`) | `--dur-base` for the bar, `--dur-roll` for the counters, `--dur-slow` for "Import done" | as each moment above | The bar reaches each value without sliding; the counters roll as a fade; "Import done" fades in |
+
+- What happens after the mark hold is the existing behaviour: the featured entry advances to its next episode, or leaves and the next entry takes its place.
 - Where things travel: a show whose next episode has not aired goes to Coming up; a watched film and a show with nothing left go to Library. On desktop the target is the sidebar item.
-- The finish line's wording is the existing `finishLine()` output; the italic serif is the only change to it.
+- The finish line's wording is the existing `finishLine()` output, on Tonight and on the title page; the italic serif is the only change to it.
 
 ### 11.3 Gestures
 
@@ -536,13 +591,13 @@ Tapping always works. A gesture is a shortcut to something a tap already does.
 
 - Rules from `app/gesture-rules.ts`: `axis: "horizontal"`, `threshold: DRAG_THRESHOLD_PX` (40), `commits: [1]` (rightward only). Pointer handling from the hook lifted out of `landing-pager.tsx` in slice 5: latch the claim once, and swallow the click of a claimed gesture with `deliversClick`.
 - **The row does not move.** A wash (`text` at 12%) grows from the row's left edge under the finger. When travel reaches the threshold the tick fills and the device gives one short vibration (where `navigator.vibrate` exists). Dragging back under the threshold empties it again.
-- Release past the threshold records the watch and the wash withdraws; from there it is the "mark from a row" moment, Undo included. Release short of it withdraws the wash and records nothing.
+- Release past the threshold records the watch and the wash withdraws on `snappy`, carrying the finger's velocity; from there it is the "mark from a row" moment, Undo included. Release short of it withdraws the wash and records nothing.
 - Ignore a drag that starts within 24px of the left screen edge, which belongs to Android's back gesture.
 - Vertical scrolling must still win when the movement is mostly vertical; `claimsDrag` already decides this.
 
 **Paint to mark** (the episode list on a show's title page)
 
-- Press and hold the Up next episode's tick. A ring closes around it over the **long-press time**, 500ms, with 10px of slop. Those are `HOLD_MS` and `HOLD_SLOP_PX` in `library/use-hold-to-select.ts`, a different constant from the mark hold despite the shared name. Share them; do not copy them.
+- Press and hold the Up next episode's tick. A ring closes around it over the **long-press time**, 500ms, with 10px of slop. Those are `HOLD_MS` and `HOLD_SLOP_PX` in `library/use-hold-to-select.ts`, a different constant from the mark hold despite the shared name; CSS reads the time as `--hold-shown`. Share them; do not copy them. The ring stays under reduced motion: it moves nothing across the screen, and it is the only thing that says how long to hold.
 - Once the ring closes, the list stops scrolling for this pointer. Dragging down fills each tick the finger passes, with one short vibration each, and the count and progress bar follow. Dragging back up empties them again.
 - Release records the stroke as one write: mark watched up to the last filled episode (the existing path behind `library/mark-up-to.ts` and `mark-up-to-dialog.tsx`). The "Up next" label and raised row move to the first episode after the stroke at once.
 - A bar appears at the foot of the screen, where the selection action bar sits: "4 episodes marked" and a quiet "Undo" that reverses the whole stroke. It stays for the Undo window, with the same draining ring, then leaves.
@@ -553,10 +608,10 @@ Tapping always works. A gesture is a shortcut to something a tap already does.
 
 ### 11.4 Guardrails
 
-- Animate `transform`, `opacity` and colour. Never animate `width`, `height`, `margin` or `gap` directly; the prototype does, for simplicity. Where size must change (the button narrowing, a row closing, the segments joining) use Motion's layout animation, as the Up next rail's `AnimatePresence` already does, or the View Transitions API, as the poster morph does.
+- Animate `transform`, `opacity` and colour. Never animate `width`, `height`, `margin` or `gap` directly. Where size must change (the button narrowing, a row closing, the segments joining, a grid closing up, the synopsis reserve collapsing) use Motion's layout animation, as the Up next rail's `AnimatePresence` already does, or the View Transitions API, as the poster morph does.
 - One thing travels across the screen at a time. Small changes that belong to the same action (the tick, its segment, its count) change together.
 - A response starts within 100ms of the touch, before the server answers.
-- Every moment has a still version, listed above. `MotionConfig reducedMotion="user"` and the stylesheet's reduced-motion blocks must cover the new moments.
+- Every moment has a reduced-motion version, listed above, and it follows section 11.1's rule: a fade, never a cut. `MotionConfig reducedMotion="user"` and the stylesheet's reduced-motion blocks cover every moment.
 - Test on the real Android phone with the processor slowed four times.
 
 ## 12. Accessibility

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -81,5 +83,41 @@ describe("a list row for a title this account owns", () => {
     const markup = render(titleRow({ libraryEntryId: "entry-42" }));
 
     expect(markup).toContain('href="/titles/entry-42"');
+  });
+});
+
+/**
+ * A title taken off a list leaves with an exit and the rows or grid close up behind it —
+ * issue #476, the way Tonight's rows already leave. `tests/motion-moments.test.ts`'s own
+ * check on `up-next-episode-row.tsx` and `film-row.tsx` is the prior art for reading a
+ * motion prop straight off a component's source rather than off a render.
+ */
+describe("a row that leaves the list — issue #476", () => {
+  const ROW = readFileSync("app/(signed-in)/lists/[listId]/list-title-row.tsx", "utf8");
+  const LIST = readFileSync("app/(signed-in)/lists/[listId]/reorderable-title-list.tsx", "utf8");
+  const GRID = readFileSync("app/(signed-in)/lists/[listId]/list-icon-grid.tsx", "utf8");
+
+  it("closes up on smooth and fades on the exit timing, the way a Tonight row leaves", () => {
+    expect(ROW).toMatch(/layout="position"/);
+    expect(ROW).toMatch(/exit=\{\{\s*opacity:\s*0,\s*transition:\s*exit\s*\}\}/);
+  });
+
+  it("forwards a ref to its own motion element, so it keeps its space only while it leaves", () => {
+    // Every child of `AnimatePresence mode="popLayout"` must forward a `ref` to its real
+    // motion element, or the leaving row keeps its space until its exit ends rather than
+    // giving it up at once.
+    expect(ROW).toMatch(/ref\?:\s*Ref<HTMLLIElement>/);
+    expect(ROW).toMatch(/<m\.li\s[^>]*ref=\{/);
+  });
+
+  it("leaves both the reorderable list's rows and the icon grid's cells through AnimatePresence in popLayout", () => {
+    expect(LIST).toMatch(/<AnimatePresence initial=\{false\} mode="popLayout">/);
+    expect(GRID).toMatch(/<AnimatePresence initial=\{false\} mode="popLayout">/);
+  });
+
+  it("closes up the icon grid's cells the same way, and forwards their ref too", () => {
+    expect(GRID).toMatch(/layout="position"/);
+    expect(GRID).toMatch(/exit=\{\{\s*opacity:\s*0,\s*transition:\s*exit\s*\}\}/);
+    expect(GRID).toMatch(/ref\?:\s*Ref<HTMLLIElement>/);
   });
 });

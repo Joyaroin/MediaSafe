@@ -148,13 +148,32 @@ describe("one motion, and nothing that has to choose between motions", () => {
     expect(group).not.toContain("var(--dur-slow)");
   });
 
-  it("stops moving for a reader who asked for reduced motion", () => {
-    // §6's rule: the navigation still happens, it just stops travelling. With one motion
-    // there is one pair to neutralise instead of four.
-    const reduced = GLOBALS.match(
-      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
-    )!.join("\n");
-    expect(reduced).toMatch(/view-transition/);
+  it("cross-fades on its own durations under reduced motion — no rise, no poster travel (issue #471)", () => {
+    // §6's rule, sharpened by #471: the navigation still happens and still fades at the
+    // full-motion pair's own durations — it is only the rise and the poster's travel that
+    // drop, never the whole cross-fade collapsing to an instant swap.
+    const reducedBlocks = [
+      ...GLOBALS.matchAll(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g),
+    ].map((match) => match[0]);
+
+    const rootReduced = reducedBlocks.find((entry) => entry.includes("::view-transition-new(root)"));
+    expect(rootReduced, "a reduced-motion rule for the arriving root").toBeTruthy();
+    expect(rootReduced).toContain("nav-fade");
+    expect(rootReduced).not.toContain("nav-rise");
+    expect(rootReduced).toContain("var(--dur-quick)");
+    expect(rootReduced).not.toMatch(/animation-duration:\s*0s/);
+    expect(rootReduced).not.toMatch(/animation-delay:\s*0s/);
+
+    const posterReduced = reducedBlocks.find((entry) =>
+      entry.includes("::view-transition-group(*.poster)"),
+    );
+    expect(posterReduced, "a reduced-motion rule that stops the poster travelling").toBeTruthy();
+    // `animation-name: none`, not the `animation` shorthand: the shorthand also zeroes
+    // `animation-duration`, and the UA stylesheet gives the poster's own snapshot pair
+    // `animation-duration: inherit` from this group — a `0s` duration here would cut
+    // their cross-fade too, exactly the collapse this ticket removes.
+    expect(posterReduced).toMatch(/::view-transition-group\(\*\.poster\)\s*\{\s*animation-name:\s*none;/);
+    expect(posterReduced).not.toMatch(/::view-transition-group\(\*\.poster\)\s*\{\s*animation:\s*none;/);
   });
 });
 
@@ -705,22 +724,22 @@ describe("both progress bars follow the mark instead of jumping after it", () =>
     }
   });
 
-  it("still reaches its new value under reduced motion, because the mark must survive", () => {
-    // The established shape for this preference (`.watch-sweep`'s own reduced-motion
-    // rule, above) is to collapse the duration rather than remove the property: the fill
-    // still lands on its new value, it just does not travel to get there.
+  it("reaches its new value without sliding under reduced motion, because the mark must still survive (issue #471)", () => {
+    // The fill is pure `transform` with no opacity of its own, so the rule cannot drop
+    // `transform` the way the other moments drop theirs — it still has to reach its new
+    // value. `transition: none` removes the slide instead of collapsing its duration: the
+    // fill jumps to the mark rather than travelling there (handoff §11.2, "The fill
+    // reaches its new value without sliding").
     const reduced = GLOBALS.match(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/g,
     )!.join("\n");
-    expect(reduced).toMatch(/\.progress-fill\s*\{[^}]*transition-duration:\s*1ms/);
+    expect(reduced).toMatch(/\.progress-fill\s*\{\s*transition:\s*none;\s*\}/);
 
     for (const [label, source] of [
       ["poster-progress-bar.tsx", POSTER_PROGRESS_BAR],
       ["title-hero.tsx", TITLE_HERO],
     ] as const) {
-      expect(source, `${label} never wears the class the reduced-motion rule targets`).toMatch(
-        /progress-fill/,
-      );
+      expect(source, `${label} still wears the class`).toMatch(/progress-fill/);
     }
   });
 });
@@ -759,7 +778,7 @@ describe("the rows making way for a dragged row get a spring", () => {
   });
 
   it("animates the displaced rows on the motion module's own spring", () => {
-    expect(LIST_TITLE_ROW).toMatch(/import \{ smooth \} from "@\/app\/motion"/);
+    expect(LIST_TITLE_ROW).toMatch(/import \{[^}]*\bsmooth\b[^}]*\} from "@\/app\/motion"/);
     expect(LIST_TITLE_ROW).toMatch(/animate=\{[^}]*shift[^}]*\}/);
     expect(LIST_TITLE_ROW).toMatch(/transition=\{smooth\}/);
   });

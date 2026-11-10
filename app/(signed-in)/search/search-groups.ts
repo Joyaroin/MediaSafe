@@ -5,7 +5,7 @@ import type { MarkedResult } from "./actions";
  * What one search shows — issue #357, which gave Search one field for films and shows
  * rather than a Shows/Films toggle a reader had to set before typing.
  *
- * The field asks both catalogues at once (`searchCatalogueAction`), and each kind answers
+ * The field asks both catalogues at once (`GET /api/search`, issue #480), and each kind answers
  * on its own: found some, found none, or failed. This module turns the two answers into
  * what the reader sees. Its one rule that must not bend is the error discipline's — a kind
  * whose search failed is drawn as a failure, never as a kind with no matches, and

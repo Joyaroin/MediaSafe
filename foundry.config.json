@@ -15,15 +15,26 @@
     "CI": "true"
   },
   "builderEnv": {
-    "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_t{ticket}"
+    "DATABASE_URL": "postgres://mediasafe:mediasafe@localhost:5432/mediasafe_t{ticket}",
+    "E2E_PORT": "4{ticket}",
+    "CI": "true"
   },
+  "builderVerify": [
+    {
+      "when": "tests/e2e/**/*.spec.ts",
+      "run": "npx playwright test {files} --retries=0",
+      "serial": true
+    },
+    { "when": "tests/**/*.test.ts", "run": "npx vitest run {files}" }
+  ],
   "builderSetup": [
-    "ln -sfn {repoRoot}/node_modules node_modules",
-    "ln -sfn {repoRoot}/.env .env",
+    "/bin/cp -cR {repoRoot}/node_modules node_modules",
+    "/bin/cp {repoRoot}/.env .env",
     "docker exec mediasafe-postgres createdb -U mediasafe mediasafe_t{ticket}",
     "npm run db:migrate"
   ],
   "builderTeardown": [
     "docker exec mediasafe-postgres dropdb --if-exists -U mediasafe mediasafe_t{ticket}"
-  ]
+  ],
+  "agentsMayNotRun": ["playwright test", "test:e2e"]
 }

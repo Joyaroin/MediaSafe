@@ -98,7 +98,10 @@ function Rail({ rail, mode }: { rail: Recommendations; mode: KindMode }) {
                 interceptions. */}
             <Link
               href={`/catalogue/${result.kind}/${result.tmdbId}`}
-              className="group block"
+              // `pressable`, at the surface register — issue #466: the whole card is the
+              // link and carries no pill of its own, so the press sits on it directly
+              // rather than on a wrapping `<li>`.
+              className="pressable group block"
             >
               <Poster
                 posterPath={result.posterPath}

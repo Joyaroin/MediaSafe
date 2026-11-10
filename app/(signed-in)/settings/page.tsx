@@ -14,7 +14,13 @@ import { DisplayNameControl } from "./display-name-control";
 import { BackBar } from "../back-bar";
 import { NavTransition } from "../nav-transition";
 import { SettingsHeading, YOU } from "./settings-heading";
-import { SETTING, SETTING_HELP, SETTING_LABEL, SettingsGroup } from "./settings-group";
+import {
+  SETTING,
+  SETTING_HELP,
+  SETTING_LABEL,
+  SETTING_ROW_LINK,
+  SettingsGroup,
+} from "./settings-group";
 import { SignOutButton } from "./sign-out-button";
 import { SignOutOtherDevicesButton } from "./sign-out-other-devices-button";
 import { ThemeControl } from "./theme-control";
@@ -146,10 +152,7 @@ export default async function SettingsPage() {
               </p>
 
               {/* A row that navigates: the plain treatment, its chevron at the far end. */}
-              <Link
-                href="/import"
-                className="flex h-11 items-center justify-between text-note font-semibold text-text transition-colors duration-[var(--dur-fast)] hover:text-dim"
-              >
+              <Link href="/import" className={SETTING_ROW_LINK}>
                 Import a library
                 <span aria-hidden="true">›</span>
               </Link>

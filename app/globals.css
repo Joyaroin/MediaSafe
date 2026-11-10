@@ -455,24 +455,42 @@
      catch it mid-flight. That splits the vocabulary in two, and the
      split is why a spring preset is not listed here.
 
-     Anything a finger or a cursor can interrupt — a sheet being
-     dragged, a tile being pressed, a panel that can be dismissed
-     before it finishes arriving — is a **spring**, and springs live in
-     `app/motion.ts`. A CSS transition cannot be redirected once it is
-     running: reverse it halfway and it restarts from a standstill at
-     the new target, which is exactly the glassiness this change exists
-     to remove. A spring carries its current velocity into the new
-     target instead, so the thing under the finger never stops.
+     Anything a finger or a cursor catches and redirects mid-flight —
+     a sheet being dragged, a row being swiped, a list row being
+     reordered — is a **spring**, and springs live in `app/motion.ts`.
+     A CSS transition cannot be redirected once it is running: reverse
+     it halfway and it restarts from a standstill at the new target,
+     which is exactly the glassiness this change exists to remove. A
+     spring carries its current velocity into the new target instead,
+     so the thing under the finger never stops.
 
      Everything declarative — a colour, a fade, a reveal nothing can
      catch — stays a CSS transition and reads its timing from here.
 
+     **A press is CSS.** A press cannot be caught mid-flight, so it is
+     `pressable` below: a transition in, a keyframe sampled from
+     `snappy` out. The one exception is Tonight's featured *Mark
+     watched*, which is already a Motion element whose transform Motion
+     owns, so it presses through `whileTap` on `snappy` itself
+     (`app/motion.ts` says why).
+
      Exits run at `--dur-fast` against entrances at `--dur-base` or
      slower. Arriving is where the character lives; leaving is where
-     impatience does. */
+     impatience does.
+
+     Under reduced motion an arrival, an exit or a roll is a smooth
+     fade, never a cut: it keeps its own duration and its own ease-out
+     curve and drops only the movement. Opacity still changes; transform
+     does not. */
   --ease-press: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Issue #462. Tailwind's own default for a `transition-*` utility with no easing class
+     is `ease` — a curve this application never chose and nobody reaches for on purpose.
+     Pointing the default at `--ease-out-quart` means an unstyled `transition-*` runs on
+     this app's own arrival curve instead of falling through to one nobody picked. */
+  --default-transition-timing-function: var(--ease-out-quart);
 
   /* ── The poster morph's spring — issue #338 ──────────────────────
      `app/motion.ts`'s `smooth` — the module's one *non-bouncing*
@@ -574,6 +592,14 @@
      room for jitter, so a wifi navigation never shows the pending state it is held in
      front of. */
   --dur-pending-hold: 300ms; /* route-level pending only, held past the measured render */
+
+  /* Issue #462. The gap between a staggered row and the one before it (`@utility
+     stagger-rise` below), so the stagger's own rhythm is a token and not a literal
+     three different values would otherwise repeat. Was an untokened 30ms; 20ms is what
+     keeps the ninth row — the tenth-child cap's edge — landing inside the figure the
+     ticket names: 8 steps + the rise itself (`--dur-base`) is 160ms + 220ms = 380ms,
+     where the old 30ms step over the old `--dur-slow` rise ran to 240ms + 380ms = 620ms. */
+  --stagger-step: 20ms;
 }
 
 @layer base {
@@ -621,9 +647,12 @@
      `route-modal.tsx`'s grabber until issue #273 deleted the route interceptions and the
      dialog with them.)
 
-     The tap highlight goes with it. It is a grey rectangle the platform paints over the
-     element's own bounds on press, and this app already answers a press properly — the
-     `pressable` scale below is instant and shaped like the thing it is on. */
+     The tap highlight goes with it, and stays off. It is a grey rectangle the platform
+     paints over the element's own bounds on press. This app's press is the `pressable`
+     scale below, shaped like the thing it is on, and every control wears it: every button,
+     chip, segmented control and pill, the take-off ✕ and *See all*, and the cards, list
+     rows, settings rows and sidebar items. The one control that presses otherwise is
+     Tonight's featured *Mark watched*, through Motion (`@theme`'s motion note says why). */
   a,
   button,
   [role="button"],
@@ -894,53 +923,67 @@
 }
 
 /* ── The staggered entrance — a list that arrives as a list ──────────────────────────
-   Applied to the container; every direct child inherits the run. Kept in CSS rather
-   than given to Motion on purpose, and the rule is the one `app/motion.ts` states: a
+   Applied to the container; every direct child inherits the run. The rise is a keyframe
+   here rather than a Motion animation, and the rule is the one `app/motion.ts` states: a
    spring buys interruptibility, and nothing can catch a grid that is appearing. A
-   declarative, uncatchable reveal is exactly what a keyframe is for, and doing it here
-   costs no client boundary — `library-entry-cell.tsx` and the rail tiles stay server
-   components.
+   declarative, uncatchable reveal is exactly what a keyframe is for, and keeping it here
+   costs the rows no client boundary — `library-entry-cell.tsx` and the rail tiles stay
+   server components.
+
+   **It plays once per arrival of a screen.** A filter chip, a sort change or a swapped
+   result set is not an arrival, and the rows it shows must not vanish and rise again.
+   Knowing that a screen has already arrived is the container's business, not the rows':
+   a component on the container may say so with `data-arrived="true"`, and the rise stops
+   for its children. That costs the rows nothing and moves no animation out of this file.
 
    `backwards` is load-bearing. Without it every child paints at its final opacity for
    the length of its own delay and then snaps back to 0 to start animating, which reads
    as a flash rather than a stagger.
 
    The run stops at the tenth child, and everything past it is simply already there. A
-   library of 472 titles at 30ms a row would otherwise take fourteen seconds to finish
-   arriving; the cap keeps the whole run under 300ms at any length, which is the point
-   where stagger still reads as rhythm instead of as the page being slow — and it now
-   costs ten animations rather than 472, which is the same rule applied to the count as
-   well as to the clock. See the `nth-child(n + 10)` rule at the foot of this utility. */
+   library of 472 titles at `--stagger-step` (20ms) a row would otherwise take about nine
+   and a half seconds to finish arriving; the cap keeps the whole run's delay under 300ms
+   at any length, which is the point where stagger still reads as rhythm instead of as the
+   page being slow — and it now costs ten animations rather than 472, which is the same
+   rule applied to the count as well as to the clock. See the `nth-child(n + 10)` rule at
+   the foot of this utility.
+
+   **Issue #462 moved the rise onto `--dur-base` and the per-row gap onto `--stagger-step`
+   (20ms, was an untokened 30ms).** The ninth row — the one the tenth-child cap leaves
+   furthest out — used to start at 240ms and run the old `--dur-slow` (380ms) rise, so it
+   was still moving past 620ms. It now starts at 160ms and runs `--dur-base` (220ms),
+   landing at 380ms: quickly enough that a reader arriving at Library, Tonight or Search
+   is not still watching the last row settle half a second later. */
 @utility stagger-rise {
   & > * {
-    animation: rise-in var(--dur-slow) var(--ease-press) backwards;
+    animation: rise-in var(--dur-base) var(--ease-press) backwards;
   }
   & > *:nth-child(1) {
     animation-delay: 0ms;
   }
   & > *:nth-child(2) {
-    animation-delay: 30ms;
+    animation-delay: 20ms;
   }
   & > *:nth-child(3) {
-    animation-delay: 60ms;
+    animation-delay: 40ms;
   }
   & > *:nth-child(4) {
-    animation-delay: 90ms;
+    animation-delay: 60ms;
   }
   & > *:nth-child(5) {
-    animation-delay: 120ms;
+    animation-delay: 80ms;
   }
   & > *:nth-child(6) {
-    animation-delay: 150ms;
+    animation-delay: 100ms;
   }
   & > *:nth-child(7) {
-    animation-delay: 180ms;
+    animation-delay: 120ms;
   }
   & > *:nth-child(8) {
-    animation-delay: 210ms;
+    animation-delay: 140ms;
   }
   & > *:nth-child(9) {
-    animation-delay: 240ms;
+    animation-delay: 160ms;
   }
   /* **The tenth child is where the animation stops, not merely where the delay does.**
 
@@ -997,10 +1040,14 @@
 
 /* The same rule the sweep and the poster morph already follow: the content still
    arrives, it just stops travelling to get here. Opacity is kept — it is what makes the
-   arrival legible at all — and only the movement is dropped. */
+   arrival legible at all — and only the movement is dropped.
+
+   Issue #471: the duration stays `--dur-base` — only the rise drops, via the keyframe
+   redefinition below, which every `rise-in` caller (`stagger-rise`, `arrive`,
+   `arrive-panel`) shares. The stagger's own delay still zeroes: once a screen's rows no
+   longer travel there is nothing for the gap between them to stagger. */
 @media (prefers-reduced-motion: reduce) {
   .stagger-rise > * {
-    animation-duration: 1ms;
     animation-delay: 0ms !important;
   }
   @keyframes rise-in {
@@ -1026,8 +1073,8 @@
    `@starting-style` with `transition-behavior: allow-discrete` is CSS's own answer for
    animating a *discrete* property — `display`, a `<dialog>`'s `overlay` — across the
    instant it flips, which is what turns a jump straight to `none` into a visible exit.
-   Grids and rails are deliberately untouched: `stagger-rise`'s own reason above still
-   holds for them, unwidened. */
+   Grids and rails do not use this mechanism: they arrive through `stagger-rise`'s keyframe,
+   for its own reason above, once per arrival of a screen. */
 
 /* The three confirmation dialogs — `mark-up-to-dialog.tsx`, `delete-list-dialog.tsx`,
    `watch-menu.tsx` — and their `::backdrop`s. A native `<dialog>` already toggles
@@ -1182,6 +1229,37 @@
     transform var(--dur-fast) var(--ease-out-quart);
 }
 
+/* The action toast (`app/(signed-in)/library/action-toast-toasts.tsx`) — issue #472. The
+   same mechanism as the write-failure toast just above (a `@starting-style` entrance and
+   a `data-leaving="true"` exit held by the component for exactly as long as this
+   transition takes), at the opposite edge: this toast sits at the top of the viewport,
+   not the bottom, so it moves the other way — down into place on the way in, up and out
+   on the way back — "every toast moves this one way, from the edge it sits on." Entrance
+   `--dur-slow` on the arrival curve, exit `--dur-fast`, the same pair the write-failure
+   toast uses, because every toast on this ramp uses it. */
+@utility action-toast-transition {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-press),
+    transform var(--dur-slow) var(--ease-press);
+}
+
+@starting-style {
+  .action-toast-transition {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.action-toast-transition[data-leaving="true"] {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
 /* The event still happens under reduced motion — a dialog still opens and closes, the
    banner and the action bar still appear and disappear, a toast still arrives and
    leaves — only the travel drops, the same rule `rise-in`'s own reduced-motion block
@@ -1194,7 +1272,9 @@
   .selection-action-bar-transition,
   .selection-action-bar-transition[data-open="true"],
   .write-failure-toast-transition,
-  .write-failure-toast-transition[data-leaving="true"] {
+  .write-failure-toast-transition[data-leaving="true"],
+  .action-toast-transition,
+  .action-toast-transition[data-leaving="true"] {
     transform: none;
   }
 
@@ -1202,7 +1282,8 @@
     .dialog-transition[open],
     .offline-banner-transition[data-open="true"],
     .selection-action-bar-transition[data-open="true"],
-    .write-failure-toast-transition {
+    .write-failure-toast-transition,
+    .action-toast-transition {
       transform: none;
     }
   }
@@ -1328,12 +1409,22 @@
   }
 }
 
-/* The same unconditional-event, no-lingering-animation rule as the strike and stamp
-   above: the state flip is instant already, this only shortens how long the wash takes
-   to reach the fully-transparent end it always reaches. */
+/* Issue #471: the wash still fades at its own 200ms — holding `transform: scaleX(1)`
+   across both frames below keeps the wash full-width throughout, so there is still
+   something for the fade to draw; only the scale it travelled on under full motion
+   drops. Dropping `transform` outright, rather than holding it, would leave the row's
+   own static `transform: scaleX(0)` above in force for the whole run, fading a
+   zero-width box in and out of nothing. */
 @media (prefers-reduced-motion: reduce) {
-  .watch-sweep {
-    animation-duration: 1ms;
+  @keyframes watch-sweep-in {
+    0% {
+      transform: scaleX(1);
+      opacity: 0.3;
+    }
+    100% {
+      transform: scaleX(1);
+      opacity: 0;
+    }
   }
 }
 
@@ -1390,10 +1481,31 @@
   }
 }
 
+/* Issue #471: both still play at their own duration — the hold's wash and the check's
+   pop drop only their scale. Neither utility sets a static `transform` outside its
+   keyframe, so simply leaving `transform` out of the redefinitions below is enough: it
+   stays at its initial value (`none`) for the whole run rather than needing one held
+   constant, the way the sweep above does. */
 @media (prefers-reduced-motion: reduce) {
-  .watch-hold::before,
-  .check-pop {
-    animation-duration: 1ms;
+  @keyframes watch-hold-in {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes check-pop {
+    0% {
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+    }
   }
 }
 
@@ -1539,47 +1651,71 @@
   }
 }
 
+/* Issue #471. `tick-rewind` only ever changes colour and `held-reveal` only ever changes
+   opacity — neither travels through space, so neither needed a collapse and neither gets
+   one now: dropping the forced one is the whole fix for both, which is why they carry no
+   rule here at all. `roll-in`/`roll-out` do travel and keep their own `--dur-roll` while
+   the keyframe redefinitions below drop just that, fading rather than sliding. `tab-nod`
+   is only ever added by `flyPosterToTab` (`poster-flight.ts`), which already returns
+   before adding it when reduced motion is on, so the redefinition below is never reached
+   in practice — it exists so the rule, if it ever were, plays inert rather than scaling.
+   The undo ring is untouched: it is a timer made visible, not a moment that arrives or
+   leaves, and #407 already decided it disappears outright while Undo stays on screen for
+   the same time. */
 @media (prefers-reduced-motion: reduce) {
-  .roll-in,
-  .roll-out,
-  .tick-rewind,
-  .tab-nod {
-    animation-duration: 1ms;
+  @keyframes roll-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes roll-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tab-nod {
+    40% {
+      transform: none;
+    }
   }
 
   .undo-ring {
     display: none;
   }
-
-  .held-reveal {
-    transition-duration: 1ms;
-  }
 }
 
-/* ── Both progress bars follow the mark — issue #335 ─────────────────────────────────
+/* ── Every progress bar moves the same way — issue #335 ──────────────────────────────
    The state that drives each bar's fill already updates at the sweep's settle
    (`poster-progress-bar.tsx`, `title-hero.tsx`'s `WatchedBar`), and each fill carries a
    transition on the ramp, declared at its call site. Issue #407 moved that transition off
    `width` — handoff §11.4 never animates a size — and onto `transform`: the fill is the
-   track's full width, slid left by what is not yet watched, and the track clips it, so
+   track's full width, slid left by what is not yet done, and the track clips it, so
    the fill's own rounded end stays round where a `scaleX` would flatten it.
-   `progress-fill` carries no rule of its own; it exists only so this block has one
-   selector to reach both bars.
+   `progress-fill` exists so this block has one selector for every progress bar in the
+   app, and a bar that moves (Import's included) wears it.
 
-   Same shape as the sweep just above: the same unconditional-event, no-lingering-
-   animation rule. The fill still lands on the mark's new value — it just stops
-   travelling to get there. */
+   Issue #471 ends the duration collapse this used to carry: the fill is pure `transform`
+   with no opacity of its own, so dropping the movement under reduced motion by shortening
+   the slide would mean dropping the only way it ever reaches the mark. Instead the rule
+   below removes the transition outright — the fill still reaches its new value, it just
+   does not slide to get there (handoff §11.2, "The fill reaches its new value without
+   sliding"). */
 @media (prefers-reduced-motion: reduce) {
   .progress-fill {
-    transition-duration: 1ms;
+    transition: none;
   }
 }
 
 /* ── Press ──────────────────────────────────────────────────────────────────────────
-   The acknowledgement every tappable surface owes a finger. Scale only, and only
-   downward on the way in: a fill is not available for this, because in this world a
+   The acknowledgement every tappable surface owes a finger, and every one wears it: every
+   button, chip, segmented control and pill, the take-off ✕ and *See all*, and the cards,
+   poster cells, list rows, menu items, settings rows and sidebar items. Scale only, and
+   only downward on the way in: a fill is not available for this, because in this world a
    filled face means *this was marked* or *the one main action*, and a control that fills
-   under the thumb is claiming something it has not done.
+   under the thumb is claiming something it has not done. Hover keeps its own
+   `hover:brightness-*`.
 
    ── It moves now, and it is two mechanisms rather than one — issue #281 ────────────
    This read *`--spring-press` … over `--dur-press`, which is that spring's own settle*,
@@ -1613,9 +1749,16 @@
 
    **CSS rather than Motion, for the half of the old argument that was always
    load-bearing.** Every tile, cell and row wearing this stays a server component and a
-   rail of them costs no per-frame JavaScript. `filter` keeps `--dur-fast` and
-   `--ease-out-quart`: the only thing that animates it here is `IN_FLIGHT`'s brightness,
-   and a colour has no mass to overshoot with. */
+   rail of them costs no per-frame JavaScript. `filter` and `color` both keep `--dur-fast`
+   and `--ease-out-quart`: what animates them is `IN_FLIGHT`'s brightness and, since #463
+   put the press on the shared button base, a button's own `hover:brightness-95`,
+   `hover:text-dim` and `hover:bg-danger` — and a colour has no mass to overshoot with.
+
+   **One control presses through Motion instead, and only one.** Tonight's featured *Mark
+   watched* is a Motion `m.button` with a `layoutId` — it narrows into the tick — so Motion
+   owns its `transform`, and this utility's scale on the same element would fight the
+   layout animation. It presses through `whileTap`, scale `0.97` on `snappy`, the spring
+   `press-pop` below is sampled from. Every other press is this transition. */
 @utility pressable {
   /* ── The register — issues #282 and #283 ──────────────────────────────────────────
      `0.96` was one number doing two jobs. It is a considered movement on a 262px rail
@@ -1710,12 +1853,36 @@
      exceeds the label's and falls short of the recording one. */
   --press-lead: 0.98;
 
+  /* `color` joined this list in #463: the shared button base (`app/buttons.ts`) used to
+     carry its own `transition-[filter,color,background-color]`, a second `transition-*`
+     utility that fought this one for `transition-property` — the same trap the tab bar's
+     own history above documents. The base now wears only `pressable`, and `hover:text-dim`,
+     `hover:bg-danger` and the rest of the buttons' hover colours ride on this list instead. */
   transition:
     transform var(--dur-press) var(--ease-out-quart),
     background-color var(--dur-press) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart),
     filter var(--dur-fast) var(--ease-out-quart);
 
-  &:active,
+  /* ── Two things on one card — issue #466 ──────────────────────────────────────────
+     A recommendation or suggestion card wears this utility around its own *Add* pill,
+     and the pill wears it too, at the control register. `:active` is not scoped to the
+     element a finger actually landed on — the platform matches it on every ancestor of
+     the pressed element as well (press a nested button and the `<li>` around it reads as
+     pressed too) — so a press that lands on the pill would otherwise compress the card
+     wrapped around it in the same gesture, one press answering twice.
+
+     `:not(:has(.pressable:active))` is the card's own exemption: a card whose
+     *descendant* is already pressed hands the gesture to that descendant and sits still.
+     A leaf control has no `.pressable` descendant of its own, so the clause is always
+     false there and costs it nothing — this reads as one rule for every call site, not a
+     card-shaped special case.
+
+     `[data-pressed="true"]` needs no equivalent guard. The delegated listener
+     (`motion-provider.tsx`) marks the nearest `.pressable` ancestor of wherever a finger
+     came down — `closest(".pressable")` — which for a press that started on the pill is
+     the pill and never the card around it, by construction. */
+  &:active:not(:has(.pressable:active)),
   &[data-pressed="true"] {
     transform: scale(var(--press-compress));
   }
@@ -1761,9 +1928,15 @@
      is touched.
 
      **Not solved by moving `pressable` up onto the raised parent**, which is the other
-     obvious answer and is rejected in #279 by name. On the Up next episode card the
-     checkmark is a *sibling* inside that raised `<li>`, so a `pressable` parent would
-     scale the whole card every time the check is pressed.
+     obvious answer and is rejected in #279 by name. A press belongs to what the finger is
+     on. On the Up next episode card the checkmark is a *sibling* inside that raised `<li>`
+     and the card itself is not a control, so a `pressable` parent would scale the whole
+     card every time the check is pressed. Where the card *is* a control with a control of
+     its own inside it — a recommendation or suggestion card with its *Add* pill — both
+     wear the press, and they press as two things: pressing the pill presses only the pill,
+     and pressing anywhere else on the card presses the card. `:active` matches every
+     ancestor of the pressed element, so the card's press must be kept from firing when
+     the press landed on its pill.
 
      **The radius is the element's own** because this paints the element's own background
      rather than a pseudo-element behind it: a background is clipped by whatever
@@ -1912,11 +2085,14 @@
    ticket asks for both: *the held cell scales under the press, then springs into its
    selected state.*
 
-   `data-holding` is the press itself, and its `500ms` is `use-hold-to-select.ts`'s
-   `HOLD_MS` — the compression finishes at the exact moment the hold lands, so the cell is
-   at its smallest when it pops. `linear` and not an ease, because this one is a *timer
-   made visible* rather than a movement: an ease-out would spend the first half of the
-   gesture looking finished.
+   `data-holding` is the press itself, and its duration is `--hold-shown`, not a literal —
+   issue #470 moved the `500ms` this used to type here onto the held element instead,
+   `selectable-entry.tsx` setting it from `use-hold-to-select.ts`'s own `HOLD_MS`, the exact
+   constant `programme-note-episodes.tsx`'s `HoldRing` already hands the same variable: the
+   compression finishes at the exact moment the hold lands, so the cell is at its smallest
+   when it pops, and there is no second copy of the number left to drift from the first.
+   `linear` and not an ease, because this one is a *timer made visible* rather than a
+   movement: an ease-out would spend the first half of the gesture looking finished.
 
    `data-landed` is the arrival. `app/motion.ts` reserves visible overshoot for exactly
    this and would ordinarily supply the spring, but not here: this rule is on a library
@@ -1966,7 +2142,7 @@
 
 .pressable[data-holding="true"] {
   transform: scale(var(--press-compress));
-  transition: transform 500ms linear;
+  transition: transform var(--hold-shown) linear;
 }
 
 .pressable[data-landed="true"] {
@@ -2000,15 +2176,29 @@
 }
 
 /* The event still happens; it stops moving through space. `motion-provider.tsx` does this
-   globally for anything Motion drives, and these two are CSS, so they say it themselves. */
+   globally for anything Motion drives, and these two are CSS, so they say it themselves.
+
+   Issue #470: `data-holding` used to drop to nothing at all here — no compression and no
+   replacement, so a reader with reduced motion on had no way to tell a hold was even
+   running. It fades instead, to about 70% opacity, over the same `--hold-shown` the
+   full-motion ramp above reads — the one duration, read twice, never retyped. `data-landed`
+   still does not move, because the overshoot it plays is pure `transform` with no fade to
+   keep; what changes instead is `badge-arrive`, redefined below rather than cut to
+   `animation: none`, so the one confirmation iOS Safari's missing Vibration API leaves
+   still arrives — fading in on its own `--dur-base`, with only its scale dropped. */
 @media (prefers-reduced-motion: reduce) {
   .pressable[data-holding="true"] {
     transform: none;
-    transition: none;
+    transition: opacity var(--hold-shown) linear;
+    opacity: 0.7;
   }
-  .pressable[data-landed="true"],
-  .badge-arrive {
+  .pressable[data-landed="true"] {
     animation: none;
+  }
+  @keyframes badge-arrive {
+    from {
+      opacity: 0;
+    }
   }
 }
 
@@ -2159,8 +2349,6 @@
   animation: rise-in var(--dur-slow) var(--ease-press) backwards;
 }
 
-/* A panel that swaps has further to travel than a section filling in, and it is replacing
-   something rather than joining it — so it takes the sheet's own heavier settle. */
 /* A route's loading screen arriving — the UI overhaul. Next commits a loading screen with no
    view transition (only the page that replaces it gets one), so without this the tap was a
    hard cut. `--dur-fast`, the leaving half of the one motion, and opacity only: short
@@ -2170,15 +2358,16 @@
   animation: nav-fade var(--dur-fast) var(--ease-out-quart) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .arrive-fast {
-    animation-duration: 1ms;
-  }
-}
+/* Issue #471: `nav-fade` only ever changes opacity, so there was never anything to drop —
+   the collapse this used to carry gave reduced motion a flash instead of the same fade.
+   Removed rather than redefined, the same fix as `tick-rewind` and `held-reveal` above. */
 
+/* A title page arriving — the held title page's hero and actions, and the catalogue page's
+   body for a title the reader does not hold. The rule for both is an entrance's: `--dur-base`
+   on the arrival curve (handoff §11.2), so the page has settled with the page transition and
+   the poster morph rather than still moving after the reader has started reading. */
 @utility arrive-panel {
-  animation: rise-in var(--dur-slow) var(--ease-press) backwards;
-  animation-duration: 420ms;
+  animation: rise-in var(--dur-base) var(--ease-press) backwards;
 }
 
 /* ── Reading, drawn ─────────────────────────────────────────────────────────────────
@@ -2359,17 +2548,26 @@
   pointer-events: none;
 }
 
-/* Issue #141's poster morph, collapsed rather than removed: `::view-transition-group`
-   is what moves and resizes the shared element, `::view-transition-old`/`-new` are what
-   cross-fade the two snapshots inside it. Zeroing all three is what the browser itself
-   falls back to without View Transitions support, so a reader who asks for reduced
-   motion sees exactly that fallback — an instant swap, navigation and panel-swap alike,
-   never a missing tile or a missing panel. */
+/* Issue #471: an instant swap was the browser's own fallback and this file chose it
+   deliberately, but it is exactly the cut the handoff now forbids. The crossfade keeps
+   its own durations — `--dur-fast` leaving, `--dur-quick` arriving, the same pair the
+   full-motion rule above runs — and only two things are dropped: the small rise on the
+   way in (`nav-rise`), and the poster's own travel, which would otherwise still resize
+   and reposition across the screen. `::view-transition-old(root)` needs no override of
+   its own: it already runs nothing but `nav-fade` reverse, so there was never a rise on
+   the way out to drop. The poster group gets `animation-name: none`, not the `animation`
+   shorthand: the shorthand also resets `animation-duration` to `0s`, and the UA stylesheet
+   gives `::view-transition-old/new` (via `::view-transition-image-pair`) `animation-duration:
+   inherit` from the group — so a `0s` duration here would silently zero their cross-fade
+   too. `animation-name: none` drops only the group's own travel and leaves `--dur-quick`
+   and `--spring-poster` in place for the snapshot pair to inherit, so the poster still
+   fades in place like any other named group this file does not otherwise author. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
+  ::view-transition-new(root) {
+    animation: var(--dur-quick) var(--ease-out-quart) both nav-fade;
+  }
+
+  ::view-transition-group(*.poster) {
+    animation-name: none;
   }
 }

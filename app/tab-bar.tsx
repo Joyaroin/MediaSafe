@@ -113,8 +113,8 @@ const TABS = DESTINATIONS.map(({ href, label }) => ({
  * ── The bar wears the press — issue #295 ─────────────────────────────────────────────
  *
  * One class string, worn by all four tabs. Until this ticket these were the four most
- * pressed controls in the application and the only ones that answered nothing: #279's
- * press reached every tile, cell, row and button in the tree, and of the `pressable` call
+ * pressed controls in the application and they answered nothing: #279's press reached
+ * tiles, cells and rows but never the shared button base, and of the `pressable` call
  * sites the bar that is on screen at all times was not one.
  *
  * **The control register, which is a register that already exists.** A tab is a 44px hit

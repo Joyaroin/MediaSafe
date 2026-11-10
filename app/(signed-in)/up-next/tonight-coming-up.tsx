@@ -37,7 +37,9 @@ export function TonightComingUp({
         </h2>
         <Link
           href="/coming-up"
-          className="flex min-h-11 items-center px-3 text-item font-medium text-text hover:text-dim"
+          // `pressable [--press-register:1]`, the small-control register, the same as
+          // Tonight's own *See all* (`tonight-list.tsx`) — issue #465.
+          className="pressable [--press-register:1] flex min-h-11 items-center px-3 text-item font-medium text-text hover:text-dim"
         >
           See all
         </Link>

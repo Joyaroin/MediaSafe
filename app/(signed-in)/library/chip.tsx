@@ -28,6 +28,16 @@ import { SELECTED, SELECTED_MARKER, UNSELECTED } from "@/app/selection";
  * The selected line **travels**, as the fill did: one `layoutId` marker slides to the
  * pressed chip on `snappy`, the spring for a thing a finger just let go of. `layoutId` is
  * the caller's own, so two chip rows mounted at once never slide into each other.
+ *
+ * ── The press — issue #465 ───────────────────────────────────────────────────────────
+ *
+ * `pressable [--press-register:1]`, the small-control register, on the `44px` target —
+ * not on the `36px` face `CHIP_FACE` draws. Scaling the target scales the face inside it
+ * by the same transform, centred the same way `PILL_TARGET`'s callers already scale their
+ * own face from the target (`catalogue-result.tsx`'s *Add*), and the face carries no
+ * `transition-*` of its own for the press to fight: `CHIP_FACE` sets no `transition`, and
+ * `UNSELECTED`'s `transition-colors` lives on that same face, a different element from the
+ * one that now wears the press.
  */
 export const CHIP_FACE =
   "relative flex h-9 items-center gap-1.5 rounded-[var(--radius-full)] bg-raised px-3.5 text-item";
@@ -48,7 +58,7 @@ export function ChipButton({
       type="button"
       aria-pressed={selected}
       onClick={onClick}
-      className="flex h-11 shrink-0 items-center"
+      className="pressable [--press-register:1] flex h-11 shrink-0 items-center"
     >
       <span className={`${CHIP_FACE} ${selected ? SELECTED : UNSELECTED}`}>
         {selected ? (

@@ -100,6 +100,26 @@ export async function requireUserId(): Promise<UserId> {
 }
 
 /**
+ * The user id for this request, or `null` with no session — `requireUserId`'s
+ * non-redirecting sibling, for a Route Handler that answers its own `401` rather than
+ * sending the reader anywhere (issue #480).
+ *
+ * `requireUserId` redirects because a page render has nowhere else useful to put a
+ * signed-out reader than the sign-in screen. A `GET` Route Handler is different: it
+ * answers JSON to a client-side `fetch`, and a redirect response there is not a
+ * navigation — it is a status code and a `Location` header the caller has to notice
+ * itself. `app/read-route.ts` is what notices it, for both a `401` and a response
+ * redirected to `/sign-in`, and sends the reader there the same way `requireUserId`
+ * would have. The route only has to say *there is nobody signed in*; where that reader
+ * goes is the client's call, same as every other read this application makes from the
+ * browser.
+ */
+export async function signedInUserId(): Promise<UserId | null> {
+  const session = await currentSession();
+  return session ? asUserId(session.user.id) : null;
+}
+
+/**
  * Whether this signed-in reader has answered the first-run **Bring your library in**
  * offer — by choosing to import or by declining, either one (issue #75).
  *

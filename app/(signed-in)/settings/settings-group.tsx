@@ -42,3 +42,14 @@ export const SETTING_LABEL = "label-line text-dim";
 
 /** The line of help under or above a control — Meta, in `dim`. */
 export const SETTING_HELP = "max-w-[60ch] text-meta leading-snug text-dim";
+
+/**
+ * A row inside a card that navigates rather than writes — *Import a library ›* is the one
+ * caller. `pressable`, at the surface register, since issue #466: it presses the way every
+ * other row this ticket reaches does. `hover:text-dim` keeps the colour change the row
+ * always had, carried on `pressable`'s own transition list (`color` at `--dur-fast`)
+ * instead of a `transition-colors` of its own — a second `transition-*` utility beside
+ * `pressable` is the tab bar's own trap (`globals.css`'s `pressable` docblock).
+ */
+export const SETTING_ROW_LINK =
+  "pressable flex h-11 items-center justify-between text-note font-semibold text-text hover:text-dim";
