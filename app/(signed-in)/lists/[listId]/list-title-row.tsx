@@ -125,8 +125,12 @@ export function ListTitleRow({
     </>
   );
 
+  // Issue #433: a surface, pressing at the default register. `pressable` already declares
+  // `transition` (`app/globals.css`), and a second `transition-colors` utility here would
+  // fight it over which one wins (`app/tab-bar.tsx`'s own docblock names the failure) — so
+  // `hover:bg-raised`'s fade now rides the press's own transition list instead.
   const rowClass =
-    "flex min-h-[76px] min-w-0 flex-1 items-center gap-3 py-2 transition-colors duration-[var(--dur-fast)] hover:bg-raised";
+    "pressable flex min-h-[76px] min-w-0 flex-1 items-center gap-3 py-2 hover:bg-raised";
 
   const inner =
     title.libraryEntryId === null ? (

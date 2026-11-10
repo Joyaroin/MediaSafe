@@ -9,6 +9,7 @@ import {
 } from "@/app/(signed-in)/catalogue/add-watched";
 import { PILL_TARGET, PRIMARY_PILL, SECONDARY_PILL } from "@/app/buttons";
 import { Poster } from "@/app/poster";
+import { Roll } from "@/app/roll";
 import type { MarkedResult } from "./actions";
 import { useCatalogueAdd } from "./use-catalogue-add";
 
@@ -119,115 +120,127 @@ export function CatalogueResultRow({
           {result.kind === "film" ? "Film" : "Show"}
         </p>
 
-        {inLibrary ? null : (
+        <Roll
+          rollKey={inLibrary ? "in-library" : "add-watched"}
+          className="-mb-1.5 mt-0.5"
+        >
+          {inLibrary ? null : (
+            /**
+             * The second add — issue #222.
+             *
+             * ── Why it is under the name and not in the trailing slot ─────────────────
+             *
+             * The trailing slot already holds *Add*, and this control is wider than it —
+             * putting it there, beside the pill or stacked under it, spends its width plus a
+             * gap out of the name, which on a `340px` phone is the one thing the row cannot
+             * spare. Under the name it costs height instead, and the `66px` poster has room
+             * for a name, a meta line and a `32px` pill face. The #222 measurements that
+             * used to sit here were taken against the `52px` Archivo row and no longer
+             * describe this one.
+             *
+             * It also puts the two controls in the reading order the ticket asks for. The
+             * pill is where the eye goes and where the thumb rests; this is a sentence
+             * further down the row, in the quiet register, for the reader who came to it on
+             * purpose.
+             *
+             * **Charcoal, issue #397:** it is the quiet pill now (`SECONDARY_PILL`), `32px`
+             * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
+             * face, so the row grows by the face and not by the target.
+             *
+             * ── It disappears with the pill, not separately ────────────────────────────
+             *
+             * `inLibrary` is the optimistic flag both controls set, so pressing either one
+             * takes both off the row at once. A watched add that left *Add* standing would
+             * offer to add what was just added, and the row's own answer — *In your
+             * library* — is already the true thing to say about both.
+             */
+            <button
+              type="button"
+              onClick={() => void attempt(true)}
+              aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
+              className={PILL_TARGET}
+            >
+              <span className={SECONDARY_PILL}>
+                {addWatchedLabel(result.kind)}
+              </span>
+            </button>
+          )}
+        </Roll>
+      </div>
+
+      {/* Issue #443: the confirmation rolls in rather than teleporting into the pills'
+          place, and a lost add returns the pill the same way — both states share this one
+          grid cell (`Roll`, `app/roll.tsx`), keyed off the add's own optimistic flag. */}
+      <Roll rollKey={inLibrary ? "in-library" : "add"} className="shrink-0">
+        {inLibrary ? (
           /**
-           * The second add — issue #222.
+           * It says so, and it goes there. Not a disabled Add: a control the reader can reach
+           * and cannot use is an invitation withdrawn. Issue #357 makes the statement a way to
+           * the title's own page — the catalogue address sends a held title on to it.
+           */
+          <Link
+            href={`/catalogue/${result.kind}/${result.tmdbId}`}
+            aria-label={`${result.name} is in your library — open it`}
+            className="flex h-11 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
+          >
+            <CheckmarkIcon className="h-3.5 w-3.5" />
+            In your library
+          </Link>
+        ) : (
+          /**
+           * The filled pill (`app/buttons.ts`'s `PRIMARY_PILL`, issue #397): `32px` inside a
+           * `44px` target. Search's per-row *Add* is the one sanctioned exception to *one
+           * filled action per surface* — each is the main action of its own row. The history
+           * below is the accent era's, kept for its reasoning about the target.
            *
-           * ── Why it is under the name and not in the trailing slot ─────────────────
+           * **This reverses what this file used to say**, which was that the treatment is
+           * *not vermilion, because vermilion is reserved for recording a watch and adding
+           * a title is not the daily gesture that reservation exists to protect.* The
+           * linen redesign restates the reservation rather than dropping it: the accent
+           * marks what is live **and the one primary action of a screen**, one per screen
+           * and never two (`globals.css` holds the rule in full). Adding is the only
+           * action on this screen and the only reason a reader is on it, and on a ground
+           * this warm a bordered ghost button beside a filled card no longer reads as a
+           * button at all.
            *
-           * The trailing slot already holds *Add*, and this control is wider than it —
-           * putting it there, beside the pill or stacked under it, spends its width plus a
-           * gap out of the name, which on a `340px` phone is the one thing the row cannot
-           * spare. Under the name it costs height instead, and the `66px` poster has room
-           * for a name, a meta line and a `32px` pill face. The #222 measurements that
-           * used to sit here were taken against the `52px` Archivo row and no longer
-           * describe this one.
+           * ── The pill is 34px and the target is 44px ──────────────────────────────────
            *
-           * It also puts the two controls in the reading order the ticket asks for. The
-           * pill is where the eye goes and where the thumb rests; this is a sentence
-           * further down the row, in the quiet register, for the reader who came to it on
-           * purpose.
+           * The handoff asks for both — a `34px` pill, and *every tap target ≥44px* — so
+           * the button is `h-11` and the pill is a `span` drawn inside it. The button has
+           * no ground of its own, so the extra five pixels above and below are invisible
+           * and tappable, which is the whole point.
            *
-           * **Charcoal, issue #397:** it is the quiet pill now (`SECONDARY_PILL`), `32px`
-           * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
-           * face, so the row grows by the face and not by the target.
+           * They cannot be the same box. An earlier draft set `h-[34px]` on the button and
+           * claimed in this docblock that the row's padding made up the difference; it does
+           * not — a `button`'s hit area is its own border box and nothing its parent adds
+           * reaches it. That comment asserted a target the code did not have, on the one
+           * control on this screen a reader has to hit.
            *
-           * ── It disappears with the pill, not separately ────────────────────────────
+           * ── The press register — issue #282 ──────────────────────────────────────────
            *
-           * `inLibrary` is the optimistic flag both controls set, so pressing either one
-           * takes both off the row at once. A watched add that left *Add* standing would
-           * offer to add what was just added, and the row's own answer — *In your
-           * library* — is already the true thing to say about both.
+           * `[--press-register:1]` is the control register: `0.92` in and `1.030` past
+           * rest, against the `0.960`/`1.012` a card or a row gets. This is a chip with no
+           * ground of its own — the pill inside it is what a reader sees — and 4% on a
+           * 44px box moves its edge under a device pixel. One property rather than a pair,
+           * and a property rather than a second utility, for the same reason `w-auto`
+           * after a `size-11` was refused above: two utilities over one property are
+           * resolved by the order Tailwind emits them in.
            */
           <button
             type="button"
-            onClick={() => void attempt(true)}
-            aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
-            className={`-mb-1.5 mt-0.5 ${PILL_TARGET}`}
+            onClick={() => void attempt(false)}
+            /**
+             * The visible label is one word because the row it sits in is the context. A
+             * screen reader has no row — it has twenty buttons all called *Add* — so the
+             * accessible name carries the title the visible label leaves to the layout.
+             */
+            aria-label={`Add ${result.name} to your library`}
+            className={`pressable [--press-register:1] ${PILL_TARGET}`}
           >
-            <span className={SECONDARY_PILL}>{addWatchedLabel(result.kind)}</span>
+            <span className={PRIMARY_PILL}>Add</span>
           </button>
         )}
-      </div>
-
-      {inLibrary ? (
-        /**
-         * It says so, and it goes there. Not a disabled Add: a control the reader can reach
-         * and cannot use is an invitation withdrawn. Issue #357 makes the statement a way to
-         * the title's own page — the catalogue address sends a held title on to it.
-         */
-        <Link
-          href={`/catalogue/${result.kind}/${result.tmdbId}`}
-          aria-label={`${result.name} is in your library — open it`}
-          className="flex h-11 shrink-0 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
-        >
-          <CheckmarkIcon className="h-3.5 w-3.5" />
-          In your library
-        </Link>
-      ) : (
-        /**
-         * The filled pill (`app/buttons.ts`'s `PRIMARY_PILL`, issue #397): `32px` inside a
-         * `44px` target. Search's per-row *Add* is the one sanctioned exception to *one
-         * filled action per surface* — each is the main action of its own row. The history
-         * below is the accent era's, kept for its reasoning about the target.
-         *
-         * **This reverses what this file used to say**, which was that the treatment is
-         * *not vermilion, because vermilion is reserved for recording a watch and adding
-         * a title is not the daily gesture that reservation exists to protect.* The
-         * linen redesign restates the reservation rather than dropping it: the accent
-         * marks what is live **and the one primary action of a screen**, one per screen
-         * and never two (`globals.css` holds the rule in full). Adding is the only
-         * action on this screen and the only reason a reader is on it, and on a ground
-         * this warm a bordered ghost button beside a filled card no longer reads as a
-         * button at all.
-         *
-         * ── The pill is 34px and the target is 44px ──────────────────────────────────
-         *
-         * The handoff asks for both — a `34px` pill, and *every tap target ≥44px* — so
-         * the button is `h-11` and the pill is a `span` drawn inside it. The button has
-         * no ground of its own, so the extra five pixels above and below are invisible
-         * and tappable, which is the whole point.
-         *
-         * They cannot be the same box. An earlier draft set `h-[34px]` on the button and
-         * claimed in this docblock that the row's padding made up the difference; it does
-         * not — a `button`'s hit area is its own border box and nothing its parent adds
-         * reaches it. That comment asserted a target the code did not have, on the one
-         * control on this screen a reader has to hit.
-         *
-         * ── The press register — issue #282 ──────────────────────────────────────────
-         *
-         * `[--press-register:1]` is the control register: `0.92` in and `1.030` past
-         * rest, against the `0.960`/`1.012` a card or a row gets. This is a chip with no
-         * ground of its own — the pill inside it is what a reader sees — and 4% on a
-         * 44px box moves its edge under a device pixel. One property rather than a pair,
-         * and a property rather than a second utility, for the same reason `w-auto`
-         * after a `size-11` was refused above: two utilities over one property are
-         * resolved by the order Tailwind emits them in.
-         */
-        <button
-          type="button"
-          onClick={() => void attempt(false)}
-          /**
-           * The visible label is one word because the row it sits in is the context. A
-           * screen reader has no row — it has twenty buttons all called *Add* — so the
-           * accessible name carries the title the visible label leaves to the layout.
-           */
-          aria-label={`Add ${result.name} to your library`}
-          className={`pressable [--press-register:1] ${PILL_TARGET}`}
-        >
-          <span className={PRIMARY_PILL}>Add</span>
-        </button>
-      )}
+      </Roll>
     </li>
   );
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { posterSrc } from "@/app/poster";
 import { posterBandStyle, titleScrimGradient } from "@/app/poster-tint";
+import { Roll } from "@/app/roll";
 import { HeroPoster } from "./hero-poster";
 import { seasonHeading } from "./season-grouping";
 
@@ -209,6 +210,15 @@ function HeroBand({ posterPath }: { posterPath: string | null }) {
  * Season 1*. The fill is the accent, which is `text` now; the track is `text` at 20%, one
  * value that reads as §6's *24% white* in dark and *16% ink* in light closely enough to
  * need no theme branch.
+ *
+ * ── The count rolls with the bar's own fill — issue #440 (handoff §11.2) ────────────
+ *
+ * A mark changes `watched` and `total` in the same render that moves the fill, so the
+ * fraction's `Roll` and the bar's `translateX` start together without any wiring between
+ * them — one fact, read twice. The fraction and the season heading are two `Roll`s, keyed
+ * apart: a mark inside a season rolls only the fraction, and the mark that finishes a
+ * season — which moves the bar on to the next one — rolls the heading in the same beat, so
+ * *4 of 4* never leaves beside a *Season 2* that has already cut in.
  */
 function WatchedBar({
   watched,
@@ -234,8 +244,17 @@ function WatchedBar({
         />
       </div>
 
-      <p className="mt-1.5 text-meta text-dim" data-numeric>
-        {watched} of {total} · {seasonHeading(seasonNo)}
+      <p className="mt-1.5 flex items-baseline text-meta text-dim" data-numeric>
+        <Roll rollKey={`${watched}/${total}`}>
+          {watched} of {total}
+        </Roll>
+        {/* The separator's space is a no-break space inside the heading's own line, not a
+            `gap`: a flex container drops a plain space between its items, and the line's
+            text must still read *1 of 8 · Season 1* to assistive technology and to tests. */}
+        <Roll rollKey={`season-${seasonNo}`}>
+          {" · "}
+          {seasonHeading(seasonNo)}
+        </Roll>
       </p>
     </div>
   );
