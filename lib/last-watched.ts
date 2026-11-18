@@ -41,7 +41,7 @@ const ANY_ORIGIN = { "Access-Control-Allow-Origin": "*" } as const;
  * - **A title** answers `200`, as `text/plain`, with the title alone as the body: no
  *   wrapper, no quotes, no trailing newline, and no cut — the site decides what is short
  *   enough to show. It may be kept for an hour, which is the same hour the cache behind it
- *   will blur the answer to (a later ticket); a browser may therefore show an old title
+ *   (`cache/last-watched.ts`) blurs the answer to; a browser may therefore show an old title
  *   for up to an hour after the link is switched off, which is accepted.
  * - **`null`** answers the plain `404` for every way of not having an answer: sharing off,
  *   an unknown, replaced or malformed token, and no dated watch. They are one answer so

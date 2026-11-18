@@ -7,6 +7,11 @@ const access = vi.hoisted(() => ({
   lastWatchedTitle: vi.fn(),
 }));
 vi.mock("@/db/access", () => access);
+// The hour's cache (issue #529) is `tests/last-watched-route.test.ts`'s subject. Here it
+// is a pass-through, because `unstable_cache` cannot run outside a Next request.
+vi.mock("next/cache", () => ({
+  unstable_cache: (callback: (...args: never[]) => Promise<unknown>) => callback,
+}));
 
 import { GET } from "@/app/api/last-watched/[token]/route";
 

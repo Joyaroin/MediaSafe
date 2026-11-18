@@ -77,6 +77,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     accountFigures: vi.fn(),
     listYouRails: vi.fn(),
     getUnownedTitleDetail: vi.fn(),
+    lastWatchedTitle: vi.fn(),
   },
   /** The borrowed reads that are not database reads at all — `tmdb/catalogue.ts`'s. */
   tmdb: {
@@ -221,6 +222,9 @@ const {
   cachedUnownedTitleDetail,
   invalidateBorrowedFactsFor,
 } = await import("@/cache/borrowed-facts");
+const { LAST_WATCHED_WINDOW_SECONDS, cachedLastWatchedTitle } = await import(
+  "@/cache/last-watched"
+);
 
 /** Two accounts, named so that a leak between them reads as a leak in the failure. */
 const mine = asUserId("user_mine");
@@ -1058,6 +1062,83 @@ describe("the map covers db/access.ts", () => {
 });
 
 /**
+ * The last watched title — issue #529: the one **owned** fact with a window and no tag,
+ * in `cache/last-watched.ts` so that `tags.ts`'s own sentences stay true. Held here against
+ * the same fake `unstable_cache` as everything above, which records each read's window.
+ *
+ * The window is not an accident of cost. It is what keeps a public link from timestamping
+ * each new title, so a test that a second request is served from the cache would pass just
+ * as well with a day or no window at all; the window's own length is asserted separately.
+ */
+describe("the last watched title is cached for an hour, per reader, and no write clears it", () => {
+  it("is constructed with a window of 3600 seconds, the reader's id in its key, and no tag", async () => {
+    await cachedLastWatchedTitle(mine);
+
+    expect(LAST_WATCHED_WINDOW_SECONDS).toBe(3600);
+    expect(cacheState.constructed).toEqual([
+      { keyParts: ["lastWatchedTitle", mine], tags: [], revalidate: 3600 },
+    ]);
+  });
+
+  it("runs the title query once for a second request within the hour", async () => {
+    reads.lastWatchedTitle.mockResolvedValue("Solaris");
+
+    expect(await cachedLastWatchedTitle(mine)).toBe("Solaris");
+    expect(await cachedLastWatchedTitle(mine)).toBe("Solaris");
+
+    expect(reads.lastWatchedTitle).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one reader's title from another's", async () => {
+    reads.lastWatchedTitle.mockImplementation(async (userId: string) => `Title of ${userId}`);
+
+    expect(await cachedLastWatchedTitle(mine)).toBe(`Title of ${mine}`);
+    expect(await cachedLastWatchedTitle(yours)).toBe(`Title of ${yours}`);
+    expect(reads.lastWatchedTitle).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays cached when a nothing-to-show answer is cached, and never caches a failure", async () => {
+    reads.lastWatchedTitle.mockRejectedValueOnce(new Error("the database is down"));
+    await expect(cachedLastWatchedTitle(mine)).rejects.toThrow("the database is down");
+
+    reads.lastWatchedTitle.mockResolvedValue(null);
+    expect(await cachedLastWatchedTitle(mine)).toBeNull();
+    expect(await cachedLastWatchedTitle(mine)).toBeNull();
+    expect(reads.lastWatchedTitle).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * Every write in `INVALIDATES`, run for this reader: the cached title is still there.
+   * A new watch, an unwatch and an import are among them, and they are the ones that
+   * matter — an entry that moved the moment a watch was logged would timestamp it.
+   */
+  it.each(Object.keys(INVALIDATES) as (keyof typeof INVALIDATES)[])(
+    "is not cleared by %s",
+    async (write) => {
+      reads.lastWatchedTitle.mockResolvedValueOnce("Solaris");
+      expect(await cachedLastWatchedTitle(mine)).toBe("Solaris");
+
+      invalidateFor(write, mine);
+      invalidateForOtherAccounts(write, [mine, yours]);
+
+      reads.lastWatchedTitle.mockResolvedValue("A watch logged a moment ago");
+      expect(await cachedLastWatchedTitle(mine)).toBe("Solaris");
+      expect(reads.lastWatchedTitle).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("is not cleared by the borrowed facts' bust either", async () => {
+    reads.lastWatchedTitle.mockResolvedValueOnce("Solaris");
+    await cachedLastWatchedTitle(mine);
+
+    invalidateBorrowedFactsFor([SOLARIS]);
+
+    reads.lastWatchedTitle.mockResolvedValue("Another");
+    expect(await cachedLastWatchedTitle(mine)).toBe("Solaris");
+  });
+});
+
+/**
  * Every `.ts`/`.tsx` under `app/` whose text contains `needle`, as repository-relative
  * paths. Used by one assertion below, which is a claim about *where a call appears* and
  * so cannot be made from the module's own exports.
@@ -1369,7 +1450,7 @@ describe("every shared-mirror write busts the borrowed facts too", () => {
  */
 describe("the reads that are cached, and the one that must never be", () => {
   /** Both files of `cache/`, because the claim is about the directory, not either half. */
-  const source = ["tags.ts", "borrowed-facts.ts"]
+  const source = ["tags.ts", "borrowed-facts.ts", "last-watched.ts"]
     .map((file) => readFileSync(path.join(import.meta.dirname, "..", "cache", file), "utf8"))
     .join("\n");
 
@@ -1423,6 +1504,8 @@ describe("the reads that are cached, and the one that must never be", () => {
       "titleCastAndCrew",
       "titleWatchProviders",
       "getUnownedTitleDetail",
+      // `last-watched.ts` — #529's, the one owned entry with a window and no tag.
+      "lastWatchedTitle",
     ]);
   });
 
