@@ -56,7 +56,7 @@ const USER_ID_MINT_PATTERN = {
     "Only lib/session.ts mints a user id, from a session Better Auth resolved — and " +
     "db/access.ts's own resolveSeedUserId, from a user row it looked up itself for " +
     "npm run db:seed (issue #74), and calendarFeedOwner, from a calendar feed token " +
-    "(issue #366). Take the UserId as an argument (issue #40).",
+    "(issue #366), and lastWatchedOwner, from a last-watched token (issue #528). Take the UserId as an argument (issue #40).",
 };
 
 /**

@@ -23,6 +23,8 @@ export const user = pgTable("user", {
   timezone: text("timezone").default("UTC").notNull(),
   importOfferAnsweredAt: timestamp("import_offer_answered_at"),
   calendarFeedToken: text("calendar_feed_token").unique(),
+  lastWatchedToken: text("last_watched_token").unique(),
+  sharesLastWatched: boolean("shares_last_watched").default(false).notNull(),
 });
 
 export const session = pgTable(
