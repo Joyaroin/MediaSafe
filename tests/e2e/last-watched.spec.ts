@@ -120,29 +120,45 @@ type Action = "on" | "off" | "renew";
 const toast = (page: Page, title: string) =>
   page.getByRole("alert").filter({ has: page.getByText(title, { exact: true }) });
 
-/** Puts sharing on and returns the id each action posts under, by doing each once. */
-async function learnActions(page: Page): Promise<Record<Action, string>> {
-  const ids: string[] = [];
-  page.on("request", (request) => {
-    const id = request.headers()["next-action"];
-    if (request.method() === "POST" && id) ids.push(id);
-  });
+/** Clicks, and returns the id of the Server Action that click posted. */
+async function postedBy(page: Page, click: () => Promise<void>): Promise<string> {
+  const [request] = await Promise.all([
+    page.waitForRequest(
+      (candidate) => candidate.method() === "POST" && !!candidate.headers()["next-action"],
+    ),
+    click(),
+  ]);
+  return request.headers()["next-action"];
+}
 
+/**
+ * Puts sharing on and returns the id each action posts under.
+ *
+ * Each id is read off the request its own click sends, never by position: the fixture
+ * user is shared by every test in this file, so sharing may start on or off, and a list of
+ * ids in arrival order would label them one place out whenever it starts on.
+ */
+async function learnActions(page: Page): Promise<Record<Action, string>> {
   await page.goto("/settings");
   if ((await toggle(page).getAttribute("aria-checked")) === "true") {
     await toggle(page).click();
     await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
   }
-  await toggle(page).click();
+
+  const on = await postedBy(page, () => toggle(page).click());
   await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("button", { name: "Make a new link" }).click();
+  const renew = await postedBy(page, () =>
+    page.getByRole("button", { name: "Make a new link" }).click(),
+  );
   await expect(page.getByText("New link made. The old one no longer works.")).toBeVisible();
-  await toggle(page).click();
+  const off = await postedBy(page, () => toggle(page).click());
   await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+
+  // Leave sharing on, as every test below starts.
   await toggle(page).click();
   await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
 
-  const [on, renew, off] = ids;
+  expect(new Set([on, renew, off]).size).toBe(3);
   return { on, off, renew };
 }
 
@@ -165,18 +181,26 @@ test("a new link is only called 'Making a new link' while a new link is being ma
 
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
+  let offHeld = false;
   await steer(page, ids, async (action) => {
-    if (action === "off") await held;
+    if (action === "off") {
+      offHeld = true;
+      await held;
+    }
     return "pass" as const;
   });
 
   const makeNew = page.getByRole("button", { name: /^Make a new link$|^Making a new link$/ });
   await toggle(page).click();
 
-  // The off is in flight, and the switch is the only thing that was pressed.
+  // The off is in flight, held in the route: without this the label below could be read
+  // after an off that was never held, and pass for the wrong reason.
+  await expect.poll(() => offHeld).toBe(true);
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
   await expect(makeNew).toBeDisabled();
   await expect(makeNew).toHaveText("Make a new link");
-  await expect(page.getByText("Making a new link")).toHaveCount(0);
+  // Exact: the row's help paragraph says "Making a new link stops the old one…".
+  await expect(page.getByText("Making a new link", { exact: true })).toHaveCount(0);
 
   release();
   await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
