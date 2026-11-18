@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CalendarFeedControl } from "@/app/(signed-in)/settings/calendar-feed-control";
 import { DisplayNameControl } from "@/app/(signed-in)/settings/display-name-control";
+import { LastWatchedControl } from "@/app/(signed-in)/settings/last-watched-control";
 import { SHADES } from "@/app/(signed-in)/you/year-heatmap";
 import { YouHeading } from "@/app/(signed-in)/you/you-heading";
 import { YouHero } from "@/app/(signed-in)/you/you-hero";
@@ -94,6 +95,45 @@ describe("Settings has no filled button", () => {
       for (const filled of [PRIMARY_BUTTON, PRIMARY_BUTTON_COMPACT, PRIMARY_BUTTON_LARGE]) {
         expect(markup).not.toContain(filled);
       }
+    }
+  });
+});
+
+/** A placeholder, for `PLACEHOLDER_FEED`'s reason: nothing under `tests/` holds a real token. */
+const PLACEHOLDER_LAST_WATCHED = "https://mediasafe.example/api/last-watched/[your link]";
+
+describe("the last watched row (issue #530)", () => {
+  it("is off with no link when handed none, and says what sharing reveals", () => {
+    const markup = renderToStaticMarkup(createElement(LastWatchedControl, { url: null }));
+    expect(markup).toContain('aria-checked="false"');
+    expect(markup).not.toContain("last-watched-url");
+    expect(markup).toContain("Anyone with the link can see that title and nothing else.");
+  });
+
+  it("is on with its link, Copy link and Make a new link when handed one", () => {
+    const markup = renderToStaticMarkup(
+      createElement(LastWatchedControl, { url: PLACEHOLDER_LAST_WATCHED }),
+    );
+    expect(markup).toContain('aria-checked="true"');
+    expect(markup).toContain(PLACEHOLDER_LAST_WATCHED);
+    expect(markup).toContain("Copy link");
+    expect(markup).toContain("Make a new link");
+  });
+
+  it("renders its controls quiet and plain, never filled", () => {
+    for (const url of [null, PLACEHOLDER_LAST_WATCHED]) {
+      const markup = renderToStaticMarkup(createElement(LastWatchedControl, { url }));
+      for (const filled of [PRIMARY_BUTTON, PRIMARY_BUTTON_COMPACT, PRIMARY_BUTTON_LARGE]) {
+        expect(markup).not.toContain(filled);
+      }
+    }
+  });
+
+  it("holds no last-watched URL with a token-shaped path anywhere under tests/", () => {
+    for (const file of filesUnder("tests")) {
+      expect(readFileSync(file, "utf8"), path.relative(ROOT, file)).not.toMatch(
+        /\/api\/last-watched\/[A-Za-z0-9_-]{20,}/,
+      );
     }
   });
 });

@@ -3,14 +3,17 @@ import Link from "next/link";
 
 import { DESTRUCTIVE_BUTTON_COMPACT } from "@/app/buttons";
 import { calendarFeedUrl, publicOrigin } from "@/lib/calendar-feed";
+import { lastWatchedUrl } from "@/lib/last-watched";
 import {
   requireCalendarFeedToken,
   requireDisplayName,
+  requireLastWatchedSharing,
   requireTimezone,
   requireUserId,
 } from "@/lib/session";
 import { CalendarFeedControl } from "./calendar-feed-control";
 import { DisplayNameControl } from "./display-name-control";
+import { LastWatchedControl } from "./last-watched-control";
 import { BackBar } from "../back-bar";
 import { NavTransition } from "../nav-transition";
 import { SettingsHeading, YOU } from "./settings-heading";
@@ -114,6 +117,12 @@ export default async function SettingsPage() {
       ? null
       : calendarFeedUrl(publicOrigin(process.env.BETTER_AUTH_URL, await headers()), feedToken);
 
+  const sharing = await requireLastWatchedSharing();
+  const lastWatchedLink =
+    sharing.on && sharing.token !== null
+      ? lastWatchedUrl(publicOrigin(process.env.BETTER_AUTH_URL, await headers()), sharing.token)
+      : null;
+
   return (
     <NavTransition>
       <main className="flex w-full flex-1 flex-col">
@@ -158,6 +167,10 @@ export default async function SettingsPage() {
             {/* Issue #366. In Data because the feed is the library leaving the app — read-only,
                 but the same kind of thing as the import above, the other way round. */}
             <CalendarFeedControl url={feedUrl} />
+
+            {/* Issue #530. Beside the feed because it is the same kind of thing: a secret
+                link that lets something outside the app read a little of the library. */}
+            <LastWatchedControl url={lastWatchedLink} />
           </SettingsGroup>
 
           <SettingsGroup id="account-h" title="Account">
