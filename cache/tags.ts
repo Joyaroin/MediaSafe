@@ -406,6 +406,10 @@ export const UNCACHED_READS = {
     "The calendar feed's token lookup (issue #366): one unique-index row, and the answer must change the instant Settings makes a new link. A cached owner would keep a revoked URL working for the cache's lifetime.",
   listCalendarFeed:
     "Read by a calendar app polling every few hours with no session, so nothing else reads the same key between polls. Caching it would add a second place for the calendar and Up next to disagree, for no hits.",
+  lastWatchedOwner:
+    "The last-watched link's token lookup (issue #528): one unique-index row, and the answer must change the instant sharing is switched off or the link replaced. A cached owner would keep a revoked link answering for the cache's lifetime.",
+  lastWatchedTitle:
+    "Read by a visitor's browser with no session, once per request for now (issue #528). The hour's cache in front of it is its own ticket and, by design, expires by time rather than by tag.",
   watchedTmdbEpisodeIds:
     "Read inside the sweep's reconciliation, from that run's transaction. `unstable_cache` cannot take an executor, so caching it would mean reading outside the transaction whose rows it is about.",
   listWatchesSince:
@@ -866,6 +870,11 @@ export const INVALIDATES = {
   /** `user.calendar_feed_token`, which no cached read selects; the feed's own reads are
    *  uncached (`UNCACHED_READS`). */
   renewCalendarFeedToken: [],
+  /** `user.shares_last_watched` and `user.last_watched_token`, which no cached read selects;
+   *  the link's own reads are uncached (`UNCACHED_READS`). */
+  switchOnLastWatchedSharing: [],
+  switchOffLastWatchedSharing: [],
+  renewLastWatchedToken: [],
   /** `list` and `list_membership`, which only the two list reads join. */
   createList: ["lists"],
   createListAndAddTitle: ["lists"],

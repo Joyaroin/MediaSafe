@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { carriesSessionCookie } from "@/lib/session-cookie";
 
 /**
- * Constraint 5, in one file: **no unauthenticated route may ever be added**. Every route in this application is behind a session except four, and the four are
+ * Constraint 5, in one file: **no unauthenticated route may ever be added**. Every route in this application is behind a session except five, and the five are
  * written out below rather than implied.
  *
  * The rule was once justified by previews carrying a copy of the real library.
@@ -29,7 +29,7 @@ import { carriesSessionCookie } from "@/lib/session-cookie";
  * exists to prevent. **It is un-sessioned, not unauthenticated**: the route checks a
  * bearer `CRON_SECRET` itself and rejects anything without it
  * (`app/api/cron/nightly-sweep/route.ts`). This comment says so precisely because the
- * list below must never read as four unprotected routes.
+ * list below must never read as five unprotected routes.
  *
  * ── This is a gate, not the authorization ────────────────────────────────────────────
  *
@@ -71,7 +71,7 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 /**
- * **The matcher, and the four exemptions, as one literal.**
+ * **The matcher, and the five exemptions, as one literal.**
  *
  * It has to be a literal, and Next enforces that itself: a matcher assembled from
  * variables fails the build with *Entry `matcher[0]` need to be static strings or static
@@ -81,8 +81,8 @@ export function proxy(request: NextRequest): NextResponse {
  * in no `.js` file at all — grepping the JavaScript for it finds nothing and proves
  * nothing.
  *
- * **Four exemptions and one exclusion**, which are different things. An exemption is a
- * route a reader may reach without a session, and there are four. The exclusion is not a
+ * **Five exemptions and one exclusion**, which are different things. An exemption is a
+ * route a reader may reach without a session, and there are five. The exclusion is not a
  * route at all.
  *
  *  - **`sign-in$`** — the sign-in route. Anchored, so `/sign-in/anything` is covered
@@ -99,6 +99,9 @@ export function proxy(request: NextRequest): NextResponse {
  *  - **`api/calendar/[^/]+$`** — issue #366's calendar feed, one segment and no deeper:
  *    `/api/calendar` itself and anything two levels down stay covered. The route checks its
  *    token itself, as above.
+ *  - **`api/last-watched/[^/]+$`** — issue #528's last-watched link, one segment and no
+ *    deeper: `/api/last-watched` itself and anything two levels down stay covered. The route
+ *    checks its token itself, as above.
  *  - **`_next/`** — the exclusion. The compiled bundles, the image optimiser, the build
  *    output. Nothing in the route manifest maps under this prefix, and
  *    `tests/route-manifest.test.ts` asserts that rather than trusting this sentence, so
@@ -114,6 +117,6 @@ export function proxy(request: NextRequest): NextResponse {
  */
 export const config = {
   matcher: [
-    "/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$|api/calendar/[^/]+$).*)",
+    "/((?!_next/|sign-in$|api/auth(?:$|/)|api/cron/nightly-sweep$|api/calendar/[^/]+$|api/last-watched/[^/]+$).*)",
   ],
 };

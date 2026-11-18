@@ -203,6 +203,39 @@ export const authOptions = {
         input: false,
         unique: true,
       },
+
+      /**
+       * The secret in the reader's last-watched link — issue #528. `/api/last-watched/<token>`
+       * answers without a session, so this value is the whole credential, as
+       * `calendarFeedToken` is the calendar feed's. It is its own field, not the calendar's:
+       * the two links are shared with different audiences and must be replaced independently.
+       *
+       * `required: false`, null until sharing is first switched on: a reader who never
+       * shares has no secret to leak. It is **kept** when sharing is switched off, which is
+       * what lets switching it back on bring the same link back; "New link" replaces it.
+       * `input: false` and `unique` for `calendarFeedToken`'s reasons: the server mints it
+       * (`switchOnLastWatchedSharing`, `renewLastWatchedToken` in `db/access.ts`), and the
+       * lookup by token is one index read.
+       */
+      lastWatchedToken: {
+        type: "string",
+        required: false,
+        input: false,
+        unique: true,
+      },
+
+      /**
+       * Whether the last-watched link answers — issue #528. Off for every reader until
+       * they switch it on, so nothing of anyone's is public by default. `required: true`
+       * with a default makes the column `NOT NULL DEFAULT false`: there is no third,
+       * "unanswered" state to read. `input: false`: only the settings writes change it.
+       */
+      sharesLastWatched: {
+        type: "boolean",
+        required: true,
+        defaultValue: false,
+        input: false,
+      },
     },
   },
 

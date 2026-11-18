@@ -4461,6 +4461,115 @@ export async function calendarFeedOwner(
   return row ? asUserId(row.id) : null;
 }
 
+/**
+ * ── The last-watched link — issue #528 ───────────────────────────────────────────────
+ *
+ * `/api/last-watched/<token>` answers with no session, so the token is the whole
+ * credential, as the calendar feed's is. It lives on `user.last_watched_token`, beside
+ * `user.shares_last_watched`, which says whether it answers (both in `lib/auth.ts`).
+ * Sharing is off for everyone until they switch it on.
+ */
+
+/**
+ * Switches sharing on and returns the link's token. The first time it mints one (32 random
+ * bytes, base64url, as `renewCalendarFeedToken` does); after that it **keeps** the one
+ * already there, which is how switching it off and on again brings the same link back.
+ *
+ * One statement, so two switches at once cannot each mint a token and leave the reader
+ * holding the loser's.
+ */
+export async function switchOnLastWatchedSharing(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<string> {
+  const minted = randomBytes(32).toString("base64url");
+
+  const [row] = await executor
+    .update(user)
+    .set({
+      sharesLastWatched: true,
+      lastWatchedToken: sql`coalesce(${user.lastWatchedToken}, ${minted})`,
+    })
+    .where(eq(user.id, userId))
+    .returning({ token: user.lastWatchedToken });
+
+  if (!row?.token) throw new Error("Switching on last-watched sharing updated no account.");
+  return row.token;
+}
+
+/**
+ * Switches sharing off. The token stays, unanswered, so switching on again restores the
+ * same link; the link stops answering the instant this commits.
+ */
+export async function switchOffLastWatchedSharing(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<void> {
+  await executor.update(user).set({ sharesLastWatched: false }).where(eq(user.id, userId));
+}
+
+/**
+ * Replaces the token and returns the new one. The old link stops matching any row the
+ * instant this commits, and never answers again. It does not change whether sharing is on.
+ */
+export async function renewLastWatchedToken(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+
+  await executor.update(user).set({ lastWatchedToken: token }).where(eq(user.id, userId));
+
+  return token;
+}
+
+/**
+ * The account a last-watched token belongs to **while it is sharing**, or `null`: a token
+ * that was replaced, one that never existed, and one whose reader has switched sharing off
+ * are the same answer, so the route cannot tell them apart. `null` is a successful answer;
+ * a failed query throws.
+ */
+export async function lastWatchedOwner(
+  token: string,
+  executor: Executor = getDb(),
+): Promise<UserId | null> {
+  const [row] = await executor
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.lastWatchedToken, token), eq(user.sharesLastWatched, true)))
+    .limit(1);
+
+  return row ? asUserId(row.id) : null;
+}
+
+/**
+ * The name of the title this reader last watched, or `null` when they have no dated watch.
+ *
+ * - The greatest `watched_at`; equal watched times go to the later `created_at`, then to
+ *   the watch's id, so the same rows always give the same answer.
+ * - **Undated watches never count.** An import writes `watched_at = NULL` with `created_at`
+ *   at the import's time, so counting them by when they were logged would make an old
+ *   title "last watched" right after an import. (This is why `mostRecentlyWatchedTitle`,
+ *   which orders undated watches last rather than leaving them out, is not reused.)
+ * - An episode's watch carries its show's `title_id`, so the name is the show's.
+ *
+ * It selects the name and nothing else: no date, episode, rating, kind or reader.
+ */
+export async function lastWatchedTitle(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<string | null> {
+  const [row] = await executor
+    .select({ name: title.name })
+    .from(watch)
+    .innerJoin(title, eq(title.id, watch.titleId))
+    .where(and(eq(watch.userId, userId), isNotNull(watch.watchedAt)))
+    .orderBy(desc(watch.watchedAt), desc(watch.createdAt), desc(watch.id))
+    .limit(1);
+
+  return row ? row.name : null;
+}
+
 /** One dated episode in the feed. */
 export interface CalendarFeedEpisode {
   /** The event's identity: one episode is one event, however often the feed is fetched. */
