@@ -189,6 +189,27 @@ export async function requireCalendarFeedToken(): Promise<string | null> {
 }
 
 /**
+ * Whether this reader shares their last watched title, and the link's token — Settings'
+ * share row, issue #530. The token is kept while sharing is off (so switching on again
+ * brings the same link back), which is why the two are read together: the page shows the
+ * link only when `on`. Off the resolved session like `requireCalendarFeedToken`; the
+ * cookie cache is off, so a switch made a moment ago is the one read here.
+ */
+export async function requireLastWatchedSharing(): Promise<{
+  readonly on: boolean;
+  readonly token: string | null;
+}> {
+  const session = await currentSession();
+
+  if (!session) redirect("/sign-in");
+
+  return {
+    on: session.user.sharesLastWatched,
+    token: session.user.lastWatchedToken ?? null,
+  };
+}
+
+/**
  * The display name for the masthead, or `null` with no session.
  *
  * Never redirects — the masthead is not the gate (`app/(signed-in)/layout.tsx`'s
