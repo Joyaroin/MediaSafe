@@ -1,4 +1,5 @@
-import { lastWatchedOwner, lastWatchedTitle } from "@/db/access";
+import { cachedLastWatchedTitle } from "@/cache/last-watched";
+import { lastWatchedOwner } from "@/db/access";
 import { lastWatchedResponse, lastWatchedTokenFrom } from "@/lib/last-watched";
 
 /**
@@ -22,7 +23,11 @@ import { lastWatchedResponse, lastWatchedTokenFrom } from "@/lib/last-watched";
  * is down" would read as "this reader shares nothing"; the site shows nothing on either,
  * but only one of them is true.
  *
- * The title is worked out on every request for now; the hour's cache is its own ticket.
+ * ── The title is cached for an hour, the token is not ───────────────────────────────
+ *
+ * The token lookup runs on every request, so switching sharing off or replacing the link
+ * answers 404 at once even while a title is cached. The title behind it is worked out at
+ * most once an hour per reader (`cache/last-watched.ts`, which says why no write clears it).
  */
 export async function GET(
   _request: Request,
@@ -32,5 +37,5 @@ export async function GET(
   const token = lastWatchedTokenFrom(segment);
   const owner = token === null ? null : await lastWatchedOwner(token);
 
-  return lastWatchedResponse(owner === null ? null : await lastWatchedTitle(owner));
+  return lastWatchedResponse(owner === null ? null : await cachedLastWatchedTitle(owner));
 }

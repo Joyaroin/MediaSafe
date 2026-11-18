@@ -86,6 +86,13 @@ import type { TitleKind } from "@/tmdb/mirror";
  * it, so a tag alone would never fire and they carry **a window as well** — issue #225,
  * and `borrowed-facts.ts` beside this file, whose top block says why it is a second file
  * rather than a second section. The amendment sets out the two lifetimes.
+ *
+ * **One owned fact is the exception, and it has a file of its own.** `last-watched.ts`
+ * (issue #529) caches the title a reader's public link answers with, and it carries **a
+ * window and no tag**: no write clears it, a new watch included. The reason is the link's
+ * privacy, not cost — anyone can ask a public link and note when each new title appears,
+ * and a bust on every watch would timestamp them to the minute, where an hour blurs that to
+ * the hour. It is in its own file so that "nothing in this file has a window" stays true.
  */
 
 /**
@@ -121,8 +128,9 @@ import type { TitleKind } from "@/tmdb/mirror";
  * Borrowed facts — TMDB's synopsis, cast and providers, and the mirrored `title`/`episode`
  * metadata — are **not** here. Issue #225 built them, in `borrowed-facts.ts` beside this
  * file: they change on TMDB's schedule rather than on a write, and they are the one
- * category that carries a window as well as a tag. **Nothing in this file has a window**,
- * and *the clock is an input, not a window* is why the day in some of the
+ * category that carries a window as well as a tag. (`last-watched.ts`, issue #529, is the
+ * one **owned** entry with a window and no tag, for the public link's privacy.) **Nothing
+ * in this file has a window**, and *the clock is an input, not a window* is why the day in some of the
  * keys below is not one.
  */
 export type CachedRead = "library" | "up-next" | "lists" | "title-detail" | "you";
@@ -409,7 +417,7 @@ export const UNCACHED_READS = {
   lastWatchedOwner:
     "The last-watched link's token lookup (issue #528): one unique-index row, and the answer must change the instant sharing is switched off or the link replaced. A cached owner would keep a revoked link answering for the cache's lifetime.",
   lastWatchedTitle:
-    "Read by a visitor's browser with no session, once per request for now (issue #528). The hour's cache in front of it is its own ticket and, by design, expires by time rather than by tag.",
+    "Read by a visitor's browser with no session (issue #528). It is cached, but in cache/last-watched.ts and not in CACHED_READS: that entry has a one-hour window and no tag, so no write clears it, on purpose (issue #529) — a new watch must not timestamp itself on a public link.",
   watchedTmdbEpisodeIds:
     "Read inside the sweep's reconciliation, from that run's transaction. `unstable_cache` cannot take an executor, so caching it would mean reading outside the transaction whose rows it is about.",
   listWatchesSince:
@@ -440,6 +448,12 @@ export const UNCACHED_READS = {
  * constraint existed to forbid, and a shorter window is a smaller lie rather than a
  * different kind of one. The day in some of these keys is **not** that — `serverDay`
  * argues the distinction at length.
+ *
+ * **One owned entry elsewhere does have a window: `cache/last-watched.ts`** (issue #529),
+ * the title a reader's public last-watched link answers with. It is allowed one, and no
+ * tag, deliberately and for a different reason than cost: the public link would otherwise
+ * timestamp each new title to the minute it was watched, and an hour is what blurs that.
+ * It is not one of these nine, and nothing here busts it.
  *
  * ── The key parts are written out at each call, and not built by a helper ────────────
  *
