@@ -14,6 +14,16 @@ import { SETTING, SETTING_HELP, SETTING_LABEL } from "./settings-group";
 
 type Change = "on" | "off" | "renew";
 
+/** On and off undo each other, so they share a toast; a new link has its own. */
+type Slot = "switch" | "renew";
+
+const slotOf = (what: Change): Slot => (what === "renew" ? "renew" : "switch");
+
+const TOAST_TITLE: Record<Slot, string> = {
+  switch: "Last watched link",
+  renew: "New last watched link",
+};
+
 /**
  * *Share my last watched title* — issue #530, in Settings' Data section beside the calendar
  * feed, and drawn the way it is: a Label, a line of help, then the link with *Copy link*
@@ -26,24 +36,37 @@ type Change = "on" | "off" | "renew";
  * - The page hands in the link for a reader who already shares, and `null` for one who
  *   doesn't. This control never holds a link while off: a hidden secret is not one the
  *   page should be carrying.
- * - A lost write raises the persistent toast, named *Last watched link*, once per lost
- *   write, and leaves the row as it was: a switch that failed to flip is still shown as it
- *   was, never as done. The toast's retry repeats the same change.
+ * - A lost write raises the persistent toast once per lost write, and leaves the row as it
+ *   was: a switch that failed to flip is still shown as it was, never as done. The toast's
+ *   retry repeats the change that was lost.
+ * - **Three writes, two handles.** On and off are inverses, so they share one toast
+ *   (*Last watched link*) the way `title-actions.tsx`'s give up and resume do: either one
+ *   landing makes the other's failure moot. A new link is not their inverse — an off does
+ *   not replace a link — so it has its own (*New last watched link*), which only a new link
+ *   landing clears and which an off neither clears nor suppresses. The same reasoning as
+ *   `add-to-list-control.tsx`: writes that are not each other's undo do not share a handle.
+ *   Which change is running is tracked too, so *Making a new link* is only ever said while
+ *   a new link is being made.
  *
  * **The link is a private token.** Never print a real one in a screenshot, a fixture or a
  * log — the tests render this with a placeholder.
  */
 export function LastWatchedControl({ url: initialUrl }: { readonly url: string | null }) {
   const [url, setUrl] = useState(initialUrl);
-  const [inFlight, setInFlight] = useState(false);
+  // Which change is running, so a label can name the one that is rather than any.
+  const [pending, setPending] = useState<Change | null>(null);
   const [copy, setCopy] = useState<"idle" | "copied" | "refused">("idle");
   const [renewed, setRenewed] = useState(false);
-  const raised = useRef<WriteFailureHandle | null>(null);
+  const raised = useRef<Record<Slot, { change: Change; handle: WriteFailureHandle } | null>>({
+    switch: null,
+    renew: null,
+  });
 
   const on = url !== null;
+  const busy = pending !== null;
 
   async function change(what: Change): Promise<void> {
-    setInFlight(true);
+    setPending(what);
     setCopy("idle");
     setRenewed(false);
 
@@ -58,23 +81,37 @@ export function LastWatchedControl({ url: initialUrl }: { readonly url: string |
             : renewLastWatchedAction()
       ).catch((error: unknown) => ({ ok: false, reference: referenceFor(error) }) as const);
 
-    setInFlight(false);
+    setPending(null);
+
+    const slot = slotOf(what);
+    const held = raised.current[slot];
 
     if (!outcome.ok) {
-      if (raised.current?.standing()) return;
-      raised.current = writeFailures.raise({
-        title: "Last watched link",
-        reference: outcome.reference,
-        retry: () => void change(what),
-      });
+      if (held?.handle.standing()) {
+        // The same change failing again has nothing new to say. A different one (only
+        // possible for on and off, after the other landed) means the standing toast's
+        // retry is no longer what was last asked, so it is replaced.
+        if (held.change === what) return;
+        held.handle.resolve();
+      }
+      raised.current[slot] = {
+        change: what,
+        handle: writeFailures.raise({
+          title: TOAST_TITLE[slot],
+          reference: outcome.reference,
+          retry: () => void change(what),
+        }),
+      };
       return;
     }
 
-    raised.current?.resolve();
-    raised.current = null;
+    held?.handle.resolve();
+    raised.current[slot] = null;
 
     setRenewed(what === "renew");
-    setUrl(outcome.url);
+    // A new link landing after the row was switched off (its retry, from a toast that stood
+    // through the off) replaces the token and nothing else: the row stays off.
+    setUrl((shown) => (what === "renew" && shown === null ? null : outcome.url));
   }
 
   async function copyLink(link: string): Promise<void> {
@@ -102,7 +139,7 @@ export function LastWatchedControl({ url: initialUrl }: { readonly url: string |
         role="switch"
         aria-checked={on}
         onClick={() => void change(on ? "off" : "on")}
-        disabled={inFlight}
+        disabled={busy}
         className={`${SECONDARY_BUTTON_COMPACT} w-full`}
       >
         {on ? "Sharing is on. Switch off" : "Sharing is off. Switch on"}
@@ -121,7 +158,7 @@ export function LastWatchedControl({ url: initialUrl }: { readonly url: string |
             <button
               type="button"
               onClick={() => void copyLink(url)}
-              disabled={inFlight}
+              disabled={busy}
               className={`${SECONDARY_BUTTON_COMPACT} flex-1`}
             >
               {copy === "copied" ? "Copied" : "Copy link"}
@@ -130,10 +167,10 @@ export function LastWatchedControl({ url: initialUrl }: { readonly url: string |
             <button
               type="button"
               onClick={() => void change("renew")}
-              disabled={inFlight}
+              disabled={busy}
               className={`${PLAIN_BUTTON} flex-1`}
             >
-              {inFlight ? "Making a new link" : "Make a new link"}
+              {pending === "renew" ? "Making a new link" : "Make a new link"}
             </button>
           </div>
 

@@ -102,3 +102,128 @@ test("off by default; on, off, on again and a new link each do what the row says
 
   await app.dispose();
 });
+
+/**
+ * ── The row's three writes, when one is slow or lost ─────────────────────────────────
+ *
+ * The row has three writes — on, off, a new link — and they must not borrow each other's
+ * state: the *Making a new link* label belongs to a new link alone, and a lost write's
+ * toast is neither cleared nor suppressed by a different write.
+ *
+ * A Server Action is a POST carrying a `Next-Action` header, so these tests learn each
+ * action's id by performing it once for real (`learnActions`), and then hold or abort that
+ * id by name. An aborted request rejects in the browser, which is the control's failure
+ * path (`referenceFor` on the rejection), the same toast a failed write raises.
+ */
+type Action = "on" | "off" | "renew";
+
+const toast = (page: Page, title: string) =>
+  page.getByRole("alert").filter({ has: page.getByText(title, { exact: true }) });
+
+/** Puts sharing on and returns the id each action posts under, by doing each once. */
+async function learnActions(page: Page): Promise<Record<Action, string>> {
+  const ids: string[] = [];
+  page.on("request", (request) => {
+    const id = request.headers()["next-action"];
+    if (request.method() === "POST" && id) ids.push(id);
+  });
+
+  await page.goto("/settings");
+  if ((await toggle(page).getAttribute("aria-checked")) === "true") {
+    await toggle(page).click();
+    await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+  }
+  await toggle(page).click();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Make a new link" }).click();
+  await expect(page.getByText("New link made. The old one no longer works.")).toBeVisible();
+  await toggle(page).click();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+  await toggle(page).click();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+
+  const [on, renew, off] = ids;
+  return { on, off, renew };
+}
+
+type Plan = (action: Action) => "pass" | "fail" | Promise<"pass" | "fail">;
+
+/** Decides each action's fate when it is posted: let it through, or lose it. */
+async function steer(page: Page, ids: Record<Action, string>, plan: Plan): Promise<void> {
+  await page.route("**/settings", async (route) => {
+    const id = route.request().headers()["next-action"];
+    const action = (Object.keys(ids) as Action[]).find((name) => ids[name] === id);
+    if (route.request().method() !== "POST" || !action) return route.continue();
+    return (await plan(action)) === "fail" ? route.abort("failed") : route.continue();
+  });
+}
+
+test("a new link is only called 'Making a new link' while a new link is being made", async ({
+  page,
+}) => {
+  const ids = await learnActions(page);
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await steer(page, ids, async (action) => {
+    if (action === "off") await held;
+    return "pass" as const;
+  });
+
+  const makeNew = page.getByRole("button", { name: /^Make a new link$|^Making a new link$/ });
+  await toggle(page).click();
+
+  // The off is in flight, and the switch is the only thing that was pressed.
+  await expect(makeNew).toBeDisabled();
+  await expect(makeNew).toHaveText("Make a new link");
+  await expect(page.getByText("Making a new link")).toHaveCount(0);
+
+  release();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+});
+
+test("a failed new link keeps its toast when a later off lands", async ({ page }) => {
+  const ids = await learnActions(page);
+  await steer(page, ids, (action) => (action === "renew" ? "fail" : "pass"));
+
+  await page.getByRole("button", { name: "Make a new link" }).click();
+  await expect(toast(page, "New last watched link")).toBeVisible();
+
+  // The off lands. It says nothing about the link that was never replaced.
+  await toggle(page).click();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+  await expect(toast(page, "New last watched link")).toBeVisible();
+
+  // Trying again once the row is off replaces the link behind the scenes, clears the toast
+  // and leaves the row off: the retry must not switch sharing back on.
+  await page.unroute("**/settings");
+  await toast(page, "New last watched link").getByRole("button", { name: "Try again" }).click();
+  await expect(toast(page, "New last watched link")).toHaveCount(0);
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByTestId("last-watched-url")).toHaveCount(0);
+});
+
+test("a failed new link after a failed off raises its own toast, whose retry is the new link", async ({
+  page,
+}) => {
+  const ids = await learnActions(page);
+  await steer(page, ids, () => "fail");
+
+  await toggle(page).click();
+  await expect(toast(page, "Last watched link")).toBeVisible();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+  const before = await linkPath(page);
+
+  await page.getByRole("button", { name: "Make a new link" }).click();
+  await expect(toast(page, "New last watched link")).toBeVisible();
+
+  await page.unroute("**/settings");
+  await toast(page, "New last watched link").getByRole("button", { name: "Try again" }).click();
+  await expect(toast(page, "New last watched link")).toHaveCount(0);
+  await expect(page.getByText("New link made. The old one no longer works.")).toBeVisible();
+  expect(await linkPath(page)).not.toBe(before);
+
+  // The retry made a link; it did not turn sharing off. The off's own toast still stands.
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+  await expect(toast(page, "Last watched link")).toBeVisible();
+});
