@@ -497,9 +497,10 @@ describe("Coming up is a route of its own, with both halves and one day", () => 
   /** What the pager's second page showed, and nothing else — slice 7 redraws it. */
   it("draws the surface the pager's second page drew", () => {
     expect(page).toMatch(
-      /<UpcomingSurface\s+episodes=\{episodes\}\s+films=\{films\}\s+today=\{today\}\s+suggestions=/,
+      /<UpcomingSurface\s+episodes=\{episodes\}\s+films=\{films\}\s+today=\{today\}\s*\/>/,
     );
-    expect(page).toContain('labelId="suggestions-coming-up"');
+    // #556: the empty screen points to Search; no rail of trending titles hangs off it.
+    expect(page).not.toMatch(/suggestion/i);
   });
 
   /** Tonight no longer pays for reads it does not draw, and no longer draws a pager. */

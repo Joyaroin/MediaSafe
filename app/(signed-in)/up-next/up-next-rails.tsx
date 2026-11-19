@@ -26,12 +26,12 @@ import { UpNextNothing } from "./up-next-nothing";
  * Both branches are reachable only from reads that succeeded. A failure throws past this
  * into the route's `error.tsx`.
  */
-export function UpNextWatching({
+export async function UpNextWatching({
   rails,
   films,
   notStarted,
   comingUp,
-  suggestions,
+  readLibraryIsEmpty,
 }: {
   rails: UpNextRails;
   films: readonly LibraryStateGroupEntry[];
@@ -39,8 +39,9 @@ export function UpNextWatching({
   notStarted: readonly UpNextEntry[];
   /** Coming up's next three rows, for the desktop's right column. */
   comingUp: ReactNode;
-  /** Issue #365's rail, drawn only under the empty state. */
-  suggestions: ReactNode;
+  /** Whether the library holds no title at all (#556), for the empty state's *Bring your
+   *  library in*. A function, so the read runs only when the empty state is drawn. */
+  readLibraryIsEmpty: () => Promise<boolean>;
 }) {
   const noEpisodes = rails.ongoing.length === 0 && rails.oldFriends.length === 0;
 
@@ -50,7 +51,7 @@ export function UpNextWatching({
         <div className="px-gutter pt-5 lg:px-0 lg:pt-0">
           <UpNextHeading />
         </div>
-        <UpNextNothing suggestions={suggestions} />
+        <UpNextNothing libraryEmpty={await readLibraryIsEmpty()} />
       </div>
     );
   }

@@ -17,10 +17,6 @@ import { createRowWrites, type RowChoice, type RowState } from "./row-writes";
  * and the three server actions it writes through, with the one failure an action cannot
  * report itself turned into the same shape (see `search-surface.tsx`'s `search()`).
  *
- * Shared with Up next's empty-state suggestions (issue #365), which press the same add and
- * never show the chips, so a title added from there raises the same toast on the same
- * terms.
- *
  * The controller is made once per row and kept, because it must outlive a render: type
  * another query while a write is in flight and this row unmounts, but the write is still
  * going and the reader must still be told if it was lost. Its calls into `setState` after

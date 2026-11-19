@@ -61,7 +61,7 @@ describe("the most recently watched title", () => {
       });
     }));
 
-  it("is null for a reader who has watched nothing — the trending fallback's case", () =>
+  it("is null for a reader who has watched nothing", () =>
     inTransaction(async (tx) => {
       const reader = await seedUser(tx);
 
