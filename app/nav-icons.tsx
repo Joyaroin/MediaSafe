@@ -105,8 +105,8 @@ export function LibraryIcon({ className }: { className?: string }) {
  * placeholder, one glyph smaller.
  *
  * **A square head, not a round one**, which is the whole design problem here. Every avatar
- * mark in the world is a circle over an arc, and a circle would be one more curve in an
- * application that already has two (the magnifier's ring and the Tonight crescent), and the
+ * mark in the world is a circle over an arc, and a circle would be one more curve among
+ * the nav glyphs, which already have two (the magnifier's ring and the Tonight crescent), and the
  * rule was that glyphs stay rectilinear apart from the one the destination needs. So the head is a square and the shoulders are a wider rectangle beneath it —
  * `LibraryIcon`'s cells and `SettingsIcon`'s rules are the same vocabulary, and the shape
  * still reads as a person because the proportion does the work the curve usually does.

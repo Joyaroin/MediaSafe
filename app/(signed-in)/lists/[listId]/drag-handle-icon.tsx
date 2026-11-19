@@ -1,6 +1,5 @@
 /** Six squares, two columns of three — a grip, drawn in the same rectilinear vocabulary
- *  as most of `nav-icons.tsx`: rects only, no circle of its own. (`nav-icons.tsx`'s
- *  magnifier ring is a `<circle>`, so it is the one circle in the build.) */
+ *  as most of `nav-icons.tsx`: rects only, no circle of its own. */
 export function DragHandleIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
