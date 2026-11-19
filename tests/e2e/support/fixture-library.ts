@@ -228,3 +228,56 @@ export async function seedShowWithSeason(
     await pool.end();
   }
 }
+
+/**
+ * One title in the library with no watch — *Not started* for a show, *To watch* for a film
+ * (issue #555's words for the database's `watchlist`). A film is released last year so it
+ * is *To watch* rather than coming soon; a show gets one aired episode so it is a real show.
+ */
+export async function seedUnwatchedTitle(
+  userId: string,
+  kind: "show" | "film",
+): Promise<SeededTitle> {
+  const pool = createPool(requireDatabaseUrl());
+  const db = drizzle(pool, { schema });
+
+  try {
+    const unique = randomUUID();
+    const titleName = `E2E Fixture Unwatched ${kind} ${unique}`;
+    const posterPath = `/e2e-fixture-${unique}.jpg`;
+    const tmdbId = Math.floor(Math.random() * 20_000_000);
+
+    const [titleRow] = await db
+      .insert(schema.title)
+      .values({
+        kind,
+        tmdbId,
+        name: titleName,
+        releaseYear: 2024,
+        releaseDate: kind === "film" ? "2024-01-01" : undefined,
+        posterPath,
+        inProduction: kind === "show" ? true : undefined,
+      })
+      .returning({ id: schema.title.id });
+
+    if (kind === "show") {
+      await db.insert(schema.episode).values({
+        titleId: titleRow.id,
+        tmdbEpisodeId: tmdbId * 100 + 1,
+        seasonNo: 1,
+        episodeNo: 1,
+        name: "Pilot",
+        airDate: "2024-01-01",
+      });
+    }
+
+    const [entryRow] = await db
+      .insert(schema.libraryEntry)
+      .values({ userId, titleId: titleRow.id })
+      .returning({ id: schema.libraryEntry.id });
+
+    return { libraryEntryId: entryRow.id, titleName, posterPath };
+  } finally {
+    await pool.end();
+  }
+}

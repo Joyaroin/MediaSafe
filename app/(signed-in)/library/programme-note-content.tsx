@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { BackBar } from "@/app/(signed-in)/back-bar";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
-import { STATE_LABELS } from "./library-state";
+import { stateLabel } from "./library-state";
 import { ProgrammeNoteEpisodes } from "./programme-note-episodes";
 import { seasonWatchProgress } from "./progress-remaining";
 import { TitleActions } from "./title-actions";
@@ -82,7 +82,7 @@ export function ProgrammeNoteContent({
         posterTransitionName={posterTransitionName}
         libraryEntryId={detail.libraryEntryId}
         status={{
-          ...STATE_LABELS[detail.state],
+          label: stateLabel(detail.kind, detail.state),
           note: detail.state === "abandoned" ? "Watching it again clears this." : undefined,
         }}
         meta={titlePageMetaLine(detail)}
