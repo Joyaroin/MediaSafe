@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { BackBar } from "@/app/(signed-in)/back-bar";
 import type { LibraryState, TitleDetailRow } from "@/db/access";
@@ -12,6 +12,7 @@ import { TitleHero } from "./title-hero";
 import { titlePageMetaLine } from "./title-meta-line";
 import { nextToWatch } from "./title-page";
 import { useLiveEpisodes } from "./use-live-episodes";
+import { useOpenAtFragment } from "./use-open-at-fragment";
 
 /**
  * An owned title's page — issue #357.
@@ -67,6 +68,8 @@ export function ProgrammeNoteContent({
   today: string;
 }) {
   const live = useLiveEpisodes(detail.libraryEntryId, detail.episodes);
+  const episodesRef = useRef<HTMLElement>(null);
+  useOpenAtFragment("episodes", episodesRef);
   const isShow = detail.kind === "show";
 
   const nextEpisode = isShow ? nextToWatch(live, today) : null;
@@ -114,7 +117,7 @@ export function ProgrammeNoteContent({
         }`}
       >
         {isShow ? (
-          <section id="episodes" aria-labelledby="episodes-h" className="min-w-0">
+          <section ref={episodesRef} id="episodes" aria-labelledby="episodes-h" className="min-w-0">
             {/* Named for assistive technology only: the board goes straight from the
                 synopsis to the season chips (Charcoal §8.6), and the chips say what this is. */}
             <h2 id="episodes-h" className="sr-only">
