@@ -105,8 +105,7 @@ export default function RootLayout({
       </head>
       <body>
         {/* At the very top of the page, before anything else, because the
-            banner belongs at the very top of the page. When the masthead arrives it goes
-            below this, not above it. */}
+            banner belongs at the very top of the page. */}
         <OfflineBanner />
         {/* Wraps `children` and not `<body>`'s whole contents: the offline banner and the
             write-failure toast are already mounted, and moving them inside would change

@@ -16,8 +16,8 @@ import { useNotStartedOnList } from "./up-next-mark";
  *
  * A group of its own, not more rows of Also ready: Also ready's first five and its "See all N"
  * never count these (`tonight-list.tsx` is not handed them), and the group has no fold of its
- * own — `notStarted.ts` has already cut it to three. Its "See all" opens Library's Not started
- * grid (#552), which holds every Not started show, not only these three.
+ * own — `placeNotStarted` (`not-started.ts`) has already cut it to three. Its "See all" opens
+ * Library's Not started grid (#552), which holds every Not started show, not only these three.
  *
  * Each row says where the show starts and carries the usual mark ring. A marked row closes in
  * place on `AnimatePresence`'s `popLayout`, as Also ready's rows do, and the group takes its

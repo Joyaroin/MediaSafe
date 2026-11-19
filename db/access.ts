@@ -3553,10 +3553,9 @@ export interface UpNextEntry {
    * The Up next episode's season, as aired episodes with a watch over aired episodes —
    * issue #364's bar across the card's poster, read when the page loads.
    *
-   * *Aired* is `air_date <= current_date`, the same test `CONTEXT.md`'s *Remaining* uses,
-   * so the bar and any count beside it never disagree about what exists yet. Only this season is read: every episode after the Up next one
-   * is unwatched by construction (`db/views.ts`), so a later season the card advances into
-   * starts at zero watched, and its aired count travels on the queued episode
+   * *Aired* is `air_date <= current_date`. Only this season is read: every episode after the
+   * Up next one is unwatched by construction (`db/views.ts`), so a later season the card
+   * advances into starts at zero watched, and its aired count travels on the queued episode
    * (`QueuedEpisode.seasonReleased`).
    */
   readonly seasonWatched: number;
