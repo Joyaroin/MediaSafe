@@ -52,11 +52,26 @@ describe("the watched add's label", () => {
     expect(addWatchedAccessibleLabel("show", "The Bear")).toContain("The Bear");
   });
 
+  it("starts the accessible name with the visible label, on both kinds", () => {
+    // WCAG 2.5.3 (issue #536): voice control says what it sees. The name used to begin
+    // "Add … to your library", which does not contain the label at all.
+    for (const kind of ["film", "show"] as const) {
+      expect(addWatchedAccessibleLabel(kind, "Arrival").startsWith(addWatchedLabel(kind))).toBe(
+        true,
+      );
+    }
+    expect(addWatchedAccessibleLabel("film", "Arrival")).toBe("I've seen it: Arrival");
+    expect(addWatchedAccessibleLabel("show", "The Bear")).toBe(
+      "I've seen it all: The Bear, every aired episode",
+    );
+  });
+
   it("spells out for a show what the visible label leaves to the word all", () => {
-    // *All* is enough beside a poster and a year. Read alone it is not, and *released* is
-    // the whole of what separates this write from one that claims a watch of an episode
-    // that has not aired.
-    expect(addWatchedAccessibleLabel("show", "The Bear")).toContain("released");
+    // *All* is enough beside a poster and a year. Read alone it is not, and *aired* is the
+    // whole of what separates this write from one that claims a watch of an episode that
+    // has not aired. A film is one watch and needs no such tail.
+    expect(addWatchedAccessibleLabel("show", "The Bear")).toMatch(/, every aired episode$/);
+    expect(addWatchedAccessibleLabel("film", "Arrival")).not.toContain("episode");
   });
 });
 

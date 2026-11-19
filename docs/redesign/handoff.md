@@ -314,7 +314,7 @@ Reference: `coming-up.dark`, `coming-up.light`.
 Reference: `search.dark`, `search.light`.
 
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
-- Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". A title already held shows a tick and "In your library" as a link instead of both actions.
+- Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". In the markup Add comes before the seen-it pill, and each button's accessible name starts with its visible label ("Add {title}…", "I've seen it all: {title}, every aired episode", "I've seen it: {title}"). A title already held shows a tick and "In your library" as a link instead of both actions.
 - Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
 - **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
 
@@ -382,7 +382,7 @@ Reference: `you.dark`, `you.light`.
 - A 64px avatar circle with the initial, the display name in serif at Figure size (truncated on one line), and a round settings button linking to `/settings`.
 - "Watch time": a card with Television and Film rows, values in serif at Numeral size.
 - "What you have watched": four counts at Figure size with two-line labels (Episodes watched, Films watched, Shows watched, Shows completed).
-- "A year of watching": the heatmap with the ramp from section 5.1 and a Less / More legend.
+- "A year of watching": the heatmap with the ramp from section 5.1 and a Less / More legend. The selected day lists its watches **grouped by title** (issue #539, spec #535): one collapsed row per title, "The Bear · 46 episodes · seasons 1–5" or "{title} · Film", latest watch that day first. Each row is a button with `aria-expanded` that opens the day's episodes in season and episode order. Five titles show, then "Show all N titles". Text rows only, as no poster travels with the read.
 - "Shows you stopped": a rail of 96 by 144 posters, each with a "Start again" pill.
 - **Data and behaviour** are unchanged (`you/figures.ts`, `heatmap.ts`, `stopped-shows.tsx`, `start-again.ts`), including the count-up on arrival and `EmptyYou`.
 

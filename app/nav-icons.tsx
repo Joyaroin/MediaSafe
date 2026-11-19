@@ -55,16 +55,28 @@ export function ComingUpIcon({ className }: { className?: string }) {
   );
 }
 
-/** The same tapering bars `search-surface.tsx` and `library-filter-bar.tsx` already draw
- *  next to their filter fields — *"the same rectilinear vocabulary as the press mark, a
- *  magnifier would be the only curve in the application."* Reused rather than
- *  re-invented, so the product has one search glyph, not two. */
+/**
+ * A magnifying glass: a ring and a handle, stroked at `1.8` — the glyph the search field
+ * draws too (`search-surface.tsx` renders this component), so the product has one search
+ * glyph and the tab and the field cannot drift apart (issue #548).
+ *
+ * It is the one stroked shape beside four filled ones. A magnifier is a ring, and a ring
+ * filled in stops reading as one; the stroke is the field's own, so it takes its size and
+ * colour from the caller's `className` like the rest, and only the stroke width is fixed here.
+ */
 export function SearchIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="2" y="5" width="20" height="2.5" fill="currentColor" />
-      <rect x="5" y="10.75" width="14" height="2.5" fill="currentColor" />
-      <rect x="9" y="16.5" width="6" height="2.5" fill="currentColor" />
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="6" />
+      <path d="M20 20l-4.5-4.5" />
     </svg>
   );
 }
