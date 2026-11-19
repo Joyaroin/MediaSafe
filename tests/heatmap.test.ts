@@ -163,7 +163,7 @@ describe("the grid", () => {
     expect(markup).toContain("1 October · 3 watches");
     // Three watches of one episode: one title, one distinct episode, closed.
     expect(markup).toMatch(/<button[^>]*aria-expanded="false"[^>]*>/);
-    expect(markup).toContain("Severance<span");
+    expect(markup).toContain("Severance</span><span");
     expect(markup).toContain(" · 1 episode · season 1");
   });
 
