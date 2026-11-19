@@ -107,7 +107,9 @@ test.describe("a day grouped by title", () => {
 
     const rows = page.locator("button[aria-expanded]");
     await expect(rows).toHaveCount(5);
-    const lines = (await rows.allInnerTexts()).map((line) => line.trim());
+    // The title and its facts are two flex items (#605), which `innerText` joins with a line
+    // break; on screen they are one line, so compare them as one.
+    const lines = (await rows.allInnerTexts()).map((line) => line.replace(/\s+/g, " ").trim());
     expect(lines).toEqual([
       `${name("A")} · 1 episode · season 1`,
       `${name("B")} · 1 episode · season 1`,
@@ -141,6 +143,60 @@ test.describe("a day grouped by title", () => {
     await expect(rows).toHaveCount(6);
     await expect(page.getByRole("button", { name: `${name("F")} · 1 episode · season 1` })).toBeVisible();
     await expect(page.getByRole("button", { name: "Show all 6 titles" })).toHaveCount(0);
+  });
+});
+
+test.describe("a long title on a phone", () => {
+  const token = Math.random().toString(36).slice(2, 8);
+  const longName = `A very long title that cannot fit on one phone line ${token} and keeps going`;
+  // Ten episodes over seasons 1–5, so the facts after the title are the longest kind.
+  const episodes = [1, 2, 3, 4, 5].flatMap((season) => [
+    [season, 1] as const,
+    [season, 2] as const,
+  ]);
+
+  test.use({ storageState: path.join(__dirname, ".auth", "you-heatmap-long-session.json") });
+
+  test.beforeAll(async () => {
+    const session = await seedFixtureSession();
+    await seedDayOfWatches(session.userId, [{ titleName: longName, episodes, secondsAgo: 10 }]);
+    writeFileSync(
+      path.join(__dirname, ".auth", "you-heatmap-long-session.json"),
+      JSON.stringify(toStorageState(session), null, 2),
+    );
+  });
+
+  test("cuts the title, keeps the episode count and seasons whole, and names the row by the full title", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto("/you");
+    await expect(page.getByRole("heading", { name: "A year of watching" })).toBeVisible();
+
+    const facts = " · 10 episodes · seasons 1–5";
+    // Found by its full accessible name: the title is still all there for a screen reader.
+    const row = page.getByRole("button", { name: `${longName}${facts}` });
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("aria-expanded", "false");
+
+    const title = row.locator("span").first();
+    const detail = row.locator("span").nth(1);
+    await expect(detail).toHaveText(facts.trim());
+
+    // The setup happened: the title really is cut (its text is wider than its box)...
+    const titleCut = await title.evaluate((node) => node.scrollWidth - node.clientWidth);
+    expect(titleCut).toBeGreaterThan(0);
+
+    // ...and the facts are not: the whole of them sit inside the row and the viewport.
+    const detailBox = await detail.boundingBox();
+    const rowBox = await row.boundingBox();
+    expect(detailBox).not.toBeNull();
+    expect(rowBox).not.toBeNull();
+    expect(await detail.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
+    expect(detailBox!.x + detailBox!.width).toBeLessThanOrEqual(rowBox!.x + rowBox!.width + 0.5);
+    expect(detailBox!.x + detailBox!.width).toBeLessThanOrEqual(390);
+
+    if (process.env.YOU_SCREENSHOT_DIR) {
+      await page.screenshot({ path: `${process.env.YOU_SCREENSHOT_DIR}/day-long-title-phone.png`, fullPage: true });
+    }
   });
 });
 
