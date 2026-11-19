@@ -236,9 +236,10 @@ const ACTING_CONTROLS = [
   { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", label: "Rename" },
   { file: "app/(signed-in)/lists/[listId]/list-detail-surface.tsx", label: "Delete list" },
   { file: "app/(signed-in)/lists/delete-list-dialog.tsx", label: "Delete list" },
-  // `add-to-list-control.tsx`'s trigger left this list in Charcoal (#403): it is an icon
-  // square named by `aria-label` alone, so it has no visible text for the audit to find.
+  // `add-to-list-control.tsx`'s trigger left this list in Charcoal (#403), when it was an
+  // icon square named by `aria-label` alone, and came back with its visible "List" (#549).
   // It is still a `<button>` — it opens a dialog and navigates nowhere.
+  { file: "app/(signed-in)/library/add-to-list-control.tsx", label: "List" },
   // The bulk bar's two, and the ternary-labelled case `rendersAs` above is written for.
   { file: "app/(signed-in)/library/selection-action-bar.tsx", label: "Add to list" },
   { file: "app/(signed-in)/library/selection-action-bar.tsx", label: "Done" },
