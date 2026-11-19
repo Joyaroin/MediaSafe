@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { UpcomingEpisode, UpcomingFilm } from "@/db/access";
 import {
   awaitedFilms,
@@ -67,14 +65,11 @@ export function UpcomingSurface({
   episodes,
   films,
   today,
-  suggestions = null,
 }: {
   episodes: readonly UpcomingEpisode[];
   films: readonly UpcomingFilm[];
   /** The reader's own day, `YYYY-MM-DD`, from `page.tsx`. */
   today: string;
-  /** Issue #365's rail of titles to add, drawn only under the empty state. */
-  suggestions?: ReactNode;
 }) {
   /**
    * Collapsed to one entry per show **before** grouping by day, so a show lands on the day
@@ -88,7 +83,7 @@ export function UpcomingSurface({
   const awaited = awaitedFilms(films, today);
 
   if (groups.length === 0 && awaited.length === 0) {
-    return <UpcomingNothing suggestions={suggestions} />;
+    return <UpcomingNothing />;
   }
 
   /* `pb-6` on the wrapper rather than a node of its own: the foot of the page, held here

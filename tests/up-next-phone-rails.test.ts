@@ -305,7 +305,7 @@ describe("empty and failed are never the same thing", () => {
   it("gives a screen with nothing at all the handoff's sentence", () => {
     const surface = sourceAt(SURFACE);
     expect(surface).toMatch(/if \(noEpisodes && films\.length === 0 && notStarted\.length === 0\) \{/);
-    expect(surface).toMatch(/<UpNextNothing suggestions=\{suggestions\} \/>/);
+    expect(surface).toMatch(/<UpNextNothing libraryEmpty=\{await readLibraryIsEmpty\(\)\} \/>/);
 
     const nothing = sourceAt(NOTHING);
     expect(nothing).toContain("Nothing queued for tonight");
