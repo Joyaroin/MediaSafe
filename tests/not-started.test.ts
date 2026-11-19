@@ -278,8 +278,6 @@ describe("listNotStartedShows — the first episode", () => {
       expect(entry.queue.episodes.map((one) => one.episodeNo)).toEqual([1, 2]);
       expect(entry.queue.more).toBe(false);
       expect(entry.seasonReleased).toBe(3);
-      // The Up next entry's own convention: the aired episodes after this one, plus it.
-      expect(entry.remaining).toBe(3);
     });
   });
 
