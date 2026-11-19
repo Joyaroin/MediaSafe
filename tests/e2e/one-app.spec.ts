@@ -71,14 +71,14 @@ test("on a phone the tab bar shows icons only, and every tab keeps its name", as
     await expect(bar.getByRole("link", { name, exact: true })).toBeVisible();
   }
   // And no label takes up any room on screen: what's left of each is the 1px `sr-only` box.
-  const widest = await bar.evaluate((nav) =>
-    Math.max(
-      ...[...nav.querySelectorAll("a > span:not([data-nav-icon])")].map(
-        (label) => label.getBoundingClientRect().width,
-      ),
+  // All five are measured, so the check can't pass by finding none.
+  const widths = await bar.evaluate((nav) =>
+    [...nav.querySelectorAll("a > span:not([data-nav-icon])")].map(
+      (label) => label.getBoundingClientRect().width,
     ),
   );
-  expect(widest).toBeLessThanOrEqual(1);
+  expect(widths).toHaveLength(DESTINATIONS.length);
+  expect(Math.max(...widths)).toBeLessThanOrEqual(1);
 });
 
 test("Settings is reached from You", async ({ page }) => {
