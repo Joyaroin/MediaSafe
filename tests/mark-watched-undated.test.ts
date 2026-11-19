@@ -117,6 +117,24 @@ async function seedFilm(
   return { entryId: entry.id, titleId: row.id };
 }
 
+/** A watch on `entry` that holds `sourceKey` under the app's source. */
+async function seedWatchWithKey(
+  tx: Transaction,
+  userId: UserId,
+  entry: { entryId: string; titleId: string },
+  sourceKey: string,
+): Promise<void> {
+  await tx.insert(watch).values({
+    userId,
+    libraryEntryId: entry.entryId,
+    titleId: entry.titleId,
+    episodeId: null,
+    watchedAt: null,
+    source: "app",
+    sourceKey,
+  });
+}
+
 async function watchRowsOf(tx: Transaction, userId: UserId, entryId: string) {
   return tx
     .select()
@@ -200,6 +218,41 @@ describe("markWatchedUndated", () => {
 
       expect(retry.recorded).toBe(0);
       expect(await watchRowsOf(tx, userId, entryId)).toHaveLength(3);
+    }));
+
+  // The already-watched filter only looks at rows on the same library entry, but the unique
+  // key is (user_id, source, source_key). A row on another entry that already holds a key
+  // this press would derive is therefore stopped only by `onConflictDoNothing`.
+  it("writes nothing twice when another entry already holds the key a film press would derive", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const other = await seedFilm(tx, userId);
+      const { entryId } = await seedFilm(tx, userId);
+      const sourceKey = nextKey();
+      await seedWatchWithKey(tx, userId, other, `${sourceKey}:film`);
+
+      const outcome = await markWatchedUndated(userId, { libraryEntryId: entryId, sourceKey }, tx);
+
+      expect(outcome.recorded).toBe(0);
+      expect(await watchRowsOf(tx, userId, entryId)).toEqual([]);
+      expect(await watchRowsOf(tx, userId, other.entryId)).toHaveLength(1);
+    }));
+
+  it("writes only the episodes whose keys are free when another entry holds one of them", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const other = await seedFilm(tx, userId);
+      const { entryId, episodeIds } = await seedShow(tx, userId, SHOW);
+      const sourceKey = nextKey();
+      await seedWatchWithKey(tx, userId, other, `${sourceKey}:${episodeIds["1-1"]}`);
+
+      const outcome = await markWatchedUndated(userId, { libraryEntryId: entryId, sourceKey }, tx);
+
+      expect(outcome.recorded).toBe(2);
+      const rows = await watchRowsOf(tx, userId, entryId);
+      expect(rows.map((one) => one.episodeId).sort()).toEqual(
+        [episodeIds["1-2"], episodeIds["2-1"]].sort(),
+      );
     }));
 
   it("skips an episode the entry already has a watch of", () =>
