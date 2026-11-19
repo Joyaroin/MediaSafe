@@ -43,12 +43,13 @@ export function DayWatches({ watches }: { readonly watches: readonly HeatmapWatc
                 aria-expanded={isOpen}
                 aria-controls={panel}
                 onClick={() => toggle(group.libraryEntryId)}
-                className="flex w-full min-w-0 items-baseline gap-2 py-1 text-left text-item"
+                className="flex w-full min-w-0 items-baseline py-1 text-left text-item"
               >
-                <span className="min-w-0 truncate text-text">
-                  {group.lead}
-                  <span className="text-meta text-dim">{group.detail}</span>
-                </span>
+                {/* Only the title gives way on a narrow screen; the facts after it stay whole.
+                    `whitespace-pre` keeps the " · " that opens `detail`, which a flex item
+                    would otherwise strip. */}
+                <span className="min-w-0 truncate text-text">{group.lead}</span>
+                <span className="shrink-0 whitespace-pre text-meta text-dim">{group.detail}</span>
               </button>
               {isOpen ? (
                 <div id={panel} className="pb-2 pl-3">

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useLayoutEffect, useRef } from "react";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
 import { PILL_TARGET, PRIMARY_PILL } from "@/app/buttons";
 import { Poster } from "@/app/poster";
 import type { MarkedResult } from "./actions";
+import type { RowState } from "./row-writes";
 import { useCatalogueAdd } from "./use-catalogue-add";
 import { WhereUpTo } from "./where-up-to";
 
@@ -52,6 +54,61 @@ import { WhereUpTo } from "./where-up-to";
  * lost. So the controller that holds the standing toast is made once and kept
  * (`use-catalogue-add.ts`), and never reads React state for anything a write depends on.
  */
+
+/**
+ * ── Focus through an add — issue #604 ────────────────────────────────────────────────
+ *
+ * Pressing *Add* unmounts the button the keyboard is on (the "In your library" link takes
+ * its place at once), and focus used to fall to the top of the page. So the row follows the
+ * reader through the add:
+ *
+ *  - while it is adding: on the "In your library" link;
+ *  - once it lands: on what the chips offer first — the chosen *Not started* radio, the
+ *    group's one tab stop, or a film's *Seen it* toggle;
+ *  - if it is lost: back on *Add*.
+ *
+ * Only for a reader who was there: the press must have come with focus on this row. And it
+ * stops at the first step where focus is somewhere else — on another control, or on a
+ * toast's *Try again* — so a retry, a late answer or a click elsewhere never takes focus
+ * back. `document.body` counts as "still here": it is where focus lands when the button it
+ * was on unmounts.
+ */
+function useFocusThroughAdd(phase: RowState["phase"]) {
+  const rowRef = useRef<HTMLLIElement>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const libraryRef = useRef<HTMLAnchorElement>(null);
+  const following = useRef(false);
+
+  /** Call from the *Add* press, before the state changes. */
+  function begin() {
+    following.current = rowRef.current?.contains(document.activeElement) ?? false;
+  }
+
+  useLayoutEffect(() => {
+    if (!following.current) return;
+    const row = rowRef.current;
+    const active = document.activeElement;
+    if (row === null || (active !== document.body && active !== null && !row.contains(active))) {
+      following.current = false;
+      return;
+    }
+
+    if (phase === "adding") {
+      libraryRef.current?.focus();
+    } else if (phase === "added") {
+      following.current = false;
+      row
+        .querySelector<HTMLElement>('[role="radio"][aria-checked="true"], button[aria-pressed]')
+        ?.focus();
+    } else if (phase === "open") {
+      following.current = false;
+      addRef.current?.focus();
+    }
+  }, [phase]);
+
+  return { rowRef, addRef, libraryRef, beginFollowing: begin };
+}
+
 export function CatalogueResultRow({
   result,
   aboveFold = false,
@@ -62,9 +119,13 @@ export function CatalogueResultRow({
   aboveFold?: boolean;
 }) {
   const { state, inLibrary, add, choose } = useCatalogueAdd(result);
+  const { rowRef, addRef, libraryRef, beginFollowing } = useFocusThroughAdd(state.phase);
 
   return (
-    <li className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-x-3 py-2.5">
+    <li
+      ref={rowRef}
+      className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-x-3 py-2.5"
+    >
       {/* A grid, and not a flex row, so the DOM can be in the order a keyboard and a screen
           reader meet it — name, **Add**, then the follow-up chips (issue #536, WCAG 2.4.3).
           The chips sit in the third row, under the name and the state, once an add lands. */}
@@ -118,6 +179,7 @@ export function CatalogueResultRow({
          * the title's own page — the catalogue address sends a held title on to it.
          */
         <Link
+          ref={libraryRef}
           href={`/catalogue/${result.kind}/${result.tmdbId}`}
           aria-label={`${result.name} is in your library — open it`}
           className="col-start-3 row-span-2 row-start-1 flex h-11 shrink-0 items-center gap-1.5 self-center text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
@@ -166,8 +228,12 @@ export function CatalogueResultRow({
          * resolved by the order Tailwind emits them in.
          */
         <button
+          ref={addRef}
           type="button"
-          onClick={() => void add()}
+          onClick={() => {
+            beginFollowing();
+            void add();
+          }}
           /**
            * The visible label is one word because the row it sits in is the context. A
            * screen reader has no row — it has twenty buttons all called *Add* — so the
