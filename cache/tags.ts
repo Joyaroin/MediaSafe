@@ -8,6 +8,7 @@ import {
   libraryEntryIdForTitle,
   listLibraryEntries,
   listLists,
+  listNotStartedShows,
   listUpcomingEpisodes,
   listUpcomingFilms,
   listUpNextRails,
@@ -21,6 +22,7 @@ import {
   type TitleDetailRow,
   type UpcomingEpisode,
   type UpcomingFilm,
+  type UpNextEntry,
   type UpNextRails,
   type UserId,
   type YouRails,
@@ -241,6 +243,13 @@ export const CACHED_READS = {
    */
   libraryEntryIdForEpisode: { cachedAs: "library", readsCurrentDate: false },
   listUpNextRails: { cachedAs: "up-next", readsCurrentDate: true },
+  /**
+   * Issue #540's Not started group. Tagged `up-next` with the rails it sits beside: adding a
+   * show, removing one, a watch, giving up and resuming all bust that tag already, and each
+   * of them moves this read's membership. It selects through `library_entry_state` and
+   * compares the first episode's `air_date` to `current_date`, so the day is in its key.
+   */
+  listNotStartedShows: { cachedAs: "up-next", readsCurrentDate: true },
   listWatchlistFilms: { cachedAs: "up-next", readsCurrentDate: true },
   /**
    * Issue #251's Upcoming — page two of the same pager, so the same `up-next` fact.
@@ -398,6 +407,8 @@ export const UNCACHED_READS = {
     "Read once, on the delete-account confirmation, by a reader who is about to make it wrong. Caching a count somebody is reading in order to destroy buys nothing and adds a way for the number and the deletion to disagree.",
   accountsHoldingTitles:
     "A write's own read: it resolves who to bust *for* the cache. Caching it would mean invalidation deciding who to invalidate from a cached answer, which is the one place a stale row turns into a bust that never happens.",
+  entryEpisodeFacts:
+    "Search's follow-up chips (#537): read once, right after an add, by the add's own response, and again by the Seen it all press to see whether the seasons have landed. Both want the answer as of that instant; a cached one is the stale answer for a show whose episodes arrived a second ago.",
   libraryCatalogueKeys:
     "The search screen's already-added check, read against a set of keys that changes per query. The key would be the query, so the hit rate is the odds of the same reader searching the same thing twice.",
   listStoppedShows:
@@ -517,6 +528,26 @@ export function cachedUpNextRails(userId: UserId): Promise<UpNextRails> {
   );
 
   return read(userId);
+}
+
+/**
+ * Tonight's Not started group (#540). Tagged `up-next` with the rails, and keyed by the day
+ * like them: whether a show's first episode has aired changes at midnight with no write.
+ *
+ * `limit` is an argument, so it is in the invocation key (`JSON.stringify(args)`): two
+ * callers asking for different limits never share an entry.
+ */
+export function cachedNotStartedShows(
+  userId: UserId,
+  limit: number,
+): Promise<UpNextEntry[]> {
+  const read = unstable_cache(
+    listNotStartedShows,
+    ["listNotStartedShows", userId, serverDay()],
+    { tags: [tagFor("up-next", userId)] },
+  );
+
+  return read(userId, limit);
 }
 
 /**
@@ -843,6 +874,9 @@ export const INVALIDATES = {
    *  phone's WATCHLIST group, every list row for that title, and its own detail page. */
   addTitleToLibrary: ["library", "up-next", "lists", "title-detail", "you"],
   addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail", "you"],
+  /* Search's undated *Seen it all* (#537): watches on an existing entry, so the same four
+     as `markWatchedUpTo`. It writes no title or episode row, so nothing is shared. */
+  markWatchedUndated: ["library", "up-next", "title-detail", "you"],
   applyImportChunk: ["library", "up-next", "lists", "title-detail", "you"],
   recordWatch: ["library", "up-next", "title-detail", "you"],
   unwatch: ["library", "up-next", "title-detail", "you"],

@@ -68,6 +68,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     libraryEntryIdForTitle: vi.fn(),
     libraryEntryIdForEpisode: vi.fn(),
     listUpNextRails: vi.fn(),
+    listNotStartedShows: vi.fn(),
     listWatchlistFilms: vi.fn(),
     listUpcomingEpisodes: vi.fn(),
     listUpcomingFilms: vi.fn(),
@@ -205,6 +206,7 @@ const {
   cachedLibraryEntryIdForTitle,
   cachedListDetail,
   cachedLists,
+  cachedNotStartedShows,
   cachedTitleDetail,
   cachedUpcomingEpisodes,
   cachedUpcomingFilms,
@@ -259,6 +261,8 @@ const CACHED = {
   libraryEntryIdForEpisode: (userId: typeof mine) =>
     cachedLibraryEntryIdForEpisode(userId, "episode-1"),
   listUpNextRails: (userId: typeof mine) => cachedUpNextRails(userId),
+  /** Issue #540's Not started group — `up-next`, beside the rails it sits under on Tonight. */
+  listNotStartedShows: (userId: typeof mine) => cachedNotStartedShows(userId, 3),
   listWatchlistFilms: (userId: typeof mine) => cachedWatchlistFilms(userId),
   /** Issue #251's Upcoming — the landing pager's second page, tagged `up-next` with the
    *  two rails on its first, so one bust reaches the whole surface a reader pages across. */
@@ -1473,6 +1477,7 @@ describe("the reads that are cached, and the one that must never be", () => {
       // is the failure worth having.
       "listLibraryEntries",
       "listUpNextRails",
+      "listNotStartedShows",
       "listWatchlistFilms",
       "listUpcomingEpisodes",
       "listUpcomingFilms",

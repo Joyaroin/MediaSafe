@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import {
+  aliasedTable,
   and,
   asc,
   eq,
@@ -18,6 +19,8 @@ import {
   or,
   sql,
   type SQL,
+  type SQLWrapper,
+  type Subquery,
 } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
@@ -2066,6 +2069,244 @@ export async function undoMarkWatchedUpTo(
 }
 
 /**
+ * One press of Search's *Seen it all* / *Seen it*, and what is the caller's to decide —
+ * issue #537, for #550's follow-up chips.
+ *
+ * `sourceKey` is minted **in the browser**, once per press and reused on every retry,
+ * for the reason `MarkWatchedUpToParams` and `RecordWatchParams` give: a server-minted
+ * key is a new key per request, which is what turns a retry into a second set of
+ * watches. This function mints nothing and returns no key.
+ */
+export interface MarkWatchedUndatedParams {
+  readonly libraryEntryId: string;
+  readonly sourceKey: string;
+}
+
+export interface MarkWatchedUndatedOutcome {
+  /** How many rows this press wrote. Stays off the wire, as `recorded` does elsewhere. */
+  readonly recorded: number;
+}
+
+/**
+ * Record every aired episode of a show — or a film — as watched **with no date**:
+ * `watched_at = NULL`, the undated watch an import writes (`db/tables.ts`'s `watch`).
+ *
+ * ── Why it is its own write ──────────────────────────────────────────────────────────
+ *
+ * `addTitleToLibraryWatched` stamps `now()` and the unowned title page keeps it, and
+ * `markWatchedUpTo` stamps `now()` as #196 decided. This is the third write and the only
+ * undated one: a reader who says *I saw this years ago* in Search has not had a day of
+ * watching today. Undated watches stay off the heatmap, You's day log, Tonight's
+ * ordering (`upNextOrder` ranks them last), `lastWatchedTitle` and `listWatchesSince`,
+ * and stay in the all-time totals and You's "N watches carry no date" line.
+ *
+ * ── Keys: `${sourceKey}:${episodeId}`, and `${sourceKey}:film` ───────────────────────
+ *
+ * Episodes use `markWatchedUpTo`'s scheme. A film has no episode, so its row is
+ * `${sourceKey}:film`; both therefore start `${sourceKey}:`, which is the prefix
+ * `undoMarkWatchedUpTo` deletes by — it is the switch back for this write, on a show and
+ * on a film alike, and no second delete exists.
+ *
+ * ── Aired ────────────────────────────────────────────────────────────────────────────
+ *
+ * `db/views.ts`'s released test, as `addTitleToLibraryWatched` transcribes it: `season_no
+ * > 0` and `air_date` not null and `<= current_date`. A special or an unaired episode
+ * gets no row. Episodes the entry already has a watch of are skipped, not re-written (a
+ * second row is a rewatch), and a film that already has one writes nothing.
+ *
+ * ── A retry writes no second set ─────────────────────────────────────────────────────
+ *
+ * Twice over: the same key derives the same row keys, which `ON CONFLICT DO NOTHING`
+ * catches, and the rows the first attempt wrote are already-watched to the second.
+ *
+ * ── Authorization ────────────────────────────────────────────────────────────────────
+ *
+ * `ownedBy(userId, libraryEntry)` with the entry id, and a miss throws, as
+ * `markWatchedUpTo` does. It does not call `mirrorTitle`: it reads the episodes that are
+ * there. A show still waiting for its seasons (`episodes_mirrored_at` is NULL) has none,
+ * which is why `search/actions.ts` finishes that mirror before calling this.
+ */
+export async function markWatchedUndated(
+  userId: UserId,
+  params: MarkWatchedUndatedParams,
+  executor: Executor = getDb(),
+): Promise<MarkWatchedUndatedOutcome> {
+  return executor.transaction(async (tx) => {
+    const [entry] = await tx
+      .select({ titleId: libraryEntry.titleId, kind: title.kind })
+      .from(libraryEntry)
+      .innerJoin(title, eq(title.id, libraryEntry.titleId))
+      .where(
+        and(
+          ownedBy(userId, libraryEntry),
+          eq(libraryEntry.id, params.libraryEntryId),
+        ),
+      );
+
+    if (!entry) {
+      throw new Error(
+        `Library entry ${params.libraryEntryId} was not found in this account's library.`,
+      );
+    }
+
+    const watchedRows = await tx
+      .select({ episodeId: watch.episodeId })
+      .from(watch)
+      .where(eq(watch.libraryEntryId, params.libraryEntryId));
+
+    if (entry.kind === "film") {
+      if (watchedRows.length > 0) return { recorded: 0 };
+
+      const written = await tx
+        .insert(watch)
+        .values({
+          userId,
+          libraryEntryId: params.libraryEntryId,
+          titleId: entry.titleId,
+          episodeId: null,
+          watchedAt: null,
+          source: APP_WATCH_SOURCE,
+          sourceKey: `${params.sourceKey}:film`,
+        })
+        .onConflictDoNothing({
+          target: [watch.userId, watch.source, watch.sourceKey],
+        })
+        .returning({ id: watch.id });
+
+      return { recorded: written.length };
+    }
+
+    const aired = await tx
+      .select({ id: episode.id })
+      .from(episode)
+      .where(
+        and(
+          eq(episode.titleId, entry.titleId),
+          gt(episode.seasonNo, 0),
+          isNotNull(episode.airDate),
+          lte(episode.airDate, sql`current_date`),
+        ),
+      )
+      .orderBy(episode.seasonNo, episode.episodeNo);
+
+    const alreadyWatched = new Set(
+      watchedRows.map((one) => one.episodeId).filter((id) => id !== null),
+    );
+    const covered = aired.filter((one) => !alreadyWatched.has(one.id));
+
+    if (covered.length === 0) return { recorded: 0 };
+
+    const written = await tx
+      .insert(watch)
+      .values(
+        covered.map((one) => ({
+          userId,
+          libraryEntryId: params.libraryEntryId,
+          titleId: entry.titleId,
+          episodeId: one.id,
+          watchedAt: null,
+          source: APP_WATCH_SOURCE,
+          sourceKey: `${params.sourceKey}:${one.id}`,
+        })),
+      )
+      .onConflictDoNothing({
+        target: [watch.userId, watch.source, watch.sourceKey],
+      })
+      .returning({ id: watch.id });
+
+    return { recorded: written.length };
+  });
+}
+
+/**
+ * What Search needs to know about one entry it is about to offer follow-up chips for.
+ */
+export interface EntryEpisodeFacts {
+  readonly titleId: string;
+  readonly kind: TitleKind;
+  readonly tmdbId: number;
+  /** A show whose seasons have not been mirrored yet (`episodes_mirrored_at` is NULL). */
+  readonly episodesPending: boolean;
+  /**
+   * The show has an aired episode, by `markWatchedUndated`'s test. Always `false` for a
+   * film, which has no episodes: #550 offers a film's *Seen it* on its own terms.
+   *
+   * A show added a moment ago has no episode rows yet, so for a **pending** show the
+   * answer is its first air date: aired on or before today. That is the only fact the
+   * series row carries, and a show that has started has aired its first episode.
+   */
+  readonly hasAiredEpisode: boolean;
+}
+
+/**
+ * The facts above for one of this reader's entries, or `null` when it is not theirs —
+ * `ownedBy`, as every read of an entry is.
+ */
+export async function entryEpisodeFacts(
+  userId: UserId,
+  libraryEntryId: string,
+  executor: Executor = getDb(),
+): Promise<EntryEpisodeFacts | null> {
+  const [row] = await executor
+    .select({
+      titleId: title.id,
+      kind: title.kind,
+      tmdbId: title.tmdbId,
+      episodesMirroredAt: title.episodesMirroredAt,
+      startedByDate: sql<boolean>`coalesce(${title.releaseDate} <= current_date, false)`,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .where(
+      and(ownedBy(userId, libraryEntry), eq(libraryEntry.id, libraryEntryId)),
+    );
+
+  if (!row) return null;
+
+  if (row.kind === "film") {
+    return {
+      titleId: row.titleId,
+      kind: row.kind as TitleKind,
+      tmdbId: row.tmdbId,
+      episodesPending: false,
+      hasAiredEpisode: false,
+    };
+  }
+
+  const episodesPending = row.episodesMirroredAt === null;
+  if (episodesPending) {
+    return {
+      titleId: row.titleId,
+      kind: row.kind as TitleKind,
+      tmdbId: row.tmdbId,
+      episodesPending,
+      hasAiredEpisode: row.startedByDate,
+    };
+  }
+
+  const [aired] = await executor
+    .select({ id: episode.id })
+    .from(episode)
+    .where(
+      and(
+        eq(episode.titleId, row.titleId),
+        gt(episode.seasonNo, 0),
+        isNotNull(episode.airDate),
+        lte(episode.airDate, sql`current_date`),
+      ),
+    )
+    .limit(1);
+
+  return {
+    titleId: row.titleId,
+    kind: row.kind as TitleKind,
+    tmdbId: row.tmdbId,
+    episodesPending,
+    hasAiredEpisode: aired !== undefined,
+  };
+}
+
+/**
  * Give up on a title — issue #87, and the only hand-set state in the model
  * (*Abandoned*).
  *
@@ -3749,13 +3990,53 @@ async function upNextQueues(
   entryIds: readonly string[],
   executor: Executor,
 ): Promise<Map<string, UpNextQueue>> {
-  const queues = new Map<string, UpNextQueue>();
-  if (entryIds.length === 0) return queues;
+  if (entryIds.length === 0) return new Map();
 
-  const ranked = executor
+  const starts = executor
     .select({
       libraryEntryId: libraryEntryUpNext.libraryEntryId,
       titleId: libraryEntryUpNext.titleId,
+      seasonNo: libraryEntryUpNext.seasonNo,
+      episodeNo: libraryEntryUpNext.episodeNo,
+    })
+    .from(libraryEntryUpNext)
+    .where(
+      and(
+        eq(libraryEntryUpNext.userId, userId),
+        inArray(libraryEntryUpNext.libraryEntryId, [...entryIds]),
+      ),
+    )
+    .as("starts");
+
+  return await queuesFromStarts(starts, entryIds, executor);
+}
+
+/**
+ * Where each run starts: one row per entry, the `(season, episode)` its queue begins at.
+ *
+ * `upNextQueues` starts every run at `library_entry_up_next`'s episode; `listNotStartedShows`
+ * has no such row (the view is built on `watch`), so it starts at the show's first episode.
+ * Everything after the start — the window, the `>=` row comparison, the truncation at the
+ * first unreleased episode, the depth and `more` — is one function so the two cannot
+ * disagree about what a queue is.
+ */
+type QueueStarts = Subquery &
+  Record<"libraryEntryId" | "titleId" | "seasonNo" | "episodeNo", SQLWrapper>;
+
+async function queuesFromStarts(
+  starts: QueueStarts,
+  entryIds: readonly string[],
+  executor: Executor,
+): Promise<Map<string, UpNextQueue>> {
+  const queues = new Map<string, UpNextQueue>();
+
+  const ranked = executor
+    .select({
+      /* `sql<string>` rather than the column: the two callers' columns differ in the
+         details of their config (a view's, a table's with a default), and a type that
+         fits both is cheaper than a second copy of this function. */
+      libraryEntryId: sql<string>`${starts.libraryEntryId}`.as("library_entry_id"),
+      titleId: sql<string>`${starts.titleId}`.as("title_id"),
       episodeId: episode.id,
       episodeName: episode.name,
       seasonNo: episode.seasonNo,
@@ -3766,25 +4047,19 @@ async function upNextQueues(
           "released",
         ),
       rank: sql<number>`row_number() over (
-          partition by ${libraryEntryUpNext.libraryEntryId}
+          partition by ${starts.libraryEntryId}
           order by ${episode.seasonNo}, ${episode.episodeNo}
         )`
         .mapWith(Number)
         .as("rank"),
     })
-    .from(libraryEntryUpNext)
+    .from(starts)
     .innerJoin(
       episode,
       and(
-        eq(episode.titleId, libraryEntryUpNext.titleId),
+        eq(episode.titleId, starts.titleId),
         gt(episode.seasonNo, 0),
-        sql`(${episode.seasonNo}, ${episode.episodeNo}) >= (${libraryEntryUpNext.seasonNo}, ${libraryEntryUpNext.episodeNo})`,
-      ),
-    )
-    .where(
-      and(
-        eq(libraryEntryUpNext.userId, userId),
-        inArray(libraryEntryUpNext.libraryEntryId, [...entryIds]),
+        sql`(${episode.seasonNo}, ${episode.episodeNo}) >= (${starts.seasonNo}, ${starts.episodeNo})`,
       ),
     )
     .as("ranked");
@@ -4029,6 +4304,148 @@ export async function listUpNextRails(
     ongoing: [...pending, ...watching.slice(0, ONGOING_RAIL_SIZE).map(watchingEntry)],
     oldFriends: watching.slice(ONGOING_RAIL_SIZE).map(watchingEntry),
   };
+}
+
+/**
+ * Tonight's **Not started** group — issue #540: up to `limit` shows in the reader's library
+ * with no watches that are not Dropped, whose first episode has aired, in the `UpNextEntry`
+ * shape.
+ *
+ * ── Why it has a starting point of its own ───────────────────────────────────────────
+ *
+ * `library_entry_up_next` is built on `library_entry_progress`, which joins `watch`, so an
+ * entry with no watches has no row in it, and `upNextQueues` reads only from it. This read
+ * starts from the show's **first episode** instead — episode 1 of the lowest-numbered season
+ * above 0, so specials (season 0) never count — and hands that start to the same
+ * `queuesFromStarts` every other queue goes through. The view and *Up next episode* are
+ * unchanged: this is a read beside them, not a second definition of them.
+ *
+ * ── Membership ───────────────────────────────────────────────────────────────────────
+ *
+ * - `library_entry_state` is `watchlist`. `db/views.ts` checks `abandoned_at` first, so a
+ *   Dropped show with no watches is `abandoned` and is out without a clause of its own here.
+ * - A show, and its first episode has **aired** (`air_date` known and not after today).
+ * - `MIRRORED`, as every Up next read: a title whose episodes have not mirrored is the
+ *   pending read's, once.
+ *
+ * ── Order ────────────────────────────────────────────────────────────────────────────
+ *
+ * Newest added first, then `lower(name)`, then the entry id — an import gives every entry one
+ * `added_at`, so the name and then the id are what make this a total order. It is
+ * `upNextPending`'s order for the same reason.
+ *
+ * The caller passes `limit`; the number three belongs to the surface (#551), not to the read.
+ */
+export async function listNotStartedShows(
+  userId: UserId,
+  limit: number,
+  executor: Executor = getDb(),
+): Promise<UpNextEntry[]> {
+  if (limit <= 0) return [];
+
+  const first = aliasedTable(episode, "first_episode");
+
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      titleId: title.id,
+      titleName: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      inProduction: title.inProduction,
+      posterColour: title.posterColour,
+      episodeId: first.id,
+      episodeName: first.name,
+      seasonNo: first.seasonNo,
+      episodeNo: first.episodeNo,
+      airDate: first.airDate,
+      runtimeMins: first.runtimeMins,
+      stillPath: first.stillPath,
+      /* `upNextRead`'s own count: the aired episodes after this one, plus this one. */
+      remaining: sql<number>`(
+          select count(*)::int + 1
+          from episode later
+          where later.title_id = ${title.id}
+            and later.season_no > 0
+            and (later.season_no, later.episode_no) > (${first.seasonNo}, ${first.episodeNo})
+            and later.air_date <= current_date
+        )`.mapWith(Number),
+      seasonReleased: sql<number>`(
+          select count(*)::int
+          from episode s
+          where s.title_id = ${title.id}
+            and s.season_no = ${first.seasonNo}
+            and s.air_date <= current_date
+        )`.mapWith(Number),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .innerJoin(
+      first,
+      and(
+        eq(first.titleId, title.id),
+        eq(first.episodeNo, 1),
+        sql`${first.seasonNo} = (
+          select min(m.season_no)
+          from episode m
+          where m.title_id = ${title.id} and m.season_no > 0
+        )`,
+        isNotNull(first.airDate),
+        lte(first.airDate, sql`current_date`),
+      ),
+    )
+    .where(
+      and(
+        ownedBy(userId, libraryEntry),
+        MIRRORED,
+        eq(title.kind, "show" satisfies TitleKind),
+        eq(libraryEntryState.state, "watchlist" satisfies LibraryState),
+      ),
+    )
+    .orderBy(desc(libraryEntry.addedAt), sql`lower(${title.name})`, libraryEntry.id)
+    .limit(limit);
+
+  const entryIds = rows.map((row) => row.libraryEntryId);
+  if (entryIds.length === 0) return [];
+
+  const starts = executor
+    .select({
+      // Aliased: `library_entry.id` and `title.id` would both come out of the subquery as
+      // `id`, and the outer read joins `episode`, which has an `id` of its own.
+      libraryEntryId: sql<string>`${libraryEntry.id}`.as("start_entry_id"),
+      titleId: sql<string>`${title.id}`.as("start_title_id"),
+      seasonNo: first.seasonNo,
+      episodeNo: first.episodeNo,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(
+      first,
+      and(
+        eq(first.titleId, title.id),
+        eq(first.episodeNo, 1),
+        sql`${first.seasonNo} = (
+          select min(m.season_no)
+          from episode m
+          where m.title_id = ${title.id} and m.season_no > 0
+        )`,
+      ),
+    )
+    .where(and(ownedBy(userId, libraryEntry), inArray(libraryEntry.id, entryIds)))
+    .as("starts");
+
+  const queues = await queuesFromStarts(starts, entryIds, executor);
+
+  return rows.map((row) =>
+    upNextEntry(
+      { ...row, seasonWatched: 0 },
+      // `queuesFromStarts` writes a key for every id it is handed; the fallback is
+      // `listUpNextRails`'s own, and fails the same way (a card with nothing to mark, never
+      // a card claiming the show is done).
+      queues.get(row.libraryEntryId) ?? { episodes: [], more: true },
+    ),
+  );
 }
 
 /**
