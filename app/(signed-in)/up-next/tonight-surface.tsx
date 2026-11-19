@@ -38,7 +38,7 @@ import { UpNextHeading } from "./up-next-heading";
  * Shows with no watches get a group of their own under Also ready (`tonight-not-started.tsx`).
  * When nothing is in Continue watching on load, the first of them is the featured entry
  * instead and is left out of the group (`not-started.ts`). It is then featured like any other:
- * marking its S1 E1 moves the block to S1 E2.
+ * marking its starting episode moves the block to the next one.
  *
  * ── No featured entry ────────────────────────────────────────────────────────────────
  *
@@ -83,8 +83,8 @@ export function TonightSurface({
   );
 
   /* With nothing in Continue watching the first Not started show leads the list, so the store
-     and the featured rule below treat it as any featured entry: marking S1 E1 moves it on to
-     S1 E2. */
+     and the featured rule below treat it as any featured entry: marking its starting episode
+     moves it on to the next one. */
   const leading = useMemo(
     () => (placed.featured === null ? continueWatching : [placed.featured]),
     [placed.featured, continueWatching],

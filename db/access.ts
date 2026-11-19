@@ -4209,7 +4209,7 @@ async function upNextQueues(
  * Where each run starts: one row per entry, the `(season, episode)` its queue begins at.
  *
  * `upNextQueues` starts every run at `library_entry_up_next`'s episode; `listNotStartedShows`
- * has no such row (the view is built on `watch`), so it starts at the show's first episode.
+ * has no such row (the view is built on `watch`), so it starts at the show's earliest aired episode.
  * Everything after the start — the window, the `>=` row comparison, the truncation at the
  * first unreleased episode, the depth and `more` — is one function so the two cannot
  * disagree about what a queue is.
@@ -4539,9 +4539,9 @@ function startingEpisodeId(titleId: PgColumn): SQL<string> {
  * known and not after today) of season above 0 with the lowest season number, then the lowest
  * episode number. Specials (season 0) never count. For a show whose lowest season opens
  * with an aired episode 1 that is S1 E1, as it always was; a show whose lowest season starts
- * at episode 2 (TMDB lists no episode 1) starts from episode 2 rather than being in no
- * group (issue #603, replacing #535's episode-1-only rule). It is written once, in
- * `startingEpisodeId`, and both reads below use it.
+ * at episode 2 (TMDB lists no episode 1), or whose season 1 has nothing aired, starts from its
+ * earliest aired episode rather than being in no group (issue #603, replacing #535's
+ * episode-1-only rule). It is written once, in `startingEpisodeId`, and both reads below use it.
  *
  * ── Membership ───────────────────────────────────────────────────────────────────────
  *

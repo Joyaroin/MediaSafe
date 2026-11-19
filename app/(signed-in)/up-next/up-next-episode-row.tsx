@@ -123,9 +123,10 @@ export function UpNextEpisodeRow({
 
 /**
  * One row of Tonight's **Not started** group — issue #551. The same row as *Also ready*'s, with
- * the line "Start with S01 · E01 · {name}" and no season count, and the same mark ring.
+ * the line "Start with S01 · E02 · {name}" (the starting episode's own code) and no season count,
+ * and the same mark ring.
  *
- * Marking records the show's first episode and the row holds, then closes in place by the
+ * Marking records the show's starting episode and the row holds, then closes in place by the
  * existing close motion (`useNotStartedOnList` lets it go); the show is in Also ready on the
  * next read. No new motion.
  */
@@ -239,7 +240,7 @@ function MarkableRow({
   /* Spent and no longer holding: the list has already let this row go
      (`useEntriesOnRail`), and this is the row as it closes — on its finish line, its tick
      filled, on its way to the tab it now belongs to. A Not started row closes the same way
-     once its first episode is marked and the hold is over, with no tab to travel to: the
+     once its starting episode is marked and the hold is over, with no tab to travel to: the
      show is in Also ready on the next read. */
   const leaving = startsHere
     ? mark.held === null && mark.episode?.episodeId !== showing.episodeId
@@ -323,7 +324,8 @@ function RowBody({
   /** The tab this row's poster travels to as it leaves, or `null` when it is not leaving
    *  for one. */
   leavesFor: DestinationHref | null;
-  /** A Not started row (#551): "Start with S01 · E01 · name", and no season count. */
+  /** A Not started row (#551): "Start with S01 · E01 · name" (the starting episode's own code),
+   *  and no season count. */
   startsHere?: boolean;
   /** Swipe to mark's binding, on a row that can be marked (`useSwipeToMark`). */
   swipe?: SwipeBinding | null;

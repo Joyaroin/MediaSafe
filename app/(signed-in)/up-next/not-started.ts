@@ -25,7 +25,7 @@ export const NOT_STARTED_READ_SIZE = NOT_STARTED_ON_TONIGHT + 1;
  *
  * With it set and nothing in Continue watching *now* either, the first Not started show is
  * featured and left out of the group, so a show never appears twice. Once the reader marks
- * its starting episode (S1 E1, or the earliest aired one, #603) the next render has it in
+ * its starting episode (#603) the next render has it in
  * Continue watching, and the ordinary rule features it.
  */
 export function placeNotStarted(

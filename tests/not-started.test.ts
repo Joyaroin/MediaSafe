@@ -241,7 +241,7 @@ describe("listNotStartedShows — the starting episode", () => {
     });
   });
 
-  it("is the first aired episode of the lowest season above 0, not season 1 by name", async () => {
+  it("starts at S2 E1 for a show with no season 1", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
       const show = await seed(tx, reader, {
