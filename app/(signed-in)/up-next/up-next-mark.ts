@@ -382,11 +382,13 @@ export function seasonProgress(
 /**
  * Whether this card still belongs on the next-episodes rail — the rule, written once.
  *
- * `up-next-episode-rail.tsx` asks it of every entry so that a rail whose last card has
- * been marked away takes its heading with it, and `up-next-episode-card.tsx` asks it of
- * itself so that the card stops rendering. Two callers, one rule: a rail that disagreed
- * with its own cards would leave a heading over an empty track, which *an
- * empty rail is absent* forbids as surely as a count would.
+ * `useEntriesOnRail` asks it of every entry (`tonight-surface.tsx` for the list,
+ * `up-next-episode-row.tsx` for the row as it closes) so that a list whose last card has
+ * been marked away takes its heading with it and the card stops rendering. One rule, asked
+ * in both places: a list that disagreed with its own cards would leave a heading over an
+ * empty track, which *an empty rail is absent* forbids as surely as a count would.
+ * (This used to name `up-next-episode-rail.tsx` and `up-next-episode-card.tsx`; both
+ * files are gone since #544.)
  *
  * ── The arrived-empty branch, and why it is not `finished` (#250) ────────────────────
  *

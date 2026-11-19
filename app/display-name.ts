@@ -13,12 +13,12 @@
  *
  * ── What this replaces, and why it is not a cache ────────────────────────────────────
  *
- * `masthead.tsx` and `sidebar.tsx` both read `currentDisplayName()` on the server, and
- * they live in `(signed-in)/layout.tsx` — a layout, which the client Router Cache keeps
- * and reuses across navigations even though every page segment under it is dynamic and is
+ * `sidebar.tsx` reads `currentDisplayName()` on the server (and the deleted `masthead.tsx`
+ * did too, until #544), and it lives in `(signed-in)/layout.tsx` — a layout, which the
+ * client Router Cache keeps and reuses across navigations even though every page segment under it is dynamic and is
  * refetched (Next.js 15's client-cache change: *page segments are no longer reused …
  * layouts and loading states continue to be cached*). So a name saved in Settings really
- * did have no way of reaching those two `<span>`s on its own.
+ * did have no way of reaching the sidebar's `<span>` (or the masthead's) on its own.
  *
  * `display-name-control.tsx` answered that with `router.refresh()`, which re-renders the
  * whole route tree and re-runs every read on the page — the session read included — to

@@ -24,7 +24,8 @@ import { UpNextHeading } from "./up-next-heading";
  * The first Continue watching entry still standing: the read already orders Ongoing by
  * most recent watch (`listUpNextRails`), so this is a position and not a sort. Pending
  * titles are never featured, and an old friend never is either: once Ongoing is marked
- * empty, nothing is. This is `up-next-episode-rail.tsx`'s `featuredId`, moved here whole.
+ * empty, nothing is. This is the `featured` constant below (the rule the deleted
+ * `up-next-episode-rail.tsx` held as `featuredId`, #544), moved here whole.
  *
  * ── The list is the phone's concatenation, without the featured entry ────────────────
  *

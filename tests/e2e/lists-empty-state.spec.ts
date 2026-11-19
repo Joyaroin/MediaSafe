@@ -37,7 +37,9 @@ for (const [name, viewport] of [
     await expect(
       page.getByRole("heading", { name: "Make your own groups", level: 2 }),
     ).toBeVisible();
-    // The page keeps a hidden copy of the same markup, so count only what is on screen.
+    // Checked in a browser at 390 and 1280 wide (#599): `/library?view=lists` renders this
+    // sentence once, in one visible element, with no hidden copy. The `visible: true` filter
+    // is kept anyway, so a hidden duplicate added later is not what this assertion counts.
     await expect(
       page
         .getByText(

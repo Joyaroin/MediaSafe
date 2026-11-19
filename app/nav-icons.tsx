@@ -1,12 +1,14 @@
 /**
- * The glyphs the app's navigation draws with — one rectilinear vocabulary shared by
- * every surface that lists a destination, rather than a set redrawn per surface.
+ * The glyphs the app's navigation draws with — one mostly rectilinear vocabulary shared by
+ * every surface that lists a destination, rather than a set redrawn per surface. The two
+ * curves in it are the magnifier's ring (`SearchIcon`) and the crescent `TonightIcon`
+ * (#399, #569); everything else is rects and straight rules.
  *
  * `tab-bar.tsx` minted the first three for the phone tab bar (issue #102); `sidebar.tsx`
  * (issue #136) is the second caller, and the reason they moved here — a sidebar with the
  * same destinations drawing its own copies is exactly the kind of drift that leaves a
- * product with two play marks that quietly stop agreeing. `SettingsIcon` is `masthead.tsx`'s
- * original inline drawing, extracted for the same reason: the sidebar's own Settings entry
+ * product with two play marks that quietly stop agreeing. `SettingsIcon` is the original inline
+ * drawing from `masthead.tsx` (since deleted), extracted for the same reason: the sidebar's own Settings entry
  * needed it, and inlining a second copy was the alternative this file exists to avoid.
  */
 
@@ -103,9 +105,9 @@ export function LibraryIcon({ className }: { className?: string }) {
  * placeholder, one glyph smaller.
  *
  * **A square head, not a round one**, which is the whole design problem here. Every avatar
- * mark in the world is a circle over an arc, and a circle would be the second curve in an
- * application whose one rule about glyphs is that *a magnifier would be the only curve in
- * it*. So the head is a square and the shoulders are a wider rectangle beneath it —
+ * mark in the world is a circle over an arc, and a circle would be one more curve in an
+ * application that already has two (the magnifier's ring and the Tonight crescent), and the
+ * rule was that glyphs stay rectilinear apart from the one the destination needs. So the head is a square and the shoulders are a wider rectangle beneath it —
  * `LibraryIcon`'s cells and `SettingsIcon`'s rules are the same vocabulary, and the shape
  * still reads as a person because the proportion does the work the curve usually does.
  *
@@ -124,7 +126,8 @@ export function YouIcon({ className }: { className?: string }) {
 }
 
 /** Three struck rules with sliders on them — the same rectilinear vocabulary as the press
- *  mark, and the same drawing `masthead.tsx` used inline before this file existed. */
+ *  mark, and the same drawing the deleted `masthead.tsx` used inline before this file
+ *  existed. */
 export function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">

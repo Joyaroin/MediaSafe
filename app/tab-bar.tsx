@@ -32,7 +32,7 @@ import { useUpNextRepress } from "./use-up-next-repress";
  *   there is still a filled pill to travel.
  *
  * The top border drops from `2px` to `1px` — the redesign has one hairline weight — and
- * the frosting is turn 9's own recipe rather than `masthead.tsx`'s: `78%` of the ground
+ * the frosting is turn 9's own recipe rather than the deleted `masthead.tsx`'s: `78%` of the ground
  * under a `22px` blur, against the `95%`/`2px` the two pieces of chrome used to share.
  * The masthead carries the same pair now, so they still read as one family; what changed
  * is that the family is genuinely translucent rather than nearly opaque.
