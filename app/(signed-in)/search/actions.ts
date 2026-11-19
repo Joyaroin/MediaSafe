@@ -7,7 +7,6 @@ import { invalidateBorrowedFactsFor } from "@/cache/borrowed-facts";
 import { invalidateFor, invalidateForOtherAccounts } from "@/cache/tags";
 import {
   accountsHoldingTitles,
-  addTitleToLibraryWatched,
   libraryCatalogueKeys,
   markWatchedUndated,
   undoMarkWatchedUpTo,
@@ -265,95 +264,20 @@ export async function addToLibraryAction(
 }
 
 /**
- * Add one catalogue result **and record having watched it**, in the same tap — issue
- * #222, over `db/access.ts`'s `addTitleToLibraryWatched`.
- *
- * A second action rather than a boolean on the one above, and that is a decision. A
- * Server Action is a POST endpoint whose arguments are whatever the caller sent, and the
- * two do materially different things to a library — one writes an entry, the other writes
- * an entry and every released episode of a show. A flag would make *which of those
- * happened* a value in a request body rather than which endpoint was called, and the
- * `sourceKey` below has no meaning at all on the plain add.
- *
- * ── The key is minted by the browser, and that is safe here ──────────────────────────
- *
- * `sourceKey` is a `crypto.randomUUID()` from the control that pressed, held across
- * retries so a lost write retried is the same write — the shape `watch-marks.ts` already
- * mints one per episode for. Idempotency is `UNIQUE (user_id, source, source_key)`, which
- * is **scoped to the account**, so a caller sending somebody else's key can only make its
- * own write a no-op. It cannot reach another library, and nothing here trusts the value
- * for anything but that.
- *
- * **Already in the library is still a success**, exactly as the plain add has it, and the
- * write underneath is idempotent in both of the ways it needs to be — see its docblock.
- * Reaching this twice is a retry or a second tab, and telling the reader their library is
- * wrong because it already holds what they asked for would be a lie about a write that
- * landed.
- */
-export async function addWatchedToLibraryAction(
-  kind: TitleKind,
-  tmdbId: number,
-  sourceKey: string,
-): Promise<AddOutcome> {
-  const userId = await requireUserId();
-  /** The global row this add mirrored — see the second bust below for what it is for. */
-  let titleId: string;
-  /** The same row by its catalogue key — the third bust, issue #225. */
-  let key: CatalogueKey;
-
-  try {
-    key = catalogueKeyFrom(kind, tmdbId);
-
-    titleId = (
-      await addTitleToLibraryWatched(
-        userId,
-        await titleMirror(key.kind, key.tmdbId),
-        sourceKey,
-      )
-    ).titleId;
-  } catch (error) {
-    return {
-      ok: false,
-      reference: referenceFor(error, { surface: "search-add-watched" }),
-    };
-  }
-
-  /**
-   * All three busts, past the `catch`, exactly as `addToLibraryAction` above does them —
-   * and for a stronger reason on this path, because this write moves the library's *state*
-   * as well as its membership: every released episode is watched, so the entry lands in
-   * *finished* or *caught up* rather than on the watchlist.
-   *
-   * The second and third are not optional here either. `addTitleToLibraryWatched` calls
-   * `addTitleToLibrary` rather than copying it, precisely so the mirror refresh every
-   * account reads happens on this path too — so this add refreshes what every other
-   * holder's grid prints and what every non-holder's title page renders, just as the plain
-   * one does (`cache/tags.ts`, `MIRRORS_SHARED_TITLE_ROWS`).
-   */
-  invalidateFor("addTitleToLibraryWatched", userId);
-  invalidateForOtherAccounts(
-    "addTitleToLibraryWatched",
-    await accountsHoldingTitles([titleId]),
-    userId,
-  );
-  invalidateBorrowedFactsFor([key]);
-  colourAfterAdd([titleId]);
-  return { ok: true };
-}
-
-/**
  * Search's *Seen it all* / *Seen it*: record every aired episode of an entry already in
  * the library, or the film, as watched **with no date** — issue #537, over
- * `markWatchedUndated`. The unowned title page's dated add stays `addWatchedToLibraryAction`.
+ * `markWatchedUndated`. The unowned title page's watched add is
+ * `addUnownedTitleWatchedToLibraryAction` in `catalogue/actions.ts`.
  *
- * `sourceKey` is the browser's, made once per press and reused on every retry (the
- * `addWatchedToLibraryAction` argument, for the same reasons): a retry writes no second
- * set. `requireUserId` is the check, and `markWatchedUndated` re-checks the entry with
+ * `sourceKey` is the browser's, made once per press and reused on every retry (see
+ * `addUnownedTitleWatchedToLibraryAction` for why that is safe at a POST endpoint): a
+ * retry writes no second set. `requireUserId` is the check, and `markWatchedUndated` re-checks the entry with
  * `ownedBy`; a tampered id throws and answers as a failed write with a reference.
  *
  * A show still waiting for its seasons has them fetched first (`finishMirrorIfPending`),
  * and that write changes shared rows, so it busts what `refreshTitleMirror` does for the
- * other holders.
+ * other holders. It busts them whether or not the undated write then lands; only the
+ * `markWatchedUndated` bust waits for that write (issue #598).
  */
 export async function markSeenAllAction(
   libraryEntryId: string,
@@ -368,7 +292,6 @@ export async function markSeenAllAction(
       libraryEntryId,
       titleMirror,
     ));
-    await markWatchedUndated(userId, { libraryEntryId, sourceKey });
   } catch (error) {
     return {
       ok: false,
@@ -376,10 +299,23 @@ export async function markSeenAllAction(
     };
   }
 
-  invalidateFor("markWatchedUndated", userId);
+  /**
+   * The undated write is its own `try`, so a failure of it cannot skip the busts for the
+   * fetch above, which has already landed (issue #598).
+   */
+  let undatedWriteFailure: unknown = null;
+  let undatedWriteLanded = false;
+  try {
+    await markWatchedUndated(userId, { libraryEntryId, sourceKey });
+    undatedWriteLanded = true;
+  } catch (error) {
+    undatedWriteFailure = error;
+  }
+
   if (mirroredTitleId !== null) {
-    // The fetch above rewrote shared `title` and `episode` rows, which every holder reads
-    // (`MIRRORS_SHARED_TITLE_ROWS`).
+    // The fetch rewrote shared `title` and `episode` rows, which every holder reads
+    // (`MIRRORS_SHARED_TITLE_ROWS`). It landed on its own, so nothing expires those rows
+    // but these two busts, whether or not the undated write then succeeded.
     invalidateFor("refreshTitleMirror", userId);
     invalidateForOtherAccounts(
       "refreshTitleMirror",
@@ -387,6 +323,16 @@ export async function markSeenAllAction(
       userId,
     );
   }
+
+  if (!undatedWriteLanded) {
+    return {
+      ok: false,
+      reference: referenceFor(undatedWriteFailure, { surface: "search-seen-all" }),
+    };
+  }
+
+  // Only a landed undated write moves this reader's watched state.
+  invalidateFor("markWatchedUndated", userId);
   return { ok: true };
 }
 
