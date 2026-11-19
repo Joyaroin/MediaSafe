@@ -195,9 +195,9 @@ export function TimezoneControl({ timezone }: { readonly timezone: string }) {
               ))}
             </select>
             {/* Issue #311 re-narrows this caret off the accent — it was named
-                beside `library-filter-bar.tsx`'s sort caret as painting a selection, which
-                is not one of the three sanctioned meanings. `text-dim` is the same neutral
-                ink that caret takes; the triangle's shape is what marks it as a control. */}
+                as painting a selection, which is not one of the three sanctioned
+                meanings. `text-dim` is a neutral ink; the triangle's shape is what marks
+                it as a control. */}
             <svg
               viewBox="0 0 12 8"
               className="pointer-events-none absolute right-3.5 h-2 w-3 text-dim"

@@ -18,7 +18,7 @@ import {
  *
  * ── What it replaced ─────────────────────────────────────────────────────────────────
  *
- * Six status chips over one grid, and for Films a three-group grid (`film-groups.tsx`, since deleted,
+ * Six status chips over one grid, and for Films a three-group grid (since deleted,
  * which refused to call a finished film *Watched* because a dropped film can have watches too).
  * Both are this now. A film that is finished is **Watched** on purpose — the reversal the
  * spec names — and a dropped film with a watch stays under Dropped, which is a section of
