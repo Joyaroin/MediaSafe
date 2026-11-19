@@ -11,7 +11,8 @@ import { useNotStartedOnList } from "./up-next-mark";
 
 /**
  * Tonight's **Not started** group — issue #551 (spec: "Tonight: Not started"): up to three
- * shows in the library with no watches whose first episode has aired, under *Also ready*.
+ * shows in the library with no watches that have an aired episode to start from (the earliest
+ * aired one, #603), under *Also ready*.
  *
  * A group of its own, not more rows of Also ready: Also ready's first five and its "See all N"
  * never count these (`tonight-list.tsx` is not handed them), and the group has no fold of its

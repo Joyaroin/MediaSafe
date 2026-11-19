@@ -65,7 +65,8 @@ export function TonightSurface({
     readonly oldFriends: readonly UpNextEntry[];
   };
   films: readonly LibraryStateGroupEntry[];
-  /** Shows with no watches whose first episode has aired, newest added first (#540). */
+  /** Shows with no watches, each with an aired episode to start from (its earliest aired
+   *  episode, #603), newest added first (#540). */
   notStarted: readonly UpNextEntry[];
   /** The next three dated rows from Coming up, server-rendered; shown from `xl:`. */
   comingUp: ReactNode;

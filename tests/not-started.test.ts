@@ -16,8 +16,8 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
  * rows are inserted through the harness's transaction and the read is called directly.
  *
  * `library_entry_up_next` has no row for an entry with no watches, so this read has its own
- * starting point (the first episode) and these cases are what hold its membership, its
- * first-episode rule, its queue and its order.
+ * starting point (the earliest aired episode, issue #603) and these cases are what hold its
+ * membership, its starting-episode rule, its queue and its order.
  */
 
 setUpTestDatabase("mediasafe_not_started_test");
@@ -61,7 +61,7 @@ interface Seeded {
   episodeIds: string[];
 }
 
-/** Episode 1 of season 1, released, unless the case says otherwise. */
+/** Season 1, episodes 1 to 3, released, unless the case says otherwise. */
 const SEASON_ONE: EpisodeSpec[] = [
   { seasonNo: 1, episodeNo: 1 },
   { seasonNo: 1, episodeNo: 2 },
@@ -137,7 +137,7 @@ async function names(tx: Transaction, userId: UserId, limit = 10): Promise<strin
 }
 
 describe("listNotStartedShows — membership", () => {
-  it("returns a watchlist show whose first episode has aired", async () => {
+  it("returns a watchlist show with an aired episode to start from", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
       const aired = await seed(tx, reader, { name: "Aired" });
@@ -150,7 +150,7 @@ describe("listNotStartedShows — membership", () => {
     });
   });
 
-  it("leaves out a show whose first episode has not aired, or has no air date", async () => {
+  it("leaves out a show with no aired episode: only unaired or undated ones", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
       await seed(tx, reader, {
@@ -209,7 +209,7 @@ describe("listNotStartedShows — membership", () => {
   });
 });
 
-describe("listNotStartedShows — the first episode", () => {
+describe("listNotStartedShows — the starting episode", () => {
   it("is S1 E1 for a show with specials, and its queue starts there", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
@@ -241,7 +241,7 @@ describe("listNotStartedShows — the first episode", () => {
     });
   });
 
-  it("is episode 1 of the lowest season above 0, not season 1 by name", async () => {
+  it("is the first aired episode of the lowest season above 0, not season 1 by name", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
       const show = await seed(tx, reader, {
@@ -257,6 +257,83 @@ describe("listNotStartedShows — the first episode", () => {
 
       expect(entry.episodeId).toBe(show.episodeIds[0]);
       expect([entry.seasonNo, entry.episodeNo]).toEqual([2, 1]);
+    });
+  });
+
+  it("is episode 2 for a show whose lowest season has no episode 1, and its queue starts there", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx);
+      const show = await seed(tx, reader, {
+        name: "Missing the pilot",
+        episodes: [
+          { seasonNo: 1, episodeNo: 2 },
+          { seasonNo: 1, episodeNo: 3 },
+          { seasonNo: 2, episodeNo: 1 },
+        ],
+      });
+
+      const [entry] = await listNotStartedShows(reader, 10, tx);
+
+      expect(entry.libraryEntryId).toBe(show.entryId);
+      expect(entry.episodeId).toBe(show.episodeIds[0]);
+      expect([entry.seasonNo, entry.episodeNo]).toEqual([1, 2]);
+      expect(entry.queue.episodes.map((one) => [one.seasonNo, one.episodeNo])).toEqual([
+        [1, 2],
+        [1, 3],
+        [2, 1],
+      ]);
+    });
+  });
+
+  it("skips an unaired episode 1 and starts from the earliest aired one", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx);
+      const show = await seed(tx, reader, {
+        name: "Pilot still to air",
+        episodes: [
+          { seasonNo: 1, episodeNo: 1, airDate: UNRELEASED },
+          { seasonNo: 1, episodeNo: 2 },
+        ],
+      });
+
+      const [entry] = await listNotStartedShows(reader, 10, tx);
+
+      expect(entry.episodeId).toBe(show.episodeIds[1]);
+      expect([entry.seasonNo, entry.episodeNo]).toEqual([1, 2]);
+    });
+  });
+
+  it("starts from the lowest aired season when the lowest season has not aired", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx);
+      const show = await seed(tx, reader, {
+        name: "Season one undated",
+        episodes: [
+          { seasonNo: 1, episodeNo: 1, airDate: null },
+          { seasonNo: 2, episodeNo: 3 },
+          { seasonNo: 2, episodeNo: 4 },
+        ],
+      });
+
+      const [entry] = await listNotStartedShows(reader, 10, tx);
+
+      expect(entry.episodeId).toBe(show.episodeIds[1]);
+      expect([entry.seasonNo, entry.episodeNo]).toEqual([2, 3]);
+    });
+  });
+
+  it("does not return a show whose only aired episodes are specials", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx);
+      await seed(tx, reader, {
+        name: "Specials only",
+        episodes: [
+          { seasonNo: 0, episodeNo: 1 },
+          { seasonNo: 1, episodeNo: 1, airDate: UNRELEASED },
+        ],
+      });
+
+      expect(await names(tx, reader)).toEqual([]);
     });
   });
 

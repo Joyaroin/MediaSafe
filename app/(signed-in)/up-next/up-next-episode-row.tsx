@@ -219,7 +219,8 @@ function MarkableRow({
 }: {
   entry: UpNextEntry;
   aboveFold: boolean;
-  /** A row of the Not started group (#551): it offers the show's first episode only. */
+  /** A row of the Not started group (#551): it offers the show's starting episode only
+   *  (its earliest aired one, #603). */
   startsHere?: boolean;
   ref?: Ref<HTMLLIElement>;
 }) {
