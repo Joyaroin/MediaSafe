@@ -53,7 +53,11 @@ export function PosterRail({
 
       <ol
         aria-labelledby={headingId}
-        className="stagger-rise flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-gutter px-gutter [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // `overflow-x-auto` clips the y axis too, so a tile's focus ring (`globals.css`: 2px
+        // outline, 2px offset, so 4px out) was cut at the top and bottom (issue #604). `py-1.5`
+        // is the room for it (6px, so a 2px margin over the ring) and `-my-1.5` takes the same
+        // back, so the row's layout is unchanged.
+        className="stagger-rise -my-1.5 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto scroll-pl-gutter px-gutter py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tiles.map((tile, index) => (
           <li key={tile.key} className="w-28 shrink-0 snap-start">

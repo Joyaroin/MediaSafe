@@ -96,6 +96,25 @@ async function watchCount(): Promise<number> {
 const isAction = (route: Route) =>
   route.request().method() === "POST" && Boolean(route.request().headers()["next-action"]);
 
+/**
+ * Hold the add's answer until `release()` is called. The server has done the write by then
+ * (the request is fetched first), so what is held is only the page being told: the row stays
+ * in its *adding* phase for as long as a test needs to look at it.
+ */
+async function holdAdd(page: Page): Promise<{ release(): void }> {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/search", async (route) => {
+    if (!isAction(route)) return route.fallback();
+    const real = await route.fetch();
+    await gate;
+    return route.fulfill({ response: real });
+  });
+  return { release };
+}
+
 /** Add the first result of a kind and wait for its follow-up to arrive. */
 async function addFirst(page: Page, kind: "show" | "film") {
   const row = firstRow(page, kind);
@@ -322,4 +341,97 @@ test("a lost Seen it all raises one toast; Try again lands it and takes the toas
   await expect(seenAll).toHaveAttribute("aria-checked", "true");
   await expect(toast).toHaveCount(0);
   await expect.poll(watchCount).toBeGreaterThan(0);
+});
+
+// ── Focus through an add — issue #604 ──────────────────────────────────────────────────
+//
+// Add is unmounted by its own press, so focus used to drop to the top of the page. Every
+// test here presses Add with the keyboard, and each proves its own setup: the row really
+// was in the phase the assertion names (held back with `holdAdd`, or the write dropped and
+// its toast raised) before the focus is read.
+
+test("after Add on a show, focus is on In your library while adding, then on Not started", async ({
+  page,
+}) => {
+  await page.setViewportSize(DESKTOP);
+  await searchFor(page, "Succession");
+  const row = firstRow(page, "show");
+  const title = await titleOf(row);
+  const held = await holdAdd(page);
+
+  await row.getByRole("button", { name: /^Add/ }).focus();
+  await page.keyboard.press("Enter");
+
+  // Adding: the link has replaced Add, and the chips are not there yet — so this is the
+  // adding phase, not the added one.
+  const library = row.getByRole("link", { name: `${title} is in your library — open it` });
+  await expect(library).toBeFocused();
+  await expect(row.getByRole("radiogroup")).toHaveCount(0);
+
+  held.release();
+  const notStarted = row.getByRole("radio", { name: /^Not started/ });
+  await expect(notStarted).toHaveAttribute("aria-checked", "true");
+  await expect(notStarted).toBeFocused();
+});
+
+test("after Add on a film, focus is on the Seen it toggle once the add lands", async ({
+  page,
+}) => {
+  await page.setViewportSize(PHONE);
+  await searchFor(page, "Inception");
+  const row = firstRow(page, "film");
+  const held = await holdAdd(page);
+
+  await row.getByRole("button", { name: /^Add/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(row.getByRole("link", { name: /is in your library/ })).toBeFocused();
+
+  held.release();
+  const seenIt = row.getByRole("button", { name: /^Seen it/ });
+  // Unpressed: it starts as the answer to "have you seen it?", which is no.
+  await expect(seenIt).toHaveAttribute("aria-pressed", "false");
+  await expect(seenIt).toBeFocused();
+});
+
+test("a lost add puts focus back on Add", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await searchFor(page, "Ozark");
+  const row = firstRow(page, "show");
+  const title = await titleOf(row);
+
+  await page.route("**/search", (route) => (isAction(route) ? route.abort() : route.fallback()));
+  const add = row.getByRole("button", { name: /^Add/ });
+  await add.focus();
+  await page.keyboard.press("Enter");
+
+  // The setup: the write was lost — its toast is up and the row offers Add again.
+  const toast = page.getByRole("alert").filter({ hasText: "That did not save" });
+  await expect(toast).toContainText(title);
+  await expect(add).toBeVisible();
+  await expect(add).toBeFocused();
+});
+
+test("focus the reader moved elsewhere mid-add is not taken back", async ({
+  page,
+}) => {
+  await page.setViewportSize(DESKTOP);
+  await searchFor(page, "Chernobyl");
+  const row = firstRow(page, "show");
+  const held = await holdAdd(page);
+  const box = page.getByLabel("Search films and shows");
+
+  await row.getByRole("button", { name: /^Add/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(row.getByRole("link", { name: /is in your library/ })).toBeFocused();
+
+  // The reader moves on while the add is in flight.
+  await box.focus();
+  held.release();
+
+  // The setup: the add did land, and the chips are there.
+  await expect(row.getByRole("radio", { name: /^Not started/ })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(box).toBeFocused();
 });
