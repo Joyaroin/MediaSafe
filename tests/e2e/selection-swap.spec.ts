@@ -107,7 +107,8 @@ test.beforeEach(async ({ page }) => {
 test("the tab bar is inert the instant selection starts, not from the end of the fade", async ({
   page,
 }) => {
-  await page.goto("/library");
+  // A section's full grid: Library's sections are rows, where a hold selects nothing (#552).
+  await page.goto("/library?view=show&section=watching");
   const cell = page.getByRole("button", { name: new RegExp(seeded.titleName) });
   await expect(cell).toBeVisible();
   // Visible is not the same as interactive. The cell is server-rendered, so it paints

@@ -16,7 +16,7 @@ import { seasonHeading } from "./season-grouping";
  * also the one place that owns the live episode list this is grouped from, so there is no
  * second place a specials-last rule could drift from the row that renders it.
  *
- * ── `-mx-6 px-6`, not `library-filter-bar.tsx`'s `-mx-gutter px-gutter` ────────────────
+ * ── `-mx-6 px-6`, not the Library filter bar's old `-mx-gutter px-gutter` (gone with its chips, #552) ────────────────
  *
  * Both bleed a scrolling row to the edges of whatever pads their own surface, but the two
  * surfaces pad differently — `programme-note-content.tsx` wraps this in `px-6`, the

@@ -231,7 +231,7 @@ All sizes are in the reference HTML. This table says what each one is and which 
 | In flight | The same button dimmed, wait cursor, label changes to the present participle already in the code ("Taking you to Google") | `IN_FLIGHT` |
 | Not yet armed | `hair` fill, `dim` text, not-allowed cursor | `NOT_YET_ARMED` |
 | Segmented control | `raised` container, `--radius-5`, 4px padding; segments 44px high, `--radius-4`; selected is outlined. Compact form (the Icons / List control): 36px segments in a 44px container, each segment's hit area stretched to the container's height. On a card or dialog the container is `ground` with a 1px `hair` inset | `library-view.ts` callers, `list-view-control.tsx`, `theme-control.tsx` |
-| Chip | 36px pill, `raised` fill, `dim` text; selected is outlined, `text`, weight 600. Rows of chips scroll sideways | `library/chip.tsx`, `season-chips.tsx`, `library-filter-bar.tsx` |
+| Chip | 36px pill, `raised` fill, `dim` text; selected is outlined, `text`, weight 600. Rows of chips scroll sideways | `library/chip.tsx`, `season-chips.tsx` (Library no longer has a chip row; §8.4) |
 | State tag ("Watching" on a title page) | Not a chip and not pressable: a small pill about 24px high, `ground` at 85%, Label text in `text`. It may sit over artwork | the title hero |
 | Tick | 26px circle. Not watched: 1.5px `dim` ring and glyph. Up next: the same in `text`. Watched: `text` fill, `ground` glyph | `watch-mark-motion.tsx`, `checkmark-icon.tsx` |
 | Row | 64px high (68 on desktop), 36 by 54 poster, Row title, Meta line, trailing control, hairline between rows | `up-next-episode-row.tsx`, `upcoming-row.tsx` |
@@ -333,12 +333,14 @@ Reference: `search.dark`, `search.light`.
 
 Reference: `library.dark`, `library.light`, `library-empty.*`, `desktop-library.*`.
 
-- Screen heading, the Shows / Films / Lists segmented control, a row of filter chips (All, Watching, Caught up, Finished, Watchlist, Dropped) with a round sort button pinned on the right, then a three-column poster grid.
+- Screen heading and the Shows / Films / Lists segmented control, then the library **grouped into sections by state** (issue #552, spec "Library: sections"). There are no filter chips. Each section is its heading (label register), its count on the right (a link to the section's full grid) and one row of its first twelve posters that scrolls sideways, on phone and desktop. Shows: Watching, Not started, Waiting for new episodes, Finished, Dropped. Films: To watch, Coming soon, Watched, Dropped. An empty section is not drawn. Dropped is a disclosure, closed on every visit; its count still opens the grid.
+- **A section's full grid** is `/library?view=<kind>&section=<slug>` (Tonight's Not started "See all" links to it): a "Back to Library" control above the section's name, the round sort button below it (its first option is the section's own order, the default), then the three-column poster grid. Hold to select works only here.
 - Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Not started", "Waiting for new episodes", "Dropped" for a show, and "To watch", "Watched", "Dropped" for a film (`stateLabel(kind, state)` in `library-state.ts`, issue #555). The database values do not change.
-- **Data and behaviour** are unchanged: `cachedLibraryEntries()`, `?sort=`, `?view=`, hold to select and the selection action bar. A selected poster keeps its existing outline.
-- **Empty library:** hide the chips; show the outlined panel "Your library is empty" with filled "Bring your library in" and plain "Search films and shows". An account that has not answered the import offer is still redirected to `/welcome`.
+- **Data and behaviour:** `cachedLibrarySections()` for the sections and `cachedLibrarySection()` for a grid, `?section=`, `?sort=` (in a grid only) and `?view=`; an unknown slug shows the sections. Hold to select and the selection action bar are unchanged, in the grid. A selected poster keeps its existing outline.
+- **Empty library:** show the outlined panel "Your library is empty" with filled "Bring your library in" and plain "Search films and shows". An account that has not answered the import offer is still redirected to `/welcome`.
 - **No films yet / no shows yet:** the existing `NothingOfThisKind` wording in the outlined panel with a quiet "Search films and shows".
-- **Desktop.** Heading and segmented control on one line, chips and a labelled sort button ("Recently watched") on the next, then the grid at the existing column steps.
+- **An empty section's grid** (a kept link): the outlined panel "Nothing in Watching" under the back control and the sort button.
+- **Desktop.** Heading and segmented control on one line, then the sections; in a grid, the labelled sort button (the section's order, e.g. "Recently watched") on the line under the heading, then the grid at the existing column steps.
 
 ### 8.5 Lists and a list
 

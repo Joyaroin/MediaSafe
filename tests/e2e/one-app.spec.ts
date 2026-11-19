@@ -189,8 +189,13 @@ test("giving up moves a show into Dropped, and resuming takes it back out", asyn
   await page.getByRole("button", { name: "Give up on this show" }).click();
   await expect(page.getByText("Dropped", { exact: true })).toBeVisible();
 
-  await page.goto("/library");
-  await page.getByRole("button", { name: "Dropped", exact: true }).click();
+  // Library's Dropped section is a disclosure, closed on every visit (issue #552): the show
+  // is not on the page until it is opened.
+  await page.goto("/library?view=show");
+  const dropped = page.getByRole("button", { name: "Dropped", exact: true });
+  await expect(dropped).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("button", { name: new RegExp(show.titleName) })).toHaveCount(0);
+  await dropped.click();
   await expect(page.getByRole("button", { name: new RegExp(show.titleName) })).toBeVisible();
 
   await page.goto(`/titles/${show.libraryEntryId}`);
