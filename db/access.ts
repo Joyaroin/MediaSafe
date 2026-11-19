@@ -3464,6 +3464,51 @@ export async function listLibrarySection(
   return (await readSection(executor, userId, section, sort, null)).entries;
 }
 
+/** How many titles Search's *Recently added* row shows. */
+export const RECENTLY_ADDED_SIZE = 6;
+
+/** One tile of Search's *Recently added*: what the card prints, and the entry the title
+ *  page opens (`/titles/{libraryEntryId}`). */
+export interface RecentlyAddedEntry {
+  readonly libraryEntryId: string;
+  readonly name: string;
+  readonly releaseYear: number | null;
+  readonly posterPath: string | null;
+  readonly posterColour: string | null;
+  readonly kind: TitleKind;
+}
+
+/**
+ * The last `RECENTLY_ADDED_SIZE` titles this account added, both kinds together, for idle
+ * Search (issue #542). Newest `added_at` first, then `lower(name)`, then the entry id: an
+ * import gives every entry one `added_at`, and the id is what makes two loads agree.
+ *
+ * An empty library is an empty array — a query that succeeded and found nothing — and the
+ * surface renders nothing for it. A failed read throws. Cached by `cachedRecentlyAdded`,
+ * under the `library` tag, so every add and remove already busts it.
+ */
+export async function listRecentlyAdded(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly RecentlyAddedEntry[]> {
+  const rows = await executor
+    .select({
+      libraryEntryId: libraryEntry.id,
+      name: title.name,
+      releaseYear: title.releaseYear,
+      posterPath: title.posterPath,
+      posterColour: title.posterColour,
+      kind: title.kind,
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .where(ownedBy(userId, libraryEntry))
+    .orderBy(desc(libraryEntry.addedAt), sql`lower(${title.name})`, libraryEntry.id)
+    .limit(RECENTLY_ADDED_SIZE);
+
+  return rows.map((row) => ({ ...row, kind: kindFrom(row.kind) }));
+}
+
 /**
  * The view's `state` column is `text`, which Drizzle types as `string`, and a cast here
  * would be the surface trusting a promise nothing checks.

@@ -4,6 +4,7 @@ import { requireUserId } from "@/lib/session";
 import { TmdbAttribution } from "@/app/tmdb-attribution";
 import { KIND_MODES } from "@/app/(signed-in)/library/kind-mode";
 import { NavTransition } from "../nav-transition";
+import { RecentlyAdded } from "./recently-added";
 import { RecommendationRail } from "./recommendation-rail";
 import { SearchHeading } from "./search-heading";
 import { SearchSurface } from "./search-surface";
@@ -72,10 +73,15 @@ export default async function SearchPage() {
    * Built from `KIND_MODES` rather than written out twice, so a mode cannot be added to
    * that list and silently get no rail.
    */
-  // Both kinds' recommendations, shown together before anything is typed — the search
-  // field covers both kinds now, so the empty screen does too.
+  // Before anything is typed: Recently added, then one rail per kind — *Because you
+  // watched* where there is a seed, else *Trending this week* (issue #542). The search
+  // field covers both kinds now, so the empty screen does too. Recently added is hidden
+  // while the library is empty, and is its own `Suspense` for the reason below.
   const rails = (
     <>
+      <Suspense fallback={null}>
+        <RecentlyAdded userId={userId} />
+      </Suspense>
       {KIND_MODES.map((mode) => (
         <Suspense key={mode.value} fallback={null}>
           <RecommendationRail userId={userId} mode={mode.value} />

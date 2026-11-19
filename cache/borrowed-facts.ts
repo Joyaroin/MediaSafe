@@ -11,6 +11,7 @@ import {
   titleCastAndCrew,
   titleSynopsis,
   titleWatchProviders,
+  trendingThisWeek,
   type CastAndCrew,
 } from "@/tmdb/catalogue";
 import type { WatchProvider } from "@/tmdb/live-facts";
@@ -416,4 +417,28 @@ export function invalidateBorrowedFactsFor(titles: readonly CatalogueKey[]): voi
   for (const { kind, tmdbId } of titles) {
     revalidateTag(borrowedTagFor(kind, tmdbId), EXPIRE_NOW);
   }
+}
+
+/**
+ * What is trending this week for one kind — Search's idle rail for a kind with no seed
+ * (issue #542).
+ *
+ * Borrowed, and the one entry here that is about **no title**: it is the same answer for
+ * every reader, so there is no title for a tag to name and nothing a MediaSafe write could
+ * bust. It carries a window and no tag, as `cache/last-watched.ts`' entry does; the window
+ * is the whole mechanism. The key still carries the account, as the lint rule requires of
+ * every cached read, and the kind is an argument so each kind is its own entry.
+ *
+ * No `try`: a failed read rejects out of `unstable_cache` and nothing is stored, so a TMDB
+ * outage is never remembered as an empty rail, and the rail's Try again is a real retry.
+ */
+export function cachedTrendingThisWeek(
+  userId: UserId,
+  kind: TitleKind,
+): Promise<CatalogueResult[]> {
+  const read = unstable_cache(trendingThisWeek, ["trendingThisWeek", userId], {
+    revalidate: BORROWED_FACT_WINDOW_SECONDS,
+  });
+
+  return read(kind);
 }
