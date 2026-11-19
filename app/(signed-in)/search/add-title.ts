@@ -2,6 +2,8 @@ import * as Sentry from "@sentry/nextjs";
 
 import {
   addTitleToLibrary,
+  entryEpisodeFacts,
+  libraryEntryIdForTitle,
   refreshTitleMirror,
   type Executor,
   type UserId,
@@ -45,6 +47,17 @@ export interface AnsweredAdd {
   readonly added: boolean;
   /** The global row the add mirrored, for the caller's cache busts (issue #219). */
   readonly titleId: string;
+  /**
+   * This reader's entry for the title (issue #537): what #550's follow-up chips write
+   * against, and the id of `/titles/{entryId}`.
+   */
+  readonly libraryEntryId: string;
+  /**
+   * The show has an aired episode, so *Seen it all* is worth offering — see
+   * `EntryEpisodeFacts.hasAiredEpisode` for how a show whose seasons are still arriving
+   * is answered. Always `false` for a film.
+   */
+  readonly hasAiredEpisode: boolean;
   /**
    * The season-and-episode mirror, **not yet run**. `actions.ts` hands it to `after()`;
    * it resolves either way and throws nothing, so nothing downstream of the response has
@@ -96,9 +109,30 @@ export async function addTitleAnswering(
     pending ? "pending" : "mirrored",
   );
 
+  const libraryEntryId = await libraryEntryIdForTitle(
+    userId,
+    mirror.kind,
+    mirror.tmdbId,
+    executor,
+  );
+  const facts =
+    libraryEntryId === null
+      ? null
+      : await entryEpisodeFacts(userId, libraryEntryId, executor);
+  if (libraryEntryId === null || facts === null) {
+    // Unreachable: the add above either wrote this reader's entry or found it. Thrown
+    // rather than answered with a made-up id or a `false` — `addToLibraryAction` turns it
+    // into a failed add, and nothing says the entry exists when it cannot be found.
+    throw new Error(
+      `Added ${mirror.kind} ${mirror.tmdbId} to the library and then found no entry for it.`,
+    );
+  }
+
   return {
     added,
     titleId,
+    libraryEntryId,
+    hasAiredEpisode: facts.hasAiredEpisode,
     mirrorEpisodes: async () => {
       if (!pending) return;
 
@@ -119,4 +153,39 @@ export async function addTitleAnswering(
       }
     },
   };
+}
+
+/**
+ * Make sure an entry's show has its episodes before something reads them (issue #537).
+ *
+ * *Seen it all* is offered the moment the add is answered, and the add answers before the
+ * seasons arrive (`addTitleAnswering`), so a quick press can reach `markWatchedUndated`
+ * while the title is still pending and the episode table has nothing to record. Waiting
+ * here, rather than recording nothing and reporting success, keeps the press honest: it
+ * either has the episodes to write or throws.
+ *
+ * Returns the title it had to fetch (or `null`), so the caller can bust the other holders
+ * of a title whose shared rows this just wrote. A fetch that fails **throws** — the press is then a
+ * lost write and the toast's retry reaches here again. The race with the add's own `after`
+ * mirror is harmless: both are the same upsert.
+ */
+export async function finishMirrorIfPending(
+  userId: UserId,
+  libraryEntryId: string,
+  fetchMirror: FetchMirror,
+  executor?: Executor,
+): Promise<{ readonly mirroredTitleId: string | null }> {
+  const facts = await entryEpisodeFacts(userId, libraryEntryId, executor);
+  if (facts === null) {
+    throw new Error(
+      `Library entry ${libraryEntryId} was not found in this account's library.`,
+    );
+  }
+  if (!facts.episodesPending) return { mirroredTitleId: null };
+
+  await refreshTitleMirror(
+    await fetchMirror(facts.kind, facts.tmdbId),
+    executor,
+  );
+  return { mirroredTitleId: facts.titleId };
 }
