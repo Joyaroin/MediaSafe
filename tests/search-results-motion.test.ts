@@ -21,7 +21,7 @@ function code(path: string): string {
 }
 
 const SEARCH_SURFACE = code("app/(signed-in)/search/search-surface.tsx");
-const RAIL = code("app/(signed-in)/search/recommendation-rail.tsx");
+const RAIL = code("app/(signed-in)/search/poster-rail.tsx");
 const GLOBALS = readFileSync("app/globals.css", "utf8");
 
 describe("search results arrive in the same rhythm as the rail beside them", () => {
