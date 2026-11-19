@@ -139,11 +139,8 @@ const TABS = DESTINATIONS.map(({ href, label }) => ({
 const TAB = "pressable [--press-register:1] flex h-11 flex-col items-center justify-center gap-1";
 
 /**
- * **The icon leads the label.** `press-lead` (`app/globals.css`) compresses the element
- * that wears it a little further than the press it sits inside — `0.920 × 0.98 = 0.9016`
- * here against the label's `0.920` — so a tab answers as an icon over a word rather than
- * as one flat block. Without it the four cells compress uniformly and the bar reads as a
- * search row that happens to have tabs in it.
+ * **The icon leads.** `press-lead` (`app/globals.css`) compresses the element that wears it
+ * a little further than the press it sits inside — `0.920 × 0.98 = 0.9016`.
  *
  * It is a class token and nothing else: no state, no handler, and the press's one
  * delegated listener (`motion-provider.tsx`) is still the whole of this bar's runtime.
@@ -151,7 +148,7 @@ const TAB = "pressable [--press-register:1] flex h-11 flex-col items-center just
 const TAB_ICON = "press-lead h-[19px] w-[19px]";
 
 /** The label is for screen readers only: on a phone the bar shows icons alone (Adham,
- *  2026-11-20). It is still the link's accessible name, so each tab is announced as
+ *  2026-11-19). It is still the link's accessible name, so each tab is announced as
  *  before, and it still takes the tab's own compression and no lead. */
 const TAB_LABEL = "sr-only";
 
