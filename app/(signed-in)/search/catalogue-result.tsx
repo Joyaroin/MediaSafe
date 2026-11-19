@@ -3,66 +3,54 @@
 import Link from "next/link";
 
 import { CheckmarkIcon } from "@/app/(signed-in)/library/checkmark-icon";
-import {
-  addWatchedAccessibleLabel,
-  addWatchedLabel,
-} from "@/app/(signed-in)/catalogue/add-watched";
-import { PILL_TARGET, PRIMARY_PILL, SECONDARY_PILL } from "@/app/buttons";
+import { PILL_TARGET, PRIMARY_PILL } from "@/app/buttons";
 import { Poster } from "@/app/poster";
 import type { MarkedResult } from "./actions";
 import { useCatalogueAdd } from "./use-catalogue-add";
+import { WhereUpTo } from "./where-up-to";
 
 /**
- * One catalogue result, and the two actions on it.
+ * One catalogue result, and its one *Add*.
  *
- * The rule: *adding is one action from a result, and a result
- * already in your library says so rather than offering to add it twice.* There is no
- * intermediate form, no confirmation and no options — everything the mirror needs is
- * fetched by the action, not asked of the reader.
+ * The rule: *adding is one action from a result, and a result already in your library says
+ * so rather than offering to add it twice.* There is no intermediate form, no confirmation
+ * and no options — everything the mirror needs is fetched by the action, not asked of the
+ * reader.
  *
- * ── The second one is *Add — watched*, and it is still one action ────────────────────
+ * ── One Add, then "Where are you up to?" — issue #550 ────────────────────────────────
  *
- * Issue #222. **This says *two actions* where it used to say *the one action*, and that
- * is the ticket rather than a drift**: a film watched years ago was added, then opened,
- * then marked — two journeys for one intention — so the intention gets a control. The
- * sentence quoted above is untouched by it. Adding is still one action from a result;
- * there are now two things a reader might mean by adding, and each is one action.
+ * This row used to carry a second control, *I've seen it all*, which recorded every aired
+ * episode as watched in the same tap. A mistap wrote dozens of watches dated today with no
+ * way back. Spec #535 replaced the question-before-the-add with one: **Add**, and once it
+ * has landed the row asks *Where are you up to?* (`where-up-to.tsx`) — *Not started*,
+ * *Seen it all* (undated, and reversible by choosing *Not started*), *Pick an episode*;
+ * a film gets one *Seen it* toggle. The chips stay on this row while these results are on
+ * screen, and a new query or leaving Search clears them with the row.
  *
- * **There is no confirmation, and #196's is not the precedent it looks like.** *Watched
- * up to here* puts a count in front of the reader before it writes, because it is pressed
- * on a dense list of near-identical rows where the size of the write is not knowable from
- * the row, and a mistap there records sixty-two episodes. Neither half holds here: this
- * row is a title the reader searched for and read, the control says *watched all* in
- * words, and a dialog in front of it would rebuild the second journey the ticket exists
- * to remove. What backs that up is that the write is idempotent and the row's own state —
- * *In your library* — is the same either way; a reader who did not mean it removes the
- * title, which takes the watches with it.
+ * The unowned title page keeps its own one-step *I've seen it* (`catalogue/add-watched.ts`).
  *
  * ── The optimistic write, and the toast it raises ────────────────────────────────────
  *
- * This is **the first caller of the write-failure toast**, and it arrives two build steps
- * before the one the toast was built for. The build order puts the first write
- * at step 4 — the optimistic watch mark — and that was true when the toast was written and
- * is not now: adding a title is a write, it is optimistic, and it can be lost.
- *
- * The property: **a lost write is never silent.** Not *always lands*.
- * So:
+ * Adding a title is a write, it is optimistic, and it can be lost. The property: **a lost
+ * write is never silent.** Not *always lands*. So:
  *
  *  - the row says *In your library* the moment you press, before the server has answered;
  *  - a failure puts it back, and raises a toast **naming the title**;
  *  - the toast offers *Try again*, and **does not take itself down** when you press it —
- *    whether the retry worked is this component's to know, and it says so by resolving;
+ *    whether the retry worked is the row's to know, and it says so by resolving;
  *  - there is no timer anywhere, because a toast that expires makes the lost write silent
  *    again a few seconds after the only person who could act on it looked away.
  *
- * ── Why the handle is a ref ──────────────────────────────────────────────────────────
+ * The chips' writes go through the same machinery (`row-writes.ts`): in order, one at a
+ * time per row, one toast per row about the latest intention.
+ *
+ * ── Why the toast's state is not in this component ───────────────────────────────────
  *
  * The toast's store is module-level and outlives this component (`errors/write-failure.ts`
  * explains why). That matters here: type another query while an add is in flight and this
  * row unmounts, but the write is still going and the reader must still be told if it was
- * lost. The handle is held in a ref so a retry resolves the toast it raised rather than
- * raising a second one — and `attempt` never reads React state for anything the write
- * depends on, so a closure the store is holding cannot go stale in a way that matters.
+ * lost. So the controller that holds the standing toast is made once and kept
+ * (`use-catalogue-add.ts`), and never reads React state for anything a write depends on.
  */
 export function CatalogueResultRow({
   result,
@@ -73,14 +61,13 @@ export function CatalogueResultRow({
    *  render one to a row (`app/poster.tsx`). */
   aboveFold?: boolean;
 }) {
-  const { inLibrary, attempt } = useCatalogueAdd(result);
+  const { state, inLibrary, add, choose } = useCatalogueAdd(result);
 
   return (
     <li className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-x-3 py-2.5">
       {/* A grid, and not a flex row, so the DOM can be in the order a keyboard and a screen
-          reader meet it — name, **Add**, then the seen-it button — while the seen-it
-          button still sits under the name (issue #536, WCAG 2.4.3). It used to live inside
-          the name's block, which put it before Add in both orders. */}
+          reader meet it — name, **Add**, then the follow-up chips (issue #536, WCAG 2.4.3).
+          The chips sit in the third row, under the name and the state, once an add lands. */}
       {/* `44` by `66`, the board's thumbnail (Charcoal §8.3, issue #404). A row on the
           page now, not a raised card: the list's hairlines are what separate one result
           from the next, the way every other row in the redesign is drawn. */}
@@ -92,7 +79,7 @@ export function CatalogueResultRow({
         aboveFold={aboveFold}
       />
 
-      <div className="col-start-2 row-start-1 min-w-0 self-end">
+      <div className="col-start-2 row-span-2 row-start-1 min-w-0 self-center">
         {/* The name is a link into catalogue detail — the thing this row could not do
             until now.
 
@@ -180,7 +167,7 @@ export function CatalogueResultRow({
          */
         <button
           type="button"
-          onClick={() => void attempt(false)}
+          onClick={() => void add()}
           /**
            * The visible label is one word because the row it sits in is the context. A
            * screen reader has no row — it has twenty buttons all called *Add* — so the
@@ -193,46 +180,9 @@ export function CatalogueResultRow({
         </button>
       )}
 
-      {inLibrary ? null : (
-        /**
-         * The second add — issue #222.
-         *
-         * ── Why it is under the name and not in the trailing slot ─────────────────
-         *
-         * The trailing slot already holds *Add*, and this control is wider than it —
-         * putting it there, beside the pill or stacked under it, spends its width plus a
-         * gap out of the name, which on a `340px` phone is the one thing the row cannot
-         * spare. Under the name it costs height instead, and the `66px` poster has room
-         * for a name, a meta line and a `32px` pill face. The #222 measurements that
-         * used to sit here were taken against the `52px` Archivo row and no longer
-         * describe this one.
-         *
-         * It is drawn under the name and written **after Add** in the markup (issue
-         * #536): the grid places it, so a keyboard and a screen reader meet Add first
-         * and this second. The pill is where the eye goes and where the thumb rests;
-         * this is a sentence further down the row, in the quiet register, for the reader
-         * who came to it on purpose.
-         *
-         * **Charcoal, issue #397:** it is the quiet pill now (`SECONDARY_PILL`), `32px`
-         * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
-         * face, so the row grows by the face and not by the target.
-         *
-         * ── It disappears with the pill, not separately ────────────────────────────
-         *
-         * `inLibrary` is the optimistic flag both controls set, so pressing either one
-         * takes both off the row at once. A watched add that left *Add* standing would
-         * offer to add what was just added, and the row's own answer — *In your
-         * library* — is already the true thing to say about both.
-         */
-        <button
-          type="button"
-          onClick={() => void attempt(true)}
-          aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
-          className={`col-start-2 row-start-2 -mb-1.5 mt-0.5 self-start justify-self-start ${PILL_TARGET}`}
-        >
-          <span className={SECONDARY_PILL}>{addWatchedLabel(result.kind)}</span>
-        </button>
-      )}
+      {state.phase === "added" ? (
+        <WhereUpTo result={result} state={state} choose={choose} />
+      ) : null}
     </li>
   );
 }

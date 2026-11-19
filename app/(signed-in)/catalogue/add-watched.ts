@@ -1,13 +1,15 @@
 import type { TitleKind } from "@/tmdb/mirror";
 
 /**
- * What the second add says, on both of the two surfaces that offer it — issue #222.
+ * What the second add says, on the unowned title page — issue #222. Search offered it too
+ * until issue #550, which replaced it there with the follow-up chips
+ * (`search/where-up-to-labels.ts`).
  *
  * Pure, and with no React in it, so the one rule this feature has on the glass can be
  * read and tested as a rule (`tests/add-watched.test.ts`) rather than through a rendered
- * row. It is two functions and no component on purpose: the search result and the unowned
- * title page draw the control in different registers at different measures, and the only
- * thing they may never disagree about is **what it claims one press will record**.
+ * row. It is two functions and no component on purpose: a surface draws the control in its own
+ * register at its own measure, and the only thing it may not drift on is **what it claims
+ * one press will record**.
  *
  * ── Why a film and a show do not read the same ───────────────────────────────────────
  *
