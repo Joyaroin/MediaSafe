@@ -3492,8 +3492,9 @@ function stateFrom(value: string): LibraryState {
  *
  * #250 added a `remaining` count to this entry for the phone's next-episodes card. No
  * surface reads one from an entry any more: Tonight's rows print the season count
- * (`seasonWatched` over `seasonReleased`), and Coming up's rows print the count of
- * aired episodes beyond the one on show from their own read (`more`, `upcoming-grouping.ts`).
+ * (`seasonWatched` over `seasonReleased`), and Coming up's rows print how many further
+ * episodes of the show are already announced (`more`, `upcoming-grouping.ts`, counted from
+ * `listUpcomingEpisodes`, which keeps `air_date >= current_date - 1`).
  * The field was removed rather than left computed for nobody (#602). `remaining` is still
  * `library_entry_remaining`'s, and still orders Library and Up next (`upNextOrder`).
  *
@@ -4350,7 +4351,8 @@ async function queuesFromStarts(
  *
  * The phone concatenates them into a single next-episodes rail and the desktop draws them
  * as three, which is exactly why the read keeps them apart: the concatenation is a
- * rendering decision (`tonight-surface.tsx` holds the one line that makes it), and a
+ * rendering decision (`tonight-surface.tsx` joins the episode rails and `tonight-list.tsx`
+ * joins the pending titles and films into the one phone order), and a
  * read that had already flattened them would put the *ongoing, then coming back, then old
  * friends* rule somewhere no surface could see it and the desktop could not undo.
  *
