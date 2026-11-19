@@ -340,7 +340,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - **The lists read gains up to three poster paths per list**, in list order.
 - No Delete on the row.
 - Duplicate name: the field takes the invalid ring and "You already have a list called “Comfort shows”." appears beneath.
-- No lists: the outlined panel "Group it your own way" under the field.
+- No lists: the outlined panel "Make your own groups" under the field (body: "Comfort shows, watch with Dad, the ones you keep meaning to start. Name a list above, then add titles from any title page with List.").
 
 **A list**
 
@@ -351,7 +351,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - Delete asks first in a dialog: "Delete “Comfort shows”?" / "It holds 8 titles. Nothing about those shows changes. This only removes the list itself." / danger "Delete list", plain "Cancel".
 - Empty list: "Nothing here yet" / "Open any title and choose “Add to list” to put it here."
 
-**Add to a list** (from a title) is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
+**Add to a list** (from a title) opens from a quiet compact button labelled "List" beside its icon (accessible name "List: add “The Bear” to a list"), and is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
 
 ### 8.6 Title, a show
 

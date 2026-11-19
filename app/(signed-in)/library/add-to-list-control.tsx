@@ -11,7 +11,12 @@ import {
   type ListsForPickerOutcome,
 } from "@/app/(signed-in)/lists/actions";
 import { ListNameForm } from "@/app/(signed-in)/lists/list-name-form";
-import { DIALOG_FRAME, ICON_BUTTON_SQUARE, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/app/buttons";
+import {
+  DIALOG_FRAME,
+  PRIMARY_BUTTON,
+  SECONDARY_BUTTON,
+  SECONDARY_BUTTON_COMPACT,
+} from "@/app/buttons";
 import type { ListSummary } from "@/db/access";
 import { ReadFailure } from "@/errors/read-failure";
 import { referenceFor } from "@/errors/reference";
@@ -152,14 +157,15 @@ export function AddToListControl({
 
   return (
     <div>
-      {/* A quiet square with the list-and-plus glyph (Charcoal §8.6): it opens a dialog,
-          nothing more, and it sits at the end of the title's action row beside the one
-          filled action. Icon-only, so the accessible name carries the words. */}
+      {/* A quiet button with the list-and-plus glyph and the word "List" (Charcoal §8.6,
+          issue #549): it opens a dialog, nothing more, and it sits at the end of the
+          title's action row beside the one filled action. The accessible name starts
+          with the visible label (WCAG 2.5.3) and goes on to say what it does. */}
       <button
         type="button"
         onClick={openDialog}
-        aria-label={`Add ${titleName} to a list`}
-        className={ICON_BUTTON_SQUARE}
+        aria-label={`List: add ${titleName} to a list`}
+        className={SECONDARY_BUTTON_COMPACT}
       >
         <svg
           viewBox="0 0 24 24"
@@ -172,6 +178,7 @@ export function AddToListControl({
         >
           <path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6" />
         </svg>
+        List
       </button>
 
       {/* Issue #311 re-narrows the frame: this was named one of the two
