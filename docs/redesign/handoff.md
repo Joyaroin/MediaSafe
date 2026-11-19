@@ -200,7 +200,7 @@ Scale. Token names are kept and re-valued so call sites change as little as poss
 | Chip, pill, compact segment | 14 | Sans 500; 600 when selected, and on every pill | `--text-item` | unchanged |
 | Meta | 13 | Sans 400, `dim` | `--text-meta` | unchanged |
 | Label | 12, caps, tracking 0.14em | Sans 600, `dim` (`text` over artwork) | `--text-label` | `0.75rem` |
-| Tab | 11 | Sans 500, 600 current | `--text-tab` | `0.6875rem` |
+| Tab | 11 | Sans 500, 600 current | `--text-tab` | `0.6875rem` — removed 2026-11-20: the phone tab bar shows icons only, and its labels are screen-reader text |
 
 - `--text-bill-sm` has no role in the new scale. Each call site becomes Heading if it heads a section, empty state or dialog, Row if it titles a failure, or Control if it titles a toast.
 - Utilities: `bill-title` and `screen-title` become the serif at weight 400 with no `font-variation-settings` (Instrument Serif has no width axis), keeping `text-wrap: balance` (`tests/wrapping.test.ts`). `label-line` becomes weight 600 at 0.14em. `code-line` loses its width setting; keep its weight.
@@ -245,7 +245,7 @@ All sizes are in the reference HTML. This table says what each one is and which 
 | Lost-write toast | `raised`, 1px inset `danger` line, `--radius-6`, Control title in weight 600, body in `dim`, filled "Try again" and plain "Dismiss". No timer | `errors/write-failure-toast.tsx` |
 | Offline banner | `text` fill, `ground` ink, 14px, sticky at the top | `errors/offline-banner.tsx` |
 | Progress segments | One 4px segment per aired episode in the season, 4px gaps; watched segments in `text`, the rest at 24% white (dark) or 16% ink (light) | `seasonProgress()` in `up-next-mark.ts` |
-| Tab bar | Five equal cells, 22px icon over an 11px label, current in `text`, others in `dim` | `app/tab-bar.tsx`, `PHONE_BAR` |
+| Tab bar | Five equal cells, a 22px icon each (labels are screen-reader text since 2026-11-20), current in `text`, others in `dim` | `app/tab-bar.tsx`, `PHONE_BAR` |
 | Sidebar | Wordmark, five items 44px high with a 20px icon and 15px label, current is outlined, display name at the foot | `app/sidebar.tsx`, `sidebar-nav.tsx` |
 
 Three existing treatments change, and their tests change with them:

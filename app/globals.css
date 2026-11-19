@@ -397,7 +397,6 @@
   --text-meta: 0.8125rem; /* year, count, meta line, quiet links */
   --text-fine: 0.75rem; /* attribution and legal notices       */
   --text-label: 0.75rem; /* the label register — see `label-line` */
-  --text-tab: 0.6875rem; /* tab bar labels, and nothing else    */
 
   /* The bill had no rounded corners and no drop shadows — depth was surface layering and
      hairlines, and this was zeroed deliberately rather than skipped.

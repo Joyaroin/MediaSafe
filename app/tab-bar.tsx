@@ -150,9 +150,10 @@ const TAB = "pressable [--press-register:1] flex h-11 flex-col items-center just
  */
 const TAB_ICON = "press-lead h-[19px] w-[19px]";
 
-/** The label takes the tab's own compression and no more — the second half of the lead
- *  being a lead at all. */
-const TAB_LABEL = "text-tab font-medium leading-tight";
+/** The label is for screen readers only: on a phone the bar shows icons alone (Adham,
+ *  2026-11-20). It is still the link's accessible name, so each tab is announced as
+ *  before, and it still takes the tab's own compression and no lead. */
+const TAB_LABEL = "sr-only";
 
 /**
  * ── `inert` carries the accessibility guarantee now — issue #334 ─────────────────────

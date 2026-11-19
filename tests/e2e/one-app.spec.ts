@@ -61,6 +61,26 @@ test("a phone and a desktop carry the same five destinations, in the same order"
   expect(await destinations(page)).toEqual(DESTINATIONS);
 });
 
+test("on a phone the tab bar shows icons only, and every tab keeps its name", async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto("/up-next");
+  const bar = page.locator("nav.phone-tab-bar");
+
+  // Each tab is still found by its name, so a screen reader still says it.
+  for (const name of DESTINATIONS) {
+    await expect(bar.getByRole("link", { name, exact: true })).toBeVisible();
+  }
+  // And no label takes up any room on screen: what's left of each is the 1px `sr-only` box.
+  const widest = await bar.evaluate((nav) =>
+    Math.max(
+      ...[...nav.querySelectorAll("a > span:not([data-nav-icon])")].map(
+        (label) => label.getBoundingClientRect().width,
+      ),
+    ),
+  );
+  expect(widest).toBeLessThanOrEqual(1);
+});
+
 test("Settings is reached from You", async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto("/you");
