@@ -251,7 +251,7 @@ describe("listLibraryEntries", () => {
       const reader = await seedUser(tx, "reader");
 
       await seedShow(tx, reader, {
-        name: "A Watchlist",
+        name: "A Not started",
         episodes: [{ seasonNo: 1, episodeNo: 1 }],
       });
 
@@ -265,7 +265,7 @@ describe("listLibraryEntries", () => {
       await markWatched(tx, watching, 0);
 
       const caughtUp = await seedShow(tx, reader, {
-        name: "C Caught up",
+        name: "C Waiting",
         episodes: [
           { seasonNo: 1, episodeNo: 1 },
           { seasonNo: 1, episodeNo: 2, airDate: UNRELEASED },

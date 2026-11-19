@@ -3,7 +3,7 @@ import { Poster } from "@/app/poster";
 import { PosterProgressBar } from "@/app/poster-progress-bar";
 import { posterGlowStyle } from "@/app/poster-tint";
 import { CheckmarkIcon } from "./checkmark-icon";
-import { STATE_LABELS } from "./library-state";
+import { stateLabel } from "./library-state";
 import { SelectableEntry } from "./selectable-entry";
 import { SelectionCheckBadge } from "./selection-check-badge";
 
@@ -59,7 +59,7 @@ import { SelectionCheckBadge } from "./selection-check-badge";
  *
  * **The state line is back** — Charcoal, handoff §8.4 and issue #402. Under the name, at
  * `12px` in `--dim`: *S1 E2 up next* for a show being watched, otherwise the state's own
- * word from `STATE_LABELS`. Turn 9 took the word off the card because it repeated the
+ * word from `stateLabel`. Turn 9 took the word off the card because it repeated the
  * filter a reader was inside; the boards put it back, and the owner chose the numbered
  * form for the watching line over the old *never numbered alone* rule (issue #402).
  *
@@ -184,7 +184,7 @@ export function LibraryEntryCell({
         >
           {entry.name}
         </p>
-        <p className="mt-0.5 truncate text-label text-dim" data-numeric>
+        <p className="mt-0.5 line-clamp-2 break-words text-label text-dim" data-numeric>
           {stateLine(entry)}
         </p>
       </SelectableEntry>
@@ -193,9 +193,9 @@ export function LibraryEntryCell({
 }
 
 /** The line under the name — *S1 E2 up next* while watching, else the state's own word. */
-export function stateLine(entry: Pick<LibraryEntryRow, "state" | "upNext">): string {
+export function stateLine(entry: Pick<LibraryEntryRow, "kind" | "state" | "upNext">): string {
   if (entry.state === "watching" && entry.upNext !== null) {
     return `S${entry.upNext.seasonNo} E${entry.upNext.episodeNo} up next`;
   }
-  return STATE_LABELS[entry.state].label;
+  return stateLabel(entry.kind, entry.state);
 }

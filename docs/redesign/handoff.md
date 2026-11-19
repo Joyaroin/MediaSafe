@@ -316,6 +316,7 @@ Reference: `search.dark`, `search.light`.
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
 - Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". In the markup Add comes before the seen-it pill, and each button's accessible name starts with its visible label ("Add {title}…", "I've seen it all: {title}, every aired episode", "I've seen it: {title}"). A title already held shows a tick and "In your library" as a link instead of both actions.
 - Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
+- Within each kind, results with neither a year nor a poster fold into one "N more results" line ("1 more result" for one), a button with `aria-expanded` that opens them in place (`search-groups.ts`'s `foldResults`). A result with either one is not folded.
 - **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
 
 ### 8.4 Library
@@ -323,7 +324,7 @@ Reference: `search.dark`, `search.light`.
 Reference: `library.dark`, `library.light`, `library-empty.*`, `desktop-library.*`.
 
 - Screen heading, the Shows / Films / Lists segmented control, a row of filter chips (All, Watching, Caught up, Finished, Watchlist, Dropped) with a round sort button pinned on the right, then a three-column poster grid.
-- Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Watchlist", "Dropped", "Caught up".
+- Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Not started", "Waiting for new episodes", "Dropped" for a show, and "To watch", "Watched", "Dropped" for a film (`stateLabel(kind, state)` in `library-state.ts`, issue #555). The database values do not change.
 - **Data and behaviour** are unchanged: `cachedLibraryEntries()`, `?sort=`, `?view=`, hold to select and the selection action bar. A selected poster keeps its existing outline.
 - **Empty library:** hide the chips; show the outlined panel "Your library is empty" with filled "Bring your library in" and plain "Search films and shows". An account that has not answered the import offer is still redirected to `/welcome`.
 - **No films yet / no shows yet:** the existing `NothingOfThisKind` wording in the outlined panel with a quiet "Search films and shows".
@@ -340,7 +341,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - **The lists read gains up to three poster paths per list**, in list order.
 - No Delete on the row.
 - Duplicate name: the field takes the invalid ring and "You already have a list called “Comfort shows”." appears beneath.
-- No lists: the outlined panel "Group it your own way" under the field.
+- No lists: the outlined panel "Make your own groups" under the field (body: "Comfort shows, watch with Dad, the ones you keep meaning to start. Name a list above, then add titles from any title page with List.").
 
 **A list**
 
@@ -351,7 +352,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - Delete asks first in a dialog: "Delete “Comfort shows”?" / "It holds 8 titles. Nothing about those shows changes. This only removes the list itself." / danger "Delete list", plain "Cancel".
 - Empty list: "Nothing here yet" / "Open any title and choose “Add to list” to put it here."
 
-**Add to a list** (from a title) is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
+**Add to a list** (from a title) opens from a quiet compact button labelled "List" beside its icon (accessible name "List: add “The Bear” to a list"), and is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
 
 ### 8.6 Title, a show
 
@@ -370,7 +371,7 @@ Reference: `title-show.dark`, `title-show.light`.
 
 Reference: `title-film.dark`, `title-film.light`.
 
-- The same header with no progress bar: state tag ("Watchlist"), name, "Film · 2021 · 155 min" (from `titleMetaLine`).
+- The same header with no progress bar: state tag ("To watch"), name, "Film · 2021 · 155 min" (from `titleMetaLine`).
 - Filled "Mark watched". Once watched, the action is the existing rewatch label, drawn quiet.
 - Synopsis, then "Where to watch" as a row of static chips, then "Cast" as rows (name left, role right in Meta), then the existing TMDB attribution, which is below the fold on the board.
 - A title the reader does not hold (`/catalogue/...`) uses the same layout with "Add" as the filled action.

@@ -185,18 +185,28 @@ describe("the library entry cell", () => {
    *
    * Turn 9 took the state word off the card, and these assertions used to hold its
    * absence. Handoff §8.4 puts a line back under the name — *S1 E2 up next*, *Finished*,
-   * *Watchlist*, *Dropped*, *Caught up* — and the owner chose the numbered form for the
-   * watching line over the old *never numbered alone* rule (issue #402). They are rewritten
+   * *To watch* / *Not started*, *Dropped*, *Waiting for new episodes* — and the owner chose
+   * the numbered form for the watching line over the old *never numbered alone* rule (issue #402). They are rewritten
    * to hold the new line instead, deliberately.
    */
   const visible = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
-  it("prints where each title stands under its name, in the chips' own words", () => {
-    expect(visible(cell({ state: "caught_up", upNext: null }))).toBe("Severance Caught up");
-    expect(visible(cell({ state: "watchlist", upNext: null }))).toBe("Severance Watchlist");
+  it("prints where each show stands under its name — issue #555's words", () => {
+    expect(visible(cell({ state: "caught_up", upNext: null }))).toBe(
+      "Severance Waiting for new episodes",
+    );
+    expect(visible(cell({ state: "watchlist", upNext: null }))).toBe("Severance Not started");
     expect(visible(cell({ state: "abandoned", upNext: null }))).toBe("Severance Dropped");
     // A finished title's badge names itself to a screen reader; the line says it in words.
     expect(visible(cell({ state: "finished", upNext: null }))).toBe("Severance Finished");
+  });
+
+  it("prints a film's own words: To watch, Watched, Dropped — never Watchlist", () => {
+    const film = (state: LibraryState) =>
+      visible(cell({ kind: "film" as TitleKind, state, upNext: null }));
+    expect(film("watchlist")).toBe("Severance To watch");
+    expect(film("finished")).toBe("Severance Watched");
+    expect(film("abandoned")).toBe("Severance Dropped");
   });
 
   it("says which episode is up next on a show being watched, by season and number", () => {
