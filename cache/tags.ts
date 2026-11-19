@@ -6,7 +6,6 @@ import {
   getTitleDetail,
   libraryEntryIdForEpisode,
   libraryEntryIdForTitle,
-  listLibraryEntries,
   listLibrarySection,
   listLibrarySections,
   listRecentlyAdded,
@@ -18,7 +17,6 @@ import {
   listWatchlistFilms,
   listYouRails,
   type AccountFigures,
-  type LibraryEntryRow,
   type LibrarySectionEntry,
   type LibrarySectionSummary,
   type LibraryStateGroupEntry,
@@ -34,7 +32,7 @@ import {
   type YouRails,
 } from "@/db/access";
 import type { LibrarySection } from "@/db/library-section";
-import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
+import type { LibrarySort } from "@/db/library-sort";
 import type { TitleKind } from "@/tmdb/mirror";
 
 /**
@@ -235,10 +233,8 @@ interface CachedReadShape {
  * day.
  */
 export const CACHED_READS = {
-  listLibraryEntries: { cachedAs: "library", readsCurrentDate: true },
   /**
-   * Issue #541's Library sections. `library`, as `listLibraryEntries`: the same account's
-   * entries, grouped. Every write that moves an entry between sections (a watch, a drop, an
+   * Issue #541's Library sections. `library`: the account's entries, grouped. Every write that moves an entry between sections (a watch, a drop, an
    * add) already busts `library`, so there is no new `INVALIDATES` key. The clock is in the
    * key because *released* (a film's To watch against Coming soon) and *caught up* are
    * decided against `current_date`.
@@ -512,27 +508,6 @@ export const UNCACHED_READS = {
  */
 
 /**
- * The library grid — `library/page.tsx`'s one read.
- *
- * **Sort is an argument, so each order is its own entry** — four at most
- * (`db/library-sort.ts`). They all carry the same tag, because they are all the same
- * account's library, so one `updateTag` invalidates every order at once. Nothing has to
- * enumerate them and nothing can forget one.
- */
-export function cachedLibraryEntries(
-  userId: UserId,
-  sort: LibrarySort = DEFAULT_LIBRARY_SORT,
-): Promise<readonly LibraryEntryRow[]> {
-  const read = unstable_cache(
-    listLibraryEntries,
-    ["listLibraryEntries", userId, serverDay()],
-    { tags: [tagFor("library", userId)] },
-  );
-
-  return read(userId, sort);
-}
-
-/**
  * Library's sections view (#541) — every section's first twelve and its true count. One
  * entry per account per day, tagged `library` with the grid it sits beside.
  */
@@ -552,8 +527,7 @@ export function cachedLibrarySections(
  * One section's full grid (#541), for `?section=`. The section and the sort are arguments,
  * so each pair is its own entry (`unstable_cache` adds `JSON.stringify(args)` to the key):
  * a section's own order (`null`) and the same section under a sort never share one. They
- * all carry the `library` tag, so one `updateTag` clears every pair, as it does the four
- * sorts of `cachedLibraryEntries`.
+ * all carry the `library` tag, so one `updateTag` clears every pair, as it does the sections view.
  */
 export function cachedLibrarySection(
   userId: UserId,
@@ -627,7 +601,7 @@ export function cachedNotStartedShows(
  *
  * It replaces `cachedWatchlist` and `cachedAbandoned`, whose five vertical groups this
  * ticket deleted. Both states are still reachable, through the library's status filters,
- * which read through `listLibraryEntries` and are tagged `library`.
+ * which read through the Library's section reads and are tagged `library`.
  */
 export function cachedWatchlistFilms(
   userId: UserId,
@@ -885,7 +859,7 @@ export function cachedYouRails(userId: UserId): Promise<YouRails> {
  *
  * ── The tag names the row, not the column ────────────────────────────────────────────
  *
- * `rateTitle` writes `library_entry.rating`, which `listLibraryEntries` does not select
+ * `rateTitle` writes `library_entry.rating`, which the Library's section reads do not select
  * today, so a strict reading would put it with the empty ones. It busts `library` and
  * `up-next` anyway, because the entry it writes *is* the row both of them read, and the
  * day either grows a rating is not the day anybody will come back to this line. It busts

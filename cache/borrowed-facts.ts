@@ -100,7 +100,7 @@ import type { CatalogueKey, CatalogueResult, TitleKind } from "@/tmdb/mirror";
  * A **key** decides which entries are shared. Two accounts must never share one, and
  * `eslint-rules/cache-key-carries-account.mjs` is what makes that a check rather than a
  * habit — every `unstable_cache` call below keys by `userId`, exactly as
- * `cachedLibraryEntries` does, and the rule passes for the same reason.
+ * `cachedLibrarySections` does, and the rule passes for the same reason.
  *
  * A **tag** decides which entries a bust can reach. What invalidates a borrowed fact is
  * TMDB changing its mind about one title, and the readers holding a stale entry for that
@@ -178,7 +178,7 @@ const BORROWED_FACT_WINDOW_SECONDS = 6 * 60 * 60;
  *
  * ── There is no `try` here either ────────────────────────────────────────────────────
  *
- * `cachedLibraryEntries`'s paragraph applies unchanged, and it matters more here, because
+ * the paragraph on the cached reads in `cache/tags.ts` applies unchanged, and it matters more here, because
  * the callers of these three (`app/(signed-in)/library/live-facts.ts`) *do* catch — they
  * turn a failure into an `Outcome` so a section can render its own inline recovery and
  * reference id. The catch is deliberately **outside** the cache and not inside it: a
@@ -190,7 +190,7 @@ const BORROWED_FACT_WINDOW_SECONDS = 6 * 60 * 60;
  * ── Four near-identical wrappers, and a helper is not available ──────────────────────
  *
  * These read as begging to be one function taking a fact and a read. They cannot be, for
- * the reason `cachedLibraryEntries` records next door: `mediasafe/cache-key-carries-account`
+ * the reason `cache/tags.ts` records: `mediasafe/cache-key-carries-account`
  * has no type information and cannot see an account through a function call, so key parts
  * built by a helper would be invisible to the one check that reads them. Inline is what
  * the rule can see. The duplication is the price of the check, it is bounded by the number

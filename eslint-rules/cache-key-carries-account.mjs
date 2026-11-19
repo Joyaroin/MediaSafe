@@ -58,7 +58,7 @@ const cacheKeyCarriesAccount = {
       keyPartsMissing:
         "A cached read needs key parts naming the account it was read for. Without them the key is the callback's source text, which is the same for every reader — so the first reader's library is served to all of them. Pass `[read, userId]` (cache/tags.ts).",
       keyPartsNotLiteral:
-        "The key parts of a cached read must be an array literal, so that the account in them can be seen here rather than traced. Build them inline — `[read, userId]` — as cachedLibraryEntries in cache/tags.ts does.",
+        "The key parts of a cached read must be an array literal, so that the account in them can be seen here rather than traced. Build them inline — `[read, userId]` — as cachedLibrarySections in cache/tags.ts does.",
       keyPartsWithoutAccount:
         "This cache key carries no account, so two readers share one entry and the second is served the first's rows. Add the user id to the key parts (cache/tags.ts, or cache/borrowed-facts.ts if the fact is about a title).",
       tagWithoutAccount:
