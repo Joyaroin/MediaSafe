@@ -30,7 +30,7 @@ import {
  *
  * | State | What it means | Treatment |
  * | --- | --- | --- |
- * | `idle` | You have not typed yet | The recommendation rails, and nothing else. |
+ * | `idle` | You have not typed yet | Recently added and the per-kind rails, and nothing else. |
  * | `searching` | A debounced query is in flight | A dim code line. Nothing else moves. |
  * | `groups` | At least one kind answered with titles, or failed | Shows then Films; a kind that failed is its own inline failure |
  * | `empty` | Both kinds answered, with nothing | Centred, `text-bill-md` heading in **`text`** |

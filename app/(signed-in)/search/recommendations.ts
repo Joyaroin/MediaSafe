@@ -1,12 +1,12 @@
 import "server-only";
 
-import { cachedRecommendations } from "@/cache/borrowed-facts";
+import { cachedRecommendations, cachedTrendingThisWeek } from "@/cache/borrowed-facts";
 import { mostRecentlyWatchedTitle, type UserId } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import type { CatalogueResult, TitleKind } from "@/tmdb/mirror";
 
 /**
- * The read behind *Because you watched*, and the four answers it can give.
+ * The read behind each idle-Search rail, and the answers it can give.
  *
  * ── Why an `Outcome` rather than a thrown error ─────────────────────────────────────
  *
@@ -24,37 +24,52 @@ import type { CatalogueResult, TitleKind } from "@/tmdb/mirror";
  * that cannot be mistaken for success by anything that reads it, because `ok: false` has
  * no `rail` on it to read.
  *
- * ── `null` and `[]` are both success, and both render nothing ───────────────────────
+ * ── An empty `results` is success, and renders nothing ──────────────────────────────
  *
- * `rail: null` means there is no seed — you have watched nothing of this kind, so there is
- * no title for the rail to be *because* of. An empty `results` means TMDB answered and had
- * nothing to suggest. Neither is a failure and neither gets a heading over an empty track,
- * by the same rule. They stay distinguishable in the type even though they render alike,
- * because the day one of them wants different copy, the caller can already tell them
- * apart.
+ * TMDB answered and had nothing to suggest. That is not a failure and it gets no heading
+ * over an empty track, by the same rule. It stays distinguishable from a failure in the
+ * type, because `ok: false` has no `rail` on it to read.
+ *
+ * ── One rail per kind: *Because you watched*, or else *Trending this week* ──────────
+ *
+ * Issue #542. Where the reader has watched something of this kind, the rail is
+ * recommendations off that seed. Where they have not, there is no seed to be *because* of,
+ * and the rail is what is trending this week for that kind. A seed whose recommendations
+ * come back empty does **not** fall through to trending: the seed decides which rail this
+ * is, and an empty one is nothing, as above.
  */
-export interface Recommendations {
-  readonly seed: { readonly kind: TitleKind; readonly name: string };
-  readonly results: readonly CatalogueResult[];
-}
+export type Rail =
+  | {
+      readonly kind: "because-you-watched";
+      readonly seed: { readonly kind: TitleKind; readonly name: string };
+      readonly results: readonly CatalogueResult[];
+    }
+  | { readonly kind: "trending-this-week"; readonly results: readonly CatalogueResult[] };
 
-export type RecommendationsOutcome =
-  | { readonly ok: true; readonly rail: Recommendations | null }
+export type RailOutcome =
+  | { readonly ok: true; readonly rail: Rail }
   | { readonly ok: false; readonly reference: string | null };
 
-export async function readRecommendations(
-  userId: UserId,
-  kind: TitleKind,
-): Promise<RecommendationsOutcome> {
+export async function readRail(userId: UserId, kind: TitleKind): Promise<RailOutcome> {
   try {
     const seed = await mostRecentlyWatchedTitle(userId, kind);
-    if (seed === null) return { ok: true, rail: null };
+
+    if (seed === null) {
+      return {
+        ok: true,
+        rail: { kind: "trending-this-week", results: await cachedTrendingThisWeek(userId, kind) },
+      };
+    }
 
     const results = await cachedRecommendations(userId, seed.kind, seed.tmdbId);
 
     return {
       ok: true,
-      rail: { seed: { kind: seed.kind, name: seed.name }, results },
+      rail: {
+        kind: "because-you-watched",
+        seed: { kind: seed.kind, name: seed.name },
+        results,
+      },
     };
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "recommendations" }) };

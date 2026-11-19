@@ -9,6 +9,7 @@ import {
   listLibraryEntries,
   listLibrarySection,
   listLibrarySections,
+  listRecentlyAdded,
   listLists,
   listNotStartedShows,
   listUpcomingEpisodes,
@@ -23,6 +24,7 @@ import {
   type LibraryStateGroupEntry,
   type ListDetailRow,
   type ListOverview,
+  type RecentlyAddedEntry,
   type TitleDetailRow,
   type UpcomingEpisode,
   type UpcomingFilm,
@@ -244,6 +246,12 @@ export const CACHED_READS = {
   listLibrarySections: { cachedAs: "library", readsCurrentDate: true },
   /** One section's full grid — the same fact and the same clock, keyed by section and sort. */
   listLibrarySection: { cachedAs: "library", readsCurrentDate: true },
+  /**
+   * Issue #542's Recently added row on idle Search: the last six entries by `added_at`.
+   * `library`, as the reads above: an add or a remove is what changes it, and both already
+   * bust that tag. No clock — it compares no date and touches no derived view.
+   */
+  listRecentlyAdded: { cachedAs: "library", readsCurrentDate: false },
   /** *Is this title in my library* — `library_entry` joined to `title`, by account. No
    *  derived view, so no clock: an add or a remove is the only thing that changes it. */
   libraryEntryIdForTitle: { cachedAs: "library", readsCurrentDate: false },
@@ -559,6 +567,17 @@ export function cachedLibrarySection(
   );
 
   return read(userId, section, sort);
+}
+
+/**
+ * Search's Recently added (#542) — one entry per account, tagged `library`.
+ */
+export function cachedRecentlyAdded(userId: UserId): Promise<readonly RecentlyAddedEntry[]> {
+  const read = unstable_cache(listRecentlyAdded, ["listRecentlyAdded", userId], {
+    tags: [tagFor("library", userId)],
+  });
+
+  return read(userId);
 }
 
 /**

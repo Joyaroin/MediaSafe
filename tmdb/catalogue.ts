@@ -300,6 +300,24 @@ export async function recommendationsFor(
 }
 
 /**
+ * What TMDB says is trending this week, for one kind — Search's *Trending this week* rail,
+ * shown for a kind the reader has no seed for (issue #542).
+ *
+ * `/trending/tv/week` and `/trending/movie/week`, one request per kind. The earlier read
+ * of `/trending/all/week` mixed the kinds, which a rail under one kind's heading cannot
+ * use: the endpoint is the filter, as `searchCatalogueOfKind`'s docblock argues for search.
+ * Malformed rows are dropped rather than thrown, as in `recommendationsFor`.
+ */
+export async function trendingThisWeek(kind: TitleKind): Promise<CatalogueResult[]> {
+  const payload = await get<TmdbSearchPayload>(
+    `/trending/${kind === "film" ? "movie" : "tv"}/week`,
+    { page: "1" },
+  );
+
+  return catalogueResultsOfKind(kind, payload);
+}
+
+/**
  * Everything one add writes: the `title` row, and for a show every `episode` row under it.
  *
  * A show costs one request for the series and one per season. That is the price of episode

@@ -323,7 +323,11 @@ Reference: `search.dark`, `search.light`.
   - The chips stay on that row while these results are on screen; a new query or leaving Search clears them. A title that was already in the library when the results arrived gets "In your library" and no chips.
 - Adding and the chip writes are optimistic and use the existing lost-write toast (`use-catalogue-add.ts`, `row-writes.ts`): the row's writes run one at a time in order, and there is one toast per row, about the reader's latest intention (add, seen-all or switch-back; `catalogue/lost-add.ts`).
 - Within each kind, results with neither a year nor a poster fold into one "N more results" line ("1 more result" for one), a button with `aria-expanded` that opens them in place (`search-groups.ts`'s `foldResults`). A result with either one is not folded.
-- **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
+- **Before typing** (issue #542) shows, top to bottom, all as the Rail component (`search/poster-rail.tsx`):
+  - **Recently added:** the last six titles by `added_at` (newest first, then `lower(name)`, then id), shows and films together. Each tile opens its title page at `/titles/{entryId}`. Hidden while the library is empty. `cachedRecentlyAdded()`.
+  - **One rail per kind** (Shows, then Films): "Because you watched" with the seed's name at the end of the head row where the reader has watched something of that kind (`RecommendationRail`), otherwise "Trending this week" with "Shows" or "Films" there (`cachedTrendingThisWeek()`, TMDB's `/trending/tv/week` and `/trending/movie/week`). Tiles are links to the catalogue page with an "Audience" score and no Add. A seed whose recommendations come back empty shows no rail; it does not fall back to trending.
+  - An empty successful read draws nothing, never a heading over an empty track. A failed read draws the inline read failure with its reference in that region's place (`rail-read-failure.tsx`); the field above keeps working.
+- **States** carry over unchanged: loading, no results, read failed inline (`search/error.tsx`).
 
 ### 8.4 Library
 

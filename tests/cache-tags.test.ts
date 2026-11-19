@@ -67,6 +67,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     listLibraryEntries: vi.fn(),
     listLibrarySections: vi.fn(),
     listLibrarySection: vi.fn(),
+    listRecentlyAdded: vi.fn(),
     libraryEntryIdForTitle: vi.fn(),
     libraryEntryIdForEpisode: vi.fn(),
     listUpNextRails: vi.fn(),
@@ -87,6 +88,7 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
     titleSynopsis: vi.fn(),
     titleCastAndCrew: vi.fn(),
     titleWatchProviders: vi.fn(),
+    trendingThisWeek: vi.fn(),
   },
 }));
 
@@ -211,6 +213,7 @@ const {
   cachedListDetail,
   cachedLists,
   cachedNotStartedShows,
+  cachedRecentlyAdded,
   cachedTitleDetail,
   cachedUpcomingEpisodes,
   cachedUpcomingFilms,
@@ -225,6 +228,7 @@ const {
   cachedTitleCastAndCrew,
   cachedTitleSynopsis,
   cachedTitleWatchProviders,
+  cachedTrendingThisWeek,
   cachedUnownedTitleDetail,
   invalidateBorrowedFactsFor,
 } = await import("@/cache/borrowed-facts");
@@ -262,6 +266,8 @@ const CACHED = {
   listLibrarySections: (userId: typeof mine) => cachedLibrarySections(userId),
   listLibrarySection: (userId: typeof mine) =>
     cachedLibrarySection(userId, { kind: "show", slug: "watching" }, null),
+  /** Issue #542's Recently added on idle Search — `library`, so an add busts it. */
+  listRecentlyAdded: (userId: typeof mine) => cachedRecentlyAdded(userId),
   libraryEntryIdForTitle: (userId: typeof mine) =>
     cachedLibraryEntryIdForTitle(userId, "show", 1399),
   /** Issue #289's episode route. The same `library` fact one table further along — the
@@ -1337,6 +1343,47 @@ describe("a failed borrowed read is not a stored empty region", () => {
  * The nightly sweep's criterion: *a title refreshed by the nightly sweep is visible on
  * the next read, without waiting for a window.*
  */
+/**
+ * Trending this week (#542) is the one borrowed entry about no title, so it is held on its
+ * own: an account in the key, a window and no tag, a kind per entry, and a failure that is
+ * never stored.
+ */
+describe("trending this week is a windowed entry with no title to tag", () => {
+  const WINDOW_SECONDS = 6 * 60 * 60;
+
+  beforeEach(() => {
+    tmdb.trendingThisWeek.mockReset();
+    tmdb.trendingThisWeek.mockImplementation(async (kind: string) => [`trending ${kind}`]);
+  });
+
+  it("hands Next.js an account in the key, a window, and no tag", async () => {
+    await cachedTrendingThisWeek(mine, "show");
+
+    expect(cacheState.constructed).toEqual([
+      { keyParts: ["trendingThisWeek", mine], tags: [], revalidate: WINDOW_SECONDS },
+    ]);
+  });
+
+  it("keeps the two kinds apart and one account's entry from another", async () => {
+    expect(await cachedTrendingThisWeek(mine, "show")).toEqual(["trending show"]);
+    expect(await cachedTrendingThisWeek(mine, "film")).toEqual(["trending film"]);
+    await cachedTrendingThisWeek(mine, "show");
+    expect(tmdb.trendingThisWeek).toHaveBeenCalledTimes(2);
+
+    await cachedTrendingThisWeek(yours, "show");
+    expect(tmdb.trendingThisWeek).toHaveBeenCalledTimes(3);
+  });
+
+  it("lets a failure through and stores nothing", async () => {
+    const unreachable = new Error("TMDB is unreachable");
+    tmdb.trendingThisWeek.mockRejectedValueOnce(unreachable);
+
+    await expect(cachedTrendingThisWeek(mine, "film")).rejects.toThrow(unreachable);
+    expect(cacheState.entries.size).toBe(0);
+    expect(await cachedTrendingThisWeek(mine, "film")).toEqual(["trending film"]);
+  });
+});
+
 describe("busting a title's borrowed facts", () => {
   /**
    * One tag per title, and **no profile** — which is the difference between *expire this*
@@ -1511,6 +1558,8 @@ describe("the reads that are cached, and the one that must never be", () => {
       // #541's, written beside it: the sections view and one section's full grid.
       "listLibrarySections",
       "listLibrarySection",
+      // #542's, beside them: Search's Recently added.
+      "listRecentlyAdded",
       "listUpNextRails",
       "listNotStartedShows",
       "listWatchlistFilms",
@@ -1541,6 +1590,8 @@ describe("the reads that are cached, and the one that must never be", () => {
       "titleCastAndCrew",
       "titleWatchProviders",
       "getUnownedTitleDetail",
+      // #542's: Trending this week, per kind — a window and no tag, for it is about no title.
+      "trendingThisWeek",
       // `last-watched.ts` — #529's, the one owned entry with a window and no tag.
       "lastWatchedTitle",
     ]);
