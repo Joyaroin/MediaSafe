@@ -28,4 +28,6 @@ Poster art in the proposals is placeholder: real posters are used in the app.
   label is "List".
 - Idle Search has one rail per kind (Shows, Films): "Because you watched {title}" when there's a seed, otherwise
   "Trending this week" for that kind. Not one mixed Trending rail.
+- Idle Search puts Recently added first, above the per-kind rails, not below Trending as drawn.
+- The search field keeps its clear (×) button, which `search-add.png` leaves out.
 - The TMDB attribution line stays on Search, though the proposal doesn't draw it: TMDB's terms require it.
