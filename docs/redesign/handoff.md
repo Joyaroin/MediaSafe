@@ -325,7 +325,7 @@ Reference: `library.dark`, `library.light`, `library-empty.*`, `desktop-library.
 
 - Screen heading and the Shows / Films / Lists segmented control, then the library **grouped into sections by state** (issue #552, spec "Library: sections"). There are no filter chips. Each section is its heading (label register), its count on the right (a link to the section's full grid) and one row of its first twelve posters that scrolls sideways, on phone and desktop. Shows: Watching, Not started, Waiting for new episodes, Finished, Dropped. Films: To watch, Coming soon, Watched, Dropped. An empty section is not drawn. Dropped is a disclosure, closed on every visit; its count still opens the grid.
 - **A section's full grid** is `/library?view=<kind>&section=<slug>` (Tonight's Not started "See all" links to it): a "Back to Library" control above the section's name, the round sort button below it (its first option is the section's own order, the default), then the three-column poster grid. Hold to select works only here.
-- Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Watchlist", "Dropped", "Caught up".
+- Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Not started", "Waiting for new episodes", "Dropped" for a show, and "To watch", "Watched", "Dropped" for a film (`stateLabel(kind, state)` in `library-state.ts`, issue #555). The database values do not change.
 - **Data and behaviour:** `cachedLibrarySections()` for the sections and `cachedLibrarySection()` for a grid, `?section=`, `?sort=` (in a grid only) and `?view=`; an unknown slug shows the sections. Hold to select and the selection action bar are unchanged, in the grid. A selected poster keeps its existing outline.
 - **Empty library:** show the outlined panel "Your library is empty" with filled "Bring your library in" and plain "Search films and shows". An account that has not answered the import offer is still redirected to `/welcome`.
 - **No films yet / no shows yet:** the existing `NothingOfThisKind` wording in the outlined panel with a quiet "Search films and shows".
@@ -373,7 +373,7 @@ Reference: `title-show.dark`, `title-show.light`.
 
 Reference: `title-film.dark`, `title-film.light`.
 
-- The same header with no progress bar: state tag ("Watchlist"), name, "Film · 2021 · 155 min" (from `titleMetaLine`).
+- The same header with no progress bar: state tag ("To watch"), name, "Film · 2021 · 155 min" (from `titleMetaLine`).
 - Filled "Mark watched". Once watched, the action is the existing rewatch label, drawn quiet.
 - Synopsis, then "Where to watch" as a row of static chips, then "Cast" as rows (name left, role right in Meta), then the existing TMDB attribution, which is below the fold on the board.
 - A title the reader does not hold (`/catalogue/...`) uses the same layout with "Add" as the filled action.

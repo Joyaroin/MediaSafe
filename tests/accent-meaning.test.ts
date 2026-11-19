@@ -10,7 +10,7 @@ import {
   type AccentMeaning,
 } from "@/app/accent-meaning";
 import { EPISODE_NUMBER_UP_NEXT } from "@/app/(signed-in)/library/episode-line";
-import { STATE_LABELS } from "@/app/(signed-in)/library/library-state";
+import { stateLabel } from "@/app/(signed-in)/library/library-state";
 
 /**
  * Issue #310 — the accent's meanings, named as constants. Two since Charcoal's sweep (#409)
@@ -65,7 +65,7 @@ describe("the live edge is retired — Charcoal's sweep, issue #409", () => {
   });
 
   it("leaves the Watching label as words alone, painted by the surface that prints it", () => {
-    expect(STATE_LABELS.watching).toEqual({ label: "Watching" });
+    expect(stateLabel("show", "watching")).toBe("Watching");
     expect(source("app/(signed-in)/library/library-state.ts")).not.toContain("accent-meaning");
   });
 });
