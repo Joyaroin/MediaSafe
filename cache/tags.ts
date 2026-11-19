@@ -8,6 +8,7 @@ import {
   libraryEntryIdForTitle,
   listLibraryEntries,
   listLists,
+  listNotStartedShows,
   listUpcomingEpisodes,
   listUpcomingFilms,
   listUpNextRails,
@@ -21,6 +22,7 @@ import {
   type TitleDetailRow,
   type UpcomingEpisode,
   type UpcomingFilm,
+  type UpNextEntry,
   type UpNextRails,
   type UserId,
   type YouRails,
@@ -241,6 +243,13 @@ export const CACHED_READS = {
    */
   libraryEntryIdForEpisode: { cachedAs: "library", readsCurrentDate: false },
   listUpNextRails: { cachedAs: "up-next", readsCurrentDate: true },
+  /**
+   * Issue #540's Not started group. Tagged `up-next` with the rails it sits beside: adding a
+   * show, removing one, a watch, giving up and resuming all bust that tag already, and each
+   * of them moves this read's membership. It selects through `library_entry_state` and
+   * compares the first episode's `air_date` to `current_date`, so the day is in its key.
+   */
+  listNotStartedShows: { cachedAs: "up-next", readsCurrentDate: true },
   listWatchlistFilms: { cachedAs: "up-next", readsCurrentDate: true },
   /**
    * Issue #251's Upcoming — page two of the same pager, so the same `up-next` fact.
@@ -519,6 +528,26 @@ export function cachedUpNextRails(userId: UserId): Promise<UpNextRails> {
   );
 
   return read(userId);
+}
+
+/**
+ * Tonight's Not started group (#540). Tagged `up-next` with the rails, and keyed by the day
+ * like them: whether a show's first episode has aired changes at midnight with no write.
+ *
+ * `limit` is an argument, so it is in the invocation key (`JSON.stringify(args)`): two
+ * callers asking for different limits never share an entry.
+ */
+export function cachedNotStartedShows(
+  userId: UserId,
+  limit: number,
+): Promise<UpNextEntry[]> {
+  const read = unstable_cache(
+    listNotStartedShows,
+    ["listNotStartedShows", userId, serverDay()],
+    { tags: [tagFor("up-next", userId)] },
+  );
+
+  return read(userId, limit);
 }
 
 /**

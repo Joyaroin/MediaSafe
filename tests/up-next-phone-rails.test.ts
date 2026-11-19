@@ -125,9 +125,9 @@ describe("the Up next row draws a poster and not a still", () => {
 describe("the Up next row's meta line carries no air date and no runtime", () => {
   const code = codeOf(sourceAt(TILE));
 
-  it("reads the episode code, the remaining count, and nothing else, from episode-card-line", () => {
+  it("reads the episode code, the season count, and nothing else, from episode-card-line", () => {
     expect(code).toMatch(
-      /import \{ episodeCode, remainingInWords \} from "\.\/episode-card-line"/,
+      /import \{ episodeCode, seasonCountInWords \} from "\.\/episode-card-line"/,
     );
     expect(code).not.toMatch(/\bepisodeMetaLine\b/);
     expect(code).not.toMatch(/\bairDateInWords\b/);
@@ -145,10 +145,14 @@ describe("the Up next row's meta line carries no air date and no runtime", () =>
     expect(code).toMatch(/\{episodeName === null \? code : `\$\{code\} · \$\{episodeName\}`\}/);
   });
 
-  it("keeps the remaining count on the tabular-figures hook", () => {
-    expect(code).toMatch(
-      /data-numeric>\s*\{remainingInWords\(remainingAfter\)\}/,
-    );
+  it("keeps the season count on the tabular-figures hook", () => {
+    expect(code).toMatch(/data-numeric>\s*\{seasonCountInWords\(progress\)\}/);
+  });
+
+  /** Issue #538: Tonight's rows count the season; "+N remaining" is Coming up's alone. */
+  it("never prints a remaining count on Tonight's rows", () => {
+    expect(code).not.toMatch(/\bremainingInWords\b/);
+    expect(code).not.toMatch(/\bremainingAfter\b/);
   });
 });
 

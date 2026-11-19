@@ -62,3 +62,18 @@ function pad(number: number): string {
 export function remainingInWords(remainingAfter: number): string | null {
   return remainingAfter > 0 ? `+${remainingAfter} remaining` : null;
 }
+
+/**
+ * `1 of 10 this season` — how far through its season the episode on a Tonight row is, in the
+ * unit the featured slot prints (`tonight-featured.tsx`, `seasonProgress`). `watched` is what
+ * is watched *before* the episode on show, so the first episode of a new season reads
+ * `0 of 8 this season` and a season's last one reads `9 of 10 this season`.
+ *
+ * Tonight's rows only: Coming up's rows keep `remainingInWords`.
+ */
+export function seasonCountInWords(progress: {
+  readonly watched: number;
+  readonly released: number;
+}): string {
+  return `${progress.watched} of ${progress.released} this season`;
+}
