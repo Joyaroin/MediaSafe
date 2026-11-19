@@ -8,7 +8,7 @@ import { toStorageState } from "./support/storage-state";
 
 /**
  * Issue #554 — Search folds a kind's results that have neither a year nor a poster into
- * one "N more results" line, and the line opens them in place. The fold's rule is
+ * one "N more results" line, and the line opens them in place, once. The fold's rule is
  * unit-tested in `tests/search-groups.test.ts`; this is what only a browser shows: the
  * line is a real button with `aria-expanded`, and pressing it puts the rows on the page
  * without leaving it.
@@ -102,7 +102,7 @@ test("a kind's results with no year and no poster fold into one line that opens 
   await showFold.click();
 
   // Opened in place: the same page, the rows now present, the other kind untouched.
-  await expect(showFold).toHaveAttribute("aria-expanded", "true");
+  await expect(shows.getByRole("button", { name: /more result/ })).toHaveCount(0);
   await expect(shows.getByRole("link", { name: "Folded Plain Show" })).toBeVisible();
   await expect(shows.getByRole("link", { name: "Folded Second Show" })).toBeVisible();
   await expect(films.getByRole("link", { name: "Folded Only Film" })).toHaveCount(0);
@@ -110,4 +110,7 @@ test("a kind's results with no year and no poster fold into one line that opens 
 
   await filmFold.click();
   await expect(films.getByRole("link", { name: "Folded Only Film" })).toBeVisible();
+  await expect(films.getByRole("button", { name: /more result/ })).toHaveCount(0);
+  // Opening is one way: the shows' rows are still on the page, nothing folded them back.
+  await expect(shows.getByRole("link", { name: "Folded Plain Show" })).toBeVisible();
 });

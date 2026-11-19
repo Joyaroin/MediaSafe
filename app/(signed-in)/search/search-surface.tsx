@@ -345,13 +345,14 @@ function Results({ kind, results }: { kind: string; results: readonly MarkedResu
         ))}
       </ol>
       {/* Results with neither a year nor a poster (issue #554). One line, opened in place:
-          nothing leaves the screen, the rows it reveals are ordinary rows, and pressing it
-          again folds them back. */}
-      {folded.length > 0 ? (
+          nothing leaves the screen and the rows it reveals are ordinary rows. Opening is
+          one way: once the rows are on the page the line goes, so there is no open
+          state left for `aria-expanded` to misreport. */}
+      {folded.length > 0 && !open ? (
         <button
           type="button"
-          onClick={() => setOpenFor(open ? null : folded)}
-          aria-expanded={open}
+          onClick={() => setOpenFor(folded)}
+          aria-expanded={false}
           aria-controls={`search-${kind}-results`}
           className="flex min-h-11 w-full items-center text-item font-medium text-dim hover:text-text"
         >
