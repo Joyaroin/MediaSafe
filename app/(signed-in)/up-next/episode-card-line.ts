@@ -51,8 +51,8 @@ function pad(number: number): string {
  * `more` (`nextPerTitle` in `upcoming-grouping.ts`), the count of the other rows
  * `listUpcomingEpisodes` returned for the same library entry. That read keeps episodes dated
  * yesterday or later (`air_date >= current_date - 1`), so these are mostly unaired ones the
- * schedule already names. It is not *Remaining* in `CONTEXT.md`, and not
- * `library_entry_remaining`, which counts every unwatched episode, unaired ones too.
+ * schedule already names. It is not `library_entry_remaining`, which counts every unwatched
+ * episode, unaired ones too.
  *
  * **Zero is withheld.** `more` is `0` when the offered episode is the only one dated, and the
  * row already names it; a `+0` beside it would be noise on most rows.

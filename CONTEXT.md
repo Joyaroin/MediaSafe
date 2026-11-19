@@ -26,11 +26,6 @@ _Avoid_: Next episode, current episode
 A name TMDB gives an episode before the real one is known, of the form "Episode N". It is
 treated as no name.
 
-**Remaining**:
-The aired episodes of a title the reader has not watched, after the Up next episode. Unaired
-episodes are never counted.
-_Avoid_: Left, to go
-
 ### Up next
 
 **Tonight**:
