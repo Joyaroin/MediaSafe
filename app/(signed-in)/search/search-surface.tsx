@@ -329,13 +329,27 @@ function Results({ kind, results }: { kind: string; results: readonly MarkedResu
   const [openFor, setOpenFor] = useState<readonly MarkedResult[] | null>(null);
   const open = openFor === folded;
   const rows = open ? [...shown, ...folded] : shown;
+  const list = useRef<HTMLOListElement>(null);
+
+  // The line that opened the fold unmounts while it has focus, and the rows it reveals sit
+  // above where it was, so focus would fall to the document and the next Tab would skip
+  // them (WCAG 2.4.3). Move it to the first revealed row's title link instead. `open` only
+  // turns true from the button's press, so this never runs on a fresh render.
+  useEffect(() => {
+    if (!open) return;
+    list.current?.children[shown.length]?.querySelector<HTMLAnchorElement>("h3 a")?.focus();
+  }, [open, shown.length]);
 
   return (
     <>
       {/* Rows on the page with a hairline between each, not cards (Charcoal §8.3): the
           poster lands on the gutter like every other row in the redesign. `stagger-rise`
           (issue #336) is the rhythm `recommendation-rail.tsx`'s track already runs. */}
-      <ol id={`search-${kind}-results`} className="stagger-rise flex flex-col divide-y divide-hair">
+      <ol
+        ref={list}
+        id={`search-${kind}-results`}
+        className="stagger-rise flex flex-col divide-y divide-hair"
+      >
         {rows.map((result, index) => (
           <CatalogueResultRow
             key={catalogueKeyOf(result)}

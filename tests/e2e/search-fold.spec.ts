@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { seedFixtureSession } from "./support/fixture-session";
 import { toStorageState } from "./support/storage-state";
@@ -58,10 +58,9 @@ const ANSWER = {
   },
 };
 
-test("a kind's results with no year and no poster fold into one line that opens in place", async ({
-  page,
-}) => {
-  let answered = 0;
+/** Fixes the search action's answer; returns a counter of how many it answered. */
+async function stubSearchAnswer(page: Page) {
+  const state = { answered: 0 };
   await page.route("**/search", async (route) => {
     const request = route.request();
     if (request.method() !== "POST" || !request.headers()["next-action"]) {
@@ -69,12 +68,19 @@ test("a kind's results with no year and no poster fold into one line that opens 
     }
     const real = await route.fetch();
     const [first] = (await real.text()).split("\n");
-    answered += 1;
+    state.answered += 1;
     await route.fulfill({
       response: real,
       body: `${first}\n1:${JSON.stringify(ANSWER)}\n`,
     });
   });
+  return state;
+}
+
+test("a kind's results with no year and no poster fold into one line that opens in place", async ({
+  page,
+}) => {
+  const stub = await stubSearchAnswer(page);
 
   await page.goto("/search");
   await page.getByRole("searchbox", { name: "Search films and shows" }).fill("fold");
@@ -84,7 +90,7 @@ test("a kind's results with no year and no poster fold into one line that opens 
 
   // The setup happened: our answer is what rendered, so the kept rows are on the page.
   await expect(shows.getByRole("link", { name: "Kept With Both Show" })).toBeVisible();
-  expect(answered).toBeGreaterThan(0);
+  expect(stub.answered).toBeGreaterThan(0);
   await expect(shows.getByRole("link", { name: "Kept With Year Show" })).toBeVisible();
   await expect(films.getByRole("link", { name: "Kept With Poster Film" })).toBeVisible();
 
@@ -101,6 +107,10 @@ test("a kind's results with no year and no poster fold into one line that opens 
 
   await showFold.click();
 
+  // Focus moved with the press: the line that had it is gone, and without this the next
+  // Tab would skip the rows just opened (WCAG 2.4.3). It is on the first revealed row.
+  await expect(shows.getByRole("link", { name: "Folded Plain Show" })).toBeFocused();
+
   // Opened in place: the same page, the rows now present, the other kind untouched.
   await expect(shows.getByRole("button", { name: /more result/ })).toHaveCount(0);
   await expect(shows.getByRole("link", { name: "Folded Plain Show" })).toBeVisible();
@@ -110,7 +120,43 @@ test("a kind's results with no year and no poster fold into one line that opens 
 
   await filmFold.click();
   await expect(films.getByRole("link", { name: "Folded Only Film" })).toBeVisible();
+  await expect(films.getByRole("link", { name: "Folded Only Film" })).toBeFocused();
   await expect(films.getByRole("button", { name: /more result/ })).toHaveCount(0);
   // Opening is one way: the shows' rows are still on the page, nothing folded them back.
   await expect(shows.getByRole("link", { name: "Folded Plain Show" })).toBeVisible();
+});
+
+test("opening a fold with the keyboard leaves focus on the first revealed row, and Tab goes on through it", async ({
+  page,
+}) => {
+  const stub = await stubSearchAnswer(page);
+  await page.goto("/search");
+  await page.getByRole("searchbox", { name: "Search films and shows" }).fill("fold");
+
+  const shows = page.getByRole("region", { name: "Shows" });
+  const films = page.getByRole("region", { name: "Films" });
+  await expect(shows.getByRole("link", { name: "Kept With Both Show" })).toBeVisible();
+  expect(stub.answered).toBeGreaterThan(0);
+
+  const showFold = shows.getByRole("button", { name: "2 more results" });
+  await showFold.focus();
+  await expect(showFold).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  const firstRevealed = shows.getByRole("link", { name: "Folded Plain Show" });
+  await expect(firstRevealed).toBeFocused();
+
+  // Tab continues inside the revealed row, not past it to the Films rows.
+  const firstRevealedRow = shows.getByRole("listitem").filter({
+    has: page.getByRole("link", { name: "Folded Plain Show" }),
+  });
+  await page.keyboard.press("Tab");
+  await expect(firstRevealedRow.locator(":focus")).toHaveCount(1);
+  await expect(films.locator(":focus")).toHaveCount(0);
+
+  // The same for the films fold.
+  const filmFold = films.getByRole("button", { name: "1 more result" });
+  await filmFold.focus();
+  await page.keyboard.press("Enter");
+  await expect(films.getByRole("link", { name: "Folded Only Film" })).toBeFocused();
 });
