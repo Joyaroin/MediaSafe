@@ -12,8 +12,7 @@ import { Wordmark } from "./press-mark";
  * name pinned to the foot — the mock predates #146, so *Lists* is a fourth item in
  * `sidebar-nav.tsx`'s own `PRIMARY` array rather than in the mock, at the same measures.
  *
- * `196px` (`w-[196px]`) is the mock's own measure, taken rather than re-derived — the same
- * principle the deleted `masthead.tsx` stated for its own borrowed numbers. #136 called it
+ * `196px` (`w-[196px]`) is the mock's own measure, taken rather than re-derived. #136 called it
  * a placeholder
  * width, on the grounds that the desktop Up next page it lands on was *"wide, until the rails
  * land"*; the rails landed in #137 and the measure held, so it is the mock's number and not
