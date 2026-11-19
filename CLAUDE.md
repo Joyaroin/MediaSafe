@@ -28,7 +28,7 @@ the new pods roll out (staging.mediasafe.space). Prod is a separate promotion (`
 
 CI (`ci.yml`) runs typecheck, lint, build, the route manifest and a few named suites — **not**
 the full Vitest suite. Run that locally before merging; it needs the local Docker Postgres and
-the dev env file: `DOTENV_CONFIG_PATH=.env.development.local npx vitest run`.
+reads `.env` (written by `scripts/provision.sh`): `npx vitest run`.
 
 The error discipline below is not optional.
 
