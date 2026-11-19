@@ -29,9 +29,9 @@ import type { TitleKind } from "@/tmdb/mirror";
  *
  * Sort lives in the URL because sort changes the `ORDER BY` — it is a
  * different read, and a view of your own rows worth linking to. The mode changes no read
- * at all: `listLibraryEntries` returns every entry of both kinds and this filters what is
+ * at all: the Library's reads return every entry of both kinds and this filters what is
  * already in hand, exactly as the state chips and the filter field already do from
- * `LibrarySurface`. Putting it in the URL would double the cached library entries per sort
+ * `LibrarySurface`. Putting it in the URL would double the cached library reads per sort
  * (`cache/tags.ts`) to no purpose.
  *
  * ── Films and Shows, not Movies and TV Shows ────────────────────────────────────────

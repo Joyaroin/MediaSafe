@@ -1,16 +1,19 @@
-import { sql } from "drizzle-orm";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   asUserId,
-  listLibraryEntries,
+  listLibrarySection,
+  listLibrarySections,
   type LibraryEntryRow,
+  type LibrarySectionEntry,
   type LibraryState,
   type UserId,
 } from "@/db/access";
 import type { Transaction } from "@/db/client";
+import { LIBRARY_SECTIONS, type LibrarySection } from "@/db/library-section";
+import type { LibrarySort } from "@/db/library-sort";
 import { episode, libraryEntry, title, user, watch } from "@/db/schema";
 import type { TitleKind } from "@/tmdb/mirror";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
@@ -24,7 +27,10 @@ import { inTransaction, setUpTestDatabase } from "./support/database";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 /**
- * The one read behind the library grid (issue #56).
+ * The row a Library cell is built from (issue #56), read through the section reads that
+ * #541 and #552 put behind the Library (`listLibrarySection`, `listLibrarySections`).
+ * `tests/library-sections.test.ts` holds which section an entry is in and the section
+ * orders; this file holds what is on the row, and the sort control's four orders.
  *
  * ── Why the query is what gets tested ────────────────────────────────────────────────
  *
@@ -33,7 +39,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  * renderer here, and adding one to assert on a class name would be a second harness
  * checking the wrong half. What is worth checking is everything the cell is built out of
  * — whose rows arrive, which of the five states each entry is in, what is next in it, and
- * in what order — and all of that is this function.
+ * in what order — and all of that is these reads.
  *
  * ── The two that would not fail loudly ───────────────────────────────────────────────
  *
@@ -41,7 +47,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
  * error, and a library that quietly contains somebody else's shows looks exactly like a
  * library. And **the empty answer**, because `[]` here has to mean the query succeeded
  * and found nothing. A failure arrives as a throw, which is why there is
- * no `try` anywhere in the function and no assertion here that a failure returns a list.
+ * no `try` anywhere in the reads and no assertion here that a failure returns a list.
  */
 
 setUpTestDatabase("mediasafe_library_grid_test");
@@ -191,7 +197,30 @@ async function markFilmWatched(tx: Transaction, film: Film): Promise<void> {
   });
 }
 
-describe("listLibraryEntries", () => {
+/** Every entry in the account, whichever section holds it, by name — so a test about one
+ *  row's facts reads the row without caring which of the nine sections it landed in. */
+async function readAll(tx: Transaction, userId: UserId): Promise<LibrarySectionEntry[]> {
+  const sections = await Promise.all(
+    LIBRARY_SECTIONS.map((section) => listLibrarySection(userId, section, null, tx)),
+  );
+  return sections.flat().sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+const SHOW = (slug: Extract<LibrarySection, { kind: "show" }>["slug"]): LibrarySection => ({
+  kind: "show",
+  slug,
+});
+
+async function namesIn(
+  tx: Transaction,
+  userId: UserId,
+  section: LibrarySection,
+  sort: LibrarySort,
+): Promise<string[]> {
+  return (await listLibrarySection(userId, section, sort, tx)).map((row) => row.name);
+}
+
+describe("the Library section reads' row", () => {
   it("returns this account's entries and never another account's", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
@@ -200,7 +229,7 @@ describe("listLibraryEntries", () => {
       const mine = await seedShow(tx, reader, { name: "Mine" });
       await seedShow(tx, stranger, { name: "Theirs" });
 
-      const rows = await listLibraryEntries(reader, "title", tx);
+      const rows = await readAll(tx, reader);
 
       expect(rows.map((row) => row.name)).toEqual(["Mine"]);
       expect(rows[0].libraryEntryId).toBe(mine.entryId);
@@ -213,7 +242,7 @@ describe("listLibraryEntries", () => {
       // Somebody else's library is full; this one is genuinely empty.
       await seedShow(tx, await seedUser(tx, "stranger"));
 
-      expect(await listLibraryEntries(reader, "title", tx)).toEqual([]);
+      expect(await readAll(tx, reader)).toEqual([]);
     });
   });
 
@@ -226,7 +255,7 @@ describe("listLibraryEntries", () => {
         posterPath: "/severance.jpg",
       });
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       expect(row.name).toBe("Severance");
       expect(row.releaseYear).toBe(2022);
@@ -239,7 +268,7 @@ describe("listLibraryEntries", () => {
       const reader = await seedUser(tx, "reader");
       await seedShow(tx, reader, { releaseYear: null, posterPath: null });
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       expect(row.releaseYear).toBeNull();
       expect(row.posterPath).toBeNull();
@@ -290,7 +319,7 @@ describe("listLibraryEntries", () => {
       });
       await markWatched(tx, abandoned, 0);
 
-      const rows = await listLibraryEntries(reader, "title", tx);
+      const rows = await readAll(tx, reader);
 
       expect(rows.map((row) => row.state)).toEqual([
         "watchlist",
@@ -313,7 +342,7 @@ describe("listLibraryEntries", () => {
       });
       await markWatched(tx, show, 0);
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       expect(row.upNext).toEqual({ episodeName: "Hands", seasonNo: 1, episodeNo: 2 });
     });
@@ -342,7 +371,7 @@ describe("listLibraryEntries", () => {
       });
       await markWatched(tx, unnamedNext, 0);
 
-      const rows = await listLibraryEntries(reader, "title", tx);
+      const rows = await readAll(tx, reader);
 
       expect(rows[0].upNext).toBeNull();
       expect(rows[1].upNext).toEqual({ episodeName: null, seasonNo: 1, episodeNo: 2 });
@@ -354,7 +383,7 @@ describe("listLibraryEntries", () => {
       const reader = await seedUser(tx, "reader");
       await seedShow(tx, reader, { episodes: [{ seasonNo: 1, episodeNo: 1 }] });
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       expect(row.upNext).toBeNull();
     });
@@ -366,7 +395,7 @@ describe("listLibraryEntries", () => {
       const film = await seedFilm(tx, reader);
       await markFilmWatched(tx, film);
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       expect(row.state).toBe("finished");
       expect(row.upNext).toBeNull();
@@ -392,7 +421,7 @@ describe("listLibraryEntries", () => {
       await markWatched(tx, show, 0);
       await markWatched(tx, show, 1);
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       // Three released episodes, not four: the unreleased fourth counts toward neither
       // number, which is `libraryProgressFraction`'s whole reason for existing.
@@ -405,7 +434,7 @@ describe("listLibraryEntries", () => {
       const reader = await seedUser(tx, "reader");
       await seedFilm(tx, reader);
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       expect(row.progress).toBeNull();
     });
@@ -418,7 +447,7 @@ describe("listLibraryEntries", () => {
         episodes: [{ seasonNo: 1, episodeNo: 1, airDate: UNRELEASED }],
       });
 
-      const [row] = await listLibraryEntries(reader, "title", tx);
+      const [row] = await readAll(tx, reader);
 
       // Not null: a film is the only case that reads as no progress at all
       // (`db/access.ts`'s own docblock). This show gets a real `{ watched: 0, released:
@@ -427,21 +456,27 @@ describe("listLibraryEntries", () => {
     });
   });
 
-  it("issues one query whether the account holds one entry or many", async () => {
+  it("issues the same queries whether the account holds one entry or many", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
       await seedShow(tx, reader, { name: "A", episodes: [{ seasonNo: 1, episodeNo: 1 }] });
+
+      const selectSpy = vi.spyOn(tx, "select");
+      const one = await listLibrarySections(reader, tx);
+      const queriesForOne = selectSpy.mock.calls.length;
+      selectSpy.mockClear();
+
       await seedShow(tx, reader, { name: "B", episodes: [{ seasonNo: 1, episodeNo: 1 }] });
       await seedFilm(tx, reader, { name: "C" });
       await seedFilm(tx, reader, { name: "D" });
+      const many = await listLibrarySections(reader, tx);
 
-      const selectSpy = vi.spyOn(tx, "select");
-      const rows = await listLibraryEntries(reader, "title", tx);
-
-      // Four entries and one statement: the counts a bar per card needs come from the
-      // join this test proves is still the only one, not from a query per row.
-      expect(rows).toHaveLength(4);
-      expect(selectSpy).toHaveBeenCalledTimes(1);
+      // One statement per section, whatever the section holds: the counts a bar per card
+      // needs come from the join, not from a query per row.
+      expect(one.reduce((total, section) => total + section.count, 0)).toBe(1);
+      expect(many.reduce((total, section) => total + section.count, 0)).toBe(4);
+      expect(queriesForOne).toBe(LIBRARY_SECTIONS.length);
+      expect(selectSpy).toHaveBeenCalledTimes(LIBRARY_SECTIONS.length);
       selectSpy.mockRestore();
     });
   });
@@ -456,8 +491,8 @@ describe("listLibraryEntries", () => {
       const firstTie = await seedShow(tx, reader, { name: "Dark" });
       const secondTie = await seedShow(tx, reader, { name: "Dark" });
 
-      const once = await listLibraryEntries(reader, "title", tx);
-      const again = await listLibraryEntries(reader, "title", tx);
+      const once = await listLibrarySection(reader, SHOW("not-started"), "title", tx);
+      const again = await listLibrarySection(reader, SHOW("not-started"), "title", tx);
 
       expect(once.map((row) => row.name)).toEqual([
         "Andor",
@@ -479,36 +514,19 @@ describe("listLibraryEntries", () => {
       ).toEqual([firstTie.entryId, secondTie.entryId].sort());
     });
   });
-
-  it("refuses a state the view does not define rather than rendering it", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      await seedShow(tx, reader);
-
-      // The harness rolls DDL back with everything else, so this view lives for one test.
-      // A state nothing can render is a broken read, not a cell with a blank label.
-      await tx.execute(sql`
-        create or replace view library_entry_state as
-        select le.id as library_entry_id, le.user_id as user_id,
-               le.title_id as title_id, 'martian'::text as state
-        from library_entry le
-      `);
-
-      await expect(listLibraryEntries(reader, "title", tx)).rejects.toThrow(/martian/);
-    });
-  });
 });
 
 /**
- * The other three of the four settled orders (#22, #57). Title A-Z's own
- * ordering and its tie already live above, because it is the query's default and was
- * `listLibraryEntries`'s whole `ORDER BY` before this ticket.
+ * The other three of the four settled orders (#22, #57), as the sort control applies them to
+ * one section's grid (`listLibrarySection`'s `sort`). Title A-Z's own ordering and its tie
+ * live above. Every test here reads one section, because that is the only place a sort is
+ * applied: it replaces that section's own order.
  *
  * Each order gets the same shape of proof: the order itself, and the one rule that would
  * fail *silently* if it regressed — a reshuffle nobody would notice without loading the
  * page twice, or a naive ascending sort that opens on the titles that are actually done.
  */
-describe("listLibraryEntries sort orders", () => {
+describe("the sort control's orders within a section", () => {
   it("orders recently added newest first, and breaks a many-way tie by title", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
@@ -527,8 +545,8 @@ describe("listLibraryEntries sort orders", () => {
         addedAt: new Date("2025-01-01T00:00:00Z"),
       });
 
-      const once = await listLibraryEntries(reader, "recently-added", tx);
-      const again = await listLibraryEntries(reader, "recently-added", tx);
+      const once = await listLibrarySection(reader, SHOW("not-started"), "recently-added", tx);
+      const again = await listLibrarySection(reader, SHOW("not-started"), "recently-added", tx);
 
       expect(once.map((row) => row.name)).toEqual([
         "Newest",
@@ -548,19 +566,18 @@ describe("listLibraryEntries sort orders", () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
 
+      // All shows, so all in Not started: a sort applies inside one section.
       await seedShow(tx, reader, { name: "New Show", releaseYear: 2024 });
-      await seedFilm(tx, reader, { name: "Mid Film", releaseYear: 2020 });
+      await seedShow(tx, reader, { name: "Mid Show", releaseYear: 2020 });
       await seedShow(tx, reader, { name: "Old Show", releaseYear: 2010 });
       // Named so the alphabetical tiebreak and the insertion order disagree — a pass
       // here cannot be an accident of the order these were seeded in.
-      await seedFilm(tx, reader, { name: "Alpha Undated", releaseYear: null });
       await seedShow(tx, reader, { name: "Bravo Undated", releaseYear: null });
+      await seedShow(tx, reader, { name: "Alpha Undated", releaseYear: null });
 
-      const rows = await listLibraryEntries(reader, "release-year", tx);
-
-      expect(rows.map((row) => row.name)).toEqual([
+      expect(await namesIn(tx, reader, SHOW("not-started"), "release-year")).toEqual([
         "New Show",
-        "Mid Film",
+        "Mid Show",
         "Old Show",
         "Alpha Undated",
         "Bravo Undated",
@@ -569,38 +586,41 @@ describe("listLibraryEntries sort orders", () => {
   });
 
   it(
-    "orders closest to finishing ascending, and sinks both the finished and the " +
-      "not-applicable to the bottom rather than opening on them",
+    "orders closest to finishing ascending, and sinks the finished to the bottom " +
+      "rather than opening on them",
     async () => {
       await inTransaction(async (tx) => {
         const reader = await seedUser(tx, "reader");
+        // A sort applies inside one section, and Dropped is the one section that holds
+        // shows at every remaining count, finished or not, so every show here is dropped.
+        const abandonedAt = new Date();
+        const four = [1, 2, 3, 4].map((episodeNo) => ({ seasonNo: 1, episodeNo }));
 
         const almostThere = await seedShow(tx, reader, {
           name: "Almost There",
-          episodes: [1, 2, 3, 4].map((episodeNo) => ({ seasonNo: 1, episodeNo })),
+          abandonedAt,
+          episodes: four,
         });
         await markWatched(tx, almostThere, 0);
         await markWatched(tx, almostThere, 1);
         await markWatched(tx, almostThere, 2); // 1 left.
 
-        const halfway = await seedShow(tx, reader, {
-          name: "Halfway",
-          episodes: [1, 2, 3, 4].map((episodeNo) => ({ seasonNo: 1, episodeNo })),
-        });
+        const halfway = await seedShow(tx, reader, { name: "Halfway", abandonedAt, episodes: four });
         await markWatched(tx, halfway, 0);
         await markWatched(tx, halfway, 1); // 2 left.
 
         const justStarted = await seedShow(tx, reader, {
           name: "Just Started",
-          episodes: [1, 2, 3, 4].map((episodeNo) => ({ seasonNo: 1, episodeNo })),
+          abandonedAt,
+          episodes: four,
         });
         await markWatched(tx, justStarted, 0); // 3 left.
 
-        // Two genuinely finished shows, named against insertion order — same purpose as
-        // the release-year test's undated pair — and a film, which has no episodes and
-        // so no row in `library_entry_remaining` at all.
+        // Two shows with nothing left, named against insertion order — same purpose as
+        // the release-year test's undated pair.
         const bravoFinished = await seedShow(tx, reader, {
           name: "Bravo Finished",
+          abandonedAt,
           inProduction: false,
           episodes: [{ seasonNo: 1, episodeNo: 1 }],
         });
@@ -608,16 +628,13 @@ describe("listLibraryEntries sort orders", () => {
 
         const alphaFinished = await seedShow(tx, reader, {
           name: "Alpha Finished",
+          abandonedAt,
           inProduction: false,
           episodes: [{ seasonNo: 1, episodeNo: 1 }],
         });
         await markWatched(tx, alphaFinished, 0);
 
-        await seedFilm(tx, reader, { name: "Zulu Movie" });
-
-        const rows = await listLibraryEntries(reader, "closest-to-finishing", tx);
-
-        expect(rows.map((row) => row.name)).toEqual([
+        expect(await namesIn(tx, reader, SHOW("dropped"), "closest-to-finishing")).toEqual([
           "Almost There",
           "Halfway",
           "Just Started",
@@ -626,43 +643,44 @@ describe("listLibraryEntries sort orders", () => {
           // bug). Tied at 0, so Title A-Z decides between them.
           "Alpha Finished",
           "Bravo Finished",
-          // A film is `remaining IS NULL` — a different bottom case from a real 0 —
-          // and sorts after both finished shows rather than interleaving with them.
-          "Zulu Movie",
         ]);
       });
     },
   );
 
-  it("counts a caught-up show's unaired episodes, so it is not swept in with the finished", async () => {
+  it("counts an unaired episode as remaining, so a show with one is not swept in with the finished", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "reader");
+      const abandonedAt = new Date();
 
-      // Every *released* episode watched, one more not yet aired — caught up, and per
-      // amendment 3 still one remaining episode, because closest-to-finishing
-      // asks how much of the whole series is left, not how much of it airs today.
-      const caughtUp = await seedShow(tx, reader, {
-        name: "Caught Up",
+      // Every *released* episode watched, one more not yet aired — and per amendment 3
+      // still one remaining episode, because closest-to-finishing asks how much of the
+      // whole series is left, not how much of it airs today.
+      const unaired = await seedShow(tx, reader, {
+        name: "Has One Unaired",
+        abandonedAt,
         episodes: [
           { seasonNo: 1, episodeNo: 1 },
           { seasonNo: 1, episodeNo: 2, airDate: UNRELEASED },
         ],
       });
-      await markWatched(tx, caughtUp, 0);
+      await markWatched(tx, unaired, 0);
 
+      // Named so that A-Z would put it first: the order below is the remaining count's.
       const finished = await seedShow(tx, reader, {
         name: "Actually Finished",
+        abandonedAt,
         inProduction: false,
         episodes: [{ seasonNo: 1, episodeNo: 1 }],
       });
       await markWatched(tx, finished, 0);
 
-      const rows = await listLibraryEntries(reader, "closest-to-finishing", tx);
-
-      // If the unaired episode were ignored, both would read as 0 remaining and this
-      // order would be a coin flip rather than a fact about the two shows.
-      expect(rows.map((row) => row.name)).toEqual(["Caught Up", "Actually Finished"]);
-      expect(rows[0].state).toBe("caught_up");
+      // If the unaired episode were ignored, both would read as 0 remaining and A-Z
+      // would put "Actually Finished" first.
+      expect(await namesIn(tx, reader, SHOW("dropped"), "closest-to-finishing")).toEqual([
+        "Has One Unaired",
+        "Actually Finished",
+      ]);
     });
   });
 });

@@ -64,7 +64,6 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
    * window — is `cache/borrowed-facts.ts`'s doing, not this map's.
    */
   reads: {
-    listLibraryEntries: vi.fn(),
     listLibrarySections: vi.fn(),
     listLibrarySection: vi.fn(),
     listRecentlyAdded: vi.fn(),
@@ -205,7 +204,6 @@ const {
   READS,
   UNCACHED_READS,
   cachedAccountFigures,
-  cachedLibraryEntries,
   cachedLibraryEntryIdForEpisode,
   cachedLibraryEntryIdForTitle,
   cachedLibrarySection,
@@ -261,8 +259,7 @@ function ownedBy(userId: string) {
  * back, and an entry id is not the axis under test.
  */
 const CACHED = {
-  listLibraryEntries: (userId: typeof mine) => cachedLibraryEntries(userId),
-  /** Issue #541's Library sections — `library`, beside the grid they replace on that screen. */
+  /** Issue #541's Library sections — `library`, the read the Library screen is built from. */
   listLibrarySections: (userId: typeof mine) => cachedLibrarySections(userId),
   listLibrarySection: (userId: typeof mine) =>
     cachedLibrarySection(userId, { kind: "show", slug: "watching" }, null),
@@ -304,7 +301,7 @@ const CACHED = {
  *  because the assertions that predate #226 are about rows; the rest need only to name
  *  the account they were read for. */
 function answerFor(read: keyof typeof CACHED, userId: string) {
-  return read === "listLibraryEntries" ? libraryOf(userId) : ownedBy(userId);
+  return read === "listLibrarySections" ? libraryOf(userId) : ownedBy(userId);
 }
 
 /* ── The borrowed half, issue #225 ─────────────────────────────────────────────────── */
@@ -348,7 +345,7 @@ beforeEach(() => {
     read.mockReset();
     read.mockImplementation(async (userId: string) => ownedBy(userId));
   }
-  reads.listLibraryEntries.mockImplementation(async (userId: string) => libraryOf(userId));
+  reads.listLibrarySections.mockImplementation(async (userId: string) => libraryOf(userId));
 
   // The borrowed four answer by title rather than by account — they take no user id, and
   // the whole question about them is which *title's* entry a bust reached.
@@ -369,12 +366,12 @@ describe("every key carries an account", () => {
    * account reaches `unstable_cache` twice — in the key parts *and* as the read's own
    * first argument — and either one alone is enough to keep two accounts apart. Which
    * means the leak test cannot see the account leaving the key parts, and the realistic
-   * regression is exactly that: the argument is `listLibraryEntries`'s signature and
+   * regression is exactly that: the argument is `listLibrarySections`'s signature and
    * nobody deletes it by accident, while the key parts are two tokens somebody could
    * simplify. This is the assertion that fails when they do.
    */
   it("hands Next.js key parts and a tag that both name the account", async () => {
-    await cachedLibraryEntries(mine);
+    await cachedLibrarySections(mine);
 
     expect(cacheState.constructed).toEqual([
       // `revalidate: undefined` is an assertion, not a filler: an owned fact is correct
@@ -382,7 +379,7 @@ describe("every key carries an account", () => {
       // library to be wrong. It is the one thing borrowed facts have that this does not
       // (`cache/borrowed-facts.ts`), which makes it worth failing on rather than omitting.
       {
-        keyParts: ["listLibraryEntries", mine, serverDay()],
+        keyParts: ["listLibrarySections", mine, serverDay()],
         tags: [`library:${mine}`],
         revalidate: undefined,
       },
@@ -418,20 +415,20 @@ describe("every key carries an account", () => {
    * should have made never happens.
    */
   it("never serves one account's library to another", async () => {
-    expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
-    expect(await cachedLibraryEntries(yours)).toEqual(libraryOf(yours));
+    expect(await cachedLibrarySections(mine)).toEqual(libraryOf(mine));
+    expect(await cachedLibrarySections(yours)).toEqual(libraryOf(yours));
 
-    expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([
+    expect(reads.listLibrarySections.mock.calls.map(([userId]) => userId)).toEqual([
       mine,
       yours,
     ]);
   });
 
   it("is a cache, and not merely a function that reads twice", async () => {
-    await cachedLibraryEntries(mine);
-    await cachedLibraryEntries(mine);
+    await cachedLibrarySections(mine);
+    await cachedLibrarySections(mine);
 
-    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
+    expect(reads.listLibrarySections).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -441,11 +438,19 @@ describe("every key carries an account", () => {
    * exactly the kind of accident this second case exists to remove.
    */
   it("keeps the orders apart without letting either escape its account", async () => {
-    await cachedLibraryEntries(mine, "recently-added");
-    await cachedLibraryEntries(mine, "title");
+    const watching = { kind: "show", slug: "watching" } as const;
 
-    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(2);
-    expect(await cachedLibraryEntries(yours, "title")).toEqual(libraryOf(yours));
+    await cachedLibrarySection(mine, watching, "recently-added");
+    await cachedLibrarySection(mine, watching, "title");
+
+    expect(reads.listLibrarySection).toHaveBeenCalledTimes(2);
+    expect(await cachedLibrarySection(yours, watching, "title")).toEqual(ownedBy(yours));
+    expect(reads.listLibrarySection).toHaveBeenCalledTimes(3);
+    expect(reads.listLibrarySection.mock.calls.map(([userId]) => userId)).toEqual([
+      mine,
+      mine,
+      yours,
+    ]);
   });
 
   /**
@@ -506,15 +511,15 @@ describe("every key carries an account", () => {
 
 describe("every write busts its tags", () => {
   it("gives the reader the library their own write landed in", async () => {
-    expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
+    expect(await cachedLibrarySections(mine)).toEqual(libraryOf(mine));
 
-    reads.listLibraryEntries.mockImplementation(async () => [
+    reads.listLibrarySections.mockImplementation(async () => [
       ...libraryOf(mine),
       { libraryEntryId: "entry-just-added", name: "The one I just added" },
     ]);
     invalidateFor("addTitleToLibrary", mine);
 
-    expect(await cachedLibraryEntries(mine)).toHaveLength(2);
+    expect(await cachedLibrarySections(mine)).toHaveLength(2);
   });
 
   /**
@@ -524,9 +529,9 @@ describe("every write busts its tags", () => {
    * it is the claim this line is here to fail on if `getListDetail` ever grows a watch.
    */
   it("busts the writer's facts and leaves everybody else's alone", async () => {
-    await cachedLibraryEntries(mine);
-    await cachedLibraryEntries(yours);
-    reads.listLibraryEntries.mockClear();
+    await cachedLibrarySections(mine);
+    await cachedLibrarySections(yours);
+    reads.listLibrarySections.mockClear();
 
     invalidateFor("recordWatch", mine);
 
@@ -537,20 +542,20 @@ describe("every write busts its tags", () => {
       // #227, repointed by #249: a watch is what every figure on `/you` is made of.
       `you:${mine}`,
     ]);
-    await cachedLibraryEntries(mine);
-    await cachedLibraryEntries(yours);
-    expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([mine]);
+    await cachedLibrarySections(mine);
+    await cachedLibrarySections(yours);
+    expect(reads.listLibrarySections.mock.calls.map(([userId]) => userId)).toEqual([mine]);
   });
 
   it("busts nothing for a write no cached read shows", async () => {
-    await cachedLibraryEntries(mine);
-    reads.listLibraryEntries.mockClear();
+    await cachedLibrarySections(mine);
+    reads.listLibrarySections.mockClear();
 
     invalidateFor("markImportOfferAnswered", mine);
 
     expect(cacheState.updated).toEqual([]);
-    await cachedLibraryEntries(mine);
-    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
+    await cachedLibrarySections(mine);
+    expect(reads.listLibrarySections).not.toHaveBeenCalled();
   });
 
   /**
@@ -611,19 +616,19 @@ describe("every write busts its tags", () => {
    * read is *not* acceptable, and they use the profile-less call for exactly that reason.
    */
   it("hands the other holders one stale read, then the re-mirrored one", async () => {
-    await cachedLibraryEntries(yours);
-    reads.listLibraryEntries.mockClear();
+    await cachedLibrarySections(yours);
+    reads.listLibrarySections.mockClear();
 
     invalidateFor("addTitleToLibrary", mine);
     invalidateForOtherAccounts("addTitleToLibrary", [mine, yours], mine);
 
     // Served from the stale entry: no read reached the database.
-    await cachedLibraryEntries(yours);
-    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
+    await cachedLibrarySections(yours);
+    expect(reads.listLibrarySections).not.toHaveBeenCalled();
 
     // And now the refresh.
-    await cachedLibraryEntries(yours);
-    expect(reads.listLibraryEntries.mock.calls.map(([userId]) => userId)).toEqual([yours]);
+    await cachedLibrarySections(yours);
+    expect(reads.listLibrarySections.mock.calls.map(([userId]) => userId)).toEqual([yours]);
   });
 });
 
@@ -671,16 +676,16 @@ describe("You's figures follow the watches they are made of", () => {
    * could not express that at all.
    */
   it("leaves the figures standing when only a rating changed", async () => {
-    await cachedLibraryEntries(mine);
+    await cachedLibrarySections(mine);
     await cachedAccountFigures(mine);
-    reads.listLibraryEntries.mockClear();
+    reads.listLibrarySections.mockClear();
     reads.accountFigures.mockClear();
 
     invalidateFor("rateTitle", mine);
 
-    await cachedLibraryEntries(mine);
+    await cachedLibrarySections(mine);
     await cachedAccountFigures(mine);
-    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
+    expect(reads.listLibrarySections).toHaveBeenCalledTimes(1);
     expect(reads.accountFigures).not.toHaveBeenCalled();
   });
 
@@ -746,7 +751,7 @@ describe("the surfaces reading one fact agree after a write", () => {
    */
   it("leaves the grid, the rails, the films and the title detail all agreeing", async () => {
     await Promise.all([
-      cachedLibraryEntries(mine),
+      cachedLibrarySections(mine),
       cachedUpNextRails(mine),
       cachedWatchlistFilms(mine),
       cachedTitleDetail(mine, "entry-1"),
@@ -756,13 +761,13 @@ describe("the surfaces reading one fact agree after a write", () => {
     invalidateFor("markWatchedUpTo", mine);
 
     await Promise.all([
-      cachedLibraryEntries(mine),
+      cachedLibrarySections(mine),
       cachedUpNextRails(mine),
       cachedWatchlistFilms(mine),
       cachedTitleDetail(mine, "entry-1"),
     ]);
 
-    expect(reads.listLibraryEntries).toHaveBeenCalledTimes(1);
+    expect(reads.listLibrarySections).toHaveBeenCalledTimes(1);
     expect(reads.listUpNextRails).toHaveBeenCalledTimes(1);
     expect(reads.listWatchlistFilms).toHaveBeenCalledTimes(1);
     expect(reads.getTitleDetail).toHaveBeenCalledTimes(1);
@@ -801,14 +806,14 @@ describe("the surfaces reading one fact agree after a write", () => {
    * does bust something.
    */
   it("leaves the library alone when only a list changed", async () => {
-    await cachedLibraryEntries(mine);
-    reads.listLibraryEntries.mockClear();
+    await cachedLibrarySections(mine);
+    reads.listLibrarySections.mockClear();
 
     invalidateFor("addTitleToList", mine);
 
     expect(cacheState.updated).toEqual([`lists:${mine}`]);
-    await cachedLibraryEntries(mine);
-    expect(reads.listLibraryEntries).not.toHaveBeenCalled();
+    await cachedLibrarySections(mine);
+    expect(reads.listLibrarySections).not.toHaveBeenCalled();
   });
 
   /**
@@ -859,17 +864,17 @@ describe("a failed read is not an empty library", () => {
   const unreachable = new Error("the database is unreachable");
 
   it("lets the rejection through instead of answering with rows", async () => {
-    reads.listLibraryEntries.mockRejectedValueOnce(unreachable);
+    reads.listLibrarySections.mockRejectedValueOnce(unreachable);
 
-    await expect(cachedLibraryEntries(mine)).rejects.toThrow(unreachable);
+    await expect(cachedLibrarySections(mine)).rejects.toThrow(unreachable);
   });
 
   it("stores nothing, so the next read is a real read", async () => {
-    reads.listLibraryEntries.mockRejectedValueOnce(unreachable);
-    await expect(cachedLibraryEntries(mine)).rejects.toThrow(unreachable);
+    reads.listLibrarySections.mockRejectedValueOnce(unreachable);
+    await expect(cachedLibrarySections(mine)).rejects.toThrow(unreachable);
 
     expect(cacheState.entries.size).toBe(0);
-    expect(await cachedLibraryEntries(mine)).toEqual(libraryOf(mine));
+    expect(await cachedLibrarySections(mine)).toEqual(libraryOf(mine));
   });
 
   /** Every read the module wraps, not the library alone — a `catch` added to any one of
@@ -889,7 +894,7 @@ describe("a failed read is not an empty library", () => {
  * **The input these reads have that no write touches: today's date.**
  *
  * `db/views.ts` derives *released* from `air_date <= current_date`, and the three derived
- * views are what `listLibraryEntries`, `listUpNextRails`, `listWatchlistFilms` and
+ * views are what `listLibrarySections`, `listUpNextRails`, `listWatchlistFilms` and
  * `getTitleDetail` are all built on. So an episode airing tonight moves a show from
  * COMING BACK to ONGOING, and a caught-up show back to watching, **with no write anywhere
  * in the system** — the clock alone did it.
@@ -1251,7 +1256,7 @@ describe("a borrowed fact is keyed by account and tagged by title", () => {
 
   /**
    * The account is in the key parts and **not** in the arguments here — unlike the
-   * library, where it is `listLibraryEntries`'s own first parameter and would keep two
+   * library, where it is `listLibrarySections`'s own first parameter and would keep two
    * readers apart on its own. `titleSynopsis(kind, tmdbId)` has no account to take, so
    * the key parts are the *only* thing separating two readers of one title, and this is
    * the test that fails if somebody simplifies them away.
@@ -1554,8 +1559,8 @@ describe("the reads that are cached, and the one that must never be", () => {
       // statement of the list directly beneath it and only one of the two gets updated.
       // The list is the assertion; a read arriving or leaving fails on the array, which
       // is the failure worth having.
-      "listLibraryEntries",
-      // #541's, written beside it: the sections view and one section's full grid.
+      // #541's, which replaced #219's grid read (#606): the sections view and one
+      // section's full grid.
       "listLibrarySections",
       "listLibrarySection",
       // #542's, beside them: Search's Recently added.

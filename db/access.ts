@@ -28,7 +28,7 @@ import { user } from "@/auth-schema";
 
 import { type Executor, getDb } from "./client";
 import { LIBRARY_SECTIONS, type LibrarySection } from "./library-section";
-import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
+import { type LibrarySort } from "./library-sort";
 import { episode, libraryEntry, list, listMembership, title, titleReconciliation, watch } from "./tables";
 import {
   libraryEntryReleaseProgress,
@@ -646,7 +646,7 @@ export async function watchedTmdbEpisodeIds(
  * correctly, rather than a surface reading somebody else's library.
  *
  * `refreshTitleMirror` and `repointTitle` write `title.name`, `release_year` and
- * `poster_path` — three columns `listLibraryEntries` selects and the library grid prints
+ * `poster_path` — three columns the Library section reads select and the library grid prints
  * — and they write them for every account at once. Without this, a refreshed poster would
  * sit behind a cache entry until that account's next write of its own. `SELECT DISTINCT`
  * rather than a count: the caller busts one tag per account, so the same account twice is
@@ -3111,80 +3111,23 @@ function orderByFor(sort: LibrarySort): (SQL | PgColumn)[] {
 }
 
 /**
- * Every library entry in one account, with where it stands and what is next in it, in one
- * of the four settled orders.
+ * The columns every Library section read selects: a section's grid prints one cell, and
+ * the sections view and a single section's grid print the same one. Shared so they cannot
+ * drift into printing different facts about one poster.
  *
- * ── One query, 472 rows, no N+1 ──────────────────────────────────────────────────────
+ * One query, no N+1: the state, the up-next episode, the remaining count and the
+ * release-progress counts behind the card's bar are joined here rather than asked per
+ * cell, because 472 cells each asking several questions is the request storm `tvtracker`
+ * shipped (its cold deck once issued 114 requests for 57 shows). The derivation itself is
+ * not repeated — the views are the definition, and the reads join them.
  *
- * This is sized at 472 titles, which is what makes the shape
- * of the read matter more than its cleverness: the state, the up-next episode, the
- * remaining count and now the release-progress counts behind issue #324's bar are joined
- * here rather than asked per cell, because 472 cells each asking several questions is the
- * request storm `tvtracker` shipped (its cold deck once issued 114 requests for 57 shows).
- * The derivation itself is not repeated — the views are the definition, and this joins
- * them. `library_entry_remaining` and `library_entry_release_progress` are joined
- * unconditionally rather than only where a sort or a bar needs them, so there is still one
- * query behind this screen and not several.
- *
- * ── Why the state join is inner and the other three are not ─────────────────────────
- *
- * `library_entry_state` has a row for **every** library entry: its `case` has an `else`,
- * and it joins `title` through a `NOT NULL` foreign key. So an inner join drops nothing,
- * and it is the honest one — a `left` join here would type `state` as nullable and invite
- * a fallback, which is a state invented in TypeScript for a row the database could not
- * classify. `library_entry_up_next` genuinely has no row when nothing is next, and
- * `library_entry_remaining` and `library_entry_release_progress` genuinely have no row
- * for a film — all three absences are the answer rather than a gap to fill.
- *
- * ── There is no `try` here, and there will not be ────────────────────────────────────
- *
- * A failed read throws into `app/(signed-in)/library/error.tsx`. Returning `[]` from a
- * failure is the one bug this codebase is built around not having (`AGENTS.md`), because
- * an empty library and a database that is down would then be the same screen.
- *
- * ── The page does not call this directly any more — issue #219 ───────────────────────
- *
- * `cache/tags.ts`'s `cachedLibraryEntries` wraps it, and that is what
- * `library/page.tsx` calls. Nothing about the query changed: the user id is still the
- * first argument, `ownedBy` is still the whole isolation model, and a rejection still
- * leaves through `unstable_cache` untouched. What changed is that a caller may now be
- * served an earlier answer, so **a write that changes what this returns has to bust the
- * library's tag** — `INVALIDATES` in that file is where each one is written down, and
- * `tests/cache-tags.test.ts` fails if a write in this module is missing from it.
- */
-export async function listLibraryEntries(
-  userId: UserId,
-  sort: LibrarySort = DEFAULT_LIBRARY_SORT,
-  executor: Executor = getDb(),
-): Promise<readonly LibraryEntryRow[]> {
-  const rows = await executor
-    .select(LIBRARY_ENTRY_COLUMNS)
-    .from(libraryEntry)
-    .innerJoin(title, eq(title.id, libraryEntry.titleId))
-    .innerJoin(
-      libraryEntryState,
-      eq(libraryEntryState.libraryEntryId, libraryEntry.id),
-    )
-    .leftJoin(libraryEntryUpNext, eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id))
-    .leftJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
-    .leftJoin(
-      libraryEntryRemaining,
-      eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id),
-    )
-    .leftJoin(
-      libraryEntryReleaseProgress,
-      eq(libraryEntryReleaseProgress.libraryEntryId, libraryEntry.id),
-    )
-    .where(ownedBy(userId, libraryEntry))
-    .orderBy(...orderByFor(sort));
-
-  return rows.map(libraryEntryRowFrom);
-}
-
-/**
- * The columns `listLibraryEntries` selects, and the section reads below select the same
- * ones: a section's grid prints the same cell as the A–Z grid does. Shared so the two
- * cannot drift into printing different facts about one poster.
+ * The state join is inner and the other three are left. `library_entry_state` has a row
+ * for every library entry (its `case` has an `else`, and it joins `title` through a
+ * `NOT NULL` foreign key), so an inner join drops nothing, and a left join would type
+ * `state` as nullable and invite a fallback: a state invented in TypeScript for a row the
+ * database could not classify. `library_entry_up_next` genuinely has no row when nothing
+ * is next, and `library_entry_remaining` and `library_entry_release_progress` have none
+ * for a film. Those absences are the answer, not a gap to fill.
  */
 const LIBRARY_ENTRY_COLUMNS = {
   libraryEntryId: libraryEntry.id,
@@ -3200,7 +3143,7 @@ const LIBRARY_ENTRY_COLUMNS = {
   upNextSeasonNo: episode.seasonNo,
   upNextEpisodeNo: episode.episodeNo,
   // Issue #324: the library card's progress bar. Joined here, beside `remaining`,
-  // for the reason `listLibraryEntries`' own docblock gives — 472 cells asking for
+  // for the reason `LIBRARY_ENTRY_COLUMNS`' docblock gives — 472 cells asking for
   // themselves is the request storm this query exists to avoid, and a bar is one
   // more fact about a cell, not a reason for a second query.
   watched: libraryEntryReleaseProgress.watched,
@@ -3435,9 +3378,9 @@ async function readSection(
  * Nine queries, run together, rather than one: the nine orders differ, and a single query
  * would need a window per order or a client-side re-sort, which `library/page.tsx` refuses.
  * Each is bounded by `SECTION_ROW_SIZE`, and none runs per entry, so this is not the N+1
- * `listLibraryEntries`' docblock rules out.
+ * `LIBRARY_ENTRY_COLUMNS`' docblock rules out.
  *
- * No `try`: a failed read throws into the library's error boundary, as `listLibraryEntries`.
+ * No `try`: a failed read throws into the library's error boundary, as every read in this module.
  * `cache/tags.ts`'s `cachedLibrarySections` wraps it, under the `library` tag.
  */
 export async function listLibrarySections(
@@ -4751,7 +4694,7 @@ export interface LibraryStateGroupEntry {
  * **This replaces `listWatchlist` and `listAbandoned`.** #250 deletes the phone's five
  * vertical groups, which were their only callers; both states stay reachable through the
  * library's status filters, which already carry all five and read through
- * `listLibraryEntries`.
+ * the section reads.
  */
 export async function listWatchlistFilms(
   userId: UserId,
@@ -5458,7 +5401,7 @@ export interface TitleDetailRow {
  * stale id from another account's library answer nothing rather than someone else's row.
  * A missing row and a row that belongs to somebody else are the same case here and are
  * both a throw — there is nothing for this surface to degrade to, unlike
- * `listLibraryEntries`'s empty library, which is a real, intended state.
+ * the Library's empty state, which is a real, intended one.
  *
  * ── Watched, by a second query, not by a join ─────────────────────────────────────────
  *
@@ -6314,7 +6257,7 @@ export async function getListDetail(
       posterPath: title.posterPath,
       position: listMembership.position,
       // The progress bar on a list's posters. Joined onto the library-entry left join
-      // above rather than queried per cell, for `listLibraryEntries`' own reason: a view
+      // above rather than queried per cell, for `LIBRARY_ENTRY_COLUMNS`' reason: a view
       // of eleven posters asking for themselves is eleven round trips for one fact.
       watched: libraryEntryReleaseProgress.watched,
       released: libraryEntryReleaseProgress.released,

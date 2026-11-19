@@ -21,13 +21,13 @@ reachable only by a query that succeeded and found nothing.
 ```ts
 // No.
 try {
-  return await listLibraryEntries(userId);
+  return await listLibrarySections(userId);
 } catch {
   return [];
 }
 
 // Yes — there is no `try` at all. The boundary in `app/error.tsx` is what catches this.
-return await listLibraryEntries(userId);
+return await listLibrarySections(userId);
 ```
 
 This is not a style preference and it is not about arrays. It is the rule that keeps *the
