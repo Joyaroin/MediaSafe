@@ -156,9 +156,18 @@ export async function addUnownedTitleToLibraryAction(
  * **which entry is this reader now looking at**, since the page they are on stops being
  * the right page the moment the write lands.
  *
- * `search/actions.ts`'s own watched add carries why this is a second action rather than a
- * flag on the first, and why a browser-minted `sourceKey` is safe to take at a POST
- * endpoint. Neither argument is repeated here.
+ * **A second action rather than a boolean on the one above**, and that is a decision. A
+ * Server Action is a POST endpoint whose arguments are whatever the caller sent, and the
+ * two do materially different things to a library — one writes an entry, the other writes
+ * an entry and every released episode of a show. A flag would make *which of those
+ * happened* a value in a request body rather than which endpoint was called, and the
+ * `sourceKey` has no meaning at all on the plain add.
+ *
+ * **The key is minted by the browser, and that is safe here.** `sourceKey` is a
+ * `crypto.randomUUID()` from the control that pressed, held across retries so a lost write
+ * retried is the same write. Idempotency is `UNIQUE (user_id, source, source_key)`, which
+ * is scoped to the account, so a caller sending somebody else's key can only make its own
+ * write a no-op; nothing here trusts the value for anything but that.
  */
 export async function addUnownedTitleWatchedToLibraryAction(
   kind: TitleKind,
