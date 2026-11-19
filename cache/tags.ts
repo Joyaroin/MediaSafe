@@ -398,6 +398,8 @@ export const UNCACHED_READS = {
     "Read once, on the delete-account confirmation, by a reader who is about to make it wrong. Caching a count somebody is reading in order to destroy buys nothing and adds a way for the number and the deletion to disagree.",
   accountsHoldingTitles:
     "A write's own read: it resolves who to bust *for* the cache. Caching it would mean invalidation deciding who to invalidate from a cached answer, which is the one place a stale row turns into a bust that never happens.",
+  entryEpisodeFacts:
+    "Search's follow-up chips (#537): read once, right after an add, by the add's own response, and again by the Seen it all press to see whether the seasons have landed. Both want the answer as of that instant; a cached one is the stale answer for a show whose episodes arrived a second ago.",
   libraryCatalogueKeys:
     "The search screen's already-added check, read against a set of keys that changes per query. The key would be the query, so the hit rate is the odds of the same reader searching the same thing twice.",
   listStoppedShows:
@@ -843,6 +845,9 @@ export const INVALIDATES = {
    *  phone's WATCHLIST group, every list row for that title, and its own detail page. */
   addTitleToLibrary: ["library", "up-next", "lists", "title-detail", "you"],
   addTitleToLibraryWatched: ["library", "up-next", "lists", "title-detail", "you"],
+  /* Search's undated *Seen it all* (#537): watches on an existing entry, so the same four
+     as `markWatchedUpTo`. It writes no title or episode row, so nothing is shared. */
+  markWatchedUndated: ["library", "up-next", "title-detail", "you"],
   applyImportChunk: ["library", "up-next", "lists", "title-detail", "you"],
   recordWatch: ["library", "up-next", "title-detail", "you"],
   unwatch: ["library", "up-next", "title-detail", "you"],

@@ -9,6 +9,8 @@ import {
   accountsHoldingTitles,
   addTitleToLibraryWatched,
   libraryCatalogueKeys,
+  markWatchedUndated,
+  undoMarkWatchedUpTo,
 } from "@/db/access";
 import { referenceFor } from "@/errors/reference";
 import { searchCatalogueOfKind, titleMirror, titleRowMirror } from "@/tmdb/catalogue";
@@ -21,7 +23,7 @@ import {
 } from "@/tmdb/mirror";
 import { requireUserId } from "@/lib/session";
 
-import { addTitleAnswering } from "./add-title";
+import { addTitleAnswering, finishMirrorIfPending } from "./add-title";
 import type { BothKinds, KindOutcome } from "./search-groups";
 
 /**
@@ -67,6 +69,18 @@ export interface MarkedResult extends CatalogueResult {
 
 export type AddOutcome =
   | { readonly ok: true }
+  | { readonly ok: false; readonly reference: string | null };
+
+/**
+ * What the plain add answers (issue #537): the entry the follow-up chips write against,
+ * and whether *Seen it all* is worth offering. See `AnsweredAdd` for both.
+ */
+export type AddToLibraryOutcome =
+  | {
+      readonly ok: true;
+      readonly libraryEntryId: string;
+      readonly hasAiredEpisode: boolean;
+    }
   | { readonly ok: false; readonly reference: string | null };
 
 /**
@@ -157,7 +171,7 @@ async function searchOneKind(
 export async function addToLibraryAction(
   kind: TitleKind,
   tmdbId: number,
-): Promise<AddOutcome> {
+): Promise<AddToLibraryOutcome> {
   const userId = await requireUserId();
   /** The global row the add mirrored — see the second bust below for what it is for. */
   let titleId: string;
@@ -165,6 +179,8 @@ export async function addToLibraryAction(
   let key: CatalogueKey;
   /** The half of the add that runs behind the response — see `after` below. */
   let mirrorEpisodes: () => Promise<void>;
+  let libraryEntryId: string;
+  let hasAiredEpisode: boolean;
 
   try {
     /**
@@ -186,6 +202,8 @@ export async function addToLibraryAction(
     );
     titleId = answered.titleId;
     mirrorEpisodes = answered.mirrorEpisodes;
+    libraryEntryId = answered.libraryEntryId;
+    hasAiredEpisode = answered.hasAiredEpisode;
   } catch (error) {
     return { ok: false, reference: referenceFor(error, { surface: "search-add" }) };
   }
@@ -243,7 +261,7 @@ export async function addToLibraryAction(
    * title is added from a list row that links to exactly that page.
    */
   invalidateBorrowedFactsFor([key]);
-  return { ok: true };
+  return { ok: true, libraryEntryId, hasAiredEpisode };
 }
 
 /**
@@ -320,5 +338,80 @@ export async function addWatchedToLibraryAction(
   );
   invalidateBorrowedFactsFor([key]);
   colourAfterAdd([titleId]);
+  return { ok: true };
+}
+
+/**
+ * Search's *Seen it all* / *Seen it*: record every aired episode of an entry already in
+ * the library, or the film, as watched **with no date** — issue #537, over
+ * `markWatchedUndated`. The unowned title page's dated add stays `addWatchedToLibraryAction`.
+ *
+ * `sourceKey` is the browser's, made once per press and reused on every retry (the
+ * `addWatchedToLibraryAction` argument, for the same reasons): a retry writes no second
+ * set. `requireUserId` is the check, and `markWatchedUndated` re-checks the entry with
+ * `ownedBy`; a tampered id throws and answers as a failed write with a reference.
+ *
+ * A show still waiting for its seasons has them fetched first (`finishMirrorIfPending`),
+ * and that write changes shared rows, so it busts what `refreshTitleMirror` does for the
+ * other holders.
+ */
+export async function markSeenAllAction(
+  libraryEntryId: string,
+  sourceKey: string,
+): Promise<AddOutcome> {
+  const userId = await requireUserId();
+  let mirroredTitleId: string | null;
+
+  try {
+    ({ mirroredTitleId } = await finishMirrorIfPending(
+      userId,
+      libraryEntryId,
+      titleMirror,
+    ));
+    await markWatchedUndated(userId, { libraryEntryId, sourceKey });
+  } catch (error) {
+    return {
+      ok: false,
+      reference: referenceFor(error, { surface: "search-seen-all" }),
+    };
+  }
+
+  invalidateFor("markWatchedUndated", userId);
+  if (mirroredTitleId !== null) {
+    // The fetch above rewrote shared `title` and `episode` rows, which every holder reads
+    // (`MIRRORS_SHARED_TITLE_ROWS`).
+    invalidateFor("refreshTitleMirror", userId);
+    invalidateForOtherAccounts(
+      "refreshTitleMirror",
+      await accountsHoldingTitles([mirroredTitleId]),
+      userId,
+    );
+  }
+  return { ok: true };
+}
+
+/**
+ * *Not started* chosen after *Seen it all*: take back exactly what that press wrote —
+ * issue #537. It is `undoMarkWatchedUpTo`, unchanged: the rows of `markWatchedUndated`
+ * are keyed `${sourceKey}:…` (a film's `${sourceKey}:film`), which is the prefix it
+ * deletes by, so no second delete exists. Watches the entry had from anywhere else are
+ * not touched.
+ */
+export async function undoSeenAllAction(
+  libraryEntryId: string,
+  sourceKey: string,
+): Promise<AddOutcome> {
+  const userId = await requireUserId();
+
+  try {
+    await undoMarkWatchedUpTo(userId, { libraryEntryId, sourceKey });
+  } catch (error) {
+    return {
+      ok: false,
+      reference: referenceFor(error, { surface: "search-undo-seen-all" }),
+    };
+  }
+
+  invalidateFor("undoMarkWatchedUpTo", userId);
   return { ok: true };
 }

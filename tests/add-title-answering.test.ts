@@ -10,6 +10,7 @@ import { episode, libraryEntry, title, user } from "@/db/schema";
 import type { TitleMirror } from "@/tmdb/mirror";
 import {
   addTitleAnswering,
+  finishMirrorIfPending,
   type FetchMirror,
 } from "@/app/(signed-in)/search/add-title";
 import { inTransaction, setUpTestDatabase } from "./support/database";
@@ -313,4 +314,158 @@ describe("the add path schedules the mirror after the response", () => {
     expect(source).toContain('import { after } from "next/server"');
     expect(source).toContain("after(mirrorEpisodes)");
   });
+});
+
+/**
+ * What the add answers for #550's follow-up chips (issue #537): this reader's entry id,
+ * and whether the show has an aired episode.
+ */
+describe("addTitleAnswering's answer for the follow-up chips", () => {
+  it("returns the reader's own entry id", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = showRowMirror();
+
+      const answered = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+
+      const [entry] = await tx
+        .select({ id: libraryEntry.id })
+        .from(libraryEntry)
+        .where(eq(libraryEntry.userId, userId));
+      expect(answered.libraryEntryId).toBe(entry.id);
+    }));
+
+  it("returns the same entry id when the title was already in the library", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = showRowMirror();
+      const first = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+      const again = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+
+      expect(again.added).toBe(false);
+      expect(again.libraryEntryId).toBe(first.libraryEntryId);
+    }));
+
+  it("says a show that has started has an aired episode, though its seasons are still arriving", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = showRowMirror(); // first aired 2011-04-17
+
+      const answered = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+
+      expect(answered.hasAiredEpisode).toBe(true);
+    }));
+
+  it("says a show that has not started has none", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const tomorrow = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+      const row = { ...showRowMirror(), releaseDate: tomorrow };
+
+      const answered = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+
+      expect(answered.hasAiredEpisode).toBe(false);
+    }));
+
+  it("reads the episodes once a show is already mirrored: aired, true; all unaired, false", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const aired = withEpisodes(showRowMirror());
+      const future = {
+        ...withEpisodes(showRowMirror()),
+        episodes: withEpisodes(showRowMirror()).episodes.map((one) => ({
+          ...one,
+          airDate: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+        })),
+      };
+
+      // Mirrored whole by someone else first, so this add finds the episodes there.
+      for (const full of [aired, future]) {
+        const first = await addTitleAnswering(
+          await seedUser(tx, "other"),
+          { ...full, episodes: [] },
+          fetcherFor(full).fetchMirror,
+          tx,
+        );
+        await first.mirrorEpisodes();
+      }
+
+      expect((await addTitleAnswering(userId, aired, fetcherFor(aired).fetchMirror, tx)).hasAiredEpisode).toBe(true);
+      expect((await addTitleAnswering(userId, future, fetcherFor(future).fetchMirror, tx)).hasAiredEpisode).toBe(false);
+    }));
+
+  it("answers a film with its entry id and no aired episode", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = filmRowMirror();
+
+      const answered = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+
+      expect(answered.libraryEntryId).toEqual(expect.any(String));
+      expect(answered.hasAiredEpisode).toBe(false);
+    }));
+});
+
+describe("finishMirrorIfPending", () => {
+  it("fetches the seasons of a pending show, so the press has episodes to write", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = showRowMirror();
+      const full = withEpisodes(row);
+      const { fetchMirror, ran } = fetcherFor(full);
+      const answered = await addTitleAnswering(userId, row, fetchMirror, tx);
+
+      const outcome = await finishMirrorIfPending(userId, answered.libraryEntryId, fetchMirror, tx);
+
+      expect(ran()).toBe(true);
+      expect(outcome.mirroredTitleId).toBe(answered.titleId);
+      expect(await episodeCountOf(tx, answered.titleId)).toBe(2);
+      expect(await episodesMirroredAtOf(tx, answered.titleId)).not.toBeNull();
+    }));
+
+  it("does not fetch when the episodes are already there", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = showRowMirror();
+      const { fetchMirror } = fetcherFor(withEpisodes(row));
+      const answered = await addTitleAnswering(userId, row, fetchMirror, tx);
+      await answered.mirrorEpisodes();
+
+      const second = fetcherFor(withEpisodes(row));
+      const outcome = await finishMirrorIfPending(userId, answered.libraryEntryId, second.fetchMirror, tx);
+
+      expect(second.ran()).toBe(false);
+      expect(outcome.mirroredTitleId).toBeNull();
+    }));
+
+  it("throws when the fetch fails, and leaves the title pending", () =>
+    inTransaction(async (tx) => {
+      const userId = await seedUser(tx, "adham");
+      const row = showRowMirror();
+      const answered = await addTitleAnswering(userId, row, fetcherFor(row).fetchMirror, tx);
+
+      await expect(
+        finishMirrorIfPending(
+          userId,
+          answered.libraryEntryId,
+          async () => {
+            throw new Error("TMDB is down");
+          },
+          tx,
+        ),
+      ).rejects.toThrow("TMDB is down");
+      expect(await episodesMirroredAtOf(tx, answered.titleId)).toBeNull();
+    }));
+
+  it("throws for an entry that is not this reader's", () =>
+    inTransaction(async (tx) => {
+      const mine = await seedUser(tx, "adham");
+      const theirs = await seedUser(tx, "stranger");
+      const row = showRowMirror();
+      const answered = await addTitleAnswering(theirs, row, fetcherFor(row).fetchMirror, tx);
+
+      await expect(
+        finishMirrorIfPending(mine, answered.libraryEntryId, fetcherFor(row).fetchMirror, tx),
+      ).rejects.toThrow(/not found in this account's library/);
+    }));
 });
