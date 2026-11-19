@@ -166,9 +166,9 @@ export const libraryEntryState = pgView("library_entry_state", {
 
 /**
  * Remaining: how many of a show's mirrored `season_no > 0` episodes carry no watch.
- * **Remaining** is explicit that this is a show concept — "how much of
- * a show you have left" — so a film's entry has no row here at all, which is what makes it
- * the *missing* case in `db/access.ts`'s *closest to finishing* sort rather than a zero.
+ * The view is filtered to `t.kind = 'show'`, so a film's entry has no row here at all, which
+ * is what makes it the *missing* case in `db/access.ts`'s *closest to finishing* sort rather
+ * than a zero.
  *
  * ── Why unreleased episodes count too ────────────────────────────────────────────────
  *
