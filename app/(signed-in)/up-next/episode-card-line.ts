@@ -77,3 +77,18 @@ export function seasonCountInWords(progress: {
 }): string {
   return `${progress.watched} of ${progress.released} this season`;
 }
+
+/**
+ * `Start with S01 · E01 · Pilot` — the line on a Not started row (issue #551): where a show the
+ * reader has not begun starts. No season count: a row with nothing watched has no progress to
+ * report, and the line says what to do, not how far along it is. A first episode TMDB has no
+ * name for reads `Start with S01 · E01`.
+ */
+export function startWithInWords(
+  seasonNo: number,
+  episodeNo: number,
+  episodeName: string | null,
+): string {
+  const code = episodeCode(seasonNo, episodeNo);
+  return episodeName === null ? `Start with ${code}` : `Start with ${code} · ${episodeName}`;
+}

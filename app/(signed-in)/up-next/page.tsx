@@ -1,8 +1,14 @@
 import { Suspense } from "react";
 
-import { cachedUpcomingEpisodes, cachedUpNextRails, cachedWatchlistFilms } from "@/cache/tags";
+import {
+  cachedNotStartedShows,
+  cachedUpcomingEpisodes,
+  cachedUpNextRails,
+  cachedWatchlistFilms,
+} from "@/cache/tags";
 import { requireTimezone, requireUserId } from "@/lib/session";
 import { TonightComingUp } from "./tonight-coming-up";
+import { NOT_STARTED_READ_SIZE } from "./not-started";
 import { readerDay } from "./upcoming-grouping";
 import { UpNextWatching } from "./up-next-rails";
 import { HoldOver } from "./hold-over";
@@ -69,6 +75,12 @@ import { NavTransition } from "../nav-transition";
  * is the films read's, stated above: the server does not know the viewport, so a phone
  * load pays one more cached query for a column it hides.
  *
+ * ── Not started, a fourth read — issue #551 ─────────────────────────────────────────
+ *
+ * `cachedNotStartedShows` (#540) feeds the Not started group and, when nothing is in Continue
+ * watching, the featured slot. It is read with one more than the group holds, for that slot.
+ * Unguarded like the others: its failure throws into `error.tsx`.
+ *
  * ── One empty state, and an empty rail is not it ──────────────────────────────────────
  *
  * An **empty rail** is absent — no heading over nothing. **No episode and no film at all**
@@ -87,9 +99,10 @@ export default async function UpNextPage() {
    * `Promise.all` rejects on the first rejection, which is what this page's error
    * discipline asks for — either failing throws into `error.tsx`. Nothing here catches.
    */
-  const [rails, films, upcoming, zone] = await Promise.all([
+  const [rails, films, notStarted, upcoming, zone] = await Promise.all([
     cachedUpNextRails(userId),
     cachedWatchlistFilms(userId),
+    cachedNotStartedShows(userId, NOT_STARTED_READ_SIZE),
     cachedUpcomingEpisodes(userId),
     requireTimezone(),
   ]);
@@ -119,6 +132,7 @@ export default async function UpNextPage() {
             <UpNextWatching
               rails={rails}
               films={films}
+              notStarted={notStarted}
               comingUp={
                 <TonightComingUp episodes={upcoming} today={readerDay(zone, new Date())} />
               }
