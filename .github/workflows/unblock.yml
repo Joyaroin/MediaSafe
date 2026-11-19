@@ -1,9 +1,9 @@
 # Unblock — clear the `blocked` label when every ticket in a "Blocked by" section closes.
 #
 # The tickets in this repository declare their dependencies in prose, under a `## Blocked
-# by` heading, because GitHub's own blocking relationship is Pro-or-above and was declined
-# along with rulesets and branch protection. Prose is the
-# tracker; this workflow is what stops it going stale.
+# by` heading, and each blocker is also recorded as GitHub's native issue dependency (see
+# CLAUDE.md, "Work"). The prose section is the one this workflow reads, and this workflow is
+# what stops it going stale.
 #
 # ── Why a label at all ───────────────────────────────────────────────────────────────
 #

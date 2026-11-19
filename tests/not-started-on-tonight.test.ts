@@ -56,7 +56,6 @@ function show(id: string, episodes: readonly QueuedEpisode[]): UpNextEntry {
     airDate: "2024-01-01",
     runtimeMins: 40,
     stillPath: null,
-    remaining: episodes.length,
     inProduction: true,
     posterColour: null,
     seasonWatched: 0,
