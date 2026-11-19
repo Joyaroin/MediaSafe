@@ -380,7 +380,7 @@ Reference: `you.dark`, `you.light`.
 - A 64px avatar circle with the initial, the display name in serif at Figure size (truncated on one line), and a round settings button linking to `/settings`.
 - "Watch time": a card with Television and Film rows, values in serif at Numeral size.
 - "What you have watched": four counts at Figure size with two-line labels (Episodes watched, Films watched, Shows watched, Shows completed).
-- "A year of watching": the heatmap with the ramp from section 5.1 and a Less / More legend.
+- "A year of watching": the heatmap with the ramp from section 5.1 and a Less / More legend. The selected day lists its watches **grouped by title** (issue #539, spec #535): one collapsed row per title, "The Bear · 46 episodes · seasons 1–5" or "{title} · Film", latest watch that day first. Each row is a button with `aria-expanded` that opens the day's episodes in season and episode order. Five titles show, then "Show all N titles". Text rows only, as no poster travels with the read.
 - "Shows you stopped": a rail of 96 by 144 posters, each with a "Start again" pill.
 - **Data and behaviour** are unchanged (`you/figures.ts`, `heatmap.ts`, `stopped-shows.tsx`, `start-again.ts`), including the count-up on arrival and `EmptyYou`.
 

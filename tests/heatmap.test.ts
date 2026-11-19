@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildHeatmap,
   cellLabel,
+  groupDayByTitle,
+  seasonsInWords,
   shadeFor,
   yearWindow,
   yearWindowSince,
@@ -152,17 +154,128 @@ describe("the grid", () => {
   const markup = renderToStaticMarkup(createElement(YearHeatmap, { heatmap }));
 
   it("has one labelled button per day and a single tab stop, on the latest watched day", () => {
-    expect(markup.match(/<button/g)).toHaveLength(365);
+    expect(markup.match(/<button[^>]*aria-label=/g)).toHaveLength(365);
     expect(markup.match(/tabindex="0"/g)).toHaveLength(1);
     expect(markup).toMatch(/tabindex="0" aria-label="3 watches on 1 October"/);
   });
 
-  it("lists the selected day's watches beneath the grid", () => {
+  it("lists the selected day's watches beneath the grid, one collapsed row per title", () => {
     expect(markup).toContain("1 October · 3 watches");
-    expect(markup).toContain('href="/titles/entry-1"');
+    // Three watches of one episode: one title, one distinct episode, closed.
+    expect(markup).toMatch(/<button[^>]*aria-expanded="false"[^>]*>/);
+    expect(markup).toContain("Severance<span");
+    expect(markup).toContain(" · 1 episode · season 1");
   });
 
   it("uses neutral tones only", () => {
     expect(markup).not.toMatch(/accent/);
+  });
+});
+
+describe("a day grouped by title", () => {
+  function day(...watches: YearWatch[]) {
+    return buildHeatmap(watches, "UTC", "2026-10-10").days.at(-1)?.watches ?? [];
+  }
+  function episode(entry: string, name: string, season: number, number: number, at: string, id?: string) {
+    return aWatch(at, {
+      watchId: id ?? `${entry}-${season}-${number}-${at}`,
+      libraryEntryId: entry,
+      titleName: name,
+      seasonNo: season,
+      episodeNo: number,
+      episodeName: null,
+    });
+  }
+
+  it("makes one row per title, counting distinct episodes and naming the seasons", () => {
+    const groups = groupDayByTitle(
+      day(
+        episode("bear", "The Bear", 1, 1, "2026-10-10T08:00:00Z"),
+        episode("bear", "The Bear", 1, 2, "2026-10-10T08:01:00Z"),
+        episode("bear", "The Bear", 3, 1, "2026-10-10T08:02:00Z"),
+      ),
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].line).toBe("The Bear · 3 episodes · seasons 1 and 3");
+    expect(groups[0].lead).toBe("The Bear");
+    expect(groups[0].libraryEntryId).toBe("bear");
+  });
+
+  it("counts an episode rewatched the same day once", () => {
+    const [group] = groupDayByTitle(
+      day(
+        episode("bear", "The Bear", 2, 4, "2026-10-10T08:00:00Z"),
+        episode("bear", "The Bear", 2, 4, "2026-10-10T09:00:00Z"),
+      ),
+    );
+
+    expect(group.line).toBe("The Bear · 1 episode · season 2");
+    expect(group.episodes).toHaveLength(1);
+  });
+
+  it("makes one 'Film' row for a film watched twice", () => {
+    const film = { seasonNo: null, episodeNo: null, episodeName: null, libraryEntryId: "heat", titleName: "Heat" };
+    const groups = groupDayByTitle(
+      day(
+        aWatch("2026-10-10T08:00:00Z", { ...film, watchId: "a" }),
+        aWatch("2026-10-10T20:00:00Z", { ...film, watchId: "b" }),
+      ),
+    );
+
+    expect(groups.map((one) => one.line)).toEqual(["Heat · Film"]);
+    expect(groups[0].episodes).toEqual([]);
+  });
+
+  it("orders titles by their latest watch that day, newest first", () => {
+    const groups = groupDayByTitle(
+      day(
+        episode("a", "Alpha", 1, 1, "2026-10-10T07:00:00Z"),
+        episode("a", "Alpha", 1, 2, "2026-10-10T12:00:00Z"),
+        episode("b", "Beta", 1, 1, "2026-10-10T09:00:00Z"),
+        episode("c", "Gamma", 1, 1, "2026-10-10T20:00:00Z"),
+      ),
+    );
+
+    // Alpha has more watches, but Beta was watched after Alpha's first and before Gamma:
+    // only the latest watch counts.
+    expect(groups.map((one) => one.titleName)).toEqual(["Gamma", "Alpha", "Beta"]);
+  });
+
+  it("breaks a tie on the instant by lower-cased name, then entry id", () => {
+    const at = "2026-10-10T10:00:00Z";
+    const groups = groupDayByTitle(
+      day(
+        episode("z-1", "banana", 1, 1, at),
+        episode("y-2", "Apple", 1, 1, at),
+        episode("a-3", "apple", 1, 1, at),
+        episode("m-4", "Cherry", 1, 1, at),
+      ),
+    );
+
+    expect(groups.map((one) => one.libraryEntryId)).toEqual(["a-3", "y-2", "z-1", "m-4"]);
+  });
+
+  it("lists a group's episodes by season and episode, whatever order they were watched in", () => {
+    const [group] = groupDayByTitle(
+      day(
+        episode("bear", "The Bear", 2, 1, "2026-10-10T08:00:00Z"),
+        episode("bear", "The Bear", 1, 10, "2026-10-10T08:01:00Z"),
+        episode("bear", "The Bear", 1, 2, "2026-10-10T08:02:00Z"),
+      ),
+    );
+
+    expect(group.episodes.map((one) => one.what)).toEqual(["S01 · E02", "S01 · E10", "S02 · E01"]);
+  });
+
+  it("writes season ranges in words", () => {
+    expect(seasonsInWords([2])).toBe("season 2");
+    expect(seasonsInWords([1, 2, 3, 4, 5])).toBe("seasons 1–5");
+    expect(seasonsInWords([1, 3])).toBe("seasons 1 and 3");
+    expect(seasonsInWords([1, 2, 3, 5])).toBe("seasons 1–3 and 5");
+    expect(seasonsInWords([5, 1, 3, 1])).toBe("seasons 1, 3 and 5");
+    expect(seasonsInWords([1, 2])).toBe("seasons 1–2");
+    expect(seasonsInWords([0])).toBe("specials");
+    expect(seasonsInWords([0, 1])).toBe("season 1 and specials");
   });
 });
