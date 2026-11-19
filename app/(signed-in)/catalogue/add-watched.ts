@@ -32,9 +32,17 @@ export function addWatchedLabel(kind: TitleKind): string {
   return kind === "film" ? "I've seen it" : "I've seen it all";
 }
 
-/** What a screen reader is told the control does, naming the title in full. */
+/**
+ * What a screen reader is told the control does, naming the title in full.
+ *
+ * It **starts with the visible label** (WCAG 2.5.3, *label in name*), so voice control
+ * saying "I've seen it all" finds the button, and Playwright's
+ * `getByRole('button', { name: /^I've seen it all/ })` does too. The title follows a colon.
+ * A show's name ends *every aired episode*, because *all* alone is unclear read aloud and
+ * *aired* is what separates this write from one that claims an episode not yet out.
+ */
 export function addWatchedAccessibleLabel(kind: TitleKind, titleName: string): string {
   return kind === "film"
-    ? `Add ${titleName} to your library as watched`
-    : `Add ${titleName} to your library, recording every released episode as watched`;
+    ? `${addWatchedLabel(kind)}: ${titleName}`
+    : `${addWatchedLabel(kind)}: ${titleName}, every aired episode`;
 }
