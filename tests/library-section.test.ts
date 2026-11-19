@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   FILM_SECTION_SLUGS,
+  LIBRARY_SECTIONS,
   librarySectionFrom,
+  SECTION_ORDER_LABELS,
+  sectionHeading,
+  sectionHref,
+  sectionSortFrom,
+  sectionsHref,
   SHOW_SECTION_SLUGS,
 } from "@/app/(signed-in)/library/library-section";
 
@@ -65,5 +71,69 @@ describe("the Library section a link names", () => {
       kind: "film",
       slug: "coming-soon",
     });
+  });
+});
+
+/**
+ * Issue #552 — what the surface adds to the parse: the words, the sort inside a section, and
+ * the links in and out of a section's grid.
+ */
+describe("the surface's words and links for a section", () => {
+  it("has a heading and an order label for every slug of both kinds", () => {
+    for (const slug of SHOW_SECTION_SLUGS) {
+      expect(sectionHeading({ kind: "show", slug })).toMatch(/\S/);
+      expect(SECTION_ORDER_LABELS[slug]).toMatch(/\S/);
+    }
+    for (const slug of FILM_SECTION_SLUGS) {
+      expect(sectionHeading({ kind: "film", slug })).toMatch(/\S/);
+      expect(SECTION_ORDER_LABELS[slug]).toMatch(/\S/);
+    }
+  });
+
+  it("names the spec's headings", () => {
+    expect(SHOW_SECTION_SLUGS.map((slug) => sectionHeading({ kind: "show", slug }))).toEqual([
+      "Watching",
+      "Not started",
+      "Waiting for new episodes",
+      "Finished",
+      "Dropped",
+    ]);
+    expect(FILM_SECTION_SLUGS.map((slug) => sectionHeading({ kind: "film", slug }))).toEqual([
+      "To watch",
+      "Coming soon",
+      "Watched",
+      "Dropped",
+    ]);
+  });
+
+  it("reads ?sort= inside a section as the section's own order unless it names a sort", () => {
+    expect(sectionSortFrom(undefined)).toBeNull();
+    expect(sectionSortFrom("nonsense")).toBeNull();
+    expect(sectionSortFrom(["title", "title"])).toBeNull();
+    expect(sectionSortFrom("title")).toBe("title");
+    expect(sectionSortFrom("recently-added")).toBe("recently-added");
+  });
+
+  it("links to a section with its kind always written, and a sort only when chosen", () => {
+    expect(sectionHref({ kind: "show", slug: "not-started" })).toBe(
+      "/library?view=show&section=not-started",
+    );
+    expect(sectionHref({ kind: "film", slug: "dropped" }, "title")).toBe(
+      "/library?view=film&section=dropped&sort=title",
+    );
+  });
+
+  it("goes back to the sections on the same kind's tab, and the link parses to no section", () => {
+    expect(sectionsHref("film")).toBe("/library?view=film");
+    expect(librarySectionFrom("film", undefined)).toBeNull();
+  });
+
+  it("writes links that parse back to the section they name", () => {
+    for (const section of LIBRARY_SECTIONS) {
+      const query = new URL(sectionHref(section), "http://x").searchParams;
+      expect(librarySectionFrom(query.get("view") ?? undefined, query.get("section") ?? undefined)).toEqual(
+        section,
+      );
+    }
   });
 });
