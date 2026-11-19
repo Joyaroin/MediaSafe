@@ -76,7 +76,7 @@ async function seedRealShow(userId: string): Promise<string> {
         titleId,
         tmdbEpisodeId: randomInt(1_000_000_000, 2_000_000_000),
         seasonNo: 90,
-        episodeNo: randomInt(1, 1_000_000),
+        episodeNo: randomInt(1, 32_000),
         name: "Fixture episode",
         airDate: "2008-01-20",
       })
