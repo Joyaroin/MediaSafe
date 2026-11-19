@@ -52,6 +52,8 @@ interface TitleSpec {
   episodes?: EpisodeSpec[];
   abandonedAt?: Date;
   addedAt?: Date;
+  /** The library entry's id, to pin the last tie-break. */
+  entryId?: string;
 }
 
 interface Seeded {
@@ -93,6 +95,7 @@ async function seed(tx: Transaction, userId: UserId, spec: TitleSpec): Promise<S
   const [entry] = await tx
     .insert(libraryEntry)
     .values({
+      ...(spec.entryId ? { id: spec.entryId } : {}),
       userId,
       titleId: row.id,
       abandonedAt: spec.abandonedAt,
@@ -317,14 +320,19 @@ describe("listNotStartedShows — limit and order", () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
       const same = new Date("2026-03-01T00:00:00Z");
-      const first = await seed(tx, reader, { name: "Twin", addedAt: same });
-      const second = await seed(tx, reader, { name: "Twin", addedAt: same });
+      // Entry ids are known and the greater one is inserted first, so neither insertion order
+      // nor a lucky random pair can produce the expected order without the id tie-break.
+      const lowId = "00000000-0000-4000-8000-000000000000";
+      const highId = "ffffffff-0000-4000-8000-000000000000";
+      const high = await seed(tx, reader, { name: "Twin", addedAt: same, entryId: highId });
+      const low = await seed(tx, reader, { name: "Twin", addedAt: same, entryId: lowId });
+      expect([high.entryId, low.entryId]).toEqual([highId, lowId]);
 
       const returned = (await listNotStartedShows(reader, 10, tx)).map(
         (entry) => entry.libraryEntryId,
       );
 
-      expect(returned).toEqual([first.entryId, second.entryId].sort());
+      expect(returned).toEqual([lowId, highId]);
     });
   });
 

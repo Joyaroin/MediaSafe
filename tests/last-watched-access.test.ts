@@ -198,6 +198,23 @@ describe("the last-watched link", () => {
     });
   });
 
+  it("leaves sharing off when the link is replaced while off, so neither link answers", async () => {
+    await inTransaction(async (tx) => {
+      const reader = await seedUser(tx, "lw-renew-off");
+      const first = await switchOnLastWatchedSharing(reader, tx);
+      await switchOffLastWatchedSharing(reader, tx);
+
+      const second = await renewLastWatchedToken(reader, tx);
+
+      const [row] = await tx.select().from(user).where(eqId(reader));
+      expect(second).not.toBe(first);
+      expect(row.lastWatchedToken).toBe(second);
+      expect(row.sharesLastWatched).toBe(false);
+      expect(await lastWatchedOwner(first, tx)).toBeNull();
+      expect(await lastWatchedOwner(second, tx)).toBeNull();
+    });
+  });
+
   it("is not the calendar feed's token", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx, "lw-not-calendar");
@@ -267,34 +284,74 @@ describe("lastWatchedTitle", () => {
     });
   });
 
-  it("breaks equal watched times by the later created_at", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "lt-created");
-      const same = at("2024-05-05T20:00:00Z");
-      await seedFilmWatches(tx, reader, "Logged later", [
-        { watchedAt: same, createdAt: at("2024-05-06T00:00:00Z") },
-      ]);
-      await seedFilmWatches(tx, reader, "Logged earlier", [
-        { watchedAt: same, createdAt: at("2024-05-05T21:00:00Z") },
-      ]);
+  // Postgres may hand back equal-sorting rows in insertion order, so each tie-break case runs
+  // with the winner inserted first and last: with the rule removed, one of the two orders
+  // answers the loser.
+  describe.each([
+    { order: "winner inserted first", winnerFirst: true },
+    { order: "winner inserted last", winnerFirst: false },
+  ])("with the $order", ({ winnerFirst }) => {
+    const seedPair = async (
+      tx: Transaction,
+      reader: UserId,
+      winner: { name: string; spec: WatchSpec },
+      loser: { name: string; spec: WatchSpec },
+    ) => {
+      for (const one of winnerFirst ? [winner, loser] : [loser, winner]) {
+        await seedFilmWatches(tx, reader, one.name, [one.spec]);
+      }
+    };
 
-      expect(await lastWatchedTitle(reader, tx)).toBe("Logged later");
+    it("breaks equal watched times by the later created_at", async () => {
+      await inTransaction(async (tx) => {
+        const reader = await seedUser(tx, "lt-created");
+        const same = at("2024-05-05T20:00:00Z");
+        await seedPair(
+          tx,
+          reader,
+          // The loser has the greater id, so dropping created_at hands it the win.
+          {
+            name: "Logged later",
+            spec: {
+              watchedAt: same,
+              createdAt: at("2024-05-06T00:00:00Z"),
+              id: "00000000-0000-4000-8000-000000000000",
+            },
+          },
+          {
+            name: "Logged earlier",
+            spec: {
+              watchedAt: same,
+              createdAt: at("2024-05-05T21:00:00Z"),
+              id: "ffffffff-0000-4000-8000-000000000000",
+            },
+          },
+        );
+
+        expect(await lastWatchedTitle(reader, tx)).toBe("Logged later");
+      });
     });
-  });
 
-  it("breaks equal watched and created times by the greater watch id", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "lt-id");
-      const same = at("2024-05-05T20:00:00Z");
-      const created = at("2024-05-06T00:00:00Z");
-      await seedFilmWatches(tx, reader, "Greater id", [
-        { watchedAt: same, createdAt: created, id: "ffffffff-0000-4000-8000-000000000000" },
-      ]);
-      await seedFilmWatches(tx, reader, "Lesser id", [
-        { watchedAt: same, createdAt: created, id: "00000000-0000-4000-8000-000000000000" },
-      ]);
+    it("breaks equal watched and created times by the greater watch id", async () => {
+      await inTransaction(async (tx) => {
+        const reader = await seedUser(tx, "lt-id");
+        const same = at("2024-05-05T20:00:00Z");
+        const created = at("2024-05-06T00:00:00Z");
+        await seedPair(
+          tx,
+          reader,
+          {
+            name: "Greater id",
+            spec: { watchedAt: same, createdAt: created, id: "ffffffff-0000-4000-8000-000000000000" },
+          },
+          {
+            name: "Lesser id",
+            spec: { watchedAt: same, createdAt: created, id: "00000000-0000-4000-8000-000000000000" },
+          },
+        );
 
-      expect(await lastWatchedTitle(reader, tx)).toBe("Greater id");
+        expect(await lastWatchedTitle(reader, tx)).toBe("Greater id");
+      });
     });
   });
 
