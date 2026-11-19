@@ -312,7 +312,7 @@ Reference: `coming-up.dark`, `coming-up.light`.
 Reference: `search.dark`, `search.light`.
 
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
-- Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". A title already held shows a tick and "In your library" as a link instead of both actions.
+- Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". In the markup Add comes before the seen-it pill, and each button's accessible name starts with its visible label ("Add {title}…", "I've seen it all: {title}, every aired episode", "I've seen it: {title}"). A title already held shows a tick and "In your library" as a link instead of both actions.
 - Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
 - **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
 
