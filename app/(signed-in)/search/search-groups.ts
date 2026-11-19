@@ -70,3 +70,28 @@ export function groupByKind(results: readonly MarkedResult[]): BothKinds {
     film: { ok: true, results: results.filter((one) => one.kind === "film") },
   };
 }
+
+/**
+ * One kind's results, split for display (issue #554): the ones with a year or a poster
+ * stay as rows, and the ones with neither — nothing a reader could pick them by — fold
+ * into one "N more results" line that opens them in place.
+ *
+ * Both sides keep the catalogue's own order. A list that is all bare results shows
+ * nothing but the fold line. One bare result still folds.
+ */
+export function foldResults(results: readonly MarkedResult[]): {
+  readonly shown: readonly MarkedResult[];
+  readonly folded: readonly MarkedResult[];
+} {
+  const shown: MarkedResult[] = [];
+  const folded: MarkedResult[] = [];
+  for (const one of results) {
+    (one.releaseYear === null && !one.posterPath ? folded : shown).push(one);
+  }
+  return { shown, folded };
+}
+
+/** The fold's line: "1 more result", "3 more results". */
+export function foldLabel(count: number): string {
+  return `${count} more ${count === 1 ? "result" : "results"}`;
+}
