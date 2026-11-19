@@ -251,3 +251,84 @@ test("a failed new link after a failed off raises its own toast, whose retry is 
   await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
   await expect(toast(page, "Last watched link")).toBeVisible();
 });
+
+/**
+ * ── Keyboard focus while a write runs (issue #601) ───────────────────────────────────
+ *
+ * The pressed button used to be `disabled` while its write ran, and Chromium blurs a
+ * focused button that becomes disabled: a keyboard reader was sent back to the top of the
+ * page after every press. The buttons now carry `aria-disabled` and ignore presses.
+ *
+ * Each write is held in the route so the test looks at the in-flight state itself, and
+ * asserts the control really is in it (`aria-disabled`, one POST seen) before it checks
+ * focus: a test that only checked focus afterwards would pass on a write too quick to
+ * blur anything.
+ */
+test("the pressed control keeps keyboard focus while its write runs and after, and a second press starts no second write", async ({
+  page,
+}) => {
+  await page.goto("/settings");
+  if ((await toggle(page).getAttribute("aria-checked")) === "true") {
+    await toggle(page).click();
+    await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+  }
+
+  let posts = 0;
+  let gate!: Promise<void>;
+  let release!: () => void;
+  const hold = () => {
+    gate = new Promise<void>((resolve) => (release = resolve));
+  };
+  await page.route("**/settings", async (route) => {
+    if (route.request().method() !== "POST" || !route.request().headers()["next-action"]) {
+      return route.continue();
+    }
+    posts += 1;
+    await gate;
+    return route.continue();
+  });
+
+  const makeNew = page.getByRole("button", { name: /^Make a new link$|^Making a new link$/ });
+
+  // Switch on, from the keyboard. A second press while it runs starts nothing.
+  hold();
+  await toggle(page).focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle(page)).toHaveAttribute("aria-disabled", "true");
+  expect(posts).toBe(1);
+  await expect(toggle(page)).toBeFocused();
+  await page.keyboard.press("Space");
+  release();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "true");
+  await expect(toggle(page)).toHaveAttribute("aria-disabled", "false");
+  await expect(toggle(page)).toBeFocused();
+  expect(posts).toBe(1);
+
+  // A new link, from the keyboard.
+  hold();
+  await makeNew.focus();
+  await page.keyboard.press("Enter");
+  await expect(makeNew).toHaveAttribute("aria-disabled", "true");
+  await expect(makeNew).toHaveText("Making a new link");
+  expect(posts).toBe(2);
+  await expect(makeNew).toBeFocused();
+  await page.keyboard.press("Enter");
+  release();
+  await expect(page.getByText("New link made. The old one no longer works.")).toBeVisible();
+  await expect(makeNew).toHaveText("Make a new link");
+  await expect(makeNew).toBeFocused();
+  expect(posts).toBe(2);
+
+  // Off, from the keyboard: the link and its two buttons go, the switch stays focused.
+  hold();
+  await toggle(page).focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle(page)).toHaveAttribute("aria-disabled", "true");
+  expect(posts).toBe(3);
+  await expect(toggle(page)).toBeFocused();
+  release();
+  await expect(toggle(page)).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByTestId("last-watched-url")).toHaveCount(0);
+  await expect(toggle(page)).toBeFocused();
+  expect(posts).toBe(3);
+});

@@ -55,3 +55,11 @@ export const IN_FLIGHT = `disabled:cursor-wait ${DISABLED_DIM}`;
  */
 export const NOT_YET_ARMED =
   "disabled:cursor-not-allowed! disabled:bg-hair disabled:text-dim disabled:brightness-100! disabled:shadow-none";
+
+/**
+ * `IN_FLIGHT` for a control that stays focusable while its write runs: it carries
+ * `aria-disabled` instead of `disabled`, and ignores presses itself. Chromium drops focus
+ * from a focused button that becomes `disabled`, so a keyboard reader pressing it would be
+ * thrown back to the top of the page; `aria-disabled` keeps the focus and the same look.
+ */
+export const IN_FLIGHT_FOCUSABLE = "aria-disabled:cursor-wait aria-disabled:brightness-75";
