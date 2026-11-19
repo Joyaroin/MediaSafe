@@ -21,6 +21,9 @@ One history, from one tool, in one order:
 | `0009_title-episodes-mirrored-at.sql` | `title.episodes_mirrored_at` — pending is a fact the database holds, amendment 11 (#271) |
 | `0010_library-entry-release-progress-view.sql` | `library_entry_release_progress`, the fifth view — watched-against-released counts for the library card's bar (#324) |
 | `0011_episode-placeholder-names.sql` | Clears TMDB's `Episode N` placeholder names to `NULL` — data only, no schema change |
+| `0012_title-poster-colour.sql` | `title.poster_colour`, the colour taken from each poster (#361) |
+| `0013_user-calendar-feed-token.sql` | `user.calendar_feed_token`, for the calendar feed link (#366) |
+| `0014_last-watched-sharing.sql` | `user.last_watched_token` and `user.shares_last_watched`, for sharing the last watched title (#531) |
 
 **Name the file after what it brings.** drizzle-kit generates a random tag —
 `0005_noisy_maddog` — and the file is renamed, along with its `tag` in `meta/_journal.json`,

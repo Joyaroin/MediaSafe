@@ -38,7 +38,7 @@ The same lie has other spellings, and they are all covered: `.catch(() => [])`,
 `.then(rows => rows, () => [])`, `catch { rows = [] }`, `catch { return { titles: [] } }`.
 
 **It is enforced, not remembered.** `mediasafe/no-empty-catch` in `eslint.config.mjs` fails
-`npm run lint`, which is one of the three things CI runs. If you have a case the rule is
+`npm run lint`, which CI runs on every pull request. If you have a case the rule is
 wrong about, disable it on the line *with a reason* — and expect that reason to be read.
 
 Catching in order to **report and rethrow** is fine and always was. What the rule forbids is
@@ -83,16 +83,17 @@ the data with it. So a column on `user`, `session`, `account`, `verification` or
 declared in `lib/auth.ts` as a Better Auth `additionalFields` entry, where regeneration reproduces
 it. `user.timezone` is the worked example.
 
-MediaSafe's own tables are declared by hand in `db/tables.ts`, and the three derived-state
+MediaSafe's own tables are declared by hand in `db/tables.ts`, and the five derived-state
 views in `db/views.ts`; `db/schema.ts` re-exports all three files, because drizzle-kit reads it
 alone. Only Better Auth's tables come through the generator.
 
 ## The write-failure toast, and how to call it
 
-Its first caller is **the add on the search screen** —
-`app/(signed-in)/search/catalogue-result.tsx`, issue #55. This section used to say the
-first would be step 4's optimistic watch mark; that was true when it was written and is
-not now, because adding a title is a write and it is optimistic for the same reason.
+Its first caller was **the add on the search screen**, issue #55. That raise now lives in
+`raiseLostAdd()` in `app/(signed-in)/catalogue/lost-add.ts`, called from
+`app/(signed-in)/search/use-catalogue-add.ts`, and it is the pattern to copy. Many other
+writes call it the same way now, such as the watch marks in `library/watch-marks.ts` and
+the list take-off in `lists/[listId]/take-off.ts`.
 
 `raise()` it when the write is lost, and `resolve()` it when the write lands — including
 a retry that lands after a failure. Two rules that are not negotiable:

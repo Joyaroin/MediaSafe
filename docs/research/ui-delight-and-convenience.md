@@ -1,6 +1,8 @@
 # UI delight and convenience: research for MediaSafe
 
-**Date:** 2026-10-10. **Status:** research notes, not a decision. Nothing here is built.
+**Date:** 2026-10-10. **Status:** research notes, not a decision. Since they were written, #3 (calendar feed),
+#4 (finish moment), #5 (haptics), #6 (year view) and #10 (scroll-driven hero) have shipped in
+some form; #1 (manifest) and #2 (provider links) have not.
 
 ## Summary
 
@@ -64,7 +66,7 @@ How this was gathered:
 
 ### 2. Make the where-to-watch cards open the title on the service
 
-**What.** `tmdb/live-facts.ts` reads `flatrate`, `free` and `ads` but ignores `results[region].link`. `WatchProviders` in `app/(signed-in)/library/live-title-facts.tsx` renders cards that are not links.
+**What.** `tmdb/live-facts.ts` reads `flatrate`, `free` and `ads` but ignores `results[region].link`. `WatchProvidersFactSection` in `app/(signed-in)/library/live-title-facts.tsx` renders cards that are not links.
 
 - Read `link` and make each card, or the section, an `<a>` to it.
 - That TMDB page lists JustWatch redirect buttons that resolve to provider https URLs, such as `netflix.com/title/{id}`, `disneyplus.com/play/{uuid}`, `watch.amazon.com/detail?gti=…` and `play.hbomax.com/video/watch/{uuid}`. Android App Links open these in the installed app.

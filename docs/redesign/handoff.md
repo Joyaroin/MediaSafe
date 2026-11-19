@@ -2,6 +2,13 @@
 
 Written 11 October 2026 against `main` at `efb4b59`. Design name: **Charcoal**.
 
+> **Status: built.** The redesign shipped in PRs #419 to #424 and later work. Some files this
+> document names have changed since: the featured entry is now computed in
+> `app/(signed-in)/up-next/tonight-surface.tsx`, not `up-next-episode-rail.tsx`; `BAND`
+> shipped, and the old wash (`WASH` and the `--tint*` tokens) was removed (#398, #400);
+> `LandingPager`, `rememberedPage` and `keepPage` were retired with the navigation slice.
+> Read the code, not this document, for how things are now.
+
 This is the whole redesign in one place: the visual system, every screen, the states, the motion, and a build order. It is written to be handed to Claude Code working in this repository.
 
 ## 1. How to use this

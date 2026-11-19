@@ -11,9 +11,9 @@ fields **and no others** (the metadata caching policy), and a fixture with
 `overview`, `backdrop_path`, `vote_average`, `credits` and `watch/providers` pruned out
 of it could not prove that the mapping ignores them.
 
-**They are not captured against this repository's own key**, because no TMDB key is
-provisioned yet — `.env.example` gains `TMDB_READ_ACCESS_TOKEN` in the same change that
-adds these. Replacing a file here with a live capture of the same endpoint is a drop-in
+**They were not captured against this repository's own key**, because none was
+provisioned when they were added. The app now reads TMDB live with
+`TMDB_READ_ACCESS_TOKEN` (see `.env.example`). Replacing a file here with a live capture of the same endpoint is a drop-in
 when a key exists: the tests read the JSON off disk and assert on the mapping's output,
 and none of them depends on a particular title.
 
