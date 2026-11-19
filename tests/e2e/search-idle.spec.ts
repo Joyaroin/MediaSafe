@@ -197,6 +197,37 @@ for (const [size, viewport] of SIZES) {
       );
       await expect(main(page).getByRole("button", { name: /^Add\b/ })).toHaveCount(0);
 
+      // A focused tile's whole ring lies inside the track that scrolls it (issue #604): the
+      // track clips what pokes out of it, which used to cut the ring at top and bottom.
+      const track = recent(page);
+      const tile = track.getByRole("link").first();
+      await tile.focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
+      await expect(tile).toBeFocused();
+      const { ring, trackBox } = await tile.evaluate((link) => {
+        const style = getComputedStyle(link);
+        const rect = link.getBoundingClientRect();
+        const out = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+        const list = link.closest("ol")!.getBoundingClientRect();
+        return {
+          ring: {
+            visible: style.outlineStyle === "solid" && parseFloat(style.outlineWidth) > 0,
+            top: rect.top - out,
+            bottom: rect.bottom + out,
+            left: rect.left - out,
+            right: rect.right + out,
+          },
+          trackBox: { top: list.top, bottom: list.bottom, left: list.left, right: list.right },
+        };
+      });
+      // The setup: the ring is drawn at all, so a box check on nothing cannot pass.
+      expect(ring.visible).toBe(true);
+      expect(ring.top).toBeGreaterThanOrEqual(trackBox.top);
+      expect(ring.bottom).toBeLessThanOrEqual(trackBox.bottom);
+      expect(ring.left).toBeGreaterThanOrEqual(trackBox.left);
+      expect(ring.right).toBeLessThanOrEqual(trackBox.right);
+
       // A Recently added tile opens that title's own page.
       await recent(page).getByRole("link").first().click();
       await expect(page).toHaveURL(new RegExp(`/titles/${seedEntryId}`));
