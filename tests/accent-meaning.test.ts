@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import * as declared from "@/app/accent-meaning";
@@ -12,7 +10,6 @@ import {
   type AccentMeaning,
 } from "@/app/accent-meaning";
 import { EPISODE_NUMBER_UP_NEXT } from "@/app/(signed-in)/library/episode-line";
-import { LibraryChips } from "@/app/(signed-in)/library/library-filter-bar";
 import { STATE_LABELS } from "@/app/(signed-in)/library/library-state";
 
 /**
@@ -21,7 +18,7 @@ import { STATE_LABELS } from "@/app/(signed-in)/library/library-state";
  *
  * The older worked examples (`rating-control.tsx`, `up-next-tile.tsx`) are
  * stale — neither file exists in this tree — so this suite is written against the current
- * call sites, read directly out of `library-state.ts`, `library-filter-bar.tsx` and
+ * call sites, read directly out of `library-state.ts` and
  * `episode-line.ts`, rather than transcribed from the issue.
  */
 
@@ -73,32 +70,12 @@ describe("the live edge is retired — Charcoal's sweep, issue #409", () => {
   });
 });
 
-describe("the Watching chip looks like every other chip — Charcoal, issue #397", () => {
-  // The chip used to keep `LIVE_EDGE_OF_THE_RECORD.ink` even unselected. With no accent hue
-  // it would only have been `text`, and handoff §5.2 has it look like every other chip: the
-  // Up next episode is marked by its label and its row instead, not by a colour.
-  const markup = (value: "all" | "watching" = "all") =>
-    renderToStaticMarkup(createElement(LibraryChips, { value, onChange: () => {} }));
-
-  const chipButton = (html: string, label: string) =>
-    [...html.matchAll(/<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g)]
-      .map((match) => match[0])
-      .find((button) => button.includes(`>${label}<`));
-
-  it("draws the unselected Watching chip exactly as the unselected Finished chip", () => {
-    const html = markup("all");
-    const faceOf = (label: string) => chipButton(html, label)?.replace(`>${label}<`, "><");
-
-    expect(faceOf("Watching")).toBeDefined();
-    expect(faceOf("Watching")).toBe(faceOf("Finished"));
-  });
-
-  it("still marks Watching selected the way every chip is — pressed, not painted", () => {
-    expect(chipButton(markup("watching"), "Watching")).toContain('aria-pressed="true"');
-  });
-
+describe("the library's controls carry no live edge — Charcoal, issue #397", () => {
+  // The Watching chip used to keep `LIVE_EDGE_OF_THE_RECORD.ink` even unselected. The chips
+  // went with the sections (#552); what is left of the library's controls, the sort, must not
+  // bring the retired meaning back.
   it("no longer imports the live edge at all", () => {
-    expect(source("app/(signed-in)/library/library-filter-bar.tsx")).not.toMatch(
+    expect(source("app/(signed-in)/library/library-sort-select.tsx")).not.toMatch(
       /import[^;]*LIVE_EDGE_OF_THE_RECORD/,
     );
   });

@@ -99,11 +99,19 @@ import { SelectionCheckBadge } from "./selection-check-badge";
 const BILL_POSTER_WIDTH = 132;
 const BILL_POSTER = "w-full [--poster-radius:var(--radius-4)]";
 
+/** A cell in a section's row: the grid's three phone columns' width, a little more from `sm`. */
+const SECTION_ROW_CELL = "w-[7.5rem] shrink-0 snap-start sm:w-36";
+
 export function LibraryEntryCell({
   entry,
   aboveFold = false,
+  inRow = false,
 }: {
   entry: LibraryEntryRow;
+  /** The cell sits in a section's horizontal row (`library-sections.tsx`), not the grid: a
+   *  fixed width that does not shrink, and no `offscreen-skippable` — a row is twelve cells,
+   *  and skipping the ones off to the side would let the row's height change as it scrolls. */
+  inRow?: boolean;
   /** This cell is in the bill's first visible row — `library-grid.tsx`'s to say, since it
    *  is the one that knows the column count (`app/poster.tsx`). */
   aboveFold?: boolean;
@@ -111,7 +119,7 @@ export function LibraryEntryCell({
   const abandoned = entry.state === "abandoned";
 
   return (
-    <li className="offscreen-skippable">
+    <li className={inRow ? SECTION_ROW_CELL : "offscreen-skippable"}>
       <SelectableEntry
         title={{
           libraryEntryId: entry.libraryEntryId,

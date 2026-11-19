@@ -5,7 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { EmptyLibrary } from "@/app/(signed-in)/library/empty-library";
 import { LibraryEntryCell } from "@/app/(signed-in)/library/library-entry-cell";
 import { LibraryGrid } from "@/app/(signed-in)/library/library-grid";
-import { LibraryChips, ZeroMatches } from "@/app/(signed-in)/library/library-filter-bar";
+import {
+  EmptySection,
+  LibrarySections,
+} from "@/app/(signed-in)/library/library-sections";
+import type { LibrarySectionSummary } from "@/db/access";
 import type { LibraryEntryRow, LibraryState } from "@/db/access";
 import type { TitleKind } from "@/tmdb/mirror";
 import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
@@ -82,17 +86,20 @@ const cell = (overrides: Partial<LibraryEntryRow> = {}) =>
     withSelection(createElement(LibraryEntryCell, { entry: entry(overrides) })),
   );
 
-describe("the empty library, zero matches, and a failed read", () => {
+describe("the empty library, an empty section, and a failed read", () => {
   const empty = renderToStaticMarkup(createElement(EmptyLibrary));
-  const zero = renderToStaticMarkup(createElement(ZeroMatches, { onClear: () => {} }));
+  const zero = renderToStaticMarkup(
+    createElement(EmptySection, { section: { kind: "show", slug: "watching" } }),
+  );
   const failed = renderToStaticMarkup(
     createElement(ReadFailure, { reference: "abc123", retry: () => {} }),
   );
 
   /**
    * Three states `page.tsx` and `LibrarySurface` between them keep structurally apart:
-   * genuinely nothing stored, a filter that matched nothing in a library that is intact,
-   * and a read that failed outright. The States register gives each one a fixed
+   * genuinely nothing stored, a section with nothing in it in a library that is intact (it
+   * stood in for the filter's zero matches, which went with the chips in #552), and a read
+   * that failed outright. The States register gives each one a fixed
    * shape rather than a form of words, which is what makes this worth asserting on class
    * names — see the file-level comment above.
    */
@@ -138,21 +145,22 @@ describe("the empty library, zero matches, and a failed read", () => {
     expect(zero).not.toContain("Reference");
   });
 
-  it("gives the empty library the one primary action, and zero matches a lesser one", () => {
-    // Buttons: the primary recovery action is solid `accent` with
-    // `accent-ink` text; every other recovery action, including "Clear the filter", is the ghost
-    // treatment — a border rather than a fill. `errors/recovery-buttons.ts` names both
-    // class strings once, so the test is against those rather than a guess at a substring
-    // neither treatment's `hover:` half would also match.
+  it("gives the empty library the one primary action, and an empty section none", () => {
+    // Buttons: the primary recovery action is solid `accent` with `accent-ink` text.
+    // `errors/recovery-buttons.ts` names both class strings once, so the test is against
+    // those rather than a guess at a substring. An empty section's way out is the back
+    // control above the heading, so the panel itself offers nothing to press.
     expect(empty).toContain(SOLID_RECOVERY);
     expect(empty).not.toContain(GHOST_RECOVERY);
-    expect(zero).toContain(GHOST_RECOVERY);
     expect(zero).not.toContain(SOLID_RECOVERY);
+    expect(zero).not.toContain(GHOST_RECOVERY);
+    expect(zero).not.toContain("<a ");
+    expect(zero).not.toContain("<button");
   });
 
-  it("names the actions each button actually offers", () => {
+  it("names what each state is about", () => {
     expect(empty).toContain("Bring your library in");
-    expect(zero).toContain("Clear the filter");
+    expect(zero).toContain("Nothing in Watching");
     expect(zero).not.toContain("Bring your library in");
   });
 
@@ -319,66 +327,65 @@ describe("the grid", () => {
   });
 });
 
-describe("the filter chips", () => {
-  const chips = (value: "all" | LibraryState = "all") =>
-    renderToStaticMarkup(createElement(LibraryChips, { value, onChange: () => {} }));
+describe("the sections", () => {
+  const summary = (
+    section: LibrarySectionSummary["section"],
+    names: readonly string[],
+    count = names.length,
+  ): LibrarySectionSummary => ({
+    section,
+    count,
+    entries: names.map((name, at) => ({
+      ...entry({ libraryEntryId: `${section.slug}-${at}`, name, state: "watching" }),
+      lastWatchedAt: null,
+      nextAirDate: null,
+      releaseDate: null,
+    })),
+  });
 
-  /**
-   * Each chip's label sits inside its face, a `<span>` within the `<button>` — the label is
-   * not a button's direct text child. This walks each `<button>...</button>` block (they
-   * don't nest, so stopping at the first `</button>` after each opening tag is exact) and
-   * returns the one whose block contains the label.
-   */
-  const chipButton = (markup: string, label: string) =>
-    [...markup.matchAll(/<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g)]
-      .map((match) => match[0])
-      .find((button) => button.includes(`>${label}<`));
+  const markup = renderToStaticMarkup(
+    createElement(LibrarySections, {
+      sections: [
+        summary({ kind: "show", slug: "watching" }, ["Severance", "Hacks"], 14),
+        summary({ kind: "show", slug: "waiting" }, ["Slow Horses"]),
+        summary({ kind: "show", slug: "dropped" }, ["Lost Show"]),
+      ],
+    }),
+  );
 
-  it("renders exactly six, in the domain's words and the settled order", () => {
-    const markup = chips();
-    const labels = [...markup.matchAll(/<button[^>]*>((?:(?!<\/button>)[\s\S])*)<\/button>/g)].map(
-      (match) => match[1].replace(/<[^>]+>/g, ""),
+  it("heads each section in its own words, in the order it was handed", () => {
+    const headings = [...markup.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)].map((match) =>
+      match[1].replace(/<[^>]+>/g, "").trim(),
     );
 
-    expect(labels).toEqual([
-      "All",
-      "Watching",
-      "Caught up",
-      "Finished",
-      "Watchlist",
-      "Dropped",
-    ]);
+    expect(headings).toEqual(["Watching", "Waiting for new episodes", "Dropped"]);
   });
 
-  it("outlines the selected chip and sets its label in text at 600 — Charcoal, issue #397", () => {
-    const markup = chips("finished");
-    const finishedButton = chipButton(markup, "Finished");
-
-    expect(finishedButton).toContain('aria-pressed="true"');
-    expect(finishedButton).toContain("selected-line");
-    expect(finishedButton).toContain("font-semibold text-text");
-    // Outlined, not inverted: the solid `text` fill is the filled treatment's alone.
-    expect(finishedButton).not.toContain("bg-text");
-    expect(finishedButton).not.toContain("text-ground");
+  it("links each count to that section's full grid, and says the true count, not the row's", () => {
+    expect(markup).toContain('href="/library?view=show&amp;section=watching"');
+    expect(markup).toContain('aria-label="14 in Watching, see all"');
+    expect(markup).toContain('href="/library?view=show&amp;section=waiting"');
   });
 
-  it("leaves every unselected chip unlined and dim — Watching included", () => {
-    const markup = chips("all");
-
-    for (const label of ["Watching", "Caught up", "Finished", "Watchlist", "Dropped"]) {
-      const button = chipButton(markup, label);
-      expect(button).toContain('aria-pressed="false"');
-      expect(button).not.toContain("selected-line");
-      expect(button).toContain("text-dim");
-      expect(button).not.toContain("text-accent");
-    }
+  it("draws one row of posters per section that scrolls sideways", () => {
+    expect(markup.match(/<ol /g)).toHaveLength(2);
+    expect(markup).toContain("overflow-x-auto");
+    expect(markup).toContain("Severance");
+    expect(markup).toContain("Slow Horses");
   });
 
-  it("draws a 36px pill inside a 44px target", () => {
-    const button = chipButton(chips("all"), "Finished") ?? "";
+  it("closes Dropped: the disclosure says so and its posters are not in the page", () => {
+    expect(markup).toMatch(/<button[^>]*aria-expanded="false"[^>]*>\s*Dropped/);
+    expect(markup).not.toContain("Lost Show");
+  });
 
-    expect(button).toMatch(/^<button[^>]*class="[^"]*\bh-11\b/);
-    expect(button).toMatch(/<span[^>]*class="[^"]*\bh-9\b/);
+  it("gives a row's cell no hold-to-select, and does not shrink or skip it", () => {
+    // No provider above the sections, so no cell carries the gesture's attributes; the
+    // selection belongs to a section's full grid alone.
+    expect(markup).not.toContain("data-holding");
+    expect(markup).not.toContain("aria-pressed");
+    expect(markup).toContain("shrink-0");
+    expect(markup).not.toContain("offscreen-skippable");
   });
 });
 

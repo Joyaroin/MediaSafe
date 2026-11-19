@@ -11,7 +11,7 @@ import {
   SECONDARY_BUTTON_COMPACT,
 } from "@/app/buttons";
 
-import { SortSelect } from "@/app/(signed-in)/library/library-filter-bar";
+import { SortSelect } from "@/app/(signed-in)/library/library-sort-select";
 import {
   GHOST_RECOVERY,
   GHOST_RECOVERY_COMPACT,
@@ -19,7 +19,7 @@ import {
   SOLID_RECOVERY_COMPACT,
 } from "@/errors/recovery-buttons";
 
-/** `SortSelect` calls `useRouter()`/`usePathname()`, which throw outside a mounted Next.js
+/** `SortSelect` calls `useRouter()`, which throws outside a mounted Next.js
  *  app router — `tests/library-surface.test.ts` hits the same wall for the same component
  *  family and stubs the same way. */
 vi.mock("next/navigation", () => ({
@@ -92,10 +92,10 @@ describe("the button register is the primary button's alone — issue #357", () 
 });
 
 describe("the select carets are re-narrowed — they no longer paint the accent", () => {
-  const FILTER_BAR = "app/(signed-in)/library/library-filter-bar.tsx";
+  const FILTER_BAR = "app/(signed-in)/library/library-sort-select.tsx";
   const TIMEZONE_CONTROL = "app/(signed-in)/settings/timezone-control.tsx";
 
-  it("library-filter-bar.tsx's sort caret no longer reaches for text-accent", () => {
+  it("library-sort-select.tsx's sort caret no longer reaches for text-accent", () => {
     expect(code(source(FILTER_BAR))).not.toMatch(/\btext-accent\b/);
   });
 
@@ -109,7 +109,7 @@ describe("the select carets are re-narrowed — they no longer paint the accent"
    * held it *for* is kept: the control's ink is neutral, never the accent.
    */
   it("the sort control is a quiet round button in neutral ink, never the accent", () => {
-    const markup = renderToStaticMarkup(createElement(SortSelect, { value: "title" }));
+    const markup = renderToStaticMarkup(createElement(SortSelect, { section: { kind: "show", slug: "watching" }, value: "title" }));
 
     expect(markup).toContain("quiet-fill");
     expect(markup).toContain("rounded-[var(--radius-full)]");

@@ -1,12 +1,10 @@
 import { Block, PosterBlock, SkeletonRegion } from "@/app/skeleton";
 import { LibraryHeading } from "./library-heading";
-import { LIBRARY_GRID } from "./library-grid";
 
 /**
  * The library, reading — its own heading at once (a literal, not an answer, so it does not
- * wait), then the view control and one screen of the poster grid it becomes, in
- * `LIBRARY_GRID`'s own columns (`app/skeleton.tsx` has the reasoning). Twelve cells
- * whatever the library holds: the layout's count, never the data's.
+ * wait), then the view control and two sections, each a heading and one row of posters (the screen
+ * it becomes, `library-sections.tsx`). The layout's count, never the data's.
  */
 export default function LibraryLoading() {
   return (
@@ -21,30 +19,28 @@ export default function LibraryLoading() {
         }
       />
       <SkeletonRegion className="gap-0">
-        {/* The chips, then the round sort button pinned at the row's right end. */}
-        <div className="mt-2 flex items-center gap-2 px-gutter py-1 lg:mt-4 lg:px-10">
-          <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
-            {CHIPS.map((width) => (
-              <Block key={width} className={`h-9 shrink-0 ${width} [--poster-radius:var(--radius-full)]`} />
-            ))}
+        {/* Two sections: a heading line and its count, then one row of posters. */}
+        {[0, 1].map((section) => (
+          <div key={section} className="mt-6 first:mt-2">
+            <div className="flex min-h-11 items-center justify-between px-gutter lg:px-10">
+              <Block className="h-2.5 w-24 [--poster-radius:var(--radius-full)]" />
+              <Block className="h-4 w-8 [--poster-radius:var(--radius-full)]" />
+            </div>
+            <ul className="flex gap-x-3.5 overflow-hidden px-gutter lg:px-10">
+              {CELLS.map((width) => (
+                <li key={width} className="flex w-[7.5rem] shrink-0 flex-col gap-2 sm:w-36">
+                  <PosterBlock className="w-full" radius="var(--radius-4)" />
+                  <Block className={`h-2.5 ${width}`} />
+                  <Block className="h-2 w-[46%]" />
+                </li>
+              ))}
+            </ul>
           </div>
-          <Block className="h-11 w-11 shrink-0 [--poster-radius:var(--radius-full)] lg:w-40" />
-        </div>
-        <ul className={`mt-5 ${LIBRARY_GRID}`}>
-          {CELLS.map((width) => (
-            <li key={width} className="flex flex-col gap-2">
-              <PosterBlock className="w-full" radius="var(--radius-4)" />
-              <Block className={`h-2.5 ${width}`} />
-              <Block className="h-2 w-[46%]" />
-            </li>
-          ))}
-        </ul>
+        ))}
       </SkeletonRegion>
     </main>
   );
 }
-
-const CHIPS = ["w-12", "w-20", "w-[88px]", "w-16"];
 
 /** The name line's width per cell, varied so the grid does not read as one cell stamped. */
 const CELLS = [
