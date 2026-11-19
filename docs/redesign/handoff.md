@@ -316,6 +316,7 @@ Reference: `search.dark`, `search.light`.
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
 - Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". In the markup Add comes before the seen-it pill, and each button's accessible name starts with its visible label ("Add {title}…", "I've seen it all: {title}, every aired episode", "I've seen it: {title}"). A title already held shows a tick and "In your library" as a link instead of both actions.
 - Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
+- Within each kind, results with neither a year nor a poster fold into one "N more results" line ("1 more result" for one), a button with `aria-expanded` that opens them in place (`search-groups.ts`'s `foldResults`). A result with either one is not folded.
 - **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
 
 ### 8.4 Library
@@ -342,7 +343,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - **The lists read gains up to three poster paths per list**, in list order.
 - No Delete on the row.
 - Duplicate name: the field takes the invalid ring and "You already have a list called “Comfort shows”." appears beneath.
-- No lists: the outlined panel "Group it your own way" under the field.
+- No lists: the outlined panel "Make your own groups" under the field (body: "Comfort shows, watch with Dad, the ones you keep meaning to start. Name a list above, then add titles from any title page with List.").
 
 **A list**
 
@@ -353,7 +354,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - Delete asks first in a dialog: "Delete “Comfort shows”?" / "It holds 8 titles. Nothing about those shows changes. This only removes the list itself." / danger "Delete list", plain "Cancel".
 - Empty list: "Nothing here yet" / "Open any title and choose “Add to list” to put it here."
 
-**Add to a list** (from a title) is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
+**Add to a list** (from a title) opens from a quiet compact button labelled "List" beside its icon (accessible name "List: add “The Bear” to a list"), and is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
 
 ### 8.6 Title, a show
 

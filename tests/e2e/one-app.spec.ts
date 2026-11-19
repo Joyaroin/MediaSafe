@@ -232,6 +232,27 @@ test("a phone reaches Lists from Library even with no lists yet", async ({ page 
   await expect(page.getByRole("textbox", { name: /list/i })).toBeVisible();
 });
 
+test("the title page's list button shows List and is found by that word", async ({ page }) => {
+  const title = await seedShowWithSeason(userId, { episodes: 1, watched: [] });
+
+  for (const viewport of [PHONE, DESKTOP]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/titles/${title.libraryEntryId}`);
+
+    const button = page.getByRole("button", { name: /^List/ });
+    await expect(button).toHaveCount(1);
+    await expect(button).toBeVisible();
+    await expect(button).toHaveText("List");
+    await expect(button).toHaveAccessibleName(`List: add ${title.titleName} to a list`);
+
+    // It still opens the dialog it names.
+    await button.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: "Done" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+});
+
 test("a title taken off a list, and a renamed list, both survive a reload", async ({ page }) => {
   const kept = await seedShowWithSeason(userId, { episodes: 1, watched: [] });
   const dropped = await seedShowWithSeason(userId, { episodes: 1, watched: [] });
@@ -241,7 +262,7 @@ test("a title taken off a list, and a renamed list, both survive a reload", asyn
   // Make a list with both titles through the app itself.
   for (const title of [kept, dropped]) {
     await page.goto(`/titles/${title.libraryEntryId}`);
-    await page.getByRole("button", { name: `Add ${title.titleName} to a list` }).click();
+    await page.getByRole("button", { name: `List: add ${title.titleName} to a list` }).click();
     const dialog = page.getByRole("dialog");
     if (title === kept) {
       await dialog.getByRole("textbox").fill("E2E Shelf");

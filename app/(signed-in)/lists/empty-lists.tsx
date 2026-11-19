@@ -13,13 +13,11 @@ import { EMPTY_PANEL } from "@/app/buttons";
 export function EmptyLists() {
   return (
     <section className={EMPTY_PANEL}>
-      <h2 className="bill-title text-bill-lg text-text">Group it your own way</h2>
+      <h2 className="bill-title text-bill-lg text-text">Make your own groups</h2>
 
       <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
-        The five states are derived — they are not yours to choose, and they cannot say
-        &ldquo;comfort shows&rdquo;, &ldquo;watch with Dad&rdquo;, or &ldquo;the ones I
-        keep meaning to start&rdquo;. A list can. Name one above to begin — adding titles
-        to it comes next.
+        Comfort shows, watch with Dad, the ones you keep meaning to start. Name a list above,
+        then add titles from any title page with List.
       </p>
     </section>
   );
