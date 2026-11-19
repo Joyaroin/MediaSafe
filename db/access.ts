@@ -4650,8 +4650,7 @@ export async function listNotStartedShows(
  *
  * `library_entry_remaining` is not joined either, and for the same kind of reason: that
  * view is `where t.kind = 'show'`, so it has no row for any film. **A film carries no
- * remainder**, which is *Remaining is a show concept* holding here rather
- * than being restated — and it is why a film card prints a year and a runtime where an
+ * remainder**, and it is why a film card prints a year and a runtime where an
  * episode card prints a count.
  *
  * Extends `LibraryStateGroupEntry` (#138's shape) with the runtime the handoff's film card

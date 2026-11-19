@@ -182,10 +182,9 @@ export const libraryEntryState = pgView("library_entry_state", {
  *
  * ── Zero is a real answer, not an absent row ─────────────────────────────────────────
  *
- * A finished show's entry is still here, at `0` — the rule is explicit that "0
- * remaining is not missing". The distinction is what lets the sort push *finished* to the
- * bottom deliberately (`case when remaining = 0`) rather than by the accident of `NULLS
- * LAST` also catching every film.
+ * A finished show's entry is still here, at `0`. The distinction is what lets the sort
+ * push *finished* to the bottom deliberately (`case when remaining = 0`) rather than by
+ * the accident of `NULLS LAST` also catching every film.
  */
 export const libraryEntryRemaining = pgView("library_entry_remaining", {
   libraryEntryId: uuid("library_entry_id").notNull(),
