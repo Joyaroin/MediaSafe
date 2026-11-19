@@ -418,15 +418,15 @@ export function stillOnRail(
 /**
  * Whether a Not started row is still on Tonight's group — issue #551.
  *
- * A row in that group offers one thing: the show's first episode. Once it is marked the show
+ * A row in that group offers one thing: the show's starting episode. Once it is marked the show
  * is `watching`, belongs in Also ready on the next read, and has no business here, so the
  * row closes — **after the hold**, as every row does: while the mark is still `marking` the
  * row stays, washed, with *Undo* beside it, and `settle()` lets it go. An Undo, or a lost
- * write that rolls the mark back, puts the first episode back to unwatched and the row stays.
+ * write that rolls the mark back, puts the starting episode back to unwatched and the row stays.
  *
  * This is not `stillOnRail`'s rule and cannot be: that one leaves a card when its run is
- * spent, and marking S1 E1 spends nothing — the run goes on to S1 E2. An entry handed an
- * empty run was never markable, so it stays, as there.
+ * spent, and marking the starting episode spends nothing — the run goes on to the next one. An
+ * entry handed an empty run was never markable, so it stays, as there.
  */
 export function stillNotStarted(
   marks: WatchMarks,

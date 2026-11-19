@@ -266,7 +266,8 @@ export const CACHED_READS = {
    * Issue #540's Not started group. Tagged `up-next` with the rails it sits beside: adding a
    * show, removing one, a watch, giving up and resuming all bust that tag already, and each
    * of them moves this read's membership. It selects through `library_entry_state` and
-   * compares the first episode's `air_date` to `current_date`, so the day is in its key.
+   * compares episodes' `air_date` to `current_date` to find a show's earliest aired episode,
+   * so the day is in its key.
    */
   listNotStartedShows: { cachedAs: "up-next", readsCurrentDate: true },
   listWatchlistFilms: { cachedAs: "up-next", readsCurrentDate: true },
@@ -577,7 +578,7 @@ export function cachedUpNextRails(userId: UserId): Promise<UpNextRails> {
 
 /**
  * Tonight's Not started group (#540). Tagged `up-next` with the rails, and keyed by the day
- * like them: whether a show's first episode has aired changes at midnight with no write.
+ * like them: whether an episode has aired changes at midnight with no write.
  *
  * `limit` is an argument, so it is in the invocation key (`JSON.stringify(args)`): two
  * callers asking for different limits never share an entry.

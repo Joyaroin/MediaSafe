@@ -78,9 +78,9 @@ export function seasonCountInWords(progress: {
 
 /**
  * `Start with S01 · E01 · Pilot` — the line on a Not started row (issue #551): where a show the
- * reader has not begun starts. No season count: a row with nothing watched has no progress to
- * report, and the line says what to do, not how far along it is. A first episode TMDB has no
- * name for reads `Start with S01 · E01`.
+ * reader has not begun starts (the code is the starting episode's own, #603). No season count:
+ * a row with nothing watched has no progress to report, and the line says what to do, not how
+ * far along it is. A starting episode TMDB has no name for reads `Start with S01 · E01`.
  */
 export function startWithInWords(
   seasonNo: number,

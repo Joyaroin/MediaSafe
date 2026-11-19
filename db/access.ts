@@ -4209,7 +4209,7 @@ async function upNextQueues(
  * Where each run starts: one row per entry, the `(season, episode)` its queue begins at.
  *
  * `upNextQueues` starts every run at `library_entry_up_next`'s episode; `listNotStartedShows`
- * has no such row (the view is built on `watch`), so it starts at the show's first episode.
+ * has no such row (the view is built on `watch`), so it starts at the show's earliest aired episode.
  * Everything after the start — the window, the `>=` row comparison, the truncation at the
  * first unreleased episode, the depth and `more` — is one function so the two cannot
  * disagree about what a queue is.
@@ -4502,24 +4502,52 @@ export async function listUpNextRails(
 }
 
 /**
+ * The id of a show's **starting episode** — its earliest aired episode (issue #603): season
+ * above 0, `air_date` known and not after today, lowest season number then lowest episode
+ * number. `NULL` for a show with none, which an `=` join then drops.
+ *
+ * One definition for both of `listNotStartedShows`'s reads (the row and the queue's start),
+ * which used to each spell the rule and so could disagree.
+ */
+function startingEpisodeId(titleId: PgColumn): SQL<string> {
+  return sql<string>`(
+    select s.id
+    from episode s
+    where s.title_id = ${titleId}
+      and s.season_no > 0
+      and s.air_date is not null
+      and s.air_date <= current_date
+    order by s.season_no, s.episode_no
+    limit 1
+  )`;
+}
+
+/**
  * Tonight's **Not started** group — issue #540: up to `limit` shows in the reader's library
- * with no watches that are not Dropped, whose first episode has aired, in the `UpNextEntry`
- * shape.
+ * with no watches that are not Dropped and that have an aired episode to start from, in the
+ * `UpNextEntry` shape.
  *
  * ── Why it has a starting point of its own ───────────────────────────────────────────
  *
  * `library_entry_up_next` is built on `library_entry_progress`, which joins `watch`, so an
  * entry with no watches has no row in it, and `upNextQueues` reads only from it. This read
- * starts from the show's **first episode** instead — episode 1 of the lowest-numbered season
- * above 0, so specials (season 0) never count — and hands that start to the same
+ * starts from the show's **starting episode** instead and hands that start to the same
  * `queuesFromStarts` every other queue goes through. The view and *Up next episode* are
  * unchanged: this is a read beside them, not a second definition of them.
+ *
+ * The starting episode is the **earliest aired episode**: the aired episode (`air_date`
+ * known and not after today) of season above 0 with the lowest season number, then the lowest
+ * episode number. Specials (season 0) never count. For a show whose lowest season opens
+ * with an aired episode 1 that is S1 E1, as it always was; a show whose lowest season starts
+ * at episode 2 (TMDB lists no episode 1), or whose season 1 has nothing aired, starts from its
+ * earliest aired episode rather than being in no group (issue #603, replacing #535's
+ * episode-1-only rule). It is written once, in `startingEpisodeId`, and both reads below use it.
  *
  * ── Membership ───────────────────────────────────────────────────────────────────────
  *
  * - `library_entry_state` is `watchlist`. `db/views.ts` checks `abandoned_at` first, so a
  *   Dropped show with no watches is `abandoned` and is out without a clause of its own here.
- * - A show, and its first episode has **aired** (`air_date` known and not after today).
+ * - A show with a starting episode, which is an **aired** one by definition.
  * - `MIRRORED`, as every Up next read: a title whose episodes have not mirrored is the
  *   pending read's, once.
  *
@@ -4567,20 +4595,7 @@ export async function listNotStartedShows(
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
     .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
-    .innerJoin(
-      first,
-      and(
-        eq(first.titleId, title.id),
-        eq(first.episodeNo, 1),
-        sql`${first.seasonNo} = (
-          select min(m.season_no)
-          from episode m
-          where m.title_id = ${title.id} and m.season_no > 0
-        )`,
-        isNotNull(first.airDate),
-        lte(first.airDate, sql`current_date`),
-      ),
-    )
+    .innerJoin(first, eq(first.id, startingEpisodeId(title.id)))
     .where(
       and(
         ownedBy(userId, libraryEntry),
@@ -4606,18 +4621,7 @@ export async function listNotStartedShows(
     })
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
-    .innerJoin(
-      first,
-      and(
-        eq(first.titleId, title.id),
-        eq(first.episodeNo, 1),
-        sql`${first.seasonNo} = (
-          select min(m.season_no)
-          from episode m
-          where m.title_id = ${title.id} and m.season_no > 0
-        )`,
-      ),
-    )
+    .innerJoin(first, eq(first.id, startingEpisodeId(title.id)))
     .where(and(ownedBy(userId, libraryEntry), inArray(libraryEntry.id, entryIds)))
     .as("starts");
 

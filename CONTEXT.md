@@ -36,7 +36,10 @@ _Avoid_: Left, to go
 **Tonight**:
 The destination that shows Continue watching and Films to watch — what the reader can watch
 right now — and, under Also ready, up to three **Not started** shows, with a new show leading
-when nothing is in Continue watching. The first tab, and the screen the app opens on.
+when nothing is in Continue watching. A Not started show starts from its earliest aired
+episode: of the aired episodes in seasons above 0, the one with the lowest season number,
+then the lowest episode number. For most shows that is S1 E1. The first tab, and the screen
+the app opens on.
 _Avoid_: Up next (the episode, not the screen), home
 
 **Continue watching**:
