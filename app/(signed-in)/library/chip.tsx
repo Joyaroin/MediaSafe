@@ -7,7 +7,8 @@ import { snappy } from "@/app/motion";
 import { SELECTED, SELECTED_MARKER, UNSELECTED } from "@/app/selection";
 
 /**
- * The chip — first built for the Library filter bar (`library-filter-bar.tsx`) and pulled
+ * The chip — first built for the Library filter bar (whose chips went when Library became
+ * sections, #552; the season selector still uses it) and pulled
  * out from under it for issue #224, whose spec (issue #215) requires the season selector
  * to reuse *the chip register the Library filter bar already uses*: "a second selector
  * vocabulary on an adjacent surface is what the design system's one-register rule exists

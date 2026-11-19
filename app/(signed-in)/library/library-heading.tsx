@@ -29,9 +29,15 @@
 export const LIBRARY_HEADING_ID = "library-heading";
 
 export function LibraryHeading({
+  title = "Library",
+  back,
   control,
   children,
 }: {
+  /** The screen title: *Library*, or the section's name in a section's full grid. */
+  title?: string;
+  /** The way back from a section's grid, above the title. */
+  back?: React.ReactNode;
   /** The Shows / Films / Lists control: under the heading on a phone, level with it on a
    *  desktop (handoff §8.4). */
   control?: React.ReactNode;
@@ -45,9 +51,10 @@ export function LibraryHeading({
     // uniform between them (Up next's rail heads have the same shape), so the children space
     // themselves rather than being spaced from here.
     <div className="flex flex-col px-gutter pt-5 lg:px-10">
+      {back}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <h1 id={LIBRARY_HEADING_ID} className="screen-title text-screen text-text">
-          Library
+          {title}
         </h1>
 
         {control}

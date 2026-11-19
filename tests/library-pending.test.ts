@@ -76,10 +76,11 @@ describe("the pending line is the settled treatment", () => {
    * drawing one screen of its own layout (`app/skeleton.tsx`). The boundary takes no props,
    * so nothing about the data can reach how many cells it draws: one screen, always.
    */
-  it("draws one screen of the grid it becomes, whatever the library holds", () => {
+  it("draws one screen of the sections it becomes, whatever the library holds", () => {
     expect(LibraryLoading.length).toBe(0);
     const boundary = markupOf(createElement(LibraryLoading));
-    expect(boundary.match(/aspect-\[2\/3\]/g)).toHaveLength(12);
+    // Two sections (#552) of twelve — a section row's own size — never the data's count.
+    expect(boundary.match(/aspect-\[2\/3\]/g)).toHaveLength(24);
     expect(boundary).toContain('role="status"');
     expect(boundary).toContain("Reading");
   });
