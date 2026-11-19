@@ -887,10 +887,6 @@ describe("listUpNextRails — what each rail contains", () => {
         airDate: RELEASED,
         runtimeMins: 76,
         stillPath: "/cold-harbor.jpg",
-        // `library_entry_remaining`, unmodified: three episodes, one watched. It counts the
-        // episode being offered, and the card is what subtracts that one
-        // (`episode-card-line.ts`).
-        remaining: 2,
         // Issue #367: TMDB's own flag, half of *That's the show*.
         inProduction: true,
         // Issue #362: no colour has been extracted for this poster.
@@ -931,36 +927,6 @@ describe("listUpNextRails — what each rail contains", () => {
           more: false,
         },
       });
-    });
-  });
-
-  /**
-   * **Remaining counts aired episodes only** (`CONTEXT.md`). JoJo printed `+8 remaining`
-   * because this count read `library_entry_remaining`, which counts every unwatched
-   * episode TMDB lists — announced ones included. The entry's figure includes the episode
-   * being offered, which the card subtracts (`episode-card-line.ts`).
-   */
-  it("counts only aired episodes in what remains, and not the specials", async () => {
-    await inTransaction(async (tx) => {
-      const reader = await seedUser(tx, "reader");
-      const show = await seedShow(tx, reader, {
-        episodes: [
-          { seasonNo: 0, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 1 },
-          { seasonNo: 1, episodeNo: 2 },
-          { seasonNo: 1, episodeNo: 3 },
-          { seasonNo: 1, episodeNo: 4, airDate: UNRELEASED },
-          { seasonNo: 1, episodeNo: 5, airDate: UNRELEASED },
-          { seasonNo: 1, episodeNo: 6, airDate: null },
-        ],
-      });
-      await markWatched(tx, show, 1, daysAgo(1));
-
-      const [entry] = ongoingCards(await listUpNextRails(reader, tx));
-
-      // Episode 2 offered, episode 3 aired after it: two, of which the card prints one.
-      expect(entry.episodeNo).toBe(2);
-      expect(entry.remaining).toBe(2);
     });
   });
 

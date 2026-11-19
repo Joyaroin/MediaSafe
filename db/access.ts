@@ -3545,21 +3545,14 @@ function stateFrom(value: string): LibraryState {
  * never *degrade* to the number, and nothing this read could invent would help them keep
  * it.
  *
- * ── The remainder is here now, and that is an amendment rather than a slip (#250) ────
+ * ── No remainder is carried here ─────────────────────────────────────────────────────
  *
- * It used to say *there is no remainder here, and no count of anything* — the remainder
- * was a sort key and nothing else. The phone's next-episodes card prints it, so the read
- * carries it, and the rule was amended in the same change rather than this quietly
- * disagreeing with it. The rule that narrowed to survive is *a count may not appear as
- * chrome on a surface the reader came to do something else on*; a number saying whether
- * you are three from the end or thirty is the content of the card it sits on, which is
- * what the wireframe's "▓▓▓░ 12" meter never was.
- *
- * **It is `library_entry_remaining`'s number, unmodified.** Episodes of the show with no
- * watch — unreleased ones included, which is `db/views.ts`'s definition
- * — and so it counts the episode this entry is offering. The card subtracts that one
- * itself (`episode-card-line.ts`), because *what is left after this* is a rendering
- * question and *how much of this show is unwatched* is the domain's.
+ * #250 added a `remaining` count to this entry for the phone's next-episodes card. No
+ * surface reads one from an entry any more: Tonight's rows print the season count
+ * (`seasonWatched` over `seasonReleased`), and Coming up's rows print the count of
+ * aired episodes beyond the one on show from their own read (`more`, `upcoming-grouping.ts`).
+ * The field was removed rather than left computed for nobody (#602). `remaining` is still
+ * `library_entry_remaining`'s, and still orders Library and Up next (`upNextOrder`).
  *
  * ── The still, the runtime and the air date arrived with the card (#246, #250) ───────
  *
@@ -3602,8 +3595,6 @@ export interface UpNextEntry {
   readonly runtimeMins: number | null;
   /** Borrowed (#246). The episode's own image, as a TMDB CDN path. */
   readonly stillPath: string | null;
-  /** `library_entry_remaining`, unmodified — see this interface's own docblock. */
-  readonly remaining: number;
   /**
    * Borrowed — TMDB's `in_production`, `null` where it has not said. `false` is *the series
    * has ended*, which is half of the finish moment's *That's the show* (issue #367).
@@ -3618,8 +3609,8 @@ export interface UpNextEntry {
    * The Up next episode's season, as aired episodes with a watch over aired episodes —
    * issue #364's bar across the card's poster, read when the page loads.
    *
-   * *Aired* is `remaining`'s own test, so the bar and the count beside it never disagree
-   * about what exists yet. Only this season is read: every episode after the Up next one
+   * *Aired* is `air_date <= current_date`, the same test `CONTEXT.md`'s *Remaining* uses,
+   * so the bar and any count beside it never disagree about what exists yet. Only this season is read: every episode after the Up next one
    * is unwatched by construction (`db/views.ts`), so a later season the card advances into
    * starts at zero watched, and its aired count travels on the queued episode
    * (`QueuedEpisode.seasonReleased`).
@@ -3833,7 +3824,6 @@ interface UpNextRow {
   readonly airDate: string | null;
   readonly runtimeMins: number | null;
   readonly stillPath: string | null;
-  readonly remaining: number;
   readonly inProduction: boolean | null;
   readonly posterColour: string | null;
   readonly seasonWatched: number;
@@ -3953,27 +3943,9 @@ function upNextRead(userId: UserId, executor: Executor): UpNextRead {
           airDate: episode.airDate,
           runtimeMins: episode.runtimeMins,
           stillPath: episode.stillPath,
-          /* Remaining, as `CONTEXT.md` defines it: the *aired* episodes after the Up next
-             one — plus the Up next episode itself, which the card subtracts
-             (`countAfterShown`). It is not `library_entry_remaining`: that view counts every
-             unwatched episode, aired or not, because Library's sort needs `0` to mean
-             *finished* and nothing else. JoJo's `+8 remaining` beside an episode that had
-             not aired was this count reading that view.
-
-             Every episode after the Up next one is unwatched — Up next is the episode after
-             the furthest watched — so position and the air date are the whole test. */
-          remaining: sql<number>`(
-              select count(*)::int + 1
-              from episode later
-              where later.title_id = ${title.id}
-                and later.season_no > 0
-                and (later.season_no, later.episode_no)
-                  > (${libraryEntryUpNext.seasonNo}, ${libraryEntryUpNext.episodeNo})
-                and later.air_date <= current_date
-            )`.mapWith(Number),
           /* Issue #364: the Up next episode's season, aired against aired-and-watched.
-             Correlated like `remaining`, on the `(title_id, season_no, episode_no)`
-             unique index and `watch_episode_id_idx`. */
+             Correlated on the `(title_id, season_no, episode_no)` unique index and
+             `watch_episode_id_idx`. */
           seasonWatched: sql<number>`(
               select count(*)::int
               from episode s
@@ -4036,7 +4008,6 @@ function upNextEntry(row: UpNextRow, queue: UpNextQueue): UpNextEntry {
     airDate: row.airDate,
     runtimeMins: row.runtimeMins,
     stillPath: row.stillPath,
-    remaining: row.remaining,
     inProduction: row.inProduction,
     posterColour: row.posterColour,
     seasonWatched: row.seasonWatched,
@@ -4436,7 +4407,7 @@ async function queuesFromStarts(
  *
  * The phone concatenates them into a single next-episodes rail and the desktop draws them
  * as three, which is exactly why the read keeps them apart: the concatenation is a
- * rendering decision (`up-next-episode-rail.tsx` holds the one line that makes it), and a
+ * rendering decision (`tonight-surface.tsx` holds the one line that makes it), and a
  * read that had already flattened them would put the *ongoing, then coming back, then old
  * friends* rule somewhere no surface could see it and the desktop could not undo.
  *
@@ -4640,15 +4611,6 @@ export async function listNotStartedShows(
       airDate: first.airDate,
       runtimeMins: first.runtimeMins,
       stillPath: first.stillPath,
-      /* `upNextRead`'s own count: the aired episodes after this one, plus this one. */
-      remaining: sql<number>`(
-          select count(*)::int + 1
-          from episode later
-          where later.title_id = ${title.id}
-            and later.season_no > 0
-            and (later.season_no, later.episode_no) > (${first.seasonNo}, ${first.episodeNo})
-            and later.air_date <= current_date
-        )`.mapWith(Number),
       seasonReleased: sql<number>`(
           select count(*)::int
           from episode s

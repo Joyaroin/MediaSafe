@@ -43,17 +43,17 @@ function pad(number: number): string {
 }
 
 /**
- * `+8 remaining` — how many aired episodes come **after** the one the card is offering,
- * or `null` when none do (#250, narrowed by the UI overhaul).
+ * `+8 remaining` — how many aired episodes come **after** the one a Coming up row is
+ * offering, or `null` when none do (#250, narrowed by the UI overhaul).
  *
- * The number is not derived here: it is the read's *Remaining* (`CONTEXT.md`, and
- * `upNextRead` in `db/access.ts`), minus the episode being offered and minus whatever the
- * reader has marked from this card since the page loaded.
+ * The number is not derived here, and no `UpNextEntry` carries one (#602): Coming up's
+ * grouping counts the further aired episodes it was handed (`more` in
+ * `upcoming-grouping.ts`) and passes that in. It is the aired-episodes sense of *Remaining*
+ * in `CONTEXT.md`, not `library_entry_remaining`, which counts unaired episodes too.
  *
- * **Aired only.** It used to count every unwatched episode TMDB lists, so JoJo printed
+ * **Aired only.** An earlier count read every unwatched episode TMDB lists, so JoJo printed
  * `+8 remaining` beside an episode that had not aired — a number about the series, on a
- * surface that is about tonight. The rail that justified counting unaired episodes (Coming
- * back) is gone from Continue watching, and with it the argument.
+ * surface that is about what is out now.
  *
  * **Zero is withheld.** With aired-only counting, zero means *this is the last one you can
  * watch now*, and the card's own episode line already says what to watch; a `+0` beside it
