@@ -354,3 +354,98 @@ describe("Pick an episode", () => {
     expect(ready).toBe(true);
   });
 });
+
+/**
+ * A server that follows the real database rules, so the test is about what is left on it
+ * and not about which calls were made: a *Seen it all* records only the episodes the entry
+ * has not watched yet (`markWatchedUndated` skips the rest), under that press's key, and
+ * an undo deletes what was recorded under the key it is given.
+ */
+function realisticServer(lostUndos: readonly number[]) {
+  const watches = new Map<string, string>(); // episode -> the key that recorded it
+  const episodes = ["s1e1", "s1e2", "s1e3"];
+  const calls: string[] = [];
+  let undos = 0;
+
+  const deps = {
+    add: async (): Promise<AddToLibraryOutcome> => ADDED,
+    seenAll: async (_entry: string, key: string): Promise<AddOutcome> => {
+      calls.push(`seen ${key}`);
+      for (const episode of episodes) if (!watches.has(episode)) watches.set(episode, key);
+      return OK;
+    },
+    undoSeenAll: async (_entry: string, key: string): Promise<AddOutcome> => {
+      calls.push(`undo ${key}`);
+      if (lostUndos.includes(++undos)) return LOST(`ref-undo-${undos}`);
+      for (const [episode, recordedBy] of watches) if (recordedBy === key) watches.delete(episode);
+      return OK;
+    },
+  };
+
+  return { deps, watches, calls };
+}
+
+describe("a switch back that was lost, then Seen it all and Not started again", () => {
+  async function run(awaitEachPress: boolean) {
+    const server = realisticServer([1]);
+    const store = createWriteFailureStore();
+    let minted = 0;
+    const row = createRowWrites({
+      title: "Severance",
+      initial: { phase: "open" },
+      store,
+      mintKey: () => `key-${++minted}`,
+      onChange: () => {},
+      ...server.deps,
+    });
+    await row.add();
+
+    // Quick presses are not awaited, so the chip has already moved when the next comes.
+    const press = async (choice: "seen-all" | "not-started") => {
+      const done = row.choose(choice);
+      if (awaitEachPress) await done;
+    };
+    await press("seen-all");
+    await press("not-started");
+    await press("seen-all");
+    await press("not-started");
+    await row.choose("not-started");
+    return { row, server, store };
+  }
+
+  for (const awaitEachPress of [true, false]) {
+    it(`leaves no watches and no toast (${awaitEachPress ? "each press awaited" : "pressed quickly"})`, async () => {
+      const { row, server, store } = await run(awaitEachPress);
+
+      // The setup: the first Seen it all recorded under key-1 and the first undo was lost,
+      // so the later presses ran against a server that already held every watch.
+      expect(server.calls[0]).toBe("seen key-1");
+      expect(server.calls[1]).toBe("undo key-1");
+      expect(server.calls.filter((call) => call.startsWith("undo")).length).toBeGreaterThan(1);
+      expect(choiceOf(row)).toBe("not-started");
+      expect([...server.watches]).toEqual([]);
+      expect(store.get()).toEqual([]);
+    });
+  }
+
+  it("keeps the toast up, and the chip on Seen it all, while the watches are still there", async () => {
+    const server = realisticServer([1, 2, 3, 4]);
+    const store = createWriteFailureStore();
+    let minted = 0;
+    const row = createRowWrites({
+      title: "Severance",
+      initial: { phase: "open" },
+      store,
+      mintKey: () => `key-${++minted}`,
+      onChange: () => {},
+      ...server.deps,
+    });
+    await row.add();
+    await row.choose("seen-all");
+    await row.choose("not-started");
+
+    expect(server.watches.size).toBe(3);
+    expect(store.get().map((toast) => toast.reference)).toEqual(["ref-undo-1"]);
+    expect(choiceOf(row)).toBe("seen-all");
+  });
+});
