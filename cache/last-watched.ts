@@ -35,6 +35,15 @@ import { lastWatchedTitle, type UserId } from "@/db/access";
  * watch caches `null` for the hour — that is a query that succeeded and found nothing.
  * The key parts name the account, as `mediasafe/cache-key-carries-account` requires, and
  * they are written out here for the rule to see.
+ *
+ * ── The hour bounds the query, not the age of what a request is told ─────────────────
+ *
+ * `revalidate` is stale-while-revalidate: once the hour is up, the next request is answered
+ * from the entry it already has and the entry refreshes behind it. Valkey holds an entry for
+ * up to a day (`ENTRY_TTL_SECONDS = 24 * 60 * 60`, `cache-handler.mjs:48`), so after an idle
+ * hour the first request can be told a title up to a day old. The query itself still runs
+ * about once an hour per cache store (a second pod, or a Valkey miss, can run it again),
+ * which is the property the privacy reasoning above needs.
  */
 export const LAST_WATCHED_WINDOW_SECONDS = 60 * 60;
 

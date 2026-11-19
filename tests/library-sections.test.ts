@@ -346,7 +346,7 @@ describe("library sections — the orders", () => {
     });
   });
 
-  it("orders Waiting by the next episode's air date, then undated, then no next episode, by name", async () => {
+  it("orders Waiting by the next episode's air date, then the undated and the no-next-episode shows together, by name", async () => {
     await inTransaction(async (tx) => {
       const reader = await seedUser(tx);
       const seen = { watched: day("2026-01-01") };

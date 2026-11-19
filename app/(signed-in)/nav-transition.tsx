@@ -19,10 +19,10 @@ import { ViewTransition } from "react";
  * both wrong to look at and a fight between two animations for the same pixels.
  *
  * It is also what makes the slide phone-only with no media query in it. The only two
- * places that attach a phone-only type are `tab-bar.tsx`, which computes
- * `nav-forward`/`nav-back` from position in the bar, and `masthead.tsx`'s Settings
- * entrance, which spells `nav-upward`; both are `lg:hidden`. A desktop navigation — from
- * `sidebar-nav.tsx`, which carries the same destinations and the same Settings link —
+ * places that attached a phone-only type were `tab-bar.tsx`, which computed
+ * `nav-forward`/`nav-back` from position in the bar, and the deleted
+ * `masthead.tsx`'s Settings entrance, which spelled `nav-upward`; both were `lg:hidden`. A
+ * desktop navigation — from `sidebar-nav.tsx`, which carries the same destinations and the same Settings link —
  * attaches no type at all, lands on `default`, and gets exactly the nothing it got before.
  *
  * **`nav-deeper` is deliberately not phone-only, and that is a difference worth stating.**
@@ -51,9 +51,9 @@ import { ViewTransition } from "react";
  * borrowed `nav-forward` until #294, so the one navigation that leaves the bar looked
  * exactly like the four that stay on it.
  *
- * > **The upward type has exactly one caller, and that is a known cost recorded here
- * > rather than discovered later.** `masthead.tsx`'s Settings link is the only push out of
- * > the bar this application has — a whole transition type, a stylesheet block and a line
+ * > **The upward type had exactly one caller, and that was a known cost recorded here
+ * > rather than discovered later.** The deleted `masthead.tsx`'s Settings link was the
+ * > only push out of the bar this application had — a whole transition type, a stylesheet block and a line
  * > of this mapping, for one `Link`. It was paid deliberately: the alternative was
  * > Settings keeping a lateral motion that says the wrong thing about the move the reader
  * > just made. If a second masthead push ever arrives it costs one `transitionTypes`

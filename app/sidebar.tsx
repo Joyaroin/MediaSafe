@@ -12,8 +12,8 @@ import { Wordmark } from "./press-mark";
  * name pinned to the foot — the mock predates #146, so *Lists* is a fourth item in
  * `sidebar-nav.tsx`'s own `PRIMARY` array rather than in the mock, at the same measures.
  *
- * `196px` (`w-[196px]`) is the mock's own measure, taken rather than re-derived — the same
- * principle `masthead.tsx` states for its own borrowed numbers. #136 called it a placeholder
+ * `196px` (`w-[196px]`) is the mock's own measure, taken rather than re-derived. #136 called it
+ * a placeholder
  * width, on the grounds that the desktop Up next page it lands on was *"wide, until the rails
  * land"*; the rails landed in #137 and the measure held, so it is the mock's number and not
  * a placeholder any more. What it leaves room for is a rails column and a `420px` programme
@@ -59,7 +59,7 @@ export async function Sidebar() {
           that a name at the full 24 characters must not stretch or wrap this rail — the
           rail's own fixed `196px` width already bounds it without a second `max-w-*`.
 
-          The name goes through `DisplayNameCell` for the reason `masthead.tsx` states at
+          The name goes through `DisplayNameCell` for the reason `display-name.ts` states at
           length (issue #179): this rail is in the layout, the client Router Cache keeps
           layouts across navigations, and a name saved in Settings therefore has no route
           back here without re-rendering the whole page. */}
