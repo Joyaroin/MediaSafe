@@ -9,7 +9,7 @@ import {
 } from "@/app/(signed-in)/catalogue/add-watched";
 
 /**
- * What the second add says, and that both surfaces say it from one place — issue #222.
+ * What the second add says, and that the surface that has it says it from one place — issue #222.
  *
  * `tests/add-to-library-watched.test.ts` holds what the write does. This file holds the
  * two things about the glass that would fail **silently** rather than on sight, which is
@@ -20,20 +20,20 @@ import {
  *     — and one press writes a whole show's worth of rows. A refactor that collapsed the
  *     two labels into one would look entirely ordinary in a diff and would be caught by
  *     nothing else.
- *  2. **Neither surface writes its own copy.** The search row and the unowned title page
- *     are in different route directories, in different registers, and the label is the
- *     one thing they may never disagree about. That is a fact about the repository rather
- *     than about any render, so it is checked as one — the shape
- *     `tests/remove-from-library-control.test.ts` established.
+ *  2. **The surface writes no copy of its own.** The label is the one thing a surface may
+ *     not drift on, and that is a fact about the repository rather than about any render,
+ *     so it is checked as one — the shape `tests/remove-from-library-control.test.ts`
+ *     established. It was two surfaces until issue #550 took the second add off Search.
  */
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..");
 
-/** Every surface that offers the watched add. */
-const SURFACES = [
-  "app/(signed-in)/search/catalogue-result.tsx",
-  "app/(signed-in)/catalogue/[kind]/[tmdbId]/add-to-library-control.tsx",
-];
+/**
+ * Every surface that offers the watched add. Search is not one any more (issue #550): its
+ * result row has one *Add*, and *Seen it all* / *Seen it* are follow-up chips with their own
+ * labels (`tests/where-up-to-labels.test.ts`). The unowned title page keeps this one.
+ */
+const SURFACES = ["app/(signed-in)/catalogue/[kind]/[tmdbId]/add-to-library-control.tsx"];
 
 function sourceAt(relativePath: string): string {
   return readFileSync(path.join(REPOSITORY_ROOT, relativePath), "utf8");

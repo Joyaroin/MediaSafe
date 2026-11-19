@@ -226,7 +226,7 @@ All sizes are in the reference HTML. This table says what each one is and which 
 | Quiet button | `raised` fill on the page, `hair` fill on a card or dialog. Same heights and radius | `SECONDARY_BUTTON`, `ICON_BUTTON` |
 | Danger button | Inset 1px `danger` line, `danger` text, no fill | `DESTRUCTIVE_BUTTON` |
 | Plain button | Text only, 44px high | new variant, or the existing link style |
-| Pill | 32px high, fully rounded, inside a 44px target. Filled for "Add", `raised` for "I've seen it" and "Start again" | `catalogue-result.tsx`, `stopped-shows.tsx` |
+| Pill | 32px high, fully rounded, inside a 44px target. Filled for "Add", `raised` for "Start again" | `catalogue-result.tsx`, `stopped-shows.tsx` |
 | Round icon button | 44px circle, `raised`. Over artwork: black at 50% with a white icon | `back-bar.tsx`, `ICON_BUTTON` |
 | In flight | The same button dimmed, wait cursor, label changes to the present participle already in the code ("Taking you to Google") | `IN_FLIGHT` |
 | Not yet armed | `hair` fill, `dim` text, not-allowed cursor | `NOT_YET_ARMED` |
@@ -314,8 +314,14 @@ Reference: `coming-up.dark`, `coming-up.light`.
 Reference: `search.dark`, `search.light`.
 
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
-- Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". In the markup Add comes before the seen-it pill, and each button's accessible name starts with its visible label ("Add {title}…", "I've seen it all: {title}, every aired episode", "I've seen it: {title}"). A title already held shows a tick and "In your library" as a link instead of both actions.
-- Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
+- Each result: 44 by 66 poster, the title as a link, "2024 · Show", and on the right a filled pill "Add" (the one exception to the filled limit: each is the main action of its own row). The button's accessible name starts with its visible label ("Add {title} to your library"). A title already held shows a tick and "In your library" as a link instead.
+- **After the add lands** (issue #550, replacing the "I've seen it all" pill under each result): the row keeps "In your library" on the right and asks **"Where are you up to?"** beneath the title, with outlined-when-chosen chips (`app/selection.ts`, the Library chips' face):
+  - **Shows:** *Not started* (chosen) and *Seen it all* are a radio group (`role="radio"`, one chosen, arrow keys move and choose); *Pick an episode* is a plain button. *Seen it all* is offered only when the show had an aired episode at the time of the add.
+  - **Films:** one *Seen it* toggle (`aria-pressed`): on records the film, off takes that watch back.
+  - Accessible names start with the visible label: "Not started: {title}", "Seen it all: {title}, every aired episode", "Pick an episode: {title}", "Seen it: {title}" (`where-up-to-labels.ts`).
+  - *Seen it all* / *Seen it* record **undated** watches; choosing *Not started* (or *Seen it* off) removes exactly that press's watches. *Pick an episode* does that first if *Seen it all* is chosen, then opens `/titles/{entryId}?from=search#episodes`.
+  - The chips stay on that row while these results are on screen; a new query or leaving Search clears them. A title that was already in the library when the results arrived gets "In your library" and no chips.
+- Adding and the chip writes are optimistic and use the existing lost-write toast (`use-catalogue-add.ts`, `row-writes.ts`): the row's writes run one at a time in order, and there is one toast per row, about the reader's latest intention (add, seen-all or switch-back; `catalogue/lost-add.ts`).
 - Within each kind, results with neither a year nor a poster fold into one "N more results" line ("1 more result" for one), a button with `aria-expanded` that opens them in place (`search-groups.ts`'s `foldResults`). A result with either one is not folded.
 - **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
 

@@ -23,8 +23,13 @@ import { createWriteFailureStore } from "@/errors/write-failure";
  * constraint.
  */
 
-const PLAIN = { watched: false, title: "The Bear", reference: "ref-1" } as const;
-const WATCHED = { watched: true, title: "The Bear", reference: "ref-2" } as const;
+const PLAIN = { intention: "add", title: "The Bear", reference: "ref-1" } as const;
+const WATCHED = { intention: "seen-all", title: "The Bear", reference: "ref-2" } as const;
+const SWITCH_BACK = {
+  intention: "switch-back",
+  title: "The Bear",
+  reference: "ref-3",
+} as const;
 
 const noop = () => {};
 
@@ -40,7 +45,7 @@ describe("raiseLostAdd", () => {
     const standing = raiseLostAdd(null, { ...PLAIN, retry: noop }, store);
 
     expect(onScreen(store)).toEqual(["The Bear"]);
-    expect(standing.watched).toBe(false);
+    expect(standing.intention).toBe("add");
   });
 
   it("says nothing new when the same add is lost again", () => {
@@ -76,7 +81,7 @@ describe("raiseLostAdd", () => {
     // and then resolved as a success.
     expect(onScreen(store)).toEqual(["The Bear"]);
     expect(second).not.toBe(first);
-    expect(second.watched).toBe(true);
+    expect(second.intention).toBe("seen-all");
     expect(first.handle.standing()).toBe(false);
 
     store.get()[0].retry?.();
@@ -101,9 +106,57 @@ describe("raiseLostAdd", () => {
     // The other ordering, and it is not symmetrical in what it achieves — retrying the
     // plain add gets the title without the watches. It is still right: that is the press
     // the reader made last, and it is the one in front of them to act on.
-    expect(second.watched).toBe(false);
+    expect(second.intention).toBe("add");
     store.get()[0].retry?.();
     expect(retried).toEqual(["plain"]);
+  });
+
+  it("replaces a lost seen-all toast when the switch back is lost after it", () => {
+    const store = createWriteFailureStore();
+    const retried: string[] = [];
+
+    const first = raiseLostAdd(
+      null,
+      { ...WATCHED, retry: () => retried.push("seen-all") },
+      store,
+    );
+    const second = raiseLostAdd(
+      first,
+      { ...SWITCH_BACK, retry: () => retried.push("switch-back") },
+      store,
+    );
+
+    // Issue #550. The third intention is what a boolean could not say: a switch back
+    // lost after a *Seen it all* lost must not leave the *Seen it all* toast standing,
+    // because its *Try again* would record the watches the reader had just taken back.
+    expect(onScreen(store)).toEqual(["The Bear"]);
+    expect(second.intention).toBe("switch-back");
+    expect(first.handle.standing()).toBe(false);
+    expect(store.get()[0].reference).toBe("ref-3");
+
+    store.get()[0].retry?.();
+    expect(retried).toEqual(["switch-back"]);
+  });
+
+  it("replaces a lost switch back when seen-all is lost after it", () => {
+    const store = createWriteFailureStore();
+
+    const first = raiseLostAdd(null, { ...SWITCH_BACK, retry: noop }, store);
+    const second = raiseLostAdd(first, { ...WATCHED, retry: noop }, store);
+
+    expect(onScreen(store)).toEqual(["The Bear"]);
+    expect(second.intention).toBe("seen-all");
+    expect(first.handle.standing()).toBe(false);
+  });
+
+  it("says nothing new when the same switch back is lost again", () => {
+    const store = createWriteFailureStore();
+
+    const first = raiseLostAdd(null, { ...SWITCH_BACK, retry: noop }, store);
+    const again = raiseLostAdd(first, { ...SWITCH_BACK, retry: noop }, store);
+
+    expect(onScreen(store)).toEqual(["The Bear"]);
+    expect(again).toBe(first);
   });
 
   it("raises again after the reader has dismissed the standing toast", () => {

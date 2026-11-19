@@ -115,7 +115,9 @@ export function AddToLibraryControl({
     // One toast per title, about the press the reader made last. `lost-add.ts` holds the
     // rule, and the failure in the bare guard this replaced.
     raised.current = raiseLostAdd(raised.current, {
-      watched,
+      // This page has two intentions of the three `lost-add.ts` knows: its *I've seen it*
+      // is the `seen-all` one, and it has no switch-back.
+      intention: watched ? "seen-all" : "add",
       // Named in full. The toast composes its own sentences from this and takes no
       // message, so there is no parameter an exception could arrive in.
       title: titleName,

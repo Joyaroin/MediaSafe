@@ -48,10 +48,19 @@ import {
  *
  * So there is one toast per title, and it is about **the press the reader made last**:
  *
- *  - the same add lost again — a retry, or a second press of the same control — updates
- *    nothing and stacks nothing, because the toast is already saying the true thing;
- *  - the *other* add lost is a new intention, so the standing toast comes down and a new
+ *  - the same intention lost again — a retry, or a second press of the same control —
+ *    updates nothing and stacks nothing, because the toast is already saying the true
+ *    thing;
+ *  - a *different* intention lost is a new one, so the standing toast comes down and a new
  *    one goes up whose *Try again* runs the write the reader actually asked for last.
+ *
+ * **Three intentions, not two (issue #550).** Search's follow-up chips added a third — the
+ * switch back from *Seen it all* — and the rule did not change, only the vocabulary: a
+ * boolean cannot say *which of three*, and treating the third as "not watched" would have
+ * let a lost switch-back be answered by a standing *Seen it all* toast whose *Try again*
+ * records the watches the reader had just taken back. The caller also resolves the
+ * standing toast when a later intention *lands* (`search/row-writes.ts`): a switch-back
+ * that landed has superseded the lost *Seen it all* it undid.
  *
  * `resolve()` is what takes the superseded one down, and that is the method's documented
  * second meaning rather than a borrowed one: *the write landed, **or the caller no longer
@@ -75,16 +84,29 @@ import {
  * a supersession rule copied into two components is a rule that gets fixed in one of them.
  */
 
-/** The toast standing for a lost add, and which of the two adds it is about. */
+/**
+ * What the reader asked for with a press — issue #550 grew this from a boolean to three.
+ *
+ *  - `add` — put the title in the library, and nothing else.
+ *  - `seen-all` — record it as watched: the unowned title page's *I've seen it* (which
+ *    adds and records in one write) and Search's *Seen it all* / *Seen it* chip (which
+ *    records on an entry the add already made).
+ *  - `switch-back` — take a `seen-all` back: Search's *Not started* chip, or *Seen it*
+ *    pressed off. The unowned title page has no such control.
+ *
+ * Which one is the reader's *latest* is what a toast is about; see `raiseLostAdd`.
+ */
+export type AddIntention = "add" | "seen-all" | "switch-back";
+
+/** The toast standing for a lost add, and which intention it is about. */
 export interface StandingAdd {
   readonly handle: WriteFailureHandle;
-  /** `true` for *Add — watched*, `false` for the plain add. */
-  readonly watched: boolean;
+  readonly intention: AddIntention;
 }
 
 /** One lost add, in the vocabulary the toast is raised from. */
 export interface LostAdd {
-  readonly watched: boolean;
+  readonly intention: AddIntention;
   /** Named in full — the toast writes its own sentences from this and takes no message. */
   readonly title: string;
   readonly reference: string | null;
@@ -105,10 +127,10 @@ export function raiseLostAdd(
   store: WriteFailureStore = writeFailures,
 ): StandingAdd {
   if (standing !== null && standing.handle.standing()) {
-    // The same add lost again. A retry that fails again has nothing new to say.
-    if (standing.watched === lost.watched) return standing;
+    // The same intention lost again. A retry that fails again has nothing new to say.
+    if (standing.intention === lost.intention) return standing;
 
-    // The other add lost — the reader has moved on, and so does the toast.
+    // A different intention lost — the reader has moved on, and so does the toast.
     standing.handle.resolve();
   }
 
@@ -121,6 +143,6 @@ export function raiseLostAdd(
       reference: lost.reference,
       retry: lost.retry,
     }),
-    watched: lost.watched,
+    intention: lost.intention,
   };
 }

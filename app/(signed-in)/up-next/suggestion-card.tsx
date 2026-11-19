@@ -30,7 +30,7 @@ export function SuggestionCard({
   result: MarkedResult;
   aboveFold: boolean;
 }) {
-  const { inLibrary, attempt } = useCatalogueAdd(result);
+  const { inLibrary, add } = useCatalogueAdd(result);
   const href = `/catalogue/${result.kind}/${result.tmdbId}`;
 
   return (
@@ -54,7 +54,7 @@ export function SuggestionCard({
       ) : (
         <button
           type="button"
-          onClick={() => void attempt(false)}
+          onClick={() => void add()}
           aria-label={`Add ${result.name} to your library`}
           className={`pressable [--press-register:1] mt-1 ${PILL_TARGET}`}
         >

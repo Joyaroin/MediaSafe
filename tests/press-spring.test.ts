@@ -939,6 +939,9 @@ const PRESS_CALL_SITES: Readonly<Record<string, readonly Register[]>> = {
   // nothing else, at the register that makes 44px move as much as 262px does.
   "app/(signed-in)/library/watch-mark-motion.tsx": ["recording"],
   "app/(signed-in)/search/catalogue-result.tsx": ["control"],
+  // Search's follow-up chips (#550) — one `Chip` component, so one call site for the three
+  // kinds (radio, toggle, plain button): 44px targets with a 36px face, like the Add pill.
+  "app/(signed-in)/search/where-up-to.tsx": ["control"],
   // The search field's ✕ — clears the query and keeps the focus in the field.
   "app/(signed-in)/search/search-surface.tsx": ["control"],
   // *Undo* while an Up next card holds after a mark — a bare pill inside the card.
@@ -1056,6 +1059,7 @@ describe("every pressable call site declares a register or is deliberately left 
     expect(client).toEqual([
       "app/(signed-in)/search/catalogue-result.tsx",
       "app/(signed-in)/search/search-surface.tsx",
+      "app/(signed-in)/search/where-up-to.tsx",
       "app/(signed-in)/up-next/film-row.tsx",
       "app/(signed-in)/up-next/suggestion-card.tsx",
       "app/(signed-in)/up-next/up-next-card.tsx",
