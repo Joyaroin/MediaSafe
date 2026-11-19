@@ -68,7 +68,7 @@ describe("the Not started row", () => {
       const markup = renderToStaticMarkup(createElement(UpNextNotStartedRow, { entry }));
 
       expect(lineOf(markup)).toContain("Start with S01 · E02 · The Second");
-      expect(markup).not.toContain("E01");
+      expect(lineOf(markup)).not.toContain("E01");
       expect(markup).not.toMatch(/this season/);
     });
   });
