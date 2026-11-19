@@ -164,10 +164,13 @@ Local development uses the same database driver as production: the WebSocket pro
 [`docker-compose.yml`](docker-compose.yml) lets Neon's serverless driver talk to a plain local
 Postgres, so there is one data path everywhere.
 
+`next dev` reads `.env.development.local` ahead of `.env`, so a `DATABASE_URL` in that file
+overrides the one in `.env`; only a variable already set in the shell beats it.
+
 ```bash
 npm run typecheck && npm run lint
-DOTENV_CONFIG_PATH=.env.development.local npx vitest run   # full suite, against local Postgres
-npm run test:e2e                                           # Playwright, local only
+npx vitest run           # full suite; reads .env (written by provision.sh), needs the local Docker Postgres
+npm run test:e2e         # Playwright, local only
 ```
 
 ## Repository layout
