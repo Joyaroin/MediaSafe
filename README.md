@@ -18,8 +18,9 @@ k3s cluster in my home lab, deployed with Argo CD and reached through a Cloudfla
 
 > **Status: actively developed and deployed.** Every merge to `main` ships to staging
 > automatically; production is promoted by hand. 800+ commits, 200+ merged pull requests and
-> 140+ test files since August 2026. The library in these screenshots is my real one —
-> 460 shows and ~19,500 watched episodes carried over from the previous version of this app.
+> 140+ test files since August 2026. The library in the Tonight and You screenshots is my real
+> one — 460 shows and ~19,500 watched episodes carried over from the previous version of this app.
+> The Library screenshot is a seeded demo library of real titles with made-up watching.
 
 You can sign in at [mediasafe.space](https://mediasafe.space) with any Google account; a new
 account starts empty and can add titles from search.
@@ -44,7 +45,7 @@ account starts empty and can add titles from search.
 - Works as an installable app on a phone, in light and dark.
 
 <p align="center">
-  <img src="docs/screenshots/library.desktop.dark.jpg" alt="Library: a poster grid of shows, with a Shows, Films and Lists switch and a sort control" width="49%">
+  <img src="docs/screenshots/library.desktop.dark.jpg" alt="Library: shows grouped into sections by where each one stands — Watching, Not started and Waiting for new episodes — each a row of posters with a count, under a Shows, Films and Lists switch" width="49%">
   <img src="docs/screenshots/you.desktop.light.jpg" alt="You: watch time, totals and a year of watching as a heatmap, in the light theme" width="49%">
 </p>
 
