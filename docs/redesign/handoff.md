@@ -324,7 +324,7 @@ Reference: `search.dark`, `search.light`.
 Reference: `library.dark`, `library.light`, `library-empty.*`, `desktop-library.*`.
 
 - Screen heading, the Shows / Films / Lists segmented control, a row of filter chips (All, Watching, Caught up, Finished, Watchlist, Dropped) with a round sort button pinned on the right, then a three-column poster grid.
-- Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Watchlist", "Dropped", "Caught up".
+- Poster cell as in section 6. The state line reads "S1 E2 up next", "Finished", "Not started", "Waiting for new episodes", "Dropped" for a show, and "To watch", "Watched", "Dropped" for a film (`stateLabel(kind, state)` in `library-state.ts`, issue #555). The database values do not change.
 - **Data and behaviour** are unchanged: `cachedLibraryEntries()`, `?sort=`, `?view=`, hold to select and the selection action bar. A selected poster keeps its existing outline.
 - **Empty library:** hide the chips; show the outlined panel "Your library is empty" with filled "Bring your library in" and plain "Search films and shows". An account that has not answered the import offer is still redirected to `/welcome`.
 - **No films yet / no shows yet:** the existing `NothingOfThisKind` wording in the outlined panel with a quiet "Search films and shows".
@@ -371,7 +371,7 @@ Reference: `title-show.dark`, `title-show.light`.
 
 Reference: `title-film.dark`, `title-film.light`.
 
-- The same header with no progress bar: state tag ("Watchlist"), name, "Film · 2021 · 155 min" (from `titleMetaLine`).
+- The same header with no progress bar: state tag ("To watch"), name, "Film · 2021 · 155 min" (from `titleMetaLine`).
 - Filled "Mark watched". Once watched, the action is the existing rewatch label, drawn quiet.
 - Synopsis, then "Where to watch" as a row of static chips, then "Cast" as rows (name left, role right in Meta), then the existing TMDB attribution, which is below the fold on the board.
 - A title the reader does not hold (`/catalogue/...`) uses the same layout with "Add" as the filled action.

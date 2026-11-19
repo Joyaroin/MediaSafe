@@ -24,8 +24,8 @@ export type PrimaryAction =
  * - Not in the library: add it.
  * - A show with an episode to watch: mark that episode — even one given up on, because
  *   watching it again is what clears giving up.
- * - A show with nothing left to watch: no main button; the status says *Caught up* or
- *   *Finished* instead.
+ * - A show with nothing left to watch: no main button; the status says
+ *   *Waiting for new episodes* or *Finished* instead.
  * - A film: mark it watched, or once it has been, record another watch.
  */
 export function titlePrimaryAction(title: {

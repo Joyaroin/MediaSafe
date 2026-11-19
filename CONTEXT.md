@@ -51,6 +51,19 @@ _Avoid_: Watchlist (the wider state, which includes unreleased films)
 A show in the reader's library with no watches that isn't Dropped.
 _Avoid_: Watchlist (for a show), New. "Watchlist" stays the database state.
 
+**Waiting for new episodes**:
+The Library section, and the state tag, for a show that is caught up: every aired episode is
+watched and more are expected. The database value stays `caught_up`. A caught-up show whose
+next episode has a date is also *Coming back*; the section is the state, *Coming back* is the
+schedule.
+_Avoid_: Caught up (in the UI)
+
+**To watch**:
+The UI's word for a film in the reader's library with no watch — the database state
+`watchlist`, which a show with no watches shares and the UI calls *Not started*. A released
+one is also in *Films to watch*; an unreleased one is in Library's Coming soon.
+_Avoid_: Watchlist (in the UI)
+
 **Coming back**:
 A title whose Up next episode has not aired. It appears in Coming up, never in Continue
 watching.
