@@ -35,8 +35,11 @@ import { TitleDetailView } from "./title-detail-view";
  */
 export async function TitleDetailBody({
   entryId,
+  fromSearch,
 }: {
   readonly entryId: string;
+  /** The reader arrived from Search's "Pick an episode" (`?from=search`, #553). */
+  readonly fromSearch: boolean;
 }) {
   const userId = await requireUserId();
   const [detail, zone] = await Promise.all([
@@ -52,6 +55,7 @@ export async function TitleDetailBody({
           nothing about the streaming itself changed. */}
       <TitleDetailView
         detail={detail}
+        fromSearch={fromSearch}
         today={readerDay(zone, new Date())}
         synopsis={<SynopsisStreamed userId={userId} kind={detail.kind} tmdbId={detail.tmdbId} />}
         watchProviders={

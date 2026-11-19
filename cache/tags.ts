@@ -7,6 +7,8 @@ import {
   libraryEntryIdForEpisode,
   libraryEntryIdForTitle,
   listLibraryEntries,
+  listLibrarySection,
+  listLibrarySections,
   listLists,
   listNotStartedShows,
   listUpcomingEpisodes,
@@ -16,6 +18,8 @@ import {
   listYouRails,
   type AccountFigures,
   type LibraryEntryRow,
+  type LibrarySectionEntry,
+  type LibrarySectionSummary,
   type LibraryStateGroupEntry,
   type ListDetailRow,
   type ListOverview,
@@ -27,6 +31,7 @@ import {
   type UserId,
   type YouRails,
 } from "@/db/access";
+import type { LibrarySection } from "@/db/library-section";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "@/db/library-sort";
 import type { TitleKind } from "@/tmdb/mirror";
 
@@ -229,6 +234,16 @@ interface CachedReadShape {
  */
 export const CACHED_READS = {
   listLibraryEntries: { cachedAs: "library", readsCurrentDate: true },
+  /**
+   * Issue #541's Library sections. `library`, as `listLibraryEntries`: the same account's
+   * entries, grouped. Every write that moves an entry between sections (a watch, a drop, an
+   * add) already busts `library`, so there is no new `INVALIDATES` key. The clock is in the
+   * key because *released* (a film's To watch against Coming soon) and *caught up* are
+   * decided against `current_date`.
+   */
+  listLibrarySections: { cachedAs: "library", readsCurrentDate: true },
+  /** One section's full grid — the same fact and the same clock, keyed by section and sort. */
+  listLibrarySection: { cachedAs: "library", readsCurrentDate: true },
   /** *Is this title in my library* — `library_entry` joined to `title`, by account. No
    *  derived view, so no clock: an add or a remove is the only thing that changes it. */
   libraryEntryIdForTitle: { cachedAs: "library", readsCurrentDate: false },
@@ -507,6 +522,43 @@ export function cachedLibraryEntries(
   );
 
   return read(userId, sort);
+}
+
+/**
+ * Library's sections view (#541) — every section's first twelve and its true count. One
+ * entry per account per day, tagged `library` with the grid it sits beside.
+ */
+export function cachedLibrarySections(
+  userId: UserId,
+): Promise<readonly LibrarySectionSummary[]> {
+  const read = unstable_cache(
+    listLibrarySections,
+    ["listLibrarySections", userId, serverDay()],
+    { tags: [tagFor("library", userId)] },
+  );
+
+  return read(userId);
+}
+
+/**
+ * One section's full grid (#541), for `?section=`. The section and the sort are arguments,
+ * so each pair is its own entry (`unstable_cache` adds `JSON.stringify(args)` to the key):
+ * a section's own order (`null`) and the same section under a sort never share one. They
+ * all carry the `library` tag, so one `updateTag` clears every pair, as it does the four
+ * sorts of `cachedLibraryEntries`.
+ */
+export function cachedLibrarySection(
+  userId: UserId,
+  section: LibrarySection,
+  sort: LibrarySort | null,
+): Promise<readonly LibrarySectionEntry[]> {
+  const read = unstable_cache(
+    listLibrarySection,
+    ["listLibrarySection", userId, serverDay()],
+    { tags: [tagFor("library", userId)] },
+  );
+
+  return read(userId, section, sort);
 }
 
 /**

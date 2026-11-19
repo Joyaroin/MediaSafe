@@ -27,6 +27,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { user } from "@/auth-schema";
 
 import { type Executor, getDb } from "./client";
+import { LIBRARY_SECTIONS, type LibrarySection } from "./library-section";
 import { DEFAULT_LIBRARY_SORT, type LibrarySort } from "./library-sort";
 import { episode, libraryEntry, list, listMembership, title, titleReconciliation, watch } from "./tables";
 import {
@@ -3157,26 +3158,7 @@ export async function listLibraryEntries(
   executor: Executor = getDb(),
 ): Promise<readonly LibraryEntryRow[]> {
   const rows = await executor
-    .select({
-      libraryEntryId: libraryEntry.id,
-      titleId: title.id,
-      name: title.name,
-      releaseYear: title.releaseYear,
-      posterPath: title.posterPath,
-      posterColour: title.posterColour,
-      kind: title.kind,
-      state: libraryEntryState.state,
-      upNextEpisodeId: libraryEntryUpNext.episodeId,
-      upNextEpisodeName: episode.name,
-      upNextSeasonNo: episode.seasonNo,
-      upNextEpisodeNo: episode.episodeNo,
-      // Issue #324: the library card's progress bar. Joined here, beside `remaining`,
-      // for the reason this function's own docblock gives — 472 cells asking for
-      // themselves is the request storm this query exists to avoid, and a bar is one
-      // more fact about a cell, not a reason for a second query.
-      watched: libraryEntryReleaseProgress.watched,
-      released: libraryEntryReleaseProgress.released,
-    })
+    .select(LIBRARY_ENTRY_COLUMNS)
     .from(libraryEntry)
     .innerJoin(title, eq(title.id, libraryEntry.titleId))
     .innerJoin(
@@ -3196,7 +3178,52 @@ export async function listLibraryEntries(
     .where(ownedBy(userId, libraryEntry))
     .orderBy(...orderByFor(sort));
 
-  return rows.map((row) => ({
+  return rows.map(libraryEntryRowFrom);
+}
+
+/**
+ * The columns `listLibraryEntries` selects, and the section reads below select the same
+ * ones: a section's grid prints the same cell as the A–Z grid does. Shared so the two
+ * cannot drift into printing different facts about one poster.
+ */
+const LIBRARY_ENTRY_COLUMNS = {
+  libraryEntryId: libraryEntry.id,
+  titleId: title.id,
+  name: title.name,
+  releaseYear: title.releaseYear,
+  posterPath: title.posterPath,
+  posterColour: title.posterColour,
+  kind: title.kind,
+  state: libraryEntryState.state,
+  upNextEpisodeId: libraryEntryUpNext.episodeId,
+  upNextEpisodeName: episode.name,
+  upNextSeasonNo: episode.seasonNo,
+  upNextEpisodeNo: episode.episodeNo,
+  // Issue #324: the library card's progress bar. Joined here, beside `remaining`,
+  // for the reason `listLibraryEntries`' own docblock gives — 472 cells asking for
+  // themselves is the request storm this query exists to avoid, and a bar is one
+  // more fact about a cell, not a reason for a second query.
+  watched: libraryEntryReleaseProgress.watched,
+  released: libraryEntryReleaseProgress.released,
+};
+
+function libraryEntryRowFrom(row: {
+  libraryEntryId: string;
+  titleId: string;
+  name: string;
+  releaseYear: number | null;
+  posterPath: string | null;
+  posterColour: string | null;
+  kind: string;
+  state: string;
+  upNextEpisodeId: string | null;
+  upNextEpisodeName: string | null;
+  upNextSeasonNo: number | null;
+  upNextEpisodeNo: number | null;
+  watched: number | null;
+  released: number | null;
+}): LibraryEntryRow {
+  return {
     libraryEntryId: row.libraryEntryId,
     titleId: row.titleId,
     name: row.name,
@@ -3227,7 +3254,214 @@ export async function listLibraryEntries(
       row.watched === null || row.released === null
         ? null
         : { watched: row.watched, released: row.released },
-  }));
+  };
+}
+
+/**
+ * How many posters a section shows in its row on Library — the spec's **12**, on phone and
+ * desktop. Exported from here so the surface (#552) imports it and the number is written
+ * once. `listLibrarySections` caps each section at it; `listLibrarySection` does not.
+ */
+export const SECTION_ROW_SIZE = 12;
+
+/**
+ * A library entry as a section prints it: the grid's cell, plus the three facts a section's
+ * order is made of. They are selected so the surface can say *why* an entry sits where it
+ * does, and so the order is checkable from the rows alone.
+ */
+export interface LibrarySectionEntry extends LibraryEntryRow {
+  /** The entry's latest **dated** watch, as an ISO instant — `null` when it has none.
+   *  A string, not a `Date`: these rows go through `unstable_cache`, which is JSON. */
+  readonly lastWatchedAt: string | null;
+  /** The Up next episode's `air_date` (`library_entry_up_next`) — `null` when there is no
+   *  next episode or it has no date. */
+  readonly nextAirDate: string | null;
+  /** A film's `release_date`; `null` for a show and for a film with no date. */
+  readonly releaseDate: string | null;
+}
+
+/** One section with its true size and its first `SECTION_ROW_SIZE` entries. */
+export interface LibrarySectionSummary {
+  readonly section: LibrarySection;
+  /** How many entries the section holds — not how many `entries` holds. */
+  readonly count: number;
+  readonly entries: readonly LibrarySectionEntry[];
+}
+
+/**
+ * Which entries a section holds — the spec's membership, as a `where`.
+ *
+ * - Shows: Watching = `watching`; Not started = `watchlist`; Waiting = `caught_up`;
+ *   Finished = `finished`; Dropped = `abandoned`.
+ * - Films: To watch = a `watchlist` film that is released (`listWatchlistFilms`'s test);
+ *   Coming soon = a `watchlist` film that is not, **including one with no `release_date`**
+ *   (CONTEXT *Released*: no date is not released); Watched = `finished`; Dropped =
+ *   `abandoned`, which includes a film that has a watch, because `abandoned` is the view's
+ *   first rule.
+ *
+ * Every entry is in exactly one section: the five states partition a kind, and the two
+ * `watchlist` film sections split on one predicate and its negation.
+ */
+function sectionWhere(section: LibrarySection): SQL {
+  const kind = eq(title.kind, section.kind satisfies TitleKind);
+  const inState = (state: LibraryState) => eq(libraryEntryState.state, state);
+  const released = and(isNotNull(title.releaseDate), lte(title.releaseDate, sql`current_date`));
+  // The negation is written out, not `not(released)`: SQL's `not (null <= date)` is null, and
+  // a null predicate drops the row — which is exactly the film with no date it must keep.
+  const unreleased = or(isNull(title.releaseDate), gt(title.releaseDate, sql`current_date`));
+
+  const where =
+    section.kind === "show"
+      ? {
+          watching: inState("watching"),
+          "not-started": inState("watchlist"),
+          waiting: inState("caught_up"),
+          finished: inState("finished"),
+          dropped: inState("abandoned"),
+        }[section.slug]
+      : {
+          "to-watch": and(inState("watchlist"), released),
+          "coming-soon": and(inState("watchlist"), unreleased),
+          watched: inState("finished"),
+          dropped: inState("abandoned"),
+        }[section.slug];
+
+  return and(kind, where) ?? sql`false`;
+}
+
+/**
+ * A section's own order — the spec's, in SQL (`library/page.tsx`'s rule against client-side
+ * re-sorting stays). Every one ends `lower(name)` then the entry id, so two loads agree
+ * where a whole import shares one `added_at`.
+ *
+ * | Section | Order |
+ * |---|---|
+ * | Watching, Finished, Watched, Dropped | last dated watch, newest first; no dated watch last |
+ * | Not started, To watch | `added_at`, newest first |
+ * | Waiting | the Up next episode's `air_date`, soonest first; no date, or no next episode, last |
+ * | Coming soon | `release_date`, soonest first; no date last |
+ *
+ * Dropped has no order in the spec; it takes the watching order — a title you gave up on
+ * most recently is the one you are likeliest to want back.
+ */
+function sectionOrderBy(section: LibrarySection): SQL[] {
+  const byName = [sql`lower(${title.name})`, sql`${libraryEntry.id}`];
+  const recentlyWatched = sql`${LAST_DATED_WATCH} desc nulls last`;
+
+  if (section.kind === "show") {
+    switch (section.slug) {
+      case "not-started":
+        return [sql`${libraryEntry.addedAt} desc`, ...byName];
+      case "waiting":
+        return [sql`${episode.airDate} asc nulls last`, ...byName];
+      case "watching":
+      case "finished":
+      case "dropped":
+        return [recentlyWatched, ...byName];
+    }
+  }
+  switch (section.slug) {
+    case "to-watch":
+      return [sql`${libraryEntry.addedAt} desc`, ...byName];
+    case "coming-soon":
+      return [sql`${title.releaseDate} asc nulls last`, ...byName];
+    case "watched":
+    case "dropped":
+      return [recentlyWatched, ...byName];
+  }
+}
+
+/** The entry's latest dated watch. `max` skips nulls, so an undated watch never counts. */
+const LAST_DATED_WATCH = sql`(
+  select max(${watch.watchedAt}) from ${watch} where ${watch.libraryEntryId} = ${libraryEntry.id}
+)`;
+
+/**
+ * One section's rows and its true size, in one query: `count(*) over ()` is evaluated before
+ * `limit`, so the total survives the cap. A section with no rows has a total of zero, and
+ * that is the only way `total` is absent — it is not a failure.
+ *
+ * `sort` of `null` is the section's own order; a `LibrarySort` replaces it, for the full
+ * grid's sort control (#552).
+ */
+async function readSection(
+  executor: Executor,
+  userId: UserId,
+  section: LibrarySection,
+  sort: LibrarySort | null,
+  limit: number | null,
+): Promise<LibrarySectionSummary> {
+  const query = executor
+    .select({
+      ...LIBRARY_ENTRY_COLUMNS,
+      lastWatchedAt: sql<Date | null>`${LAST_DATED_WATCH}`.mapWith(watch.watchedAt),
+      nextAirDate: episode.airDate,
+      releaseDate: title.releaseDate,
+      total: sql<number>`count(*) over ()`.mapWith(Number),
+    })
+    .from(libraryEntry)
+    .innerJoin(title, eq(title.id, libraryEntry.titleId))
+    .innerJoin(libraryEntryState, eq(libraryEntryState.libraryEntryId, libraryEntry.id))
+    .leftJoin(libraryEntryUpNext, eq(libraryEntryUpNext.libraryEntryId, libraryEntry.id))
+    .leftJoin(episode, eq(episode.id, libraryEntryUpNext.episodeId))
+    .leftJoin(libraryEntryRemaining, eq(libraryEntryRemaining.libraryEntryId, libraryEntry.id))
+    .leftJoin(
+      libraryEntryReleaseProgress,
+      eq(libraryEntryReleaseProgress.libraryEntryId, libraryEntry.id),
+    )
+    .where(and(ownedBy(userId, libraryEntry), sectionWhere(section)))
+    .orderBy(...(sort === null ? sectionOrderBy(section) : orderByFor(sort)));
+
+  const rows = await (limit === null ? query : query.limit(limit));
+
+  return {
+    section,
+    count: rows.length === 0 ? 0 : rows[0].total,
+    entries: rows.map((row) => ({
+      ...libraryEntryRowFrom(row),
+      lastWatchedAt: row.lastWatchedAt === null ? null : row.lastWatchedAt.toISOString(),
+      nextAirDate: row.nextAirDate,
+      releaseDate: row.releaseDate,
+    })),
+  };
+}
+
+/**
+ * Library's sections view — every section of both kinds, each with its true count and its
+ * first `SECTION_ROW_SIZE` entries in the section's own order (issue #541). Empty sections
+ * are returned, with a count of zero: hiding them is the surface's call, and the empty-library
+ * state is a fact only the surface can read off all nine at once.
+ *
+ * Nine queries, run together, rather than one: the nine orders differ, and a single query
+ * would need a window per order or a client-side re-sort, which `library/page.tsx` refuses.
+ * Each is bounded by `SECTION_ROW_SIZE`, and none runs per entry, so this is not the N+1
+ * `listLibraryEntries`' docblock rules out.
+ *
+ * No `try`: a failed read throws into the library's error boundary, as `listLibraryEntries`.
+ * `cache/tags.ts`'s `cachedLibrarySections` wraps it, under the `library` tag.
+ */
+export async function listLibrarySections(
+  userId: UserId,
+  executor: Executor = getDb(),
+): Promise<readonly LibrarySectionSummary[]> {
+  return Promise.all(
+    LIBRARY_SECTIONS.map((section) => readSection(executor, userId, section, null, SECTION_ROW_SIZE)),
+  );
+}
+
+/**
+ * One section's full grid (issue #541), for `?section=`. `sort` of `null` is the section's
+ * own order; a `LibrarySort` is the sort control's choice (#552 shows it only here), and it
+ * replaces the section's order whole. An empty section is an empty array, a successful read.
+ * Cached by `cachedLibrarySection`, whose key carries the section and the sort.
+ */
+export async function listLibrarySection(
+  userId: UserId,
+  section: LibrarySection,
+  sort: LibrarySort | null,
+  executor: Executor = getDb(),
+): Promise<readonly LibrarySectionEntry[]> {
+  return (await readSection(executor, userId, section, sort, null)).entries;
 }
 
 /**
