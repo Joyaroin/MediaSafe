@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { searchPhaseFor, groupByKind } from "@/app/(signed-in)/search/search-groups";
+import {
+  foldLabel,
+  foldResults,
+  searchPhaseFor,
+  groupByKind,
+} from "@/app/(signed-in)/search/search-groups";
 import type { MarkedResult } from "@/app/(signed-in)/search/actions";
 
 /**
@@ -102,5 +107,57 @@ describe("regrouping remembered results", () => {
       show: found(result("show", 1)),
       film: found(result("film", 2), result("film", 3)),
     });
+  });
+});
+
+/**
+ * Issue #554 — a result with neither a year nor a poster tells the reader nothing to pick
+ * it by, so each kind's group folds those into one "N more results" line. A result with
+ * either one stays where it is.
+ */
+describe("folding results with no year and no poster", () => {
+  const bare = (kind: "show" | "film", tmdbId: number): MarkedResult =>
+    ({ ...result(kind, tmdbId), releaseYear: null, posterPath: null }) as MarkedResult;
+  const withPoster = (tmdbId: number): MarkedResult =>
+    ({ ...result("show", tmdbId), releaseYear: null, posterPath: "/p.jpg" }) as MarkedResult;
+  const withYear = (tmdbId: number): MarkedResult =>
+    ({ ...result("show", tmdbId), releaseYear: 1999, posterPath: null }) as MarkedResult;
+
+  it("folds nothing when every result has a year or a poster", () => {
+    const results = [result("show", 1), withPoster(2), withYear(3)];
+
+    expect(foldResults(results)).toEqual({ shown: results, folded: [] });
+  });
+
+  it("folds one bare result, and still calls it a fold", () => {
+    expect(foldResults([result("show", 1), bare("show", 2)])).toEqual({
+      shown: [result("show", 1)],
+      folded: [bare("show", 2)],
+    });
+  });
+
+  it("folds several bare results, keeping each side's order", () => {
+    expect(
+      foldResults([bare("show", 1), result("show", 2), bare("show", 3), withYear(4), bare("show", 5)]),
+    ).toEqual({
+      shown: [result("show", 2), withYear(4)],
+      folded: [bare("show", 1), bare("show", 3), bare("show", 5)],
+    });
+  });
+
+  it("does not fold a result that has a year but no poster, or a poster but no year", () => {
+    expect(foldResults([withYear(1), withPoster(2)]).folded).toEqual([]);
+  });
+
+  it("leaves an all-bare list entirely folded, with nothing shown", () => {
+    expect(foldResults([bare("film", 1), bare("film", 2)])).toEqual({
+      shown: [],
+      folded: [bare("film", 1), bare("film", 2)],
+    });
+  });
+
+  it("words the line for one and for several", () => {
+    expect(foldLabel(1)).toBe("1 more result");
+    expect(foldLabel(3)).toBe("3 more results");
   });
 });

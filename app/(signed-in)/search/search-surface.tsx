@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SEARCH_START, type SearchPlace } from "@/app/restoration";
 import { keepSearch, rememberedSearch } from "@/app/restoration-memory";
@@ -10,6 +10,8 @@ import { catalogueKeyOf } from "@/tmdb/mirror";
 import { CatalogueResultRow } from "./catalogue-result";
 import { searchCatalogueAction, type MarkedResult } from "./actions";
 import {
+  foldLabel,
+  foldResults,
   groupByKind,
   searchPhaseFor,
   type BothKinds,
@@ -312,7 +314,7 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
           {group.state.kind === "failed" ? (
             <ReadFailure reference={group.state.reference} retry={retry} />
           ) : (
-            <Results results={group.state.results} />
+            <Results kind={group.kind} results={group.state.results} />
           )}
         </section>
       ))}
@@ -320,19 +322,42 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
   );
 }
 
-function Results({ results }: { results: readonly MarkedResult[] }) {
+function Results({ kind, results }: { kind: string; results: readonly MarkedResult[] }) {
+  const { shown, folded } = useMemo(() => foldResults(results), [results]);
+  // Opened for this list of folded results only: a new search hands over a new list, and
+  // its fold starts closed again.
+  const [openFor, setOpenFor] = useState<readonly MarkedResult[] | null>(null);
+  const open = openFor === folded;
+  const rows = open ? [...shown, ...folded] : shown;
+
   return (
-    // Rows on the page with a hairline between each, not cards (Charcoal §8.3): the
-    // poster lands on the gutter like every other row in the redesign. `stagger-rise`
-    // (issue #336) is the rhythm `recommendation-rail.tsx`'s track already runs.
-    <ol className="stagger-rise flex flex-col divide-y divide-hair">
-      {results.map((result, index) => (
-        <CatalogueResultRow
-          key={catalogueKeyOf(result)}
-          result={result}
-          aboveFold={index === 0}
-        />
-      ))}
-    </ol>
+    <>
+      {/* Rows on the page with a hairline between each, not cards (Charcoal §8.3): the
+          poster lands on the gutter like every other row in the redesign. `stagger-rise`
+          (issue #336) is the rhythm `recommendation-rail.tsx`'s track already runs. */}
+      <ol id={`search-${kind}-results`} className="stagger-rise flex flex-col divide-y divide-hair">
+        {rows.map((result, index) => (
+          <CatalogueResultRow
+            key={catalogueKeyOf(result)}
+            result={result}
+            aboveFold={index === 0}
+          />
+        ))}
+      </ol>
+      {/* Results with neither a year nor a poster (issue #554). One line, opened in place:
+          nothing leaves the screen, the rows it reveals are ordinary rows, and pressing it
+          again folds them back. */}
+      {folded.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setOpenFor(open ? null : folded)}
+          aria-expanded={open}
+          aria-controls={`search-${kind}-results`}
+          className="flex min-h-11 w-full items-center text-item font-medium text-dim hover:text-text"
+        >
+          {foldLabel(folded.length)}
+        </button>
+      ) : null}
+    </>
   );
 }

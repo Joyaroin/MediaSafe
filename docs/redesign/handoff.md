@@ -314,6 +314,7 @@ Reference: `search.dark`, `search.light`.
 - Screen heading, a 48px field with a leading icon and a clear button. Results are grouped under serif Headings "Shows" and "Films".
 - Each result: 44 by 66 poster, the title as a link, "2024 · Show", and beneath it a `raised` pill "I've seen it all" (shows) or "I've seen it" (films). On the right, a filled pill "Add". A title already held shows a tick and "In your library" as a link instead of both actions.
 - Adding is optimistic and uses the existing lost-write toast (`use-catalogue-add.ts`).
+- Within each kind, results with neither a year nor a poster fold into one "N more results" line ("1 more result" for one), a button with `aria-expanded` that opens them in place (`search-groups.ts`'s `foldResults`). A result with either one is not folded.
 - **States** carry over unchanged: before typing (recommendation rails), loading, no results, read failed inline (`rail-read-failure.tsx`, `search/error.tsx`).
 
 ### 8.4 Library

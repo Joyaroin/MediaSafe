@@ -56,6 +56,8 @@ describe("search results arrive in the same rhythm as the rail beside them", () 
     // The motion is a class on markup already there; the discriminated union that decides
     // what renders is untouched.
     expect(SEARCH_SURFACE).toContain('<NoResults query={phase.answer.query} />');
-    expect(SEARCH_SURFACE).toContain("<Results results={group.state.results} />");
+    expect(SEARCH_SURFACE).toContain(
+      "<Results kind={group.kind} results={group.state.results} />",
+    );
   });
 });
