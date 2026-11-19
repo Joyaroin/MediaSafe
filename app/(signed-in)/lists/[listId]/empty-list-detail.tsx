@@ -12,7 +12,7 @@ export function EmptyListDetail() {
       <h2 className="bill-title text-bill-lg text-text">Nothing here yet</h2>
 
       <p className="mt-2 max-w-[62ch] text-note leading-relaxed text-dim">
-        Open any title and choose &ldquo;Add to list&rdquo; to put it
+        Open any title and choose &ldquo;List&rdquo; to put it
         here.
       </p>
     </section>

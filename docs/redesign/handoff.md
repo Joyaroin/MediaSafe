@@ -362,7 +362,7 @@ Reference: `lists.*`, `list.*`, and the list cells in `states`.
 - Icons view is the Library poster grid.
 - Rename happens in place of the name, as `list-name-heading.tsx` does now.
 - Delete asks first in a dialog: "Delete “Comfort shows”?" / "It holds 8 titles. Nothing about those shows changes. This only removes the list itself." / danger "Delete list", plain "Cancel".
-- Empty list: "Nothing here yet" / "Open any title and choose “Add to list” to put it here."
+- Empty list: "Nothing here yet" / "Open any title and choose “List” to put it here."
 
 **Add to a list** (from a title) opens from a quiet compact button labelled "List" beside its icon (accessible name "List: add “The Bear” to a list"), and is a sheet: Heading "Add “The Bear” to a list", the new-list field, one row per list with a tick that fills when the title is on it, and a quiet "Done". Behaviour is `add-to-list-control.tsx`'s.
 
