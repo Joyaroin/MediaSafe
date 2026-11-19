@@ -116,7 +116,8 @@ flowchart LR
 ```
 
 1. CI runs on every pull request: typecheck, ESLint (including this repo's own rules), a
-   production build, and the suites that need no database.
+   production build, squawk over the migration SQL, and the test files that need no Postgres
+   (the cache handler's runs against a Valkey service container).
 2. A merge to `main` builds a container image tagged with the commit SHA, pushes it to GHCR,
    and commits that tag to the gitops repo's staging values.
 3. Argo CD notices the commit, runs pending database migrations as a Job **before** any new pod
