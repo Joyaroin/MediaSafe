@@ -13,10 +13,7 @@ import * as schema from "@/db/schema";
  *
  * ── A show, watched partway, rather than a film or an unwatched one ─────────────────────
  *
- * The library grid opens from any state, but the Up next rail's "next episodes" list —
- * `up-next-episode-rail.tsx`, `press="episode"`, the second entry path this ticket's
- * acceptance criteria name — only ever lists a title standing at *watching*
- * (`db/access.ts`'s `ONGOING_RAIL_SIZE` slice, `db/views.ts`'s `library_entry_state`). One
+ * One
  * seed answers both: two aired episodes, the first watched and the second not, is the
  * minimum shape that state requires. Seeding one show once and opening it from both
  * surfaces, in two separate tests, is what proves the morph pairs on both entry paths —
@@ -246,8 +243,9 @@ export async function seedShowWithSeason(
 
 /**
  * One title in the library with no watch — *Not started* for a show, *To watch* for a film
- * (issue #555's words for the database's `watchlist`). A film is released last year so it
- * is *To watch* rather than coming soon; a show gets one aired episode so it is a real show.
+ * (issue #555's words for the database's `watchlist`). A film's release date is fixed at
+ * 2024-01-01, in the past, so it is *To watch* rather than coming soon; a show gets one
+ * aired episode so it is a real show.
  */
 export async function seedUnwatchedTitle(
   userId: string,

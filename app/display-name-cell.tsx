@@ -7,12 +7,12 @@ import { displayName } from "./display-name";
 /**
  * The display name as text, and nothing else — issue #179.
  *
- * `masthead.tsx` and `sidebar.tsx` each draw their own cell around this: the phone's
- * capped `max-w-[9rem]`, the rail's `mt-auto` foot. Both are `truncate`, both are inert,
- * and neither of those facts belongs in here. What this owns is the one question the
- * server cannot answer after a save — *has Settings changed this since the page loaded* —
- * so it renders a bare string and leaves the markup to the two callers that have opinions
- * about it.
+ * `sidebar.tsx` draws its own cell around this: the rail's `mt-auto` foot, `truncate` and
+ * inert, and neither of those facts belongs in here. (The deleted `masthead.tsx` drew the
+ * phone's, capped `max-w-[9rem]`, until #375 removed it; the sidebar is the only caller
+ * now.) What this owns is the one question the server cannot answer after a save — *has
+ * Settings changed this since the page loaded* — so it renders a bare string and leaves
+ * the markup to the callers that have opinions about it.
  *
  * `name` is the server's own read, from `currentDisplayName()`. It is what renders on
  * first paint and after any real navigation, and it is what keeps rendering for a reader
