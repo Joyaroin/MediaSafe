@@ -728,9 +728,9 @@
    together, extracted for exactly the reason this section opens with.
 
    `field-well` was pasted at four call sites (`search-surface.tsx`, `list-name-form.tsx`,
-   and `library-filter-bar.tsx` twice) and `frosted` at two (`masthead.tsx`,
+   and the library's old filter bar twice) and `frosted` at two (the old masthead and
    `tab-bar.tsx`) before they were named. Height is *not* included in either: the search
-   and list fields are `44px` and the library's filter row is `40px`, so the one measure
+   and list fields are `44px` and the library's filter row was `40px`, so the one measure
    that genuinely differs between call sites stays at the call site.
 
    The ring is an inset `box-shadow` rather than a `border` on purpose. A border occupies

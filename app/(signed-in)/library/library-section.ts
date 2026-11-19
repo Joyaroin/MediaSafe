@@ -57,7 +57,7 @@ export function librarySectionFrom(view: Param, section: Param): LibrarySection 
 /**
  * What each section is called on Library — its heading, and the title of its full grid.
  * Written here, beside the slugs' parse, and not in `library-state.ts`: a section is a group
- * of entries, and `STATE_LABELS` names one entry's state. (They differ on purpose: *Waiting
+ * of entries, and `stateLabel(kind, state)` names one entry's state. (They differ on purpose: *Waiting
  * for new episodes* heads the shows that are `caught_up`.)
  */
 export const SECTION_HEADINGS = {

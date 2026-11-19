@@ -17,8 +17,8 @@ k3s cluster in my home lab, deployed with Argo CD and reached through a Cloudfla
 </p>
 
 > **Status: actively developed and deployed.** Every merge to `main` ships to staging
-> automatically; production is promoted by hand. ~700 commits, 170+ merged pull requests and
-> 130 test files since August 2026. The library in these screenshots is my real one —
+> automatically; production is promoted by hand. 800+ commits, 200+ merged pull requests and
+> 140+ test files since August 2026. The library in these screenshots is my real one —
 > 460 shows and ~19,500 watched episodes carried over from the previous version of this app.
 
 You can sign in at [mediasafe.space](https://mediasafe.space) with any Google account; a new
@@ -33,8 +33,9 @@ account starts empty and can add titles from search.
   tap, a swipe, or by painting down an episode list; every mark can be undone.
 - **Coming up** — what airs next across your library, by day, in your own time zone. Also
   published as a private **iCalendar feed** you can subscribe to from any calendar app.
-- **Library** — shows, films and your own lists, filtered by where each one stands
-  (watching, caught up, finished, watchlist, dropped).
+- **Library** — shows, films and your own lists. Shows and films are grouped into sections by
+  where each one stands (for shows: watching, not started, waiting for new episodes, finished,
+  dropped), and each section opens to its full grid.
 - **You** — total watch time, counts, and a year-long activity heatmap.
 - **Search and import** — add anything from [TMDB](https://www.themoviedb.org/)'s catalogue,
   or bring a whole history across in one import.
@@ -43,7 +44,7 @@ account starts empty and can add titles from search.
 - Works as an installable app on a phone, in light and dark.
 
 <p align="center">
-  <img src="docs/screenshots/library.desktop.dark.jpg" alt="Library: a poster grid of shows with filters for watching, caught up, finished, watchlist and dropped" width="49%">
+  <img src="docs/screenshots/library.desktop.dark.jpg" alt="Library: a poster grid of shows, with a Shows, Films and Lists switch and a sort control" width="49%">
   <img src="docs/screenshots/you.desktop.light.jpg" alt="You: watch time, totals and a year of watching as a heatmap, in the light theme" width="49%">
 </p>
 
