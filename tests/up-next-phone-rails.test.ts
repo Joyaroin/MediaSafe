@@ -127,7 +127,7 @@ describe("the Up next row's meta line carries no air date and no runtime", () =>
 
   it("reads the episode code, the season count, and nothing else, from episode-card-line", () => {
     expect(code).toMatch(
-      /import \{ episodeCode, seasonCountInWords \} from "\.\/episode-card-line"/,
+      /import \{ episodeCode, seasonCountInWords, startWithInWords \} from "\.\/episode-card-line"/,
     );
     expect(code).not.toMatch(/\bepisodeMetaLine\b/);
     expect(code).not.toMatch(/\bairDateInWords\b/);
@@ -142,11 +142,16 @@ describe("the Up next row's meta line carries no air date and no runtime", () =>
     // Charcoal (issue #400) sets the code and the episode's name on one Meta line, the
     // handoff's *S1 E2 · Hands*. The name is still real text, and the code stands alone
     // only where TMDB has not named the episode.
-    expect(code).toMatch(/\{episodeName === null \? code : `\$\{code\} · \$\{episodeName\}`\}/);
+    expect(code).toMatch(/: episodeName === null\s*\? code\s*: `\$\{code\} · \$\{episodeName\}`\}/);
   });
 
   it("keeps the season count on the tabular-figures hook", () => {
     expect(code).toMatch(/data-numeric>\s*\{seasonCountInWords\(progress\)\}/);
+  });
+
+  /** Issue #551: a Not started row says where the show starts, and carries no count. */
+  it("gives a Not started row its own line and no season count", () => {
+    expect(code).toMatch(/startsHere \? null : \(\s*<span className="shrink-0 text-dim" data-numeric>/);
   });
 
   /** Issue #538: Tonight's rows count the season; "+N remaining" is Coming up's alone. */
@@ -173,9 +178,12 @@ describe("the next-episodes rail is the two orderings concatenated", () => {
    * the whole sequence (below).
    */
   it("spreads ongoing, then oldFriends, in that order", () => {
+    // `leading` is the Continue watching episodes (`rails.ongoing.filter(isEpisodeEntry)`), or,
+    // under #551's fallback, the one Not started show that takes the featured slot.
     expect(source).toMatch(
-      /\[\s*\.\.\.rails\.ongoing\.filter\(isEpisodeEntry\),\s*\.\.\.rails\.oldFriends,?\s*\]/,
+      /const continueWatching = useMemo\(\(\) => rails\.ongoing\.filter\(isEpisodeEntry\)/,
     );
+    expect(source).toMatch(/\[\s*\.\.\.leading,\s*\.\.\.rails\.oldFriends,?\s*\]/);
   });
 
   /**
@@ -221,9 +229,7 @@ describe("the next-episodes rail is the two orderings concatenated", () => {
    */
   it("memoises the concatenation rather than rebuilding it each render", () => {
     expect(source).toMatch(/const entries = useMemo\(/);
-    expect(source).toMatch(
-      /\[rails\.ongoing,\s*rails\.oldFriends\],/,
-    );
+    expect(source).toMatch(/\[leading,\s*rails\.oldFriends\],/);
   });
 
   it("names both, so neither can be dropped without this failing", () => {
@@ -298,7 +304,7 @@ describe("empty and failed are never the same thing", () => {
    *  it gets the handoff's own sentence rather than a blank page. */
   it("gives a screen with nothing at all the handoff's sentence", () => {
     const surface = sourceAt(SURFACE);
-    expect(surface).toMatch(/if \(noEpisodes && films\.length === 0\) \{/);
+    expect(surface).toMatch(/if \(noEpisodes && films\.length === 0 && notStarted\.length === 0\) \{/);
     expect(surface).toMatch(/<UpNextNothing suggestions=\{suggestions\} \/>/);
 
     const nothing = sourceAt(NOTHING);

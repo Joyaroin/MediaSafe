@@ -35,7 +35,8 @@ _Avoid_: Left, to go
 
 **Tonight**:
 The destination that shows Continue watching and Films to watch — what the reader can watch
-right now. The first tab, and the screen the app opens on.
+right now — and, under Also ready, up to three **Not started** shows, with a new show leading
+when nothing is in Continue watching. The first tab, and the screen the app opens on.
 _Avoid_: Up next (the episode, not the screen), home
 
 **Continue watching**:
