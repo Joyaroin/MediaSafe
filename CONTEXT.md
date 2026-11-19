@@ -35,7 +35,8 @@ _Avoid_: Left, to go
 
 **Tonight**:
 The destination that shows Continue watching and Films to watch — what the reader can watch
-right now. The first tab, and the screen the app opens on.
+right now — and, under Also ready, up to three **Not started** shows, with a new show leading
+when nothing is in Continue watching. The first tab, and the screen the app opens on.
 _Avoid_: Up next (the episode, not the screen), home
 
 **Continue watching**:
@@ -45,6 +46,10 @@ _Avoid_: Watching list, in progress
 **Films to watch**:
 Released films on the reader's watchlist — the film half of what can be watched right now.
 _Avoid_: Watchlist (the wider state, which includes unreleased films)
+
+**Not started**:
+A show in the reader's library with no watches that isn't Dropped.
+_Avoid_: Watchlist (for a show), New. "Watchlist" stays the database state.
 
 **Coming back**:
 A title whose Up next episode has not aired. It appears in Coming up, never in Continue

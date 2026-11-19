@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { LibraryStateGroupEntry, UpNextRails } from "@/db/access";
+import type { LibraryStateGroupEntry, UpNextEntry, UpNextRails } from "@/db/access";
 import { TonightSurface } from "./tonight-surface";
 import { UpNextHeading } from "./up-next-heading";
 import { UpNextNothing } from "./up-next-nothing";
@@ -29,11 +29,14 @@ import { UpNextNothing } from "./up-next-nothing";
 export function UpNextWatching({
   rails,
   films,
+  notStarted,
   comingUp,
   suggestions,
 }: {
   rails: UpNextRails;
   films: readonly LibraryStateGroupEntry[];
+  /** Tonight's Not started shows (#551): a reader with only these has something to start. */
+  notStarted: readonly UpNextEntry[];
   /** Coming up's next three rows, for the desktop's right column. */
   comingUp: ReactNode;
   /** Issue #365's rail, drawn only under the empty state. */
@@ -41,7 +44,7 @@ export function UpNextWatching({
 }) {
   const noEpisodes = rails.ongoing.length === 0 && rails.oldFriends.length === 0;
 
-  if (noEpisodes && films.length === 0) {
+  if (noEpisodes && films.length === 0 && notStarted.length === 0) {
     return (
       <div className="pb-8 lg:px-10 lg:pt-8">
         <div className="px-gutter pt-5 lg:px-0 lg:pt-0">
@@ -52,5 +55,5 @@ export function UpNextWatching({
     );
   }
 
-  return <TonightSurface rails={rails} films={films} comingUp={comingUp} />;
+  return <TonightSurface rails={rails} films={films} notStarted={notStarted} comingUp={comingUp} />;
 }

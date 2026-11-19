@@ -65,9 +65,12 @@ const { cacheState, reads, tmdb } = vi.hoisted(() => ({
    */
   reads: {
     listLibraryEntries: vi.fn(),
+    listLibrarySections: vi.fn(),
+    listLibrarySection: vi.fn(),
     libraryEntryIdForTitle: vi.fn(),
     libraryEntryIdForEpisode: vi.fn(),
     listUpNextRails: vi.fn(),
+    listNotStartedShows: vi.fn(),
     listWatchlistFilms: vi.fn(),
     listUpcomingEpisodes: vi.fn(),
     listUpcomingFilms: vi.fn(),
@@ -203,8 +206,11 @@ const {
   cachedLibraryEntries,
   cachedLibraryEntryIdForEpisode,
   cachedLibraryEntryIdForTitle,
+  cachedLibrarySection,
+  cachedLibrarySections,
   cachedListDetail,
   cachedLists,
+  cachedNotStartedShows,
   cachedTitleDetail,
   cachedUpcomingEpisodes,
   cachedUpcomingFilms,
@@ -252,6 +258,10 @@ function ownedBy(userId: string) {
  */
 const CACHED = {
   listLibraryEntries: (userId: typeof mine) => cachedLibraryEntries(userId),
+  /** Issue #541's Library sections — `library`, beside the grid they replace on that screen. */
+  listLibrarySections: (userId: typeof mine) => cachedLibrarySections(userId),
+  listLibrarySection: (userId: typeof mine) =>
+    cachedLibrarySection(userId, { kind: "show", slug: "watching" }, null),
   libraryEntryIdForTitle: (userId: typeof mine) =>
     cachedLibraryEntryIdForTitle(userId, "show", 1399),
   /** Issue #289's episode route. The same `library` fact one table further along — the
@@ -259,6 +269,8 @@ const CACHED = {
   libraryEntryIdForEpisode: (userId: typeof mine) =>
     cachedLibraryEntryIdForEpisode(userId, "episode-1"),
   listUpNextRails: (userId: typeof mine) => cachedUpNextRails(userId),
+  /** Issue #540's Not started group — `up-next`, beside the rails it sits under on Tonight. */
+  listNotStartedShows: (userId: typeof mine) => cachedNotStartedShows(userId, 3),
   listWatchlistFilms: (userId: typeof mine) => cachedWatchlistFilms(userId),
   /** Issue #251's Upcoming — the landing pager's second page, tagged `up-next` with the
    *  two rails on its first, so one bust reaches the whole surface a reader pages across. */
@@ -428,6 +440,30 @@ describe("every key carries an account", () => {
 
     expect(reads.listLibraryEntries).toHaveBeenCalledTimes(2);
     expect(await cachedLibraryEntries(yours, "title")).toEqual(libraryOf(yours));
+  });
+
+  /**
+   * Issue #541: a section's full grid is keyed by the section and the sort. A section under
+   * its own order (`null`), the same section under a sort, and another section are three
+   * entries — and a repeat of any one is a hit, so the key is neither too coarse nor so fine
+   * it never hits.
+   */
+  it("keeps one section's orders, and different sections, apart", async () => {
+    const watching = { kind: "show", slug: "watching" } as const;
+    const finished = { kind: "show", slug: "finished" } as const;
+
+    await cachedLibrarySection(mine, watching, null);
+    await cachedLibrarySection(mine, watching, null);
+    expect(reads.listLibrarySection).toHaveBeenCalledTimes(1);
+
+    await cachedLibrarySection(mine, watching, "title");
+    await cachedLibrarySection(mine, finished, null);
+    expect(reads.listLibrarySection).toHaveBeenCalledTimes(3);
+    expect(reads.listLibrarySection.mock.calls.map(([, section, sort]) => [section.slug, sort])).toEqual([
+      ["watching", null],
+      ["watching", "title"],
+      ["finished", null],
+    ]);
   });
 
   /**
@@ -1472,7 +1508,11 @@ describe("the reads that are cached, and the one that must never be", () => {
       // The list is the assertion; a read arriving or leaving fails on the array, which
       // is the failure worth having.
       "listLibraryEntries",
+      // #541's, written beside it: the sections view and one section's full grid.
+      "listLibrarySections",
+      "listLibrarySection",
       "listUpNextRails",
+      "listNotStartedShows",
       "listWatchlistFilms",
       "listUpcomingEpisodes",
       "listUpcomingFilms",

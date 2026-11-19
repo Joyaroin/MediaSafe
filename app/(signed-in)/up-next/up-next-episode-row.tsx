@@ -27,7 +27,7 @@ import {
   type UpNextPendingEntry,
   type UpNextRailEntry,
 } from "@/db/access";
-import { episodeCode, seasonCountInWords } from "./episode-card-line";
+import { episodeCode, seasonCountInWords, startWithInWords } from "./episode-card-line";
 import {
   finishesSomething,
   finishFactsFor,
@@ -122,6 +122,45 @@ export function UpNextEpisodeRow({
 }
 
 /**
+ * One row of Tonight's **Not started** group — issue #551. The same row as *Also ready*'s, with
+ * the line "Start with S01 · E01 · {name}" and no season count, and the same mark ring.
+ *
+ * Marking records the show's first episode and the row holds, then closes in place by the
+ * existing close motion (`useNotStartedOnList` lets it go); the show is in Also ready on the
+ * next read. No new motion.
+ */
+export function UpNextNotStartedRow({
+  entry,
+  aboveFold = false,
+  ref,
+}: {
+  entry: UpNextEntry;
+  aboveFold?: boolean;
+  ref?: Ref<HTMLLIElement>;
+}) {
+  if (entry.queue.episodes.length === 0) {
+    return (
+      <RowBody
+        ref={ref}
+        entry={entry}
+        code={episodeCode(entry.seasonNo, entry.episodeNo)}
+        episodeName={entry.episodeName}
+        finish={null}
+        held={false}
+        picture={cardPicture(entry)}
+        progress={seasonProgress(entry, null, 0)}
+        aboveFold={aboveFold}
+        leavesFor={null}
+        startsHere
+        control={null}
+      />
+    );
+  }
+
+  return <MarkableRow ref={ref} entry={entry} aboveFold={aboveFold} startsHere />;
+}
+
+/**
  * Which episode a markable entry is showing, and how far through its run it is — the one
  * reading the row and the featured block both draw from, so they cannot disagree.
  */
@@ -175,25 +214,38 @@ export function pressWithPulse(entry: UpNextEntry, mark: UpNextMark): UpNextMark
 function MarkableRow({
   entry,
   aboveFold,
+  startsHere = false,
   ref,
 }: {
   entry: UpNextEntry;
   aboveFold: boolean;
+  /** A row of the Not started group (#551): it offers the show's first episode only. */
+  startsHere?: boolean;
   ref?: Ref<HTMLLIElement>;
 }) {
   const mark = useUpNextMark(entry);
 
   useHold(mark.held?.episodeId ?? null, mark.settle);
 
-  const { showing, marked } = shownFor(entry, mark);
+  const shown = shownFor(entry, mark);
+  /* A Not started row never rolls on to the next episode: it says where the show starts, and
+     once that is marked the row closes (`stillNotStarted`) rather than becoming a second
+     episode's row. */
+  const showing = startsHere ? entry.queue.episodes[0] : shown.showing;
+  const marked = shown.marked;
   const progress = seasonProgress(entry, showing, marked);
 
   /* Spent and no longer holding: the list has already let this row go
      (`useEntriesOnRail`), and this is the row as it closes — on its finish line, its tick
-     filled, on its way to the tab it now belongs to. */
-  const leaving = mark.finished && mark.held === null;
+     filled, on its way to the tab it now belongs to. A Not started row closes the same way
+     once its first episode is marked and the hold is over, with no tab to travel to: the
+     show is in Also ready on the next read. */
+  const leaving = startsHere
+    ? mark.held === null && mark.episode?.episodeId !== showing.episodeId
+    : mark.finished && mark.held === null;
   const recorded = mark.held ?? (leaving ? showing : null);
-  const line = recorded === null ? WATCHED : finishLine(finishFactsFor(entry, recorded));
+  const line =
+    recorded === null || startsHere ? WATCHED : finishLine(finishFactsFor(entry, recorded));
   const press = pressWithPulse(entry, mark);
 
   /* Swipe to mark (issue #408) is the tick's press by another route, so it is live exactly
@@ -214,7 +266,8 @@ function MarkableRow({
       picture={mark.picture}
       progress={progress}
       aboveFold={aboveFold}
-      leavesFor={leaving ? leavesFor(entry, showing) : null}
+      leavesFor={leaving && !startsHere ? leavesFor(entry, showing) : null}
+      startsHere={startsHere}
       swipe={swipe}
       control={
         mark.held !== null || leaving ? (
@@ -249,6 +302,7 @@ function RowBody({
   progress,
   aboveFold,
   leavesFor,
+  startsHere = false,
   swipe = null,
   control,
   ref,
@@ -268,6 +322,8 @@ function RowBody({
   /** The tab this row's poster travels to as it leaves, or `null` when it is not leaving
    *  for one. */
   leavesFor: DestinationHref | null;
+  /** A Not started row (#551): "Start with S01 · E01 · name", and no season count. */
+  startsHere?: boolean;
   /** Swipe to mark's binding, on a row that can be marked (`useSwipeToMark`). */
   swipe?: SwipeBinding | null;
   control: React.ReactNode;
@@ -317,7 +373,12 @@ function RowBody({
           {/* The episode line rolls when it changes — the next episode after the hold, or the
               finish line in its place — so the row keeps its height and nothing else moves. */}
           <Roll
-            rollKey={finish ?? `${code}|${episodeName ?? ""}|${progress.watched}/${progress.released}`}
+            rollKey={
+              finish ??
+              (startsHere
+                ? `start|${code}|${episodeName ?? ""}`
+                : `${code}|${episodeName ?? ""}|${progress.watched}/${progress.released}`)
+            }
             className="mt-0.5 h-5"
           >
             {/* `h-5` and `leading-5` on both lines: the finish line is a size larger, and the
@@ -331,13 +392,19 @@ function RowBody({
                 {/* The code, then the episode's name where TMDB has one: an episode is
                     never referred to by number alone, and the code has said it once. */}
                 <span className="truncate text-dim">
-                  {episodeName === null ? code : `${code} · ${episodeName}`}
+                  {startsHere
+                    ? startWithInWords(entry.seasonNo, entry.episodeNo, episodeName)
+                    : episodeName === null
+                      ? code
+                      : `${code} · ${episodeName}`}
                 </span>
                 {/* `data-numeric` is the tabular-figures hook. The season's count, the same
-                    unit as the featured slot's "N of M". */}
-                <span className="shrink-0 text-dim" data-numeric>
-                  {seasonCountInWords(progress)}
-                </span>
+                    unit as the featured slot's "N of M". A Not started row carries none. */}
+                {startsHere ? null : (
+                  <span className="shrink-0 text-dim" data-numeric>
+                    {seasonCountInWords(progress)}
+                  </span>
+                )}
               </span>
             )}
           </Roll>

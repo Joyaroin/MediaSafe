@@ -42,12 +42,15 @@ import type { TitleDetailRow } from "@/db/access";
  */
 export function TitleDetailView({
   detail,
+  fromSearch,
   synopsis,
   watchProviders,
   cast,
   today,
 }: {
   detail: TitleDetailRow;
+  /** Arrived from Search's "Pick an episode" (`?from=search`, #553). */
+  fromSearch: boolean;
   /** The reader's calendar day, for what has aired. */
   today: string;
   /** The synopsis, already streamed on the server — it renders inside the hero's card. */
@@ -62,6 +65,7 @@ export function TitleDetailView({
   return (
     <ProgrammeNoteContent
       detail={current}
+      fromSearch={fromSearch}
       synopsis={synopsis}
       watchProviders={watchProviders}
       cast={cast}

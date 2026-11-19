@@ -50,15 +50,20 @@ export const dynamic = "force-dynamic";
 
 export default async function TitleDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ entryId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { entryId } = await params;
+  // `?from=search` is Search's "Pick an episode" arrival (#553) and the only value that
+  // means anything: any other value, or none, is the page as it always was.
+  const { from } = await searchParams;
 
   return (
     <NavTransition>
       <main className="flex w-full flex-1 flex-col">
-        <TitleDetailBody entryId={entryId} />
+        <TitleDetailBody entryId={entryId} fromSearch={from === "search"} />
       </main>
     </NavTransition>
   );

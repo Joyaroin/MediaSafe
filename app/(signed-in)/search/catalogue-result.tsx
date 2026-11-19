@@ -76,7 +76,11 @@ export function CatalogueResultRow({
   const { inLibrary, attempt } = useCatalogueAdd(result);
 
   return (
-    <li className="flex items-center gap-3 py-2.5">
+    <li className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-x-3 py-2.5">
+      {/* A grid, and not a flex row, so the DOM can be in the order a keyboard and a screen
+          reader meet it — name, **Add**, then the seen-it button — while the seen-it
+          button still sits under the name (issue #536, WCAG 2.4.3). It used to live inside
+          the name's block, which put it before Add in both orders. */}
       {/* `44` by `66`, the board's thumbnail (Charcoal §8.3, issue #404). A row on the
           page now, not a raised card: the list's hairlines are what separate one result
           from the next, the way every other row in the redesign is drawn. */}
@@ -84,11 +88,11 @@ export function CatalogueResultRow({
         posterPath={result.posterPath}
         name={result.name}
         width={44}
-        className="w-11 shrink-0 [--poster-radius:var(--radius-1)]"
+        className="row-span-2 w-11 shrink-0 self-center [--poster-radius:var(--radius-1)]"
         aboveFold={aboveFold}
       />
 
-      <div className="min-w-0 flex-1">
+      <div className="col-start-2 row-start-1 min-w-0 self-end">
         {/* The name is a link into catalogue detail — the thing this row could not do
             until now.
 
@@ -118,46 +122,6 @@ export function CatalogueResultRow({
           {" · "}
           {result.kind === "film" ? "Film" : "Show"}
         </p>
-
-        {inLibrary ? null : (
-          /**
-           * The second add — issue #222.
-           *
-           * ── Why it is under the name and not in the trailing slot ─────────────────
-           *
-           * The trailing slot already holds *Add*, and this control is wider than it —
-           * putting it there, beside the pill or stacked under it, spends its width plus a
-           * gap out of the name, which on a `340px` phone is the one thing the row cannot
-           * spare. Under the name it costs height instead, and the `66px` poster has room
-           * for a name, a meta line and a `32px` pill face. The #222 measurements that
-           * used to sit here were taken against the `52px` Archivo row and no longer
-           * describe this one.
-           *
-           * It also puts the two controls in the reading order the ticket asks for. The
-           * pill is where the eye goes and where the thumb rests; this is a sentence
-           * further down the row, in the quiet register, for the reader who came to it on
-           * purpose.
-           *
-           * **Charcoal, issue #397:** it is the quiet pill now (`SECONDARY_PILL`), `32px`
-           * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
-           * face, so the row grows by the face and not by the target.
-           *
-           * ── It disappears with the pill, not separately ────────────────────────────
-           *
-           * `inLibrary` is the optimistic flag both controls set, so pressing either one
-           * takes both off the row at once. A watched add that left *Add* standing would
-           * offer to add what was just added, and the row's own answer — *In your
-           * library* — is already the true thing to say about both.
-           */
-          <button
-            type="button"
-            onClick={() => void attempt(true)}
-            aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
-            className={`-mb-1.5 mt-0.5 ${PILL_TARGET}`}
-          >
-            <span className={SECONDARY_PILL}>{addWatchedLabel(result.kind)}</span>
-          </button>
-        )}
       </div>
 
       {inLibrary ? (
@@ -169,7 +133,7 @@ export function CatalogueResultRow({
         <Link
           href={`/catalogue/${result.kind}/${result.tmdbId}`}
           aria-label={`${result.name} is in your library — open it`}
-          className="flex h-11 shrink-0 items-center gap-1.5 text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
+          className="col-start-3 row-span-2 row-start-1 flex h-11 shrink-0 items-center gap-1.5 self-center text-meta font-medium text-dim transition-colors duration-[var(--dur-fast)] hover:text-text"
         >
           <CheckmarkIcon className="h-3.5 w-3.5" />
           In your library
@@ -223,9 +187,50 @@ export function CatalogueResultRow({
            * accessible name carries the title the visible label leaves to the layout.
            */
           aria-label={`Add ${result.name} to your library`}
-          className={`pressable [--press-register:1] ${PILL_TARGET}`}
+          className={`col-start-3 row-span-2 row-start-1 self-center pressable [--press-register:1] ${PILL_TARGET}`}
         >
           <span className={PRIMARY_PILL}>Add</span>
+        </button>
+      )}
+
+      {inLibrary ? null : (
+        /**
+         * The second add — issue #222.
+         *
+         * ── Why it is under the name and not in the trailing slot ─────────────────
+         *
+         * The trailing slot already holds *Add*, and this control is wider than it —
+         * putting it there, beside the pill or stacked under it, spends its width plus a
+         * gap out of the name, which on a `340px` phone is the one thing the row cannot
+         * spare. Under the name it costs height instead, and the `66px` poster has room
+         * for a name, a meta line and a `32px` pill face. The #222 measurements that
+         * used to sit here were taken against the `52px` Archivo row and no longer
+         * describe this one.
+         *
+         * It is drawn under the name and written **after Add** in the markup (issue
+         * #536): the grid places it, so a keyboard and a screen reader meet Add first
+         * and this second. The pill is where the eye goes and where the thumb rests;
+         * this is a sentence further down the row, in the quiet register, for the reader
+         * who came to it on purpose.
+         *
+         * **Charcoal, issue #397:** it is the quiet pill now (`SECONDARY_PILL`), `32px`
+         * inside a `44px` target. `-mb-1.5` gives back the target's six pixels below the
+         * face, so the row grows by the face and not by the target.
+         *
+         * ── It disappears with the pill, not separately ────────────────────────────
+         *
+         * `inLibrary` is the optimistic flag both controls set, so pressing either one
+         * takes both off the row at once. A watched add that left *Add* standing would
+         * offer to add what was just added, and the row's own answer — *In your
+         * library* — is already the true thing to say about both.
+         */
+        <button
+          type="button"
+          onClick={() => void attempt(true)}
+          aria-label={addWatchedAccessibleLabel(result.kind, result.name)}
+          className={`col-start-2 row-start-2 -mb-1.5 mt-0.5 self-start justify-self-start ${PILL_TARGET}`}
+        >
+          <span className={SECONDARY_PILL}>{addWatchedLabel(result.kind)}</span>
         </button>
       )}
     </li>

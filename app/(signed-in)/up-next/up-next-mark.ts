@@ -411,6 +411,30 @@ export function stillOnRail(
   return !reading.finished || reading.phase === "marking";
 }
 
+/**
+ * Whether a Not started row is still on Tonight's group — issue #551.
+ *
+ * A row in that group offers one thing: the show's first episode. Once it is marked the show
+ * is `watching`, belongs in Also ready on the next read, and has no business here, so the
+ * row closes — **after the hold**, as every row does: while the mark is still `marking` the
+ * row stays, washed, with *Undo* beside it, and `settle()` lets it go. An Undo, or a lost
+ * write that rolls the mark back, puts the first episode back to unwatched and the row stays.
+ *
+ * This is not `stillOnRail`'s rule and cannot be: that one leaves a card when its run is
+ * spent, and marking S1 E1 spends nothing — the run goes on to S1 E2. An entry handed an
+ * empty run was never markable, so it stays, as there.
+ */
+export function stillNotStarted(
+  marks: WatchMarks,
+  libraryEntryId: string,
+  queue: UpNextQueue,
+): boolean {
+  if (queue.episodes.length === 0) return true;
+  const first = queue.episodes[0];
+  const view = marks.read(subjectOf(libraryEntryId, first));
+  return !view?.watched || view.phase === "marking";
+}
+
 /** Record a watch of `episode` from a card. The key, the rollback and the toast are all
  *  `watch-marks.ts`'s — this only chooses the subject and the naming. */
 export function markFromCard(
@@ -580,6 +604,25 @@ export function useEntriesOnRail(
   entries: readonly UpNextEntry[],
   marks: WatchMarks = watchMarks,
 ): readonly UpNextEntry[] {
+  return useSurvivors(entries, stillOnRail, marks);
+}
+
+/**
+ * Tonight's Not started group's surviving rows — issue #551. The same subscription as
+ * `useEntriesOnRail`, asking `stillNotStarted`'s question instead.
+ */
+export function useNotStartedOnList(
+  entries: readonly UpNextEntry[],
+  marks: WatchMarks = watchMarks,
+): readonly UpNextEntry[] {
+  return useSurvivors(entries, stillNotStarted, marks);
+}
+
+function useSurvivors(
+  entries: readonly UpNextEntry[],
+  stays: (marks: WatchMarks, libraryEntryId: string, queue: UpNextQueue) => boolean,
+  marks: WatchMarks,
+): readonly UpNextEntry[] {
   const subscribe = useCallback(
     (onChange: () => void) => {
       const offs = entries.map((entry) =>
@@ -596,10 +639,10 @@ export function useEntriesOnRail(
   const read = useCallback(
     () =>
       entries
-        .filter((entry) => stillOnRail(marks, entry.libraryEntryId, entry.queue))
+        .filter((entry) => stays(marks, entry.libraryEntryId, entry.queue))
         .map((entry) => entry.libraryEntryId)
         .join(","),
-    [marks, entries],
+    [marks, entries, stays],
   );
   const surviving = useSyncExternalStore(subscribe, read, () =>
     entries.map((entry) => entry.libraryEntryId).join(","),

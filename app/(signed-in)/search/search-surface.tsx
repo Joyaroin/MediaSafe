@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { SearchIcon } from "@/app/nav-icons";
 import { SEARCH_START, type SearchPlace } from "@/app/restoration";
 import { keepSearch, rememberedSearch } from "@/app/restoration-memory";
 import { ReadFailure } from "@/errors/read-failure";
@@ -226,19 +227,9 @@ function SearchField({
 
   return (
     <label className="field-well flex h-12 items-center gap-3 pl-4 pr-0.5">
-      {/* The magnifier the Search tab carries, at the field's `20px` (Charcoal §8.3). */}
-      <svg
-        viewBox="0 0 24 24"
-        className="h-5 w-5 shrink-0 text-dim"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        aria-hidden="true"
-      >
-        <circle cx="11" cy="11" r="6" />
-        <path d="M20 20l-4.5-4.5" />
-      </svg>
+      {/* The magnifier the Search tab carries — the same component — at the field's `20px`
+          (Charcoal §8.3). */}
+      <SearchIcon className="h-5 w-5 shrink-0 text-dim" />
       {/* `type="search"` for the keyboard's own Search key and Escape-to-clear, with the
           browser's built-in clear glyph hidden — it differs per engine and is too small to
           hit, which is the reason for the button beside it. */}

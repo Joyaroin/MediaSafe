@@ -143,7 +143,7 @@ describe("the moments (handoff §11.2)", () => {
   });
 
   it("sends a finished row's poster to its tab, and a film's to Library", () => {
-    expect(ROW).toMatch(/leavesFor=\{leaving \? leavesFor\(entry, showing\) : null\}/);
+    expect(ROW).toMatch(/leavesFor=\{leaving && !startsHere \? leavesFor\(entry, showing\) : null\}/);
     expect(FILM).toMatch(/useFlightOnLeave\(link, leaving \? "\/library" : null\)/);
     for (const nav of ["app/tab-bar.tsx", "app/sidebar-nav.tsx"]) {
       expect(at(nav)).toContain("data-nav-icon={href}");

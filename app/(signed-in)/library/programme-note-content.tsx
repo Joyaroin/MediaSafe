@@ -44,6 +44,7 @@ import { useLiveEpisodes } from "./use-live-episodes";
  */
 export function ProgrammeNoteContent({
   detail,
+  fromSearch,
   synopsis,
   watchProviders,
   cast,
@@ -52,6 +53,11 @@ export function ProgrammeNoteContent({
   today,
 }: {
   detail: TitleDetailRow;
+  /**
+   * Arrived from Search's "Pick an episode" (`?from=search`, #553): one hint line above
+   * the episodes, and nothing else on the page changes.
+   */
+  fromSearch: boolean;
   synopsis: ReactNode;
   watchProviders: ReactNode;
   cast: ReactNode;
@@ -108,12 +114,19 @@ export function ProgrammeNoteContent({
         }`}
       >
         {isShow ? (
-          <section aria-labelledby="episodes-h" className="min-w-0">
+          <section id="episodes" aria-labelledby="episodes-h" className="min-w-0">
             {/* Named for assistive technology only: the board goes straight from the
                 synopsis to the season chips (Charcoal §8.6), and the chips say what this is. */}
             <h2 id="episodes-h" className="sr-only">
               Episodes
             </h2>
+            {/* Only over a list there is to tick in: a pending or empty one has nothing to
+                point at. */}
+            {fromSearch && !detail.episodesPending && detail.episodes.length > 0 ? (
+              <p className="mt-7 text-item text-dim">
+                Tick the last episode you&apos;ve seen, then use Also mark earlier.
+              </p>
+            ) : null}
             <ProgrammeNoteEpisodes
               kind={detail.kind}
               episodes={detail.episodes}

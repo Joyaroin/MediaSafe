@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { DayWatches } from "./day-watches";
 import { dayInWords, watchesInWords, type Heatmap } from "./heatmap";
 
 /**
@@ -134,19 +134,7 @@ export function YearHeatmap({ heatmap }: { readonly heatmap: Heatmap }) {
             : `${dayInWords(chosen.day)} · ${watchesInWords(chosen.count)}`}
         </p>
         {chosen.count === 0 ? null : (
-          <ul className="mt-2 grid grid-cols-1 gap-1 lg:grid-cols-2">
-            {chosen.watches.map((watch) => (
-              <li key={watch.key} className="min-w-0">
-                <Link
-                  href={`/titles/${watch.libraryEntryId}`}
-                  className="flex min-w-0 items-baseline gap-2 py-1 text-item"
-                >
-                  <span className="truncate text-text">{watch.titleName}</span>
-                  <span className="shrink-0 text-meta text-dim">{watch.what}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <DayWatches key={chosen.day} watches={chosen.watches} />
         )}
       </div>
     </section>

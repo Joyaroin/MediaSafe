@@ -164,7 +164,19 @@ export async function seedWatchlistFilms(
  */
 export async function seedShowWithSeason(
   userId: string,
-  { episodes, watched }: { readonly episodes: number; readonly watched: readonly number[] },
+  {
+    episodes,
+    watched,
+    abandoned = false,
+    watchedAt = new Date(),
+  }: {
+    readonly episodes: number;
+    readonly watched: readonly number[];
+    /** The reader dropped it (`library_entry.abandoned_at`) — issue #551's exclusion. */
+    readonly abandoned?: boolean;
+    /** When the watches are dated; a later date ranks the show first on Tonight. */
+    readonly watchedAt?: Date;
+  },
 ): Promise<SeededTitle> {
   const pool = createPool(requireDatabaseUrl());
   const db = drizzle(pool, { schema });
@@ -207,7 +219,7 @@ export async function seedShowWithSeason(
 
     const [entryRow] = await db
       .insert(schema.libraryEntry)
-      .values({ userId, titleId: titleRow.id })
+      .values({ userId, titleId: titleRow.id, abandonedAt: abandoned ? new Date() : null })
       .returning({ id: schema.libraryEntry.id });
 
     for (const row of episodeRows) {
@@ -217,7 +229,7 @@ export async function seedShowWithSeason(
         libraryEntryId: entryRow.id,
         titleId: titleRow.id,
         episodeId: row.id,
-        watchedAt: new Date(),
+        watchedAt,
         source: "e2e-fixture",
         sourceKey: randomUUID(),
       });
