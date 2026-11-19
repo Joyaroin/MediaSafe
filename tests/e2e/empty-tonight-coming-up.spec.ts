@@ -120,11 +120,12 @@ test.describe("with a library of finished shows", () => {
     test(`Tonight offers Search and no import on a ${device}`, async ({ page }) => {
       await page.setViewportSize(size);
 
-      // The setup: the library is not empty. Two finished shows are on Library's grid.
+      // The setup: the library is not empty. Two finished shows sit in Library's Finished
+      // section (#552): its count says 2 and its row draws two posters.
       await page.goto("/library");
-      const cells = page.getByRole("list", { name: "Library" }).getByRole("listitem");
-      await expect(cells).toHaveCount(2);
-      await expect(cells.getByText("Finished", { exact: true })).toHaveCount(2);
+      await expect(page.getByRole("link", { name: "2 in Finished, see all" })).toBeVisible();
+      const finished = page.getByRole("region", { name: "Finished", exact: true });
+      await expect(finished.getByRole("list").getByRole("listitem")).toHaveCount(2);
 
       await page.goto("/up-next");
       await expect(
