@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SearchIcon } from "@/app/nav-icons";
 import { SEARCH_START, type SearchPlace } from "@/app/restoration";
@@ -11,6 +11,8 @@ import { catalogueKeyOf } from "@/tmdb/mirror";
 import { CatalogueResultRow } from "./catalogue-result";
 import { searchCatalogueAction, type MarkedResult } from "./actions";
 import {
+  foldLabel,
+  foldResults,
   groupByKind,
   searchPhaseFor,
   type BothKinds,
@@ -303,7 +305,7 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
           {group.state.kind === "failed" ? (
             <ReadFailure reference={group.state.reference} retry={retry} />
           ) : (
-            <Results results={group.state.results} />
+            <Results kind={group.kind} results={group.state.results} />
           )}
         </section>
       ))}
@@ -311,19 +313,57 @@ function Groups({ groups, retry }: { groups: readonly KindGroup[]; retry: () => 
   );
 }
 
-function Results({ results }: { results: readonly MarkedResult[] }) {
+function Results({ kind, results }: { kind: string; results: readonly MarkedResult[] }) {
+  const { shown, folded } = useMemo(() => foldResults(results), [results]);
+  // Opened for this list of folded results only: a new search hands over a new list, and
+  // its fold starts closed again.
+  const [openFor, setOpenFor] = useState<readonly MarkedResult[] | null>(null);
+  const open = openFor === folded;
+  const rows = open ? [...shown, ...folded] : shown;
+  const list = useRef<HTMLOListElement>(null);
+
+  // The line that opened the fold unmounts while it has focus, and the rows it reveals sit
+  // above where it was, so focus would fall to the document and the next Tab would skip
+  // them (WCAG 2.4.3). Move it to the first revealed row's title link instead. `open` only
+  // turns true from the button's press, so this never runs on a fresh render.
+  useEffect(() => {
+    if (!open) return;
+    list.current?.children[shown.length]?.querySelector<HTMLAnchorElement>("h3 a")?.focus();
+  }, [open, shown.length]);
+
   return (
-    // Rows on the page with a hairline between each, not cards (Charcoal §8.3): the
-    // poster lands on the gutter like every other row in the redesign. `stagger-rise`
-    // (issue #336) is the rhythm `recommendation-rail.tsx`'s track already runs.
-    <ol className="stagger-rise flex flex-col divide-y divide-hair">
-      {results.map((result, index) => (
-        <CatalogueResultRow
-          key={catalogueKeyOf(result)}
-          result={result}
-          aboveFold={index === 0}
-        />
-      ))}
-    </ol>
+    <>
+      {/* Rows on the page with a hairline between each, not cards (Charcoal §8.3): the
+          poster lands on the gutter like every other row in the redesign. `stagger-rise`
+          (issue #336) is the rhythm `recommendation-rail.tsx`'s track already runs. */}
+      <ol
+        ref={list}
+        id={`search-${kind}-results`}
+        className="stagger-rise flex flex-col divide-y divide-hair"
+      >
+        {rows.map((result, index) => (
+          <CatalogueResultRow
+            key={catalogueKeyOf(result)}
+            result={result}
+            aboveFold={index === 0}
+          />
+        ))}
+      </ol>
+      {/* Results with neither a year nor a poster (issue #554). One line, opened in place:
+          nothing leaves the screen and the rows it reveals are ordinary rows. Opening is
+          one way: once the rows are on the page the line goes, so there is no open
+          state left for `aria-expanded` to misreport. */}
+      {folded.length > 0 && !open ? (
+        <button
+          type="button"
+          onClick={() => setOpenFor(folded)}
+          aria-expanded={false}
+          aria-controls={`search-${kind}-results`}
+          className="flex min-h-11 w-full items-center text-item font-medium text-dim hover:text-text"
+        >
+          {foldLabel(folded.length)}
+        </button>
+      ) : null}
+    </>
   );
 }
