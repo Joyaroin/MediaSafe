@@ -13,7 +13,7 @@ import type { AddOutcome, AddToLibraryOutcome } from "./actions";
  * A function over plain values and not a hook, `lost-add.ts`'s reasoning: the rules below
  * are about *order* and *which toast*, and `tests/search-row-writes.test.ts` drives them
  * against a real store with no React and writes it releases by hand. The hook that puts
- * this on a row is `use-search-row.ts`, and it is thin.
+ * this on a row is `use-catalogue-add.ts`, and it is thin.
  *
  * ── What the row shows ───────────────────────────────────────────────────────────────
  *
@@ -41,7 +41,9 @@ import type { AddOutcome, AddToLibraryOutcome } from "./actions";
  *
  * Each *Seen it all* press mints one key and every retry of it reuses it, so a retry is
  * the same write (`UNIQUE (user_id, source, source_key)`) and a retry that raced a write
- * which landed records nothing twice. The switch back deletes by that same key.
+ * which landed records nothing twice. The switch back deletes by every key the row has sent, not only the latest: a
+ * *Seen it all* pressed while an earlier press's watches are still there records nothing
+ * under its own key.
  *
  * ── Toasts ───────────────────────────────────────────────────────────────────────────
  *
@@ -98,8 +100,13 @@ export function createRowWrites(deps: RowWriteDeps): RowWrites {
 
   /** What the server is known to hold, for putting a chip back. */
   let settled: RowChoice = "not-started";
-  /** The latest *Seen it all* press's key — what the switch back deletes by. */
-  let seenAllKey: string | null = null;
+  /**
+   * Every key this row has minted for *Seen it all* and not yet taken back. A later
+   * press records nothing when an earlier one's watches are still there (the server skips
+   * episodes already watched), so the switch back has to delete by all of them, not the
+   * latest — which is safe because the row's title was added in this search.
+   */
+  const keys = new Set<string>();
   /** Bumped by every chip press, so a lost write can tell whether it is still the latest. */
   let latest = 0;
   /** The end of the queue. Every entry resolves; a write reports failure by raising. */
@@ -157,6 +164,9 @@ export function createRowWrites(deps: RowWriteDeps): RowWrites {
   function seenAll(key: string, press: number): Promise<void> {
     return enqueue(async () => {
       if (state.phase !== "added") return;
+      // Counted from the moment it is sent, not pressed: it may land without our hearing,
+      // and a switch back queued before it must not undo a write that has not run.
+      keys.add(key);
       const outcome = await deps.seenAll(state.libraryEntryId, key);
 
       if (outcome.ok) {
@@ -170,19 +180,26 @@ export function createRowWrites(deps: RowWriteDeps): RowWrites {
     });
   }
 
-  function switchBack(key: string, press: number): Promise<void> {
+  function switchBack(press: number): Promise<void> {
     return enqueue(async () => {
       if (state.phase !== "added") return;
-      const outcome = await deps.undoSeenAll(state.libraryEntryId, key);
 
-      if (outcome.ok) {
-        settled = "not-started";
-        landed();
+      // One key at a time, dropping each once its undo has landed, so a lost one leaves
+      // exactly the keys still to take back for the retry.
+      for (const key of [...keys]) {
+        const outcome = await deps.undoSeenAll(state.libraryEntryId, key);
+        if (outcome.ok) {
+          keys.delete(key);
+          continue;
+        }
+
+        if (press === latest) setChoice(settled);
+        lost("switch-back", outcome.reference, () => void retrySwitchBack());
         return;
       }
 
-      if (press === latest) setChoice(settled);
-      lost("switch-back", outcome.reference, () => void retrySwitchBack(key));
+      settled = "not-started";
+      landed();
     });
   }
 
@@ -192,9 +209,9 @@ export function createRowWrites(deps: RowWriteDeps): RowWrites {
     return seenAll(key, ++latest);
   }
 
-  function retrySwitchBack(key: string): Promise<void> {
+  function retrySwitchBack(): Promise<void> {
     setChoice("not-started");
-    return switchBack(key, ++latest);
+    return switchBack(++latest);
   }
 
   function choose(choice: RowChoice): Promise<void> {
@@ -204,12 +221,10 @@ export function createRowWrites(deps: RowWriteDeps): RowWrites {
     const press = ++latest;
 
     if (choice === "seen-all") {
-      return seenAll((seenAllKey = deps.mintKey()), press);
+      return seenAll(deps.mintKey(), press);
     }
 
-    // Nothing was ever recorded by a press if there is no key: the row only gets here
-    // from *Seen it all*, but a press that never minted would have nothing to delete.
-    return seenAllKey === null ? tail : switchBack(seenAllKey, press);
+    return switchBack(press);
   }
 
   return { state: () => state, add, choose };
