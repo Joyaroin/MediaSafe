@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PLAIN_BUTTON, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
+import { IN_FLIGHT_FOCUSABLE } from "@/app/button-states";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import { renewCalendarFeedAction } from "./calendar-feed-actions";
@@ -23,6 +24,12 @@ import { SETTING, SETTING_HELP, SETTING_LABEL } from "./settings-group";
  * hairline-outlined button the board drew, which is not one of the five treatments
  * (handoff §4). *Make a calendar link* is quiet too: Settings has no filled button.
  *
+ * **Focus stays with the reader.** While a write runs the buttons carry `aria-disabled` and
+ * ignore presses, rather than `disabled`: Chromium blurs a focused button that becomes
+ * disabled. *Make a calendar link* is unmounted when the first link lands, so focus goes
+ * to *Copy link*, its neighbour in the pair that replaces it — but only if focus was still
+ * on *Make a calendar link*; a reader who has moved on is not pulled back.
+ *
  * **The link is a private token.** Never print a real one in a screenshot, a fixture or a
  * log — the tests render this with a placeholder.
  */
@@ -32,6 +39,17 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
   const [copy, setCopy] = useState<"idle" | "copied" | "refused">("idle");
   const [renewed, setRenewed] = useState(false);
   const raised = useRef<WriteFailureHandle | null>(null);
+  const makeRef = useRef<HTMLButtonElement | null>(null);
+  const copyRef = useRef<HTMLButtonElement | null>(null);
+  const focusCopy = useRef(false);
+
+  // Runs after the first link is drawn, when *Copy link* exists to take the focus.
+  useEffect(() => {
+    if (url !== null && focusCopy.current) {
+      focusCopy.current = false;
+      copyRef.current?.focus();
+    }
+  }, [url]);
 
   async function renew(): Promise<void> {
     setInFlight(true);
@@ -56,6 +74,7 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
 
     raised.current?.resolve();
     raised.current = null;
+    focusCopy.current = url === null && document.activeElement === makeRef.current;
     setRenewed(url !== null);
     setUrl(outcome.url);
   }
@@ -83,9 +102,12 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
       {url === null ? (
         <button
           type="button"
-          onClick={() => void renew()}
-          disabled={inFlight}
-          className={`${SECONDARY_BUTTON_COMPACT} mt-1 w-full`}
+          ref={makeRef}
+          onClick={() => {
+            if (!inFlight) void renew();
+          }}
+          aria-disabled={inFlight}
+          className={`${SECONDARY_BUTTON_COMPACT} ${IN_FLIGHT_FOCUSABLE} mt-1 w-full`}
         >
           {inFlight ? "Making a link" : "Make a calendar link"}
         </button>
@@ -101,18 +123,23 @@ export function CalendarFeedControl({ url: initialUrl }: { readonly url: string 
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => void copyLink(url)}
-              disabled={inFlight}
-              className={`${SECONDARY_BUTTON_COMPACT} flex-1`}
+              ref={copyRef}
+              onClick={() => {
+                if (!inFlight) void copyLink(url);
+              }}
+              aria-disabled={inFlight}
+              className={`${SECONDARY_BUTTON_COMPACT} ${IN_FLIGHT_FOCUSABLE} flex-1`}
             >
               {copy === "copied" ? "Copied" : "Copy link"}
             </button>
 
             <button
               type="button"
-              onClick={() => void renew()}
-              disabled={inFlight}
-              className={`${PLAIN_BUTTON} flex-1`}
+              onClick={() => {
+                if (!inFlight) void renew();
+              }}
+              aria-disabled={inFlight}
+              className={`${PLAIN_BUTTON} ${IN_FLIGHT_FOCUSABLE} flex-1`}
             >
               {inFlight ? "Making a new link" : "Make a new link"}
             </button>

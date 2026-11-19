@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import { PLAIN_BUTTON, SECONDARY_BUTTON_COMPACT } from "@/app/buttons";
+import { IN_FLIGHT_FOCUSABLE } from "@/app/button-states";
 import { referenceFor } from "@/errors/reference";
 import { writeFailures, type WriteFailureHandle } from "@/errors/write-failure";
 import {
@@ -47,6 +48,12 @@ const TOAST_TITLE: Record<Slot, string> = {
  *   `add-to-list-control.tsx`: writes that are not each other's undo do not share a handle.
  *   Which change is running is tracked too, so *Making a new link* is only ever said while
  *   a new link is being made.
+ *
+ * **Focus stays on the pressed control.** While a write runs the buttons carry
+ * `aria-disabled` and ignore presses, rather than `disabled`: Chromium blurs a focused
+ * button that becomes disabled, which sent a keyboard reader back to the top of the page.
+ * Switching off unmounts *Copy link* and *Make a new link*, but focus is on the switch,
+ * which stays, so nothing needs to move.
  *
  * **The link is a private token.** Never print a real one in a screenshot, a fixture or a
  * log — the tests render this with a placeholder.
@@ -138,9 +145,11 @@ export function LastWatchedControl({ url: initialUrl }: { readonly url: string |
         type="button"
         role="switch"
         aria-checked={on}
-        onClick={() => void change(on ? "off" : "on")}
-        disabled={busy}
-        className={`${SECONDARY_BUTTON_COMPACT} w-full`}
+        onClick={() => {
+          if (!busy) void change(on ? "off" : "on");
+        }}
+        aria-disabled={busy}
+        className={`${SECONDARY_BUTTON_COMPACT} ${IN_FLIGHT_FOCUSABLE} w-full`}
       >
         {on ? "Sharing is on. Switch off" : "Sharing is off. Switch on"}
       </button>
@@ -157,18 +166,22 @@ export function LastWatchedControl({ url: initialUrl }: { readonly url: string |
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => void copyLink(url)}
-              disabled={busy}
-              className={`${SECONDARY_BUTTON_COMPACT} flex-1`}
+              onClick={() => {
+                if (!busy) void copyLink(url);
+              }}
+              aria-disabled={busy}
+              className={`${SECONDARY_BUTTON_COMPACT} ${IN_FLIGHT_FOCUSABLE} flex-1`}
             >
               {copy === "copied" ? "Copied" : "Copy link"}
             </button>
 
             <button
               type="button"
-              onClick={() => void change("renew")}
-              disabled={busy}
-              className={`${PLAIN_BUTTON} flex-1`}
+              onClick={() => {
+                if (!busy) void change("renew");
+              }}
+              aria-disabled={busy}
+              className={`${PLAIN_BUTTON} ${IN_FLIGHT_FOCUSABLE} flex-1`}
             >
               {pending === "renew" ? "Making a new link" : "Make a new link"}
             </button>

@@ -10,7 +10,7 @@ import { EMPTY_PANEL, PLAIN_BUTTON } from "@/app/buttons";
  * ── Reachable only one way ───────────────────────────────────────────────────────────
  *
  * This renders when the query **succeeded and found no rows**. There is no other path to
- * it: `listLibraryEntries` has no `catch`, so a database that cannot be reached throws
+ * it: `listLibrarySections` has no `catch`, so a database that cannot be reached throws
  * past this component into `error.tsx` (`AGENTS.md`). `tvtracker` caught
  * the failure and returned `[]`, and for the whole life of that app a database that was
  * down rendered as a library with nothing in it.

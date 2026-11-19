@@ -1,6 +1,6 @@
 /**
  * The library card's progress bar, as a fraction — issue #324, given the two counts
- * `listLibraryEntries` now joins (`db/access.ts`'s `LibraryEntryRow.progress`,
+ * the Library section reads join (`db/access.ts`'s `LibraryEntryRow.progress`,
  * `db/views.ts`'s `library_entry_release_progress`).
  *
  * **Released episodes only.** The title hero's season fraction (`progress-remaining.ts`)
