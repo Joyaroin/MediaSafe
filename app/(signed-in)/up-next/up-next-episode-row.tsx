@@ -27,7 +27,7 @@ import {
   type UpNextPendingEntry,
   type UpNextRailEntry,
 } from "@/db/access";
-import { episodeCode, remainingInWords } from "./episode-card-line";
+import { episodeCode, seasonCountInWords } from "./episode-card-line";
 import {
   finishesSomething,
   finishFactsFor,
@@ -41,8 +41,10 @@ import { useSwipeToMark } from "./use-swipe-to-mark";
 import {
   cardPicture,
   queuedEpisodeFullName,
+  seasonProgress,
   useUpNextMark,
   type CardPicture,
+  type SeasonProgress,
   type UpNextMark,
 } from "./up-next-mark";
 
@@ -108,7 +110,7 @@ export function UpNextEpisodeRow({
         finish={null}
         held={false}
         picture={cardPicture(entry)}
-        remainingAfter={countAfterShown(entry.remaining, 0, false)}
+        progress={seasonProgress(entry, null, 0)}
         aboveFold={aboveFold}
         leavesFor={null}
         control={null}
@@ -130,7 +132,6 @@ export function shownFor(
   readonly showing: QueuedEpisode;
   /** How many of the run are marked: the held episode is one of them. */
   readonly marked: number;
-  readonly remainingAfter: number;
 } {
   /* The episode on the card: the one being held while the hold lasts, otherwise the first
      unwatched one in the run (or the run's last, if a capped run has gone dry). */
@@ -144,7 +145,6 @@ export function shownFor(
   return {
     showing: entry.queue.episodes[spent ? entry.queue.episodes.length - 1 : shownAt],
     marked: mark.held !== null ? shownAt + 1 : shownAt,
-    remainingAfter: countAfterShown(entry.remaining, shownAt, spent),
   };
 }
 
@@ -185,7 +185,8 @@ function MarkableRow({
 
   useHold(mark.held?.episodeId ?? null, mark.settle);
 
-  const { showing, remainingAfter } = shownFor(entry, mark);
+  const { showing, marked } = shownFor(entry, mark);
+  const progress = seasonProgress(entry, showing, marked);
 
   /* Spent and no longer holding: the list has already let this row go
      (`useEntriesOnRail`), and this is the row as it closes — on its finish line, its tick
@@ -211,7 +212,7 @@ function MarkableRow({
       finish={line === WATCHED ? null : line}
       held={mark.held !== null}
       picture={mark.picture}
-      remainingAfter={remainingAfter}
+      progress={progress}
       aboveFold={aboveFold}
       leavesFor={leaving ? leavesFor(entry, showing) : null}
       swipe={swipe}
@@ -238,21 +239,6 @@ function indexOf(entry: UpNextEntry, episode: QueuedEpisode): number {
   return at < 0 ? 0 : at;
 }
 
-/**
- * What is left after the episode on the card. `remaining` counts the Up next episode and
- * the aired episodes after it (`upNextRead`); every episode before `shown` in the run has
- * been marked from this card since the page loaded, and the one on the card is not *after*
- * itself — unless the run is spent, when the card is showing nothing new.
- */
-function countAfterShown(
-  remaining: number,
-  shown: number,
-  spent: boolean,
-): number {
-  const unwatched = Math.max(0, remaining - shown);
-  return spent ? unwatched : Math.max(0, unwatched - 1);
-}
-
 function RowBody({
   entry,
   code,
@@ -260,7 +246,7 @@ function RowBody({
   finish,
   held,
   picture,
-  remainingAfter,
+  progress,
   aboveFold,
   leavesFor,
   swipe = null,
@@ -276,7 +262,8 @@ function RowBody({
   /** The row is holding after a mark — washed. */
   held: boolean;
   picture: CardPicture;
-  remainingAfter: number;
+  /** The season the episode belongs to: watched before it, against aired. */
+  progress: SeasonProgress;
   aboveFold: boolean;
   /** The tab this row's poster travels to as it leaves, or `null` when it is not leaving
    *  for one. */
@@ -330,7 +317,7 @@ function RowBody({
           {/* The episode line rolls when it changes — the next episode after the hold, or the
               finish line in its place — so the row keeps its height and nothing else moves. */}
           <Roll
-            rollKey={finish ?? `${code}|${episodeName ?? ""}|${remainingAfter}`}
+            rollKey={finish ?? `${code}|${episodeName ?? ""}|${progress.watched}/${progress.released}`}
             className="mt-0.5 h-5"
           >
             {/* `h-5` and `leading-5` on both lines: the finish line is a size larger, and the
@@ -346,13 +333,11 @@ function RowBody({
                 <span className="truncate text-dim">
                   {episodeName === null ? code : `${code} · ${episodeName}`}
                 </span>
-                {/* `data-numeric` is the tabular-figures hook. Absent at zero
-                    (`remainingInWords`). */}
-                {remainingAfter > 0 ? (
-                  <span className="shrink-0 text-dim" data-numeric>
-                    {remainingInWords(remainingAfter)}
-                  </span>
-                ) : null}
+                {/* `data-numeric` is the tabular-figures hook. The season's count, the same
+                    unit as the featured slot's "N of M". */}
+                <span className="shrink-0 text-dim" data-numeric>
+                  {seasonCountInWords(progress)}
+                </span>
               </span>
             )}
           </Roll>
