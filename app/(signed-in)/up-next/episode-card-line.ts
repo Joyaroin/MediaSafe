@@ -43,21 +43,19 @@ function pad(number: number): string {
 }
 
 /**
- * `+8 remaining` — how many aired episodes come **after** the one the card is offering,
- * or `null` when none do (#250, narrowed by the UI overhaul).
+ * `+8 remaining` — how many further episodes of the show are already announced beyond the
+ * one a Coming up row is offering, or `null` when there are none (#250, narrowed by the UI
+ * overhaul).
  *
- * The number is not derived here: it is the read's *Remaining* (`CONTEXT.md`, and
- * `upNextRead` in `db/access.ts`), minus the episode being offered and minus whatever the
- * reader has marked from this card since the page loaded.
+ * The number is not derived here, and no `UpNextEntry` carries one (#602): it is Coming up's
+ * `more` (`nextPerTitle` in `upcoming-grouping.ts`), the count of the other rows
+ * `listUpcomingEpisodes` returned for the same library entry. That read keeps episodes dated
+ * yesterday or later (`air_date >= current_date - 1`), so these are mostly unaired ones the
+ * schedule already names. It is not *Remaining* in `CONTEXT.md`, and not
+ * `library_entry_remaining`, which counts every unwatched episode, unaired ones too.
  *
- * **Aired only.** It used to count every unwatched episode TMDB lists, so JoJo printed
- * `+8 remaining` beside an episode that had not aired — a number about the series, on a
- * surface that is about tonight. The rail that justified counting unaired episodes (Coming
- * back) is gone from Continue watching, and with it the argument.
- *
- * **Zero is withheld.** With aired-only counting, zero means *this is the last one you can
- * watch now*, and the card's own episode line already says what to watch; a `+0` beside it
- * is a line that reads as noise on most cards of a caught-up library.
+ * **Zero is withheld.** `more` is `0` when the offered episode is the only one dated, and the
+ * row already names it; a `+0` beside it would be noise on most rows.
  */
 export function remainingInWords(remainingAfter: number): string | null {
   return remainingAfter > 0 ? `+${remainingAfter} remaining` : null;

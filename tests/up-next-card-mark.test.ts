@@ -88,7 +88,6 @@ function entryWith(
     airDate: "2015-02-08",
     runtimeMins: 47,
     stillPath: "/still.jpg",
-    remaining: episodes.length,
     inProduction: true,
     posterColour: null,
     seasonWatched: Math.max(0, (episodes[0]?.episodeNo ?? 1) - 1),
