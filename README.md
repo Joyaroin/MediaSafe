@@ -1,7 +1,7 @@
 # MediaSafe
 
 **A personal tracker for the shows and films I watch — built, deployed and operated end to end
-by one person.** Live at **[mediasafe.space](https://mediasafe.space)**, running on a two-node
+by one person.** Live at **[mediasafe.space](https://mediasafe.space)**, running on a single-node
 k3s cluster in my home lab, deployed with Argo CD and reached through a Cloudflare Tunnel.
 
 [![Live](https://img.shields.io/badge/live-mediasafe.space-111?style=flat-square)](https://mediasafe.space)

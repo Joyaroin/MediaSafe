@@ -16,7 +16,7 @@ directory's, and the nodes are installed by `bootstrap/` in `morioh-cho-gitops`.
    | `mediasafe/cloudflare-token` | — | the token | Cloudflare → My Profile → API Tokens | Zone → DNS → Edit and Zone → Zone Settings → Edit, on your one zone; Account → Workers R2 Storage → Edit (the snapshot bucket); Account → Cloudflare Tunnel → Edit (the home cluster's tunnel) |
    | `mediasafe/r2-terraform-state` | Access Key ID | Secret Access Key | Cloudflare → R2 → Manage API tokens | Object Read & Write, on `mediasafe-tfstate` only |
 
-   A fourth key is created **after the first apply that makes `mediasafe-vault-snapshots`**, and
+   A third key is created **after the first apply that makes `mediasafe-vault-snapshots`**, and
    goes into Vault rather than being read by `./tf`:
 
    | Bitwarden item | Username | Password | Where to create it | Scope |

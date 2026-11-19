@@ -15,8 +15,9 @@ ADRs 0001 to 0003), Postgres on Neon, Drizzle.
 
 Work is tracked on GitHub Issues. A piece of work is a `Spec:` issue (e.g. #357, #360) whose
 slices are its native **sub-issues**, each with `## Parent`, `## What to build`,
-`## Acceptance criteria` and `## Blocked by`. Blocking is GitHub's native issue dependency, not a
-body line. Read the open spec and its sub-issues before touching anything. Issue #1 is the
+`## Acceptance criteria` and `## Blocked by`. Blocking is recorded twice: as GitHub's native issue
+dependency, and in the `## Blocked by` section, which `unblock.yml` reads to clear the
+`blocked` label. Read the open spec and its sub-issues before touching anything. Issue #1 is the
 original spec-stage map; it is closed and historical.
 
 ## Shipping

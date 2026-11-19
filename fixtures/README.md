@@ -145,7 +145,7 @@ already assumes the filter.
 **So step 3's conversion script must filter to `21cbd8c5-…` when producing
 `fixtures/mediasafe-seed.json`.** [#18](https://github.com/Joyaroin/MediaSafe/issues/18)
 decided that **no environment outside production ever holds another person's rows**, and
-that seed is what populates every preview and every local Docker database. An unfiltered
+that seed is what populates every local Docker database. An unfiltered
 conversion would put a second person's viewing history into all of them, which is exactly
 the outcome #18 rejected — and it would do so silently, because 472 rows look no more
 wrong than 462.
