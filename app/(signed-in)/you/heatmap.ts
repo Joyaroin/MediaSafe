@@ -30,6 +30,10 @@ export interface HeatmapWatch {
   readonly titleName: string;
   /** `"S01 · E04 · Name"`, the code alone for an unnamed episode, or `"Film"`. */
   readonly what: string;
+  /** `null` for a film's watch. Kept so a day's watches can be grouped by title. */
+  readonly seasonNo: number | null;
+  readonly episodeNo: number | null;
+  readonly watchedAt: Date;
 }
 
 export interface HeatmapDay {
@@ -131,6 +135,9 @@ export function buildHeatmap(watches: readonly YearWatch[], zone: string, today:
       libraryEntryId: watch.libraryEntryId,
       titleName: watch.titleName,
       what: whatOf(watch),
+      seasonNo: watch.seasonNo,
+      episodeNo: watch.episodeNo,
+      watchedAt: watch.watchedAt,
     });
     total += 1;
   }
@@ -150,4 +157,122 @@ export function buildHeatmap(watches: readonly YearWatch[], zone: string, today:
   const leading = (new Date(dayMs(span[0])).getUTCDay() + 6) % 7;
 
   return { days, leading, total };
+}
+
+export interface DayEpisode {
+  readonly key: string;
+  readonly what: string;
+}
+
+/** One title's watches on one day, collapsed to a line. */
+export interface DayTitleGroup {
+  readonly libraryEntryId: string;
+  readonly titleName: string;
+  /** `"The Bear · 46 episodes · seasons 1–5"`, or `"Heat · Film"`: the row's visible text. */
+  readonly line: string;
+  /** The title, and the rest of `line` after it, so the row can style them apart. */
+  readonly lead: string;
+  readonly detail: string;
+  /** Distinct episodes in season and episode order. Empty for a film. */
+  readonly episodes: readonly DayEpisode[];
+}
+
+/**
+ * `"season 2"`, `"seasons 1–5"`, `"seasons 1 and 3"`, `"seasons 1–3 and 5"`. Season 0 is
+ * Specials, never a number: it is named after the numbered seasons.
+ */
+export function seasonsInWords(seasons: readonly number[]): string {
+  const numbered = [...new Set(seasons.filter((season) => season > 0))].sort((a, b) => a - b);
+  const runs: string[] = [];
+  for (let index = 0; index < numbered.length; ) {
+    let end = index;
+    while (end + 1 < numbered.length && numbered[end + 1] === numbered[end] + 1) end += 1;
+    runs.push(end > index ? `${numbered[index]}–${numbered[end]}` : String(numbered[index]));
+    index = end + 1;
+  }
+
+  const hasSpecials = seasons.includes(0);
+  const parts = hasSpecials ? [...runs, "specials"] : runs;
+  const joined =
+    parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+  if (numbered.length === 0) return "specials";
+  return `${numbered.length > 1 ? "seasons" : "season"} ${joined}`;
+}
+
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * A selected day's watches, one group per title — issue #539. Pure, held by
+ * `tests/heatmap.test.ts`.
+ *
+ * - The count is **distinct episodes**: an episode watched twice that day is one. A film
+ *   is one row however often it was watched.
+ * - Titles run by their latest watch that day, newest first. One "Mark season watched"
+ *   press writes every row at one instant, so ties are common: then `lower(title name)`,
+ *   then the library entry id.
+ * - Inside a group, episodes run by season and then episode.
+ */
+export function groupDayByTitle(watches: readonly HeatmapWatch[]): DayTitleGroup[] {
+  interface Draft {
+    libraryEntryId: string;
+    titleName: string;
+    latest: number;
+    film: boolean;
+    episodes: Map<string, { seasonNo: number; episodeNo: number; what: string }>;
+  }
+  const drafts = new Map<string, Draft>();
+
+  for (const watch of watches) {
+    let draft = drafts.get(watch.libraryEntryId);
+    if (draft === undefined) {
+      draft = {
+        libraryEntryId: watch.libraryEntryId,
+        titleName: watch.titleName,
+        latest: 0,
+        film: false,
+        episodes: new Map(),
+      };
+      drafts.set(watch.libraryEntryId, draft);
+    }
+    draft.latest = Math.max(draft.latest, watch.watchedAt.getTime());
+    if (watch.seasonNo === null || watch.episodeNo === null) {
+      draft.film = true;
+      continue;
+    }
+    draft.episodes.set(`${watch.seasonNo}:${watch.episodeNo}`, {
+      seasonNo: watch.seasonNo,
+      episodeNo: watch.episodeNo,
+      what: watch.what,
+    });
+  }
+
+  const ordered = [...drafts.values()].sort((a, b) => {
+    if (a.latest !== b.latest) return b.latest - a.latest;
+    // Code-unit order, not `localeCompare`: the rule must not move with the machine's locale.
+    return (
+      compare(a.titleName.toLowerCase(), b.titleName.toLowerCase()) ||
+      compare(a.libraryEntryId, b.libraryEntryId)
+    );
+  });
+
+  return ordered.map((draft) => {
+    const episodes = [...draft.episodes.entries()]
+      .sort(([, a], [, b]) => a.seasonNo - b.seasonNo || a.episodeNo - b.episodeNo)
+      .map(([key, one]) => ({ key, what: one.what }));
+    const seasons = [...draft.episodes.values()].map((one) => one.seasonNo);
+    const detail =
+      episodes.length === 0
+        ? " · Film"
+        : ` · ${episodes.length === 1 ? "1 episode" : `${episodes.length.toLocaleString("en-GB")} episodes`} · ${seasonsInWords(seasons)}`;
+    return {
+      libraryEntryId: draft.libraryEntryId,
+      titleName: draft.titleName,
+      lead: draft.titleName,
+      detail,
+      line: `${draft.titleName}${detail}`,
+      episodes,
+    };
+  });
 }
