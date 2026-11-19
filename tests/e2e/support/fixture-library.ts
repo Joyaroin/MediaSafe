@@ -169,6 +169,7 @@ export async function seedShowWithSeason(
     watched,
     abandoned = false,
     watchedAt = new Date(),
+    inProduction = true,
   }: {
     readonly episodes: number;
     readonly watched: readonly number[];
@@ -176,6 +177,8 @@ export async function seedShowWithSeason(
     readonly abandoned?: boolean;
     /** When the watches are dated; a later date ranks the show first on Tonight. */
     readonly watchedAt?: Date;
+    /** `false` makes a show whose every episode is watched *finished*, not caught up. */
+    readonly inProduction?: boolean;
   },
 ): Promise<SeededTitle> {
   const pool = createPool(requireDatabaseUrl());
@@ -197,7 +200,7 @@ export async function seedShowWithSeason(
         name: titleName,
         releaseYear: 2024,
         posterPath,
-        inProduction: true,
+        inProduction,
       })
       .returning({ id: schema.title.id });
 

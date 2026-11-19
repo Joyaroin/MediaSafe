@@ -279,7 +279,7 @@ Three existing treatments change, and their tests change with them:
 
 Each entry gives the reference files, the structure from top to bottom, where the data already comes from, and what to cover beyond the picture.
 
-**Surfaces this spec does not draw** keep their structure and behaviour: the suggestion and recommendation rails, the selection action bar, the watch menu, the more menu, the remove-title and delete-account pages, and the page for a title the reader does not hold. Rebuild them from section 6's components and nothing else. Rails use the Rail component. Menus are `raised` with 44px rows. The two confirmation pages follow the dialog's layout. Each is restyled in the slice that owns its screen: the suggestion rail with Tonight and Coming up, the recommendation rails with Search, the selection bar with Library, the watch menu, the more menu, remove-title and the unheld title with the title pages, and delete-account with Settings.
+**Surfaces this spec does not draw** keep their structure and behaviour: the recommendation rails, the selection action bar, the watch menu, the more menu, the remove-title and delete-account pages, and the page for a title the reader does not hold. Rebuild them from section 6's components and nothing else. Rails use the Rail component. Menus are `raised` with 44px rows. The two confirmation pages follow the dialog's layout. Each is restyled in the slice that owns its screen: the recommendation rails with Search, the selection bar with Library, the watch menu, the more menu, remove-title and the unheld title with the title pages, and delete-account with Settings.
 
 ### 8.1 Tonight
 
@@ -293,7 +293,7 @@ Reference: `tonight.dark`, `tonight.light`, `desktop-tonight.dark`, `desktop-ton
 - **Data.** `cachedUpNextRails()`, `cachedWatchlistFilms()` and `cachedNotStartedShows()`, exactly as `up-next/page.tsx` reads them. The featured entry is the one `up-next-episode-rail.tsx` already computes as `featuredId` (the first Continue watching entry). The list is the remaining Continue watching entries, then `oldFriends`, then Films to watch, which is the order the phone already concatenates in.
 - **Pending titles** (added, episodes not mirrored yet) appear as rows using the existing pending line, never as the featured entry.
 - **No featured entry but films exist:** no artwork area. The screen title becomes a normal Screen heading and the list starts directly.
-- **Empty:** the outlined panel, "Nothing queued for tonight" / "Add a show and its next episode turns up here." / filled "Search films and shows", followed by the existing suggestions rail.
+- **Empty:** the outlined panel, "Nothing queued for tonight" / "Add a show and its next episode turns up here." / filled "Search films and shows". Under it, outlined, "Bring your library in" (`/import`), shown only when the library holds no title at all. There is no rail of titles to add.
 - **Long titles.** The featured title wraps to two lines at most with `text-wrap: balance`, then truncates. When it wraps, the area grows by that line; the text block never climbs into the artwork. Row titles truncate on one line.
 - **Text over artwork** follows section 10. Its scrims are measured from the text, not from the artwork box, so they hold when the area grows.
 - **Desktop.** From `xl:`, two columns inside the main area: the featured card fills the left (rounded `--radius-6`, full height) and a 380px column on the right holds "Also ready" and a "Coming up" preview of the next three dated rows with "See all" linking to `/coming-up`. Between `lg:` and `xl:` it is one column: the featured card at a minimum height of 480px with the phone's Display size, then the list.
@@ -306,7 +306,7 @@ Reference: `coming-up.dark`, `coming-up.light`.
 - Screen heading, then day groups: a serif Heading ("Tomorrow", a weekday name, "Later") with the date on the right in Meta, and rows beneath (poster, title, "S3 E6 · +4 remaining", chevron). Rows under "Later" show their date in the Meta line and "In 26 days" on the right.
 - Then "Upcoming films": a Rail with the title and "18 Dec 2026 · In 68 days".
 - **Data.** `cachedUpcomingEpisodes()` and `cachedUpcomingFilms()`, grouped by the existing `upcoming-grouping.ts`. The copy forms ("In N days", "+N remaining") already exist.
-- **Empty:** the existing `UpcomingNothing` wording in the outlined panel, plus suggestions.
+- **Empty:** the existing `UpcomingNothing` wording in the outlined panel, plus an outlined "Search films and shows" link to `/search`. No rail of titles to add.
 - Rows are links to the title; there is no tick here because nothing listed has aired.
 
 ### 8.3 Search

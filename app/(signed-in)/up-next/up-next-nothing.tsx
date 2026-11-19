@@ -1,7 +1,6 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 
-import { SOLID_RECOVERY } from "@/errors/recovery-buttons";
+import { GHOST_RECOVERY, SOLID_RECOVERY } from "@/errors/recovery-buttons";
 import { EMPTY_PANEL } from "@/app/buttons";
 
 /**
@@ -28,32 +27,39 @@ import { EMPTY_PANEL } from "@/app/buttons";
  * the surface `AGENTS.md`'s rule bites hardest on, and *nothing queued for tonight* is
  * exactly the plausible lie it forbids.
  *
+ * ── No rail of titles to add (issue #556) ───────────────────────────────────────────
+ *
+ * Issue #365 drew a trending rail under this panel. The spec ("Search before you type")
+ * moved trending to Search, so this screen points there instead: the one filled button
+ * is *Search films and shows*, and *Bring your library in* sits beside it only when the
+ * library is empty (`libraryEmpty`, answered by `up-next-rails.tsx` from a read that
+ * succeeded — a failed read throws, it is never an empty library).
+ *
  * Centred, `text-bill-lg` in `text`, no border — `empty-library.tsx`'s shape, and the opposite of `errors/read-failure.tsx`'s left-aligned `accent` treatment,
  * so the two can never be mistaken for each other.
  */
-export function UpNextNothing({
-  suggestions,
-}: {
-  /** Issue #365's rail of titles to add (`suggestion-rail.tsx`), drawn under the
-   *  sentence. It answers its own failure inline, so the sentence never depends on it. */
-  suggestions: ReactNode;
-}) {
+export function UpNextNothing({ libraryEmpty }: { libraryEmpty: boolean }) {
   return (
-    <>
-      <section className={EMPTY_PANEL}>
-        <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
+    <section className={EMPTY_PANEL}>
+      <h2 className="bill-title text-bill-lg text-text">Nothing queued for tonight</h2>
 
-        <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
-          Add a show and its next episode turns up here.
-        </p>
+      <p className="mt-2 max-w-[60ch] text-note leading-relaxed text-dim">
+        Add a show and its next episode turns up here.
+      </p>
 
-        <Link href="/search" className={`mt-4 ${SOLID_RECOVERY}`}>
+      {/* Search is the one filled button. Bringing a library in is offered only to a
+          reader who has none: with titles held, an import is not the way out of an empty
+          Tonight. */}
+      <div className="mt-4 flex flex-col gap-1">
+        <Link href="/search" className={SOLID_RECOVERY}>
           Search films and shows
         </Link>
-      </section>
-      {/* Room between the panel and the rail under it — the rail carries no top space of
-          its own, because Coming up's empty state draws it under a panel too. */}
-      <div className="mt-6">{suggestions}</div>
-    </>
+        {libraryEmpty ? (
+          <Link href="/import" className={GHOST_RECOVERY}>
+            Bring your library in
+          </Link>
+        ) : null}
+      </div>
+    </section>
   );
 }
