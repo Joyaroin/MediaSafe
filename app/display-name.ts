@@ -14,7 +14,7 @@
  * ── What this replaces, and why it is not a cache ────────────────────────────────────
  *
  * `sidebar.tsx` reads `currentDisplayName()` on the server (and the deleted `masthead.tsx`
- * did too, until #544), and it lives in `(signed-in)/layout.tsx` — a layout, which the
+ * did too, until #375), and it lives in `(signed-in)/layout.tsx` — a layout, which the
  * client Router Cache keeps and reuses across navigations even though every page segment under it is dynamic and is
  * refetched (Next.js 15's client-cache change: *page segments are no longer reused …
  * layouts and loading states continue to be cached*). So a name saved in Settings really

@@ -390,7 +390,7 @@ export function seasonProgress(
  * leave a heading over an empty track, which *an empty rail is absent* forbids as surely
  * as a count would.
  * (This used to name `up-next-episode-rail.tsx` and `up-next-episode-card.tsx`; both
- * files are gone since #544.)
+ * files are gone: the rail since #400, the card since #358.)
  *
  * ── The arrived-empty branch, and why it is not `finished` (#250) ────────────────────
  *

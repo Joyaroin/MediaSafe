@@ -15,8 +15,9 @@ import * as schema from "@/db/schema";
  *
  * The library grid opens from any state, but the Up next rail's "next episodes" list —
  * Tonight's list (`up-next/tonight-list.tsx`, which replaced `up-next-episode-rail.tsx`
- * in #544), `press="episode"`, the second entry path this ticket's acceptance criteria
- * name — only ever lists a title standing at *watching*
+ * in #400; its episode rows are `UpNextEpisodeRow` in `up-next-episode-row.tsx`), the
+ * second entry path this ticket's acceptance criteria name — only ever lists a title
+ * standing at *watching*
  * (`db/access.ts`'s `ONGOING_RAIL_SIZE` slice, `db/views.ts`'s `library_entry_state`). One
  * seed answers both: two aired episodes, the first watched and the second not, is the
  * minimum shape that state requires. Seeding one show once and opening it from both

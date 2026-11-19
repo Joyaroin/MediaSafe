@@ -9,7 +9,7 @@ import { displayName } from "./display-name";
  *
  * `sidebar.tsx` draws its own cell around this: the rail's `mt-auto` foot, `truncate` and
  * inert, and neither of those facts belongs in here. (The deleted `masthead.tsx` drew the
- * phone's, capped `max-w-[9rem]`, until #544 removed it; the sidebar is the only caller
+ * phone's, capped `max-w-[9rem]`, until #375 removed it; the sidebar is the only caller
  * now.) What this owns is the one question the server cannot answer after a save — *has
  * Settings changed this since the page loaded* — so it renders a bare string and leaves
  * the markup to the callers that have opinions about it.
