@@ -1,8 +1,5 @@
-import { Suspense } from "react";
-
 import { cachedUpcomingEpisodes, cachedUpcomingFilms } from "@/cache/tags";
 import { requireTimezone, requireUserId } from "@/lib/session";
-import { SuggestionRail } from "../up-next/suggestion-rail";
 import { readerDay } from "../up-next/upcoming-grouping";
 import { UpcomingSurface } from "../up-next/upcoming-surface";
 import { NavTransition } from "../nav-transition";
@@ -46,18 +43,7 @@ export default async function ComingUpPage() {
         <ComingUpHeading />
 
         <div className="w-full lg:max-w-6xl">
-          <UpcomingSurface
-            episodes={episodes}
-            films={films}
-            today={today}
-            suggestions={
-              /* Constructed, not awaited: the rail reads TMDB only if the empty state that
-                 holds it renders, and its own `Suspense` keeps that read off the first byte. */
-              <Suspense fallback={null}>
-                <SuggestionRail userId={userId} labelId="suggestions-coming-up" />
-              </Suspense>
-            }
-          />
+          <UpcomingSurface episodes={episodes} films={films} today={today} />
         </div>
       </main>
     </NavTransition>

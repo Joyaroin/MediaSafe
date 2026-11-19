@@ -1,6 +1,5 @@
-import { Suspense } from "react";
-
 import {
+  cachedLibrarySections,
   cachedNotStartedShows,
   cachedUpcomingEpisodes,
   cachedUpNextRails,
@@ -12,7 +11,6 @@ import { NOT_STARTED_READ_SIZE } from "./not-started";
 import { readerDay } from "./upcoming-grouping";
 import { UpNextWatching } from "./up-next-rails";
 import { HoldOver } from "./hold-over";
-import { SuggestionRail } from "./suggestion-rail";
 import { NavTransition } from "../nav-transition";
 
 /**
@@ -108,16 +106,13 @@ export default async function UpNextPage() {
   ]);
 
   /**
-   * Issue #365's rail of titles to add, for the empty state. Constructed, not awaited —
-   * the search screen's shape (`search/page.tsx`): an element only reads TMDB if the
-   * empty state that holds it actually renders, and its own `Suspense` keeps that read off
-   * the page's first byte. No fallback, for the search screen's reason.
+   * Whether the library holds no title at all — the empty state's *Bring your library in*
+   * (#556). A function, not a read made here: it runs only if the empty state renders. The
+   * sections' counts cover every entry (each state is in one section), and a failed read
+   * throws into `error.tsx` rather than answering *empty*.
    */
-  const suggestions = (
-    <Suspense fallback={null}>
-      <SuggestionRail userId={userId} labelId="suggestions-watching" />
-    </Suspense>
-  );
+  const readLibraryIsEmpty = async () =>
+    (await cachedLibrarySections(userId)).every((section) => section.count === 0);
 
   return (
     <NavTransition>
@@ -136,7 +131,7 @@ export default async function UpNextPage() {
               comingUp={
                 <TonightComingUp episodes={upcoming} today={readerDay(zone, new Date())} />
               }
-              suggestions={suggestions}
+              readLibraryIsEmpty={readLibraryIsEmpty}
             />
           </HoldOver>
         </div>

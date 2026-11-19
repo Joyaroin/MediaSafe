@@ -12,8 +12,9 @@ import {
 
 /**
  * The one-tap add from a catalogue result, and its write-failure toast — lifted out of
- * `catalogue-result.tsx` so Up next's empty-state suggestions (issue #365) press the same
- * add rather than a second one. Everything below is that row's, unchanged.
+ * `catalogue-result.tsx` so a second surface could press the same add rather than a
+ * second one (Up next's empty-state suggestions did, until #556 removed them). Everything
+ * below is that row's, unchanged.
  */
 export function useCatalogueAdd(result: MarkedResult): {
   readonly inLibrary: boolean;
